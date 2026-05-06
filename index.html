@@ -22,25 +22,8 @@
 
   <!-- Estilos propios -->
   <link rel="stylesheet" href="/styles/app.css">
+  <link rel="stylesheet" href="/styles/map.css">
 
-  <!-- 🔐 Supabase credentials — leídas desde /api/config en Fase 2
-       Por ahora se inyectan via Vercel Environment Variables en el servidor
-       NO pongas keys aquí directamente -->
-  <script>
-    // Estas variables las sirve el endpoint /api/config (Vercel)
-    // Se llenan en window antes de que cargue app.js
-    window.__SUPABASE_URL__      = '';
-    window.__SUPABASE_ANON_KEY__ = '';
-
-    // Las cargamos del servidor de forma segura
-    fetch('/api/config')
-      .then(r => r.json())
-      .then(cfg => {
-        window.__SUPABASE_URL__      = cfg.supabaseUrl      || '';
-        window.__SUPABASE_ANON_KEY__ = cfg.supabaseAnonKey  || '';
-      })
-      .catch(() => console.warn('⚠️ /api/config no disponible aún'));
-  </script>
 </head>
 <body>
 
@@ -117,7 +100,7 @@
   <!-- MapLibre GL JS -->
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
-  <!-- App -->
+  <!-- App (type=module para poder usar import/export) -->
   <script type="module" src="/src/app.js"></script>
 
 </body>
