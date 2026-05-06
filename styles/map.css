@@ -1,0 +1,265 @@
+/* ====================================================================
+   WHATSPLAN — map.css
+   Pins de lugares, minicard, landmarks, animaciones
+   ==================================================================== */
+
+/* ── Keyframes ── */
+@keyframes pinPulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+
+/* ── Raíz del pin (overflow visible para badge y pulse) ── */
+.place-marker-el {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  overflow: visible !important;
+}
+
+.place-pin-root {
+  position: relative;
+  display: inline-block;
+  overflow: visible;
+}
+
+/* Contenedor relativo para badge/pulse */
+.place-pin-rel {
+  position: relative;
+  width: 29px;   /* SZ+4 */
+  height: 29px;
+  margin: -2px;
+  overflow: visible;
+}
+
+/* ── Wrapper con borde gradiente ── */
+.place-pin-wrapper {
+  position: relative;
+  width: 25px;
+  height: 25px;
+  border-radius: 11px;
+  padding: 2px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 1;
+}
+
+/* ── Inner: foto o skeleton ── */
+.pin-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  overflow: hidden;
+  transition: opacity 0.2s;
+}
+
+.pin-inner.loading {
+  background: #f3f4f6;
+}
+
+/* ── Pin sin foto: punto azul ── */
+.pin-dot {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: #6366f1 !important;
+  border: 2.5px solid white;
+  box-shadow: 0 2px 6px rgba(99,102,241,0.5);
+  display: block;
+}
+
+/* ── Badge de actividades ── */
+.place-act-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 20px;
+  border: 1.5px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  transition: opacity 0.3s;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Badge pequeño para pin punto */
+.pin-dot + .place-act-badge,
+.place-pin-root > div > .place-act-badge {
+  top: -5px;
+  right: -5px;
+  font-size: 7px;
+  min-width: 12px;
+  height: 12px;
+}
+
+/* ── Badge featured ── */
+.pin-featured-badge {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11;
+  font-size: 6px;
+  line-height: 1;
+  color: white;
+}
+
+/* ── Pulse ring (actividad) ── */
+.pin-pulse-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: rgba(245,158,11,0.3);
+  animation: pinPulse 1.8s ease-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── MiniCard ── */
+.minicard-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+  cursor: pointer;
+  max-width: 260px;
+  min-width: 160px;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  user-select: none;
+  font-family: var(--font-main);
+}
+
+.minicard-photo {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.minicard-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.minicard-body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.minicard-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+
+.minicard-rating {
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.minicard-address {
+  font-size: 10px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.minicard-arrow {
+  font-size: 18px;
+  flex-shrink: 0;
+  color: #9ca3af;
+  margin-left: 2px;
+}
+
+/* ── Landmarks ── */
+.landmark-el {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+  overflow: visible;
+}
+
+.landmark-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  border: 2px solid rgba(255,255,255,0.7);
+}
+
+.sticker-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.sticker-emoji {
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.landmark-label {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+  text-shadow:
+    -1px -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0 0 4px rgba(255,255,255,0.9);
+  pointer-events: none;
+  letter-spacing: -0.2px;
+}
