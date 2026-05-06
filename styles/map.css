@@ -9,11 +9,14 @@
   100% { transform: scale(2.2); opacity: 0;   }
 }
 
-/* ── Raíz del pin (overflow visible para badge y pulse) ── */
+/* ── Elemento raíz del marker MapLibre ── */
 .place-marker-el {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
 }
 
 .place-pin-root {
@@ -22,46 +25,56 @@
   overflow: visible;
 }
 
-/* Contenedor relativo para badge/pulse */
+/* Contenedor relativo — espacio para badge y pulse ring */
 .place-pin-rel {
   position: relative;
-  width: 29px;   /* SZ+4 */
+  width: 29px;
   height: 29px;
   margin: -2px;
   overflow: visible;
 }
 
-/* ── Wrapper con borde gradiente ── */
+/* ── Wrapper con borde (blanco o gradiente naranja si hay actividad) ── */
 .place-pin-wrapper {
   position: relative;
   width: 25px;
   height: 25px;
   border-radius: 11px;
   padding: 2px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.22),
+    0 0 0 1px rgba(0,0,0,0.06);
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s, box-shadow 0.15s;
   z-index: 1;
+  overflow: hidden;
 }
 
-/* ── Inner: foto o skeleton ── */
+/* ── Inner: skeleton gris → se convierte en foto via JS ── */
 .pin-inner {
   width: 100%;
   height: 100%;
   border-radius: 9px;
-  background: #ffffff;
+  background: #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   overflow: hidden;
-  transition: opacity 0.2s;
+  transition: opacity 0.25s;
 }
 
 .pin-inner.loading {
   background: #f3f4f6;
+}
+
+/* Estado cargado: la foto se aplica como background via JS */
+.pin-inner.loaded {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
 /* ── Pin sin foto: punto azul ── */
@@ -70,9 +83,10 @@
   height: 16px !important;
   border-radius: 50% !important;
   background: #6366f1 !important;
-  border: 2.5px solid white;
-  box-shadow: 0 2px 6px rgba(99,102,241,0.5);
-  display: block;
+  border: 2.5px solid white !important;
+  box-shadow: 0 2px 6px rgba(99,102,241,0.5) !important;
+  display: block !important;
+  padding: 0 !important;
 }
 
 /* ── Badge de actividades ── */
@@ -99,17 +113,7 @@
   line-height: 1;
 }
 
-/* Badge pequeño para pin punto */
-.pin-dot + .place-act-badge,
-.place-pin-root > div > .place-act-badge {
-  top: -5px;
-  right: -5px;
-  font-size: 7px;
-  min-width: 12px;
-  height: 12px;
-}
-
-/* ── Badge featured ── */
+/* ── Badge featured (verificado / premium) ── */
 .pin-featured-badge {
   position: absolute;
   top: -4px;
@@ -127,7 +131,7 @@
   color: white;
 }
 
-/* ── Pulse ring (actividad) ── */
+/* ── Pulse ring (aparece cuando hay actividad) ── */
 .pin-pulse-ring {
   position: absolute;
   inset: -5px;
@@ -138,7 +142,7 @@
   z-index: 0;
 }
 
-/* ── MiniCard ── */
+/* ── MiniCard flotante ── */
 .minicard-wrap {
   display: flex;
   align-items: center;
@@ -196,6 +200,7 @@
   font-size: 11px;
   font-weight: 600;
   color: #92400e;
+  margin-top: 1px;
 }
 
 .minicard-address {
@@ -204,6 +209,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 1px;
 }
 
 .minicard-arrow {
@@ -220,6 +226,8 @@
   align-items: center;
   cursor: default;
   overflow: visible;
+  background: transparent !important;
+  border: none !important;
 }
 
 .landmark-circle {
@@ -262,4 +270,27 @@
      0 0 4px rgba(255,255,255,0.9);
   pointer-events: none;
   letter-spacing: -0.2px;
+}
+
+/* ── Overrides MapLibre — quitar fondo blanco por defecto en markers ── */
+.maplibregl-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Controles del mapa */
+.maplibregl-ctrl-top-right {
+  top: 12px !important;
+  right: 12px !important;
+}
+
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+.maplibregl-ctrl-group button {
+  width: 36px !important;
+  height: 36px !important;
 }
