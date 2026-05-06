@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WhatsPlan">
+  <meta name="theme-color" content="transparent">
+  <title>WhatsPlan</title>
+
+  <!-- Fuentes -->
+  <link rel="preconnect" href="https://fonts.bunny.net">
+  <link href="https://fonts.bunny.net/css?family=inter-tight:400,500,600,700&display=swap" rel="stylesheet">
+
+  <!-- Ionic CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
+
+  <!-- MapLibre GL CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+
+  <!-- Estilos propios -->
+  <link rel="stylesheet" href="/styles/app.css">
+
+  <!-- 🔐 Supabase credentials — leídas desde /api/config en Fase 2
+       Por ahora se inyectan via Vercel Environment Variables en el servidor
+       NO pongas keys aquí directamente -->
+  <script>
+    // Estas variables las sirve el endpoint /api/config (Vercel)
+    // Se llenan en window antes de que cargue app.js
+    window.__SUPABASE_URL__      = '';
+    window.__SUPABASE_ANON_KEY__ = '';
+
+    // Las cargamos del servidor de forma segura
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(cfg => {
+        window.__SUPABASE_URL__      = cfg.supabaseUrl      || '';
+        window.__SUPABASE_ANON_KEY__ = cfg.supabaseAnonKey  || '';
+      })
+      .catch(() => console.warn('⚠️ /api/config no disponible aún'));
+  </script>
+</head>
+<body>
+
+  <ion-app>
+
+    <!-- Mapa fullscreen -->
+    <div id="map"></div>
+
+    <!-- Panel inferior estático 26dvh -->
+    <div id="bottom-panel">
+      <div class="panel-handle"></div>
+
+      <ion-searchbar
+        id="main-searchbar"
+        placeholder="Buscar un lugar..."
+        animated="true"
+        inputmode="search">
+      </ion-searchbar>
+
+      <!-- 6 Categorías -->
+      <div id="categories-row">
+
+        <button class="cat-btn" data-id="rest">
+          <div class="cat-icon-wrap">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hamburger/3D/hamburger_3d.png" alt="Restaurantes">
+          </div>
+          <span>Restaurantes</span>
+        </button>
+
+        <button class="cat-btn" data-id="health">
+          <div class="cat-icon-wrap">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Stethoscope/3D/stethoscope_3d.png" alt="Salud">
+          </div>
+          <span>Salud</span>
+        </button>
+
+        <button class="cat-btn" data-id="shop">
+          <div class="cat-icon-wrap">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20bags/3D/shopping_bags_3d.png" alt="Compras">
+          </div>
+          <span>Compras</span>
+        </button>
+
+        <button class="cat-btn" data-id="enter">
+          <div class="cat-icon-wrap">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Balloon/3D/balloon_3d.png" alt="Entretenimiento">
+          </div>
+          <span>Entrete.</span>
+        </button>
+
+        <button class="cat-btn" data-id="parks">
+          <div class="cat-icon-wrap">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cactus/3D/cactus_3d.png" alt="Parques">
+          </div>
+          <span>Parques</span>
+        </button>
+
+        <button class="cat-btn" data-id="work">
+          <div class="cat-icon-wrap">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png" alt="Talleres">
+          </div>
+          <span>Talleres</span>
+        </button>
+
+      </div><!-- /categories-row -->
+    </div><!-- /bottom-panel -->
+
+  </ion-app>
+
+  <!-- Ionic JS -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+  <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
+
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+  <!-- App -->
+  <script type="module" src="/src/app.js"></script>
+
+</body>
+</html>
