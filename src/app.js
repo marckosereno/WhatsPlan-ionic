@@ -1,19 +1,26 @@
 // ====================================================================
 // WHATSPLAN — app.js v2
-// Init: carga config → Supabase → MapView → categorías
 // ====================================================================
 
 import { MapView } from '/src/components/MapView.js';
 import { initSupabase, AuthService, ActivityService } from '/src/services/SupabaseService.js';
 
-// ── Estado global ────────────────────────────────────────────────────
 window.wpApp = {
-  mapView:      null,
-  currentUser:  null,
-  activities:   [],
+  mapView:     null,
+  currentUser: null,
+  activities:  [],
 };
 
-// ── 1. Cargar credenciales desde /api/config ─────────────────────────
+// Esperar a que maplibregl esté disponible en window
+function waitForMapLibre() {
+  return new Promise((resolve) => {
+    if (window.maplibregl) { resolve(); return; }
+    const check = setInterval(() => {
+      if (window.maplibregl) { clearInterval(check); resolve(); }
+    }, 50);
+  });
+}
+
 async function loadConfig() {
   try {
     const res = await fetch('/api/config');
@@ -21,59 +28,35 @@ async function loadConfig() {
     window.__SUPABASE_URL__      = cfg.supabaseUrl      || '';
     window.__SUPABASE_ANON_KEY__ = cfg.supabaseAnonKey  || '';
   } catch (e) {
-    console.warn('⚠️ /api/config no disponible — Supabase no iniciará');
+    console.warn('⚠️ /api/config no disponible');
   }
 }
 
-// ── 2. Init Supabase + listener de auth ──────────────────────────────
 function setupAuth() {
   initSupabase();
-
   AuthService.onAuthChange((event, user) => {
     window.wpApp.currentUser = user;
     console.log('Auth:', event, user?.email || 'sin sesión');
-    // TODO Fase 8: actualizar avatar en topbar
   });
 }
 
-// ── 3. Init MapView ──────────────────────────────────────────────────
-function setupMap() {
-  const mv = new MapView();
-  window.wpApp.mapView = mv;
-
-  // Callback cuando el usuario toca un pin → Fase 5 abrirá PlaceSheet
-  mv.onPlaceSelect = (place) => {
-    console.log('📍 Lugar seleccionado:', place.name);
-    // TODO Fase 5: PlaceSheet.open(place)
-  };
-
-  return mv;
-}
-
-// ── 4. Conectar botones de categoría ────────────────────────────────
 function setupCategories(mv) {
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const catId   = btn.dataset.id;
+      const catId    = btn.dataset.id;
       const isActive = btn.classList.contains('active');
-
-      // Toggle
       document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-
       if (isActive) {
-        // Deseleccionar — limpiar markers
         mv._clearPlaceMarkers();
         mv.currentCatId = null;
         return;
       }
-
       btn.classList.add('active');
       mv.loadCategory(catId);
     });
   });
 }
 
-// ── 5. Suscribirse a actividades en tiempo real ──────────────────────
 function setupActivitySubscription(mv) {
   ActivityService.subscribeToActivities(async () => {
     try {
@@ -84,11 +67,25 @@ function setupActivitySubscription(mv) {
   });
 }
 
-// ── MAIN ─────────────────────────────────────────────────────────────
 (async () => {
-  await loadConfig();
-  setupAuth();
-  const mv = setupMap();
+  // 1. Esperar MapLibre — crítico, sin esto el mapa queda negro
+  await waitForMapLibre();
+
+  // 2. Cargar config y Supabase en paralelo (no bloquean el mapa)
+  loadConfig().then(() => {
+    setupAuth();
+  });
+
+  // 3. Mapa — ya sabemos que maplibregl está disponible
+  const mv = new MapView();
+  window.wpApp.mapView = mv;
+
+  mv.onPlaceSelect = (place) => {
+    console.log('📍 Lugar seleccionado:', place.name);
+    // TODO Fase 5: PlaceSheet.open(place)
+  };
+
+  // 4. Categorías y suscripción
   setupCategories(mv);
   setupActivitySubscription(mv);
 
