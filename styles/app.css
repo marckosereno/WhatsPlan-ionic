@@ -1,0 +1,140 @@
+/* ====================================================================
+   WHATSPLAN — Variables globales + layout base
+   ==================================================================== */
+
+:root {
+  --color-primary:    #6366f1;
+  --color-activity:   #f97316;
+  --color-activity-2: #ef4444;
+  --color-green:      #10b981;
+  --color-yellow:     #f59e0b;
+  --color-text:       #111111;
+  --color-gray:       #9ca3af;
+  --color-bg:         #f3f4f6;
+  --panel-radius:     22px;
+  --font-main:        'Inter Tight', -apple-system, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body, ion-app {
+  font-family: var(--font-main);
+  background: #000;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── Mapa fullscreen ── */
+#map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* ── Controles del mapa — subir encima del panel ── */
+.maplibregl-ctrl-top-right {
+  top: 12px !important;
+  right: 12px !important;
+}
+
+/* ── Panel inferior estático 26dvh ── */
+#bottom-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 26dvh;
+  background: #fff;
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px 12px;
+  gap: 6px;
+}
+
+/* Handle decorativo */
+.panel-handle {
+  width: 36px;
+  height: 4px;
+  background: #d1d5db;
+  border-radius: 2px;
+  margin: 10px auto 2px;
+  flex-shrink: 0;
+}
+
+/* ── ion-searchbar override ── */
+ion-searchbar {
+  --background: var(--color-bg);
+  --border-radius: 12px;
+  --box-shadow: none;
+  --color: var(--color-text);
+  --placeholder-color: var(--color-gray);
+  --icon-color: var(--color-gray);
+  padding: 0 !important;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+/* ── Fila de categorías ── */
+#categories-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 2px;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+#categories-row::-webkit-scrollbar { display: none; }
+
+.cat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-bg);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  padding: 8px 10px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-width: 66px;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cat-btn.active {
+  background: #eef2ff;
+  border-color: var(--color-primary);
+  transform: scale(1.06);
+}
+
+.cat-icon-wrap {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-icon-wrap img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.cat-btn span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.cat-btn.active span {
+  color: var(--color-primary);
+}
