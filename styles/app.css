@@ -1,9 +1,12 @@
 /* ====================================================================
    WHATSPLAN — app.css
-   Copiado directamente de map-view.css de la PWA original
+   Copiado exacto de map-view.css de la PWA original
    ==================================================================== */
 
-/* ── VIEWPORT LOCK — igual que la PWA ── */
+/* Quitar highlight de tap — igual que PWA */
+* { -webkit-tap-highlight-color: transparent !important; }
+
+/* ── VIEWPORT LOCK — exacto del original ── */
 html {
   height: 100%;
   overflow: hidden;
@@ -14,41 +17,33 @@ html {
 body {
   font-family: 'Inter Tight', system-ui, sans-serif;
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #e8e8e8;
-}
-
-/* Quitar highlight de tap en TODA la app — igual que PWA */
-* {
-  -webkit-tap-highlight-color: transparent !important;
 }
 
 ion-app {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
-/* ── Mapa fullscreen ── */
-#map {
+/* ── Contenedor del mapa — mismo id que PWA: map-container ── */
+.map-container {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
   z-index: 1;
   background: #e8e8e8;
+  transition: background 0.3s ease;
 }
 
-/* ── Sombra blanca SUPERIOR — fade sobre el mapa — copiado de .map-view::before ── */
+/* ── Sombra blanca SUPERIOR — copiado de .map-view::before ── */
 ion-app::before {
   content: '';
   position: absolute;
@@ -86,9 +81,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   background: white;
   border-radius: 22px 22px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
@@ -106,7 +99,7 @@ ion-app::after {
   gap: 0;
 }
 
-/* Scroll horizontal en categorías sin bloquear iOS */
+/* Scroll horizontal en categorías — igual que PWA */
 .map-results-panel .map-categories-footer {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
@@ -138,7 +131,7 @@ ion-app::after {
 }
 
 /* ════════════════════════════════════════════════════════════
-   BÚSQUEDA GLOBAL — copiado exacto de .map-search-global-bar
+   BARRA DE BÚSQUEDA — copiado de .map-search-global-bar
    ════════════════════════════════════════════════════════════ */
 .map-search-global-bar {
   position: relative;
@@ -153,15 +146,9 @@ ion-app::after {
   gap: 8px;
   padding: 0 14px;
   height: 42px;
-  margin: 0 16px 0;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 0 16px 4px;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
   flex-shrink: 0;
-}
-
-.search-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-  opacity: 0.5;
 }
 
 .map-search-global-input {
@@ -204,10 +191,7 @@ ion-app::after {
   padding: 2px 8px 4px;
   gap: 0;
 }
-
-.map-categories-footer::-webkit-scrollbar {
-  display: none;
-}
+.map-categories-footer::-webkit-scrollbar { display: none; }
 
 .category-footer-chip {
   display: inline-flex;
@@ -226,12 +210,9 @@ ion-app::after {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+.category-footer-chip:active { transform: scale(0.92); }
 
-.category-footer-chip:active {
-  transform: scale(0.92);
-}
-
-/* ── Círculo del icono — copiado de .category-icon-circle ── */
+/* Círculo del icono */
 .category-icon-circle {
   width: 62px;
   height: 62px;
@@ -249,7 +230,7 @@ ion-app::after {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Shimmer mientras carga el icono 3D — copiado de .category-icon-circle.loading::after */
+/* Shimmer mientras carga el icono */
 .category-icon-circle.loading::after {
   content: '';
   position: absolute;
@@ -259,19 +240,15 @@ ion-app::after {
   animation: cat-shimmer 1.2s infinite;
   border-radius: 40%;
 }
-
 @keyframes cat-shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
 }
 
-/* Estado activo — copiado de .category-footer-chip.active .category-icon-circle */
 .category-footer-chip.active .category-icon-circle {
   background: #e2e8f0;
-  box-shadow: none;
   transform: scale(1.06);
 }
-
 .category-footer-chip.active .category-name {
   color: #475569;
   font-weight: 700;
@@ -282,13 +259,7 @@ ion-app::after {
   height: 36px;
   object-fit: contain;
 }
-
-.category-icon {
-  font-size: 30px;
-  line-height: 1;
-}
-
-/* Nombre de categoría — copiado de .category-footer-chip .category-name */
+.category-icon { font-size: 30px; line-height: 1; }
 .category-name {
   font-size: 11px;
   font-weight: 500;
@@ -299,16 +270,13 @@ ion-app::after {
 }
 
 /* ════════════════════════════════════════════════════════════
-   MAPLIBRE — overrides estilo original
+   MAPLIBRE — overrides
    ════════════════════════════════════════════════════════════ */
-
-/* Quitar fondo blanco de markers */
 .maplibregl-marker {
   background: transparent !important;
   border: none !important;
 }
 
-/* Atribución — copiado del original */
 .maplibregl-ctrl-attrib {
   font-size: 9px;
   background: rgba(255,255,255,0.7);
@@ -317,41 +285,30 @@ ion-app::after {
   font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
   font-weight: 700;
 }
+.maplibregl-ctrl-attrib a { color: #9ca3af; }
 
-.maplibregl-ctrl-attrib a {
-  color: #9ca3af;
-}
-
-/* Controles de zoom/geolocate */
 .maplibregl-ctrl-top-right {
   top: 12px !important;
   right: 12px !important;
 }
-
 .maplibregl-ctrl-group {
   border-radius: 12px !important;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
   border: none !important;
 }
-
 .maplibregl-ctrl-group button {
   width: 36px !important;
   height: 36px !important;
   background-color: white !important;
 }
-
-/* Botón de zoom — estilo azul metálico igual que la PWA */
-.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
-.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
-  filter: none;
-}
-
 .maplibregl-ctrl-group button + button {
   border-top: 1px solid rgba(0,0,0,0.08) !important;
 }
 
-/* Geolocate */
-.maplibregl-ctrl-geolocate {
-  background-color: white !important;
+/* Canvas sin outline */
+#map-container canvas:focus,
+#map-container canvas:focus-visible,
+.maplibregl-canvas-container:focus-within {
+  outline: none !important;
 }
