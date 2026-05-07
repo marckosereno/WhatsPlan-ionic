@@ -3,17 +3,15 @@
 // ORDEN CRÍTICO: loadConfig() → initSupabase() → MapView → UI
 // ====================================================================
 
-import { MapView }          from '/src/components/MapView.js';
-import { SearchOverlay }    from '/src/components/SearchOverlay.js';
-import { AuthModal }        from '/src/components/AuthModal.js';
-import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
+import { MapView }        from '/src/components/MapView.js';
+import { AuthModal }      from '/src/components/AuthModal.js';
+import { SuperUserPanel } from '/src/components/SuperUserPanel.js';
 import { initSupabase, AuthService, ActivityService, ProfileService } from '/src/services/SupabaseService.js';
-import { isSuperUser }      from '/src/services/SuperUserService.js';
+import { isSuperUser }    from '/src/services/SuperUserService.js';
 
 window.wpApp = {
   mapView: null, currentUser: null,
-  activities: [], search: null,
-  authModal: null, superPanel: null,
+  activities: [], superPanel: null, authModal: null,
 };
 
 // ── Esperar MapLibre ─────────────────────────────────────────────────
@@ -33,7 +31,7 @@ async function loadConfig() {
     window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
     console.log('✅ Config cargada');
   } catch(e) {
-    console.warn('⚠️ /api/config no disponible:', e.message);
+    console.warn('⚠️ /api/config fallo:', e.message);
   }
 }
 
@@ -71,7 +69,7 @@ async function _updateTopBar(user) {
     }
   } else {
     btn.classList.remove('logged-in');
-    if (avatar)  avatar.style.display = 'none';
+    if (avatar) avatar.style.display = 'none';
     if (initEl) { initEl.style.display = ''; initEl.textContent = '👤'; }
   }
 }
@@ -124,42 +122,31 @@ function setupCategories(mv) {
   });
 }
 
-// ── Búsqueda ─────────────────────────────────────────────────────────
+// ── Búsqueda simple (sin SearchOverlay por ahora) ────────────────────
 function setupSearch(mv) {
-  const search = new SearchOverlay({
-    getAllPlaces:      () => mv.allPlaces,
-    onResultClick:    (place) => {
-      const lat = place.location?.lat ?? place.lat;
-      const lng = place.location?.lng ?? place.lng;
-      if (!lat || !lng) return;
-      mv.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
-      const idx = mv.allPlaces.indexOf(place);
-      if (idx !== -1) {
-        const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
-        mv._showMiniCard(place, idx, rawPhoto);
-      }
-    },
-    onClose: () => {
-      const counter = document.getElementById('map-results-count');
-      if (counter) counter.textContent = mv.allPlaces.length > 0 ? `${mv.allPlaces.length} lugares` : '';
-    },
-    getCurrentCatIcon: () => mv.currentCatData?.icon || '💎',
-  });
-  window.wpApp.search = search;
-
   const panelInput = document.getElementById('map-search-global-input');
-  const panelBar   = document.getElementById('map-search-global-bar');
-  if (panelInput) {
-    panelInput.readOnly = true;
-    const trigger = () => {
-      if (search.active) return;
-      panelBar?.classList.add('launching');
-      setTimeout(() => { panelBar?.classList.remove('launching'); search.activate(); }, 120);
-    };
-    panelInput.addEventListener('click',    trigger);
-    panelInput.addEventListener('focus',    () => { panelInput.blur(); trigger(); });
-    panelInput.addEventListener('touchend', (e) => { e.preventDefault(); trigger(); });
-  }
+  if (!panelInput) return;
+  panelInput.readOnly = false;
+  panelInput.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const counter = document.getElementById('map-results-count');
+    if (!q) {
+      // Restaurar todos los markers
+      mv.markerEls.forEach(el => el.style.display = '');
+      if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+      return;
+    }
+    // Filtro simple: ocultar markers que no coinciden
+    mv.allPlaces.forEach((place, i) => {
+      const match = (place.name || '').toLowerCase().includes(q)
+        || (place.formattedAddress || place.formatted_address || '').toLowerCase().includes(q);
+      const el = mv.markerEls[i];
+      if (el) el.style.display = match ? '' : 'none';
+    });
+    const visible = mv.allPlaces.filter(p =>
+      (p.name || '').toLowerCase().includes(q)).length;
+    if (counter) counter.textContent = `${visible} resultados`;
+  });
 }
 
 // ── Actividades realtime ─────────────────────────────────────────────
@@ -180,7 +167,9 @@ function setupActivitySubscription(mv) {
 // ════════════════════════════════════════════════════════════════════
 (async () => {
   try {
-    // 1. MapLibre primero — sin esto el mapa queda en blanco
+    console.log('🚀 WhatsPlan iniciando...');
+
+    // 1. MapLibre — sin esto mapa en blanco
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
@@ -192,7 +181,7 @@ function setupActivitySubscription(mv) {
 
     // 4. Auth listener
     AuthService.onAuthChange(async (event, user) => {
-      console.log('Auth:', event, user?.email || 'sin sesión');
+      console.log('🔐 Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
       _updateTopBar(user);
       if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
@@ -203,9 +192,11 @@ function setupActivitySubscription(mv) {
     });
 
     // 5. Mapa
+    console.log('🗺️ Creando MapView...');
     const mv = new MapView();
     window.wpApp.mapView = mv;
     mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
+    console.log('✅ MapView creado');
 
     // 6. Auth modal
     const authModal = new AuthModal({
@@ -225,6 +216,6 @@ function setupActivitySubscription(mv) {
 
     console.log('✅ WhatsPlan listo');
   } catch(err) {
-    console.error('❌ Error en init:', err);
+    console.error('❌ Error crítico en init:', err.message, err.stack);
   }
 })();
