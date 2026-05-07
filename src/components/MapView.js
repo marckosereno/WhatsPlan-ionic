@@ -343,8 +343,9 @@ export class MapView {
     const hasAct    = this._activityCount(place) > 0;
     const cat       = this.currentCatData;
     const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
-    // Minicard: 120px resize para que se vea nítida en @2x
-    const miniPhoto = proxyPhotoMini(rawPhoto);
+    // Minicard: reusar la foto del pin (ya está en browser cache del IntersectionObserver)
+    // El pin cargó proxyPhoto(rawPhoto) → misma URL → browser no vuelve a descargar
+    const miniPhoto = proxyPhoto(rawPhoto);
 
     el.innerHTML = `
       <div class="minicard-wrap">
