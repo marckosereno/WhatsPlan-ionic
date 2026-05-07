@@ -159,17 +159,22 @@ export class MapView {
         }, 80);
       });
 
-      // Labels visibles en zoom ≥ 18 — igual que PWA original
-      this.map.on('zoomend', () => {
+      // Labels visibles en zoom ≥ 18 — aparecen/desaparecen con el viewport
+      const _updateOrHideLabels = () => {
         if (this.map.getZoom() >= 18) {
           this._updateLabelsProgressive();
         } else {
+          if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+          this._labelTimers = [];
           document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
             l.style.opacity = '0';
             l.style.display = 'none';
           });
         }
-      });
+      };
+      this.map.on('zoomend', _updateOrHideLabels);
+      // Al mover el mapa: ocultar los que salen, mostrar los nuevos
+      this.map.on('moveend', _updateOrHideLabels);
 
       // Ghost-pan fix
       const c = this.map.getContainer();
