@@ -175,6 +175,8 @@ function setupActivitySubscription(mv) {
 
     // 2. Config — DEBE ir antes de initSupabase
     await loadConfig();
+console.log('URL:', window.__SUPABASE_URL__);      // ← agregar
+console.log('KEY:', window.__SUPABASE_ANON_KEY__?.substring(0,10)); 
 
     // 3. Supabase — ahora sí tiene las vars
     initSupabase();
