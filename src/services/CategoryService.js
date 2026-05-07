@@ -7,11 +7,13 @@
 // y se pueden editar desde el panel SuperUser sin tocar código.
 // ============================================================
 
-import { getSupabase } from './SupabaseService.js';
+import { getSupabase } from '/src/services/SupabaseService.js';
 
 // Reutiliza el cliente ya inicializado por SupabaseService (evita múltiples instancias)
 function getClient() {
-  return getSupabase();
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase no inicializado');
+  return sb;
 }
 
 // ─── Caché en memoria ────────────────────────────────────────
