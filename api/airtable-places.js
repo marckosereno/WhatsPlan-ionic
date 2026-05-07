@@ -2,8 +2,8 @@
 // API ENDPOINT: Obtener Lugares desde Airtable (con paginación)
 // ====================================================================
 
-const AIRTABLE_API_KEY = process.env.VITE_AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.VITE_AIRTABLE_BASE_ID;
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_BASE_URL = 'https://api.airtable.com/v0';
 
 // Cache en memoria por categoría (5 minutos)
