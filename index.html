@@ -10,51 +10,87 @@
   <meta name="theme-color" content="transparent">
   <title>WhatsPlan</title>
 
-  <!-- Yahoo Sans Bold — igual que la PWA original -->
   <link href="https://db.onlinewebfonts.com/c/557602b15207c6d67bbdda171a4157dd?family=Yahoo+Sans+Bold+Regular" rel="stylesheet">
-  <!-- Inter Tight -->
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=inter-tight:400,500,600,700&display=swap" rel="stylesheet">
 
   <style>
-    /* ── @font-face de respaldo para Yahoo Sans ── */
     @font-face {
       font-family: 'Yahoo Sans Bold Regular';
       src: url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff2') format('woff2'),
            url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff')  format('woff');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
+      font-weight: normal; font-style: normal; font-display: swap;
     }
-
-    /* Nombre de categorías: Yahoo Sans igual que la PWA */
     .category-name {
       font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important;
-      font-size: 11px;
-      font-weight: normal;
-      color: #94a3b8;
-      text-align: center;
-      white-space: nowrap;
+    }
+    .category-footer-chip.active .category-name { color: #475569; }
+    .map-search-global-bar.launching {
+      transform: scale(0.97); opacity: 0.7;
+      transition: transform 0.12s ease, opacity 0.12s ease;
     }
 
-    .category-footer-chip.active .category-name {
-      color: #475569;
+    /* ── Topbar de avatar — esquina superior derecha ── */
+    #topbar {
+      position: fixed;
+      top: 12px; right: 12px;
+      z-index: 9990;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #topbar-auth-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 2px solid rgba(255,255,255,0.8);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.15s;
+      padding: 0;
+    }
+    #topbar-auth-btn:active { transform: scale(0.92); }
+
+    #topbar-auth-btn.logged-in {
+      border-color: #6366f1;
+      box-shadow: 0 2px 12px rgba(99,102,241,0.3);
+    }
+
+    #topbar-avatar {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    #topbar-initials {
+      font-size: 18px;
+      font-weight: 700;
+      color: #374151;
+      font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
+      line-height: 1;
     }
   </style>
 
-  <!-- Ionic CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
-  <!-- MapLibre GL CSS -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <!-- Estilos propios -->
   <link rel="stylesheet" href="/styles/app.css">
   <link rel="stylesheet" href="/styles/map.css">
+  <link rel="stylesheet" href="/styles/search.css">
 </head>
 <body>
 
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
     <symbol id="icon-close" viewBox="0 0 24 24" fill="currentColor">
       <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.29289 8.29289C8.68342 7.90237 9.31658 7.90237 9.70711 8.29289L12 10.5858L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L13.4142 12L15.7071 14.2929C16.0976 14.6834 16.0976 15.3166 15.7071 15.7071C15.3166 16.0976 14.6834 16.0976 14.2929 15.7071L12 13.4142L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L10.5858 12L8.29289 9.70711C7.90237 9.31658 7.90237 8.68342 8.29289 8.29289Z"/>
+    </symbol>
+    <symbol id="icon-filter" viewBox="0 0 24 24" fill="currentColor">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M5.78584 3C4.24726 3 3 4.24726 3 5.78584C3 6.59295 3.28872 7.37343 3.81398 7.98623L6.64813 11.2927C7.73559 12.5614 8.33333 14.1773 8.33333 15.8483V18C8.33333 19.6569 9.67648 21 11.3333 21H12.6667C14.3235 21 15.6667 19.6569 15.6667 18V15.8483C15.6667 14.1773 16.2644 12.5614 17.3519 11.2927L20.186 7.98624C20.7113 7.37343 21 6.59294 21 5.78584C21 4.24726 19.7527 3 18.2142 3H5.78584Z"/>
     </symbol>
     <symbol id="icon-location" viewBox="0 0 24 24" fill="currentColor">
       <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5742 21.8187C12.2295 22.0604 11.7699 22.0601 11.4253 21.8184L11.3986 21.7994C11.0943 21.5741C10.8917 21.4203 10.6058 21.1962 10.2641 20.9101C9.58227 20.3389 8.67111 19.5139 7.75692 18.4988C5.96368 16.5076 4 13.6105 4 10.3636C4 8.16134 4.83118 6.0397 6.32548 4.46777C7.82141 2.89413 9.86146 2 12 2C14.1385 2 16.1786 2.89413 17.6745 4.46777C19.1688 6.0397 20 8.16134 20 10.3636C20 13.6105 18.0363 16.5076 16.2431 18.4988C15.3289 19.5139 14.4177 20.3389 13.7359 20.9101C13.3942 21.1962 13.1083 21.4203 12.9057 21.5741C12.8044 21.6511 12.6675 21.7517C12.6014 21.7994L12.5742 21.8187ZM9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10Z"/>
@@ -69,8 +105,18 @@
 
   <ion-app>
 
+    <!-- Mapa fullscreen -->
     <div id="map-container" class="map-container"></div>
 
+    <!-- Topbar — avatar / botón login — esquina superior derecha -->
+    <div id="topbar">
+      <button id="topbar-auth-btn" title="Mi perfil / Login">
+        <img id="topbar-avatar" alt="avatar">
+        <span id="topbar-initials">👤</span>
+      </button>
+    </div>
+
+    <!-- Panel inferior -->
     <div id="map-results-panel" class="map-results-panel">
 
       <div class="panel-drag-handle">
@@ -85,7 +131,7 @@
           class="map-search-global-input"
           placeholder="Buscar un lugar"
           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-        />
+          readonly>
         <span id="map-results-count" class="map-results-count-inline"></span>
       </div>
 
@@ -97,7 +143,6 @@
               class="category-icon-3d"
               onload="this.closest('.category-icon-circle').classList.remove('loading')"
               onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">
-            <span class="category-icon" style="display:none">🍔</span>
           </div>
           <span class="category-name">Restaurantes</span>
         </button>
@@ -108,7 +153,6 @@
               class="category-icon-3d"
               onload="this.closest('.category-icon-circle').classList.remove('loading')"
               onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">
-            <span class="category-icon" style="display:none">🩺</span>
           </div>
           <span class="category-name">Salud & Estética</span>
         </button>
@@ -119,7 +163,6 @@
               class="category-icon-3d"
               onload="this.closest('.category-icon-circle').classList.remove('loading')"
               onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">
-            <span class="category-icon" style="display:none">🛍️</span>
           </div>
           <span class="category-name">Compras</span>
         </button>
@@ -130,7 +173,6 @@
               class="category-icon-3d"
               onload="this.closest('.category-icon-circle').classList.remove('loading')"
               onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">
-            <span class="category-icon" style="display:none">🎈</span>
           </div>
           <span class="category-name">Entrete.</span>
         </button>
@@ -141,7 +183,6 @@
               class="category-icon-3d"
               onload="this.closest('.category-icon-circle').classList.remove('loading')"
               onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">
-            <span class="category-icon" style="display:none">🌵</span>
           </div>
           <span class="category-name">Parques</span>
         </button>
@@ -152,7 +193,6 @@
               class="category-icon-3d"
               onload="this.closest('.category-icon-circle').classList.remove('loading')"
               onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">
-            <span class="category-icon" style="display:none">🔧</span>
           </div>
           <span class="category-name">Talleres</span>
         </button>
@@ -162,12 +202,9 @@
 
   </ion-app>
 
-  <!-- Ionic JS -->
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
   <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
-  <!-- MapLibre GL JS -->
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <!-- App -->
   <script type="module" src="/src/app.js"></script>
 
 </body>
