@@ -1,5 +1,6 @@
 /* ====================================================================
-   WHATSPLAN — Variables globales + layout base
+   WHATSPLAN — app.css
+   Base layout + panel inferior — extraído de map-view.css original
    ==================================================================== */
 
 :root {
@@ -12,17 +13,42 @@
   --color-gray:       #9ca3af;
   --color-bg:         #f3f4f6;
   --panel-radius:     22px;
-  --font-main:        'Inter Tight', -apple-system, 'Segoe UI', sans-serif;
+  --font-display:     'Yahoo Sans Bold Regular', system-ui, sans-serif;
+  --font-main:        'Inter Tight', system-ui, sans-serif;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset exacto del original ── */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-body, ion-app {
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+body {
   font-family: var(--font-main);
-  background: #000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #e8e8e8;
+}
+
+ion-app {
   width: 100%;
   height: 100dvh;
   overflow: hidden;
+  position: relative;
 }
 
 /* ── Mapa fullscreen ── */
@@ -32,109 +58,232 @@ body, ion-app {
   width: 100%;
   height: 100%;
   z-index: 0;
+  background: #e8e8e8;
 }
 
-/* ── Controles del mapa — subir encima del panel ── */
-.maplibregl-ctrl-top-right {
-  top: 12px !important;
-  right: 12px !important;
+/* ── Sombra blanca superior (fade sobre el mapa) — igual que PWA ── */
+ion-app::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 90px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.92) 0%,
+    rgba(255,255,255,0.45) 55%,
+    rgba(255,255,255,0) 100%
+  );
+  pointer-events: none;
+  z-index: 50;
 }
 
-/* ── Panel inferior estático 26dvh ── */
+/* ── Sombra blanca inferior (difumina mapa antes del panel) ── */
+ion-app::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to top,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.55) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  pointer-events: none;
+  z-index: 38;
+}
+
+/* ── Panel inferior — extraído exacto de .map-results-panel ── */
 #bottom-panel {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 26dvh;
-  background: #fff;
+  background: white;
   border-radius: var(--panel-radius) var(--panel-radius) 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
-  z-index: 100;
+  height: 26dvh;
+  min-height: 26dvh;
+  max-height: 26dvh;
   display: flex;
   flex-direction: column;
-  padding: 0 12px 12px;
-  gap: 6px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  z-index: 40;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom);
+  gap: 0;
 }
 
-/* Handle decorativo */
-.panel-handle {
+/* ── Handle draggable — igual que PWA ── */
+.panel-drag-handle {
+  width: 100%;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+  flex-shrink: 0;
+  background: white;
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+}
+
+.drag-indicator {
   width: 36px;
   height: 4px;
-  background: #d1d5db;
+  background: rgba(0,0,0,0.3);
   border-radius: 2px;
-  margin: 10px auto 2px;
-  flex-shrink: 0;
 }
 
-/* ── ion-searchbar override ── */
+/* ── ion-searchbar — igual que .map-search-global-bar en reposo ── */
 ion-searchbar {
-  --background: var(--color-bg);
-  --border-radius: 12px;
+  --background: #f3f4f6;
+  --border-radius: 50px;
   --box-shadow: none;
-  --color: var(--color-text);
-  --placeholder-color: var(--color-gray);
-  --icon-color: var(--color-gray);
-  padding: 0 !important;
-  height: 44px;
+  --color: #111827;
+  --placeholder-color: #9ca3af;
+  --icon-color: #9ca3af;
+  padding: 0 16px !important;
+  height: 42px;
   flex-shrink: 0;
+  margin: 0 0 4px;
 }
 
-/* ── Fila de categorías ── */
+/* ── Fila de categorías — igual que .map-categories-footer ── */
 #categories-row {
   display: flex;
-  gap: 8px;
+  gap: 0;
   overflow-x: auto;
-  padding: 4px 2px 2px;
+  overflow-y: hidden;
   scrollbar-width: none;
   flex-shrink: 0;
-  align-items: flex-start;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding: 2px 8px 4px;
+  will-change: scroll-position;
+  transform: translateZ(0);
 }
 #categories-row::-webkit-scrollbar { display: none; }
 
-.cat-btn {
-  display: flex;
+/* ── Chip de categoría — copia exacta de .category-footer-chip ── */
+.category-footer-chip {
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  background: var(--color-bg);
-  border: 2px solid transparent;
-  border-radius: 16px;
-  padding: 8px 10px 6px;
-  cursor: pointer;
-  flex-shrink: 0;
+  justify-content: flex-start;
+  gap: 5px;
   min-width: 66px;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 6px 4px;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.cat-btn.active {
-  background: #eef2ff;
-  border-color: var(--color-primary);
-  transform: scale(1.06);
+.category-footer-chip:active {
+  transform: scale(0.92);
 }
 
-.cat-icon-wrap {
-  width: 36px;
-  height: 36px;
+/* ── Círculo del icono — copia exacta de .category-icon-circle ── */
+.category-icon-circle {
+  width: 62px;
+  height: 62px;
+  border-radius: 40%;
+  background: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: none;
+  padding: 8px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.cat-icon-wrap img {
-  width: 30px;
-  height: 30px;
+/* Shimmer mientras carga el icono 3D */
+.category-icon-circle.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: cat-shimmer 1.2s infinite;
+  border-radius: 40%;
+}
+
+@keyframes cat-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.category-footer-chip.active .category-icon-circle {
+  background: #e2e8f0;
+  transform: scale(1.06);
+}
+
+.category-footer-chip.active .category-name {
+  color: #475569;
+  font-weight: 700;
+}
+
+.category-icon-3d {
+  width: 36px;
+  height: 36px;
   object-fit: contain;
 }
 
-.cat-btn span {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
+.category-icon {
+  font-size: 30px;
+  line-height: 1;
 }
 
-.cat-btn.active span {
-  color: var(--color-primary);
+.category-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-align: center;
+  white-space: nowrap;
+  font-family: var(--font-main);
+}
+
+/* ── Controles MapLibre — posición y estilo ── */
+.maplibregl-ctrl-top-right {
+  top: 12px !important;
+  right: 12px !important;
+}
+
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+.maplibregl-ctrl-group button {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 9px;
+  background: rgba(255,255,255,0.7);
+  padding: 1px 4px;
+  border-radius: 4px 0 0 0;
+  font-family: var(--font-display);
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #9ca3af;
+}
+
+/* ── Quitar fondo blanco por defecto de markers MapLibre ── */
+.maplibregl-marker {
+  background: transparent !important;
+  border: none !important;
 }
