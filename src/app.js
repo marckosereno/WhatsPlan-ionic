@@ -1,6 +1,6 @@
 // ====================================================================
 // WHATSPLAN — app.js
-// Init: mapa + Auth + TopBar + SuperUserPanel + categorías + búsqueda
+// ORDEN CRÍTICO: loadConfig() → initSupabase() → MapView → UI
 // ====================================================================
 
 import { MapView }          from '/src/components/MapView.js';
@@ -11,15 +11,12 @@ import { initSupabase, AuthService, ActivityService, ProfileService } from '/src
 import { isSuperUser }      from '/src/services/SuperUserService.js';
 
 window.wpApp = {
-  mapView:      null,
-  currentUser:  null,
-  activities:   [],
-  search:       null,
-  authModal:    null,
-  superPanel:   null,
+  mapView: null, currentUser: null,
+  activities: [], search: null,
+  authModal: null, superPanel: null,
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// ── Esperar MapLibre ─────────────────────────────────────────────────
 function waitForMapLibre() {
   return new Promise(resolve => {
     if (window.maplibregl) { resolve(); return; }
@@ -27,43 +24,39 @@ function waitForMapLibre() {
   });
 }
 
+// ── Cargar config — DEBE completarse antes de initSupabase ───────────
 async function loadConfig() {
   try {
     const r = await fetch('/api/config');
     const c = await r.json();
     window.__SUPABASE_URL__      = c.supabaseUrl      || '';
     window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
-  } catch(e) { console.warn('⚠️ /api/config no disponible'); }
-}
-
-// ── TopBar: avatar + botón auth ──────────────────────────────────────
-function setupTopBar(authModal) {
-  const bar = document.getElementById('topbar');
-  if (!bar) return;
-
-  const btn = document.getElementById('topbar-auth-btn');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      if (window.wpApp.currentUser) {
-        // Si ya está logueado → menú de perfil simple
-        _showProfileMenu();
-      } else {
-        authModal.show();
-      }
-    });
+    console.log('✅ Config cargada');
+  } catch(e) {
+    console.warn('⚠️ /api/config no disponible:', e.message);
   }
 }
 
-function _updateTopBar(user) {
+// ── TopBar ───────────────────────────────────────────────────────────
+function setupTopBar(authModal) {
+  const btn = document.getElementById('topbar-auth-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (window.wpApp.currentUser) _showProfileMenu();
+    else authModal.show();
+  });
+}
+
+async function _updateTopBar(user) {
   const btn    = document.getElementById('topbar-auth-btn');
   const avatar = document.getElementById('topbar-avatar');
   const initEl = document.getElementById('topbar-initials');
-
   if (!btn) return;
 
   if (user) {
-    // Mostrar avatar o iniciales
-    ProfileService.getProfile(user.id).then(profile => {
+    btn.classList.add('logged-in');
+    try {
+      const profile = await ProfileService.getProfile(user.id);
       if (profile?.avatar_url && avatar) {
         avatar.src = profile.avatar_url;
         avatar.style.display = '';
@@ -71,51 +64,45 @@ function _updateTopBar(user) {
       } else if (initEl) {
         const name = profile?.name || user.email || '?';
         initEl.textContent = name.charAt(0).toUpperCase();
-        initEl.style.display = '';
         if (avatar) avatar.style.display = 'none';
       }
-    }).catch(() => {
-      if (initEl) {
-        initEl.textContent = (user.email || '?').charAt(0).toUpperCase();
-        initEl.style.display = '';
-      }
-    });
-    btn.classList.add('logged-in');
+    } catch(_) {
+      if (initEl) initEl.textContent = (user.email || '?').charAt(0).toUpperCase();
+    }
   } else {
     btn.classList.remove('logged-in');
-    if (avatar)  { avatar.style.display = 'none'; }
-    if (initEl)  { initEl.style.display = ''; initEl.textContent = '👤'; }
+    if (avatar)  avatar.style.display = 'none';
+    if (initEl) { initEl.style.display = ''; initEl.textContent = '👤'; }
   }
 }
 
 function _showProfileMenu() {
-  // Menú simple de perfil — más adelante se expande
-  const existing = document.getElementById('profile-menu');
-  if (existing) { existing.remove(); return; }
-
+  document.getElementById('profile-menu')?.remove();
   const menu = document.createElement('div');
   menu.id = 'profile-menu';
-  menu.innerHTML = `
-    <div class="profile-menu-item" id="pm-logout">🚪 Cerrar sesión</div>`;
   menu.style.cssText = `
-    position:fixed; top:60px; right:12px; z-index:2000;
-    background:white; border-radius:14px; overflow:hidden;
-    box-shadow:0 8px 24px rgba(0,0,0,0.15);
-    min-width:160px; font-family:'Inter Tight',system-ui,sans-serif;`;
-
-  const item = menu.querySelector('#pm-logout');
+    position:fixed;top:60px;right:12px;z-index:2000;
+    background:white;border-radius:14px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:160px;
+    font-family:'Inter Tight',system-ui,sans-serif;`;
+  const item = document.createElement('div');
+  item.textContent = '🚪 Cerrar sesión';
   item.style.cssText = 'padding:14px 18px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;';
-  item.addEventListener('click', async () => {
-    await AuthService.logout();
-    menu.remove();
-  });
-
-  // Cerrar al tocar fuera
-  setTimeout(() => {
-    document.addEventListener('click', () => menu.remove(), { once: true });
-  }, 100);
-
+  item.addEventListener('click', async () => { await AuthService.logout(); menu.remove(); });
+  menu.appendChild(item);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
   document.body.appendChild(menu);
+}
+
+// ── SuperUserPanel ───────────────────────────────────────────────────
+function mountSuperPanel(mv) {
+  if (window.wpApp.superPanel) return;
+  const sp = new SuperUserPanel(mv, {
+    onLandmarksUpdated: (items) => mv._renderLandmarks(items),
+  });
+  sp.mount();
+  window.wpApp.superPanel = sp;
+  console.log('✅ SuperUserPanel montado');
 }
 
 // ── Categorías ───────────────────────────────────────────────────────
@@ -145,14 +132,14 @@ function setupSearch(mv) {
       const lat = place.location?.lat ?? place.lat;
       const lng = place.location?.lng ?? place.lng;
       if (!lat || !lng) return;
-      const idx = mv.allPlaces.indexOf(place);
       mv.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+      const idx = mv.allPlaces.indexOf(place);
       if (idx !== -1) {
         const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
         mv._showMiniCard(place, idx, rawPhoto);
       }
     },
-    onClose:           () => {
+    onClose: () => {
       const counter = document.getElementById('map-results-count');
       if (counter) counter.textContent = mv.allPlaces.length > 0 ? `${mv.allPlaces.length} lugares` : '';
     },
@@ -177,69 +164,67 @@ function setupSearch(mv) {
 
 // ── Actividades realtime ─────────────────────────────────────────────
 function setupActivitySubscription(mv) {
-  ActivityService.subscribeToActivities(async () => {
-    try {
-      const acts = await ActivityService.getActiveActivities();
-      window.wpApp.activities = acts;
-      mv.updateActivities(acts);
-    } catch(_) {}
-  });
+  try {
+    ActivityService.subscribeToActivities(async () => {
+      try {
+        const acts = await ActivityService.getActiveActivities();
+        window.wpApp.activities = acts;
+        mv.updateActivities(acts);
+      } catch(_) {}
+    });
+  } catch(_) {}
 }
 
-// ── MAIN ─────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// MAIN — orden estricto
+// ════════════════════════════════════════════════════════════════════
 (async () => {
-  await waitForMapLibre();
+  try {
+    // 1. MapLibre primero — sin esto el mapa queda en blanco
+    await waitForMapLibre();
+    console.log('✅ MapLibre listo');
 
-  await loadConfig();
-  initSupabase();
+    // 2. Config — DEBE ir antes de initSupabase
+    await loadConfig();
 
-  // ── Auth modal ──────────────────────────────────────────────────
-  const authModal = new AuthModal({
-    onAuthSuccess: (user) => {
+    // 3. Supabase — ahora sí tiene las vars
+    initSupabase();
+
+    // 4. Auth listener
+    AuthService.onAuthChange(async (event, user) => {
+      console.log('Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
       _updateTopBar(user);
-      // Montar SuperUserPanel si es superusuario
-      if (isSuperUser(user?.id) && !window.wpApp.superPanel) {
-        const sp = new SuperUserPanel(window.wpApp.mapView, {
-          onLandmarksUpdated: (items) => window.wpApp.mapView._renderLandmarks(items),
-        });
-        sp.mount();
-        window.wpApp.superPanel = sp;
+      if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
+      if (!user && window.wpApp.superPanel) {
+        window.wpApp.superPanel.unmount();
+        window.wpApp.superPanel = null;
       }
-    },
-  });
-  window.wpApp.authModal = authModal;
+    });
 
-  // ── Auth listener ───────────────────────────────────────────────
-  AuthService.onAuthChange(async (event, user) => {
-    window.wpApp.currentUser = user;
-    _updateTopBar(user);
+    // 5. Mapa
+    const mv = new MapView();
+    window.wpApp.mapView = mv;
+    mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
 
-    if (user && isSuperUser(user.id) && !window.wpApp.superPanel) {
-      const sp = new SuperUserPanel(window.wpApp.mapView, {
-        onLandmarksUpdated: (items) => window.wpApp.mapView?._renderLandmarks(items),
-      });
-      sp.mount();
-      window.wpApp.superPanel = sp;
-    }
-    if (!user && window.wpApp.superPanel) {
-      window.wpApp.superPanel.unmount();
-      window.wpApp.superPanel = null;
-    }
-  });
+    // 6. Auth modal
+    const authModal = new AuthModal({
+      onAuthSuccess: (user) => {
+        window.wpApp.currentUser = user;
+        _updateTopBar(user);
+        if (isSuperUser(user?.id)) mountSuperPanel(mv);
+      },
+    });
+    window.wpApp.authModal = authModal;
 
-  // ── Mapa ────────────────────────────────────────────────────────
-  const mv = new MapView();
-  window.wpApp.mapView = mv;
-  mv.onPlaceSelect = (place) => {
-    console.log('📍 PlaceSheet:', place.name);
-    // TODO Fase 5
-  };
+    // 7. UI
+    setupTopBar(authModal);
+    setupCategories(mv);
+    setupSearch(mv);
+    setupActivitySubscription(mv);
 
-  setupTopBar(authModal);
-  setupCategories(mv);
-  setupSearch(mv);
-  setupActivitySubscription(mv);
-
-  console.log('✅ WhatsPlan listo');
+    console.log('✅ WhatsPlan listo');
+  } catch(err) {
+    console.error('❌ Error en init:', err);
+  }
 })();
