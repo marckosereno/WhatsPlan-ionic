@@ -1,5 +1,6 @@
 // ====================================================================
 // WHATSPLAN — MapView.js
+// Mapa Carto Positron + Blink Light style (igual que PWA original)
 // ====================================================================
 
 import { ActivityService } from '/src/services/SupabaseService.js';
@@ -10,7 +11,7 @@ const CENTER_LAT =  25.9950;
 const ZOOM       = 16;
 const MAP_STYLE  = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
-// Paleta Blink Light — igual que la PWA original
+// Paleta Blink Light
 const BL_BG       = '#ededea';
 const BL_LAND     = '#ededea';
 const BL_WATER    = '#00bcd4';
@@ -30,17 +31,13 @@ const CATEGORIES = {
   WORKSHOPS:     { icon: '🔧',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png' },
 };
 
-// ── Supabase Image Transform API ─────────────────────────────────────
-// mode=contain → imagen completa sin recortar (pins: border-radius oculta vacíos)
-// mode=cover   → recorte centrado, llena el cuadrado (minicard)
-function supabaseResize(url, width = 80, quality = 75, mode = 'cover') {
+// ── Supabase resize ──────────────────────────────────────────────────
+function supabaseResize(url, width = 80, quality = 75, mode = 'contain') {
   if (!url || !url.includes('supabase.co')) return url;
   if (url.includes('/render/image/')) return url;
   return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
     + `?width=${width}&quality=${quality}&resize=${mode}`;
 }
-
-// Pins (25px display → 80px @2x) — contain: foto completa, border-radius oculta vacíos
 function proxyPhoto(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
@@ -48,15 +45,7 @@ function proxyPhoto(url) {
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
-// Minicard (44px display → 120px @2x) — cover: llena el rectángulo
-function proxyPhotoMini(url) {
-  if (!url) return null;
-  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 120, 80, 'contain');
-  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
-}
-
-// ── Aplicar foto al pin-inner — fade-in igual que el original ────────
+// ── Fade-in de foto en pin ───────────────────────────────────────────
 function applyPhotoToPin(photoUrl, el) {
   const pi = el.querySelector('.pin-inner');
   if (!pi || pi.classList.contains('loaded')) return;
@@ -67,17 +56,38 @@ function applyPhotoToPin(photoUrl, el) {
   pi.classList.add('loaded');
   requestAnimationFrame(() => { pi.style.opacity = '1'; });
 }
-
 function applyErrorToPin(el) {
   const pi = el.querySelector('.pin-inner');
   if (!pi) return;
   pi.classList.remove('loading');
-  pi.style.background   = 'transparent';
-  pi.style.borderRadius = '50%';
-  pi.style.border       = '3px solid white';
-  pi.style.boxShadow    = '0 2px 8px rgba(0,0,0,0.2)';
-  const wrapper = el.querySelector('.place-pin-wrapper');
-  if (wrapper) { wrapper.style.background = 'transparent'; wrapper.style.boxShadow = 'none'; }
+  pi.style.background = 'transparent';
+}
+
+// ── Inyectar estilos de animación de landmarks ───────────────────────
+function injectLandmarkStyles() {
+  if (document.getElementById('lm-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'lm-styles';
+  s.textContent = `
+    @keyframes lmFloat {
+      0%,100% { transform: translateY(0px); }
+      50%      { transform: translateY(-5px); }
+    }
+    @keyframes lmPulse {
+      0%,100% { transform: scaleX(1);    opacity: 0.3; }
+      50%      { transform: scaleX(0.75); opacity: 0.15; }
+    }
+    .lm-wrap       { display:flex;flex-direction:column;align-items:center;cursor:pointer;overflow:visible; }
+    .lm-inner      { animation:lmFloat 3s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
+    .lm-inner-slow { animation:lmFloat 2.6s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
+    .lm-shadow      { animation:lmPulse 3s ease-in-out infinite;border-radius:50%;background:rgba(0,0,0,0.3); }
+    .lm-shadow-slow { animation:lmPulse 2.6s ease-in-out infinite;border-radius:50%;background:rgba(0,0,0,0.25); }
+    body.map-dragging .lm-inner,
+    body.map-dragging .lm-inner-slow,
+    body.map-dragging .lm-shadow,
+    body.map-dragging .lm-shadow-slow { animation-play-state:paused; }
+  `;
+  document.head.appendChild(s);
 }
 
 // ====================================================================
@@ -99,6 +109,8 @@ export class MapView {
   }
 
   _initMap() {
+    injectLandmarkStyles();
+
     this.map = new maplibregl.Map({
       container:             'map-container',
       style:                 MAP_STYLE,
@@ -119,6 +131,10 @@ export class MapView {
       this._loadLandmarks();
       this._loadActivities();
 
+      // Drag pause para animaciones de landmarks
+      this.map.on('dragstart', () => document.body.classList.add('map-dragging'));
+      this.map.on('dragend',   () => document.body.classList.remove('map-dragging'));
+
       // Badge visible solo en zoom ≥ 15
       let _zt = null;
       this.map.on('zoom', () => {
@@ -130,7 +146,7 @@ export class MapView {
         }, 80);
       });
 
-      // Ghost-pan fix — igual que el original
+      // Ghost-pan fix
       const c = this.map.getContainer();
       c.addEventListener('touchstart', (e) => {
         if (!e.target.closest('.maplibregl-marker')) return;
@@ -155,7 +171,7 @@ export class MapView {
     });
   }
 
-  // ── Estilo Blink Light — copiado exacto del original ─────────────
+  // ── Blink Light ───────────────────────────────────────────────────
   _applyBlinkLight() {
     try {
       const style = this.map.getStyle();
@@ -234,7 +250,7 @@ export class MapView {
     } catch(e) { console.error('❌ loadCategory:', e); }
   }
 
-  // ── Markers ───────────────────────────────────────────────────────
+  // ── Markers de lugares ────────────────────────────────────────────
   _clearPlaceMarkers() {
     this.markers.forEach(m => m?.remove());
     this.markers = []; this.markerEls = [];
@@ -256,7 +272,7 @@ export class MapView {
       if (!lat || !lng) return;
 
       const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
-      const photoUrl = proxyPhoto(rawPhoto);  // ya aplica resize para Supabase
+      const photoUrl = proxyPhoto(rawPhoto);
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
@@ -268,16 +284,15 @@ export class MapView {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
         }
-        this._showMiniCard(place, index, rawPhoto);  // rawPhoto → minicard calcula su propio resize
+        this._showMiniCard(place, index, rawPhoto);
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .addTo(this.map);
 
-      // ── FOTO: IntersectionObserver — igual que el original ──────
+      // Foto con IntersectionObserver
       if (photoUrl) {
-        el._photoUrl = photoUrl;
         if ('IntersectionObserver' in window) {
           const obs = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -310,7 +325,6 @@ export class MapView {
         maxZoom: 17
       });
     }
-
     this._refreshActivityBadges();
   }
 
@@ -333,25 +347,18 @@ export class MapView {
     this.miniCardPlace  = place;
     this.miniCardMarker = this.markers[index];
     this.miniCardIndex  = index;
-
-    const el       = this.miniCardMarker.getElement();
-    el._savedHtml  = el.innerHTML;
+    const el = this.miniCardMarker.getElement();
+    el._savedHtml    = el.innerHTML;
     el.style.cssText = 'width:auto;height:auto;overflow:visible;z-index:9999;margin-top:-45px;';
-
-    const rating    = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
-    const address   = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
-    const hasAct    = this._activityCount(place) > 0;
-    const cat       = this.currentCatData;
-    const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
-    // Minicard: reusar la foto del pin (ya está en browser cache del IntersectionObserver)
-    // El pin cargó proxyPhoto(rawPhoto) → misma URL → browser no vuelve a descargar
+    const rating   = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
+    const address  = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
+    const hasAct   = this._activityCount(place) > 0;
+    const cat      = this.currentCatData;
+    const cardGrad = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
     const miniPhoto = proxyPhoto(rawPhoto);
-
     el.innerHTML = `
       <div class="minicard-wrap">
-        ${miniPhoto
-          ? `<img src="${miniPhoto}" class="minicard-photo" onerror="this.style.display='none'">`
-          : `<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon || '💎'}</div>`}
+        ${miniPhoto ? `<img src="${miniPhoto}" class="minicard-photo" onerror="this.style.display='none'">` : `<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon||'💎'}</div>`}
         <div class="minicard-body">
           <div class="minicard-name">${place.name}</div>
           ${rating  ? `<div class="minicard-rating">${rating}</div>`  : ''}
@@ -359,12 +366,10 @@ export class MapView {
         </div>
         <div class="minicard-arrow">›</div>
       </div>`;
-
     el.querySelector('.minicard-wrap').addEventListener('click', (e) => {
       e.stopPropagation();
       if (this.onPlaceSelect) this.onPlaceSelect(place);
     });
-
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     this.map.easeTo({ center: [lng, lat], duration: 300 });
@@ -373,14 +378,8 @@ export class MapView {
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const el = this.miniCardMarker.getElement();
-    if (el && el._savedHtml !== undefined) {
-      el.innerHTML = el._savedHtml;
-      el.removeAttribute('style');
-      el._savedHtml = null;
-    }
-    this.miniCardMarker = null;
-    this.miniCardIndex  = -1;
-    this.miniCardPlace  = null;
+    if (el && el._savedHtml !== undefined) { el.innerHTML = el._savedHtml; el.removeAttribute('style'); el._savedHtml = null; }
+    this.miniCardMarker = null; this.miniCardIndex = -1; this.miniCardPlace = null;
   }
 
   // ── Actividades ───────────────────────────────────────────────────
@@ -400,44 +399,196 @@ export class MapView {
       const count = this._activityCount(place);
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
-        if (!badge) {
-          badge = document.createElement('div');
-          badge.className = 'place-act-badge';
-          el.querySelector('.place-pin-rel, div')?.appendChild(badge);
-        }
-        badge.textContent = count;
-        badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
+        if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
+        badge.textContent = count; badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
       } else if (badge) badge.remove();
     });
   }
 
   updateActivities(activities) { this.activities = activities; this._refreshActivityBadges(); }
 
-  // ── Landmarks ─────────────────────────────────────────────────────
+  // ── Landmarks — copiado exacto del original ───────────────────────
   _renderLandmarks(items) {
     this.landmarkMarkers.forEach(m => m.remove());
     this.landmarkMarkers = [];
+
     items.forEach(item => {
+      if (!item.lat || !item.lng) return;
+
+      const sizeMap   = { mini: 18, normal: 26, destacado: 46 };
+      const fontSize  = sizeMap[item.size] || 32;
+      const borderColor = item.border_color || null;
+      const color     = item.color || '#00bcd4';
+
+      // Wrapper estático — MapLibre ancla aquí
       const el = document.createElement('div');
-      el.className = 'landmark-el';
+      el.className = 'lm-wrap';
+
       if (item.type === 'sticker') {
-        el.innerHTML = item.icon_url
-          ? `<img src="${item.icon_url}" class="sticker-img" alt="${item.title || ''}">`
-          : `<div class="sticker-emoji">${item.emoji || '📍'}</div>`;
-        if (item.title && item.show_label !== false) el.innerHTML += `<div class="landmark-label">${item.title}</div>`;
+        const inner = document.createElement('div');
+        inner.className = 'lm-inner-slow';
+
+        const strokeColor = borderColor || '#ffffff';
+        const strokeW     = Math.round(Math.max(4, fontSize * 0.16));
+        const pad         = Math.round(fontSize * 0.1);
+        const totalSize   = fontSize + pad * 2;
+
+        const stickerWrap = document.createElement('div');
+        stickerWrap.style.cssText = [
+          'position:relative', 'display:inline-flex', 'align-items:center',
+          'justify-content:center', 'width:' + totalSize + 'px',
+          'height:' + totalSize + 'px', 'user-select:none',
+        ].join(';');
+
+        if (item.icon_url) {
+          // PNG — canvas con halo sólido tipo sticker
+          const imgEl = new Image();
+          imgEl.crossOrigin = 'anonymous';
+          imgEl.onload = () => {
+            const dpr  = Math.min(window.devicePixelRatio || 1, 2);
+            const pad2 = Math.ceil(strokeW * dpr * 2);
+            const cs   = totalSize * dpr + pad2 * 2;
+            const cvs  = document.createElement('canvas');
+            cvs.width = cs; cvs.height = cs;
+            const ctx = cvs.getContext('2d');
+            const cx = pad2, cy = pad2;
+            const sz  = totalSize * dpr;
+            const bsz = sz + strokeW * dpr * 2;
+            const bx  = cx - strokeW * dpr;
+            const by  = cy - strokeW * dpr;
+            // Halo
+            ctx.drawImage(imgEl, bx, by, bsz, bsz);
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = strokeColor;
+            ctx.fillRect(0, 0, cs, cs);
+            // Imagen real encima
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.drawImage(imgEl, cx, cy, sz, sz);
+            const out = document.createElement('img');
+            out.src = cvs.toDataURL('image/png');
+            out.style.cssText = 'width:' + (totalSize + strokeW * 2) + 'px;height:' + (totalSize + strokeW * 2) + 'px;display:block;';
+            stickerWrap.appendChild(out);
+          };
+          imgEl.onerror = () => {
+            const fb = document.createElement('div');
+            fb.style.cssText = 'width:' + totalSize + 'px;height:' + totalSize + 'px;background:rgba(0,0,0,0.1);border-radius:8px;';
+            stickerWrap.appendChild(fb);
+          };
+          imgEl.src = item.icon_url;
+        } else {
+          // Emoji — canvas con halo de color
+          const dpr      = Math.min(window.devicePixelRatio || 1, 2);
+          const pad2     = Math.ceil(strokeW * dpr * 2);
+          const cs       = totalSize * dpr + pad2 * 2;
+          const cx = cs / 2, cy = cs / 2;
+          const cvs      = document.createElement('canvas');
+          cvs.width = cs; cvs.height = cs;
+          const ctx      = cvs.getContext('2d');
+          const fontPx   = fontSize * dpr;
+          const offsets  = strokeW * dpr;
+          // Halo: emoji grande teñido con color del borde
+          ctx.font = (fontPx + offsets * 2) + 'px serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(item.emoji || '⭐', cx, cy);
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.fillStyle = strokeColor;
+          ctx.fillRect(0, 0, cs, cs);
+          ctx.globalCompositeOperation = 'source-over';
+          // Emoji real encima
+          ctx.font = fontPx + 'px serif';
+          ctx.fillText(item.emoji || '⭐', cx, cy);
+          const img = document.createElement('img');
+          img.src = cvs.toDataURL('image/png');
+          img.style.cssText = 'width:' + totalSize + 'px;height:' + totalSize + 'px;display:block;';
+          stickerWrap.appendChild(img);
+        }
+
+        // Sombra animada
+        const shadow = document.createElement('div');
+        shadow.className = 'lm-shadow-slow';
+        shadow.style.cssText = 'width:20px;height:6px;margin-top:3px;';
+
+        const iconCol = document.createElement('div');
+        iconCol.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+        iconCol.appendChild(stickerWrap);
+        iconCol.appendChild(shadow);
+        inner.appendChild(iconCol);
+        el.appendChild(inner);
+
+        // Label — pill oscuro a la derecha, igual que el original
+        if (item.title && item.show_label !== false) {
+          const seed = item.id ? item.id.charCodeAt(0) % 600 : Math.random() * 600;
+          const label = document.createElement('div');
+          label.className = 'lm-label lm-sticker-label';
+          label.textContent = item.title;
+          label.style.cssText = [
+            'position:absolute',
+            'left:calc(100% + 3px)',
+            'top:50%',
+            'transform:translateY(-60%)',
+            'white-space:nowrap',
+            'background:rgba(10,10,20,0.78)',
+            'color:#fff',
+            'font-size:9px',
+            'font-weight:700',
+            'font-family:Yahoo Sans Bold Regular,system-ui,sans-serif',
+            'padding:2px 6px',
+            'border-radius:20px',
+            'pointer-events:none',
+            'opacity:1',
+            'transition:opacity 0.4s ease ' + seed + 'ms',
+            'max-width:110px',
+            'overflow:hidden',
+            'text-overflow:ellipsis',
+            'border:1px solid rgba(255,255,255,0.12)',
+            'backdrop-filter:blur(4px)',
+            '-webkit-backdrop-filter:blur(4px)',
+          ].join(';');
+          inner.style.position = 'relative';
+          inner.appendChild(label);
+          el.style.overflow = 'visible';
+        }
+
       } else {
-        el.innerHTML = `
-          <div class="landmark-circle" style="background:${item.color || '#00bcd4'}">
-            ${item.icon_url ? `<img src="${item.icon_url}" style="width:18px;height:18px;object-fit:contain;">` : `<span>${item.emoji || '📍'}</span>`}
-          </div>
-          ${item.title && item.show_label !== false ? `<div class="landmark-label">${item.title}</div>` : ''}`;
+        // Landmark / punto de referencia — igual que original
+        const pinSize = 42;
+        const inner   = document.createElement('div');
+        inner.className = 'lm-inner';
+        inner.style.cssText = 'gap:3px;';
+
+        // Label pill blanco encima del pin
+        const label = document.createElement('div');
+        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:130px;overflow:hidden;text-overflow:ellipsis;font-family:Yahoo Sans Bold Regular,system-ui,sans-serif;';
+        label.textContent = item.title || '';
+
+        // Círculo del pin
+        const borderStyle = borderColor
+          ? 'box-shadow:0 0 0 3px ' + borderColor + ',0 4px 12px rgba(0,0,0,0.3);'
+          : 'box-shadow:0 0 0 2px ' + color + '66,0 4px 12px rgba(0,0,0,0.3);';
+        const pin = document.createElement('div');
+        pin.style.cssText = 'width:' + pinSize + 'px;height:' + pinSize + 'px;border-radius:50%;background:linear-gradient(145deg,' + color + 'dd 0%,' + color + ' 50%,' + color + '99 100%);border:3px solid white;' + borderStyle + 'display:flex;align-items:center;justify-content:center;font-size:20px;';
+        pin.textContent = item.emoji || '📍';
+
+        // Sombra
+        const shadow = document.createElement('div');
+        shadow.className = 'lm-shadow';
+        shadow.style.cssText = 'width:24px;height:8px;margin-top:3px;';
+
+        inner.appendChild(label);
+        inner.appendChild(pin);
+        inner.appendChild(shadow);
+        el.appendChild(inner);
       }
-      this.landmarkMarkers.push(
-        new maplibregl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat([item.lng, item.lat])
-          .addTo(this.map)
-      );
+
+      if (item.description) el.title = item.description;
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([item.lng, item.lat])
+        .addTo(this.map);
+      this.landmarkMarkers.push(marker);
     });
+
+    console.log('✅ Landmarks renderizados:', items.length);
   }
 
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
