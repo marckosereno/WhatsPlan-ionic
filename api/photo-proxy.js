@@ -1,16 +1,15 @@
 // ====================================================================
-// PHOTO PROXY — Sirve fotos de Google Places
-// Si la foto es de Google, la descarga, la sube a Supabase Storage,
-// actualiza Airtable con la URL permanente, y la sirve.
-// La próxima vez Airtable ya tiene la URL de Supabase → no pasa por aquí.
+// PHOTO PROXY — Sirve fotos de Google Places / Supabase Storage
+// Si la foto ya está en Supabase → redirect directo (sin proxy)
+// Si es de Google → descarga, sube a Supabase, actualiza Airtable
 // ====================================================================
 
-const GOOGLE_KEY       = process.env.GOOGLE_PLACES_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '';
-const SUPABASE_URL     = process.env.SUPABASE_URL || '';
-const SUPABASE_KEY     = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const AIRTABLE_KEY     = process.env.AIRTABLE_API_KEY || process.env.AIRTABLE_API_KEY || '';
-const AIRTABLE_BASE    = process.env.AIRTABLE_BASE_ID || process.env.AIRTABLE_BASE_ID || '';
-const BUCKET           = 'place-photos';
+const GOOGLE_KEY    = process.env.GOOGLE_PLACES_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '';
+const SUPABASE_URL  = process.env.SUPABASE_URL || '';
+const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const AIRTABLE_KEY  = process.env.AIRTABLE_API_KEY || process.env.VITE_AIRTABLE_API_KEY || '';
+const AIRTABLE_BASE = process.env.AIRTABLE_BASE_ID || process.env.VITE_AIRTABLE_BASE_ID || '';
+const BUCKET        = 'place-photos';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,7 +24,13 @@ export default async function handler(req, res) {
   try { decodedUrl = decodeURIComponent(url); }
   catch (e) { return res.status(400).json({ error: 'Invalid URL' }); }
 
-  // Solo dominios de Google
+  // ── Si ya es URL de Supabase → redirect directo, sin proxy ──────
+  if (decodedUrl.includes('supabase.co')) {
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800');
+    return res.redirect(301, decodedUrl);
+  }
+
+  // Solo dominios de Google para el proxy
   const allowed = ['places.googleapis.com', 'maps.googleapis.com', 'lh3.googleusercontent.com'];
   if (!allowed.some(d => decodedUrl.includes(d))) {
     return res.status(403).json({ error: 'Domain not allowed' });
@@ -44,7 +49,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch de Google — usar header X-Goog-Api-Key para la API nueva
     const isNewApi = decodedUrl.includes('/v1/places/');
     const keyMatch = decodedUrl.match(/[?&]key=([^&]+)/);
     const apiKey   = keyMatch ? keyMatch[1] : GOOGLE_KEY;
@@ -70,7 +74,7 @@ export default async function handler(req, res) {
     const buffer = Buffer.from(await googleRes.arrayBuffer());
     console.log(`✅ Foto descargada: ${Math.round(buffer.length / 1024)}KB`);
 
-    // ── Subir a Supabase Storage en background (no bloquea la respuesta) ──
+    // ── Subir a Supabase en background (no bloquea la respuesta) ──
     if (SUPABASE_URL && SUPABASE_KEY) {
       const placeIdMatch = decodedUrl.match(/places\/([^/]+)\/photos/);
       if (placeIdMatch) {
@@ -78,14 +82,11 @@ export default async function handler(req, res) {
         const photoHash = Buffer.from(decodedUrl).toString('base64').substring(0, 16).replace(/[^a-zA-Z0-9]/g, '');
         const ext       = contentType.includes('png') ? 'png' : 'jpg';
         const path      = `${placeId}/${photoHash}.${ext}`;
-
-        // Fire and forget — no await para no retrasar la respuesta
         uploadToSupabase(buffer, contentType, path, placeId, decodedUrl)
           .catch(e => console.warn('⚠️ Supabase upload failed (non-critical):', e.message));
       }
     }
 
-    // Servir la imagen inmediatamente
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800');
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', buffer.length);
@@ -119,10 +120,8 @@ async function uploadToSupabase(buffer, contentType, path, placeId, originalGoog
   const supabaseUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
   console.log(`☁️ Subido a Supabase: ${supabaseUrl}`);
 
-  // Actualizar Airtable: buscar el registro que tiene esta URL de Google
   if (!AIRTABLE_KEY || !AIRTABLE_BASE) return;
 
-  // Buscar por photo_url
   const searchRes = await fetch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE}/Places?filterByFormula=FIND("${placeId}",{photo_url})&maxRecords=1`,
     { headers: { 'Authorization': `Bearer ${AIRTABLE_KEY}` } }
@@ -134,15 +133,15 @@ async function uploadToSupabase(buffer, contentType, path, placeId, originalGoog
   const record = searchData.records[0];
   const f      = record.fields;
 
-  // Reemplazar en photo_url si coincide
   const newPhotoUrl = f.photo_url?.includes(placeId) ? supabaseUrl : f.photo_url;
 
-  // Reemplazar en photos_urls array
   let newPhotosUrls = f.photos_urls;
   try {
-    const arr = JSON.parse(f.photos_urls || '[]');
-    const updated = arr.map(u => u.includes(placeId) && u === originalGoogleUrl.split('&key=')[0] + '&key=' + (u.match(/key=([^&]+)/)?.[1] || '') ? supabaseUrl : u);
-    // Si alguna cambió, actualizar todo el array
+    const arr     = JSON.parse(f.photos_urls || '[]');
+    const updated = arr.map(u =>
+      u.includes(placeId) && u === originalGoogleUrl.split('&key=')[0] + '&key=' + (u.match(/key=([^&]+)/)?.[1] || '')
+        ? supabaseUrl : u
+    );
     if (JSON.stringify(updated) !== JSON.stringify(arr)) {
       newPhotosUrls = JSON.stringify(updated);
     }
@@ -154,10 +153,7 @@ async function uploadToSupabase(buffer, contentType, path, placeId, originalGoog
       'Authorization': `Bearer ${AIRTABLE_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ fields: {
-      photo_url: newPhotoUrl,
-      photos_urls: newPhotosUrls
-    }})
+    body: JSON.stringify({ fields: { photo_url: newPhotoUrl, photos_urls: newPhotosUrls } })
   });
 
   console.log(`✅ Airtable actualizado con URL de Supabase para placeId: ${placeId}`);
