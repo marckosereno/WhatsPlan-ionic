@@ -1,26 +1,33 @@
 // ====================================================================
-// MapView.js — WhatsPlan
-// Mapa MapLibre + pins de lugares + minicard + landmarks
+// WHATSPLAN — MapView.js
+// Mapa con estilo Blink Light (igual que PWA original)
+// Pins con foto lazy-load, minicard, landmarks
 // ====================================================================
 
 import { ActivityService } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
 
-const CENTER = [-98.005, 26.064];
-const ZOOM   = 15;
-const TILES  = 'https://tiles.openfreemap.org/styles/liberty';
+// ── Configuración — igual que la PWA original ──
+const CENTER_LNG = -97.9506;  // Nuevo Progreso
+const CENTER_LAT =  25.9950;
+const ZOOM       = 16;
+// Estilo base: Carto Positron — igual que la PWA original
+const MAP_STYLE  = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
-// Mapeo de menuKey de Airtable → id de categoría local
-const CATEGORY_MAP = {
-  RESTAURANTS:   'rest',
-  HEALTH:        'health',
-  SHOPPING:      'shop',
-  ENTERTAINMENT: 'enter',
-  PARKS:         'parks',
-  WORKSHOPS:     'work',
-};
+// ── Paleta Blink Light — copiada exacta del original ──
+const BL_BG        = '#ededea';
+const BL_LAND      = '#ededea';
+const BL_STREET_SM = '#f7f7f5';
+const BL_STREET_MD = '#e8e8e4';
+const BL_WATER     = '#00bcd4';
+const BL_PARK      = '#b8d4b0';
+const BL_BUILDING  = '#e0e0db';
+const BL_TEXT      = '#4a4a4a';
+const BL_HALO      = 'rgba(237,237,234,0.95)';
+const BENITO_LINE  = '#7c6ef7';
+const BENITO_TEXT  = '#5a4fcf';
 
-// Categorías con sus icon3d (mismo orden que BottomPanel)
+// Categorías
 const CATEGORIES = [
   { id: 'rest',   menuKey: 'RESTAURANTS',   label: 'Restaurantes', icon: '🍔',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hamburger/3D/hamburger_3d.png' },
   { id: 'health', menuKey: 'HEALTH',        label: 'Salud',        icon: '🩺',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Stethoscope/3D/stethoscope_3d.png' },
@@ -30,7 +37,6 @@ const CATEGORIES = [
   { id: 'work',   menuKey: 'WORKSHOPS',     label: 'Talleres',     icon: '🔧',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png' },
 ];
 
-// Proxy para fotos (evita CORS y protege Airtable key)
 function proxyPhoto(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
@@ -38,53 +44,80 @@ function proxyPhoto(url) {
 }
 
 // ====================================================================
-// CLASE PRINCIPAL
-// ====================================================================
-
 export class MapView {
   constructor() {
-    this.map           = null;
-    this.markers       = [];       // markers de lugares
-    this.markerEls     = [];       // elementos DOM de markers
-    this.landmarkMarkers = [];     // markers de landmarks/stickers
-    this.activities    = [];       // actividades activas cargadas
-    this.allPlaces     = [];       // todos los lugares cargados
-    this.currentCatId  = null;     // categoría activa
+    this.map             = null;
+    this.markers         = [];
+    this.markerEls       = [];
+    this.allPlaces       = [];
+    this.activities      = [];
+    this.landmarkMarkers = [];
+    this.currentCatId    = null;
+    this.currentCatData  = null;
 
     // MiniCard
-    this.miniCardMarker = null;
-    this.miniCardIndex  = -1;
-    this.miniCardPlace  = null;
+    this.miniCardMarker  = null;
+    this.miniCardIndex   = -1;
+    this.miniCardPlace   = null;
 
-    // Callbacks públicos (los asigna app.js)
-    this.onPlaceSelect = null;     // (place) → abre PlaceSheet
+    // Callback público
+    this.onPlaceSelect   = null;
 
-    this._init();
+    this._initMap();
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // INIT
-  // ────────────────────────────────────────────────────────────────
-
-  _init() {
+  // ── Init mapa — estilo Carto Positron + Blink Light ──────────────
+  _initMap() {
     this.map = new maplibregl.Map({
-      container: 'map',
-      style: TILES,
-      center: CENTER,
-      zoom: ZOOM,
-      attributionControl: false,
+      container:            'map-container',   // ← id correcto igual que PWA
+      style:                MAP_STYLE,
+      center:               [CENTER_LNG, CENTER_LAT],
+      zoom:                 ZOOM,
+      attributionControl:   false,
+      keyboard:             false,
+      dragRotate:           false,
+      pitchWithRotate:      false,
+      maxTileCacheSize:     20,
+      fadeDuration:         0,
+      preserveDrawingBuffer: false,
     });
 
-    this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    this.map.addControl(new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true,
-    }), 'top-right');
-
     this.map.on('load', () => {
-      console.log('✅ MapView lista');
+      console.log('✅ MapView lista — Blink Light');
+      this._applyBlinkLightStyle();
       this._loadLandmarks();
       this._loadActivities();
+
+      // Badge de actividades: visible solo en zoom ≥ 15
+      let _zTimer = null;
+      this.map.on('zoom', () => {
+        if (_zTimer) return;
+        _zTimer = setTimeout(() => {
+          _zTimer = null;
+          const show = this.map.getZoom() >= 15 ? '1' : '0';
+          document.querySelectorAll('.place-act-badge').forEach(b => b.style.opacity = show);
+        }, 80);
+      });
+
+      // Ghost-pan fix — igual que el original
+      const container = this.map.getContainer();
+      container.addEventListener('touchstart', (e) => {
+        if (!e.target.closest('.maplibregl-marker')) return;
+        let moved = false;
+        const onMove = () => { moved = true; };
+        const onEnd  = () => {
+          container.removeEventListener('touchmove', onMove, { capture: true });
+          container.removeEventListener('touchend',  onEnd,  { capture: true });
+          if (!moved) {
+            e.target.dispatchEvent(new TouchEvent('touchcancel', {
+              bubbles: true, cancelable: false,
+              touches: [], targetTouches: [], changedTouches: e.changedTouches
+            }));
+          }
+        };
+        container.addEventListener('touchmove', onMove, { capture: true, passive: true });
+        container.addEventListener('touchend',  onEnd,  { capture: true, passive: true });
+      }, { passive: true, capture: true });
     });
 
     // Tap fuera de minicard → cerrar
@@ -92,68 +125,125 @@ export class MapView {
       if (e.originalEvent.target.closest('.minicard-wrap')) return;
       this._closeMiniCard();
     });
-
-    // Badge de actividades visible solo en zoom ≥ 15
-    this.map.on('zoom', () => {
-      const show = this.map.getZoom() >= 15 ? '1' : '0';
-      document.querySelectorAll('.place-act-badge').forEach(b => b.style.opacity = show);
-    });
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // DATOS
-  // ────────────────────────────────────────────────────────────────
+  // ── Estilo Blink Light — copiado exacto del original ─────────────
+  _applyBlinkLightStyle() {
+    try {
+      const style = this.map.getStyle();
+      if (!style || !style.layers) return;
 
+      style.layers.forEach(layer => {
+        const id = layer.id.toLowerCase();
+
+        // Texto
+        if (layer.type === 'symbol') {
+          try {
+            const tt = this.map.getLayoutProperty(layer.id, 'text-transform');
+            if (tt === 'uppercase') this.map.setLayoutProperty(layer.id, 'text-transform', 'none');
+            const isPrimary = id.includes('road-primary') || id.includes('highway') || id.includes('motorway') || id.includes('trunk');
+            const isTextLayer = id.includes('road') || id.includes('place') || id.includes('poi') || id.includes('label') || id.includes('name');
+            if (isTextLayer) {
+              try {
+                this.map.setLayoutProperty(layer.id, 'text-font', [
+                  'Open Sans Italic', 'Montserrat Regular Italic', 'Noto Sans Regular',
+                  'HanWangHeiLight Regular', 'NanumBarunGothic Regular'
+                ]);
+              } catch(_f) {}
+            }
+            this.map.setPaintProperty(layer.id, 'text-color',      isPrimary ? BENITO_TEXT : BL_TEXT);
+            this.map.setPaintProperty(layer.id, 'text-halo-color', BL_HALO);
+            this.map.setPaintProperty(layer.id, 'text-halo-width', isPrimary ? 2.5 : 2);
+            this.map.setPaintProperty(layer.id, 'text-halo-blur',  0.3);
+          } catch(e) {}
+        }
+
+        // Líneas de calles
+        if (layer.type === 'line') {
+          try {
+            const isMajor  = id.includes('primary') || id.includes('trunk') || id.includes('motorway');
+            const isSecond = id.includes('secondary') || id.includes('tertiary');
+            const isStreet = id.includes('street') || id.includes('road') || id.includes('residential') || id.includes('service') || id.includes('transportation');
+            const isWater  = id.includes('water') || id.includes('river') || id.includes('canal');
+
+            if (isWater) {
+              this.map.setPaintProperty(layer.id, 'line-color', BL_WATER);
+              this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],10,2,16,8]);
+            } else if (isMajor) {
+              this.map.setPaintProperty(layer.id, 'line-color', BENITO_LINE);
+              this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],10,1,12,2,14,4,16,7,18,10]);
+            } else if (isSecond) {
+              this.map.setPaintProperty(layer.id, 'line-color', '#c8c8d8');
+              this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],11,0.5,13,1.5,14,2.5,16,4,18,6]);
+            } else if (isStreet) {
+              this.map.setPaintProperty(layer.id, 'line-color', BL_STREET_SM);
+              this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],12,0.3,13,0.8,14,1.5,16,2.5,18,4]);
+            }
+            try { this.map.setPaintProperty(layer.id, 'line-opacity', 1); } catch(_o) {}
+          } catch(e) {}
+        }
+
+        // Fills
+        if (layer.type === 'fill') {
+          try {
+            if (id.includes('water') || id.includes('ocean') || id.includes('lake') || id.includes('river') || id.includes('reservoir')) {
+              this.map.setPaintProperty(layer.id, 'fill-color',   BL_WATER);
+              this.map.setPaintProperty(layer.id, 'fill-opacity', 1);
+            } else if (id.includes('park') || id.includes('grass') || id.includes('forest') || id.includes('wood') || id.includes('green') || id.includes('landcover')) {
+              this.map.setPaintProperty(layer.id, 'fill-color',   BL_PARK);
+              this.map.setPaintProperty(layer.id, 'fill-opacity', 0.7);
+            } else if (id.includes('building')) {
+              this.map.setPaintProperty(layer.id, 'fill-color',   BL_BUILDING);
+              this.map.setPaintProperty(layer.id, 'fill-opacity', 0.5);
+            } else if (id === 'background' || id.includes('landuse') || id.includes('land-') || id === 'land') {
+              this.map.setPaintProperty(layer.id, 'fill-color', BL_LAND);
+            }
+          } catch(e) {}
+        }
+      });
+
+      try { this.map.setPaintProperty('background', 'background-color', BL_BG); } catch(e) {}
+      console.log('✅ Estilo Blink Light aplicado');
+    } catch(e) { console.warn('⚠️ Estilo mapa:', e.message); }
+  }
+
+  // ── Datos ─────────────────────────────────────────────────────────
   async _loadActivities() {
     try {
       this.activities = await ActivityService.getActiveActivities();
-      // Refrescar badges en markers ya existentes
       this._refreshActivityBadges();
-    } catch (e) {
-      console.warn('⚠️ Actividades no disponibles:', e.message);
-    }
+    } catch(e) { console.warn('⚠️ Actividades:', e.message); }
   }
 
   async _loadLandmarks() {
     try {
       const items = await LandmarkService.getAll();
       this._renderLandmarks(items);
-    } catch (e) {
-      console.warn('⚠️ Landmarks no disponibles:', e.message);
-    }
+    } catch(e) { console.warn('⚠️ Landmarks:', e.message); }
   }
 
-  // Cargar lugares de una categoría desde /api/airtable-places
   async loadCategory(catId) {
-    this.currentCatId = catId;
-    const cat = CATEGORIES.find(c => c.id === catId);
-    if (!cat) return;
+    this.currentCatId   = catId;
+    this.currentCatData = CATEGORIES.find(c => c.id === catId);
+    if (!this.currentCatData) return;
 
     this._clearPlaceMarkers();
 
     try {
-      const res  = await fetch(`/api/airtable-places?category=${cat.menuKey}`);
+      const res  = await fetch(`/api/airtable-places?category=${this.currentCatData.menuKey}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error || 'Error API');
 
-      // Mezclar con custom places de Supabase para esta categoría
       let customPlaces = [];
-      try {
-        customPlaces = await CustomPlaceService.getByCategory(cat.menuKey);
-      } catch (_) {}
+      try { customPlaces = await CustomPlaceService.getByCategory(this.currentCatData.menuKey); } catch(_) {}
 
       const places = [...(json.places || []), ...customPlaces];
       this.allPlaces = places;
-      this._renderPlaceMarkers(places, cat);
-    } catch (e) {
-      console.error('❌ loadCategory:', e);
-    }
+      this._renderPlaceMarkers(places);
+    } catch(e) { console.error('❌ loadCategory:', e); }
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // MARKERS DE LUGARES
-  // ────────────────────────────────────────────────────────────────
-
+  // ── Markers de lugares ────────────────────────────────────────────
   _clearPlaceMarkers() {
     this.markers.forEach(m => m?.remove());
     this.markers  = [];
@@ -161,10 +251,11 @@ export class MapView {
     this._closeMiniCard();
   }
 
-  _renderPlaceMarkers(places, cat) {
-    const catIcon = cat.icon3d
-      ? `<img src="${cat.icon3d}" style="width:22px;height:22px;object-fit:contain;" onerror="this.style.display='none'">`
-      : cat.icon;
+  _renderPlaceMarkers(places) {
+    const cat     = this.currentCatData;
+    const catIcon = cat?.icon3d
+      ? `<img src="${cat.icon3d}" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'">`
+      : (cat?.icon || '💎');
 
     places.forEach((place, index) => {
       const lat = place.location?.lat ?? place.lat;
@@ -176,47 +267,38 @@ export class MapView {
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
-      el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
+      el.innerHTML  = this._buildPinHtml(place, photoUrl, catIcon);
 
-      // Touch: prevenir que MapLibre inicie pan al tocar un pin
-      el.addEventListener('touchstart', e => {
-        if (e.target.closest('.place-marker-el')) e.stopPropagation();
-      }, { passive: true });
-
+      // Tap en pin
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.miniCardMarker === this.markers[index]) {
-          // Tap en minicard activa → abrir detalle
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
         }
-        this._showMiniCard(place, index, photoUrl, cat);
+        this._showMiniCard(place, index, photoUrl);
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .addTo(this.map);
 
-      // Lazy-load foto en el pin
+      // Lazy-load foto en el pin — igual que el original
       if (photoUrl) {
         const img = new Image();
         img.onload = () => {
           const pinInner = el.querySelector('.pin-inner');
           if (!pinInner || pinInner.classList.contains('loaded')) return;
-          pinInner.style.background = `url('${photoUrl}') center/cover no-repeat`;
-          pinInner.innerHTML = '';
+          pinInner.style.background      = `url('${photoUrl}') center/cover no-repeat`;
+          pinInner.innerHTML             = '';
           pinInner.classList.remove('loading');
           pinInner.classList.add('loaded');
         };
         img.onerror = () => {
-          // Foto falló → convertir a pin punto
           const pinInner = el.querySelector('.pin-inner');
           if (pinInner) {
-            pinInner.style.background = '#6366f1';
+            pinInner.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#6366f1;border:2.5px solid white;box-shadow:0 2px 6px rgba(99,102,241,0.5);';
             pinInner.innerHTML = '';
-            pinInner.style.borderRadius = '50%';
-            pinInner.style.width = '14px';
-            pinInner.style.height = '14px';
             pinInner.classList.remove('loading');
           }
         };
@@ -230,30 +312,30 @@ export class MapView {
     this._refreshActivityBadges();
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // HTML DE PINS
-  // ────────────────────────────────────────────────────────────────
-
+  // ── HTML de pin — copiado del _buildPlacePinHtml original ────────
   _buildPinHtml(place, photoUrl, catIcon) {
-    const actCount   = this._activityCount(place);
-    const hasAct     = actCount > 0;
+    const actCount = this._activityCount(place);
+    const hasAct   = actCount > 0;
+
     const borderGrad = hasAct
       ? 'linear-gradient(145deg,#fde68a 0%,#f59e0b 40%,#f97316 100%)'
       : '#ffffff';
-
-    const pulseHtml = hasAct ? `
-      <div class="pin-pulse-ring"></div>
-      <div class="pin-pulse-ring" style="animation-delay:0.6s"></div>` : '';
 
     const badgeHtml = hasAct
       ? `<div class="place-act-badge" style="opacity:${this.map.getZoom()>=15?'1':'0'}">${actCount}</div>`
       : '';
 
+    const pulseHtml = hasAct
+      ? `<div class="pin-pulse-ring" style="display:block"></div>
+         <div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>`
+      : '';
+
+    const featuredHtml = place.featured
+      ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>`
+      : '';
+
     // Pin con foto
     if (photoUrl) {
-      const featuredHtml = place.featured
-        ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>`
-        : '';
       return `
         <div class="place-pin-root">
           <div class="place-pin-rel">
@@ -273,25 +355,21 @@ export class MapView {
         <div style="position:relative;display:inline-block;overflow:visible;">
           ${badgeHtml}
           ${pulseHtml}
-          <div class="pin-inner pin-dot"></div>
+          <div class="pin-dot"></div>
         </div>
       </div>`;
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // MINICARD
-  // ────────────────────────────────────────────────────────────────
-
-  _showMiniCard(place, index, photoUrl, cat) {
-    // Restaurar marker anterior
+  // ── MiniCard ──────────────────────────────────────────────────────
+  _showMiniCard(place, index, photoUrl) {
     this._closeMiniCard();
 
     this.miniCardPlace  = place;
     this.miniCardMarker = this.markers[index];
     this.miniCardIndex  = index;
 
-    const markerEl = this.miniCardMarker.getElement();
-    markerEl._savedHtml = markerEl.innerHTML;
+    const el        = this.miniCardMarker.getElement();
+    el._savedHtml   = el.innerHTML;
 
     const rating  = place.rating  ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
     const address = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
@@ -299,13 +377,14 @@ export class MapView {
     const cardGrad = hasAct
       ? 'linear-gradient(135deg,#f59e0b,#ef4444)'
       : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
+    const cat = this.currentCatData;
 
-    markerEl.style.cssText = 'width:auto;height:auto;overflow:visible;z-index:9999;margin-top:-45px;';
-    markerEl.innerHTML = `
+    el.style.cssText = 'width:auto;height:auto;overflow:visible;z-index:9999;margin-top:-45px;';
+    el.innerHTML = `
       <div class="minicard-wrap">
         ${photoUrl
-          ? `<img src="${photoUrl}" class="minicard-photo">`
-          : `<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon || '💎'}</div>`}
+          ? `<img src="${photoUrl}" class="minicard-photo" onerror="this.style.display='none'">`
+          : `<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon||'💎'}</div>`}
         <div class="minicard-body">
           <div class="minicard-name">${place.name}</div>
           ${rating  ? `<div class="minicard-rating">${rating}</div>` : ''}
@@ -314,19 +393,20 @@ export class MapView {
         <div class="minicard-arrow">›</div>
       </div>`;
 
-    markerEl.querySelector('.minicard-wrap').addEventListener('click', (e) => {
+    el.querySelector('.minicard-wrap').addEventListener('click', (e) => {
       e.stopPropagation();
       if (this.onPlaceSelect) this.onPlaceSelect(place);
     });
 
-    // Centrar en el lugar
-    this.map.easeTo({ center: [place.location?.lng ?? place.lng, place.location?.lat ?? place.lat], duration: 300 });
+    const lat = place.location?.lat ?? place.lat;
+    const lng = place.location?.lng ?? place.lng;
+    this.map.easeTo({ center: [lng, lat], duration: 300 });
   }
 
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const el = this.miniCardMarker.getElement();
-    if (el && el._savedHtml) {
+    if (el?._savedHtml !== undefined) {
       el.innerHTML = el._savedHtml;
       el.removeAttribute('style');
       el._savedHtml = null;
@@ -336,10 +416,7 @@ export class MapView {
     this.miniCardPlace  = null;
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // ACTIVIDADES — BADGES
-  // ────────────────────────────────────────────────────────────────
-
+  // ── Actividades ───────────────────────────────────────────────────
   _activityCount(place) {
     const pName = (place.name || '').toLowerCase().trim();
     const pId   = (place.place_id || place.placeId || '').toLowerCase();
@@ -354,15 +431,16 @@ export class MapView {
     this.markerEls.forEach((el, i) => {
       const place = this.allPlaces[i];
       if (!place) return;
-      const count  = this._activityCount(place);
+      const count = this._activityCount(place);
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
         if (!badge) {
           badge = document.createElement('div');
           badge.className = 'place-act-badge';
-          el.querySelector('.place-pin-rel, div')?.appendChild(badge);
+          const rel = el.querySelector('.place-pin-rel, div');
+          if (rel) rel.appendChild(badge);
         }
-        badge.textContent = count;
+        badge.textContent  = count;
         badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
       } else if (badge) {
         badge.remove();
@@ -370,16 +448,12 @@ export class MapView {
     });
   }
 
-  // Llamado externamente cuando cambian actividades (suscripción Supabase)
   updateActivities(activities) {
     this.activities = activities;
     this._refreshActivityBadges();
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // LANDMARKS / STICKERS
-  // ────────────────────────────────────────────────────────────────
-
+  // ── Landmarks ─────────────────────────────────────────────────────
   _renderLandmarks(items) {
     this.landmarkMarkers.forEach(m => m.remove());
     this.landmarkMarkers = [];
@@ -389,7 +463,6 @@ export class MapView {
       el.className = 'landmark-el';
 
       if (item.type === 'sticker') {
-        // Sticker: emoji o imagen grande
         el.innerHTML = item.icon_url
           ? `<img src="${item.icon_url}" class="sticker-img" alt="${item.title||''}">`
           : `<div class="sticker-emoji">${item.emoji || '📍'}</div>`;
@@ -397,14 +470,13 @@ export class MapView {
           el.innerHTML += `<div class="landmark-label">${item.title}</div>`;
         }
       } else {
-        // Landmark: círculo de color con emoji
         el.innerHTML = `
           <div class="landmark-circle" style="background:${item.color||'#00bcd4'}">
             ${item.icon_url
               ? `<img src="${item.icon_url}" style="width:18px;height:18px;object-fit:contain;">`
-              : `<span>${item.emoji || '📍'}</span>`}
+              : `<span>${item.emoji||'📍'}</span>`}
           </div>
-          ${item.title && item.show_label !== false ? `<div class="landmark-label">${item.title}</div>` : ''}`;
+          ${item.title && item.show_label!==false ? `<div class="landmark-label">${item.title}</div>` : ''}`;
       }
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
@@ -415,10 +487,7 @@ export class MapView {
     });
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // UTILIDADES PÚBLICAS
-  // ────────────────────────────────────────────────────────────────
-
+  // ── Utilidades públicas ───────────────────────────────────────────
   flyTo(lng, lat, zoom = 17) {
     this.map.flyTo({ center: [lng, lat], zoom, duration: 600 });
   }
