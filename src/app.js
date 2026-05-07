@@ -2,15 +2,17 @@
 // WHATSPLAN — app.js
 // ====================================================================
 
-import { MapView }        from '/src/components/MapView.js';
-import { AuthModal }      from '/src/components/AuthModal.js';
-import { SuperUserPanel } from '/src/components/SuperUserPanel.js';
+import { MapView }          from '/src/components/MapView.js';
+import { AuthModal }        from '/src/components/AuthModal.js';
+import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
+import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
 import { initSupabase, AuthService, ActivityService, ProfileService } from '/src/services/SupabaseService.js';
-import { isSuperUser }    from '/src/services/SuperUserService.js';
+import { isSuperUser }      from '/src/services/SuperUserService.js';
 
 window.wpApp = {
   mapView: null, currentUser: null,
-  activities: [], superPanel: null, authModal: null,
+  activities: [], superPanel: null,
+  authModal: null, subcatRow: null,
   _cachedAvatarUrl: '',
 };
 
@@ -33,25 +35,19 @@ async function loadConfig() {
   } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
 }
 
-// ── Avatar / botón auth — igual que el original ──────────────────────
-// Logueado CON foto   → círculo con foto real
-// Logueado SIN foto   → fantasma 👻 con borde punteado púrpura
-// Sin sesión          → persona gris semitransparente
+// ── Avatar / botón auth ──────────────────────────────────────────────
 async function renderAuthButton(user) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
 
   if (!user) {
-    // Sin sesión — persona gris
-    btn.className = 'topbar-auth-btn';
+    btn.style.border = '2px solid rgba(255,255,255,0.6)';
     btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bust+in+silhouette/3D/bust_in_silhouette_3d.png"
       style="width:26px;height:26px;object-fit:contain;opacity:0.7;"
       onerror="this.outerHTML='👤'">`;
-    btn.style.border = '2px solid rgba(255,255,255,0.6)';
     return;
   }
 
-  // Obtener avatar — usar caché si existe
   let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
   if (!avatarUrl) {
     try {
@@ -63,21 +59,15 @@ async function renderAuthButton(user) {
     } catch(_) {}
   }
 
-  const hasPhoto = !!avatarUrl;
-
-  if (hasPhoto) {
-    // Con foto — círculo limpio con la foto
+  if (avatarUrl) {
     btn.style.border = '2px solid rgba(255,255,255,0.7)';
-    btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
     btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
       <img src="${avatarUrl}?cb=${Date.now()}"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
         onerror="this.style.display='none'">
     </div>`;
   } else {
-    // Sin foto — fantasma con borde punteado púrpura
     btn.style.border = '2.5px dashed #a78bfa';
-    btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
     btn.innerHTML = `
       <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png"
         style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'">
@@ -90,7 +80,7 @@ async function renderAuthButton(user) {
   }
 }
 
-// ── Topbar setup ─────────────────────────────────────────────────────
+// ── Topbar ───────────────────────────────────────────────────────────
 function setupTopBar(authModal) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
@@ -108,8 +98,7 @@ function _showProfileMenu() {
     position:fixed;top:64px;right:12px;z-index:2000;
     background:white;border-radius:16px;overflow:hidden;
     box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;
-    font-family:'Inter Tight',system-ui,sans-serif;
-    animation:suSlideIn 0.2s ease;`;
+    font-family:'Inter Tight',system-ui,sans-serif;`;
 
   const user = window.wpApp.currentUser;
   const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
@@ -144,21 +133,83 @@ function mountSuperPanel(mv) {
   console.log('✅ SuperUserPanel montado');
 }
 
-// ── Categorías ───────────────────────────────────────────────────────
+// ── Categorías + SubcategoryRow ──────────────────────────────────────
 function setupCategories(mv) {
+  // SubcategoryRow — GPS + chips de subcategorías
+  const subcatRow = new SubcategoryRow({
+    // Al seleccionar subcategoría → filtrar markers en mapa
+    onSubcatSelect: (value) => {
+      if (value === 'all') {
+        // Mostrar todos
+        mv.markerEls.forEach(el => el.style.display = '');
+        const counter = document.getElementById('map-results-count');
+        if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+        return;
+      }
+      // Filtrar por query de subcategoría (comparar tipo del lugar)
+      let visible = 0;
+      mv.allPlaces.forEach((place, i) => {
+        const types   = (place.types || []).join(' ').toLowerCase();
+        const name    = (place.name || '').toLowerCase();
+        const match   = types.includes(value) || name.includes(value);
+        const el      = mv.markerEls[i];
+        if (el) el.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      const counter = document.getElementById('map-results-count');
+      if (counter) counter.textContent = `${visible} lugares`;
+    },
+
+    // GPS click → geolocation y flyTo
+    onGpsClick: () => {
+      if (!navigator.geolocation) return;
+      subcatRow.setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          subcatRow.setGpsActive(true);
+          mv.flyTo(pos.coords.longitude, pos.coords.latitude, 17);
+        },
+        () => { subcatRow.setGpsActive(false); },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    },
+  });
+
+  window.wpApp.subcatRow = subcatRow;
+
+  // Botones de categoría principal
   document.querySelectorAll('.category-footer-chip').forEach(chip => {
     chip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
     chip.addEventListener('click', async (e) => {
       e.stopPropagation();
       const menuKey  = chip.dataset.menuKey;
       const isActive = chip.classList.contains('active');
+
       document.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
-      if (isActive) { mv._clearPlaceMarkers(); mv.currentCatId = null; return; }
+
+      if (isActive) {
+        mv._clearPlaceMarkers();
+        mv.currentCatId = null;
+        subcatRow.hide();
+        const counter = document.getElementById('map-results-count');
+        if (counter) counter.textContent = '';
+        return;
+      }
+
       chip.classList.add('active');
+
+      // Mostrar loading chip mientras carga
+      subcatRow.showLoading(menuKey);
+
       const counter = document.getElementById('map-results-count');
       if (counter) counter.textContent = 'Cargando...';
+
       await mv.loadCategory(menuKey);
+
       if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+
+      // Mostrar chips de subcategoría
+      subcatRow.showSubcats(menuKey);
     });
   });
 }
@@ -186,7 +237,7 @@ function setupSearch(mv) {
   });
 }
 
-// ── Actividades ───────────────────────────────────────────────────────
+// ── Actividades realtime ─────────────────────────────────────────────
 function setupActivitySubscription(mv) {
   try {
     ActivityService.subscribeToActivities(async () => {
@@ -212,7 +263,6 @@ function setupActivitySubscription(mv) {
     await loadConfig();
     initSupabase();
 
-    // Auth listener
     AuthService.onAuthChange(async (event, user) => {
       console.log('🔐 Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
@@ -225,14 +275,12 @@ function setupActivitySubscription(mv) {
       }
     });
 
-    // Mapa
     console.log('🗺️ Creando MapView...');
     const mv = new MapView();
     window.wpApp.mapView = mv;
     mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
     console.log('✅ MapView creado');
 
-    // Auth modal
     const authModal = new AuthModal({
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
@@ -247,7 +295,6 @@ function setupActivitySubscription(mv) {
     setupSearch(mv);
     setupActivitySubscription(mv);
 
-    // Render inicial del botón (puede haber sesión activa)
     renderAuthButton(null);
 
     console.log('✅ WhatsPlan listo');
