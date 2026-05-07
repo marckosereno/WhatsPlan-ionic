@@ -10,7 +10,9 @@
   <meta name="theme-color" content="transparent">
   <title>WhatsPlan</title>
 
-  <!-- Fuentes -->
+  <!-- Yahoo Sans Bold — títulos y display (igual que PWA original) -->
+  <link href="https://db.onlinewebfonts.com/c/557602b15207c6d67bbdda171a4157dd?family=Yahoo+Sans+Bold+Regular" rel="stylesheet">
+  <!-- Inter Tight — cuerpo de texto, UI general -->
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=inter-tight:400,500,600,700&display=swap" rel="stylesheet">
 
@@ -23,18 +25,18 @@
   <!-- Estilos propios -->
   <link rel="stylesheet" href="/styles/app.css">
   <link rel="stylesheet" href="/styles/map.css">
-
 </head>
 <body>
 
   <ion-app>
-
     <!-- Mapa fullscreen -->
     <div id="map"></div>
 
     <!-- Panel inferior estático 26dvh -->
     <div id="bottom-panel">
-      <div class="panel-handle"></div>
+      <div class="panel-drag-handle">
+        <div class="drag-indicator"></div>
+      </div>
 
       <ion-searchbar
         id="main-searchbar"
@@ -46,46 +48,76 @@
       <!-- 6 Categorías -->
       <div id="categories-row">
 
-        <button class="cat-btn" data-id="rest">
-          <div class="cat-icon-wrap">
-            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hamburger/3D/hamburger_3d.png" alt="Restaurantes">
+        <button class="category-footer-chip" data-id="rest">
+          <div class="category-icon-circle loading">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hamburger/3D/hamburger_3d.png"
+              class="category-icon-3d"
+              onload="this.closest('.category-icon-circle').classList.remove('loading')"
+              onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')"
+              alt="">
+            <span class="category-icon" style="display:none">🍔</span>
           </div>
-          <span>Restaurantes</span>
+          <span class="category-name">Restaurantes</span>
         </button>
 
-        <button class="cat-btn" data-id="health">
-          <div class="cat-icon-wrap">
-            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Stethoscope/3D/stethoscope_3d.png" alt="Salud">
+        <button class="category-footer-chip" data-id="health">
+          <div class="category-icon-circle loading">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Stethoscope/3D/stethoscope_3d.png"
+              class="category-icon-3d"
+              onload="this.closest('.category-icon-circle').classList.remove('loading')"
+              onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')"
+              alt="">
+            <span class="category-icon" style="display:none">🩺</span>
           </div>
-          <span>Salud</span>
+          <span class="category-name">Salud</span>
         </button>
 
-        <button class="cat-btn" data-id="shop">
-          <div class="cat-icon-wrap">
-            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20bags/3D/shopping_bags_3d.png" alt="Compras">
+        <button class="category-footer-chip" data-id="shop">
+          <div class="category-icon-circle loading">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20bags/3D/shopping_bags_3d.png"
+              class="category-icon-3d"
+              onload="this.closest('.category-icon-circle').classList.remove('loading')"
+              onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')"
+              alt="">
+            <span class="category-icon" style="display:none">🛍️</span>
           </div>
-          <span>Compras</span>
+          <span class="category-name">Compras</span>
         </button>
 
-        <button class="cat-btn" data-id="enter">
-          <div class="cat-icon-wrap">
-            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Balloon/3D/balloon_3d.png" alt="Entretenimiento">
+        <button class="category-footer-chip" data-id="enter">
+          <div class="category-icon-circle loading">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Balloon/3D/balloon_3d.png"
+              class="category-icon-3d"
+              onload="this.closest('.category-icon-circle').classList.remove('loading')"
+              onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')"
+              alt="">
+            <span class="category-icon" style="display:none">🎈</span>
           </div>
-          <span>Entrete.</span>
+          <span class="category-name">Entrete.</span>
         </button>
 
-        <button class="cat-btn" data-id="parks">
-          <div class="cat-icon-wrap">
-            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cactus/3D/cactus_3d.png" alt="Parques">
+        <button class="category-footer-chip" data-id="parks">
+          <div class="category-icon-circle loading">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cactus/3D/cactus_3d.png"
+              class="category-icon-3d"
+              onload="this.closest('.category-icon-circle').classList.remove('loading')"
+              onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')"
+              alt="">
+            <span class="category-icon" style="display:none">🌵</span>
           </div>
-          <span>Parques</span>
+          <span class="category-name">Parques</span>
         </button>
 
-        <button class="cat-btn" data-id="work">
-          <div class="cat-icon-wrap">
-            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png" alt="Talleres">
+        <button class="category-footer-chip" data-id="work">
+          <div class="category-icon-circle loading">
+            <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png"
+              class="category-icon-3d"
+              onload="this.closest('.category-icon-circle').classList.remove('loading')"
+              onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')"
+              alt="">
+            <span class="category-icon" style="display:none">🔧</span>
           </div>
-          <span>Talleres</span>
+          <span class="category-name">Talleres</span>
         </button>
 
       </div><!-- /categories-row -->
@@ -100,7 +132,7 @@
   <!-- MapLibre GL JS -->
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
-  <!-- App (type=module para poder usar import/export) -->
+  <!-- App -->
   <script type="module" src="/src/app.js"></script>
 
 </body>
