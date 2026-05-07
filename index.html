@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
@@ -23,67 +21,53 @@
            url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff')  format('woff');
       font-weight: normal; font-style: normal; font-display: swap;
     }
+
     .category-name {
       font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important;
     }
     .category-footer-chip.active .category-name { color: #475569; }
-    .map-search-global-bar.launching {
-      transform: scale(0.97); opacity: 0.7;
-      transition: transform 0.12s ease, opacity 0.12s ease;
-    }
 
-    /* ── Topbar de avatar — esquina superior derecha ── */
+    /* ── Topbar — ENCIMA del gradiente superior (z-index > 9998) ── */
     #topbar {
       position: fixed;
-      top: 12px; right: 12px;
-      z-index: 9990;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;  /* por encima del gradiente ion-app::before que es 9998 */
       display: flex;
       align-items: center;
       gap: 8px;
+      pointer-events: auto;
     }
 
+    /* Botón avatar — igual que #map-auth-btn del original */
     #topbar-auth-btn {
-      width: 40px; height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.92);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 2px solid rgba(255,255,255,0.8);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
       cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
+      touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      transition: transform 0.15s;
+      transition: opacity 0.25s, transform 0.25s;
       padding: 0;
-    }
-    #topbar-auth-btn:active { transform: scale(0.92); }
-
-    #topbar-auth-btn.logged-in {
-      border-color: #6366f1;
-      box-shadow: 0 2px 12px rgba(99,102,241,0.3);
+      position: relative;
     }
 
-    #topbar-avatar {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      display: none;
-    }
-
-    #topbar-initials {
-      font-size: 18px;
-      font-weight: 700;
-      color: #374151;
-      font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
-      line-height: 1;
-    }
+    #topbar-auth-btn:active { transform: scale(0.9); }
   </style>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="/styles/app.css">
   <link rel="stylesheet" href="/styles/map.css">
-  <link rel="stylesheet" href="/styles/search.css">
 </head>
 <body>
 
@@ -107,15 +91,11 @@
 
   <ion-app>
 
-    <!-- Mapa fullscreen -->
     <div id="map-container" class="map-container"></div>
 
-    <!-- Topbar — avatar / botón login — esquina superior derecha -->
+    <!-- Avatar encima del gradiente — z-index:9999 en el CSS del <style> arriba -->
     <div id="topbar">
-      <button id="topbar-auth-btn" title="Mi perfil / Login">
-        <img id="topbar-avatar" alt="avatar">
-        <span id="topbar-initials">👤</span>
-      </button>
+      <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
     </div>
 
     <!-- Panel inferior -->
@@ -132,8 +112,7 @@
           id="map-search-global-input"
           class="map-search-global-input"
           placeholder="Buscar un lugar"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          readonly>
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <span id="map-results-count" class="map-results-count-inline"></span>
       </div>
 
