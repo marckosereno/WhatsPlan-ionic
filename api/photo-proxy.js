@@ -8,8 +8,8 @@
 const GOOGLE_KEY       = process.env.GOOGLE_PLACES_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '';
 const SUPABASE_URL     = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY     = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const AIRTABLE_KEY     = process.env.AIRTABLE_API_KEY || process.env.VITE_AIRTABLE_API_KEY || '';
-const AIRTABLE_BASE    = process.env.AIRTABLE_BASE_ID || process.env.VITE_AIRTABLE_BASE_ID || '';
+const AIRTABLE_KEY     = process.env.AIRTABLE_API_KEY || process.env.AIRTABLE_API_KEY || '';
+const AIRTABLE_BASE    = process.env.AIRTABLE_BASE_ID || process.env.AIRTABLE_BASE_ID || '';
 const BUCKET           = 'place-photos';
 
 export default async function handler(req, res) {
