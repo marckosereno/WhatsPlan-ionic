@@ -1,14 +1,16 @@
 /* ====================================================================
    WHATSPLAN — map.css
-   Pins, minicard, landmarks — extraído exacto de map-view.css original
+   Pins, minicard, landmarks
+   Copiado exacto de map-view.css de la PWA original
    ==================================================================== */
 
-/* ── Pin shimmer + fade-in — igual que PWA ── */
+/* ── Pin shimmer — copiado exacto del original ── */
 @keyframes pin-shimmer {
   0%   { background-position: -80px 0; }
   100% { background-position:  80px 0; }
 }
 
+/* ── Pulse de actividad — copiado exacto del original ── */
 @keyframes pinPulse {
   0%   { transform: scale(1);   opacity: 0.7; }
   70%  { transform: scale(2.2); opacity: 0;   }
@@ -20,6 +22,7 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   overflow: visible !important;
+  /* CRÍTICO: quitar el fondo blanco que MapLibre asigna por defecto */
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
@@ -31,7 +34,7 @@
   overflow: visible;
 }
 
-/* Contenedor relativo — espacio para badge y pulse ring */
+/* Contenedor con espacio para badge (-2px de margen para que el badge no quede cortado) */
 .place-pin-rel {
   position: relative;
   width: 29px;   /* SZ(25) + 4 */
@@ -40,7 +43,8 @@
   overflow: visible;
 }
 
-/* ── Wrapper con borde gradiente ── */
+/* ── Wrapper con borde — copiado exacto del original ── */
+/* El background es blanco o gradiente naranja si hay actividad (se aplica via JS) */
 .place-pin-wrapper {
   position: relative;
   width: 25px;
@@ -55,10 +59,11 @@
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s, box-shadow 0.15s;
   z-index: 1;
-  /* overflow:hidden se omite — lo necesita el badge */
 }
 
-/* ── Inner: skeleton shimmer → swap a foto via JS ── */
+/* ── pin-inner — copiado exacto del original ── */
+/* loading: shimmer animado */
+/* loaded: foto como background-image (aplicada via JS) */
 .pin-inner {
   width: 100%;
   height: 100%;
@@ -80,10 +85,12 @@
   opacity: 1 !important;
 }
 
-/* Estado loaded — foto aplicada via JS como background-image */
+/* Estado loaded — CRÍTICO: JS aplica background-image directamente en el style */
+/* overflow:hidden en el wrapper ya no se necesita aquí porque el clip lo hace border-radius */
 .pin-inner.loaded {
-  animation: none;
+  animation: none !important;
   opacity: 1;
+  /* background-image, background-size, background-position vienen del JS */
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -102,11 +109,13 @@
   animation: none !important;
 }
 
-/* ── Badge de actividades ── */
+/* ── Badge de actividades — copiado del original ── */
 .place-act-badge {
   position: absolute;
   top: -7px;
   right: -7px;
+  left: auto;
+  transform: none;
   background: linear-gradient(135deg, #f59e0b, #ef4444);
   color: white;
   font-size: 9px;
@@ -117,6 +126,7 @@
   border-radius: 20px;
   border: 1.5px solid white;
   box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  opacity: 0;
   transition: opacity 0.3s;
   z-index: 10;
   pointer-events: none;
@@ -126,7 +136,7 @@
   line-height: 1;
 }
 
-/* ── Badge featured ── */
+/* ── Badge featured — copiado del original ── */
 .pin-featured-badge {
   position: absolute;
   top: -4px;
@@ -144,7 +154,7 @@
   color: white;
 }
 
-/* ── Pulse ring — animación cuando hay actividad ── */
+/* ── Pulse ring — copiado del original ── */
 .pin-pulse-ring {
   position: absolute;
   inset: -5px;
@@ -153,9 +163,10 @@
   animation: pinPulse 1.8s ease-out infinite;
   pointer-events: none;
   z-index: 0;
+  display: none; /* solo se muestra cuando hay actividad — JS lo activa */
 }
 
-/* ── Highlighted marker (pin seleccionado) ── */
+/* ── Highlighted — cuando el marker está seleccionado ── */
 .marker-highlighted .place-pin-wrapper {
   box-shadow:
     0 0 0 2px #a5b4fc,
@@ -164,7 +175,10 @@
   transition: box-shadow 0.2s ease;
 }
 
-/* ── MiniCard flotante ── */
+/* ════════════════════════════════════════════════════════════
+   MINICARD FLOTANTE
+   Copiado de .minicard-marker-content del original
+   ════════════════════════════════════════════════════════════ */
 .minicard-wrap {
   display: flex;
   align-items: center;
@@ -173,6 +187,7 @@
   background: rgba(255,255,255,0.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  border: none;
   border-radius: 16px;
   box-shadow: 0 6px 24px rgba(0,0,0,0.14);
   cursor: pointer;
@@ -180,7 +195,8 @@
   min-width: 160px;
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   user-select: none;
-  font-family: 'Inter Tight', system-ui, sans-serif;
+  /* Yahoo Sans para el nombre, Inter Tight para el resto */
+  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
 }
 
 .minicard-photo {
@@ -208,6 +224,7 @@
   overflow: hidden;
 }
 
+/* Nombre — Yahoo Sans Bold, igual que el original [data-role="name"] */
 .minicard-name {
   font-size: 14px;
   font-weight: 900;
@@ -224,6 +241,7 @@
   font-weight: 600;
   color: #92400e;
   margin-top: 1px;
+  font-family: 'Inter Tight', system-ui, sans-serif;
 }
 
 .minicard-address {
@@ -233,16 +251,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 1px;
+  font-family: 'Inter Tight', system-ui, sans-serif;
 }
 
 .minicard-arrow {
-  font-size: 18px;
+  font-size: 16px;
   flex-shrink: 0;
   color: #9ca3af;
   margin-left: 2px;
 }
 
-/* ── Landmarks / Stickers ── */
+/* ════════════════════════════════════════════════════════════
+   LANDMARKS / STICKERS
+   ════════════════════════════════════════════════════════════ */
 .landmark-el {
   display: flex;
   flex-direction: column;
@@ -279,7 +300,9 @@
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-.landmark-label {
+/* Label de landmark — texto con halo blanco igual que el original */
+.landmark-label,
+.lm-label {
   margin-top: 2px;
   font-size: 10px;
   font-weight: 700;
@@ -293,4 +316,5 @@
      0 0 4px rgba(255,255,255,0.9);
   pointer-events: none;
   letter-spacing: -0.2px;
+  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
 }
