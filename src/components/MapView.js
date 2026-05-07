@@ -592,5 +592,14 @@ export class MapView {
   }
 
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
+  haptic(type = 'tap') {
+    if (!navigator.vibrate) return;
+    const patterns = {
+      tap: 15, select: 12, snap: 25,
+      action: [30, 20, 60], longpress: [40, 30, 40], light: 10
+    };
+    navigator.vibrate(patterns[type] ?? type);
+  }
+
   getMap() { return this.map; }
 }
