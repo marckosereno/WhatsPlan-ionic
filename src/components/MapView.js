@@ -30,32 +30,52 @@ const CATEGORIES = {
   WORKSHOPS:     { icon: '🔧',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png' },
 };
 
+// ── Supabase Image Transform API ─────────────────────────────────────
+// Cambia /object/public/ → /render/image/public/ + parámetros de resize
+// Esto evita descargar imágenes de varios MB cuando solo necesitamos 80px
+function supabaseResize(url, width = 80, quality = 75) {
+  if (!url || !url.includes('supabase.co')) return url;
+  if (url.includes('/render/image/')) return url; // ya tiene resize
+  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+    + `?width=${width}&quality=${quality}&resize=cover`;
+}
+
+// URL para pins (25px wrapper → 80px suficiente @2x)
 function proxyPhoto(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.includes('supabase.co')) return supabaseResize(url, 80, 75);
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
-// ── Aplicar foto al pin-inner — igual que el original ──────────────
+// URL para minicard (44px display → 120px suficiente @2x)
+function proxyPhotoMini(url) {
+  if (!url) return null;
+  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.includes('supabase.co')) return supabaseResize(url, 120, 80);
+  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
+}
+
+// ── Aplicar foto al pin-inner — fade-in igual que el original ────────
 function applyPhotoToPin(photoUrl, el) {
-  const pinInner = el.querySelector('.pin-inner');
-  if (!pinInner || pinInner.classList.contains('loaded')) return;
-  pinInner.style.opacity    = '0';
-  pinInner.style.background = `url('${photoUrl}') center/cover no-repeat`;
-  pinInner.innerHTML        = '';
-  pinInner.classList.remove('loading');
-  pinInner.classList.add('loaded');
-  requestAnimationFrame(() => { pinInner.style.opacity = '1'; });
+  const pi = el.querySelector('.pin-inner');
+  if (!pi || pi.classList.contains('loaded')) return;
+  pi.style.opacity    = '0';
+  pi.style.background = `url('${photoUrl}') center/cover no-repeat`;
+  pi.innerHTML        = '';
+  pi.classList.remove('loading');
+  pi.classList.add('loaded');
+  requestAnimationFrame(() => { pi.style.opacity = '1'; });
 }
 
 function applyErrorToPin(el) {
-  const p = el.querySelector('.pin-inner');
-  if (!p) return;
-  p.classList.remove('loading');
-  p.style.background   = 'transparent';
-  p.style.borderRadius = '50%';
-  p.style.border       = '3px solid white';
-  p.style.boxShadow    = '0 2px 8px rgba(0,0,0,0.2)';
+  const pi = el.querySelector('.pin-inner');
+  if (!pi) return;
+  pi.classList.remove('loading');
+  pi.style.background   = 'transparent';
+  pi.style.borderRadius = '50%';
+  pi.style.border       = '3px solid white';
+  pi.style.boxShadow    = '0 2px 8px rgba(0,0,0,0.2)';
   const wrapper = el.querySelector('.place-pin-wrapper');
   if (wrapper) { wrapper.style.background = 'transparent'; wrapper.style.boxShadow = 'none'; }
 }
@@ -80,16 +100,16 @@ export class MapView {
 
   _initMap() {
     this.map = new maplibregl.Map({
-      container:            'map-container',
-      style:                MAP_STYLE,
-      center:               [CENTER_LNG, CENTER_LAT],
-      zoom:                 ZOOM,
-      attributionControl:   false,
-      keyboard:             false,
-      dragRotate:           false,
-      pitchWithRotate:      false,
-      maxTileCacheSize:     20,
-      fadeDuration:         0,
+      container:             'map-container',
+      style:                 MAP_STYLE,
+      center:                [CENTER_LNG, CENTER_LAT],
+      zoom:                  ZOOM,
+      attributionControl:    false,
+      keyboard:              false,
+      dragRotate:            false,
+      pitchWithRotate:       false,
+      maxTileCacheSize:      20,
+      fadeDuration:          0,
       preserveDrawingBuffer: false,
     });
 
@@ -146,7 +166,7 @@ export class MapView {
           try {
             const tt = this.map.getLayoutProperty(layer.id, 'text-transform');
             if (tt === 'uppercase') this.map.setLayoutProperty(layer.id, 'text-transform', 'none');
-            const isPrimary = id.includes('road-primary') || id.includes('highway') || id.includes('motorway') || id.includes('trunk');
+            const isPrimary   = id.includes('road-primary') || id.includes('highway') || id.includes('motorway') || id.includes('trunk');
             const isTextLayer = id.includes('road') || id.includes('place') || id.includes('poi') || id.includes('label') || id.includes('name');
             if (isTextLayer) {
               try { this.map.setLayoutProperty(layer.id, 'text-font', ['Open Sans Italic','Montserrat Regular Italic','Noto Sans Regular','HanWangHeiLight Regular','NanumBarunGothic Regular']); } catch(_) {}
@@ -172,10 +192,14 @@ export class MapView {
         }
         if (layer.type === 'fill') {
           try {
-            if (id.includes('water') || id.includes('ocean') || id.includes('lake') || id.includes('river') || id.includes('reservoir')) { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 1); }
-            else if (id.includes('park') || id.includes('grass') || id.includes('forest') || id.includes('wood') || id.includes('green') || id.includes('landcover')) { this.map.setPaintProperty(layer.id, 'fill-color', BL_PARK); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.7); }
-            else if (id.includes('building')) { this.map.setPaintProperty(layer.id, 'fill-color', BL_BUILDING); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.5); }
-            else if (id === 'background' || id.includes('landuse') || id.includes('land-') || id === 'land') { this.map.setPaintProperty(layer.id, 'fill-color', BL_LAND); }
+            if (id.includes('water') || id.includes('ocean') || id.includes('lake') || id.includes('river') || id.includes('reservoir'))
+              { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 1); }
+            else if (id.includes('park') || id.includes('grass') || id.includes('forest') || id.includes('wood') || id.includes('green') || id.includes('landcover'))
+              { this.map.setPaintProperty(layer.id, 'fill-color', BL_PARK); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.7); }
+            else if (id.includes('building'))
+              { this.map.setPaintProperty(layer.id, 'fill-color', BL_BUILDING); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.5); }
+            else if (id === 'background' || id.includes('landuse') || id.includes('land-') || id === 'land')
+              { this.map.setPaintProperty(layer.id, 'fill-color', BL_LAND); }
           } catch(_) {}
         }
       });
@@ -232,7 +256,7 @@ export class MapView {
       if (!lat || !lng) return;
 
       const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
-      const photoUrl = proxyPhoto(rawPhoto);
+      const photoUrl = proxyPhoto(rawPhoto);  // ya aplica resize para Supabase
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
@@ -244,7 +268,7 @@ export class MapView {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
         }
-        this._showMiniCard(place, index, photoUrl);
+        this._showMiniCard(place, index, rawPhoto);  // rawPhoto → minicard calcula su propio resize
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -280,7 +304,6 @@ export class MapView {
       hasCoords = true;
     });
 
-    // fitBounds igual que el original
     if (hasCoords) {
       this.map.fitBounds(bounds, {
         padding: { top: 70, bottom: 120, left: 50, right: 50 },
@@ -305,21 +328,42 @@ export class MapView {
   }
 
   // ── MiniCard ──────────────────────────────────────────────────────
-  _showMiniCard(place, index, photoUrl) {
+  _showMiniCard(place, index, rawPhoto) {
     this._closeMiniCard();
     this.miniCardPlace  = place;
     this.miniCardMarker = this.markers[index];
     this.miniCardIndex  = index;
-    const el = this.miniCardMarker.getElement();
-    el._savedHtml    = el.innerHTML;
+
+    const el       = this.miniCardMarker.getElement();
+    el._savedHtml  = el.innerHTML;
     el.style.cssText = 'width:auto;height:auto;overflow:visible;z-index:9999;margin-top:-45px;';
-    const rating   = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
-    const address  = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
-    const hasAct   = this._activityCount(place) > 0;
-    const cardGrad = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
-    const cat      = this.currentCatData;
-    el.innerHTML   = `<div class="minicard-wrap">${photoUrl?`<img src="${photoUrl}" class="minicard-photo" onerror="this.style.display='none'">` :`<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon||'💎'}</div>`}<div class="minicard-body"><div class="minicard-name">${place.name}</div>${rating?`<div class="minicard-rating">${rating}</div>`:''} ${address?`<div class="minicard-address">${address}</div>`:''}</div><div class="minicard-arrow">›</div></div>`;
-    el.querySelector('.minicard-wrap').addEventListener('click', (e) => { e.stopPropagation(); if (this.onPlaceSelect) this.onPlaceSelect(place); });
+
+    const rating    = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
+    const address   = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
+    const hasAct    = this._activityCount(place) > 0;
+    const cat       = this.currentCatData;
+    const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
+    // Minicard: 120px resize para que se vea nítida en @2x
+    const miniPhoto = proxyPhotoMini(rawPhoto);
+
+    el.innerHTML = `
+      <div class="minicard-wrap">
+        ${miniPhoto
+          ? `<img src="${miniPhoto}" class="minicard-photo" onerror="this.style.display='none'">`
+          : `<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon || '💎'}</div>`}
+        <div class="minicard-body">
+          <div class="minicard-name">${place.name}</div>
+          ${rating  ? `<div class="minicard-rating">${rating}</div>`  : ''}
+          ${address ? `<div class="minicard-address">${address}</div>` : ''}
+        </div>
+        <div class="minicard-arrow">›</div>
+      </div>`;
+
+    el.querySelector('.minicard-wrap').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.onPlaceSelect) this.onPlaceSelect(place);
+    });
+
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     this.map.easeTo({ center: [lng, lat], duration: 300 });
@@ -328,8 +372,14 @@ export class MapView {
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const el = this.miniCardMarker.getElement();
-    if (el && el._savedHtml !== undefined) { el.innerHTML = el._savedHtml; el.removeAttribute('style'); el._savedHtml = null; }
-    this.miniCardMarker = null; this.miniCardIndex = -1; this.miniCardPlace = null;
+    if (el && el._savedHtml !== undefined) {
+      el.innerHTML = el._savedHtml;
+      el.removeAttribute('style');
+      el._savedHtml = null;
+    }
+    this.miniCardMarker = null;
+    this.miniCardIndex  = -1;
+    this.miniCardPlace  = null;
   }
 
   // ── Actividades ───────────────────────────────────────────────────
@@ -349,8 +399,13 @@ export class MapView {
       const count = this._activityCount(place);
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
-        if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
-        badge.textContent = count; badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'place-act-badge';
+          el.querySelector('.place-pin-rel, div')?.appendChild(badge);
+        }
+        badge.textContent = count;
+        badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
       } else if (badge) badge.remove();
     });
   }
@@ -359,16 +414,28 @@ export class MapView {
 
   // ── Landmarks ─────────────────────────────────────────────────────
   _renderLandmarks(items) {
-    this.landmarkMarkers.forEach(m => m.remove()); this.landmarkMarkers = [];
+    this.landmarkMarkers.forEach(m => m.remove());
+    this.landmarkMarkers = [];
     items.forEach(item => {
-      const el = document.createElement('div'); el.className = 'landmark-el';
+      const el = document.createElement('div');
+      el.className = 'landmark-el';
       if (item.type === 'sticker') {
-        el.innerHTML = item.icon_url ? `<img src="${item.icon_url}" class="sticker-img" alt="${item.title||''}">` : `<div class="sticker-emoji">${item.emoji||'📍'}</div>`;
+        el.innerHTML = item.icon_url
+          ? `<img src="${item.icon_url}" class="sticker-img" alt="${item.title || ''}">`
+          : `<div class="sticker-emoji">${item.emoji || '📍'}</div>`;
         if (item.title && item.show_label !== false) el.innerHTML += `<div class="landmark-label">${item.title}</div>`;
       } else {
-        el.innerHTML = `<div class="landmark-circle" style="background:${item.color||'#00bcd4'}">${item.icon_url?`<img src="${item.icon_url}" style="width:18px;height:18px;object-fit:contain;">`:`<span>${item.emoji||'📍'}</span>`}</div>${item.title&&item.show_label!==false?`<div class="landmark-label">${item.title}</div>`:''}`;
+        el.innerHTML = `
+          <div class="landmark-circle" style="background:${item.color || '#00bcd4'}">
+            ${item.icon_url ? `<img src="${item.icon_url}" style="width:18px;height:18px;object-fit:contain;">` : `<span>${item.emoji || '📍'}</span>`}
+          </div>
+          ${item.title && item.show_label !== false ? `<div class="landmark-label">${item.title}</div>` : ''}`;
       }
-      this.landmarkMarkers.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([item.lng, item.lat]).addTo(this.map));
+      this.landmarkMarkers.push(
+        new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([item.lng, item.lat])
+          .addTo(this.map)
+      );
     });
   }
 
