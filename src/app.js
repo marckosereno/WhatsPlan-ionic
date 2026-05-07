@@ -1,82 +1,86 @@
 // ====================================================================
-// WHATSPLAN — app.js v2
+// WHATSPLAN — app.js
 // ====================================================================
 
-import { MapView } from '/src/components/MapView.js';
+import { MapView }        from '/src/components/MapView.js';
 import { initSupabase, AuthService, ActivityService } from '/src/services/SupabaseService.js';
 
-window.wpApp = {
-  mapView:     null,
-  currentUser: null,
-  activities:  [],
-};
+window.wpApp = { mapView: null, currentUser: null, activities: [] };
 
-// Esperar a que maplibregl esté disponible en window
+// ── 1. Esperar MapLibre ──────────────────────────────────────────────
 function waitForMapLibre() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     if (window.maplibregl) { resolve(); return; }
-    const check = setInterval(() => {
-      if (window.maplibregl) { clearInterval(check); resolve(); }
-    }, 50);
+    const t = setInterval(() => { if (window.maplibregl) { clearInterval(t); resolve(); } }, 50);
   });
 }
 
+// ── 2. Cargar credenciales Supabase desde /api/config ───────────────
 async function loadConfig() {
   try {
-    const res = await fetch('/api/config');
-    const cfg = await res.json();
-    window.__SUPABASE_URL__      = cfg.supabaseUrl      || '';
-    window.__SUPABASE_ANON_KEY__ = cfg.supabaseAnonKey  || '';
-  } catch (e) {
-    console.warn('⚠️ /api/config no disponible');
-  }
+    const r = await fetch('/api/config');
+    const c = await r.json();
+    window.__SUPABASE_URL__      = c.supabaseUrl      || '';
+    window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
+  } catch(e) { console.warn('⚠️ /api/config no disponible'); }
 }
 
-function setupAuth() {
-  initSupabase();
-  AuthService.onAuthChange((event, user) => {
-    window.wpApp.currentUser = user;
-    console.log('Auth:', event, user?.email || 'sin sesión');
-  });
-}
-
+// ── 3. Conectar chips de categoría al MapView ────────────────────────
+// Los chips tienen data-menu-key="RESTAURANTS" igual que la PWA original
 function setupCategories(mv) {
-  document.querySelectorAll('.cat-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const catId    = btn.dataset.id;
-      const isActive = btn.classList.contains('active');
-      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.category-footer-chip').forEach(chip => {
+    // Quitar pointer-events en los hijos para que el click siempre llegue al chip
+    chip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
+
+    chip.addEventListener('click', async (e) => {
+      e.stopPropagation();
+
+      const menuKey  = chip.dataset.menuKey;  // ← data-menu-key="RESTAURANTS"
+      const isActive = chip.classList.contains('active');
+
+      // Toggle off
+      document.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
       if (isActive) {
         mv._clearPlaceMarkers();
         mv.currentCatId = null;
         return;
       }
-      btn.classList.add('active');
-      mv.loadCategory(catId);
+
+      chip.classList.add('active');
+      // Actualizar contador mientras carga
+      const counter = document.getElementById('map-results-count');
+      if (counter) counter.textContent = 'Cargando...';
+
+      await mv.loadCategory(menuKey);  // ← pasa el menuKey directamente
+
+      if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
     });
   });
 }
 
+// ── 4. Suscripción realtime de actividades ───────────────────────────
 function setupActivitySubscription(mv) {
   ActivityService.subscribeToActivities(async () => {
     try {
       const acts = await ActivityService.getActiveActivities();
       window.wpApp.activities = acts;
       mv.updateActivities(acts);
-    } catch (_) {}
+    } catch(_) {}
   });
 }
 
+// ── MAIN ─────────────────────────────────────────────────────────────
 (async () => {
-  // 1. Esperar MapLibre — crítico, sin esto el mapa queda negro
   await waitForMapLibre();
 
-  // 2. Cargar config y Supabase en paralelo (no bloquean el mapa)
+  // Config y auth en paralelo, no bloquean el mapa
   loadConfig().then(() => {
-    setupAuth();
+    initSupabase();
+    AuthService.onAuthChange((event, user) => {
+      window.wpApp.currentUser = user;
+    });
   });
 
-  // 3. Mapa — ya sabemos que maplibregl está disponible
   const mv = new MapView();
   window.wpApp.mapView = mv;
 
@@ -85,9 +89,8 @@ function setupActivitySubscription(mv) {
     // TODO Fase 5: PlaceSheet.open(place)
   };
 
-  // 4. Categorías y suscripción
   setupCategories(mv);
   setupActivitySubscription(mv);
 
-  console.log('✅ WhatsPlan iniciado');
+  console.log('✅ WhatsPlan listo');
 })();
