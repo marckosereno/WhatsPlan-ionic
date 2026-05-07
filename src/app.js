@@ -1,6 +1,5 @@
 // ====================================================================
 // WHATSPLAN — app.js
-// ORDEN CRÍTICO: loadConfig() → initSupabase() → MapView → UI
 // ====================================================================
 
 import { MapView }        from '/src/components/MapView.js';
@@ -12,9 +11,10 @@ import { isSuperUser }    from '/src/services/SuperUserService.js';
 window.wpApp = {
   mapView: null, currentUser: null,
   activities: [], superPanel: null, authModal: null,
+  _cachedAvatarUrl: '',
 };
 
-// ── Esperar MapLibre ─────────────────────────────────────────────────
+// ── MapLibre wait ────────────────────────────────────────────────────
 function waitForMapLibre() {
   return new Promise(resolve => {
     if (window.maplibregl) { resolve(); return; }
@@ -22,7 +22,7 @@ function waitForMapLibre() {
   });
 }
 
-// ── Cargar config — DEBE completarse antes de initSupabase ───────────
+// ── Config ───────────────────────────────────────────────────────────
 async function loadConfig() {
   try {
     const r = await fetch('/api/config');
@@ -30,12 +30,67 @@ async function loadConfig() {
     window.__SUPABASE_URL__      = c.supabaseUrl      || '';
     window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
     console.log('✅ Config cargada');
-  } catch(e) {
-    console.warn('⚠️ /api/config fallo:', e.message);
+  } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
+}
+
+// ── Avatar / botón auth — igual que el original ──────────────────────
+// Logueado CON foto   → círculo con foto real
+// Logueado SIN foto   → fantasma 👻 con borde punteado púrpura
+// Sin sesión          → persona gris semitransparente
+async function renderAuthButton(user) {
+  const btn = document.getElementById('topbar-auth-btn');
+  if (!btn) return;
+
+  if (!user) {
+    // Sin sesión — persona gris
+    btn.className = 'topbar-auth-btn';
+    btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bust+in+silhouette/3D/bust_in_silhouette_3d.png"
+      style="width:26px;height:26px;object-fit:contain;opacity:0.7;"
+      onerror="this.outerHTML='👤'">`;
+    btn.style.border = '2px solid rgba(255,255,255,0.6)';
+    return;
+  }
+
+  // Obtener avatar — usar caché si existe
+  let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
+  if (!avatarUrl) {
+    try {
+      const profile = await ProfileService.getProfile(user.id);
+      if (profile?.avatar_url) {
+        avatarUrl = profile.avatar_url;
+        window.wpApp._cachedAvatarUrl = avatarUrl;
+      }
+    } catch(_) {}
+  }
+
+  const hasPhoto = !!avatarUrl;
+
+  if (hasPhoto) {
+    // Con foto — círculo limpio con la foto
+    btn.style.border = '2px solid rgba(255,255,255,0.7)';
+    btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
+      <img src="${avatarUrl}?cb=${Date.now()}"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+        onerror="this.style.display='none'">
+    </div>`;
+  } else {
+    // Sin foto — fantasma con borde punteado púrpura
+    btn.style.border = '2.5px dashed #a78bfa';
+    btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    btn.innerHTML = `
+      <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png"
+        style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'">
+      <span style="
+        position:absolute;bottom:-6px;right:-4px;
+        background:linear-gradient(135deg,#a78bfa,#7c3aed);
+        color:white;border-radius:50%;width:16px;height:16px;
+        font-size:9px;font-weight:800;line-height:16px;text-align:center;
+        border:1.5px solid white;box-shadow:0 1px 4px rgba(124,58,237,0.4);">+</span>`;
   }
 }
 
-// ── TopBar ───────────────────────────────────────────────────────────
+// ── Topbar setup ─────────────────────────────────────────────────────
 function setupTopBar(authModal) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
@@ -45,49 +100,35 @@ function setupTopBar(authModal) {
   });
 }
 
-async function _updateTopBar(user) {
-  const btn    = document.getElementById('topbar-auth-btn');
-  const avatar = document.getElementById('topbar-avatar');
-  const initEl = document.getElementById('topbar-initials');
-  if (!btn) return;
-
-  if (user) {
-    btn.classList.add('logged-in');
-    try {
-      const profile = await ProfileService.getProfile(user.id);
-      if (profile?.avatar_url && avatar) {
-        avatar.src = profile.avatar_url;
-        avatar.style.display = '';
-        if (initEl) initEl.style.display = 'none';
-      } else if (initEl) {
-        const name = profile?.name || user.email || '?';
-        initEl.textContent = name.charAt(0).toUpperCase();
-        if (avatar) avatar.style.display = 'none';
-      }
-    } catch(_) {
-      if (initEl) initEl.textContent = (user.email || '?').charAt(0).toUpperCase();
-    }
-  } else {
-    btn.classList.remove('logged-in');
-    if (avatar) avatar.style.display = 'none';
-    if (initEl) { initEl.style.display = ''; initEl.textContent = '👤'; }
-  }
-}
-
 function _showProfileMenu() {
   document.getElementById('profile-menu')?.remove();
   const menu = document.createElement('div');
   menu.id = 'profile-menu';
   menu.style.cssText = `
-    position:fixed;top:60px;right:12px;z-index:2000;
-    background:white;border-radius:14px;overflow:hidden;
-    box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:160px;
-    font-family:'Inter Tight',system-ui,sans-serif;`;
-  const item = document.createElement('div');
-  item.textContent = '🚪 Cerrar sesión';
-  item.style.cssText = 'padding:14px 18px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;';
-  item.addEventListener('click', async () => { await AuthService.logout(); menu.remove(); });
-  menu.appendChild(item);
+    position:fixed;top:64px;right:12px;z-index:2000;
+    background:white;border-radius:16px;overflow:hidden;
+    box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;
+    font-family:'Inter Tight',system-ui,sans-serif;
+    animation:suSlideIn 0.2s ease;`;
+
+  const user = window.wpApp.currentUser;
+  const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
+
+  menu.innerHTML = `
+    <div style="padding:14px 16px 10px;border-bottom:1px solid #f3f4f6;">
+      <div style="font-size:13px;font-weight:700;color:#111;">${name}</div>
+      <div style="font-size:11px;color:#9ca3af;">${user?.email || ''}</div>
+    </div>
+    <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;display:flex;align-items:center;gap:8px;">
+      🚪 Cerrar sesión
+    </div>`;
+
+  menu.querySelector('#pm-logout').addEventListener('click', async () => {
+    await AuthService.logout();
+    window.wpApp._cachedAvatarUrl = '';
+    menu.remove();
+  });
+
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
   document.body.appendChild(menu);
 }
@@ -122,34 +163,30 @@ function setupCategories(mv) {
   });
 }
 
-// ── Búsqueda simple (sin SearchOverlay por ahora) ────────────────────
+// ── Búsqueda inline simple ────────────────────────────────────────────
 function setupSearch(mv) {
-  const panelInput = document.getElementById('map-search-global-input');
-  if (!panelInput) return;
-  panelInput.readOnly = false;
-  panelInput.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
+  const input = document.getElementById('map-search-global-input');
+  if (!input) return;
+  input.readOnly = false;
+  input.addEventListener('input', (e) => {
+    const q       = e.target.value.toLowerCase().trim();
     const counter = document.getElementById('map-results-count');
     if (!q) {
-      // Restaurar todos los markers
       mv.markerEls.forEach(el => el.style.display = '');
-      if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+      if (counter) counter.textContent = mv.allPlaces.length > 0 ? `${mv.allPlaces.length} lugares` : '';
       return;
     }
-    // Filtro simple: ocultar markers que no coinciden
     mv.allPlaces.forEach((place, i) => {
       const match = (place.name || '').toLowerCase().includes(q)
         || (place.formattedAddress || place.formatted_address || '').toLowerCase().includes(q);
-      const el = mv.markerEls[i];
-      if (el) el.style.display = match ? '' : 'none';
+      if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
     });
-    const visible = mv.allPlaces.filter(p =>
-      (p.name || '').toLowerCase().includes(q)).length;
+    const visible = mv.allPlaces.filter(p => (p.name || '').toLowerCase().includes(q)).length;
     if (counter) counter.textContent = `${visible} resultados`;
   });
 }
 
-// ── Actividades realtime ─────────────────────────────────────────────
+// ── Actividades ───────────────────────────────────────────────────────
 function setupActivitySubscription(mv) {
   try {
     ActivityService.subscribeToActivities(async () => {
@@ -163,61 +200,58 @@ function setupActivitySubscription(mv) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// MAIN — orden estricto
+// MAIN
 // ════════════════════════════════════════════════════════════════════
 (async () => {
   try {
     console.log('🚀 WhatsPlan iniciando...');
 
-    // 1. MapLibre — sin esto mapa en blanco
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
-    // 2. Config — DEBE ir antes de initSupabase
     await loadConfig();
-console.log('URL:', window.__SUPABASE_URL__);      // ← agregar
-console.log('KEY:', window.__SUPABASE_ANON_KEY__?.substring(0,10)); 
-
-    // 3. Supabase — ahora sí tiene las vars
     initSupabase();
 
-    // 4. Auth listener
+    // Auth listener
     AuthService.onAuthChange(async (event, user) => {
       console.log('🔐 Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
-      _updateTopBar(user);
+      await renderAuthButton(user);
       if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
       if (!user && window.wpApp.superPanel) {
         window.wpApp.superPanel.unmount();
         window.wpApp.superPanel = null;
+        window.wpApp._cachedAvatarUrl = '';
       }
     });
 
-    // 5. Mapa
+    // Mapa
     console.log('🗺️ Creando MapView...');
     const mv = new MapView();
     window.wpApp.mapView = mv;
     mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
     console.log('✅ MapView creado');
 
-    // 6. Auth modal
+    // Auth modal
     const authModal = new AuthModal({
-      onAuthSuccess: (user) => {
+      onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
-        _updateTopBar(user);
+        await renderAuthButton(user);
         if (isSuperUser(user?.id)) mountSuperPanel(mv);
       },
     });
     window.wpApp.authModal = authModal;
 
-    // 7. UI
     setupTopBar(authModal);
     setupCategories(mv);
     setupSearch(mv);
     setupActivitySubscription(mv);
 
+    // Render inicial del botón (puede haber sesión activa)
+    renderAuthButton(null);
+
     console.log('✅ WhatsPlan listo');
   } catch(err) {
-    console.error('❌ Error crítico en init:', err.message, err.stack);
+    console.error('❌ Error crítico:', err.message, err.stack);
   }
 })();
