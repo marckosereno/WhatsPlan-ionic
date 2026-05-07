@@ -52,7 +52,7 @@ function proxyPhoto(url) {
 function proxyPhotoMini(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 120, 80, 'cover');
+  if (url.includes('supabase.co')) return supabaseResize(url, 120, 80, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
