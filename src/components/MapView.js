@@ -31,28 +31,28 @@ const CATEGORIES = {
 };
 
 // ── Supabase Image Transform API ─────────────────────────────────────
-// Cambia /object/public/ → /render/image/public/ + parámetros de resize
-// Esto evita descargar imágenes de varios MB cuando solo necesitamos 80px
-function supabaseResize(url, width = 80, quality = 75) {
+// mode=contain → imagen completa sin recortar (pins: border-radius oculta vacíos)
+// mode=cover   → recorte centrado, llena el cuadrado (minicard)
+function supabaseResize(url, width = 80, quality = 75, mode = 'cover') {
   if (!url || !url.includes('supabase.co')) return url;
-  if (url.includes('/render/image/')) return url; // ya tiene resize
+  if (url.includes('/render/image/')) return url;
   return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-    + `?width=${width}&quality=${quality}&resize=cover`;
+    + `?width=${width}&quality=${quality}&resize=${mode}`;
 }
 
-// URL para pins (25px wrapper → 80px suficiente @2x)
+// Pins (25px display → 80px @2x) — contain: foto completa, border-radius oculta vacíos
 function proxyPhoto(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 80, 75);
+  if (url.includes('supabase.co')) return supabaseResize(url, 80, 75, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
-// URL para minicard (44px display → 120px suficiente @2x)
+// Minicard (44px display → 120px @2x) — cover: llena el rectángulo
 function proxyPhotoMini(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 120, 80);
+  if (url.includes('supabase.co')) return supabaseResize(url, 120, 80, 'cover');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
