@@ -1,6 +1,6 @@
 // ====================================================================
 // WHATSPLAN — MapView.js
-// Mapa Carto Positron + Blink Light style (igual que PWA original)
+// Mapa Carto Positron + Blink Light + pins + labels + landmarks
 // ====================================================================
 
 import { ActivityService } from '/src/services/SupabaseService.js';
@@ -11,7 +11,6 @@ const CENTER_LAT =  25.9950;
 const ZOOM       = 16;
 const MAP_STYLE  = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
-// Paleta Blink Light
 const BL_BG       = '#ededea';
 const BL_LAND     = '#ededea';
 const BL_WATER    = '#00bcd4';
@@ -38,6 +37,7 @@ function supabaseResize(url, width = 80, quality = 75, mode = 'contain') {
   return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
     + `?width=${width}&quality=${quality}&resize=${mode}`;
 }
+
 function proxyPhoto(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
@@ -56,6 +56,7 @@ function applyPhotoToPin(photoUrl, el) {
   pi.classList.add('loaded');
   requestAnimationFrame(() => { pi.style.opacity = '1'; });
 }
+
 function applyErrorToPin(el) {
   const pi = el.querySelector('.pin-inner');
   if (!pi) return;
@@ -63,7 +64,7 @@ function applyErrorToPin(el) {
   pi.style.background = 'transparent';
 }
 
-// ── Inyectar estilos de animación de landmarks ───────────────────────
+// ── Estilos de animación landmarks ──────────────────────────────────
 function injectLandmarkStyles() {
   if (document.getElementById('lm-styles')) return;
   const s = document.createElement('style');
@@ -77,9 +78,9 @@ function injectLandmarkStyles() {
       0%,100% { transform: scaleX(1);    opacity: 0.3; }
       50%      { transform: scaleX(0.75); opacity: 0.15; }
     }
-    .lm-wrap       { display:flex;flex-direction:column;align-items:center;cursor:pointer;overflow:visible; }
-    .lm-inner      { animation:lmFloat 3s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
-    .lm-inner-slow { animation:lmFloat 2.6s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
+    .lm-wrap        { display:flex;flex-direction:column;align-items:center;cursor:pointer;overflow:visible; }
+    .lm-inner       { animation:lmFloat 3s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
+    .lm-inner-slow  { animation:lmFloat 2.6s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
     .lm-shadow      { animation:lmPulse 3s ease-in-out infinite;border-radius:50%;background:rgba(0,0,0,0.3); }
     .lm-shadow-slow { animation:lmPulse 2.6s ease-in-out infinite;border-radius:50%;background:rgba(0,0,0,0.25); }
     body.map-dragging .lm-inner,
@@ -105,9 +106,21 @@ export class MapView {
     this.miniCardIndex   = -1;
     this.miniCardPlace   = null;
     this.onPlaceSelect   = null;
+    this._labelTimers    = [];
     this._initMap();
   }
 
+  // ── Haptic — igual que PWA original ─────────────────────────────
+  haptic(type = 'tap') {
+    if (!navigator.vibrate) return;
+    const patterns = {
+      tap: 15, select: 12, snap: 25,
+      action: [30, 20, 60], longpress: [40, 30, 40], light: 10
+    };
+    navigator.vibrate(patterns[type] ?? type);
+  }
+
+  // ── Init mapa ────────────────────────────────────────────────────
   _initMap() {
     injectLandmarkStyles();
 
@@ -131,11 +144,11 @@ export class MapView {
       this._loadLandmarks();
       this._loadActivities();
 
-      // Drag pause para animaciones de landmarks
+      // Drag pause para animaciones
       this.map.on('dragstart', () => document.body.classList.add('map-dragging'));
       this.map.on('dragend',   () => document.body.classList.remove('map-dragging'));
 
-      // Badge visible solo en zoom ≥ 15
+      // Badge visible en zoom ≥ 15
       let _zt = null;
       this.map.on('zoom', () => {
         if (_zt) return;
@@ -144,6 +157,18 @@ export class MapView {
           const show = this.map.getZoom() >= 15 ? '1' : '0';
           document.querySelectorAll('.place-act-badge').forEach(b => b.style.opacity = show);
         }, 80);
+      });
+
+      // Labels visibles en zoom ≥ 18 — igual que PWA original
+      this.map.on('zoomend', () => {
+        if (this.map.getZoom() >= 18) {
+          this._updateLabelsProgressive();
+        } else {
+          document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
+            l.style.opacity = '0';
+            l.style.display = 'none';
+          });
+        }
       });
 
       // Ghost-pan fix
@@ -250,8 +275,10 @@ export class MapView {
     } catch(e) { console.error('❌ loadCategory:', e); }
   }
 
-  // ── Markers de lugares ────────────────────────────────────────────
+  // ── Markers ───────────────────────────────────────────────────────
   _clearPlaceMarkers() {
+    if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+    this._labelTimers = [];
     this.markers.forEach(m => m?.remove());
     this.markers = []; this.markerEls = [];
     this._closeMiniCard();
@@ -277,9 +304,11 @@ export class MapView {
       const el = document.createElement('div');
       el.className = 'place-marker-el';
       el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
+      el._place    = place;
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
+        this.haptic('tap');
         if (this.miniCardMarker === this.markers[index]) {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
@@ -291,7 +320,9 @@ export class MapView {
         .setLngLat([lng, lat])
         .addTo(this.map);
 
-      // Foto con IntersectionObserver
+      el._marker = marker;
+
+      // Foto lazy con IntersectionObserver
       if (photoUrl) {
         if ('IntersectionObserver' in window) {
           const obs = new IntersectionObserver((entries) => {
@@ -328,6 +359,7 @@ export class MapView {
     this._refreshActivityBadges();
   }
 
+  // ── HTML del pin — con label igual que PWA original ───────────────
   _buildPinHtml(place, photoUrl, catIcon) {
     const actCount   = this._activityCount(place);
     const hasAct     = actCount > 0;
@@ -335,10 +367,67 @@ export class MapView {
     const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map?.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
     const pulseHtml  = hasAct ? `<div class="pin-pulse-ring" style="display:block"></div><div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>` : '';
     const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
+
+    // Label — igual que PWA original
+    const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
+    const labelColor = hasAct ? '#d97706' : '#1f2937';
+    const labelLeft  = photoUrl ? 31 : 22;
+    const labelHtml  = `<div class="place-pin-label" style="position:absolute;left:${labelLeft}px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:800;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:nowrap;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px rgba(255,255,255,0.9);pointer-events:none;letter-spacing:-0.2px;transition:opacity 0.25s ease;">${shortName}</div>`;
+
     if (photoUrl) {
-      return `<div class="place-pin-root"><div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}<div class="place-pin-wrapper" style="background:${borderGrad}"><div class="pin-inner loading" data-photo="${photoUrl}">${catIcon}</div></div></div></div>`;
+      return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+        <div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}
+          <div class="place-pin-wrapper" style="background:${borderGrad}">
+            <div class="pin-inner loading" data-photo="${photoUrl}">${catIcon}</div>
+          </div>
+        </div>
+        ${labelHtml}
+      </div>`;
     }
-    return `<div class="place-pin-root"><div style="position:relative;display:inline-block;overflow:visible;">${badgeHtml}${pulseHtml}<div class="pin-dot"></div></div></div>`;
+    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+      <div style="position:relative;width:20px;height:20px;overflow:visible;">
+        ${badgeHtml}${pulseHtml}
+        <div class="pin-dot"></div>
+      </div>
+      ${labelHtml}
+    </div>`;
+  }
+
+  // ── Labels progresivos en zoom ≥ 18 — igual que PWA original ──────
+  _updateLabelsProgressive() {
+    if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+    this._labelTimers = [];
+
+    const center = this.map.getCenter();
+    const bounds  = this.map.getBounds();
+
+    const els = Array.from(document.querySelectorAll('.place-marker-el'));
+    const visible = els.map(el => {
+      const idx = this.markerEls.indexOf(el);
+      if (idx === -1) return null;
+      const marker = this.markers[idx];
+      if (!marker) return null;
+      const ll = marker.getLngLat();
+      if (!bounds.contains(ll)) {
+        const lbl = el.querySelector('.place-pin-label');
+        if (lbl) { lbl.style.opacity = '0'; lbl.style.display = 'none'; }
+        return null;
+      }
+      const dx = ll.lng - center.lng, dy = ll.lat - center.lat;
+      return { el, dist: Math.sqrt(dx*dx + dy*dy) };
+    }).filter(Boolean).sort((a, b) => a.dist - b.dist);
+
+    visible.forEach(({ el }, i) => {
+      const label = el.querySelector('.place-pin-label');
+      if (!label) return;
+      if (label.style.opacity === '1') return;
+      label.style.display = 'block';
+      label.style.opacity = '0';
+      const t = setTimeout(() => {
+        if (this.map.getZoom() >= 18) label.style.opacity = '1';
+      }, i * 30);
+      this._labelTimers.push(t);
+    });
   }
 
   // ── MiniCard ──────────────────────────────────────────────────────
@@ -368,6 +457,7 @@ export class MapView {
       </div>`;
     el.querySelector('.minicard-wrap').addEventListener('click', (e) => {
       e.stopPropagation();
+      this.haptic('select');
       if (this.onPlaceSelect) this.onPlaceSelect(place);
     });
     const lat = place.location?.lat ?? place.lat;
@@ -407,41 +497,33 @@ export class MapView {
 
   updateActivities(activities) { this.activities = activities; this._refreshActivityBadges(); }
 
-  // ── Landmarks — copiado exacto del original ───────────────────────
+  // ── Landmarks ─────────────────────────────────────────────────────
   _renderLandmarks(items) {
     this.landmarkMarkers.forEach(m => m.remove());
     this.landmarkMarkers = [];
 
     items.forEach(item => {
       if (!item.lat || !item.lng) return;
-
-      const sizeMap   = { mini: 18, normal: 26, destacado: 46 };
-      const fontSize  = sizeMap[item.size] || 32;
+      const sizeMap  = { mini: 18, normal: 26, destacado: 46 };
+      const fontSize = sizeMap[item.size] || 32;
       const borderColor = item.border_color || null;
-      const color     = item.color || '#00bcd4';
+      const color    = item.color || '#00bcd4';
 
-      // Wrapper estático — MapLibre ancla aquí
       const el = document.createElement('div');
       el.className = 'lm-wrap';
 
       if (item.type === 'sticker') {
-        const inner = document.createElement('div');
+        const inner    = document.createElement('div');
         inner.className = 'lm-inner-slow';
-
         const strokeColor = borderColor || '#ffffff';
-        const strokeW     = Math.round(Math.max(4, fontSize * 0.16));
-        const pad         = Math.round(fontSize * 0.1);
-        const totalSize   = fontSize + pad * 2;
+        const strokeW  = Math.round(Math.max(4, fontSize * 0.16));
+        const pad      = Math.round(fontSize * 0.1);
+        const totalSize = fontSize + pad * 2;
 
         const stickerWrap = document.createElement('div');
-        stickerWrap.style.cssText = [
-          'position:relative', 'display:inline-flex', 'align-items:center',
-          'justify-content:center', 'width:' + totalSize + 'px',
-          'height:' + totalSize + 'px', 'user-select:none',
-        ].join(';');
+        stickerWrap.style.cssText = `position:relative;display:inline-flex;align-items:center;justify-content:center;width:${totalSize}px;height:${totalSize}px;user-select:none;`;
 
         if (item.icon_url) {
-          // PNG — canvas con halo sólido tipo sticker
           const imgEl = new Image();
           imgEl.crossOrigin = 'anonymous';
           imgEl.onload = () => {
@@ -450,60 +532,49 @@ export class MapView {
             const cs   = totalSize * dpr + pad2 * 2;
             const cvs  = document.createElement('canvas');
             cvs.width = cs; cvs.height = cs;
-            const ctx = cvs.getContext('2d');
-            const cx = pad2, cy = pad2;
-            const sz  = totalSize * dpr;
-            const bsz = sz + strokeW * dpr * 2;
-            const bx  = cx - strokeW * dpr;
-            const by  = cy - strokeW * dpr;
-            // Halo
+            const ctx  = cvs.getContext('2d');
+            const cx = pad2, cy = pad2, sz = totalSize * dpr;
+            const bsz = sz + strokeW * dpr * 2, bx = cx - strokeW * dpr, by = cy - strokeW * dpr;
             ctx.drawImage(imgEl, bx, by, bsz, bsz);
             ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = strokeColor;
-            ctx.fillRect(0, 0, cs, cs);
-            // Imagen real encima
+            ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cs, cs);
             ctx.globalCompositeOperation = 'source-over';
             ctx.drawImage(imgEl, cx, cy, sz, sz);
             const out = document.createElement('img');
             out.src = cvs.toDataURL('image/png');
-            out.style.cssText = 'width:' + (totalSize + strokeW * 2) + 'px;height:' + (totalSize + strokeW * 2) + 'px;display:block;';
+            out.style.cssText = `width:${totalSize + strokeW * 2}px;height:${totalSize + strokeW * 2}px;display:block;`;
             stickerWrap.appendChild(out);
           };
           imgEl.onerror = () => {
             const fb = document.createElement('div');
-            fb.style.cssText = 'width:' + totalSize + 'px;height:' + totalSize + 'px;background:rgba(0,0,0,0.1);border-radius:8px;';
+            fb.style.cssText = `width:${totalSize}px;height:${totalSize}px;background:rgba(0,0,0,0.1);border-radius:8px;`;
             stickerWrap.appendChild(fb);
           };
           imgEl.src = item.icon_url;
         } else {
-          // Emoji — canvas con halo de color
-          const dpr      = Math.min(window.devicePixelRatio || 1, 2);
-          const pad2     = Math.ceil(strokeW * dpr * 2);
-          const cs       = totalSize * dpr + pad2 * 2;
-          const cx = cs / 2, cy = cs / 2;
-          const cvs      = document.createElement('canvas');
+          const dpr  = Math.min(window.devicePixelRatio || 1, 2);
+          const pad2 = Math.ceil(strokeW * dpr * 2);
+          const cs   = totalSize * dpr + pad2 * 2;
+          const cx   = cs / 2, cy = cs / 2;
+          const cvs  = document.createElement('canvas');
           cvs.width = cs; cvs.height = cs;
-          const ctx      = cvs.getContext('2d');
-          const fontPx   = fontSize * dpr;
-          const offsets  = strokeW * dpr;
-          // Halo: emoji grande teñido con color del borde
-          ctx.font = (fontPx + offsets * 2) + 'px serif';
+          const ctx  = cvs.getContext('2d');
+          const fontPx  = fontSize * dpr;
+          const offsets = strokeW * dpr;
+          ctx.font = `${fontPx + offsets * 2}px serif`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(item.emoji || '⭐', cx, cy);
           ctx.globalCompositeOperation = 'source-atop';
-          ctx.fillStyle = strokeColor;
-          ctx.fillRect(0, 0, cs, cs);
+          ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cs, cs);
           ctx.globalCompositeOperation = 'source-over';
-          // Emoji real encima
-          ctx.font = fontPx + 'px serif';
+          ctx.font = `${fontPx}px serif`;
           ctx.fillText(item.emoji || '⭐', cx, cy);
           const img = document.createElement('img');
           img.src = cvs.toDataURL('image/png');
-          img.style.cssText = 'width:' + totalSize + 'px;height:' + totalSize + 'px;display:block;';
+          img.style.cssText = `width:${totalSize}px;height:${totalSize}px;display:block;`;
           stickerWrap.appendChild(img);
         }
 
-        // Sombra animada
         const shadow = document.createElement('div');
         shadow.className = 'lm-shadow-slow';
         shadow.style.cssText = 'width:20px;height:6px;margin-top:3px;';
@@ -515,34 +586,22 @@ export class MapView {
         inner.appendChild(iconCol);
         el.appendChild(inner);
 
-        // Label — pill oscuro a la derecha, igual que el original
         if (item.title && item.show_label !== false) {
-          const seed = item.id ? item.id.charCodeAt(0) % 600 : Math.random() * 600;
+          const seed  = item.id ? item.id.charCodeAt(0) % 600 : Math.random() * 600;
           const label = document.createElement('div');
           label.className = 'lm-label lm-sticker-label';
           label.textContent = item.title;
           label.style.cssText = [
-            'position:absolute',
-            'left:calc(100% + 3px)',
-            'top:50%',
-            'transform:translateY(-60%)',
-            'white-space:nowrap',
-            'background:rgba(10,10,20,0.78)',
-            'color:#fff',
-            'font-size:9px',
-            'font-weight:700',
-            'font-family:Yahoo Sans Bold Regular,system-ui,sans-serif',
-            'padding:2px 6px',
-            'border-radius:20px',
-            'pointer-events:none',
-            'opacity:1',
-            'transition:opacity 0.4s ease ' + seed + 'ms',
-            'max-width:110px',
-            'overflow:hidden',
-            'text-overflow:ellipsis',
+            'position:absolute', 'left:calc(100% + 3px)', 'top:50%',
+            'transform:translateY(-60%)', 'white-space:nowrap',
+            'background:rgba(10,10,20,0.78)', 'color:#fff',
+            'font-size:9px', 'font-weight:700',
+            "font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif",
+            'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
+            'opacity:1', `transition:opacity 0.4s ease ${seed}ms`,
+            'max-width:110px', 'overflow:hidden', 'text-overflow:ellipsis',
             'border:1px solid rgba(255,255,255,0.12)',
-            'backdrop-filter:blur(4px)',
-            '-webkit-backdrop-filter:blur(4px)',
+            'backdrop-filter:blur(4px)', '-webkit-backdrop-filter:blur(4px)',
           ].join(';');
           inner.style.position = 'relative';
           inner.appendChild(label);
@@ -550,26 +609,23 @@ export class MapView {
         }
 
       } else {
-        // Landmark / punto de referencia — igual que original
+        // Landmark normal
         const pinSize = 42;
         const inner   = document.createElement('div');
         inner.className = 'lm-inner';
         inner.style.cssText = 'gap:3px;';
 
-        // Label pill blanco encima del pin
         const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:130px;overflow:hidden;text-overflow:ellipsis;font-family:Yahoo Sans Bold Regular,system-ui,sans-serif;';
+        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:130px;overflow:hidden;text-overflow:ellipsis;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;';
         label.textContent = item.title || '';
 
-        // Círculo del pin
         const borderStyle = borderColor
-          ? 'box-shadow:0 0 0 3px ' + borderColor + ',0 4px 12px rgba(0,0,0,0.3);'
-          : 'box-shadow:0 0 0 2px ' + color + '66,0 4px 12px rgba(0,0,0,0.3);';
+          ? `box-shadow:0 0 0 3px ${borderColor},0 4px 12px rgba(0,0,0,0.3);`
+          : `box-shadow:0 0 0 2px ${color}66,0 4px 12px rgba(0,0,0,0.3);`;
         const pin = document.createElement('div');
-        pin.style.cssText = 'width:' + pinSize + 'px;height:' + pinSize + 'px;border-radius:50%;background:linear-gradient(145deg,' + color + 'dd 0%,' + color + ' 50%,' + color + '99 100%);border:3px solid white;' + borderStyle + 'display:flex;align-items:center;justify-content:center;font-size:20px;';
+        pin.style.cssText = `width:${pinSize}px;height:${pinSize}px;border-radius:50%;background:linear-gradient(145deg,${color}dd 0%,${color} 50%,${color}99 100%);border:3px solid white;${borderStyle}display:flex;align-items:center;justify-content:center;font-size:20px;`;
         pin.textContent = item.emoji || '📍';
 
-        // Sombra
         const shadow = document.createElement('div');
         shadow.className = 'lm-shadow';
         shadow.style.cssText = 'width:24px;height:8px;margin-top:3px;';
@@ -592,14 +648,5 @@ export class MapView {
   }
 
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
-  haptic(type = 'tap') {
-    if (!navigator.vibrate) return;
-    const patterns = {
-      tap: 15, select: 12, snap: 25,
-      action: [30, 20, 60], longpress: [40, 30, 40], light: 10
-    };
-    navigator.vibrate(patterns[type] ?? type);
-  }
-
   getMap() { return this.map; }
 }
