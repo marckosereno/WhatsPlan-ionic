@@ -16,7 +16,7 @@ window.wpApp = {
   _cachedAvatarUrl: '',
 };
 
-// ── MapLibre wait ────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────
 function waitForMapLibre() {
   return new Promise(resolve => {
     if (window.maplibregl) { resolve(); return; }
@@ -24,7 +24,6 @@ function waitForMapLibre() {
   });
 }
 
-// ── Config ───────────────────────────────────────────────────────────
 async function loadConfig() {
   try {
     const r = await fetch('/api/config');
@@ -35,52 +34,38 @@ async function loadConfig() {
   } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
 }
 
-// ── Avatar / botón auth ──────────────────────────────────────────────
+// ── Avatar ────────────────────────────────────────────────────────────
 async function renderAuthButton(user) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
-
   if (!user) {
     btn.style.border = '2px solid rgba(255,255,255,0.6)';
     btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bust+in+silhouette/3D/bust_in_silhouette_3d.png"
-      style="width:26px;height:26px;object-fit:contain;opacity:0.7;"
-      onerror="this.outerHTML='👤'">`;
+      style="width:26px;height:26px;object-fit:contain;opacity:0.7;" onerror="this.outerHTML='👤'">`;
     return;
   }
-
   let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
   if (!avatarUrl) {
     try {
       const profile = await ProfileService.getProfile(user.id);
-      if (profile?.avatar_url) {
-        avatarUrl = profile.avatar_url;
-        window.wpApp._cachedAvatarUrl = avatarUrl;
-      }
+      if (profile?.avatar_url) { avatarUrl = profile.avatar_url; window.wpApp._cachedAvatarUrl = avatarUrl; }
     } catch(_) {}
   }
-
   if (avatarUrl) {
     btn.style.border = '2px solid rgba(255,255,255,0.7)';
     btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-      <img src="${avatarUrl}?cb=${Date.now()}"
-        style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
-        onerror="this.style.display='none'">
+      <img src="${avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">
     </div>`;
   } else {
     btn.style.border = '2.5px dashed #a78bfa';
     btn.innerHTML = `
       <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png"
         style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'">
-      <span style="
-        position:absolute;bottom:-6px;right:-4px;
-        background:linear-gradient(135deg,#a78bfa,#7c3aed);
-        color:white;border-radius:50%;width:16px;height:16px;
-        font-size:9px;font-weight:800;line-height:16px;text-align:center;
-        border:1.5px solid white;box-shadow:0 1px 4px rgba(124,58,237,0.4);">+</span>`;
+      <span style="position:absolute;bottom:-6px;right:-4px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;box-shadow:0 1px 4px rgba(124,58,237,0.4);">+</span>`;
   }
 }
 
-// ── Topbar ───────────────────────────────────────────────────────────
+// ── Topbar ────────────────────────────────────────────────────────────
 function setupTopBar(authModal) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
@@ -94,35 +79,23 @@ function _showProfileMenu() {
   document.getElementById('profile-menu')?.remove();
   const menu = document.createElement('div');
   menu.id = 'profile-menu';
-  menu.style.cssText = `
-    position:fixed;top:64px;right:12px;z-index:2000;
-    background:white;border-radius:16px;overflow:hidden;
-    box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;
-    font-family:'Inter Tight',system-ui,sans-serif;`;
-
+  menu.style.cssText = 'position:fixed;top:64px;right:12px;z-index:2000;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;font-family:"Inter Tight",system-ui,sans-serif;';
   const user = window.wpApp.currentUser;
   const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
-
   menu.innerHTML = `
     <div style="padding:14px 16px 10px;border-bottom:1px solid #f3f4f6;">
       <div style="font-size:13px;font-weight:700;color:#111;">${name}</div>
       <div style="font-size:11px;color:#9ca3af;">${user?.email || ''}</div>
     </div>
-    <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;display:flex;align-items:center;gap:8px;">
-      🚪 Cerrar sesión
-    </div>`;
-
+    <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;">🚪 Cerrar sesión</div>`;
   menu.querySelector('#pm-logout').addEventListener('click', async () => {
-    await AuthService.logout();
-    window.wpApp._cachedAvatarUrl = '';
-    menu.remove();
+    await AuthService.logout(); window.wpApp._cachedAvatarUrl = ''; menu.remove();
   });
-
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
   document.body.appendChild(menu);
 }
 
-// ── SuperUserPanel ───────────────────────────────────────────────────
+// ── SuperUserPanel ────────────────────────────────────────────────────
 function mountSuperPanel(mv) {
   if (window.wpApp.superPanel) return;
   const sp = new SuperUserPanel(mv, {
@@ -133,94 +106,64 @@ function mountSuperPanel(mv) {
   console.log('✅ SuperUserPanel montado');
 }
 
-// ── Categorías + SubcategoryRow ──────────────────────────────────────
+// ── Categorías + SubcategoryRow ───────────────────────────────────────
 function setupCategories(mv) {
-  // SubcategoryRow — GPS + chips de subcategorías
+  // SubcategoryRow — necesita el map para GPS/Live
   const subcatRow = new SubcategoryRow({
-    // Al seleccionar subcategoría → filtrar markers en mapa
+    map: mv.getMap(),
     onSubcatSelect: (value) => {
+      const counter = document.getElementById('map-results-count');
       if (value === 'all') {
-        // Mostrar todos
         mv.markerEls.forEach(el => el.style.display = '');
-        const counter = document.getElementById('map-results-count');
         if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
         return;
       }
-      // Filtrar por query de subcategoría (comparar tipo del lugar)
       let visible = 0;
       mv.allPlaces.forEach((place, i) => {
-        const types   = (place.types || []).join(' ').toLowerCase();
-        const name    = (place.name || '').toLowerCase();
-        const match   = types.includes(value) || name.includes(value);
-        const el      = mv.markerEls[i];
-        if (el) el.style.display = match ? '' : 'none';
+        const types = (place.types || []).join(' ').toLowerCase();
+        const name  = (place.name  || '').toLowerCase();
+        const match = types.includes(value) || name.includes(value);
+        if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
         if (match) visible++;
       });
-      const counter = document.getElementById('map-results-count');
       if (counter) counter.textContent = `${visible} lugares`;
     },
-
-    // GPS click → geolocation y flyTo
-    onGpsClick: () => {
-      if (!navigator.geolocation) return;
-      subcatRow.setGpsLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          subcatRow.setGpsActive(true);
-          mv.flyTo(pos.coords.longitude, pos.coords.latitude, 17);
-        },
-        () => { subcatRow.setGpsActive(false); },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    },
   });
-
   window.wpApp.subcatRow = subcatRow;
 
-  // Botones de categoría principal
+  // Chips de categoría principal
   document.querySelectorAll('.category-footer-chip').forEach(chip => {
     chip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
     chip.addEventListener('click', async (e) => {
       e.stopPropagation();
       const menuKey  = chip.dataset.menuKey;
       const isActive = chip.classList.contains('active');
-
       document.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
-
       if (isActive) {
-        mv._clearPlaceMarkers();
-        mv.currentCatId = null;
+        mv._clearPlaceMarkers(); mv.currentCatId = null;
         subcatRow.hide();
         const counter = document.getElementById('map-results-count');
         if (counter) counter.textContent = '';
         return;
       }
-
       chip.classList.add('active');
-
-      // Mostrar loading chip mientras carga
       subcatRow.showLoading(menuKey);
-
       const counter = document.getElementById('map-results-count');
       if (counter) counter.textContent = 'Cargando...';
-
       await mv.loadCategory(menuKey);
-
       if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
-
-      // Mostrar chips de subcategoría
       subcatRow.showSubcats(menuKey);
     });
   });
 }
 
-// ── Búsqueda inline simple ────────────────────────────────────────────
+// ── Búsqueda ──────────────────────────────────────────────────────────
 function setupSearch(mv) {
   const input = document.getElementById('map-search-global-input');
   if (!input) return;
   input.readOnly = false;
   input.addEventListener('input', (e) => {
-    const q       = e.target.value.toLowerCase().trim();
+    const q = e.target.value.toLowerCase().trim();
     const counter = document.getElementById('map-results-count');
     if (!q) {
       mv.markerEls.forEach(el => el.style.display = '');
@@ -232,12 +175,12 @@ function setupSearch(mv) {
         || (place.formattedAddress || place.formatted_address || '').toLowerCase().includes(q);
       if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
     });
-    const visible = mv.allPlaces.filter(p => (p.name || '').toLowerCase().includes(q)).length;
+    const visible = mv.allPlaces.filter(p => (p.name||'').toLowerCase().includes(q)).length;
     if (counter) counter.textContent = `${visible} resultados`;
   });
 }
 
-// ── Actividades realtime ─────────────────────────────────────────────
+// ── Actividades ───────────────────────────────────────────────────────
 function setupActivitySubscription(mv) {
   try {
     ActivityService.subscribeToActivities(async () => {
@@ -256,7 +199,6 @@ function setupActivitySubscription(mv) {
 (async () => {
   try {
     console.log('🚀 WhatsPlan iniciando...');
-
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
@@ -281,6 +223,11 @@ function setupActivitySubscription(mv) {
     mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
     console.log('✅ MapView creado');
 
+    // SubcategoryRow necesita el mapa listo — esperar el evento load
+    mv.getMap().on('load', () => {
+      setupCategories(mv);
+    });
+
     const authModal = new AuthModal({
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
@@ -291,10 +238,8 @@ function setupActivitySubscription(mv) {
     window.wpApp.authModal = authModal;
 
     setupTopBar(authModal);
-    setupCategories(mv);
     setupSearch(mv);
     setupActivitySubscription(mv);
-
     renderAuthButton(null);
 
     console.log('✅ WhatsPlan listo');
