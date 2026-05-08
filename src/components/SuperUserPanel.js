@@ -239,10 +239,9 @@ export class SuperUserPanel {
     const row = document.getElementById('su-cat-chips-row');
     if (!row) return Promise.resolve();
     row.innerHTML = '<div style="color:#6b7280;font-size:11px;">Cargando...</div>';
-    // Cargar categorías desde CategoryService (igual que la PWA original)
-    return getCategories().then(cats => {
+
+    const buildChips = (cats) => {
       row.innerHTML = '';
-      // Chip "Todas"
       const allChip = document.createElement('button');
       allChip.className = 'su-cat-chip active';
       allChip.dataset.catKey = 'all';
@@ -256,7 +255,7 @@ export class SuperUserPanel {
         const chip = document.createElement('button');
         chip.className = 'su-cat-chip';
         chip.dataset.catKey = cat.menuKey || cat.key || cat.id;
-        chip.textContent = (cat.emoji ? cat.emoji + ' ' : '') + (cat.label_es || cat.displayNameES || cat.id || cat.key);
+        chip.textContent = (cat.emoji ? cat.emoji + ' ' : '') + (cat.label_es || cat.displayNameES || cat.key || cat.id);
         chip.addEventListener('click', () => {
           chip.classList.toggle('active');
           const anyCatActive = !!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active');
@@ -265,42 +264,19 @@ export class SuperUserPanel {
         });
         row.appendChild(chip);
       });
-    }).catch(() => {
-      // Fallback: categorías hardcodeadas
-      const fallback = [
-        { key:'RESTAURANTS', emoji:'🍔', label_es:'Restaurantes' },
-        { key:'HEALTH',      emoji:'🩺', label_es:'Salud & Estética' },
-        { key:'SHOPPING',    emoji:'🛍️', label_es:'Compras' },
-        { key:'ENTERTAINMENT',emoji:'🎈',label_es:'Entretenimiento' },
-        { key:'PARKS',       emoji:'🌵', label_es:'Parques' },
-        { key:'WORKSHOPS',   emoji:'🔧', label_es:'Talleres' },
-      ];
-      row.innerHTML = '';
-      const allChip = document.createElement('button');
-      allChip.className = 'su-cat-chip active';
-      allChip.dataset.catKey = 'all';
-      allChip.textContent = '🌐 Todas';
-      allChip.addEventListener('click', () => {
-        const isActive = allChip.classList.toggle('active');
-        if (isActive) row.querySelectorAll('.su-cat-chip:not([data-cat-key="all"])').forEach(c => c.classList.remove('active'));
-      });
-      row.appendChild(allChip);
-      fallback.forEach(cat => {
-        const chip = document.createElement('button');
-        chip.className = 'su-cat-chip';
-        chip.dataset.catKey = cat.key;
-        chip.textContent = cat.emoji + ' ' + cat.label_es;
-        chip.addEventListener('click', () => {
-          chip.classList.toggle('active');
-          const anyCatActive = !!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active');
-          if (anyCatActive) allChip.classList.remove('active');
-          else allChip.classList.add('active');
-        });
-        row.appendChild(chip);
-      });
-    });
-  }
+    };
 
+    const fallback = [
+      { key:'RESTAURANTS',   emoji:'🍔', label_es:'Restaurantes' },
+      { key:'HEALTH',        emoji:'🩺', label_es:'Salud & Estética' },
+      { key:'SHOPPING',      emoji:'🛍️', label_es:'Compras' },
+      { key:'ENTERTAINMENT', emoji:'🎈', label_es:'Entretenimiento' },
+      { key:'PARKS',         emoji:'🌵', label_es:'Parques' },
+      { key:'WORKSHOPS',     emoji:'🔧', label_es:'Talleres' },
+    ];
+
+    return getCategories().then(cats => buildChips(cats)).catch(() => buildChips(fallback));
+  }
   _getSelectedCats() {
     const row = document.getElementById('su-cat-chips-row');
     if (!row) return null;
@@ -458,8 +434,8 @@ export class SuperUserPanel {
     const showLabelEl = document.getElementById('su-field-show-label');
     if (stickerLabelEl) stickerLabelEl.value = '';
     if (showLabelEl) showLabelEl.checked = true;
-    // Cargar chips de categorías — async, esperar antes de mostrar modal
-    await this._buildCatChips();
+    // Cargar chips de categorías — esperar antes de mostrar modal
+    await await this._buildCatChips();
     modal.classList.add('visible');
     this._currentFormType = type;
   }
@@ -1019,12 +995,10 @@ export class SuperUserPanel {
         await upsertCategory(payload);
         invalidateCache();
         await this._loadCatList();
-        // Actualizar icono del chip en el panel inferior si existe
-        const chipEl = document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon-3d`);
-        if (chipEl && icon3dUrl) { chipEl.src = icon3dUrl; }
-        const chipEmoji = document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon`);
-        if (chipEmoji && emoji) { chipEmoji.textContent = emoji; }
         this.callbacks.onCategoriesUpdated?.();
+        // Actualizar icono del chip en el panel inferior
+        const _chipImg = document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon-3d`);
+        if (_chipImg && icon3dUrl) _chipImg.src = icon3dUrl;
       }
       this._closeCatForm();
     } catch (err) {
@@ -1312,7 +1286,7 @@ export class SuperUserPanel {
               const alreadyIn = (mapView.places || []).some(pp => pp.place_id === place.place_id);
               if (!alreadyIn) mapView.places = [...(mapView.places || []), place];
             }
-            if (mapView) { mapView.allPlaces = mapView.places||[]; mapView._clearPlaceMarkers(); mapView._renderPlaceMarkers(mapView.allPlaces); const _rc1=document.getElementById('map-results-count'); if(_rc1)_rc1.textContent=mapView.allPlaces.length+' lugares'; }
+            if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc1=document.getElementById('map-results-count');if(_rc1)_rc1.textContent=mapView.allPlaces.length+' lugares';}
           }
           this._showToast(nowHidden ? '👁️ Lugar visible' : '🙈 Lugar oculto');
         } catch (err) { btn.textContent = nowHidden ? '👁️' : '🙈'; this._showToast('❌ ' + err.message); }
@@ -1402,8 +1376,7 @@ export class SuperUserPanel {
         const mapView = window.wpApp?.mapView;
         if (mapView) {
           mapView.allPlaces = (mapView.allPlaces || []).filter(pp => pp.place_id !== place.place_id);
-          mapView.places = (mapView.places||[]).filter(pp=>pp.place_id!==place.place_id);
-          if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc2=document.getElementById('map-results-count');if(_rc2)_rc2.textContent=mapView.allPlaces.length+' lugares';}
+          mapView.places=(mapView.places||[]).filter(pp=>pp.place_id!==place.place_id);if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc2=document.getElementById('map-results-count');if(_rc2)_rc2.textContent=mapView.allPlaces.length+' lugares';}
         }
         this._showToast('🗑️ Lugar eliminado');
       } catch(err) { this._showToast('❌ ' + err.message); }
@@ -1506,8 +1479,7 @@ export class SuperUserPanel {
       onDone();
       this._showToast('✅ ' + ok + ' lugares actualizados' + (fail ? ' · ❌ ' + fail + ' errores' : ''));
 
-      const mapView = window.wpApp?.mapView;
-      if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc3=document.getElementById('map-results-count');if(_rc3)_rc3.textContent=mapView.allPlaces.length+' lugares';}
+      const mapView=window.wpApp?.mapView;if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc3=document.getElementById('map-results-count');if(_rc3)_rc3.textContent=mapView.allPlaces.length+' lugares';}
     });
   }
 
@@ -2027,13 +1999,10 @@ export class SuperUserPanel {
         if (!data.success) throw new Error(data.message);
         modal.remove();
 
-        // Invalidar cache (no-op en WhatsPlan, usa timestamp en la URL)
+        // Invalidar cache
 
-        // Recargar mapa con categoría actual
-        const mapView = window.wpApp?.mapView;
-        if (mapView && mapView.currentCatId) {
-          await mapView.loadCategory(mapView.currentCatId);
-        }
+        const mapView=window.wpApp?.mapView;
+        if(mapView&&mapView.currentCatId)await mapView.loadCategory(mapView.currentCatId);
 
         if (isEdit) {
           this._showToast('✅ Cambios guardados en Airtable');
