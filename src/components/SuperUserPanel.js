@@ -238,13 +238,11 @@ export class SuperUserPanel {
   _buildCatChips() {
     const row = document.getElementById('su-cat-chips-row');
     if (!row) return Promise.resolve();
-    row.innerHTML = '<div style="color:#6b7280;font-size:11px;">Cargando...</div>';
-
+    row.innerHTML = '<div style="color:#6b7280;font-size:11px;padding:4px;">Cargando...</div>';
     const buildChips = (cats) => {
       row.innerHTML = '';
       const allChip = document.createElement('button');
-      allChip.className = 'su-cat-chip active';
-      allChip.dataset.catKey = 'all';
+      allChip.className = 'su-cat-chip active'; allChip.dataset.catKey = 'all';
       allChip.textContent = '🌐 Todas';
       allChip.addEventListener('click', () => {
         const isActive = allChip.classList.toggle('active');
@@ -253,29 +251,25 @@ export class SuperUserPanel {
       row.appendChild(allChip);
       cats.forEach(cat => {
         const chip = document.createElement('button');
-        chip.className = 'su-cat-chip';
-        chip.dataset.catKey = cat.menuKey || cat.key || cat.id;
-        chip.textContent = (cat.emoji ? cat.emoji + ' ' : '') + (cat.label_es || cat.displayNameES || cat.key || cat.id);
+        chip.className = 'su-cat-chip'; chip.dataset.catKey = cat.key || cat.menuKey || cat.id;
+        chip.textContent = (cat.emoji||'') + ' ' + (cat.label_es||cat.displayNameES||cat.key||'');
         chip.addEventListener('click', () => {
           chip.classList.toggle('active');
-          const anyCatActive = !!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active');
-          if (anyCatActive) allChip.classList.remove('active');
+          if (!!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active')) allChip.classList.remove('active');
           else allChip.classList.add('active');
         });
         row.appendChild(chip);
       });
     };
-
     const fallback = [
-      { key:'RESTAURANTS',   emoji:'🍔', label_es:'Restaurantes' },
-      { key:'HEALTH',        emoji:'🩺', label_es:'Salud & Estética' },
-      { key:'SHOPPING',      emoji:'🛍️', label_es:'Compras' },
-      { key:'ENTERTAINMENT', emoji:'🎈', label_es:'Entretenimiento' },
-      { key:'PARKS',         emoji:'🌵', label_es:'Parques' },
-      { key:'WORKSHOPS',     emoji:'🔧', label_es:'Talleres' },
+      {key:'RESTAURANTS',emoji:'🍔',label_es:'Restaurantes'},
+      {key:'HEALTH',emoji:'🩺',label_es:'Salud & Estética'},
+      {key:'SHOPPING',emoji:'🛍️',label_es:'Compras'},
+      {key:'ENTERTAINMENT',emoji:'🎈',label_es:'Entretenimiento'},
+      {key:'PARKS',emoji:'🌵',label_es:'Parques'},
+      {key:'WORKSHOPS',emoji:'🔧',label_es:'Talleres'},
     ];
-
-    return getCategories().then(cats => buildChips(cats)).catch(() => buildChips(fallback));
+    return getCategories().then(cats=>buildChips(cats.length?cats:fallback)).catch(()=>buildChips(fallback));
   }
   _getSelectedCats() {
     const row = document.getElementById('su-cat-chips-row');
@@ -434,8 +428,8 @@ export class SuperUserPanel {
     const showLabelEl = document.getElementById('su-field-show-label');
     if (stickerLabelEl) stickerLabelEl.value = '';
     if (showLabelEl) showLabelEl.checked = true;
-    // Cargar chips de categorías — esperar antes de mostrar modal
-    await await this._buildCatChips();
+    // Cargar chips de categorías
+    await this._buildCatChips();
     modal.classList.add('visible');
     this._currentFormType = type;
   }
@@ -683,11 +677,12 @@ export class SuperUserPanel {
     // Modal de formulario cat/subcat
     const modal = document.createElement('div');
     modal.id = 'su-cat-form-modal';
-    modal.innerHTML = '<div class="su-form-card" style="overflow-y:auto;max-height:88dvh;">'
+    modal.innerHTML = '<div class="su-form-card">'
       + '<div class="su-form-header">'
       + '<span id="su-cat-form-title">Nueva categoría</span>'
       + '<button id="su-cat-form-close">✕</button>'
       + '</div>'
+      + '<div class="su-form-scroll">'
       + '<input id="su-cat-f-label-es" class="su-input" placeholder="Nombre ES *" maxlength="40">'
       + '<input id="su-cat-f-label-en" class="su-input" placeholder="Nombre EN *" maxlength="40">'
       + '<input id="su-cat-f-emoji"    class="su-input" placeholder="Emoji (ej: 🍔)" maxlength="4">'
@@ -709,6 +704,7 @@ export class SuperUserPanel {
       + '<button class="su-btn su-btn-cyan" id="su-cat-form-save">💾 Guardar</button>'
       + '</div>'
       + '<div id="su-cat-form-error" class="su-form-error"></div>'
+      + '</div>'
       + '</div>';
     document.body.appendChild(modal);
 
@@ -996,9 +992,8 @@ export class SuperUserPanel {
         invalidateCache();
         await this._loadCatList();
         this.callbacks.onCategoriesUpdated?.();
-        // Actualizar icono del chip en el panel inferior
-        const _chipImg = document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon-3d`);
-        if (_chipImg && icon3dUrl) _chipImg.src = icon3dUrl;
+        const _cimg=document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon-3d`);
+        if(_cimg&&icon3dUrl)_cimg.src=icon3dUrl;
       }
       this._closeCatForm();
     } catch (err) {
