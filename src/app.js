@@ -8,6 +8,7 @@ import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
 import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
 import { initSupabase, AuthService, ActivityService, ProfileService } from '/src/services/SupabaseService.js';
 import { isSuperUser }      from '/src/services/SuperUserService.js';
+import { getCategories }    from '/src/services/CategoryService.js';
 
 window.wpApp = {
   mapView: null, currentUser: null,
@@ -32,6 +33,50 @@ async function loadConfig() {
     window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
     console.log('✅ Config cargada');
   } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
+}
+
+// ── Cargar categorías desde Supabase y actualizar chips del panel ────
+// Igual que renderMapCategories() en el original
+async function renderMapCategories() {
+  try {
+    const cats = await getCategories();
+    const container = document.getElementById('map-categories-footer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    cats.forEach(cat => {
+      const chip = document.createElement('button');
+      chip.className = 'category-footer-chip';
+      chip.dataset.menuKey = cat.key;
+
+      const icon3d = cat.icon3d_url || '';
+      const emoji  = cat.emoji || '';
+      const label  = cat.label_es || cat.key;
+
+      chip.innerHTML = `
+        <div class="category-icon-circle loading">
+          ${icon3d
+            ? `<img src="${icon3d}" class="category-icon-3d"
+                onload="this.closest('.category-icon-circle').classList.remove('loading')"
+                onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">`
+            : `<span class="category-icon">${emoji}</span>`
+          }
+        </div>
+        <span class="category-name">${label}</span>`;
+
+      container.appendChild(chip);
+    });
+
+    console.log('✅ ' + cats.length + ' categorías cargadas desde Supabase');
+
+    // Re-conectar listeners de categorías
+    if (window.wpApp.mapView) {
+      setupCategories(window.wpApp.mapView);
+    }
+  } catch(err) {
+    console.warn('⚠️ renderMapCategories:', err.message);
+    // Mantener los chips estáticos del HTML si falla
+  }
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────
@@ -100,6 +145,10 @@ function mountSuperPanel(mv) {
   if (window.wpApp.superPanel) return;
   const sp = new SuperUserPanel(mv, {
     onLandmarksUpdated: (items) => mv._renderLandmarks(items),
+    onCategoriesUpdated: () => {
+      // Recargar chips del panel desde Supabase
+      renderMapCategories();
+    },
   });
   sp.mount();
   window.wpApp.superPanel = sp;
@@ -108,51 +157,41 @@ function mountSuperPanel(mv) {
 
 // ── Categorías + SubcategoryRow ───────────────────────────────────────
 function setupCategories(mv) {
-  // SubcategoryRow — necesita el map para GPS/Live
-  const subcatRow = new SubcategoryRow({
-    map: mv.getMap(),
-    onSubcatSelect: (value) => {
-      const counter = document.getElementById('map-results-count');
-      if (value === 'all') {
-        mv.markerEls.forEach(el => el.style.display = '');
-        if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
-        return;
-      }
-      let visible = 0;
-      mv.allPlaces.forEach((place, i) => {
-        const types = (place.types || []).join(' ').toLowerCase();
-        const name  = (place.name  || '').toLowerCase();
-        const match = types.includes(value) || name.includes(value);
-        if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
-        if (match) visible++;
-      });
-      if (counter) counter.textContent = `${visible} lugares`;
-    },
-  });
-  window.wpApp.subcatRow = subcatRow;
+  // Desconectar listeners previos clonando los chips
+  const container = document.getElementById('map-categories-footer');
+  if (!container) return;
 
-  // Chips de categoría principal
-  document.querySelectorAll('.category-footer-chip').forEach(chip => {
+  container.querySelectorAll('.category-footer-chip').forEach(chip => {
+    // Quitar pointer-events en hijos para que click llegue al chip
     chip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
-    chip.addEventListener('click', async (e) => {
+
+    // Clonar para eliminar listeners anteriores
+    const newChip = chip.cloneNode(true);
+    chip.parentNode.replaceChild(newChip, chip);
+
+    newChip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
+    newChip.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const menuKey  = chip.dataset.menuKey;
-      const isActive = chip.classList.contains('active');
-      document.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
+      const menuKey  = newChip.dataset.menuKey;
+      const isActive = newChip.classList.contains('active');
+
+      container.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
+
       if (isActive) {
         mv._clearPlaceMarkers(); mv.currentCatId = null;
-        subcatRow.hide();
+        window.wpApp.subcatRow?.hide();
         const counter = document.getElementById('map-results-count');
         if (counter) counter.textContent = '';
         return;
       }
-      chip.classList.add('active');
-      subcatRow.showLoading(menuKey);
+
+      newChip.classList.add('active');
+      window.wpApp.subcatRow?.showLoading(menuKey);
       const counter = document.getElementById('map-results-count');
       if (counter) counter.textContent = 'Cargando...';
       await mv.loadCategory(menuKey);
       if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
-      subcatRow.showSubcats(menuKey);
+      window.wpApp.subcatRow?.showSubcats(menuKey);
     });
   });
 }
@@ -223,11 +262,32 @@ function setupActivitySubscription(mv) {
     mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
     console.log('✅ MapView creado');
 
-    // SubcategoryRow necesita el mapa listo — esperar el evento load
+    // SubcategoryRow — necesita mapa listo
     mv.getMap().on('load', () => {
-      setupCategories(mv);
+      const subcatRow = new SubcategoryRow({
+        map: mv.getMap(),
+        onSubcatSelect: (value) => {
+          const counter = document.getElementById('map-results-count');
+          if (value === 'all') {
+            mv.markerEls.forEach(el => el.style.display = '');
+            if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+            return;
+          }
+          let visible = 0;
+          mv.allPlaces.forEach((place, i) => {
+            const types = (place.types || []).join(' ').toLowerCase();
+            const name  = (place.name  || '').toLowerCase();
+            const match = types.includes(value) || name.includes(value);
+            if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
+            if (match) visible++;
+          });
+          if (counter) counter.textContent = `${visible} lugares`;
+        },
+      });
+      window.wpApp.subcatRow = subcatRow;
     });
 
+    // Auth modal
     const authModal = new AuthModal({
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
@@ -241,6 +301,11 @@ function setupActivitySubscription(mv) {
     setupSearch(mv);
     setupActivitySubscription(mv);
     renderAuthButton(null);
+
+    // Cargar categorías desde Supabase — reemplaza los chips estáticos del HTML
+    renderMapCategories().then(() => {
+      setupCategories(mv);
+    });
 
     console.log('✅ WhatsPlan listo');
   } catch(err) {
