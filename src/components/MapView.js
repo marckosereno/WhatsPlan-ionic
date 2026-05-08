@@ -21,13 +21,15 @@ const BL_HALO     = 'rgba(237,237,234,0.95)';
 const BENITO_LINE = '#7c6ef7';
 const BENITO_TEXT = '#5a4fcf';
 
+// CATEGORIES se carga dinámicamente desde Supabase via app.js
+// Fallback mínimo por si no hay conexión
 const CATEGORIES = {
-  RESTAURANTS:   { icon: '🍔',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hamburger/3D/hamburger_3d.png' },
-  HEALTH:        { icon: '🩺',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Stethoscope/3D/stethoscope_3d.png' },
-  SHOPPING:      { icon: '🛍️', icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shopping%20bags/3D/shopping_bags_3d.png' },
-  ENTERTAINMENT: { icon: '🎈',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Balloon/3D/balloon_3d.png' },
-  PARKS:         { icon: '🌵',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cactus/3D/cactus_3d.png' },
-  WORKSHOPS:     { icon: '🔧',  icon3d: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Wrench/3D/wrench_3d.png' },
+  RESTAURANTS:   { icon: '🍔',  icon3d: null },
+  HEALTH:        { icon: '🩺',  icon3d: null },
+  SHOPPING:      { icon: '🛍️', icon3d: null },
+  ENTERTAINMENT: { icon: '🎈',  icon3d: null },
+  PARKS:         { icon: '🌵',  icon3d: null },
+  WORKSHOPS:     { icon: '🔧',  icon3d: null },
 };
 
 // ── Supabase resize ──────────────────────────────────────────────────
@@ -94,6 +96,15 @@ function injectLandmarkStyles() {
 // ====================================================================
 export class MapView {
   constructor() {
+    // CATEGORIES accesible como propiedad de instancia para que app.js pueda actualizarla
+    this.CATEGORIES = {
+      RESTAURANTS:   { icon: '🍔',  icon3d: null },
+      HEALTH:        { icon: '🩺',  icon3d: null },
+      SHOPPING:      { icon: '🛍️', icon3d: null },
+      ENTERTAINMENT: { icon: '🎈',  icon3d: null },
+      PARKS:         { icon: '🌵',  icon3d: null },
+      WORKSHOPS:     { icon: '🔧',  icon3d: null },
+    };
     this.map             = null;
     this.markers         = [];
     this.markerEls       = [];
@@ -140,13 +151,44 @@ export class MapView {
 
     this.map.on('load', () => {
       console.log('✅ Mapa listo');
+
+      // Restaurar mapa al volver a la app (evita pantalla en blanco)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          setTimeout(() => {
+            try { this.map.resize(); } catch(e) {}
+          }, 100);
+        }
+      });
       this._applyBlinkLight();
       this._loadLandmarks();
       this._loadActivities();
 
       // Drag pause para animaciones
-      this.map.on('dragstart', () => document.body.classList.add('map-dragging'));
-      this.map.on('dragend',   () => document.body.classList.remove('map-dragging'));
+      this.map.on('dragstart', () => { document.body.classList.add('map-dragging'); });
+      this.map.on('dragend', () => { document.body.classList.remove('map-dragging'); });
+
+      // Featured highlight — igual que el original
+      // Se activa cuando un pin featured se acerca al centro del mapa
+      const _featuredCheck = () => { if (this.map.getZoom() >= 17) this._checkFeaturedNearCenter(); };
+      this.map.on('move', _featuredCheck);
+
+      // CSS para highlight
+      if (!document.getElementById('featured-highlight-styles')) {
+        const fs = document.createElement('style');
+        fs.id = 'featured-highlight-styles';
+        fs.textContent = `
+          .marker-highlighted .place-pin-wrapper {
+            box-shadow: 0 0 0 2px #a5b4fc, 0 0 0 4px rgba(99,102,241,0.3), 0 4px 16px rgba(99,102,241,0.4) !important;
+            transition: box-shadow 0.2s ease;
+          }
+          @keyframes featuredNameIn {
+            from { opacity:0; transform:translateX(-50%) translateY(4px); }
+            to   { opacity:1; transform:translateX(-50%) translateY(0); }
+          }
+        `;
+        document.head.appendChild(fs);
+      }
 
       // Badge visible en zoom ≥ 15
       let _zt = null;
@@ -267,7 +309,7 @@ export class MapView {
 
   async loadCategory(menuKey) {
     this.currentCatId   = menuKey;
-    this.currentCatData = CATEGORIES[menuKey] || CATEGORIES['RESTAURANTS'];
+    this.currentCatData = this.CATEGORIES[menuKey] || CATEGORIES[menuKey] || CATEGORIES['RESTAURANTS'];
     this._clearPlaceMarkers();
     try {
       const _t  = Date.now();
@@ -279,7 +321,6 @@ export class MapView {
       this.allPlaces = [...(json.places || []), ...custom];
       this._renderPlaceMarkers(this.allPlaces);
     } catch(e) { console.error('❌ loadCategory:', e); }
-    // Refiltrar landmarks por la nueva categoría activa
     if (this._allLandmarks) this._renderLandmarks([]);
   }
 
@@ -476,7 +517,11 @@ export class MapView {
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const el = this.miniCardMarker.getElement();
-    if (el && el._savedHtml !== undefined) { el.innerHTML = el._savedHtml; el.removeAttribute('style'); el._savedHtml = null; }
+    if (el && el._savedHtml !== undefined) {
+      el.innerHTML = el._savedHtml;
+      el.removeAttribute('style');
+      el._savedHtml = null;
+    }
     this.miniCardMarker = null; this.miniCardIndex = -1; this.miniCardPlace = null;
   }
 
@@ -507,18 +552,14 @@ export class MapView {
 
   // ── Landmarks ─────────────────────────────────────────────────────
   _renderLandmarks(items) {
-    // Guardar todos para refiltrar al cambiar categoría (igual que original)
     if (items && items.length) this._allLandmarks = items;
-
-    // Filtrar por categoría activa y visible_in_categories
     const cat = this.currentCatId;
     const filtered = (this._allLandmarks || []).filter(item => {
-      if (!item.visible_in_categories || !item.visible_in_categories.length) return true; // "Todas"
-      if (!cat) return true; // sin categoría = mostrar todos
+      if (!item.visible_in_categories || !item.visible_in_categories.length) return true;
+      if (!cat) return true;
       return item.visible_in_categories.includes(cat);
     });
     items = filtered;
-
     this.landmarkMarkers.forEach(m => m.remove());
     this.landmarkMarkers = [];
 
@@ -665,6 +706,91 @@ export class MapView {
     });
 
     console.log('✅ Landmarks renderizados:', items.length);
+  }
+
+  // ── Featured Highlight — igual que el original ─────────────────────
+  _clearFeaturedHighlight() {
+    document.querySelectorAll('.place-marker-el.featured-highlight').forEach(el => {
+      el.classList.remove('featured-highlight');
+      const wrapper = el.querySelector('.place-pin-wrapper');
+      const nameEl  = el.querySelector('.pin-featured-name');
+      const shadow  = el.querySelector('.pin-featured-shadow');
+      const badge   = el.querySelector('.pin-featured-badge');
+      if (wrapper) { wrapper.style.transform = ''; wrapper.style.boxShadow = ''; }
+      if (nameEl)  nameEl.remove();
+      if (shadow)  shadow.remove();
+      if (badge) {
+        badge.style.display = 'flex';
+        const place = el._place;
+        if (place?.featured) {
+          const bg   = place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)';
+          const icon = place.featured==='verified'?'✓':'⭐';
+          badge.style.background = bg; badge.innerHTML = icon;
+        }
+      }
+      const lbl = el.querySelector('.place-pin-label');
+      if (lbl) lbl.style.opacity = '';
+    });
+    this._featuredHighlightEl = null;
+  }
+
+  _checkFeaturedNearCenter() {
+    const container = this.map.getContainer();
+    const cx = container.offsetWidth / 2;
+    const cy = container.offsetHeight / 2;
+    const ENTER = 100, EXIT = 180;
+    let closest = null, closestDist = Infinity;
+    document.querySelectorAll('.place-marker-el').forEach(el => {
+      const place = el._place;
+      if (!place?.featured) return;
+      const marker = el._marker;
+      if (!marker) return;
+      const pt   = this.map.project(marker.getLngLat());
+      const dist = Math.sqrt(Math.pow(pt.x-cx,2) + Math.pow(pt.y-cy,2));
+      if (dist < ENTER && dist < closestDist) { closestDist = dist; closest = { el, place }; }
+    });
+    if (closest && closest.el === this._featuredHighlightEl) return;
+    if (!closest && this._featuredHighlightEl) {
+      const pm = this._featuredHighlightEl._marker;
+      if (pm) {
+        const pt = this.map.project(pm.getLngLat());
+        if (Math.sqrt(Math.pow(pt.x-cx,2)+Math.pow(pt.y-cy,2)) < EXIT) return;
+      }
+    }
+    this._clearFeaturedHighlight();
+    if (!closest) return;
+    this._featuredHighlightEl = closest.el;
+    closest.el.classList.add('featured-highlight');
+    const fb  = closest.el.querySelector('.pin-featured-badge');
+    const lbl = closest.el.querySelector('.place-pin-label');
+    if (fb)  fb.style.display  = 'none';
+    if (lbl) lbl.style.opacity = '0';
+    if (navigator.vibrate) navigator.vibrate(40);
+    const wrapper = closest.el.querySelector('.place-pin-wrapper');
+    if (wrapper) {
+      wrapper.style.transition = 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)';
+      wrapper.style.transform  = 'scale(1.35) translateY(-6px)';
+    }
+    const root = closest.el.querySelector('.place-pin-root');
+    if (root && !root.querySelector('.pin-featured-shadow')) {
+      const shadow = document.createElement('div');
+      shadow.className = 'pin-featured-shadow';
+      shadow.style.cssText = 'position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;';
+      root.appendChild(shadow);
+    }
+    if (root && !root.querySelector('.pin-featured-name')) {
+      const badge  = closest.place.featured==='verified'?'✅ Verificado':closest.place.featured==='premium'?'💎 Premium':'⭐ Destacado';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'pin-featured-name';
+      nameEl.style.cssText = 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
+      nameEl.innerHTML =
+        '<div style="font-size:11px;font-weight:800;color:#1f2937;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
+        closest.place.name + '</div>' +
+        '<div style="font-size:9px;font-weight:700;background:' +
+        (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#8b5cf6,#6366f1)':'linear-gradient(135deg,#f59e0b,#f97316)') +
+        ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
+      root.appendChild(nameEl);
+    }
   }
 
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
