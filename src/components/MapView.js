@@ -270,7 +270,8 @@ export class MapView {
     this.currentCatData = CATEGORIES[menuKey] || CATEGORIES['RESTAURANTS'];
     this._clearPlaceMarkers();
     try {
-      const res  = await fetch(`/api/airtable-places?category=${menuKey}`);
+      const _t  = Date.now();
+      const res  = await fetch(`/api/airtable-places?category=${menuKey}&_t=${_t}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       let custom = [];
