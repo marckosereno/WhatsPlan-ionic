@@ -101,8 +101,7 @@ export class SubcategoryRow {
     gps.innerHTML = `<svg class="hm-gps-icon" viewBox="0 0 122.88 122.88" fill="currentColor">
       <path d="M120.3.14,1.24,40.38A1.82,1.82,0,0,0,.1,42.7a1.78,1.78,0,0,0,1.21,1.15h0L60.85,62,79,121.58h0a1.78,1.78,0,0,0,1.15,1.21,1.82,1.82,0,0,0,2.32-1.14L122.74,2.58A1.85,1.85,0,0,0,120.3.14Z"/>
     </svg>`;
-    gps.addEventListener('click',    () => this._toggleGps());
-    gps.addEventListener('touchend', (e) => { e.preventDefault(); this._toggleGps(); });
+    gps.addEventListener('click', () => this._toggleGps());
 
     // Footer subcategorías
     const footer = document.createElement('div');
