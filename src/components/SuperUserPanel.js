@@ -238,35 +238,66 @@ export class SuperUserPanel {
   _buildCatChips() {
     const row = document.getElementById('su-cat-chips-row');
     if (!row) return;
-    // Obtener categorías disponibles del mapView o de window.wpApp
-    const cats = [];
-    row.innerHTML = '';
-    // Chip "Todas"
-    const allChip = document.createElement('button');
-    allChip.className = 'su-cat-chip active';
-    allChip.dataset.catKey = 'all';
-    allChip.textContent = '🌐 Todas';
-    allChip.addEventListener('click', () => {
-      // Si "Todas" se activa, desactivar las demás
-      const isActive = allChip.classList.toggle('active');
-      if (isActive) row.querySelectorAll('.su-cat-chip:not([data-cat-key="all"])').forEach(c => c.classList.remove('active'));
-    });
-    row.appendChild(allChip);
-    // Un chip por categoría
-    cats.forEach(cat => {
-      const chip = document.createElement('button');
-      chip.className = 'su-cat-chip';
-      chip.dataset.catKey = cat.menuKey || cat.key || cat.id;
-      const lang = 'es';
-      chip.textContent = (cat.icon ? cat.icon + ' ' : '') + (lang === 'es' ? (cat.displayNameES || cat.label_es || cat.id) : (cat.displayNameEN || cat.label_en || cat.id));
-      chip.addEventListener('click', () => {
-        chip.classList.toggle('active');
-        // Si hay alguna cat específica activa, desactivar "Todas"
-        const anyCatActive = !!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active');
-        if (anyCatActive) allChip.classList.remove('active');
-        else allChip.classList.add('active');
+    row.innerHTML = '<div style="color:#6b7280;font-size:11px;">Cargando...</div>';
+    // Cargar categorías desde CategoryService (igual que la PWA original)
+    getCategories().then(cats => {
+      row.innerHTML = '';
+      // Chip "Todas"
+      const allChip = document.createElement('button');
+      allChip.className = 'su-cat-chip active';
+      allChip.dataset.catKey = 'all';
+      allChip.textContent = '🌐 Todas';
+      allChip.addEventListener('click', () => {
+        const isActive = allChip.classList.toggle('active');
+        if (isActive) row.querySelectorAll('.su-cat-chip:not([data-cat-key="all"])').forEach(c => c.classList.remove('active'));
       });
-      row.appendChild(chip);
+      row.appendChild(allChip);
+      cats.forEach(cat => {
+        const chip = document.createElement('button');
+        chip.className = 'su-cat-chip';
+        chip.dataset.catKey = cat.menuKey || cat.key || cat.id;
+        chip.textContent = (cat.emoji ? cat.emoji + ' ' : '') + (cat.label_es || cat.displayNameES || cat.id || cat.key);
+        chip.addEventListener('click', () => {
+          chip.classList.toggle('active');
+          const anyCatActive = !!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active');
+          if (anyCatActive) allChip.classList.remove('active');
+          else allChip.classList.add('active');
+        });
+        row.appendChild(chip);
+      });
+    }).catch(() => {
+      // Fallback: categorías hardcodeadas
+      const fallback = [
+        { key:'RESTAURANTS', emoji:'🍔', label_es:'Restaurantes' },
+        { key:'HEALTH',      emoji:'🩺', label_es:'Salud & Estética' },
+        { key:'SHOPPING',    emoji:'🛍️', label_es:'Compras' },
+        { key:'ENTERTAINMENT',emoji:'🎈',label_es:'Entretenimiento' },
+        { key:'PARKS',       emoji:'🌵', label_es:'Parques' },
+        { key:'WORKSHOPS',   emoji:'🔧', label_es:'Talleres' },
+      ];
+      row.innerHTML = '';
+      const allChip = document.createElement('button');
+      allChip.className = 'su-cat-chip active';
+      allChip.dataset.catKey = 'all';
+      allChip.textContent = '🌐 Todas';
+      allChip.addEventListener('click', () => {
+        const isActive = allChip.classList.toggle('active');
+        if (isActive) row.querySelectorAll('.su-cat-chip:not([data-cat-key="all"])').forEach(c => c.classList.remove('active'));
+      });
+      row.appendChild(allChip);
+      fallback.forEach(cat => {
+        const chip = document.createElement('button');
+        chip.className = 'su-cat-chip';
+        chip.dataset.catKey = cat.key;
+        chip.textContent = cat.emoji + ' ' + cat.label_es;
+        chip.addEventListener('click', () => {
+          chip.classList.toggle('active');
+          const anyCatActive = !!row.querySelector('.su-cat-chip:not([data-cat-key="all"]).active');
+          if (anyCatActive) allChip.classList.remove('active');
+          else allChip.classList.add('active');
+        });
+        row.appendChild(chip);
+      });
     });
   }
 
