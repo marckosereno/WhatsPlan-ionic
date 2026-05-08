@@ -1078,11 +1078,11 @@ export class SuperUserPanel {
 
     try {
       const mod = await import('/src/services/CategoryService.js');
-      allSubcats = await mod.getSubcategories(mapView?.currentCategory || null);
+      allSubcats = await mod.getSubcategories(mapView?.currentCatId || null);
     } catch(e) {}
 
     // Fetch fresco si hay categoría activa
-    const currentCat = mapView?.currentCategoryData?.menuKey || mapView?.currentCategory;
+    const currentCat = mapView?.currentCatData?.menuKey || mapView?.currentCatId;
     if (currentCat) {
       try {
         if (listEl) listEl.innerHTML = '<div style="color:#6b7280;font-size:13px;text-align:center;padding:20px;">Cargando lugares...</div>';
@@ -1991,19 +1991,12 @@ export class SuperUserPanel {
         if (!data.success) throw new Error(data.message);
         modal.remove();
 
-        // Invalidar cache
-        try {
-          const { airtableCache } = await import('/src/services/airtable-cache.js');
-          airtableCache.clearCache();
-        } catch(e) { console.warn('cache clear error', e); }
+        // Invalidar cache (no-op en WhatsPlan, usa timestamp en la URL)
 
-        // Recargar mapa (fuerza fetch fresco con _t timestamp)
+        // Recargar mapa con categoría actual
         const mapView = window.wpApp?.mapView;
-        if (mapView) {
-          const catData = mapView.categories?.find(c => c.menuKey === category || c.key === category)
-                       || mapView.currentCategoryData;
-          if (catData) await mapView.loadPlacesByCategory(catData);
-          // loadPlacesByCategory ya recarga allPlaces completo desde Airtable
+        if (mapView && mapView.currentCatId) {
+          await mapView.loadCategory(mapView.currentCatId);
         }
 
         if (isEdit) {
