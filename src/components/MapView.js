@@ -278,6 +278,8 @@ export class MapView {
       this.allPlaces = [...(json.places || []), ...custom];
       this._renderPlaceMarkers(this.allPlaces);
     } catch(e) { console.error('❌ loadCategory:', e); }
+    // Refiltrar landmarks por la nueva categoría activa
+    if (this._allLandmarks) this._renderLandmarks([]);
   }
 
   // ── Markers ───────────────────────────────────────────────────────
@@ -504,6 +506,18 @@ export class MapView {
 
   // ── Landmarks ─────────────────────────────────────────────────────
   _renderLandmarks(items) {
+    // Guardar todos para refiltrar al cambiar categoría (igual que original)
+    if (items && items.length) this._allLandmarks = items;
+
+    // Filtrar por categoría activa y visible_in_categories
+    const cat = this.currentCatId;
+    const filtered = (this._allLandmarks || []).filter(item => {
+      if (!item.visible_in_categories || !item.visible_in_categories.length) return true; // "Todas"
+      if (!cat) return true; // sin categoría = mostrar todos
+      return item.visible_in_categories.includes(cat);
+    });
+    items = filtered;
+
     this.landmarkMarkers.forEach(m => m.remove());
     this.landmarkMarkers = [];
 
