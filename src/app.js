@@ -35,47 +35,34 @@ async function loadConfig() {
   } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
 }
 
-// ── Cargar categorías desde Supabase y actualizar chips del panel ────
-// Igual que renderMapCategories() en el original
+// ── Categorías desde Supabase ─────────────────────────────────────────
 async function renderMapCategories() {
   try {
     const cats = await getCategories();
     const container = document.getElementById('map-categories-footer');
-    if (!container) return;
-
+    if (!container || !cats.length) return;
     container.innerHTML = '';
     cats.forEach(cat => {
       const chip = document.createElement('button');
       chip.className = 'category-footer-chip';
       chip.dataset.menuKey = cat.key;
-
       const icon3d = cat.icon3d_url || '';
       const emoji  = cat.emoji || '';
       const label  = cat.label_es || cat.key;
-
       chip.innerHTML = `
         <div class="category-icon-circle loading">
           ${icon3d
             ? `<img src="${icon3d}" class="category-icon-3d"
                 onload="this.closest('.category-icon-circle').classList.remove('loading')"
                 onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">`
-            : `<span class="category-icon">${emoji}</span>`
-          }
+            : `<span class="category-icon">${emoji}</span>`}
         </div>
         <span class="category-name">${label}</span>`;
-
       container.appendChild(chip);
     });
-
-    console.log('✅ ' + cats.length + ' categorías cargadas desde Supabase');
-
-    // Re-conectar listeners de categorías
-    if (window.wpApp.mapView) {
-      setupCategories(window.wpApp.mapView);
-    }
+    console.log('✅ ' + cats.length + ' categorías desde Supabase');
   } catch(err) {
     console.warn('⚠️ renderMapCategories:', err.message);
-    // Mantener los chips estáticos del HTML si falla
   }
 }
 
@@ -144,32 +131,49 @@ function _showProfileMenu() {
 function mountSuperPanel(mv) {
   if (window.wpApp.superPanel) return;
   const sp = new SuperUserPanel(mv, {
-    onLandmarksUpdated: (items) => mv._renderLandmarks(items),
-    onCategoriesUpdated: () => {
-      // Recargar chips del panel desde Supabase
-      renderMapCategories();
-    },
+    onLandmarksUpdated:  (items) => mv._renderLandmarks(items),
+    onCategoriesUpdated: () => renderMapCategories().then(() => setupCategories(mv)),
   });
   sp.mount();
   window.wpApp.superPanel = sp;
   console.log('✅ SuperUserPanel montado');
 }
 
+// ── Filtro de subcategoría — igual que filterBySubcategory() del original
+// Usa place.subcategoryTags (array) NO place.types
+function filterBySubcat(mv, subcatValue) {
+  const counter = document.getElementById('map-results-count');
+
+  if (!subcatValue || subcatValue === 'all') {
+    mv.markerEls.forEach(el => el.style.display = '');
+    if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+    return;
+  }
+
+  let visible = 0;
+  mv.allPlaces.forEach((place, i) => {
+    const tags = place.subcategoryTags || [];
+    // Comparación exacta por valor del chip — igual que el original
+    const match = tags.some(tag => tag.toLowerCase() === subcatValue.toLowerCase());
+    if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+
+  if (counter) counter.textContent = `${visible} lugares`;
+  console.log(`🔍 Subcat "${subcatValue}": ${visible} lugares`);
+}
+
 // ── Categorías + SubcategoryRow ───────────────────────────────────────
 function setupCategories(mv) {
-  // Desconectar listeners previos clonando los chips
   const container = document.getElementById('map-categories-footer');
   if (!container) return;
 
   container.querySelectorAll('.category-footer-chip').forEach(chip => {
-    // Quitar pointer-events en hijos para que click llegue al chip
-    chip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
-
     // Clonar para eliminar listeners anteriores
     const newChip = chip.cloneNode(true);
     chip.parentNode.replaceChild(newChip, chip);
-
     newChip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
+
     newChip.addEventListener('click', async (e) => {
       e.stopPropagation();
       const menuKey  = newChip.dataset.menuKey;
@@ -178,7 +182,8 @@ function setupCategories(mv) {
       container.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
 
       if (isActive) {
-        mv._clearPlaceMarkers(); mv.currentCatId = null;
+        mv._clearPlaceMarkers();
+        mv.currentCatId = null;
         window.wpApp.subcatRow?.hide();
         const counter = document.getElementById('map-results-count');
         if (counter) counter.textContent = '';
@@ -196,7 +201,7 @@ function setupCategories(mv) {
   });
 }
 
-// ── Búsqueda ──────────────────────────────────────────────────────────
+// ── Búsqueda inline ───────────────────────────────────────────────────
 function setupSearch(mv) {
   const input = document.getElementById('map-search-global-input');
   if (!input) return;
@@ -266,28 +271,12 @@ function setupActivitySubscription(mv) {
     mv.getMap().on('load', () => {
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
-        onSubcatSelect: (value) => {
-          const counter = document.getElementById('map-results-count');
-          if (value === 'all') {
-            mv.markerEls.forEach(el => el.style.display = '');
-            if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
-            return;
-          }
-          let visible = 0;
-          mv.allPlaces.forEach((place, i) => {
-            const types = (place.types || []).join(' ').toLowerCase();
-            const name  = (place.name  || '').toLowerCase();
-            const match = types.includes(value) || name.includes(value);
-            if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
-            if (match) visible++;
-          });
-          if (counter) counter.textContent = `${visible} lugares`;
-        },
+        // ── Filtro correcto: usa subcategoryTags igual que el original ──
+        onSubcatSelect: (value) => filterBySubcat(mv, value),
       });
       window.wpApp.subcatRow = subcatRow;
     });
 
-    // Auth modal
     const authModal = new AuthModal({
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
@@ -302,10 +291,8 @@ function setupActivitySubscription(mv) {
     setupActivitySubscription(mv);
     renderAuthButton(null);
 
-    // Cargar categorías desde Supabase — reemplaza los chips estáticos del HTML
-    renderMapCategories().then(() => {
-      setupCategories(mv);
-    });
+    // Cargar categorías desde Supabase y conectar listeners
+    renderMapCategories().then(() => setupCategories(mv));
 
     console.log('✅ WhatsPlan listo');
   } catch(err) {
