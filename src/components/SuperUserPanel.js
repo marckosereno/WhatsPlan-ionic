@@ -237,10 +237,10 @@ export class SuperUserPanel {
 
   _buildCatChips() {
     const row = document.getElementById('su-cat-chips-row');
-    if (!row) return;
+    if (!row) return Promise.resolve();
     row.innerHTML = '<div style="color:#6b7280;font-size:11px;">Cargando...</div>';
     // Cargar categorías desde CategoryService (igual que la PWA original)
-    getCategories().then(cats => {
+    return getCategories().then(cats => {
       row.innerHTML = '';
       // Chip "Todas"
       const allChip = document.createElement('button');
@@ -431,7 +431,7 @@ export class SuperUserPanel {
   }
 
   // ── Abrir formulario ───────────────────────────────────────
-  _openForm(type) {
+  async _openForm(type) {
     const modal = document.getElementById('su-form-modal');
     document.getElementById('su-form-title').textContent =
       type === 'landmark' ? '📍 Nuevo punto de referencia' : '🎉 Nuevo sticker';
@@ -458,8 +458,8 @@ export class SuperUserPanel {
     const showLabelEl = document.getElementById('su-field-show-label');
     if (stickerLabelEl) stickerLabelEl.value = '';
     if (showLabelEl) showLabelEl.checked = true;
-    // Cargar chips de categorías
-    this._buildCatChips();
+    // Cargar chips de categorías — async, esperar antes de mostrar modal
+    await this._buildCatChips();
     modal.classList.add('visible');
     this._currentFormType = type;
   }
@@ -707,7 +707,7 @@ export class SuperUserPanel {
     // Modal de formulario cat/subcat
     const modal = document.createElement('div');
     modal.id = 'su-cat-form-modal';
-    modal.innerHTML = '<div class="su-form-card">'
+    modal.innerHTML = '<div class="su-form-card" style="overflow-y:auto;max-height:88dvh;">'
       + '<div class="su-form-header">'
       + '<span id="su-cat-form-title">Nueva categoría</span>'
       + '<button id="su-cat-form-close">✕</button>'
@@ -1019,6 +1019,11 @@ export class SuperUserPanel {
         await upsertCategory(payload);
         invalidateCache();
         await this._loadCatList();
+        // Actualizar icono del chip en el panel inferior si existe
+        const chipEl = document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon-3d`);
+        if (chipEl && icon3dUrl) { chipEl.src = icon3dUrl; }
+        const chipEmoji = document.querySelector(`.category-footer-chip[data-menu-key="${key}"] .category-icon`);
+        if (chipEmoji && emoji) { chipEmoji.textContent = emoji; }
         this.callbacks.onCategoriesUpdated?.();
       }
       this._closeCatForm();
