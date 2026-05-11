@@ -81,11 +81,9 @@ export class SubcategoryRow {
   }
 
   _build() {
-    // El footer es el único contenedor — GPS va dentro del scroll como primer chip
     const footer = document.getElementById('map-subcategories-footer');
     if (!footer) return;
 
-    // Crear el botón GPS como chip dentro del scroll
     const gps = document.createElement('button');
     gps.id = 'map-gps-btn';
     gps.className = 'hm-gps-btn';
@@ -127,14 +125,31 @@ export class SubcategoryRow {
   }
 
   _stopGps() {
-    if (this._gpsWatchId != null) { navigator.geolocation.clearWatch(this._gpsWatchId); this._gpsWatchId = null; }
-    if (this._locationMarker) { this._locationMarker.remove(); this._locationMarker = null; }
+    // Detener el watch de geolocalización
+    if (this._gpsWatchId != null) {
+      navigator.geolocation.clearWatch(this._gpsWatchId);
+      this._gpsWatchId = null;
+    }
+    // Eliminar el marcador/avatar del mapa
+    if (this._locationMarker) {
+      this._locationMarker.remove();
+      this._locationMarker = null;
+    }
+    // Resetear estado GPS
     this._gpsActive  = false;
     this._lastGpsPos = null;
     this._gpsEl.classList.remove('active', 'loading');
+    // Detener LIVE si estaba activo
     if (this._liveActive) this._stopLive();
-    if (this._liveBtn) { this._liveBtn.remove(); this._liveBtn = null; }
-    if (this._liveRecenterBtn) { this._liveRecenterBtn.remove(); this._liveRecenterBtn = null; }
+    // Eliminar el chip LIVE del scroll
+    if (this._liveBtn) {
+      this._liveBtn.remove();
+      this._liveBtn = null;
+    }
+    if (this._liveRecenterBtn) {
+      this._liveRecenterBtn.remove();
+      this._liveRecenterBtn = null;
+    }
   }
 
   _upsertLocationMarker(lat, lng) {
@@ -157,7 +172,6 @@ export class SubcategoryRow {
     btn.id = 'hm-live-btn';
     btn.innerHTML = '<span class="hm-live-dot"></span>LIVE';
     btn.addEventListener('click', () => this._toggleLive());
-    // Insertar el botón LIVE justo después del GPS dentro del scroll
     if (this._gpsEl?.parentNode) this._gpsEl.parentNode.insertBefore(btn, this._gpsEl.nextSibling);
     this._liveBtn = btn;
   }
@@ -203,7 +217,6 @@ export class SubcategoryRow {
 
   showLoading(menuKey) {
     this.currentMenuKey = menuKey;
-    // Mantener el GPS y LIVE, reemplazar solo los chips de subcategoría
     this._clearSubcatChips();
     const loading = document.createElement('div');
     loading.className = 'hm-loading-chip';
@@ -221,7 +234,6 @@ export class SubcategoryRow {
 
     const allActive = !this.currentSubcat || this.currentSubcat === 'all';
 
-    // Chip "Todos"
     const todosBtn = document.createElement('button');
     todosBtn.className = `subcategory-footer-chip${allActive ? ' active' : ''}`;
     todosBtn.dataset.val = 'all';
@@ -253,7 +265,6 @@ export class SubcategoryRow {
     });
   }
 
-  // Elimina los chips de subcategoría pero deja GPS y LIVE intactos
   _clearSubcatChips() {
     this._footerEl.querySelectorAll('.subcategory-footer-chip, .hm-loading-chip').forEach(el => el.remove());
   }
@@ -269,7 +280,6 @@ export class SubcategoryRow {
     const s = document.createElement('style');
     s.id = 'subcats-row-styles';
     s.textContent = `
-      /* GPS como chip circular dentro del scroll */
       .hm-gps-btn {
         width: 31px; height: 31px; border-radius: 50%;
         border: 2px solid rgba(0,0,0,0.1); background: white;
@@ -281,12 +291,10 @@ export class SubcategoryRow {
       .hm-gps-btn.loading { animation: gpsPulse 1s infinite; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-      /* Marcador de ubicación en el mapa */
       .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#6366f1; }
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#6366f1; }
 
-      /* Botón LIVE */
       #hm-live-btn {
         height: 31px; padding: 0 10px; border-radius: 999px;
         border: 1.5px solid rgba(239,68,68,0.4); background: white;
@@ -297,7 +305,6 @@ export class SubcategoryRow {
       .hm-live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: livePulse 1.2s infinite; }
       @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-      /* Chips de subcategoría */
       .subcategory-footer-chip {
         display: inline-flex; align-items: center;
         height: 31px; padding: 0 12px;
@@ -308,7 +315,6 @@ export class SubcategoryRow {
       }
       .subcategory-footer-chip.active { background: #6366f1; border-color: #6366f1; color: white; }
 
-      /* Chip de carga */
       .hm-loading-chip {
         display: inline-flex; align-items: center; gap: 7px;
         background: white; border-radius: 999px; padding: 0 12px;
