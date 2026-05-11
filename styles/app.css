@@ -29,8 +29,6 @@ ion-app::before {
 .panel-categories-scroll { display: flex; overflow-x: auto; scrollbar-width: none; padding: 4px 12px; gap: 4px; }
 .panel-categories-scroll::-webkit-scrollbar { display: none; }
 
-.floating-search-btn { display: none; }
-
 .category-footer-chip { display: flex; flex-direction: column; align-items: center; min-width: 80px; gap: 6px; background: none; border: none; padding: 4px; cursor: pointer; }
 .category-icon-circle { width: 72px; height: 72px; border-radius: 24px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.2s; }
 .category-footer-chip.active .category-icon-circle { background: #e2e8f0; transform: scale(1.06); }
