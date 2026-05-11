@@ -3,7 +3,7 @@
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
 // ====================================================================
 
-import { ActivityService } from '/src/services/SupabaseService.js';
+import { ActivityService, getSupabase } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
 
 const CENTER_LNG = -97.9506;
@@ -315,7 +315,7 @@ export class MapView {
   // ── Actividades ───────────────────────────────────────────────────
   async _loadActivities() {
     try {
-      const acts = await ActivityService.getAll();
+      const acts = await ActivityService.getActiveActivities();
       this.activities = acts || [];
       this._refreshActivityBadges();
     } catch(e) { console.warn('⚠️ Actividades:', e.message); }
@@ -335,7 +335,9 @@ export class MapView {
 
     try {
       // Cargar lugares desde Supabase
-      const { data, error } = await window._supabase
+      const sb = getSupabase();
+      if (!sb) throw new Error('Supabase no inicializado');
+      const { data, error } = await sb
         .from('places')
         .select('*')
         .eq('category', menuKey)
