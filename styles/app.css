@@ -59,7 +59,7 @@ ion-app::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; 
 .panel-categories-scroll::-webkit-scrollbar { display: none; }
 
 /* ── Chips de categoría ── */
-.category-footer-chip { display: flex; flex-direction: column; align-items: center; min-width: 76px; gap: 5px; background: none; border: none; padding: 4px 2px; cursor: pointer; flex-shrink: 0; }
+.category-footer-chip { display: flex; flex-direction: column; align-items: center; min-width: 76px; gap: 2px; background: none; border: none; padding: 4px 2px; cursor: pointer; flex-shrink: 0; }
 .category-icon-circle { width: 68px; height: 68px; border-radius: 22px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.2s; }
 .category-footer-chip.active .category-icon-circle { background: #e2e8f0; transform: scale(1.06); }
 .category-footer-chip.active .category-name { color: #475569; font-weight: 700; }
