@@ -33,18 +33,21 @@ const CATEGORIES = {
 };
 
 // ── Supabase resize ──────────────────────────────────────────────────
-function supabaseResize(url, width = 80, quality = 75, mode = 'contain') {
+function supabaseResize(url, width, quality, mode) {
+  width   = width   || 80;
+  quality = quality || 75;
+  mode    = mode    || 'contain';
   if (!url || !url.includes('supabase.co')) return url;
   if (url.includes('/render/image/')) return url;
   return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-    + `?width=${width}&quality=${quality}&resize=${mode}`;
+    + '?width=' + width + '&quality=' + quality + '&resize=' + mode;
 }
 
 function proxyPhoto(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   if (url.includes('supabase.co')) return supabaseResize(url, 80, 75, 'contain');
-  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
+  return '/api/photo-proxy?url=' + encodeURIComponent(url);
 }
 
 // ── Fade-in de foto en pin ───────────────────────────────────────────
@@ -52,11 +55,11 @@ function applyPhotoToPin(photoUrl, el) {
   const pi = el.querySelector('.pin-inner');
   if (!pi || pi.classList.contains('loaded')) return;
   pi.style.opacity    = '0';
-  pi.style.background = `url('${photoUrl}') center/cover no-repeat`;
+  pi.style.background = "url('" + photoUrl + "') center/cover no-repeat";
   pi.innerHTML        = '';
   pi.classList.remove('loading');
   pi.classList.add('loaded');
-  requestAnimationFrame(() => { pi.style.opacity = '1'; });
+  requestAnimationFrame(function() { pi.style.opacity = '1'; });
 }
 
 function applyErrorToPin(el) {
@@ -122,13 +125,14 @@ export class MapView {
   }
 
   // ── Haptic — igual que PWA original ─────────────────────────────
-  haptic(type = 'tap') {
+  haptic(type) {
+    type = type || 'tap';
     if (!navigator.vibrate) return;
     const patterns = {
       tap: 15, select: 12, snap: 25,
       action: [30, 20, 60], longpress: [40, 30, 40], light: 10
     };
-    navigator.vibrate(patterns[type] ?? type);
+    navigator.vibrate(patterns[type] !== undefined ? patterns[type] : type);
   }
 
   // ── Init mapa ────────────────────────────────────────────────────
@@ -173,16 +177,16 @@ export class MapView {
       this._loadActivities();
 
       // Drag pause para animaciones
-      this.map.on('dragstart', () => { document.body.classList.add('map-dragging'); });
-      this.map.on('dragend', () => { document.body.classList.remove('map-dragging'); });
+      this.map.on('dragstart', function() { document.body.classList.add('map-dragging'); });
+      this.map.on('dragend',   function() { document.body.classList.remove('map-dragging'); });
 
       // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
-      const _featuredCheck = () => {
-        if (this.map.getZoom() >= 17) {
-          this._checkFeaturedNearCenter();
-        } else if (this._featuredHighlightEl) {
-          // Al hacer zoom-out por debajo de 17, limpiar highlight
-          this._clearFeaturedHighlight();
+      const self = this;
+      const _featuredCheck = function() {
+        if (self.map.getZoom() >= 17) {
+          self._checkFeaturedNearCenter();
+        } else if (self._featuredHighlightEl) {
+          self._clearFeaturedHighlight();
         }
       };
       this.map.on('move', _featuredCheck);
@@ -205,32 +209,31 @@ export class MapView {
         document.head.appendChild(fs);
       }
 
-      // Badge visible en zoom ≥ 15
+      // Badge visible en zoom >= 15
       let _zt = null;
       this.map.on('zoom', () => {
         if (_zt) return;
         _zt = setTimeout(() => {
           _zt = null;
           const show = this.map.getZoom() >= 15 ? '1' : '0';
-          document.querySelectorAll('.place-act-badge').forEach(b => b.style.opacity = show);
+          document.querySelectorAll('.place-act-badge').forEach(function(b) { b.style.opacity = show; });
         }, 80);
       });
 
-      // Labels visibles en zoom ≥ 18 — aparecen/desaparecen con el viewport
+      // Labels visibles en zoom >= 18 — aparecen/desaparecen con el viewport
       const _updateOrHideLabels = () => {
         if (this.map.getZoom() >= 18) {
           this._updateLabelsProgressive();
         } else {
-          if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+          if (this._labelTimers) this._labelTimers.forEach(function(t) { clearTimeout(t); });
           this._labelTimers = [];
-          document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
+          document.querySelectorAll('.place-marker-el .place-pin-label').forEach(function(l) {
             l.style.opacity = '0';
             l.style.display = 'none';
           });
         }
       };
       this.map.on('zoomend', _updateOrHideLabels);
-      // Al mover el mapa: ocultar los que salen, mostrar los nuevos
       this.map.on('moveend', _updateOrHideLabels);
 
       // Ghost-pan fix
@@ -238,8 +241,8 @@ export class MapView {
       c.addEventListener('touchstart', (e) => {
         if (!e.target.closest('.maplibregl-marker')) return;
         let moved = false;
-        const onMove = () => { moved = true; };
-        const onEnd  = () => {
+        const onMove = function() { moved = true; };
+        const onEnd  = function() {
           c.removeEventListener('touchmove', onMove, { capture: true });
           c.removeEventListener('touchend',  onEnd,  { capture: true });
           if (!moved) e.target.dispatchEvent(new TouchEvent('touchcancel', {
@@ -262,235 +265,200 @@ export class MapView {
   _applyBlinkLight() {
     try {
       const style = this.map.getStyle();
-      if (!style?.layers) return;
+      if (!style || !style.layers) return;
       style.layers.forEach(layer => {
-        const id = layer.id.toLowerCase();
-        if (layer.type === 'symbol') {
-          try {
-            const tt = this.map.getLayoutProperty(layer.id, 'text-transform');
-            if (tt === 'uppercase') this.map.setLayoutProperty(layer.id, 'text-transform', 'none');
-            const isPrimary   = id.includes('road-primary') || id.includes('highway') || id.includes('motorway') || id.includes('trunk');
-            const isTextLayer = id.includes('road') || id.includes('place') || id.includes('poi') || id.includes('label') || id.includes('name');
-            if (isTextLayer) {
-              try { this.map.setLayoutProperty(layer.id, 'text-font', ['Open Sans Italic','Montserrat Regular Italic','Noto Sans Regular','HanWangHeiLight Regular','NanumBarunGothic Regular']); } catch(_) {}
-            }
-            this.map.setPaintProperty(layer.id, 'text-color',      isPrimary ? BENITO_TEXT : BL_TEXT);
-            this.map.setPaintProperty(layer.id, 'text-halo-color', BL_HALO);
-            this.map.setPaintProperty(layer.id, 'text-halo-width', isPrimary ? 2.5 : 2);
-            this.map.setPaintProperty(layer.id, 'text-halo-blur',  0.3);
-          } catch(_) {}
-        }
-        if (layer.type === 'line') {
-          try {
-            const isMajor  = id.includes('primary') || id.includes('trunk') || id.includes('motorway');
-            const isSecond = id.includes('secondary') || id.includes('tertiary');
-            const isStreet = id.includes('street') || id.includes('road') || id.includes('residential') || id.includes('service') || id.includes('transportation');
-            const isWater  = id.includes('water') || id.includes('river') || id.includes('canal');
-            if (isWater)       { this.map.setPaintProperty(layer.id, 'line-color', BL_WATER);    this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],10,2,16,8]); }
-            else if (isMajor)  { this.map.setPaintProperty(layer.id, 'line-color', BENITO_LINE); this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],10,1,12,2,14,4,16,7,18,10]); }
-            else if (isSecond) { this.map.setPaintProperty(layer.id, 'line-color', '#c8c8d8');   this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],11,0.5,13,1.5,14,2.5,16,4,18,6]); }
-            else if (isStreet) { this.map.setPaintProperty(layer.id, 'line-color', '#f7f7f5');   this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],12,0.3,13,0.8,14,1.5,16,2.5,18,4]); }
-            try { this.map.setPaintProperty(layer.id, 'line-opacity', 1); } catch(_) {}
-          } catch(_) {}
-        }
-        if (layer.type === 'fill') {
-          try {
-            if (id.includes('water') || id.includes('ocean') || id.includes('lake') || id.includes('river') || id.includes('reservoir'))
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 1); }
-            else if (id.includes('park') || id.includes('grass') || id.includes('forest') || id.includes('wood') || id.includes('green') || id.includes('landcover'))
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_PARK); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.7); }
-            else if (id.includes('building'))
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_BUILDING); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.5); }
-            else if (id === 'background' || id.includes('landuse') || id.includes('land-') || id === 'land')
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_LAND); }
-          } catch(_) {}
+        if (!layer.id) return;
+        const id = layer.id;
+        const type = layer.type;
+
+        if (type === 'background') {
+          this.map.setPaintProperty(id, 'background-color', BL_BG);
+        } else if (type === 'fill') {
+          if (/water|ocean|sea|lake|river/.test(id)) {
+            this.map.setPaintProperty(id, 'fill-color', BL_WATER);
+          } else if (/park|green|grass|forest|wood|nature/.test(id)) {
+            this.map.setPaintProperty(id, 'fill-color', BL_PARK);
+          } else if (/building|structure/.test(id)) {
+            this.map.setPaintProperty(id, 'fill-color', BL_BUILDING);
+          } else {
+            this.map.setPaintProperty(id, 'fill-color', BL_LAND);
+          }
+        } else if (type === 'line') {
+          if (/benito|juarez/.test(id)) {
+            this.map.setPaintProperty(id, 'line-color', BENITO_LINE);
+          } else if (/water|ocean|sea|lake|river/.test(id)) {
+            this.map.setPaintProperty(id, 'line-color', BL_WATER);
+          } else {
+            this.map.setPaintProperty(id, 'line-color', 'rgba(200,200,196,0.6)');
+          }
+        } else if (type === 'symbol') {
+          try { this.map.setPaintProperty(id, 'text-color', BL_TEXT); } catch(e) {}
+          try { this.map.setPaintProperty(id, 'text-halo-color', BL_HALO); } catch(e) {}
+          try { this.map.setPaintProperty(id, 'text-halo-width', 1.5); } catch(e) {}
+          if (/benito|juarez/.test(id)) {
+            try { this.map.setPaintProperty(id, 'text-color', BENITO_TEXT); } catch(e) {}
+          }
         }
       });
-      try { this.map.setPaintProperty('background', 'background-color', BL_BG); } catch(_) {}
       console.log('✅ Blink Light aplicado');
-    } catch(e) { console.warn('⚠️ Estilo:', e.message); }
+    } catch(e) { console.warn('⚠️ Blink Light error:', e.message); }
   }
 
-  // ── Datos ─────────────────────────────────────────────────────────
-  async _loadActivities() {
-    try { this.activities = await ActivityService.getActiveActivities(); this._refreshActivityBadges(); }
-    catch(e) { console.warn('⚠️ Actividades:', e.message); }
-  }
-
+  // ── Landmarks ─────────────────────────────────────────────────────
   async _loadLandmarks() {
-    try { this._renderLandmarks(await LandmarkService.getAll()); }
-    catch(e) { console.warn('⚠️ Landmarks:', e.message); }
-  }
-
-  async loadCategory(menuKey) {
-    this.currentCatId   = menuKey;
-    this.currentCatData = this.CATEGORIES[menuKey] || CATEGORIES[menuKey] || CATEGORIES['RESTAURANTS'];
-    this._clearPlaceMarkers();
     try {
-      const _t  = Date.now();
-      const res  = await fetch(`/api/airtable-places?category=${menuKey}&_t=${_t}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      let custom = [];
-      try { custom = await CustomPlaceService.getByCategory(menuKey); } catch(_) {}
-      this.allPlaces = [...(json.places || []), ...custom];
-      this._renderPlaceMarkers(this.allPlaces);
-    } catch(e) { console.error('❌ loadCategory:', e); }
-    if (this._allLandmarks) this._renderLandmarks([]);
+      const items = await LandmarkService.getAll();
+      this._renderLandmarks(items);
+    } catch(e) { console.warn('⚠️ Landmarks:', e.message); }
   }
 
-  // ── Markers ───────────────────────────────────────────────────────
-  _clearPlaceMarkers() {
-    if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
-    this._labelTimers = [];
-    this.markers.forEach(m => m?.remove());
-    this.markers = []; this.markerEls = [];
+  // ── Actividades ───────────────────────────────────────────────────
+  async _loadActivities() {
+    try {
+      const acts = await ActivityService.getAll();
+      this.activities = acts || [];
+      this._refreshActivityBadges();
+    } catch(e) { console.warn('⚠️ Actividades:', e.message); }
+  }
+
+  // ── Cargar categoría ─────────────────────────────────────────────
+  async loadCategory(menuKey, catData) {
+    if (catData) this.currentCatData = catData;
+    this.currentCatId = menuKey;
+
+    // Limpiar marcadores anteriores
+    this.markers.forEach(function(m) { m.remove(); });
+    this.markers   = [];
+    this.markerEls = [];
+    this.allPlaces = [];
     this._closeMiniCard();
-  }
 
-  _renderPlaceMarkers(places) {
-    const cat     = this.currentCatData;
-    const catIcon = cat?.icon3d
-      ? `<img src="${cat.icon3d}" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'">`
-      : (cat?.icon || '💎');
+    try {
+      // Cargar lugares desde Supabase
+      const { data, error } = await window._supabase
+        .from('places')
+        .select('*')
+        .eq('category', menuKey)
+        .eq('visible', true);
 
-    const bounds = new maplibregl.LngLatBounds();
-    let hasCoords = false;
+      if (error) throw error;
+      const places = data || [];
 
-    places.forEach((place, index) => {
-      const lat = place.location?.lat ?? place.lat;
-      const lng = place.location?.lng ?? place.lng;
-      if (!lat || !lng) return;
+      // También cargar lugares custom del SuperUser
+      let custom = [];
+      try { custom = await CustomPlaceService.getByCategory(menuKey); } catch(e) {}
 
-      const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
-      const photoUrl = proxyPhoto(rawPhoto);
+      const all = places.concat(custom);
+      this.allPlaces = all;
 
-      const el = document.createElement('div');
-      el.className = 'place-marker-el';
-      el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
-      el._place    = place;
+      all.forEach((place, i) => {
+        const el = document.createElement('div');
+        el.className = 'place-marker-el';
+        el._place  = place;
 
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.haptic('tap');
-        if (this.miniCardMarker === this.markers[index]) {
-          if (this.onPlaceSelect) this.onPlaceSelect(place);
-          return;
-        }
-        this._showMiniCard(place, index, rawPhoto);
-      });
+        const html = this._buildPinHtml(place);
+        el.innerHTML = html;
 
-      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .addTo(this.map);
+        const lat = (place.location && place.location.lat) || place.lat;
+        const lng = (place.location && place.location.lng) || place.lng;
+        if (!lat || !lng) return;
 
-      el._marker = marker;
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([lng, lat])
+          .addTo(this.map);
 
-      // Foto lazy con IntersectionObserver
-      if (photoUrl) {
-        if ('IntersectionObserver' in window) {
-          const obs = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (!entry.isIntersecting) return;
-              obs.disconnect();
-              const img = new Image();
-              img.onload  = () => applyPhotoToPin(photoUrl, el);
-              img.onerror = () => applyErrorToPin(el);
-              img.src = photoUrl;
-            });
-          }, { rootMargin: '200px' });
-          obs.observe(el);
-        } else {
+        el._marker = marker;
+        this.markers.push(marker);
+        this.markerEls.push(el);
+
+        // Cargar foto si hay
+        const photoUrl = place.photo_url || (place.photos && place.photos[0]);
+        if (photoUrl) {
+          const proxied = proxyPhoto(photoUrl);
           const img = new Image();
-          img.onload  = () => applyPhotoToPin(photoUrl, el);
-          img.onerror = () => applyErrorToPin(el);
-          img.src = photoUrl;
+          img.onload  = function() { applyPhotoToPin(proxied, el); };
+          img.onerror = function() { applyErrorToPin(el); };
+          img.src = proxied;
         }
-      }
 
-      this.markerEls.push(el);
-      this.markers.push(marker);
-      bounds.extend([lng, lat]);
-      hasCoords = true;
-    });
-
-    if (hasCoords) {
-      this.map.fitBounds(bounds, {
-        padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: 17
+        // Click en el pin
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.haptic('select');
+          const rawPhoto = place.photo_url || (place.photos && place.photos[0]) || null;
+          this._showMiniCard(place, i, rawPhoto);
+        });
       });
+
+      this._refreshActivityBadges();
+      this._renderLandmarks();
+      console.log('✅ Categoría cargada:', menuKey, '(' + all.length + ' lugares)');
+    } catch(e) {
+      console.error('❌ Error cargando categoría:', e.message);
     }
-    this._refreshActivityBadges();
   }
 
-  // ── HTML del pin — con label igual que PWA original ───────────────
-  _buildPinHtml(place, photoUrl, catIcon) {
+  // ── Build pin HTML ────────────────────────────────────────────────
+  _buildPinHtml(place) {
+    const isFeatured = place.featured && place.featured !== 'none';
     const actCount   = this._activityCount(place);
     const hasAct     = actCount > 0;
-    const borderGrad = hasAct ? 'linear-gradient(145deg,#fde68a 0%,#f59e0b 40%,#f97316 100%)' : '#ffffff';
-    const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map?.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
-    const pulseHtml  = hasAct ? `<div class="pin-pulse-ring" style="display:block"></div><div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>` : '';
-    const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
 
-    // Label — igual que PWA original (solo si NO es featured)
-    const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
-    const labelColor = hasAct ? '#d97706' : '#1f2937';
-    const labelLeft  = photoUrl ? 31 : 22;
-    const labelHtml  = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:${labelLeft}px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:800;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:nowrap;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px rgba(255,255,255,0.9);pointer-events:none;letter-spacing:-0.2px;transition:opacity 0.25s ease;">${shortName}</div>`;
-
-    if (photoUrl) {
-      return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-        <div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}
-          <div class="place-pin-wrapper" style="background:${borderGrad}">
-            <div class="pin-inner loading" data-photo="${photoUrl}">${catIcon}</div>
-          </div>
-        </div>
-        ${labelHtml}
-      </div>`;
+    let featuredBadge = '';
+    if (isFeatured) {
+      const bg   = place.featured === 'verified' ? '#059669' : place.featured === 'premium' ? '#7c3aed' : 'rgba(0,0,0,0.65)';
+      const icon = place.featured === 'verified' ? '✓' : '⭐';
+      featuredBadge = '<div class="pin-featured-badge" style="position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:' + bg + ';color:white;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1.5px solid white;z-index:2;">' + icon + '</div>';
     }
-    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div style="position:relative;width:20px;height:20px;overflow:visible;">
-        ${badgeHtml}${pulseHtml}
-        <div class="pin-dot"></div>
-      </div>
-      ${labelHtml}
-    </div>`;
+
+    let actBadge = '';
+    if (hasAct) {
+      actBadge = '<div class="place-act-badge" style="position:absolute;top:-6px;left:-6px;min-width:16px;height:16px;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid white;z-index:2;opacity:' + (this.map.getZoom() >= 15 ? '1' : '0') + ';">' + actCount + '</div>';
+    }
+
+    // Label solo si NO es featured (para evitar duplicado con el badge de highlight)
+    const labelHtml = !isFeatured
+      ? '<div class="place-pin-label" style="position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);background:rgba(10,10,20,0.75);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;white-space:nowrap;pointer-events:none;opacity:0;display:none;max-width:100px;overflow:hidden;text-overflow:ellipsis;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;">' + (place.name || '') + '</div>'
+      : '';
+
+    return '<div class="place-pin-root" style="position:relative;display:inline-flex;align-items:center;">' +
+      '<div class="place-pin-rel" style="position:relative;">' +
+        '<div class="place-pin-wrapper" style="width:40px;height:40px;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);overflow:hidden;background:#f3f4f6;">' +
+          '<div class="pin-inner loading" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;transition:opacity 0.3s;">' +
+            (this.currentCatData ? (this.currentCatData.icon || '📍') : '📍') +
+          '</div>' +
+        '</div>' +
+        featuredBadge +
+        actBadge +
+      '</div>' +
+      labelHtml +
+    '</div>';
   }
 
-  // ── Labels progresivos en zoom ≥ 18 — igual que PWA original ──────
+  // ── Labels progresivos ────────────────────────────────────────────
   _updateLabelsProgressive() {
-    if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+    if (this._labelTimers) this._labelTimers.forEach(function(t) { clearTimeout(t); });
     this._labelTimers = [];
-
-    const center = this.map.getCenter();
-    const bounds  = this.map.getBounds();
-
-    const els = Array.from(document.querySelectorAll('.place-marker-el'));
-    const visible = els.map(el => {
-      const idx = this.markerEls.indexOf(el);
-      if (idx === -1) return null;
-      const marker = this.markers[idx];
-      if (!marker) return null;
-      const ll = marker.getLngLat();
-      if (!bounds.contains(ll)) {
-        const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; lbl.style.display = 'none'; }
-        return null;
+    const bounds = this.map.getBounds();
+    this.markerEls.forEach((el, i) => {
+      const place = this.allPlaces[i];
+      if (!place) return;
+      const lat = (place.location && place.location.lat) || place.lat;
+      const lng = (place.location && place.location.lng) || place.lng;
+      if (!lat || !lng) return;
+      const inView = bounds.contains([lng, lat]);
+      const lbl = el.querySelector('.place-pin-label');
+      if (!lbl) return;
+      if (inView) {
+        const t = setTimeout(function() {
+          lbl.style.display = 'block';
+          requestAnimationFrame(function() { lbl.style.opacity = '1'; });
+        }, i * 30);
+        this._labelTimers.push(t);
+      } else {
+        lbl.style.opacity = '0';
+        lbl.style.display = 'none';
       }
-      const dx = ll.lng - center.lng, dy = ll.lat - center.lat;
-      return { el, dist: Math.sqrt(dx*dx + dy*dy) };
-    }).filter(Boolean).sort((a, b) => a.dist - b.dist);
-
-    visible.forEach(({ el }, i) => {
-      const label = el.querySelector('.place-pin-label');
-      if (!label) return;
-      if (label.style.opacity === '1') return;
-      label.style.display = 'block';
-      label.style.opacity = '0';
-      const t = setTimeout(() => {
-        if (this.map.getZoom() >= 18) label.style.opacity = '1';
-      }, i * 30);
-      this._labelTimers.push(t);
     });
   }
 
@@ -500,33 +468,42 @@ export class MapView {
     this.miniCardPlace  = place;
     this.miniCardMarker = this.markers[index];
     this.miniCardIndex  = index;
-    const el = this.miniCardMarker.getElement();
 
-    // Ocultar el pin original para que la minicard lo reemplace visualmente
-    const pinRoot = el.querySelector('.place-pin-root');
-    if (pinRoot) { pinRoot.style.visibility = 'hidden'; pinRoot.style.pointerEvents = 'none'; }
-
-    // Crear contenedor centrado sobre el pin
-    const miniWrap = document.createElement('div');
-    miniWrap.id = 'active-minicard';
-    miniWrap.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;width:auto;height:auto;overflow:visible;';
-
-    const rating   = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
-    const address  = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
-    const hasAct   = this._activityCount(place) > 0;
-    const cat      = this.currentCatData;
+    const rating  = place.rating ? '⭐ ' + Number(place.rating).toFixed(1) : '';
+    const address = ((place.formattedAddress || place.formatted_address || '').substring(0, 32));
+    const hasAct  = this._activityCount(place) > 0;
+    const cat     = this.currentCatData;
     const cardGrad = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
     const miniPhoto = proxyPhoto(rawPhoto);
-    miniWrap.innerHTML = `
-      <div class="minicard-wrap">
-        ${miniPhoto ? `<img src="${miniPhoto}" class="minicard-photo" onerror="this.style.display='none'">` : `<div class="minicard-icon" style="background:${cardGrad}">${cat?.icon||'💎'}</div>`}
-        <div class="minicard-body">
-          <div class="minicard-name">${place.name}</div>
-          ${rating  ? `<div class="minicard-rating">${rating}</div>`  : ''}
-          ${address ? `<div class="minicard-address">${address}</div>` : ''}
-        </div>
-        <button class="minicard-close" title="Cerrar">✕</button>
-      </div>`;
+
+    // Calcular posición del marcador en pantalla para centrar la minicard
+    const markerLngLat = this.miniCardMarker.getLngLat();
+    const pt = this.map.project(markerLngLat);
+
+    const miniWrap = document.createElement('div');
+    miniWrap.id = 'active-minicard';
+    miniWrap.style.cssText = [
+      'position:fixed',
+      'z-index:99999',
+      'left:' + Math.round(pt.x) + 'px',
+      'top:'  + Math.round(pt.y) + 'px',
+      'transform:translate(-50%,-50%)',
+      'pointer-events:auto'
+    ].join(';');
+
+    miniWrap.innerHTML =
+      '<div class="minicard-wrap">' +
+        (miniPhoto
+          ? '<img src="' + miniPhoto + '" class="minicard-photo" onerror="this.style.display=\'none\'">'
+          : '<div class="minicard-icon" style="background:' + cardGrad + '">' + (cat && cat.icon ? cat.icon : '💎') + '</div>') +
+        '<div class="minicard-body">' +
+          '<div class="minicard-name">' + place.name + '</div>' +
+          (rating  ? '<div class="minicard-rating">'  + rating  + '</div>' : '') +
+          (address ? '<div class="minicard-address">' + address + '</div>' : '') +
+        '</div>' +
+        '<button class="minicard-close" title="Cerrar">✕</button>' +
+      '</div>';
+
     miniWrap.querySelector('.minicard-wrap').addEventListener('click', (e) => {
       if (e.target.classList.contains('minicard-close')) return;
       e.stopPropagation();
@@ -537,33 +514,31 @@ export class MapView {
       e.stopPropagation();
       this._closeMiniCard();
     });
-    el.appendChild(miniWrap);
-    const lat = place.location?.lat ?? place.lat;
-    const lng = place.location?.lng ?? place.lng;
+
+    // Añadir al body para que quede por encima de todo
+    document.body.appendChild(miniWrap);
+
+    // Centrar el mapa en el pin
+    const lat = (place.location && place.location.lat) || place.lat;
+    const lng = (place.location && place.location.lng) || place.lng;
     this.map.easeTo({ center: [lng, lat], duration: 300 });
   }
 
   _closeMiniCard() {
     const mini = document.getElementById('active-minicard');
-    if (mini) {
-      // Restaurar visibilidad del pin antes de eliminar la minicard
-      const el = mini.parentElement;
-      if (el) {
-        const pinRoot = el.querySelector('.place-pin-root');
-        if (pinRoot) { pinRoot.style.visibility = ''; pinRoot.style.pointerEvents = ''; }
-      }
-      mini.remove();
-    }
-    this.miniCardMarker = null; this.miniCardIndex = -1; this.miniCardPlace = null;
+    if (mini) mini.remove();
+    this.miniCardMarker = null;
+    this.miniCardIndex  = -1;
+    this.miniCardPlace  = null;
   }
 
   // ── Actividades ───────────────────────────────────────────────────
   _activityCount(place) {
-    const pName = (place.name || '').toLowerCase().trim();
-    const pId   = (place.place_id || place.placeId || '').toLowerCase();
-    return this.activities.filter(a => {
-      const aName = (a.place_name || '').toLowerCase().trim();
-      const aId   = (a.place_id  || '').toLowerCase();
+    const pName = ((place.name || '')).toLowerCase().trim();
+    const pId   = ((place.place_id || place.placeId || '')).toLowerCase();
+    return this.activities.filter(function(a) {
+      const aName = ((a.place_name || '')).toLowerCase().trim();
+      const aId   = ((a.place_id  || '')).toLowerCase();
       return (pId && aId === pId) || (pName && aName === pName);
     }).length;
   }
@@ -574,9 +549,17 @@ export class MapView {
       const count = this._activityCount(place);
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
-        if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
-        badge.textContent = count; badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
-      } else if (badge) badge.remove();
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'place-act-badge';
+          const rel = el.querySelector('.place-pin-rel, div');
+          if (rel) rel.appendChild(badge);
+        }
+        badge.textContent = count;
+        badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
+      } else if (badge) {
+        badge.remove();
+      }
     });
   }
 
@@ -586,13 +569,13 @@ export class MapView {
   _renderLandmarks(items) {
     if (items && items.length) this._allLandmarks = items;
     const cat = this.currentCatId;
-    const filtered = (this._allLandmarks || []).filter(item => {
+    const filtered = (this._allLandmarks || []).filter(function(item) {
       if (!item.visible_in_categories || !item.visible_in_categories.length) return true;
       if (!cat) return true;
       return item.visible_in_categories.includes(cat);
     });
     items = filtered;
-    this.landmarkMarkers.forEach(m => m.remove());
+    this.landmarkMarkers.forEach(function(m) { m.remove(); });
     this.landmarkMarkers = [];
 
     items.forEach(item => {
@@ -614,12 +597,12 @@ export class MapView {
         const totalSize = fontSize + pad * 2;
 
         const stickerWrap = document.createElement('div');
-        stickerWrap.style.cssText = `position:relative;display:inline-flex;align-items:center;justify-content:center;width:${totalSize}px;height:${totalSize}px;user-select:none;`;
+        stickerWrap.style.cssText = 'position:relative;display:inline-flex;align-items:center;justify-content:center;width:' + totalSize + 'px;height:' + totalSize + 'px;user-select:none;';
 
         if (item.icon_url) {
           const imgEl = new Image();
           imgEl.crossOrigin = 'anonymous';
-          imgEl.onload = () => {
+          imgEl.onload = function() {
             const dpr  = Math.min(window.devicePixelRatio || 1, 2);
             const pad2 = Math.ceil(strokeW * dpr * 2);
             const cs   = totalSize * dpr + pad2 * 2;
@@ -635,12 +618,12 @@ export class MapView {
             ctx.drawImage(imgEl, cx, cy, sz, sz);
             const out = document.createElement('img');
             out.src = cvs.toDataURL('image/png');
-            out.style.cssText = `width:${totalSize + strokeW * 2}px;height:${totalSize + strokeW * 2}px;display:block;`;
+            out.style.cssText = 'width:' + (totalSize + strokeW * 2) + 'px;height:' + (totalSize + strokeW * 2) + 'px;display:block;';
             stickerWrap.appendChild(out);
           };
-          imgEl.onerror = () => {
+          imgEl.onerror = function() {
             const fb = document.createElement('div');
-            fb.style.cssText = `width:${totalSize}px;height:${totalSize}px;background:rgba(0,0,0,0.1);border-radius:8px;`;
+            fb.style.cssText = 'width:' + totalSize + 'px;height:' + totalSize + 'px;background:rgba(0,0,0,0.1);border-radius:8px;';
             stickerWrap.appendChild(fb);
           };
           imgEl.src = item.icon_url;
@@ -654,17 +637,17 @@ export class MapView {
           const ctx  = cvs.getContext('2d');
           const fontPx  = fontSize * dpr;
           const offsets = strokeW * dpr;
-          ctx.font = `${fontPx + offsets * 2}px serif`;
+          ctx.font = (fontPx + offsets * 2) + 'px serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(item.emoji || '⭐', cx, cy);
           ctx.globalCompositeOperation = 'source-atop';
           ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cs, cs);
           ctx.globalCompositeOperation = 'source-over';
-          ctx.font = `${fontPx}px serif`;
+          ctx.font = fontPx + 'px serif';
           ctx.fillText(item.emoji || '⭐', cx, cy);
           const img = document.createElement('img');
           img.src = cvs.toDataURL('image/png');
-          img.style.cssText = `width:${totalSize}px;height:${totalSize}px;display:block;`;
+          img.style.cssText = 'width:' + totalSize + 'px;height:' + totalSize + 'px;display:block;';
           stickerWrap.appendChild(img);
         }
 
@@ -691,7 +674,7 @@ export class MapView {
             'font-size:9px', 'font-weight:700',
             "font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif",
             'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
-            'opacity:1', `transition:opacity 0.4s ease ${seed}ms`,
+            'opacity:1', 'transition:opacity 0.4s ease ' + seed + 'ms',
             'max-width:110px', 'overflow:hidden', 'text-overflow:ellipsis',
             'border:1px solid rgba(255,255,255,0.12)',
             'backdrop-filter:blur(4px)', '-webkit-backdrop-filter:blur(4px)',
@@ -709,14 +692,14 @@ export class MapView {
         inner.style.cssText = 'gap:3px;';
 
         const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:130px;overflow:hidden;text-overflow:ellipsis;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;';
+        label.style.cssText = "background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:130px;overflow:hidden;text-overflow:ellipsis;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;";
         label.textContent = item.title || '';
 
         const borderStyle = borderColor
-          ? `box-shadow:0 0 0 3px ${borderColor},0 4px 12px rgba(0,0,0,0.3);`
-          : `box-shadow:0 0 0 2px ${color}66,0 4px 12px rgba(0,0,0,0.3);`;
+          ? 'box-shadow:0 0 0 3px ' + borderColor + ',0 4px 12px rgba(0,0,0,0.3);'
+          : 'box-shadow:0 0 0 2px ' + color + '66,0 4px 12px rgba(0,0,0,0.3);';
         const pin = document.createElement('div');
-        pin.style.cssText = `width:${pinSize}px;height:${pinSize}px;border-radius:50%;background:linear-gradient(145deg,${color}dd 0%,${color} 50%,${color}99 100%);border:3px solid white;${borderStyle}display:flex;align-items:center;justify-content:center;font-size:20px;`;
+        pin.style.cssText = 'width:' + pinSize + 'px;height:' + pinSize + 'px;border-radius:50%;background:linear-gradient(145deg,' + color + 'dd 0%,' + color + ' 50%,' + color + '99 100%);border:3px solid white;' + borderStyle + 'display:flex;align-items:center;justify-content:center;font-size:20px;';
         pin.textContent = item.emoji || '📍';
 
         const shadow = document.createElement('div');
@@ -740,7 +723,7 @@ export class MapView {
     console.log('✅ Landmarks renderizados:', items.length);
   }
 
-  // ── Featured Highlight — igual que el original ─────────────────────
+  // ── Featured Highlight ─────────────────────────────────────────────
   _clearFeaturedHighlight() {
     document.querySelectorAll('.place-marker-el.featured-highlight').forEach(el => {
       el.classList.remove('featured-highlight');
@@ -754,9 +737,9 @@ export class MapView {
       if (badge) {
         badge.style.display = 'flex';
         const place = el._place;
-        if (place?.featured) {
-          const bg   = place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)';
-          const icon = place.featured==='verified'?'✓':'⭐';
+        if (place && place.featured) {
+          const bg   = place.featured === 'verified' ? '#059669' : place.featured === 'premium' ? '#7c3aed' : 'rgba(0,0,0,0.65)';
+          const icon = place.featured === 'verified' ? '✓' : '⭐';
           badge.style.background = bg; badge.innerHTML = icon;
         }
       }
@@ -774,11 +757,11 @@ export class MapView {
     let closest = null, closestDist = Infinity;
     document.querySelectorAll('.place-marker-el').forEach(el => {
       const place = el._place;
-      if (!place?.featured) return;
+      if (!place || !place.featured) return;
       const marker = el._marker;
       if (!marker) return;
       const pt   = this.map.project(marker.getLngLat());
-      const dist = Math.sqrt(Math.pow(pt.x-cx,2) + Math.pow(pt.y-cy,2));
+      const dist = Math.sqrt(Math.pow(pt.x - cx, 2) + Math.pow(pt.y - cy, 2));
       if (dist < ENTER && dist < closestDist) { closestDist = dist; closest = { el, place }; }
     });
     if (closest && closest.el === this._featuredHighlightEl) return;
@@ -786,7 +769,7 @@ export class MapView {
       const pm = this._featuredHighlightEl._marker;
       if (pm) {
         const pt = this.map.project(pm.getLngLat());
-        if (Math.sqrt(Math.pow(pt.x-cx,2)+Math.pow(pt.y-cy,2)) < EXIT) return;
+        if (Math.sqrt(Math.pow(pt.x - cx, 2) + Math.pow(pt.y - cy, 2)) < EXIT) return;
       }
     }
     this._clearFeaturedHighlight();
@@ -811,7 +794,7 @@ export class MapView {
       root.appendChild(shadow);
     }
     if (root && !root.querySelector('.pin-featured-name')) {
-      const badge  = closest.place.featured==='verified'?'✅ Verificado':closest.place.featured==='premium'?'💎 Premium':'⭐ Destacado';
+      const badge  = closest.place.featured === 'verified' ? '✅ Verificado' : closest.place.featured === 'premium' ? '💎 Premium' : '⭐ Destacado';
       const nameEl = document.createElement('div');
       nameEl.className = 'pin-featured-name';
       nameEl.style.cssText = 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
@@ -819,12 +802,12 @@ export class MapView {
         '<div style="font-size:11px;font-weight:800;color:#1f2937;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
         closest.place.name + '</div>' +
         '<div style="font-size:9px;font-weight:700;background:' +
-        (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#8b5cf6,#6366f1)':'linear-gradient(135deg,#f59e0b,#f97316)') +
+        (closest.place.featured === 'verified' ? 'linear-gradient(135deg,#10b981,#059669)' : closest.place.featured === 'premium' ? 'linear-gradient(135deg,#8b5cf6,#6366f1)' : 'linear-gradient(135deg,#f59e0b,#f97316)') +
         ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
       root.appendChild(nameEl);
     }
   }
 
-  flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
+  flyTo(lng, lat, zoom) { this.map.flyTo({ center: [lng, lat], zoom: zoom || 17, duration: 600 }); }
   getMap() { return this.map; }
 }
