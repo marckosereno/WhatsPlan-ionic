@@ -1,6 +1,6 @@
-// ===================================================================
+// ====================================================================
 // WHATSPLAN — SubcategoryRow.js
-// GPS chip (dentro del scroll) + chip LIVE (en el scroll) + subcategorías
+// GPS chip (dentro del scroll) + modo LIVE (pill flotante) + subcategorías
 // ====================================================================
 
 const R = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
@@ -50,32 +50,33 @@ export class SubcategoryRow {
     this.map            = map;
     this.onSubcatSelect = onSubcatSelect;
 
-    // Estado GPS — _gpsStarting evita doble-toggle durante la carga inicial
-    this._gpsActive    = false;
-    this._gpsStarting  = false;
-    this._gpsWatchId   = null;
-    this._lastGpsPos   = null;
-    this._locationMarker = null;
+    this._gpsActive       = false;
+    this._gpsWatchId      = null;
+    this._lastGpsPos      = null;
+    this._locationMarker  = null;
 
-    // Estado LIVE
-    this._liveActive       = false;
-    this._liveBtn          = null;
-    this._liveHandler      = null;
-    this._liveFrame        = null;
-    this._liveRawHead      = 0;
-    this._liveHead         = 0;
-    this._liveCenterPaused = false;
+    this._liveActive        = false;
+    this._liveBtn           = null;
+    this._liveRecenterBtn   = null;
+    this._liveHandler       = null;
+    this._liveFrame         = null;
+    this._liveRawHead       = 0;
+    this._liveHead          = 0;
+    this._liveCenterPaused  = false;
 
-    this.currentMenuKey = null;
-    this.currentSubcat  = null;
-    this._footerEl      = null;
-    this._gpsEl         = null;
+    this.currentMenuKey  = null;
+    this.currentSubcat   = null;
+    this._footerEl       = null;
+    this._gpsEl          = null;
 
     this._injectStyles();
     this._build();
 
     this.map.on('dragstart', () => {
-      if (this._liveActive) this._liveCenterPaused = true;
+      if (this._liveActive) {
+        this._liveCenterPaused = true;
+        if (this._liveRecenterBtn) this._liveRecenterBtn.style.display = 'flex';
+      }
     });
   }
 
@@ -84,9 +85,9 @@ export class SubcategoryRow {
     if (!footer) return;
 
     const gps = document.createElement('button');
-    gps.id        = 'map-gps-btn';
+    gps.id = 'map-gps-btn';
     gps.className = 'hm-gps-btn';
-    gps.title     = 'Mi ubicación';
+    gps.title = 'Mi ubicación';
     gps.innerHTML = `<svg class="hm-gps-icon" viewBox="0 0 122.88 122.88" fill="currentColor">
       <path d="M120.3.14,1.24,40.38A1.82,1.82,0,0,0,.1,42.7a1.78,1.78,0,0,0,1.21,1.15h0L60.85,62,79,121.58h0a1.78,1.78,0,0,0,1.15,1.21,1.82,1.82,0,0,0,2.32-1.14L122.74,2.58A1.85,1.85,0,0,0,120.3.14Z"/>
     </svg>`;
@@ -98,37 +99,27 @@ export class SubcategoryRow {
   }
 
   _toggleGps() {
-    if (this._gpsActive || this._gpsStarting) {
-      this._stopGps();
-    } else {
-      this._startGps();
-    }
+    if (this._gpsActive) this._stopGps();
+    else this._startGps();
   }
 
   _startGps() {
     if (!navigator.geolocation) return;
-    this._gpsStarting = true;
     this._gpsEl.classList.add('loading');
-
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         this._lastGpsPos = { lat, lng };
         this._upsertLocationMarker(lat, lng);
         if (!this._gpsActive) {
-          this._gpsActive   = true;
-          this._gpsStarting = false;
           this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
+          this._gpsActive = true;
           this._gpsEl.classList.remove('loading');
           this._gpsEl.classList.add('active');
-          this._showLiveChip();
+          this._createLivePill();
         }
       },
-      (err) => {
-        console.warn('⚠️ GPS:', err.message);
-        this._gpsStarting = false;
-        this._gpsEl.classList.remove('loading');
-      },
+      (err) => { console.warn('⚠️ GPS:', err.message); this._gpsEl.classList.remove('loading'); },
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 }
     );
   }
@@ -142,55 +133,73 @@ export class SubcategoryRow {
       this._locationMarker.remove();
       this._locationMarker = null;
     }
-    this._gpsActive   = false;
-    this._gpsStarting = false;
-    this._lastGpsPos  = null;
+    this._gpsActive  = false;
+    this._lastGpsPos = null;
     this._gpsEl.classList.remove('active', 'loading');
     if (this._liveActive) this._stopLive();
-    this._hideLiveChip();
+    this._removeLivePill();
   }
 
   _upsertLocationMarker(lat, lng) {
     if (!this._locationMarker) {
       const el = document.createElement('div');
       el.className = 'hm-loc-avatar-wrap';
-      const avatarUrl = window.wpApp?._cachedAvatarUrl
-        || window.wpApp?.currentUser?.user_metadata?.avatar_url
-        || '';
+      const avatarUrl = window.wpApp?._cachedAvatarUrl || window.wpApp?.currentUser?.user_metadata?.avatar_url || '';
       el.innerHTML = avatarUrl
         ? `<img class="hm-loc-avatar-img" src="${avatarUrl}">`
         : `<div class="hm-loc-avatar-fallback">📍</div>`;
-      this._locationMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .addTo(this.map);
+      this._locationMarker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(this.map);
     } else {
       this._locationMarker.setLngLat([lng, lat]);
     }
   }
 
-  _showLiveChip() {
+  // ── Pill LIVE flotante sobre el panel ────────────────────────────
+  _createLivePill() {
     if (this._liveBtn) return;
-    const btn = document.createElement('button');
-    btn.id        = 'hm-live-chip';
-    btn.className = 'hm-live-chip';
-    btn.innerHTML = '<span class="hm-live-dot"></span>LIVE';
-    btn.addEventListener('click', () => this._toggleLive());
-    const gpsEl = this._footerEl.querySelector('#map-gps-btn');
-    if (gpsEl && gpsEl.nextSibling) {
-      this._footerEl.insertBefore(btn, gpsEl.nextSibling);
+
+    const pill = document.createElement('button');
+    pill.id = 'hm-live-pill';
+    pill.innerHTML = '<span class="hm-live-dot"></span>LIVE';
+    pill.addEventListener('click', () => this._toggleLive());
+
+    // Calcular posición encima del panel
+    const panel = document.getElementById('map-results-panel');
+    if (panel && panel.parentNode) {
+      panel.parentNode.insertBefore(pill, panel);
     } else {
-      this._footerEl.appendChild(btn);
+      document.body.appendChild(pill);
     }
-    requestAnimationFrame(() => btn.classList.add('visible'));
-    this._liveBtn = btn;
+
+    // Ajustar bottom dinámicamente según la altura real del panel
+    if (panel) {
+      const updatePos = () => {
+        const h = panel.offsetHeight;
+        pill.style.bottom = `${20 + h + 10}px`;
+      };
+      updatePos();
+      // Observar cambios de tamaño del panel
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(updatePos);
+        ro.observe(panel);
+        pill._resizeObserver = ro;
+      }
+    }
+
+    requestAnimationFrame(() => { pill.classList.add('visible'); });
+    this._liveBtn = pill;
   }
 
-  _hideLiveChip() {
-    if (!this._liveBtn) return;
-    this._liveBtn.classList.remove('visible');
-    setTimeout(() => {
-      if (this._liveBtn) { this._liveBtn.remove(); this._liveBtn = null; }
-    }, 200);
+  _removeLivePill() {
+    if (this._liveBtn) {
+      if (this._liveBtn._resizeObserver) this._liveBtn._resizeObserver.disconnect();
+      this._liveBtn.classList.remove('visible');
+      setTimeout(() => { if (this._liveBtn) { this._liveBtn.remove(); this._liveBtn = null; } }, 250);
+    }
+    if (this._liveRecenterBtn) {
+      this._liveRecenterBtn.remove();
+      this._liveRecenterBtn = null;
+    }
   }
 
   _toggleLive() {
@@ -201,7 +210,6 @@ export class SubcategoryRow {
   _startLive() {
     this._liveActive = true;
     if (this._liveBtn) this._liveBtn.classList.add('active');
-    this._liveCenterPaused = false;
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
     const handler = (e) => {
@@ -213,8 +221,7 @@ export class SubcategoryRow {
     const loop = () => {
       if (!this._liveActive) return;
       let diff = this._liveRawHead - this._liveHead;
-      if (diff > 180) diff -= 360;
-      if (diff < -180) diff += 360;
+      if (diff > 180) diff -= 360; if (diff < -180) diff += 360;
       this._liveHead += diff * 0.1;
       this.map.setBearing(this._liveHead);
       if (!this._liveCenterPaused && this._lastGpsPos) {
@@ -228,14 +235,8 @@ export class SubcategoryRow {
   _stopLive() {
     this._liveActive = false;
     if (this._liveBtn) this._liveBtn.classList.remove('active');
-    if (this._liveHandler) {
-      window.removeEventListener('deviceorientation', this._liveHandler, true);
-      this._liveHandler = null;
-    }
-    if (this._liveFrame) {
-      cancelAnimationFrame(this._liveFrame);
-      this._liveFrame = null;
-    }
+    if (this._liveHandler) window.removeEventListener('deviceorientation', this._liveHandler, true);
+    if (this._liveFrame) cancelAnimationFrame(this._liveFrame);
     this.map.dragRotate.enable();
     this.map.touchZoomRotate.enableRotation();
   }
@@ -254,16 +255,20 @@ export class SubcategoryRow {
     this.currentMenuKey = menuKey;
     const items = SUBCATEGORIES_MAP[menuKey] || [];
     if (!items.length) { this.hide(); return; }
+
     this._clearSubcatChips();
+
     const allActive = !this.currentSubcat || this.currentSubcat === 'all';
+
     const todosBtn = document.createElement('button');
-    todosBtn.className   = `subcategory-footer-chip${allActive ? ' active' : ''}`;
+    todosBtn.className = `subcategory-footer-chip${allActive ? ' active' : ''}`;
     todosBtn.dataset.val = 'all';
     todosBtn.textContent = 'Todos';
     this._footerEl.appendChild(todosBtn);
+
     items.forEach((s, i) => {
       const btn = document.createElement('button');
-      btn.className   = `subcategory-footer-chip${this.currentSubcat === s.value ? ' active' : ''}`;
+      btn.className = `subcategory-footer-chip${this.currentSubcat === s.value ? ' active' : ''}`;
       btn.dataset.val = s.value;
       btn.style.animationDelay = `${(i + 1) * 50}ms`;
       const icon = s.icon3d
@@ -272,7 +277,9 @@ export class SubcategoryRow {
       btn.innerHTML = icon + s.label;
       this._footerEl.appendChild(btn);
     });
+
     this._footerEl.classList.add('visible');
+
     this._footerEl.querySelectorAll('.subcategory-footer-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -299,12 +306,12 @@ export class SubcategoryRow {
     const s = document.createElement('style');
     s.id = 'subcats-row-styles';
     s.textContent = `
+      /* GPS como chip circular dentro del scroll */
       .hm-gps-btn {
-        width: 30px; height: 30px; border-radius: 50%;
+        width: 31px; height: 31px; border-radius: 50%;
         border: 1px solid rgba(0,0,0,0.08); background: #f5f5f5;
         display: inline-flex; align-items: center; justify-content: center;
         cursor: pointer; flex-shrink: 0; transition: all 0.2s;
-        -webkit-tap-highlight-color: transparent;
       }
       .hm-gps-icon { width: 11px; height: 11px; color: #6b7280; }
       .hm-gps-btn.active { background: #e8f5e9; border-color: rgba(22,163,74,0.2); }
@@ -312,57 +319,69 @@ export class SubcategoryRow {
       .hm-gps-btn.loading { animation: gpsPulse 1s infinite; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-      .hm-loc-avatar-wrap {
-        width: 36px; height: 36px; border-radius: 50%;
-        border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-        overflow: hidden; background: #6366f1;
-      }
-      .hm-loc-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-      .hm-loc-avatar-fallback {
-        width: 100%; height: 100%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 20px; background: #6366f1;
-      }
+      /* Marcador de ubicación en el mapa */
+      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#6366f1; }
+      .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
+      .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#6366f1; }
 
-      /* Chip LIVE dentro del scroll */
-      .hm-live-chip {
-        display: inline-flex; align-items: center; gap: 5px;
-        height: 30px; padding: 0 11px;
-        background: #f5f5f5;
+      /* ── Pill LIVE flotante sobre el panel ── */
+      #hm-live-pill {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%) translateY(12px);
+        opacity: 0;
+        transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        z-index: 41;
+        height: 34px; padding: 0 16px; border-radius: 999px;
         border: 1px solid rgba(239,68,68,0.25);
-        border-radius: 999px;
-        font-size: 12px; font-weight: 600;
-        color: #dc2626;
-        white-space: nowrap; cursor: pointer; flex-shrink: 0;
-        opacity: 0; transform: scale(0.85);
-        transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1),
-                    background 0.18s, color 0.18s;
-        -webkit-tap-highlight-color: transparent;
+        background: rgba(255,255,255,0.96);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        color: #dc2626; font-size: 12px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px;
+        white-space: nowrap;
         font-family: 'Inter Tight', system-ui, sans-serif;
+        -webkit-tap-highlight-color: transparent;
       }
-      .hm-live-chip.visible { opacity: 1; transform: scale(1); }
-      .hm-live-chip.active { background: #dc2626; color: white; border-color: #dc2626; }
+      #hm-live-pill.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      #hm-live-pill.active {
+        background: #dc2626;
+        color: white;
+        border-color: #dc2626;
+        box-shadow: 0 4px 20px rgba(220,38,38,0.35);
+      }
       .hm-live-dot {
         width: 7px; height: 7px; border-radius: 50%;
-        background: currentColor; animation: livePulse 1.2s infinite; flex-shrink: 0;
+        background: currentColor;
+        animation: livePulse 1.2s infinite;
       }
       @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+      /* Chips de subcategoría — estilo nativo */
       .subcategory-footer-chip {
         display: inline-flex; align-items: center;
         height: 30px; padding: 0 11px;
-        background: #f5f5f5; border: 1px solid rgba(0,0,0,0.08);
-        border-radius: 999px; font-size: 12px; font-weight: 500;
+        background: #f5f5f5;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 999px;
+        font-size: 12px; font-weight: 500;
         color: #374151; white-space: nowrap; cursor: pointer;
         transition: all 0.18s; flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
       }
       .subcategory-footer-chip:active { background: #ebebeb; }
       .subcategory-footer-chip.active {
-        background: #6366f1; border-color: transparent;
-        color: white; font-weight: 600;
+        background: #6366f1;
+        border-color: transparent;
+        color: white;
+        font-weight: 600;
       }
 
+      /* Chip de carga */
       .hm-loading-chip {
         display: inline-flex; align-items: center; gap: 7px;
         background: #f5f5f5; border-radius: 999px; padding: 0 12px;
