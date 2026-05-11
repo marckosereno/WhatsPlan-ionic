@@ -4,169 +4,78 @@
 
 * { -webkit-tap-highlight-color: transparent !important; }
 
-html {
-  height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none;
-}
+html { height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none; }
+body { font-family: 'Inter Tight', system-ui, sans-serif; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+ion-app { position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; }
 
-body {
-  font-family: 'Inter Tight', system-ui, sans-serif;
-  position: fixed; top: 0; left: 0;
-  width: 100%; height: 100%;
-  overflow: hidden; overscroll-behavior: none;
-}
+.map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: #e8e8e8; transition: background 0.3s ease; }
 
-ion-app {
-  position: fixed; top: 0; left: 0;
-  width: 100%; height: 100%; overflow: hidden;
-}
+ion-app::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 90px; background: linear-gradient(to bottom, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.45) 55%, rgba(255,255,255,0) 100%); pointer-events: none; z-index: 9998; }
+ion-app::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%); pointer-events: none; z-index: 38; }
 
-/* ── Contenedor del mapa ── */
-.map-container {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
-  z-index: 1; background: #e8e8e8;
-  transition: background 0.3s ease;
-}
-
-/* ── Sombra blanca SUPERIOR ── */
-ion-app::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 90px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.45) 55%, rgba(255,255,255,0) 100%);
-  pointer-events: none; z-index: 9998;
-}
-
-/* ── Sombra blanca INFERIOR ── */
-ion-app::after {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
-  background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 100%);
-  pointer-events: none; z-index: 38;
-}
-
-/* ════════════════════════════════════════════════════════════
-   PANEL FLOTANTE
-   ════════════════════════════════════════════════════════════ */
+/* ── PANEL FLOTANTE ── */
 .map-results-panel-float {
-  position: fixed;
-  bottom: 20px;
-  left: 12px;
-  right: 12px;
-  background: white;
-  border-radius: 32px;
+  position: fixed; bottom: 20px; left: 12px; right: 12px;
+  background: white; border-radius: 32px;
   box-shadow: 0 12px 48px rgba(0,0,0,0.18);
-  display: flex;
-  flex-direction: column;
-  z-index: 40;
-  /* Padding reducido para menor altura total */
-  padding: 12px 0 10px;
-  gap: 8px;
+  display: flex; flex-direction: column; z-index: 40;
+  padding: 12px 0 10px; gap: 8px;
   font-family: 'Inter Tight', system-ui, sans-serif;
+  overflow: hidden;
 }
 
-/* ── Fila de subcategorías (GPS + chips) — full width ── */
-.panel-subcats-scroll {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  /* padding lateral para que el GPS no quede pegado al borde */
-  padding: 2px 14px;
+/* ── Wrapper con fades laterales blancos ── */
+.panel-scroll-wrap {
+  position: relative;
   width: 100%;
-  box-sizing: border-box;
+  overflow: hidden;
+}
+.panel-scroll-wrap::before {
+  content: '';
+  position: absolute; top: 0; left: 0; bottom: 0; width: 20px;
+  background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none; z-index: 2;
+}
+.panel-scroll-wrap::after {
+  content: '';
+  position: absolute; top: 0; right: 0; bottom: 0; width: 20px;
+  background: linear-gradient(to left, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none; z-index: 2;
+}
+
+/* ── Scroll subcategorías ── */
+.panel-subcats-scroll {
+  display: flex; align-items: center; gap: 8px;
+  overflow-x: auto; scrollbar-width: none;
+  padding: 2px 20px; width: 100%; box-sizing: border-box;
 }
 .panel-subcats-scroll::-webkit-scrollbar { display: none; }
 
-/* ── Fila de categorías — full width ── */
+/* ── Scroll categorías ── */
 .panel-categories-scroll {
-  display: flex;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 2px 10px;
-  gap: 2px;
-  width: 100%;
-  box-sizing: border-box;
+  display: flex; overflow-x: auto; scrollbar-width: none;
+  padding: 2px 20px; gap: 2px; width: 100%; box-sizing: border-box;
 }
 .panel-categories-scroll::-webkit-scrollbar { display: none; }
 
-/* ════════════════════════════════════════════════════════════
-   CHIPS DE CATEGORÍA
-   ════════════════════════════════════════════════════════════ */
-.category-footer-chip {
-  display: flex; flex-direction: column; align-items: center;
-  min-width: 76px; gap: 5px;
-  background: none; border: none; padding: 4px 2px; cursor: pointer;
-  flex-shrink: 0;
-}
-
-.category-icon-circle {
-  width: 68px; height: 68px;
-  border-radius: 22px;
-  background: #f8f9fa;
-  display: flex; align-items: center; justify-content: center;
-  position: relative; transition: all 0.2s;
-}
-
-.category-footer-chip.active .category-icon-circle {
-  background: #e2e8f0;
-  transform: scale(1.06);
-}
-
-.category-footer-chip.active .category-name {
-  color: #475569; font-weight: 700;
-}
-
-/* Badge de conteo */
-.category-count-badge {
-  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
-  background: #111; color: white;
-  font-size: 10px; font-weight: 800;
-  padding: 2px 8px; border-radius: 20px;
-  white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  pointer-events: none;
-}
-
-/* Shimmer mientras carga el icono */
-.category-icon-circle.loading::after {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
-  background-size: 200% 100%;
-  animation: cat-shimmer 1.2s infinite;
-  border-radius: 22px;
-}
-@keyframes cat-shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
-
+/* ── Chips de categoría ── */
+.category-footer-chip { display: flex; flex-direction: column; align-items: center; min-width: 76px; gap: 5px; background: none; border: none; padding: 4px 2px; cursor: pointer; flex-shrink: 0; }
+.category-icon-circle { width: 68px; height: 68px; border-radius: 22px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.2s; }
+.category-footer-chip.active .category-icon-circle { background: #e2e8f0; transform: scale(1.06); }
+.category-footer-chip.active .category-name { color: #475569; font-weight: 700; }
+.category-count-badge { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #111; color: white; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3); pointer-events: none; }
+.category-icon-circle.loading::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%); background-size: 200% 100%; animation: cat-shimmer 1.2s infinite; border-radius: 22px; }
+@keyframes cat-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .category-icon-3d { width: 34px; height: 34px; object-fit: contain; }
 .category-icon { font-size: 28px; line-height: 1; }
-.category-name {
-  font-size: 10px; font-weight: 500; color: #94a3b8;
-  text-align: center; white-space: nowrap;
-  font-family: 'Yahoo Sans Bold Regular', 'Inter Tight', system-ui, sans-serif;
-}
+.category-name { font-size: 10px; font-weight: 500; color: #94a3b8; text-align: center; white-space: nowrap; font-family: 'Yahoo Sans Bold Regular', 'Inter Tight', system-ui, sans-serif; }
 
-/* ════════════════════════════════════════════════════════════
-   MAPLIBRE — overrides
-   ════════════════════════════════════════════════════════════ */
+/* ── MapLibre overrides ── */
 .maplibregl-marker { background: transparent !important; border: none !important; }
-
-.maplibregl-ctrl-attrib {
-  font-size: 9px; background: rgba(255,255,255,0.7);
-  padding: 1px 4px; border-radius: 4px 0 0 0;
-}
+.maplibregl-ctrl-attrib { font-size: 9px; background: rgba(255,255,255,0.7); padding: 1px 4px; border-radius: 4px 0 0 0; }
 .maplibregl-ctrl-attrib a { color: #9ca3af; }
-
 .maplibregl-ctrl-top-right { top: 12px !important; right: 12px !important; }
-.maplibregl-ctrl-group {
-  border-radius: 12px !important; overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important; border: none !important;
-}
-.maplibregl-ctrl-group button {
-  width: 36px !important; height: 36px !important; background-color: white !important;
-}
+.maplibregl-ctrl-group { border-radius: 12px !important; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important; border: none !important; }
+.maplibregl-ctrl-group button { width: 36px !important; height: 36px !important; background-color: white !important; }
 .maplibregl-ctrl-group button + button { border-top: 1px solid rgba(0,0,0,0.08) !important; }
-
-#map-container canvas:focus,
-#map-container canvas:focus-visible,
-.maplibregl-canvas-container:focus-within { outline: none !important; }
+#map-container canvas:focus, #map-container canvas:focus-visible, .maplibregl-canvas-container:focus-within { outline: none !important; }
