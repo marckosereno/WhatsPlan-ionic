@@ -47,13 +47,16 @@ async function renderMapCategories() {
       const chip = document.createElement('button');
       chip.className = 'category-footer-chip';
       chip.dataset.menuKey = cat.key;
-      const count = counts[cat.key] || 0;
+      const icon3d = cat.icon3d_url || '';
+      const label  = cat.label_es || cat.key;
+      const count  = counts[cat.key] || 0;
+
       chip.innerHTML = `
         <div class="category-icon-circle">
           ${count > 0 ? `<div class="category-count-badge">${count} lugares</div>` : ''}
-          <img src="${cat.icon3d_url}" class="category-icon-3d">
+          <img src="${icon3d}" class="category-icon-3d">
         </div>
-        <span class="category-name">${cat.label_es || cat.key}</span>`;
+        <span class="category-name">${label}</span>`;
       container.appendChild(chip);
     });
     setupCategories(window.wpApp.mapView);
@@ -81,6 +84,7 @@ function setupCategories(mv) {
 
 (async () => {
   try {
+    console.log('🚀 WhatsPlan iniciando...');
     await waitForMapLibre();
     await loadConfig();
     initSupabase();
@@ -105,7 +109,7 @@ function setupCategories(mv) {
       });
       renderMapCategories();
     });
-  } catch(err) { console.error('❌ Error:', err.message); }
+  } catch(err) { console.error('❌ Error crítico:', err.message); }
 })();
 
 function mountSuperPanel(mv) {
