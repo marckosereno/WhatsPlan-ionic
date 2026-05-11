@@ -195,6 +195,18 @@
 .minicard-address { font-size: 10px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .minicard-arrow   { font-size: 16px; flex-shrink: 0; color: #9ca3af; margin-left: 2px; }
 
+/* ── Botón cerrar minicard ── */
+.minicard-close {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,0.08); border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #6b7280; cursor: pointer;
+  flex-shrink: 0; margin-left: 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.minicard-close:active { background: rgba(0,0,0,0.18); }
+
 /* ── Landmarks / Stickers ── */
 .landmark-el {
   display: flex; flex-direction: column; align-items: center;
