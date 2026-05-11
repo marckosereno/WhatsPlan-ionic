@@ -176,10 +176,17 @@ export class MapView {
       this.map.on('dragstart', () => { document.body.classList.add('map-dragging'); });
       this.map.on('dragend', () => { document.body.classList.remove('map-dragging'); });
 
-      // Featured highlight — igual que el original
-      // Se activa cuando un pin featured se acerca al centro del mapa
-      const _featuredCheck = () => { if (this.map.getZoom() >= 17) this._checkFeaturedNearCenter(); };
+      // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
+      const _featuredCheck = () => {
+        if (this.map.getZoom() >= 17) {
+          this._checkFeaturedNearCenter();
+        } else if (this._featuredHighlightEl) {
+          // Al hacer zoom-out por debajo de 17, limpiar highlight
+          this._clearFeaturedHighlight();
+        }
+      };
       this.map.on('move', _featuredCheck);
+      this.map.on('zoom', _featuredCheck);
 
       // CSS para highlight
       if (!document.getElementById('featured-highlight-styles')) {
@@ -494,12 +501,17 @@ export class MapView {
     this.miniCardMarker = this.markers[index];
     this.miniCardIndex  = index;
     const el = this.miniCardMarker.getElement();
-    
-    // Crear contenedor para la minicard que flote sobre el pin original
+
+    // Ocultar el pin original para que la minicard lo reemplace visualmente
+    const pinRoot = el.querySelector('.place-pin-root');
+    if (pinRoot) { pinRoot.style.visibility = 'hidden'; pinRoot.style.pointerEvents = 'none'; }
+
+    // Crear contenedor centrado sobre el pin
     const miniWrap = document.createElement('div');
     miniWrap.id = 'active-minicard';
-    miniWrap.style.cssText = 'position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;width:auto;height:auto;overflow:visible;';
-    
+    // Centrado: translateX(-50%) para centrar horizontalmente, translateY(-50%) para centrar verticalmente
+    miniWrap.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;width:auto;height:auto;overflow:visible;';
+
     const rating   = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
     const address  = (place.formattedAddress || place.formatted_address || '').substring(0, 32);
     const hasAct   = this._activityCount(place) > 0;
@@ -514,12 +526,17 @@ export class MapView {
           ${rating  ? `<div class="minicard-rating">${rating}</div>`  : ''}
           ${address ? `<div class="minicard-address">${address}</div>` : ''}
         </div>
-        <div class="minicard-arrow">›</div>
+        <button class="minicard-close" title="Cerrar">✕</button>
       </div>`;
     miniWrap.querySelector('.minicard-wrap').addEventListener('click', (e) => {
+      if (e.target.classList.contains('minicard-close')) return;
       e.stopPropagation();
       this.haptic('select');
       if (this.onPlaceSelect) this.onPlaceSelect(place);
+    });
+    miniWrap.querySelector('.minicard-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._closeMiniCard();
     });
     el.appendChild(miniWrap);
     const lat = place.location?.lat ?? place.lat;
@@ -529,7 +546,15 @@ export class MapView {
 
   _closeMiniCard() {
     const mini = document.getElementById('active-minicard');
-    if (mini) mini.remove();
+    if (mini) {
+      // Restaurar visibilidad del pin antes de eliminar la minicard
+      const el = mini.parentElement;
+      if (el) {
+        const pinRoot = el.querySelector('.place-pin-root');
+        if (pinRoot) { pinRoot.style.visibility = ''; pinRoot.style.pointerEvents = ''; }
+      }
+      mini.remove();
+    }
     this.miniCardMarker = null; this.miniCardIndex = -1; this.miniCardPlace = null;
   }
 
