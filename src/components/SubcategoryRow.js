@@ -1,6 +1,6 @@
 // ====================================================================
 // WHATSPLAN — SubcategoryRow.js
-// GPS chip (dentro del scroll) + modo LIVE + subcategorías
+// GPS chip (dentro del scroll) + modo LIVE (pill flotante) + subcategorías
 // ====================================================================
 
 const R = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
@@ -84,6 +84,7 @@ export class SubcategoryRow {
     const footer = document.getElementById('map-subcategories-footer');
     if (!footer) return;
 
+    // Botón GPS como chip circular dentro del scroll
     const gps = document.createElement('button');
     gps.id = 'map-gps-btn';
     gps.className = 'hm-gps-btn';
@@ -116,7 +117,7 @@ export class SubcategoryRow {
           this._gpsActive = true;
           this._gpsEl.classList.remove('loading');
           this._gpsEl.classList.add('active');
-          this._createLiveBtn();
+          this._createLivePill();
         }
       },
       (err) => { console.warn('⚠️ GPS:', err.message); this._gpsEl.classList.remove('loading'); },
@@ -125,31 +126,20 @@ export class SubcategoryRow {
   }
 
   _stopGps() {
-    // Detener el watch de geolocalización
     if (this._gpsWatchId != null) {
       navigator.geolocation.clearWatch(this._gpsWatchId);
       this._gpsWatchId = null;
     }
-    // Eliminar el marcador/avatar del mapa
     if (this._locationMarker) {
       this._locationMarker.remove();
       this._locationMarker = null;
     }
-    // Resetear estado GPS
     this._gpsActive  = false;
     this._lastGpsPos = null;
     this._gpsEl.classList.remove('active', 'loading');
-    // Detener LIVE si estaba activo
     if (this._liveActive) this._stopLive();
-    // Eliminar el chip LIVE del scroll
-    if (this._liveBtn) {
-      this._liveBtn.remove();
-      this._liveBtn = null;
-    }
-    if (this._liveRecenterBtn) {
-      this._liveRecenterBtn.remove();
-      this._liveRecenterBtn = null;
-    }
+    // Eliminar el pill LIVE flotante
+    this._removeLivePill();
   }
 
   _upsertLocationMarker(lat, lng) {
@@ -166,14 +156,37 @@ export class SubcategoryRow {
     }
   }
 
-  _createLiveBtn() {
+  // ── Pill LIVE flotante sobre el panel ────────────────────────────
+  _createLivePill() {
     if (this._liveBtn) return;
-    const btn = document.createElement('button');
-    btn.id = 'hm-live-btn';
-    btn.innerHTML = '<span class="hm-live-dot"></span>LIVE';
-    btn.addEventListener('click', () => this._toggleLive());
-    if (this._gpsEl?.parentNode) this._gpsEl.parentNode.insertBefore(btn, this._gpsEl.nextSibling);
-    this._liveBtn = btn;
+
+    const pill = document.createElement('button');
+    pill.id = 'hm-live-pill';
+    pill.innerHTML = '<span class="hm-live-dot"></span>LIVE';
+    pill.addEventListener('click', () => this._toggleLive());
+
+    // Insertar justo antes del panel flotante en el DOM
+    const panel = document.getElementById('map-results-panel');
+    if (panel && panel.parentNode) {
+      panel.parentNode.insertBefore(pill, panel);
+    } else {
+      document.body.appendChild(pill);
+    }
+
+    // Animar entrada
+    requestAnimationFrame(() => { pill.classList.add('visible'); });
+    this._liveBtn = pill;
+  }
+
+  _removeLivePill() {
+    if (this._liveBtn) {
+      this._liveBtn.classList.remove('visible');
+      setTimeout(() => { if (this._liveBtn) { this._liveBtn.remove(); this._liveBtn = null; } }, 250);
+    }
+    if (this._liveRecenterBtn) {
+      this._liveRecenterBtn.remove();
+      this._liveRecenterBtn = null;
+    }
   }
 
   _toggleLive() {
@@ -234,6 +247,7 @@ export class SubcategoryRow {
 
     const allActive = !this.currentSubcat || this.currentSubcat === 'all';
 
+    // Chip "Todos"
     const todosBtn = document.createElement('button');
     todosBtn.className = `subcategory-footer-chip${allActive ? ' active' : ''}`;
     todosBtn.dataset.val = 'all';
@@ -280,45 +294,87 @@ export class SubcategoryRow {
     const s = document.createElement('style');
     s.id = 'subcats-row-styles';
     s.textContent = `
+      /* GPS como chip circular dentro del scroll */
       .hm-gps-btn {
         width: 31px; height: 31px; border-radius: 50%;
-        border: 2px solid rgba(0,0,0,0.1); background: white;
+        border: 1px solid rgba(0,0,0,0.08); background: #f5f5f5;
         display: inline-flex; align-items: center; justify-content: center;
         cursor: pointer; flex-shrink: 0; transition: all 0.2s;
       }
       .hm-gps-icon { width: 11px; height: 11px; color: #6b7280; }
+      .hm-gps-btn.active { background: #e8f5e9; border-color: rgba(22,163,74,0.2); }
       .hm-gps-btn.active .hm-gps-icon { color: #16a34a; }
       .hm-gps-btn.loading { animation: gpsPulse 1s infinite; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+      /* Marcador de ubicación en el mapa */
       .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#6366f1; }
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#6366f1; }
 
-      #hm-live-btn {
-        height: 31px; padding: 0 10px; border-radius: 999px;
-        border: 1.5px solid rgba(239,68,68,0.4); background: white;
-        color: #dc2626; font-size: 11px; font-weight: 700; cursor: pointer;
-        display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      /* ── Pill LIVE flotante sobre el panel ── */
+      #hm-live-pill {
+        position: fixed;
+        bottom: calc(20px + var(--panel-height, 160px) + 10px);
+        left: 50%;
+        transform: translateX(-50%) translateY(12px);
+        opacity: 0;
+        transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        z-index: 41;
+        height: 34px; padding: 0 16px; border-radius: 999px;
+        border: 1px solid rgba(239,68,68,0.25);
+        background: rgba(255,255,255,0.96);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        color: #dc2626; font-size: 12px; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 6px;
+        white-space: nowrap;
+        font-family: 'Inter Tight', system-ui, sans-serif;
+        -webkit-tap-highlight-color: transparent;
       }
-      #hm-live-btn.active { background: #dc2626; color: white; }
-      .hm-live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: livePulse 1.2s infinite; }
-      @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+      #hm-live-pill.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      #hm-live-pill.active {
+        background: #dc2626;
+        color: white;
+        border-color: #dc2626;
+        box-shadow: 0 4px 20px rgba(220,38,38,0.35);
+      }
+      .hm-live-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: currentColor;
+        animation: livePulse 1.2s infinite;
+      }
+      @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+      /* Chips de subcategoría — estilo nativo */
       .subcategory-footer-chip {
         display: inline-flex; align-items: center;
-        height: 31px; padding: 0 12px;
-        background: white; border: 2px solid rgba(0,0,0,0.1);
-        border-radius: 999px; font-size: 12px; font-weight: 600;
-        color: #111827; white-space: nowrap; cursor: pointer;
-        transition: all 0.2s; flex-shrink: 0;
+        height: 30px; padding: 0 11px;
+        background: #f5f5f5;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 999px;
+        font-size: 12px; font-weight: 500;
+        color: #374151; white-space: nowrap; cursor: pointer;
+        transition: all 0.18s; flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
       }
-      .subcategory-footer-chip.active { background: #6366f1; border-color: #6366f1; color: white; }
+      .subcategory-footer-chip:active { background: #ebebeb; }
+      .subcategory-footer-chip.active {
+        background: #6366f1;
+        border-color: transparent;
+        color: white;
+        font-weight: 600;
+      }
 
+      /* Chip de carga */
       .hm-loading-chip {
         display: inline-flex; align-items: center; gap: 7px;
-        background: white; border-radius: 999px; padding: 0 12px;
-        height: 31px; font-size: 12px; font-weight: 600; color: #5b5fc7; flex-shrink: 0;
+        background: #f5f5f5; border-radius: 999px; padding: 0 12px;
+        height: 30px; font-size: 12px; font-weight: 500; color: #5b5fc7; flex-shrink: 0;
       }
       .hm-loading-chip__spin {
         width: 12px; height: 12px;
