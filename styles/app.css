@@ -56,7 +56,6 @@ ion-app::after {
   display: flex;
   flex-direction: column;
   z-index: 40;
-  /* Padding reducido para menor altura total */
   padding: 12px 0 10px;
   gap: 8px;
   font-family: 'Inter Tight', system-ui, sans-serif;
