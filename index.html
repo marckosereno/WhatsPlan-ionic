@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="<!DOCTYPE html>
-<html lang="es">
-<head>
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
@@ -26,44 +23,9 @@
            url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff')  format('woff');
       font-weight: normal; font-style: normal; font-display: swap;
     }
-
-    .category-name {
-      font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important;
-    }
-    .category-footer-chip.active .category-name { color: #475569; }
-
-    #topbar {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      pointer-events: auto;
-    }
-
-    #topbar-auth-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.72);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: visible;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      transition: opacity 0.25s, transform 0.25s;
-      padding: 0;
-      position: relative;
-    }
-
+    .category-name { font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important; }
+    #topbar { position: fixed; top: 12px; right: 12px; z-index: 9999; display: flex; align-items: center; gap: 8px; }
+    #topbar-auth-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 2px solid rgba(255,255,255,0.7); box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.25s; padding: 0; }
     #topbar-auth-btn:active { transform: scale(0.9); }
   </style>
 
@@ -73,20 +35,11 @@
   <link rel="stylesheet" href="/styles/map.css">
 </head>
 <body>
-
-  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
-    <symbol id="icon-close" viewBox="0 0 24 24" fill="currentColor">
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.29289 8.29289C8.68342 7.90237 9.31658 7.90237 9.70711 8.29289L12 10.5858L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L13.4142 12L15.7071 14.2929C16.0976 14.6834 16.0976 15.3166 15.7071 15.7071C15.3166 16.0976 14.6834 16.0976 14.2929 15.7071L12 13.4142L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L10.5858 12L8.29289 9.70711C7.90237 9.31658 7.90237 8.68342 8.29289 8.29289Z"/>
-    </symbol>
-  </svg>
-
   <ion-app>
     <div id="map-container" class="map-container"></div>
-
     <div id="topbar">
       <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
     </div>
-
     <div id="map-results-panel" class="map-results-panel-float">
       <div class="panel-top-row">
         <div id="panel-gps-container"></div>
@@ -95,122 +48,9 @@
       <div id="map-categories-footer" class="panel-categories-scroll"></div>
     </div>
   </ion-app>
-
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
   <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script type="module" src="/src/app.js"></script>
-</body>
-</html>
-
-<script>eruda.init();</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="WhatsPlan">
-  <meta name="theme-color" content="transparent">
-  <title>WhatsPlan</title>
-
-  <link href="https://db.onlinewebfonts.com/c/557602b15207c6d67bbdda171a4157dd?family=Yahoo+Sans+Bold+Regular" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.bunny.net">
-  <link href="https://fonts.bunny.net/css?family=inter-tight:400,500,600,700&display=swap" rel="stylesheet">
-
-  <style>
-    @font-face {
-      font-family: 'Yahoo Sans Bold Regular';
-      src: url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff2') format('woff2'),
-           url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff')  format('woff');
-      font-weight: normal; font-style: normal; font-display: swap;
-    }
-
-    .category-name {
-      font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important;
-    }
-    .category-footer-chip.active .category-name { color: #475569; }
-
-    #topbar {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      pointer-events: auto;
-    }
-
-    #topbar-auth-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.72);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: visible;
-      cursor: pointer;
-      transition: opacity 0.25s, transform 0.25s;
-      padding: 0;
-      position: relative;
-    }
-
-    #topbar-auth-btn:active { transform: scale(0.9); }
-  </style>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="/styles/app.css">
-  <link rel="stylesheet" href="/styles/map.css">
-</head>
-<body>
-
-  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
-    <symbol id="icon-close" viewBox="0 0 24 24" fill="currentColor">
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.29289 8.29289C8.68342 7.90237 9.31658 7.90237 9.70711 8.29289L12 10.5858L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L13.4142 12L15.7071 14.2929C16.0976 14.6834 16.0976 15.3166 15.7071 15.7071C15.3166 16.0976 14.6834 16.0976 14.2929 15.7071L12 13.4142L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L10.5858 12L8.29289 9.70711C7.90237 9.31658 7.90237 8.68342 8.29289 8.29289Z"/>
-    </symbol>
-  </svg>
-
-  <ion-app>
-    <div id="map-container" class="map-container"></div>
-
-    <div id="topbar">
-      <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
-    </div>
-
-    <button id="floating-search-btn" class="floating-search-btn">
-      <span style="font-size:18px;">🔍</span>
-    </button>
-
-    <div id="global-search-overlay" class="global-search-overlay" style="display:none;">
-      <div class="search-overlay-content">
-        <div class="search-bar-container">
-          <span style="font-size:18px;opacity:0.6;">🔍</span>
-          <input type="search" id="map-search-global-input" placeholder="Buscar un lugar..." autocomplete="off">
-          <button id="close-search-overlay">✕</button>
-        </div>
-        <div id="search-results-count" class="search-results-count"></div>
-      </div>
-    </div>
-
-    <div id="map-results-panel" class="map-results-panel-float">
-      <div class="panel-top-row">
-        <div id="panel-gps-container"></div>
-        <div id="map-subcategories-footer" class="panel-subcats-scroll"></div>
-      </div>
-      <div id="map-categories-footer" class="panel-categories-scroll"></div>
-    </div>
-  </ion-app>
-
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
-  <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="/src/app.js"></script>
-
 </body>
 </html>
