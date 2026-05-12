@@ -11,6 +11,10 @@ import { isSuperUser }      from '/src/services/SuperUserService.js';
 import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
 import { appState }         from '/src/state/AppState.js';
+import {
+  animatePanelIn, animateChipsIn, animateChipTap,
+  animateAvatarSwap, animateToast, animateCategorySwap
+} from '/src/utils/animations.js';
 
 window.wpApp = {
   mapView: null, currentUser: null,
@@ -83,6 +87,7 @@ async function renderMapCategories() {
     // Swap atómico: un solo repaint, sin frame vacío
     container.innerHTML = '';
     container.appendChild(fragment);
+    animateChipsIn(Array.from(container.querySelectorAll('.category-footer-chip')));
     console.log('✅ ' + cats.length + ' categorías desde Supabase');
   } catch(err) {
     console.warn('⚠️ renderMapCategories:', err.message);
@@ -204,6 +209,7 @@ function setupCategories(mv) {
 
     newChip.addEventListener('click', async (e) => {
       e.stopPropagation();
+      animateChipTap(newChip);
       const menuKey  = newChip.dataset.menuKey;
       const isActive = newChip.classList.contains('active');
 
@@ -260,6 +266,7 @@ function setupActivitySubscription(mv) {
       window.wpApp.currentUser = user;
       appState.setUser(user);
       await renderAuthButton(user);
+      animateAvatarSwap(document.getElementById('topbar-auth-btn'));
       if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
       if (!user && window.wpApp.superPanel) {
         window.wpApp.superPanel.unmount();
@@ -294,6 +301,7 @@ function setupActivitySubscription(mv) {
     const catsReady = renderMapCategories();
 
     Promise.all([mapReady, catsReady]).then(() => {
+      animatePanelIn(document.getElementById('map-results-panel'));
       setupCategories(mv);
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
