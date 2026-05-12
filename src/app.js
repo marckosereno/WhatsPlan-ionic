@@ -9,6 +9,8 @@ import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
 import { initSupabase, AuthService, ActivityService, ProfileService } from '/src/services/SupabaseService.js';
 import { isSuperUser }      from '/src/services/SuperUserService.js';
 import { getCategories }    from '/src/services/CategoryService.js';
+import { initIOSFixes }     from '/src/utils/ios-fixes.js';
+import { appState }         from '/src/state/AppState.js';
 
 window.wpApp = {
   mapView: null, currentUser: null,
@@ -243,6 +245,10 @@ function setupActivitySubscription(mv) {
 (async () => {
   try {
     console.log('🚀 WhatsPlan iniciando...');
+
+    // iOS / Capacitor fixes — lo primero, antes de montar nada
+    initIOSFixes();
+
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
@@ -252,12 +258,14 @@ function setupActivitySubscription(mv) {
     AuthService.onAuthChange(async (event, user) => {
       console.log('🔐 Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
+      appState.setUser(user);
       await renderAuthButton(user);
       if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
       if (!user && window.wpApp.superPanel) {
         window.wpApp.superPanel.unmount();
         window.wpApp.superPanel = null;
         window.wpApp._cachedAvatarUrl = '';
+        appState.clearUser();
       }
     });
 
