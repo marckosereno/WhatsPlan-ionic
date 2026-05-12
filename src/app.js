@@ -38,19 +38,24 @@ async function loadConfig() {
 // ── Categorías desde Supabase ─────────────────────────────────────────
 async function renderMapCategories() {
   try {
-    const cats = await getCategories();
+    // Obtener categorías y conteos en paralelo — sin tocar el DOM hasta tenerlos
+    const [cats, counts] = await Promise.all([
+      getCategories(),
+      fetch('/api/airtable-places?summary=true')
+        .then(r => r.json())
+        .then(data => {
+          const map = {};
+          if (data.success) data.counts.forEach(c => map[c.category] = c.count);
+          return map;
+        })
+        .catch(() => ({})),
+    ]);
+
     const container = document.getElementById('map-categories-footer');
     if (!container || !cats.length) return;
-    // Quitar skeletons y pintar chips reales
-    container.innerHTML = '';
 
-    const counts = {};
-    try {
-      const res = await fetch('/api/airtable-places?summary=true');
-      const data = await res.json();
-      if (data.success) data.counts.forEach(c => counts[c.category] = c.count);
-    } catch(_) {}
-
+    // Construir todos los chips antes de tocar el DOM
+    const fragment = document.createDocumentFragment();
     cats.forEach(cat => {
       const chip = document.createElement('button');
       chip.className = 'category-footer-chip';
@@ -70,8 +75,12 @@ async function renderMapCategories() {
             : `<span class="category-icon">${emoji}</span>`}
         </div>
         <span class="category-name">${label}</span>`;
-      container.appendChild(chip);
+      fragment.appendChild(chip);
     });
+
+    // Swap atómico: un solo repaint, sin frame vacío
+    container.innerHTML = '';
+    container.appendChild(fragment);
     console.log('✅ ' + cats.length + ' categorías desde Supabase');
   } catch(err) {
     console.warn('⚠️ renderMapCategories:', err.message);
