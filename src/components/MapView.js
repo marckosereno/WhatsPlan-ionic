@@ -1,3 +1,4 @@
+import { animateMinicardIn, animateMinicardOut, animatePinTap } from '/src/utils/animations.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
@@ -540,6 +541,7 @@ export class MapView {
 
     const card = wrapper.querySelector('.minicard-marker-content');
     if (card) {
+      animateMinicardIn(card);
       let tx = 0, ty = 0;
       card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
       card.addEventListener('touchend', e => {
@@ -563,6 +565,15 @@ export class MapView {
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const wrapper = this.miniCardMarker.getElement();
+    const cardEl  = wrapper?.querySelector('.minicard-marker-content');
+    if (cardEl) {
+      animateMinicardOut(cardEl, () => this._restorePin(wrapper));
+      return;
+    }
+    this._restorePin(wrapper);
+  }
+
+  _restorePin(wrapper) {
     if (wrapper && wrapper._savedPinHTML !== undefined) {
       wrapper.style.width    = '44px';
       wrapper.style.height   = '44px';
@@ -578,9 +589,10 @@ export class MapView {
     this._miniCardPinRoot   = null;
     this._miniCardMarkerEl  = null;
     this.miniCardMarker     = null;
+  }
+
     this.miniCardIndex      = -1;
     this.miniCardPlace      = null;
-  }
 
   // ── Actividades ───────────────────────────────────────────────────
   _activityCount(place) {
