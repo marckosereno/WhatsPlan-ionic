@@ -505,26 +505,28 @@ export class MapView {
     this.miniCardIndex  = index;
     this.haptic('tap');
 
-    const wrapper = this.markers[index]?.getElement();
+    const marker = this.markers[index];
+    if (!marker) return;
+    const wrapper = marker.getElement();
     if (!wrapper) return;
 
-    const photoUrl = proxyPhoto(rawPhoto);
-    const rating   = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
-    const address  = (place.formattedAddress || place.formatted_address || place.vicinity || '').substring(0, 32);
-    const hasAct   = this._activityCount(place) > 0;
-    const cat      = this.currentCatData;
-    const cardGrad = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
+    const photoUrl  = proxyPhoto(rawPhoto);
+    const rating    = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
+    const address   = (place.formattedAddress || place.formatted_address || place.vicinity || '').substring(0, 32);
+    const hasAct    = this._activityCount(place) > 0;
+    const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
+    const cat       = this.currentCatData;
 
-    // Guardar HTML del pin para restaurarlo al cerrar
-    wrapper._savedPinHTML  = wrapper.innerHTML;
+    // Guardar HTML del pin — igual que el original
+    wrapper._savedPinHTML = wrapper.innerHTML;
     wrapper.style.width    = 'auto';
     wrapper.style.height   = 'auto';
     wrapper.style.overflow = 'visible';
     wrapper.style.zIndex   = '9999';
     wrapper.style.marginTop = '-45px';
 
-    // Estilo idéntico al original HiMarco
-    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;">
+    // Minicard con mismo estilo exacto del original PWA
+    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
       ${photoUrl
         ? `<img src="${photoUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0;" onerror="this.style.display='none'">`
         : `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${cat?.icon||'💎'}</div>`}
@@ -541,12 +543,16 @@ export class MapView {
       let tx = 0, ty = 0;
       card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
       card.addEventListener('touchend', e => {
-        if (Math.abs(e.changedTouches[0].clientX-tx) > 8 || Math.abs(e.changedTouches[0].clientY-ty) > 8) return;
+        if (Math.abs(e.changedTouches[0].clientX - tx) > 8 || Math.abs(e.changedTouches[0].clientY - ty) > 8) return;
         e.stopPropagation(); e.preventDefault();
         this.haptic('select');
         if (this.onPlaceSelect) this.onPlaceSelect(place);
       });
-      card.addEventListener('click', e => { e.stopPropagation(); this.haptic('select'); if (this.onPlaceSelect) this.onPlaceSelect(place); });
+      card.addEventListener('click', e => {
+        e.stopPropagation();
+        this.haptic('select');
+        if (this.onPlaceSelect) this.onPlaceSelect(place);
+      });
     }
 
     const lat = place.location?.lat ?? place.lat;
@@ -558,7 +564,6 @@ export class MapView {
     if (!this.miniCardMarker) return;
     const wrapper = this.miniCardMarker.getElement();
     if (wrapper && wrapper._savedPinHTML !== undefined) {
-      // Restaurar HTML del pin exactamente igual que el original
       wrapper.style.width    = '44px';
       wrapper.style.height   = '44px';
       wrapper.style.overflow = 'visible';
@@ -566,15 +571,15 @@ export class MapView {
       wrapper.style.marginTop = '';
       wrapper.innerHTML = wrapper._savedPinHTML;
       delete wrapper._savedPinHTML;
-      // Restaurar badges según zoom
+      // Restaurar badges según zoom actual
       const z = this.map?.getZoom() || 0;
       wrapper.querySelectorAll('.place-act-badge').forEach(b => { b.style.opacity = z >= 15 ? '1' : '0'; });
     }
-    this._miniCardPinRoot  = null;
-    this._miniCardMarkerEl = null;
-    this.miniCardMarker    = null;
-    this.miniCardIndex     = -1;
-    this.miniCardPlace     = null;
+    this._miniCardPinRoot   = null;
+    this._miniCardMarkerEl  = null;
+    this.miniCardMarker     = null;
+    this.miniCardIndex      = -1;
+    this.miniCardPlace      = null;
   }
 
   // ── Actividades ───────────────────────────────────────────────────
