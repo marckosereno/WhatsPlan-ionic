@@ -60,7 +60,6 @@ ion-app::after {
   gap: 8px;
   font-family: 'Inter Tight', system-ui, sans-serif;
   overflow: hidden;
-  min-height: 173px;
 }
 
 /* ── Wrappers con fade lateral para ambas filas ── */
