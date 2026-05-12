@@ -42,6 +42,14 @@ async function renderMapCategories() {
     const container = document.getElementById('map-categories-footer');
     if (!container || !cats.length) return;
     container.innerHTML = '';
+
+    const counts = {};
+    try {
+      const res = await fetch('/api/airtable-places?summary=true');
+      const data = await res.json();
+      if (data.success) data.counts.forEach(c => counts[c.category] = c.count);
+    } catch(_) {}
+
     cats.forEach(cat => {
       const chip = document.createElement('button');
       chip.className = 'category-footer-chip';
@@ -49,8 +57,11 @@ async function renderMapCategories() {
       const icon3d = cat.icon3d_url || '';
       const emoji  = cat.emoji || '';
       const label  = cat.label_es || cat.key;
+      const count  = counts[cat.key] || 0;
+
       chip.innerHTML = `
         <div class="category-icon-circle loading">
+          ${count > 0 ? `<div class="category-count-badge">${count} lugares</div>` : ''}
           ${icon3d
             ? `<img src="${icon3d}" class="category-icon-3d"
                 onload="this.closest('.category-icon-circle').classList.remove('loading')"
@@ -70,23 +81,29 @@ async function renderMapCategories() {
 async function renderAuthButton(user) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
+
   if (!user) {
     btn.style.border = '2px solid rgba(255,255,255,0.6)';
     btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bust+in+silhouette/3D/bust_in_silhouette_3d.png"
       style="width:26px;height:26px;object-fit:contain;opacity:0.7;" onerror="this.outerHTML='👤'">`;
     return;
   }
+
   let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
   if (!avatarUrl) {
     try {
       const profile = await ProfileService.getProfile(user.id);
-      if (profile?.avatar_url) { avatarUrl = profile.avatar_url; window.wpApp._cachedAvatarUrl = avatarUrl; }
+      if (profile?.avatar_url) {
+        avatarUrl = profile.avatar_url;
+        window.wpApp._cachedAvatarUrl = avatarUrl;
+      }
     } catch(_) {}
   }
+
   if (avatarUrl) {
     btn.style.border = '2px solid rgba(255,255,255,0.7)';
     btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-      <img src="${avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">
+      <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">
     </div>`;
   } else {
     btn.style.border = '2.5px dashed #a78bfa';
@@ -121,7 +138,9 @@ function _showProfileMenu() {
     </div>
     <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;">🚪 Cerrar sesión</div>`;
   menu.querySelector('#pm-logout').addEventListener('click', async () => {
-    await AuthService.logout(); window.wpApp._cachedAvatarUrl = ''; menu.remove();
+    await AuthService.logout();
+    window.wpApp._cachedAvatarUrl = '';
+    menu.remove();
   });
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
   document.body.appendChild(menu);
@@ -139,8 +158,7 @@ function mountSuperPanel(mv) {
   console.log('✅ SuperUserPanel montado');
 }
 
-// ── Filtro de subcategoría — igual que filterBySubcategory() del original
-// Usa place.subcategoryTags (array) NO place.types
+// ── Filtro de subcategoría ────────────────────────────────────────────
 function filterBySubcat(mv, subcatValue) {
   const counter = document.getElementById('map-results-count');
 
@@ -153,7 +171,6 @@ function filterBySubcat(mv, subcatValue) {
   let visible = 0;
   mv.allPlaces.forEach((place, i) => {
     const tags = place.subcategoryTags || [];
-    // Comparación exacta por valor del chip — igual que el original
     const match = tags.some(tag => tag.toLowerCase() === subcatValue.toLowerCase());
     if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
     if (match) visible++;
@@ -169,7 +186,6 @@ function setupCategories(mv) {
   if (!container) return;
 
   container.querySelectorAll('.category-footer-chip').forEach(chip => {
-    // Clonar para eliminar listeners anteriores
     const newChip = chip.cloneNode(true);
     chip.parentNode.replaceChild(newChip, chip);
     newChip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
@@ -192,35 +208,9 @@ function setupCategories(mv) {
 
       newChip.classList.add('active');
       window.wpApp.subcatRow?.showLoading(menuKey);
-      const counter = document.getElementById('map-results-count');
-      if (counter) counter.textContent = 'Cargando...';
       await mv.loadCategory(menuKey);
-      if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
       window.wpApp.subcatRow?.showSubcats(menuKey);
     });
-  });
-}
-
-// ── Búsqueda inline ───────────────────────────────────────────────────
-function setupSearch(mv) {
-  const input = document.getElementById('map-search-global-input');
-  if (!input) return;
-  input.readOnly = false;
-  input.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    const counter = document.getElementById('map-results-count');
-    if (!q) {
-      mv.markerEls.forEach(el => el.style.display = '');
-      if (counter) counter.textContent = mv.allPlaces.length > 0 ? `${mv.allPlaces.length} lugares` : '';
-      return;
-    }
-    mv.allPlaces.forEach((place, i) => {
-      const match = (place.name || '').toLowerCase().includes(q)
-        || (place.formattedAddress || place.formatted_address || '').toLowerCase().includes(q);
-      if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
-    });
-    const visible = mv.allPlaces.filter(p => (p.name||'').toLowerCase().includes(q)).length;
-    if (counter) counter.textContent = `${visible} resultados`;
   });
 }
 
@@ -271,7 +261,6 @@ function setupActivitySubscription(mv) {
     mv.getMap().on('load', () => {
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
-        // ── Filtro correcto: usa subcategoryTags igual que el original ──
         onSubcatSelect: (value) => filterBySubcat(mv, value),
       });
       window.wpApp.subcatRow = subcatRow;
@@ -287,7 +276,6 @@ function setupActivitySubscription(mv) {
     window.wpApp.authModal = authModal;
 
     setupTopBar(authModal);
-    setupSearch(mv);
     setupActivitySubscription(mv);
     renderAuthButton(null);
 
