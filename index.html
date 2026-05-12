@@ -54,12 +54,14 @@
 
   <ion-app>
     <div id="map-container" class="map-container"></div>
+  </ion-app>
 
-    <div id="topbar">
-      <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
-    </div>
+  <!-- Panel y topbar FUERA de ion-app para evitar animaciones de Ionic -->
+  <div id="topbar">
+    <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
+  </div>
 
-    <div id="map-results-panel" class="map-results-panel-float">
+  <div id="map-results-panel" class="map-results-panel-float">
       <!-- Fila subcategorías: GPS (primer chip) + chips en scroll horizontal -->
       <div class="panel-scroll-wrap">
         <div id="map-subcategories-footer" class="panel-subcats-scroll">
@@ -97,7 +99,6 @@
         </div>
       </div>
     </div>
-  </ion-app>
 
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
   <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
