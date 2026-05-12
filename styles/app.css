@@ -239,3 +239,31 @@ ion-app::after {
   animation: sk-shimmer 1.4s ease-in-out infinite;
   flex-shrink: 0;
 }
+
+/* ════════════════════════════════════════════════════════════
+   SAFE AREAS — iOS notch / home indicator / Capacitor
+   ════════════════════════════════════════════════════════════ */
+
+:root {
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
+  --vh: 1vh; /* sobreescrito por ios-fixes.js */
+}
+
+/* Topbar: bajar si hay notch */
+#topbar {
+  top: calc(12px + var(--safe-top));
+}
+
+/* Panel inferior: subir si hay home indicator */
+.map-results-panel-float {
+  bottom: calc(20px + var(--safe-bottom));
+}
+
+/* Usar --vh en vez de vh para altura real en iOS */
+.map-container,
+ion-app {
+  height: calc(var(--vh, 1vh) * 100);
+}
