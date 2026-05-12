@@ -62,11 +62,39 @@
     <div id="map-results-panel" class="map-results-panel-float">
       <!-- Fila subcategorías: GPS (primer chip) + chips en scroll horizontal -->
       <div class="panel-scroll-wrap">
-        <div id="map-subcategories-footer" class="panel-subcats-scroll"></div>
+        <div id="map-subcategories-footer" class="panel-subcats-scroll">
+          <!-- GPS skeleton — se reemplaza cuando SubcategoryRow.js arranca -->
+          <div class="hm-gps-skeleton"></div>
+        </div>
       </div>
-      <!-- Fila categorías principales -->
+      <!-- Fila categorías principales — skeletons pre-render -->
       <div class="panel-scroll-wrap">
-        <div id="map-categories-footer" class="panel-categories-scroll"></div>
+        <div id="map-categories-footer" class="panel-categories-scroll">
+          <div class="category-footer-chip category-chip-skeleton">
+            <div class="category-icon-circle cat-sk-circle"></div>
+            <div class="cat-sk-label"></div>
+          </div>
+          <div class="category-footer-chip category-chip-skeleton">
+            <div class="category-icon-circle cat-sk-circle"></div>
+            <div class="cat-sk-label"></div>
+          </div>
+          <div class="category-footer-chip category-chip-skeleton">
+            <div class="category-icon-circle cat-sk-circle"></div>
+            <div class="cat-sk-label"></div>
+          </div>
+          <div class="category-footer-chip category-chip-skeleton">
+            <div class="category-icon-circle cat-sk-circle"></div>
+            <div class="cat-sk-label"></div>
+          </div>
+          <div class="category-footer-chip category-chip-skeleton">
+            <div class="category-icon-circle cat-sk-circle"></div>
+            <div class="cat-sk-label"></div>
+          </div>
+          <div class="category-footer-chip category-chip-skeleton">
+            <div class="category-icon-circle cat-sk-circle"></div>
+            <div class="cat-sk-label"></div>
+          </div>
+        </div>
       </div>
     </div>
   </ion-app>
