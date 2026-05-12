@@ -41,6 +41,7 @@ async function renderMapCategories() {
     const cats = await getCategories();
     const container = document.getElementById('map-categories-footer');
     if (!container || !cats.length) return;
+    // Quitar skeletons y pintar chips reales
     container.innerHTML = '';
 
     const counts = {};
@@ -257,15 +258,6 @@ function setupActivitySubscription(mv) {
     mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
     console.log('✅ MapView creado');
 
-    // SubcategoryRow — necesita mapa listo
-    mv.getMap().on('load', () => {
-      const subcatRow = new SubcategoryRow({
-        map: mv.getMap(),
-        onSubcatSelect: (value) => filterBySubcat(mv, value),
-      });
-      window.wpApp.subcatRow = subcatRow;
-    });
-
     const authModal = new AuthModal({
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
@@ -279,8 +271,19 @@ function setupActivitySubscription(mv) {
     setupActivitySubscription(mv);
     renderAuthButton(null);
 
-    // Cargar categorías desde Supabase y conectar listeners
-    renderMapCategories().then(() => setupCategories(mv));
+    // Esperar mapa + categorías juntos antes de crear SubcategoryRow.
+    // Así los skeletons de ambas filas desaparecen al mismo tiempo, sin colapso.
+    const mapReady  = new Promise(resolve => mv.getMap().on('load', resolve));
+    const catsReady = renderMapCategories();
+
+    Promise.all([mapReady, catsReady]).then(() => {
+      setupCategories(mv);
+      const subcatRow = new SubcategoryRow({
+        map: mv.getMap(),
+        onSubcatSelect: (value) => filterBySubcat(mv, value),
+      });
+      window.wpApp.subcatRow = subcatRow;
+    });
 
     console.log('✅ WhatsPlan listo');
   } catch(err) {
