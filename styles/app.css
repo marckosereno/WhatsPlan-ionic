@@ -60,7 +60,7 @@ ion-app::after {
   gap: 8px;
   font-family: 'Inter Tight', system-ui, sans-serif;
   overflow: hidden;
-  min-height: 177px;
+  min-height: 173px;
 }
 
 /* ── Wrappers con fade lateral para ambas filas ── */
@@ -191,25 +191,3 @@ ion-app::after {
 #map-container canvas:focus,
 #map-container canvas:focus-visible,
 .maplibregl-canvas-container:focus-within { outline: none !important; }
-/* ── Skeleton categorías ── */
-@keyframes cat-sk {
-  0%   { background-position: -200px 0; }
-  100% { background-position: calc(200px + 100%) 0; }
-}
-.cat-skeleton {
-  display: flex; flex-direction: column; align-items: center;
-  min-width: 76px; gap: 5px; flex-shrink: 0; padding: 4px 2px;
-}
-.cat-skeleton-icon {
-  width: 68px; height: 68px; border-radius: 22px;
-  background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: cat-sk 1.2s infinite linear;
-}
-.cat-skeleton-label {
-  width: 52px; height: 11px; border-radius: 6px;
-  background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
-  background-size: 200px 100%;
-  animation: cat-sk 1.2s infinite linear;
-  animation-delay: 0.1s;
-}
