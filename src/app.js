@@ -103,7 +103,7 @@ async function renderAuthButton(user) {
   if (avatarUrl) {
     btn.style.border = '2px solid rgba(255,255,255,0.7)';
     btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-      <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">
+      <img src="${avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">
     </div>`;
   } else {
     btn.style.border = '2.5px dashed #a78bfa';
