@@ -1,289 +1,314 @@
-// ====================================================================
-// WHATSPLAN — app.js
-// ====================================================================
+/* ====================================================================
+   WHATSPLAN — app.css
+   Copiado exacto de map-view.css de la PWA original
+   ==================================================================== */
 
-import { MapView }          from '/src/components/MapView.js';
-import { AuthModal }        from '/src/components/AuthModal.js';
-import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
-import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
-import { initSupabase, AuthService, ActivityService, ProfileService } from '/src/services/SupabaseService.js';
-import { isSuperUser }      from '/src/services/SuperUserService.js';
-import { getCategories }    from '/src/services/CategoryService.js';
+/* Quitar highlight de tap — igual que PWA */
+* { -webkit-tap-highlight-color: transparent !important; }
 
-window.wpApp = {
-  mapView: null, currentUser: null,
-  activities: [], superPanel: null,
-  authModal: null, subcatRow: null,
-  _cachedAvatarUrl: '',
-};
-
-// ── Helpers ──────────────────────────────────────────────────────────
-function waitForMapLibre() {
-  return new Promise(resolve => {
-    if (window.maplibregl) { resolve(); return; }
-    const t = setInterval(() => { if (window.maplibregl) { clearInterval(t); resolve(); } }, 50);
-  });
+/* ── VIEWPORT LOCK — exacto del original ── */
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
-async function loadConfig() {
-  try {
-    const r = await fetch('/api/config');
-    const c = await r.json();
-    window.__SUPABASE_URL__      = c.supabaseUrl      || '';
-    window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
-    console.log('✅ Config cargada');
-  } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
+body {
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
-// ── Categorías desde Supabase ─────────────────────────────────────────
-async function renderMapCategories() {
-  try {
-    const cats = await getCategories();
-    const container = document.getElementById('map-categories-footer');
-    if (!container || !cats.length) return;
-    container.innerHTML = '';
-
-    const counts = {};
-    try {
-      const res = await fetch('/api/airtable-places?summary=true');
-      const data = await res.json();
-      if (data.success) data.counts.forEach(c => counts[c.category] = c.count);
-    } catch(_) {}
-
-    cats.forEach(cat => {
-      const chip = document.createElement('button');
-      chip.className = 'category-footer-chip';
-      chip.dataset.menuKey = cat.key;
-      const icon3d = cat.icon3d_url || '';
-      const emoji  = cat.emoji || '';
-      const label  = cat.label_es || cat.key;
-      const count  = counts[cat.key] || 0;
-
-      chip.innerHTML = `
-        <div class="category-icon-circle loading">
-          ${count > 0 ? `<div class="category-count-badge">${count} lugares</div>` : ''}
-          ${icon3d
-            ? `<img src="${icon3d}" class="category-icon-3d"
-                onload="this.closest('.category-icon-circle').classList.remove('loading')"
-                onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">`
-            : `<span class="category-icon">${emoji}</span>`}
-        </div>
-        <span class="category-name">${label}</span>`;
-      container.appendChild(chip);
-    });
-    console.log('✅ ' + cats.length + ' categorías desde Supabase');
-  } catch(err) {
-    console.warn('⚠️ renderMapCategories:', err.message);
-  }
+ion-app {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
-// ── Avatar ────────────────────────────────────────────────────────────
-async function renderAuthButton(user) {
-  const btn = document.getElementById('topbar-auth-btn');
-  if (!btn) return;
-
-  if (!user) {
-    btn.style.border = '2px solid rgba(255,255,255,0.6)';
-    btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bust+in+silhouette/3D/bust_in_silhouette_3d.png"
-      style="width:26px;height:26px;object-fit:contain;opacity:0.7;" onerror="this.outerHTML='👤'">`;
-    return;
-  }
-
-  let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
-  if (!avatarUrl) {
-    try {
-      const profile = await ProfileService.getProfile(user.id);
-      if (profile?.avatar_url) {
-        avatarUrl = profile.avatar_url;
-        window.wpApp._cachedAvatarUrl = avatarUrl;
-      }
-    } catch(_) {}
-  }
-
-  if (avatarUrl) {
-    btn.style.border = '2px solid rgba(255,255,255,0.7)';
-    btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-      <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">
-    </div>`;
-  } else {
-    btn.style.border = '2.5px dashed #a78bfa';
-    btn.innerHTML = `
-      <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png"
-        style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'">
-      <span style="position:absolute;bottom:-6px;right:-4px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;box-shadow:0 1px 4px rgba(124,58,237,0.4);">+</span>`;
-  }
+/* ── Contenedor del mapa — mismo id que PWA: map-container ── */
+.map-container {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #e8e8e8;
+  transition: background 0.3s ease;
 }
 
-// ── Topbar ────────────────────────────────────────────────────────────
-function setupTopBar(authModal) {
-  const btn = document.getElementById('topbar-auth-btn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    if (window.wpApp.currentUser) _showProfileMenu();
-    else authModal.show();
-  });
+/* ── Sombra blanca SUPERIOR — copiado de .map-view::before ── */
+ion-app::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 90px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.92) 0%,
+    rgba(255,255,255,0.45) 55%,
+    rgba(255,255,255,0) 100%
+  );
+  pointer-events: none;
+  z-index: 9998;
 }
 
-function _showProfileMenu() {
-  document.getElementById('profile-menu')?.remove();
-  const menu = document.createElement('div');
-  menu.id = 'profile-menu';
-  menu.style.cssText = 'position:fixed;top:64px;right:12px;z-index:2000;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;font-family:"Inter Tight",system-ui,sans-serif;';
-  const user = window.wpApp.currentUser;
-  const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
-  menu.innerHTML = `
-    <div style="padding:14px 16px 10px;border-bottom:1px solid #f3f4f6;">
-      <div style="font-size:13px;font-weight:700;color:#111;">${name}</div>
-      <div style="font-size:11px;color:#9ca3af;">${user?.email || ''}</div>
-    </div>
-    <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;">🚪 Cerrar sesión</div>`;
-  menu.querySelector('#pm-logout').addEventListener('click', async () => {
-    await AuthService.logout();
-    window.wpApp._cachedAvatarUrl = '';
-    menu.remove();
-  });
-  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
-  document.body.appendChild(menu);
+/* ── Sombra blanca INFERIOR — copiado de .map-view::after ── */
+ion-app::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to top,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.55) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  pointer-events: none;
+  z-index: 38;
+  transition: background 0.4s ease;
 }
 
-// ── SuperUserPanel ────────────────────────────────────────────────────
-function mountSuperPanel(mv) {
-  if (window.wpApp.superPanel) return;
-  const sp = new SuperUserPanel(mv, {
-    onLandmarksUpdated:  (items) => mv._renderLandmarks(items),
-    onCategoriesUpdated: () => renderMapCategories().then(() => setupCategories(mv)),
-  });
-  sp.mount();
-  window.wpApp.superPanel = sp;
-  console.log('✅ SuperUserPanel montado');
+/* ════════════════════════════════════════════════════════════
+   PANEL INFERIOR — copiado exacto de .map-results-panel
+   ════════════════════════════════════════════════════════════ */
+.map-results-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: white;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+  height: 26dvh;
+  min-height: 26dvh;
+  max-height: 26dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
+  z-index: 40;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom);
+  gap: 0;
 }
 
-// ── Filtro de subcategoría ────────────────────────────────────────────
-function filterBySubcat(mv, subcatValue) {
-  const counter = document.getElementById('map-results-count');
-
-  if (!subcatValue || subcatValue === 'all') {
-    mv.markerEls.forEach(el => el.style.display = '');
-    if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
-    return;
-  }
-
-  let visible = 0;
-  mv.allPlaces.forEach((place, i) => {
-    const tags = place.subcategoryTags || [];
-    const match = tags.some(tag => tag.toLowerCase() === subcatValue.toLowerCase());
-    if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
-    if (match) visible++;
-  });
-
-  if (counter) counter.textContent = `${visible} lugares`;
-  console.log(`🔍 Subcat "${subcatValue}": ${visible} lugares`);
+/* Scroll horizontal en categorías — igual que PWA */
+.map-results-panel .map-categories-footer {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overflow-x: auto;
+  overflow-y: hidden;
+  will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
-// ── Categorías + SubcategoryRow ───────────────────────────────────────
-function setupCategories(mv) {
-  const container = document.getElementById('map-categories-footer');
-  if (!container) return;
-
-  container.querySelectorAll('.category-footer-chip').forEach(chip => {
-    const newChip = chip.cloneNode(true);
-    chip.parentNode.replaceChild(newChip, chip);
-    newChip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
-
-    newChip.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const menuKey  = newChip.dataset.menuKey;
-      const isActive = newChip.classList.contains('active');
-
-      container.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
-
-      if (isActive) {
-        mv._clearPlaceMarkers();
-        mv.currentCatId = null;
-        window.wpApp.subcatRow?.hide();
-        const counter = document.getElementById('map-results-count');
-        if (counter) counter.textContent = '';
-        return;
-      }
-
-      newChip.classList.add('active');
-      window.wpApp.subcatRow?.showLoading(menuKey);
-      await mv.loadCategory(menuKey);
-      window.wpApp.subcatRow?.showSubcats(menuKey);
-    });
-  });
+/* ── Handle — copiado de .panel-drag-handle ── */
+.panel-drag-handle {
+  width: 100%;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 22px 22px 0 0;
 }
 
-// ── Actividades ───────────────────────────────────────────────────────
-function setupActivitySubscription(mv) {
-  try {
-    ActivityService.subscribeToActivities(async () => {
-      try {
-        const acts = await ActivityService.getActiveActivities();
-        window.wpApp.activities = acts;
-        mv.updateActivities(acts);
-      } catch(_) {}
-    });
-  } catch(_) {}
+.drag-indicator {
+  width: 36px;
+  height: 4px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 2px;
 }
 
-// ════════════════════════════════════════════════════════════════════
-// MAIN
-// ════════════════════════════════════════════════════════════════════
-(async () => {
-  try {
-    console.log('🚀 WhatsPlan iniciando...');
-    await waitForMapLibre();
-    console.log('✅ MapLibre listo');
+/* ════════════════════════════════════════════════════════════
+   BARRA DE BÚSQUEDA — copiado de .map-search-global-bar
+   ════════════════════════════════════════════════════════════ */
+.map-search-global-bar {
+  position: relative;
+  left: auto; right: auto; top: auto;
+  z-index: 1;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50px;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 42px;
+  margin: 0 16px 4px;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  flex-shrink: 0;
+}
 
-    await loadConfig();
-    initSupabase();
+.map-search-global-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
 
-    AuthService.onAuthChange(async (event, user) => {
-      console.log('🔐 Auth:', event, user?.email || 'sin sesión');
-      window.wpApp.currentUser = user;
-      await renderAuthButton(user);
-      if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
-      if (!user && window.wpApp.superPanel) {
-        window.wpApp.superPanel.unmount();
-        window.wpApp.superPanel = null;
-        window.wpApp._cachedAvatarUrl = '';
-      }
-    });
+.map-search-global-input::placeholder {
+  color: #9ca3af;
+  font-weight: 500;
+}
 
-    console.log('🗺️ Creando MapView...');
-    const mv = new MapView();
-    window.wpApp.mapView = mv;
-    mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
-    console.log('✅ MapView creado');
+.map-results-count-inline {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9ca3af;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-    // SubcategoryRow — necesita mapa listo
-    mv.getMap().on('load', () => {
-      const subcatRow = new SubcategoryRow({
-        map: mv.getMap(),
-        onSubcatSelect: (value) => filterBySubcat(mv, value),
-      });
-      window.wpApp.subcatRow = subcatRow;
-    });
+/* ════════════════════════════════════════════════════════════
+   CATEGORÍAS — copiado exacto de .category-footer-chip
+   ════════════════════════════════════════════════════════════ */
+.map-categories-footer {
+  flex-shrink: 0;
+  scrollbar-width: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 8px 4px;
+  gap: 0;
+}
+.map-categories-footer::-webkit-scrollbar { display: none; }
 
-    const authModal = new AuthModal({
-      onAuthSuccess: async (user) => {
-        window.wpApp.currentUser = user;
-        await renderAuthButton(user);
-        if (isSuperUser(user?.id)) mountSuperPanel(mv);
-      },
-    });
-    window.wpApp.authModal = authModal;
+.category-footer-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  min-width: 66px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 6px 4px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.category-footer-chip:active { transform: scale(0.92); }
 
-    setupTopBar(authModal);
-    setupActivitySubscription(mv);
-    renderAuthButton(null);
+/* Círculo del icono */
+.category-icon-circle {
+  width: 62px;
+  height: 62px;
+  border-radius: 40%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: none;
+  padding: 8px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+}
 
-    // Cargar categorías desde Supabase y conectar listeners
-    renderMapCategories().then(() => setupCategories(mv));
+/* Shimmer mientras carga el icono */
+.category-icon-circle.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: cat-shimmer 1.2s infinite;
+  border-radius: 40%;
+}
+@keyframes cat-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
 
-    console.log('✅ WhatsPlan listo');
-  } catch(err) {
-    console.error('❌ Error crítico:', err.message, err.stack);
-  }
-})();
+.category-footer-chip.active .category-icon-circle {
+  background: #e2e8f0;
+  transform: scale(1.06);
+}
+.category-footer-chip.active .category-name {
+  color: #475569;
+  font-weight: 700;
+}
+
+.category-icon-3d {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+.category-icon { font-size: 30px; line-height: 1; }
+.category-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-align: center;
+  white-space: nowrap;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MAPLIBRE — overrides
+   ════════════════════════════════════════════════════════════ */
+.maplibregl-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 9px;
+  background: rgba(255,255,255,0.7);
+  padding: 1px 4px;
+  border-radius: 4px 0 0 0;
+  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
+  font-weight: 700;
+}
+.maplibregl-ctrl-attrib a { color: #9ca3af; }
+
+.maplibregl-ctrl-top-right {
+  top: 12px !important;
+  right: 12px !important;
+}
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  border: none !important;
+}
+.maplibregl-ctrl-group button {
+  width: 36px !important;
+  height: 36px !important;
+  background-color: white !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+/* Canvas sin outline */
+#map-container canvas:focus,
+#map-container canvas:focus-visible,
+.maplibregl-canvas-container:focus-within {
+  outline: none !important;
+}
