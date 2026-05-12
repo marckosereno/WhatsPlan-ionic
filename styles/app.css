@@ -68,12 +68,14 @@ ion-app::after {
   width: 100%;
   overflow: hidden;
 }
+/* Fade izquierdo */
 .panel-scroll-wrap::before {
   content: '';
   position: absolute; top: 0; left: 0; bottom: 0; width: 20px;
   background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
   pointer-events: none; z-index: 2;
 }
+/* Fade derecho */
 .panel-scroll-wrap::after {
   content: '';
   position: absolute; top: 0; right: 0; bottom: 0; width: 20px;
@@ -81,7 +83,7 @@ ion-app::after {
   pointer-events: none; z-index: 2;
 }
 
-/* ── Fila de subcategorías (GPS + chips) ── */
+/* ── Fila de subcategorías (GPS + chips) — full width ── */
 .panel-subcats-scroll {
   display: flex;
   align-items: center;
@@ -91,10 +93,11 @@ ion-app::after {
   padding: 2px 12px;
   width: 100%;
   box-sizing: border-box;
+  min-height: 35px; /* altura fija = GPS btn (31px) + padding */
 }
 .panel-subcats-scroll::-webkit-scrollbar { display: none; }
 
-/* ── Fila de categorías ── */
+/* ── Fila de categorías — full width ── */
 .panel-categories-scroll {
   display: flex;
   overflow-x: auto;
@@ -103,6 +106,7 @@ ion-app::after {
   gap: 2px;
   width: 100%;
   box-sizing: border-box;
+  min-height: 90px; /* altura fija = chip (68px icono + 5px gap + 9px label) + padding */
 }
 .panel-categories-scroll::-webkit-scrollbar { display: none; }
 
@@ -133,6 +137,7 @@ ion-app::after {
   color: #475569; font-weight: 700;
 }
 
+/* Badge de conteo */
 .category-count-badge {
   position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
   background: #111; color: white;
@@ -164,7 +169,7 @@ ion-app::after {
 }
 
 /* ════════════════════════════════════════════════════════════
-   SKELETON — panel mientras cargan datos
+   SKELETON — categorías mientras cargan
    ════════════════════════════════════════════════════════════ */
 
 @keyframes sk-shimmer {
@@ -172,16 +177,6 @@ ion-app::after {
   100% { background-position:  200% 0; }
 }
 
-/* GPS skeleton — mismas dimensiones que .hm-gps-btn */
-.hm-gps-skeleton {
-  width: 31px; height: 31px; border-radius: 50%;
-  background: linear-gradient(90deg, #ebebeb 0%, #f5f5f5 50%, #ebebeb 100%);
-  background-size: 200% 100%;
-  animation: sk-shimmer 1.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-/* Círculo y label skeleton de cada chip de categoría */
 .cat-sk-circle,
 .cat-sk-label {
   background: linear-gradient(90deg, #ebebeb 0%, #f5f5f5 50%, #ebebeb 100%);
@@ -189,15 +184,21 @@ ion-app::after {
   animation: sk-shimmer 1.4s ease-in-out infinite;
 }
 
-/* .cat-sk-circle hereda 68×68 y border-radius:22px de .category-icon-circle */
+/* El círculo ya hereda width/height de .category-icon-circle (68×68, border-radius 22px) */
+.cat-sk-circle {
+  background-color: #ebebeb;
+}
 
+/* Label skeleton — misma altura y espacio que .category-name */
 .cat-sk-label {
   width: 44px;
   height: 9px;
   border-radius: 6px;
+  background-color: #ebebeb;
+  margin-top: 1px; /* alineado con el gap: 5px del chip */
 }
 
-/* Efecto wave escalonado chip a chip */
+/* Escalonar el shimmer chip a chip para efecto wave */
 .category-chip-skeleton:nth-child(1) .cat-sk-circle,
 .category-chip-skeleton:nth-child(1) .cat-sk-label { animation-delay: 0ms; }
 .category-chip-skeleton:nth-child(2) .cat-sk-circle,
@@ -210,10 +211,6 @@ ion-app::after {
 .category-chip-skeleton:nth-child(5) .cat-sk-label { animation-delay: 320ms; }
 .category-chip-skeleton:nth-child(6) .cat-sk-circle,
 .category-chip-skeleton:nth-child(6) .cat-sk-label { animation-delay: 400ms; }
-
-/* ════════════════════════════════════════════════════════════
-   MAPLIBRE — overrides
-   ════════════════════════════════════════════════════════════ */
 .maplibregl-marker { background: transparent !important; border: none !important; }
 
 .maplibregl-ctrl-attrib {
@@ -235,3 +232,11 @@ ion-app::after {
 #map-container canvas:focus,
 #map-container canvas:focus-visible,
 .maplibregl-canvas-container:focus-within { outline: none !important; }
+/* GPS skeleton — mismas dimensiones que .hm-gps-btn (31×31px) */
+.hm-gps-skeleton {
+  width: 31px; height: 31px; border-radius: 50%;
+  background: linear-gradient(90deg, #ebebeb 0%, #f5f5f5 50%, #ebebeb 100%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
