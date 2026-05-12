@@ -213,3 +213,10 @@ ion-app::after {
   animation: cat-sk 1.2s infinite linear;
   animation-delay: 0.1s;
 }
+/* Placeholder fila subcats — misma altura que cuando tiene chips */
+.subcats-placeholder {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
