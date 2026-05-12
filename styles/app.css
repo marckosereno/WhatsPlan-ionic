@@ -47,7 +47,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel-float {
   position: fixed;
-  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   background: white;
@@ -250,16 +250,6 @@ ion-app::after {
   --safe-left:   env(safe-area-inset-left,   0px);
   --safe-right:  env(safe-area-inset-right,  0px);
   --vh: 1vh; /* sobreescrito por ios-fixes.js */
-}
-
-/* Topbar: bajar si hay notch */
-#topbar {
-  top: calc(12px + var(--safe-top));
-}
-
-/* Panel inferior: subir si hay home indicator */
-.map-results-panel-float {
-  bottom: calc(20px + var(--safe-bottom));
 }
 
 /* Usar --vh en vez de vh para altura real en iOS */
