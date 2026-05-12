@@ -85,6 +85,10 @@ export class SubcategoryRow {
     const footer = document.getElementById('map-subcategories-footer');
     if (!footer) return;
 
+    // Remover skeleton placeholder si existe
+    const sk = footer.querySelector('.hm-gps-skeleton');
+    if (sk) sk.remove();
+
     const gps = document.createElement('button');
     gps.id = 'map-gps-btn';
     gps.className = 'hm-gps-btn';
