@@ -22,12 +22,11 @@ gsap.defaults({ ease: 'power3.out', duration: 0.35 });
  */
 export function animatePanelIn(el) {
   if (!el) return;
+  // El panel ya está posicionado en el HTML con los skeletons visibles.
+  // Solo hacemos un fade-in suave para que no aparezca de golpe.
   gsap.fromTo(el,
-    { y: 80, opacity: 0, scale: 0.97 },
-    { y: 0,  opacity: 1, scale: 1,
-      duration: 0.55,
-      ease: 'back.out(1.4)',
-      clearProps: 'transform,opacity' }
+    { opacity: 0 },
+    { opacity: 1, duration: 0.4, ease: 'power2.out', clearProps: 'opacity' }
   );
 }
 
@@ -36,12 +35,12 @@ export function animatePanelIn(el) {
  * Los chips salen a la izquierda y entran los nuevos desde la derecha.
  */
 export function animateCategorySwap(container, renderFn) {
-  if (!container) { renderFn?.(); return; }
+  if (!container) { if (renderFn) renderFn(); return; }
 
   gsap.to(container, {
     opacity: 0, x: -12, duration: 0.18, ease: 'power2.in',
     onComplete: () => {
-      renderFn?.();
+      if (renderFn) renderFn();
       gsap.fromTo(container,
         { opacity: 0, x: 12 },
         { opacity: 1, x: 0, duration: 0.28, ease: 'power3.out',
@@ -55,7 +54,7 @@ export function animateCategorySwap(container, renderFn) {
  * Entrada staggered de chips de categoría (skeleton → real).
  */
 export function animateChipsIn(chips) {
-  if (!chips?.length) return;
+  if (!chips || !chips.length) return;
   gsap.fromTo(chips,
     { y: 16, opacity: 0, scale: 0.88 },
     { y: 0,  opacity: 1, scale: 1,
@@ -85,7 +84,7 @@ export function animateChipTap(chip) {
  * Aparición de la fila de subcategorías.
  */
 export function animateSubcatsIn(chips) {
-  if (!chips?.length) return;
+  if (!chips || !chips.length) return;
   gsap.fromTo(chips,
     { x: -10, opacity: 0 },
     { x: 0,   opacity: 1,
@@ -100,12 +99,12 @@ export function animateSubcatsIn(chips) {
  * Desaparición de la fila de subcategorías.
  */
 export function animateSubcatsOut(container, onComplete) {
-  if (!container) { onComplete?.(); return; }
+  if (!container) { if (onComplete) onComplete(); return; }
   gsap.to(container, {
     opacity: 0, y: 4, duration: 0.18, ease: 'power2.in',
     onComplete: () => {
       gsap.set(container, { clearProps: 'all' });
-      onComplete?.();
+      if (onComplete) onComplete();
     }
   });
 }
@@ -140,7 +139,7 @@ export function animateModalIn(overlay, sheet) {
  * Salida de modal hacia abajo.
  */
 export function animateModalOut(overlay, sheet, onComplete) {
-  if (!overlay || !sheet) { onComplete?.(); return; }
+  if (!overlay || !sheet) { if (onComplete) onComplete(); return; }
 
   gsap.to(overlay, { opacity: 0, duration: 0.2 });
   gsap.to(sheet, {
@@ -149,7 +148,7 @@ export function animateModalOut(overlay, sheet, onComplete) {
     onComplete: () => {
       gsap.set(overlay, { display: 'none' });
       gsap.set(sheet, { clearProps: 'all' });
-      onComplete?.();
+      if (onComplete) onComplete();
     }
   });
 }
@@ -163,7 +162,7 @@ export function animateModalOut(overlay, sheet, onComplete) {
  * Entrada staggered de pins en el mapa al cargar una categoría.
  */
 export function animatePinsIn(pinEls) {
-  if (!pinEls?.length) return;
+  if (!pinEls || !pinEls.length) return;
   gsap.fromTo(pinEls,
     { scale: 0, opacity: 0, transformOrigin: 'bottom center' },
     { scale: 1, opacity: 1,
@@ -178,7 +177,7 @@ export function animatePinsIn(pinEls) {
  * Salida de pins al cambiar categoría.
  */
 export function animatePinsOut(pinEls, onComplete) {
-  if (!pinEls?.length) { onComplete?.(); return; }
+  if (!pinEls || !pinEls.length) { if (onComplete) onComplete(); return; }
   gsap.to(pinEls, {
     scale: 0, opacity: 0,
     duration: 0.2, ease: 'power2.in',
@@ -221,7 +220,7 @@ export function animateMinicardIn(el) {
  * Salida de la minicard.
  */
 export function animateMinicardOut(el, onComplete) {
-  if (!el) { onComplete?.(); return; }
+  if (!el) { if (onComplete) onComplete(); return; }
   gsap.to(el, {
     y: 6, opacity: 0, scale: 0.95,
     duration: 0.18, ease: 'power2.in',
