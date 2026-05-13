@@ -553,9 +553,9 @@ export class SearchBar {
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:600;color:#111827;min-width:0;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      .wps-input::placeholder{color:#9ca3af;font-weight:400;}
+      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Inter Tight',system-ui,sans-serif;}
 
       .wps-clear {
         display:none;
