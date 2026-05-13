@@ -173,7 +173,8 @@ export class SearchBar {
         var res = document.getElementById('wp-sresults');
         if (bar && bar.contains(ev.target)) return;
         if (res && res.contains(ev.target)) return;
-        self._hideResults();
+        // Solo cerrar teclado — NO ocultar resultados
+        // Las minifichas se cierran cuando el usuario escribe de nuevo o limpia
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
