@@ -56,6 +56,20 @@
     <div id="map-container" class="map-container"></div>
 
     <div id="topbar">
+      <button id="topbar-search-btn" title="Buscar" style="
+        width:44px;height:44px;border-radius:50%;
+        background:rgba(255,255,255,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+        border:2px solid rgba(255,255,255,0.7);box-shadow:0 2px 8px rgba(0,0,0,0.1);
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+        padding:0;transition:transform 0.2s;
+      ">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
       <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
     </div>
 
