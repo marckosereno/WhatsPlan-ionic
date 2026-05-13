@@ -518,8 +518,11 @@ export class MapView {
     const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
     const cat       = this.currentCatData;
 
-    // Guardar HTML del pin — igual que el original
-    wrapper._savedPinHTML = wrapper.innerHTML;
+    // Guardar HTML del pin — solo si no hay uno ya guardado
+    // (evita sobreescribir con minicard si la animación de salida está en curso)
+    if (wrapper._savedPinHTML === undefined) {
+      wrapper._savedPinHTML = wrapper.innerHTML;
+    }
     wrapper.style.width    = 'auto';
     wrapper.style.height   = 'auto';
     wrapper.style.overflow = 'visible';
