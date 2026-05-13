@@ -79,22 +79,15 @@ export class SearchBar {
 
   // ── Overlay ───────────────────────────────────────────────────────
 
-  // Hook en _closeMiniCard de MapView para re-aplicar highlight de búsqueda
+  // Escuchar evento wp:minicardclosed que se dispara DESPUÉS de _restorePin
+  // para re-aplicar highlights en el momento correcto
   _hookMiniCardClose() {
     var self = this;
-    var mv   = this.mapView;
-    if (!mv) return;
-    var original = mv._closeMiniCard.bind(mv);
-    mv._closeMiniCard = function() {
-      original();
-      // Si hay búsqueda activa con matches, re-aplicar highlight
-      if (self._active && self._query.length > 0 && self._currentMatches.length > 0) {
-        self._highlightMarkers(self._currentMatches);
-      } else if (self._active && self._query.length > 0 && self._currentMatches.length === 0) {
-        // Sin matches — mantener todo gris
-        self._highlightMarkers([]);
-      }
-    };
+    document.addEventListener('wp:minicardclosed', function() {
+      if (!self._active || self._query.length === 0) return;
+      // Re-aplicar highlight de búsqueda después de que el pin fue restaurado
+      self._highlightMarkers(self._currentMatches);
+    });
   }
 
   // Mueve el footer de subcats al body para escapar del overflow:hidden del panel
