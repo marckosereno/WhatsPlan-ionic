@@ -139,6 +139,7 @@ export class SearchBar {
     overlay.innerHTML =
       '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="wps' + Date.now() + '" readonly>' +
+      '<button id="wps-clear" class="wps-clear" aria-label="Limpiar"><svg viewBox="0 0 14 14" width="10" height="10" fill="white"><path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>' +
       '<button id="wps-filter" class="wps-filter" title="Filtros"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg></button>' +
       '<button id="wps-close" class="wps-close">✕</button>';
@@ -152,10 +153,25 @@ export class SearchBar {
       requestAnimationFrame(function() { input.focus(); });
     }, 50);
 
-    // Escuchar tanto 'input' (escritura) como 'search' (clear nativo del browser)
-    input.addEventListener('input',  function(ev) { self._onInput(ev.target.value); });
-    input.addEventListener('search', function()   { self._onInput(input.value); });
+    var clearBtn = document.getElementById('wps-clear');
+    input.addEventListener('input', function(ev) {
+      clearBtn.classList.toggle('visible', input.value.length > 0);
+      self._onInput(ev.target.value);
+    });
+    // También escuchar 'search' por si el browser usa su clear nativo
+    input.addEventListener('search', function() {
+      clearBtn.classList.toggle('visible', input.value.length > 0);
+      self._onInput(input.value);
+    });
     input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
+
+    clearBtn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      input.value = '';
+      clearBtn.classList.remove('visible');
+      input.focus();
+      self._onInput('');
+    });
 
     document.getElementById('wps-close').addEventListener('click', function(ev) {
       ev.stopPropagation(); self.deactivate();
@@ -541,6 +557,25 @@ export class SearchBar {
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;}
 
+      .wps-clear {
+        display:none;
+        width:18px; height:18px;
+        border-radius:50%;
+        border:none;
+        background:#adb5bd;
+        color:white;
+        font-size:10px;
+        font-weight:900;
+        cursor:pointer;
+        align-items:center;
+        justify-content:center;
+        flex-shrink:0;
+        -webkit-tap-highlight-color:transparent;
+        padding:0;
+        line-height:1;
+        font-family:system-ui,sans-serif;
+      }
+      .wps-clear.visible { display:flex; }
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
       .wps-filter,.wps-close{
         width:32px;min-width:32px;height:32px;border-radius:50%;
