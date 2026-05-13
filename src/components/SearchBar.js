@@ -373,22 +373,10 @@ export class SearchBar {
       var map = mv.getMap();
       // Esperar 2 frames para que touchcancel sea procesado por MapLibre
       // antes de iniciar la animación del mapa
+      // Doble rAF para dejar que MapLibre procese el touchcancel antes de animar
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-          var currentZoom = map.getZoom();
-          if (currentZoom >= 15) {
-            // Zoom out rápido primero — crea el efecto parabólico visible
-            map.easeTo({
-              zoom: 13.5,
-              duration: 300,
-              easing: function(t) { return t * (2 - t); }
-            });
-            setTimeout(function() {
-              map.flyTo({ center: [lng, lat], zoom: 17, duration: 700 });
-            }, 250);
-          } else {
-            map.flyTo({ center: [lng, lat], zoom: 17, duration: 700 });
-          }
+          map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
         });
       });
     }
