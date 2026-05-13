@@ -564,9 +564,18 @@ export class MapView {
 
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
+    // Capturar wrapper y limpiar estado YA — antes de cualquier animación
+    // Así _showMiniCard puede pisar miniCardMarker sin race condition
     const wrapper = this.miniCardMarker.getElement();
+    this.miniCardMarker  = null;
+    this.miniCardIndex   = -1;
+    this.miniCardPlace   = null;
+    this._miniCardPinRoot  = null;
+    this._miniCardMarkerEl = null;
+
     const card = wrapper && wrapper.querySelector('.minicard-marker-content');
     if (card) {
+      // Animación de salida — restaurar pin al terminar
       const self = this;
       animateMinicardOut(card, function() { self._restorePin(wrapper); });
     } else {
@@ -588,11 +597,7 @@ export class MapView {
         b.style.opacity = z >= 15 ? '1' : '0';
       });
     }
-    this._miniCardPinRoot  = null;
-    this._miniCardMarkerEl = null;
-    this.miniCardMarker    = null;
-    this.miniCardIndex     = -1;
-    this.miniCardPlace     = null;
+    // Estado ya limpiado en _closeMiniCard — no tocar aquí
   }
 
   // ── Actividades ───────────────────────────────────────────────────
