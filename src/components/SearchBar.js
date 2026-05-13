@@ -155,6 +155,7 @@ export class SearchBar {
     overlay.innerHTML =
       '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="wps' + Date.now() + '" readonly>' +
+      '<button id="wps-clear" class="wps-clear">✕</button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>' +
       '<button id="wps-filter" class="wps-filter" title="Filtros"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg></button>' +
       '<button id="wps-close" class="wps-close">✕</button>';
@@ -168,11 +169,20 @@ export class SearchBar {
       requestAnimationFrame(function() { input.focus(); });
     }, 50);
 
-    // Clear nativo del browser — el input type="search" ya tiene su X
-    // Escuchar el evento 'search' que se dispara cuando el usuario usa el clear nativo
-    input.addEventListener('input', function(ev) { self._onInput(ev.target.value); });
-    input.addEventListener('search', function() { self._onInput(input.value); });
+    var clearBtn = document.getElementById('wps-clear');
+    input.addEventListener('input', function(ev) {
+      clearBtn.classList.toggle('visible', input.value.length > 0);
+      self._onInput(ev.target.value);
+    });
     input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
+
+    clearBtn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      input.value = '';
+      clearBtn.classList.remove('visible');
+      input.focus();
+      self._onInput('');
+    });
     document.getElementById('wps-close').addEventListener('click', function(ev) {
       ev.stopPropagation(); self.deactivate();
     });
@@ -230,11 +240,7 @@ export class SearchBar {
 
       // Highlight en mapa — matches normales, resto gris
       self._currentMatches = matches;
-      // Highlights activos solo cuando NO hay minifichas abiertas — igual que himarco
-      var hasResults = document.getElementById('wp-sresults');
-      if (!hasResults) {
-        self._highlightMarkers(matches);
-      }
+      self._highlightMarkers(matches);
       self._renderResults(matches);
     }, 200);
   }
@@ -321,8 +327,6 @@ export class SearchBar {
     });
 
     document.body.appendChild(container);
-    // Limpiar highlights cuando hay minifichas visibles — igual que himarco
-    this._restoreMarkers();
     this._positionResults();
     this._syncCategoryChips();
   }
@@ -387,10 +391,6 @@ export class SearchBar {
   _hideResults() {
     var r = document.getElementById('wp-sresults');
     if (r) r.remove();
-    // Re-aplicar highlights cuando no hay minifichas — solo si hay query activo
-    if (this._active && this._query.length > 0 && this._currentMatches.length > 0) {
-      this._highlightMarkers(this._currentMatches);
-    }
     this._syncCategoryChips();
   }
 
@@ -506,7 +506,8 @@ export class SearchBar {
         self._query = '';
         var inp = document.getElementById('wps-input');
         if (inp) inp.value = '';
-
+        var clr = document.getElementById('wps-clear');
+        if (clr) clr.classList.remove('visible');
         self._hideResults();
         self._restoreMarkers();
         container.querySelectorAll('.wps-cat-chip').forEach(function(c) { c.classList.remove('active'); });
@@ -586,13 +587,17 @@ export class SearchBar {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:600;color:#111827;min-width:0;
         font-family:'Inter Tight',system-ui,sans-serif;
+        -webkit-appearance:none;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;}
-      /* Permitir clear nativo del browser — igual que himarco */
-      .wps-input::-webkit-search-cancel-button {
-        -webkit-appearance: searchfield-cancel-button;
-        cursor: pointer;
+      .wps-input::-webkit-search-cancel-button{display:none;}
+      .wps-clear {
+        display:none;width:28px;height:28px;border-radius:50%;
+        border:none;background:rgba(0,0,0,0.08);color:#6b7280;
+        font-size:13px;cursor:pointer;align-items:center;justify-content:center;
+        flex-shrink:0;-webkit-tap-highlight-color:transparent;
       }
+      .wps-clear.visible{display:flex;}
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
       .wps-filter,.wps-close{
         width:32px;min-width:32px;height:32px;border-radius:50%;
