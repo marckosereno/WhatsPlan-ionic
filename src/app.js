@@ -261,9 +261,6 @@ function setupActivitySubscription(mv) {
     // iOS / Capacitor fixes — lo primero, antes de montar nada
     initIOSFixes();
 
-    // Mostrar panel de inmediato con skeletons visibles
-    animatePanelIn(document.getElementById('map-results-panel'));
-
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
@@ -310,12 +307,42 @@ function setupActivitySubscription(mv) {
     const catsReady = renderMapCategories();
 
     Promise.all([mapReady, catsReady]).then(() => {
+      animatePanelIn(document.getElementById('map-results-panel'));
       setupCategories(mv);
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
         onSubcatSelect: (value) => filterBySubcat(mv, value),
       });
       window.wpApp.subcatRow = subcatRow;
+
+      // SearchBar — se crea aquí para tener acceso a mv ya listo
+      const searchBar = new SearchBar({
+        onPlaceSelect: function(place) {
+          if (place.lat && place.lng) {
+            mv.getMap().flyTo({ center: [place.lng, place.lat], zoom: 17, duration: 800 });
+          }
+          const places = mv.places || [];
+          const idx = places.findIndex(function(p) {
+            return (p.place_id || p.placeId) === place.place_id;
+          });
+          if (idx !== -1) {
+            mv._showMiniCard(places[idx], idx, places[idx].photo_url || null);
+          }
+        },
+        getCurrentCategory: function() {
+          return (window.wpApp.mapView && window.wpApp.mapView.currentCatId) || null;
+        }
+      });
+      window.wpApp.searchBar = searchBar;
+
+      const searchBtn = document.getElementById('topbar-search-btn');
+      if (searchBtn) {
+        searchBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (searchBar.isOpen()) searchBar.close();
+          else searchBar.open();
+        });
+      }
     });
 
     console.log('✅ WhatsPlan listo');
