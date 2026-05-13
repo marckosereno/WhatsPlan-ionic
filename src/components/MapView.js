@@ -1,4 +1,3 @@
-import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
@@ -263,7 +262,7 @@ export class MapView {
   _applyBlinkLight() {
     try {
       const style = this.map.getStyle();
-      if (!style || !style.layers) return;
+      if (!style?.layers) return;
       style.layers.forEach(layer => {
         const id = layer.id.toLowerCase();
         if (layer.type === 'symbol') {
@@ -347,26 +346,26 @@ export class MapView {
   _clearPlaceMarkers() {
     if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
     this._labelTimers = [];
-    this.markers.forEach(m => m && m.remove());
+    this.markers.forEach(m => m?.remove());
     this.markers = []; this.markerEls = [];
     this._closeMiniCard();
   }
 
   _renderPlaceMarkers(places) {
     const cat     = this.currentCatData;
-    const catIcon = cat && cat.icon3d
+    const catIcon = cat?.icon3d
       ? `<img src="${cat.icon3d}" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'">`
-      : ((cat && cat.icon) || '💎');
+      : (cat?.icon || '💎');
 
     const bounds = new maplibregl.LngLatBounds();
     let hasCoords = false;
 
     places.forEach((place, index) => {
-      const lat = (place.location && place.location.lat != null ? place.location.lat : place.lat);
-      const lng = (place.location && place.location.lng != null ? place.location.lng : place.lng);
+      const lat = place.location?.lat ?? place.lat;
+      const lng = place.location?.lng ?? place.lng;
       if (!lat || !lng) return;
 
-      const rawPhoto = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
+      const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
       const photoUrl = proxyPhoto(rawPhoto);
 
       const el = document.createElement('div');
@@ -432,7 +431,7 @@ export class MapView {
     const actCount   = this._activityCount(place);
     const hasAct     = actCount > 0;
     const borderGrad = hasAct ? 'linear-gradient(145deg,#fde68a 0%,#f59e0b 40%,#f97316 100%)' : '#ffffff';
-    const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map && this.map.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
+    const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map?.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
     const pulseHtml  = hasAct ? `<div class="pin-pulse-ring" style="display:block"></div><div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>` : '';
     const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
 
@@ -530,7 +529,7 @@ export class MapView {
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
       ${photoUrl
         ? `<img src="${photoUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0;" onerror="this.style.display='none'">`
-        : `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${(cat && cat.icon)||'💎'}</div>`}
+        : `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${cat?.icon||'💎'}</div>`}
       <div style="flex:1;min-width:0;overflow:hidden;">
         <div style="font-size:14px;font-weight:900;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.2px;">${place.name}</div>
         ${rating  ? `<div style="font-size:11px;font-weight:600;color:#92400e;">${rating}</div>` : ''}
@@ -541,7 +540,6 @@ export class MapView {
 
     const card = wrapper.querySelector('.minicard-marker-content');
     if (card) {
-      animateMinicardIn(card);
       let tx = 0, ty = 0;
       card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
       card.addEventListener('touchend', e => {
@@ -557,23 +555,14 @@ export class MapView {
       });
     }
 
-    const lat = (place.location && place.location.lat != null ? place.location.lat : place.lat);
-    const lng = (place.location && place.location.lng != null ? place.location.lng : place.lng);
+    const lat = place.location?.lat ?? place.lat;
+    const lng = place.location?.lng ?? place.lng;
     this.map.easeTo({ center: [lng, lat], duration: 300 });
   }
 
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const wrapper = this.miniCardMarker.getElement();
-    const cardEl  = wrapper && wrapper.querySelector('.minicard-marker-content');
-    if (cardEl) {
-      animateMinicardOut(cardEl, () => this._restorePin(wrapper));
-      return;
-    }
-    this._restorePin(wrapper);
-  }
-
-  _restorePin(wrapper) {
     if (wrapper && wrapper._savedPinHTML !== undefined) {
       wrapper.style.width    = '44px';
       wrapper.style.height   = '44px';
@@ -583,16 +572,15 @@ export class MapView {
       wrapper.innerHTML = wrapper._savedPinHTML;
       delete wrapper._savedPinHTML;
       // Restaurar badges según zoom actual
-      const z = (this.map && this.map.getZoom()) || 0;
+      const z = this.map?.getZoom() || 0;
       wrapper.querySelectorAll('.place-act-badge').forEach(b => { b.style.opacity = z >= 15 ? '1' : '0'; });
     }
     this._miniCardPinRoot   = null;
     this._miniCardMarkerEl  = null;
     this.miniCardMarker     = null;
-  }
-
     this.miniCardIndex      = -1;
     this.miniCardPlace      = null;
+  }
 
   // ── Actividades ───────────────────────────────────────────────────
   _activityCount(place) {
@@ -611,7 +599,7 @@ export class MapView {
       const count = this._activityCount(place);
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
-        if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; var _tmp = el.querySelector('.place-pin-rel, div'); if (_tmp) _tmp.appendChild(badge); }
+        if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
         badge.textContent = count; badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
       } else if (badge) badge.remove();
     });
@@ -791,7 +779,7 @@ export class MapView {
       if (badge) {
         badge.style.display = 'flex';
         const place = el._place;
-        if (place && place.featured) {
+        if (place?.featured) {
           const bg   = place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)';
           const icon = place.featured==='verified'?'✓':'⭐';
           badge.style.background = bg; badge.innerHTML = icon;
@@ -811,7 +799,7 @@ export class MapView {
     let closest = null, closestDist = Infinity;
     document.querySelectorAll('.place-marker-el').forEach(el => {
       const place = el._place;
-      if (!place && place.featured) return;
+      if (!place?.featured) return;
       const marker = el._marker;
       if (!marker) return;
       const pt   = this.map.project(marker.getLngLat());
