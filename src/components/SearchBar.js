@@ -253,6 +253,7 @@ export class SearchBar {
     container.id  = 'wp-sresults';
 
     if (places.length === 0) {
+      container.classList.add('wps-results-noresult-mode');
       container.innerHTML =
         '<div class="wps-noresult">' +
           '<span class="wps-noresult-emoji">🥺</span>' +
@@ -337,18 +338,36 @@ export class SearchBar {
     var place  = places[idx];
     if (!place) return;
 
-    // Highlight solo ese pin — el resto de matches vuelven al estado de búsqueda
-    // cuando se cierre la minicard (via _hookMiniCardClose)
+    // 1. Restaurar pin anterior INSTANTÁNEAMENTE (sin animación) — igual que himarco
+    if (mv.miniCardMarker) {
+      var oldWrapper = mv.miniCardMarker.getElement();
+      mv.miniCardMarker    = null;
+      mv.miniCardIndex     = -1;
+      mv.miniCardPlace     = null;
+      mv._miniCardPinRoot  = null;
+      mv._miniCardMarkerEl = null;
+      if (oldWrapper && oldWrapper._savedPinHTML !== undefined) {
+        oldWrapper.style.width     = '44px';
+        oldWrapper.style.height    = '44px';
+        oldWrapper.style.overflow  = 'visible';
+        oldWrapper.style.zIndex    = '';
+        oldWrapper.style.marginTop = '';
+        oldWrapper.innerHTML = oldWrapper._savedPinHTML;
+        delete oldWrapper._savedPinHTML;
+      }
+    }
+
+    // 2. Highlight del pin seleccionado
     this._highlightSingle(place);
 
-    // flyTo igual que himarco: zoom 17, duration 400
+    // 3. flyTo igual que himarco: zoom 17, duration 400
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
       mv.getMap().flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
     }
 
-    // Mostrar minicard
+    // 4. Mostrar minicard INMEDIATAMENTE en paralelo con el flyTo (igual que himarco)
     var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
     mv._showMiniCard(place, idx, raw);
   }
@@ -364,7 +383,15 @@ export class SearchBar {
     var r = document.getElementById('wp-sresults');
     if (!r) return;
     var kbH = window.visualViewport ? (window.innerHeight - window.visualViewport.height) : 0;
-    r.style.bottom = kbH > 100 ? (kbH + 10) + 'px' : '0px';
+    var isNoResult = r.classList.contains('wps-results-noresult-mode');
+    if (isNoResult) {
+      // No-results: solo visible cuando el teclado está abierto
+      r.style.display = kbH > 100 ? 'flex' : 'none';
+      r.style.bottom  = kbH > 100 ? (kbH + 10) + 'px' : '0px';
+    } else {
+      r.style.display = '';
+      r.style.bottom  = kbH > 100 ? (kbH + 10) + 'px' : '0px';
+    }
   }
 
   _installViewportListener() {
@@ -622,6 +649,10 @@ export class SearchBar {
       .wps-card-rating{display:flex;align-items:center;gap:4px;}
       .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
       .wps-card-rcnt{font-size:11px;color:#9ca3af;}
+      /* No results — centrado en el container */
+      .wps-results-noresult-mode {
+        justify-content:center !important;
+      }
       .wps-noresult {
         display:flex; align-items:center; gap:10px;
         padding:14px 18px;
