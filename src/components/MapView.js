@@ -1,3 +1,4 @@
+import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
@@ -540,6 +541,7 @@ export class MapView {
 
     const card = wrapper.querySelector('.minicard-marker-content');
     if (card) {
+      animateMinicardIn(card);
       let tx = 0, ty = 0;
       card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
       card.addEventListener('touchend', e => {
@@ -563,23 +565,34 @@ export class MapView {
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
     const wrapper = this.miniCardMarker.getElement();
+    const card = wrapper && wrapper.querySelector('.minicard-marker-content');
+    if (card) {
+      const self = this;
+      animateMinicardOut(card, function() { self._restorePin(wrapper); });
+    } else {
+      this._restorePin(wrapper);
+    }
+  }
+
+  _restorePin(wrapper) {
     if (wrapper && wrapper._savedPinHTML !== undefined) {
-      wrapper.style.width    = '44px';
-      wrapper.style.height   = '44px';
-      wrapper.style.overflow = 'visible';
-      wrapper.style.zIndex   = '';
+      wrapper.style.width     = '44px';
+      wrapper.style.height    = '44px';
+      wrapper.style.overflow  = 'visible';
+      wrapper.style.zIndex    = '';
       wrapper.style.marginTop = '';
       wrapper.innerHTML = wrapper._savedPinHTML;
       delete wrapper._savedPinHTML;
-      // Restaurar badges según zoom actual
-      const z = this.map?.getZoom() || 0;
-      wrapper.querySelectorAll('.place-act-badge').forEach(b => { b.style.opacity = z >= 15 ? '1' : '0'; });
+      const z = this.map ? this.map.getZoom() : 0;
+      wrapper.querySelectorAll('.place-act-badge').forEach(function(b) {
+        b.style.opacity = z >= 15 ? '1' : '0';
+      });
     }
-    this._miniCardPinRoot   = null;
-    this._miniCardMarkerEl  = null;
-    this.miniCardMarker     = null;
-    this.miniCardIndex      = -1;
-    this.miniCardPlace      = null;
+    this._miniCardPinRoot  = null;
+    this._miniCardMarkerEl = null;
+    this.miniCardMarker    = null;
+    this.miniCardIndex     = -1;
+    this.miniCardPlace     = null;
   }
 
   // ── Actividades ───────────────────────────────────────────────────
