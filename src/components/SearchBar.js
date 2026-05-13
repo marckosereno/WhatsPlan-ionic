@@ -364,23 +364,33 @@ export class SearchBar {
     // 2. Highlight del pin seleccionado
     this._highlightSingle(place);
 
-    // 3. Efecto zoom out → zoom in igual que himarco
-    // MapLibre flyTo hace parábola natural — la hacemos visible con zoom out previo
+    // 3. Efecto zoom out → zoom in
+    // Debe correr DESPUÉS del touchcancel que WhatsPlan dispara sobre markers
+    // para evitar que MapLibre cancele la animación
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
       var map = mv.getMap();
-      var currentZoom = map.getZoom();
-      // Si ya estamos en zoom alto, hacer zoom out rápido primero
-      // para que el flyTo tenga recorrido suficiente y se vea la parábola
-      if (currentZoom >= 15) {
-        map.easeTo({ zoom: 13.5, duration: 250, easing: function(t) { return t*(2-t); } });
-        setTimeout(function() {
-          map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
-        }, 200);
-      } else {
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
-      }
+      // Esperar 2 frames para que touchcancel sea procesado por MapLibre
+      // antes de iniciar la animación del mapa
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          var currentZoom = map.getZoom();
+          if (currentZoom >= 15) {
+            // Zoom out rápido primero — crea el efecto parabólico visible
+            map.easeTo({
+              zoom: 13.5,
+              duration: 300,
+              easing: function(t) { return t * (2 - t); }
+            });
+            setTimeout(function() {
+              map.flyTo({ center: [lng, lat], zoom: 17, duration: 700 });
+            }, 250);
+          } else {
+            map.flyTo({ center: [lng, lat], zoom: 17, duration: 700 });
+          }
+        });
+      });
     }
 
     // 4. Mostrar nueva minicard INMEDIATAMENTE en paralelo con flyTo
