@@ -8,12 +8,14 @@ export class SearchBar {
     this.getCategories    = opts.getCategories;
     this.onCategorySelect = opts.onCategorySelect;
 
-    this._active   = false;
-    this._query    = '';
-    this._debounce = null;
+    this._active          = false;
+    this._query           = '';
+    this._debounce        = null;
+    this._currentMatches  = [];  // matches actuales de búsqueda
 
     this._injectStyles();
     this._installViewportListener();
+    this._hookMiniCardClose();
   }
 
   // ── API pública ───────────────────────────────────────────────────
@@ -76,6 +78,24 @@ export class SearchBar {
   isActive() { return this._active; }
 
   // ── Overlay ───────────────────────────────────────────────────────
+
+  // Hook en _closeMiniCard de MapView para re-aplicar highlight de búsqueda
+  _hookMiniCardClose() {
+    var self = this;
+    var mv   = this.mapView;
+    if (!mv) return;
+    var original = mv._closeMiniCard.bind(mv);
+    mv._closeMiniCard = function() {
+      original();
+      // Si hay búsqueda activa con matches, re-aplicar highlight
+      if (self._active && self._query.length > 0 && self._currentMatches.length > 0) {
+        self._highlightMarkers(self._currentMatches);
+      } else if (self._active && self._query.length > 0 && self._currentMatches.length === 0) {
+        // Sin matches — mantener todo gris
+        self._highlightMarkers([]);
+      }
+    };
+  }
 
   // Mueve el footer de subcats al body para escapar del overflow:hidden del panel
   _moveSubcatsToBody() {
@@ -174,6 +194,7 @@ export class SearchBar {
     var countEl = document.getElementById('wps-count');
 
     if (this._query.length === 0) {
+      this._currentMatches = [];
       this._hideResults();
       this._restoreMarkers();
       if (countEl) countEl.textContent = this._getCount();
@@ -193,6 +214,7 @@ export class SearchBar {
       if (countEl) countEl.textContent = label;
 
       // Highlight en mapa — matches normales, resto gris
+      self._currentMatches = matches;
       self._highlightMarkers(matches);
       self._renderResults(matches);
     }, 200);
@@ -286,7 +308,8 @@ export class SearchBar {
     var place  = places[idx];
     if (!place) return;
 
-    // Highlight solo ese marker (por place_id/name, no por índice)
+    // Highlight solo ese pin — el resto de matches vuelven al estado de búsqueda
+    // cuando se cierre la minicard (via _hookMiniCardClose)
     this._highlightSingle(place);
 
     // flyTo con zoom suave
@@ -329,28 +352,49 @@ export class SearchBar {
   _highlightMarkers(matches) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    // Usar el._place para match correcto (allPlaces y markerEls pueden tener índices distintos
-    // porque _renderPlaceMarkers salta places sin coordenadas)
     var matched = new Set(matches.map(function(p) { return p.place_id || p.name; }));
     mv.markerEls.forEach(function(el) {
       var p   = el._place;
       var key = p && (p.place_id || p.name);
       var hit = matched.has(key);
-      el.style.opacity = hit ? '1'    : '0.2';
-      el.style.filter  = hit ? 'none' : 'grayscale(1)';
+      el.style.opacity   = hit ? '1'      : '0.2';
+      el.style.filter    = hit ? 'none'   : 'grayscale(1)';
+      el.style.transform = '';
+      el.style.zIndex    = '';
     });
   }
 
   _highlightSingle(place) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    var key = place && (place.place_id || place.name);
+    var selectedKey = place && (place.place_id || place.name);
+    var matched     = new Set(this._currentMatches.map(function(p) { return p.place_id || p.name; }));
+
     mv.markerEls.forEach(function(el) {
-      var p    = el._place;
-      var eKey = p && (p.place_id || p.name);
-      var hit  = eKey === key;
-      el.style.opacity = hit ? '1'    : '0.2';
-      el.style.filter  = hit ? 'none' : 'grayscale(1)';
+      var p   = el._place;
+      var key = p && (p.place_id || p.name);
+      var isMatch    = matched.has(key);
+      var isSelected = key === selectedKey;
+
+      if (isSelected) {
+        // Pin seleccionado: color normal + escala ligera
+        el.style.opacity   = '1';
+        el.style.filter    = 'none';
+        el.style.transform = 'scale(1.25)';
+        el.style.zIndex    = '9999';
+      } else if (isMatch) {
+        // Otros matches: color normal, sin destacar
+        el.style.opacity   = '1';
+        el.style.filter    = 'none';
+        el.style.transform = '';
+        el.style.zIndex    = '';
+      } else {
+        // No coinciden: gris
+        el.style.opacity   = '0.2';
+        el.style.filter    = 'grayscale(1)';
+        el.style.transform = '';
+        el.style.zIndex    = '';
+      }
     });
   }
 
@@ -358,8 +402,10 @@ export class SearchBar {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
     mv.markerEls.forEach(function(el) {
-      el.style.opacity = '';
-      el.style.filter  = '';
+      el.style.opacity   = '';
+      el.style.filter    = '';
+      el.style.transform = '';
+      el.style.zIndex    = '';
     });
   }
 
