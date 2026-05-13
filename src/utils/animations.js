@@ -3,7 +3,7 @@
 // Animaciones centralizadas con GSAP
 // ====================================================================
 
-const gsap = window.gsap;
+import { gsap } from 'https://cdn.skypack.dev/gsap@3.12.5';
 
 // ── Configuración global ─────────────────────────────────────────────
 gsap.config({ nullTargetWarn: false });
