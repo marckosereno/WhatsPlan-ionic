@@ -364,19 +364,23 @@ export class SearchBar {
     // 2. Highlight del pin seleccionado
     this._highlightSingle(place);
 
-    // 3. flyTo con curva pronunciada — zoom out al centro, zoom in al destino
-    // curve:1.5 exagera el efecto parabólico de MapLibre (default es 1.42)
+    // 3. Efecto zoom out → zoom in igual que himarco
+    // MapLibre flyTo hace parábola natural — la hacemos visible con zoom out previo
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
-      mv.getMap().flyTo({
-        center:   [lng, lat],
-        zoom:     17,
-        duration: 900,
-        curve:    1.8,
-        speed:    1.2,
-        easing:   function(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
-      });
+      var map = mv.getMap();
+      var currentZoom = map.getZoom();
+      // Si ya estamos en zoom alto, hacer zoom out rápido primero
+      // para que el flyTo tenga recorrido suficiente y se vea la parábola
+      if (currentZoom >= 15) {
+        map.easeTo({ zoom: 13.5, duration: 250, easing: function(t) { return t*(2-t); } });
+        setTimeout(function() {
+          map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
+        }, 200);
+      } else {
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
+      }
     }
 
     // 4. Mostrar nueva minicard INMEDIATAMENTE en paralelo con flyTo
