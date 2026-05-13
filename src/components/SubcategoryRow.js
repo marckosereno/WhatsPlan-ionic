@@ -1,3 +1,4 @@
+import { animateSubcatsIn, animateSubcatsOut } from '/src/utils/animations.js';
 // ====================================================================
 // WHATSPLAN — SubcategoryRow.js
 // GPS chip (dentro del scroll) + chip LIVE (en el scroll) + subcategorías
@@ -286,6 +287,7 @@ export class SubcategoryRow {
     });
 
     this._footerEl.classList.add('visible');
+    animateSubcatsIn(Array.from(this._footerEl.querySelectorAll('.subcategory-footer-chip')));
 
     this._footerEl.querySelectorAll('.subcategory-footer-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
@@ -303,8 +305,11 @@ export class SubcategoryRow {
   }
 
   hide() {
-    this._clearSubcatChips();
-    this._footerEl.classList.remove('visible');
+    const self = this;
+    animateSubcatsOut(this._footerEl, function() {
+      self._clearSubcatChips();
+      self._footerEl.classList.remove('visible');
+    });
     this.currentSubcat = null;
   }
 
