@@ -106,11 +106,11 @@ async function renderAuthButton(user) {
     return;
   }
 
-  let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
+  let avatarUrl = window.wpApp._cachedAvatarUrl || user && user.user_metadata && user.user_metadata.avatar_url || '';
   if (!avatarUrl) {
     try {
       const profile = await ProfileService.getProfile(user.id);
-      if (profile?.avatar_url) {
+      if (profile && profile.avatar_url) {
         avatarUrl = profile.avatar_url;
         window.wpApp._cachedAvatarUrl = avatarUrl;
       }
@@ -142,16 +142,16 @@ function setupTopBar(authModal) {
 }
 
 function _showProfileMenu() {
-  document.getElementById('profile-menu')?.remove();
+  var _pm = document.getElementById('profile-menu'); if (_pm) _pm.remove();
   const menu = document.createElement('div');
   menu.id = 'profile-menu';
   menu.style.cssText = 'position:fixed;top:64px;right:12px;z-index:2000;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;font-family:"Inter Tight",system-ui,sans-serif;';
   const user = window.wpApp.currentUser;
-  const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
+  const name = (user && user.user_metadata && user.user_metadata.name) || (user && user.email && user.email.split('@')[0]) || 'Usuario';
   menu.innerHTML = `
     <div style="padding:14px 16px 10px;border-bottom:1px solid #f3f4f6;">
       <div style="font-size:13px;font-weight:700;color:#111;">${name}</div>
-      <div style="font-size:11px;color:#9ca3af;">${user?.email || ''}</div>
+      <div style="font-size:11px;color:#9ca3af;">${(user && user.email) || ''}</div>
     </div>
     <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;">🚪 Cerrar sesión</div>`;
   menu.querySelector('#pm-logout').addEventListener('click', async () => {
@@ -218,16 +218,16 @@ function setupCategories(mv) {
       if (isActive) {
         mv._clearPlaceMarkers();
         mv.currentCatId = null;
-        window.wpApp.subcatRow?.hide();
+        window.wpApp.subcatRow && window.wpApp.subcatRow.hide();
         const counter = document.getElementById('map-results-count');
         if (counter) counter.textContent = '';
         return;
       }
 
       newChip.classList.add('active');
-      window.wpApp.subcatRow?.showLoading(menuKey);
+      window.wpApp.subcatRow && window.wpApp.subcatRow.showLoading(menuKey);
       await mv.loadCategory(menuKey);
-      window.wpApp.subcatRow?.showSubcats(menuKey);
+      window.wpApp.subcatRow && window.wpApp.subcatRow.showSubcats(menuKey);
     });
   });
 }
@@ -262,7 +262,7 @@ function setupActivitySubscription(mv) {
     initSupabase();
 
     AuthService.onAuthChange(async (event, user) => {
-      console.log('🔐 Auth:', event, user?.email || 'sin sesión');
+      console.log('🔐 Auth:', event, (user && user.email) || 'sin sesión');
       window.wpApp.currentUser = user;
       appState.setUser(user);
       await renderAuthButton(user);
@@ -286,7 +286,7 @@ function setupActivitySubscription(mv) {
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
         await renderAuthButton(user);
-        if (isSuperUser(user?.id)) mountSuperPanel(mv);
+        if (isSuperUser(user && user.id)) mountSuperPanel(mv);
       },
     });
     window.wpApp.authModal = authModal;
