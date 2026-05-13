@@ -338,21 +338,25 @@ export class SearchBar {
     var place  = places[idx];
     if (!place) return;
 
-    // 1. Restaurar pin anterior INSTANTÁNEAMENTE (sin animación) — igual que himarco
+    // 1. Cancelar cualquier animación GSAP pendiente sobre el wrapper anterior
+    var gsap = window.gsap;
     if (mv.miniCardMarker) {
       var oldWrapper = mv.miniCardMarker.getElement();
+      var oldCard = oldWrapper && oldWrapper.querySelector('.minicard-marker-content');
+      // Matar animación GSAP si existe — evita que opacity:0 quede colgado
+      if (gsap && oldCard) gsap.killTweensOf(oldCard);
+      // Restaurar pin anterior instantáneamente sin animación
       mv.miniCardMarker    = null;
       mv.miniCardIndex     = -1;
       mv.miniCardPlace     = null;
       mv._miniCardPinRoot  = null;
       mv._miniCardMarkerEl = null;
       if (oldWrapper && oldWrapper._savedPinHTML !== undefined) {
-        oldWrapper.style.width     = '44px';
-        oldWrapper.style.height    = '44px';
-        oldWrapper.style.overflow  = 'visible';
-        oldWrapper.style.zIndex    = '';
-        oldWrapper.style.marginTop = '';
-        oldWrapper.innerHTML = oldWrapper._savedPinHTML;
+        oldWrapper.style.cssText = '';
+        oldWrapper.style.width    = '44px';
+        oldWrapper.style.height   = '44px';
+        oldWrapper.style.overflow = 'visible';
+        oldWrapper.innerHTML      = oldWrapper._savedPinHTML;
         delete oldWrapper._savedPinHTML;
       }
     }
@@ -360,14 +364,16 @@ export class SearchBar {
     // 2. Highlight del pin seleccionado
     this._highlightSingle(place);
 
-    // 3. flyTo igual que himarco: zoom 17, duration 400
+    // 3. flyTo — zoom 17, duration 400 (igual que himarco)
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
       mv.getMap().flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
     }
 
-    // 4. Mostrar minicard INMEDIATAMENTE en paralelo con el flyTo (igual que himarco)
+    // 4. Mostrar nueva minicard INMEDIATAMENTE en paralelo con flyTo
+    // _showMiniCard internamente llama _closeMiniCard pero miniCardMarker ya es null
+    // así que no hará nada — la nueva minicard se construye limpiamente
     var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
     mv._showMiniCard(place, idx, raw);
   }
