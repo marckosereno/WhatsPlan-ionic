@@ -84,7 +84,6 @@ async function renderMapCategories() {
     // Swap atómico: un solo repaint, sin frame vacío
     container.innerHTML = '';
     container.appendChild(fragment);
-    animateChipsIn(Array.from(container.querySelectorAll('.category-footer-chip')));
     console.log('✅ ' + cats.length + ' categorías desde Supabase');
   } catch(err) {
     console.warn('⚠️ renderMapCategories:', err.message);
@@ -199,6 +198,12 @@ function setupCategories(mv) {
   const container = document.getElementById('map-categories-footer');
   if (!container) return;
 
+  // Limpiar cualquier estilo inline que GSAP haya dejado antes de clonar
+  container.querySelectorAll('.category-footer-chip').forEach(function(c) {
+    c.style.opacity = '';
+    c.style.transform = '';
+  });
+
   container.querySelectorAll('.category-footer-chip').forEach(chip => {
     const newChip = chip.cloneNode(true);
     chip.parentNode.replaceChild(newChip, chip);
@@ -227,6 +232,9 @@ function setupCategories(mv) {
       window.wpApp.subcatRow?.showSubcats(menuKey);
     });
   });
+
+  // Animar chips DESPUÉS de que todos los clones estén en el DOM
+  animateChipsIn(Array.from(container.querySelectorAll('.category-footer-chip')));
 }
 
 // ── Actividades ───────────────────────────────────────────────────────
