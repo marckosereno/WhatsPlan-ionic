@@ -313,11 +313,18 @@ export class SearchBar {
     // cuando se cierre la minicard (via _hookMiniCardClose)
     this._highlightSingle(place);
 
-    // flyTo con zoom suave
+    // easeTo al lugar — sin cambiar zoom para mantener contexto del mapa
+    // (flyTo con zoom 17 saca todos los otros pins del viewport)
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
-      mv.getMap().flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+      var currentZoom = mv.getMap().getZoom();
+      mv.getMap().easeTo({
+        center: [lng, lat],
+        zoom: Math.max(currentZoom, 16),
+        duration: 350,
+        padding: { top: 80, bottom: 160, left: 40, right: 40 }
+      });
     }
 
     // Mostrar minicard
