@@ -253,7 +253,11 @@ export class SearchBar {
     container.id  = 'wp-sresults';
 
     if (places.length === 0) {
-      container.innerHTML = '<div class="wps-noresult"><span style="font-size:20px">🥺</span><span>No se encontraron resultados</span></div>';
+      container.innerHTML =
+        '<div class="wps-noresult">' +
+          '<span class="wps-noresult-emoji">🥺</span>' +
+          '<span class="wps-noresult-text">No se encontraron resultados</span>' +
+        '</div>';
       document.body.appendChild(container);
       this._positionResults();
       this._syncCategoryChips();
@@ -337,18 +341,11 @@ export class SearchBar {
     // cuando se cierre la minicard (via _hookMiniCardClose)
     this._highlightSingle(place);
 
-    // easeTo al lugar — sin cambiar zoom para mantener contexto del mapa
-    // (flyTo con zoom 17 saca todos los otros pins del viewport)
+    // flyTo igual que himarco: zoom 17, duration 400
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
-      var currentZoom = mv.getMap().getZoom();
-      mv.getMap().easeTo({
-        center: [lng, lat],
-        zoom: Math.max(currentZoom, 16),
-        duration: 350,
-        padding: { top: 80, bottom: 160, left: 40, right: 40 }
-      });
+      mv.getMap().flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
     }
 
     // Mostrar minicard
@@ -625,7 +622,18 @@ export class SearchBar {
       .wps-card-rating{display:flex;align-items:center;gap:4px;}
       .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
       .wps-card-rcnt{font-size:11px;color:#9ca3af;}
-      .wps-noresult{display:flex;align-items:center;gap:10px;padding:14px 18px;background:white;border-radius:16px;font-size:14px;color:#6b7280;box-shadow:0 4px 12px rgba(0,0,0,0.08);flex-shrink:0;}
+      .wps-noresult {
+        display:flex; align-items:center; gap:10px;
+        padding:14px 18px;
+        background:white;
+        border:2px solid #e5e7eb;
+        border-radius:16px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.08);
+        min-width:280px; max-width:300px;
+        flex-shrink:0;
+      }
+      .wps-noresult-emoji { font-size:24px; }
+      .wps-noresult-text  { font-size:14px; font-weight:600; color:#6b7280; }
 
       /* ── Chips de categoría en footer ── */
       #wp-scats{
