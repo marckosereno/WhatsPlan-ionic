@@ -252,6 +252,9 @@ function setupActivitySubscription(mv) {
     // iOS / Capacitor fixes — lo primero, antes de montar nada
     initIOSFixes();
 
+    // Mostrar panel de inmediato con skeletons visibles
+    animatePanelIn(document.getElementById('map-results-panel'));
+
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
@@ -298,7 +301,6 @@ function setupActivitySubscription(mv) {
     const catsReady = renderMapCategories();
 
     Promise.all([mapReady, catsReady]).then(() => {
-      animatePanelIn(document.getElementById('map-results-panel'));
       setupCategories(mv);
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
