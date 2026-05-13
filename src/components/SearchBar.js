@@ -555,7 +555,7 @@ export class SearchBar {
         font-size:15px;font-weight:600;color:#111827;min-width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Inter Tight',system-ui,sans-serif;}
+      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
 
       .wps-clear {
         display:none;
