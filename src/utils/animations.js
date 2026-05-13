@@ -13,7 +13,7 @@ export function animatePanelIn(el) {
   if (!el) return;
   gsap.fromTo(el,
     { opacity: 0 },
-    { opacity: 1, duration: 0.5, ease: 'power2.out', clearProps: 'opacity' }
+    { opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'opacity' }
   );
 }
 
@@ -60,17 +60,15 @@ export function animateSubcatsOut(container, onComplete) {
 export function animateMinicardIn(el) {
   if (!el) return;
   gsap.fromTo(el,
-    { y: 8, opacity: 0, scale: 0.95 },
-    { y: 0, opacity: 1, scale: 1,
-      duration: 0.3, ease: 'back.out(1.8)', clearProps: 'transform,opacity' }
+    { opacity: 0, y: 4 },
+    { opacity: 1, y: 0, duration: 0.15, ease: 'power2.out', clearProps: 'transform,opacity' }
   );
 }
 
 export function animateMinicardOut(el, onComplete) {
   if (!el) { if (onComplete) onComplete(); return; }
   gsap.to(el, {
-    y: 6, opacity: 0, scale: 0.95,
-    duration: 0.18, ease: 'power2.in',
+    opacity: 0, duration: 0.1, ease: 'power2.in',
     onComplete: onComplete
   });
 }
