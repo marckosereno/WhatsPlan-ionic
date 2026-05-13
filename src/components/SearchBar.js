@@ -1,26 +1,19 @@
 // ====================================================================
-// WHATSPLAN — src/components/SearchBar.js
-// Búsqueda global idéntica a himarco:
-//   - Overlay encima del mapa con animación expandSearch
-//   - Icono Fluent 3D lupa | input | clear | count | filtro | close
-//   - Minifichas en footer (scroll horizontal) con badge horario
-//   - Chips de categoría en footer cuando no hay búsqueda activa
-//   - Filtra pins en tiempo real sobre los ya cargados (sin API)
-//   - Al tap en minicard → flyTo + showMiniCard del pin
+// WHATSPLAN — src/components/SearchBar.js  (v3 — himarco-exact)
 // ====================================================================
 
 export class SearchBar {
   constructor(opts) {
-    this.mapView           = opts.mapView;           // instancia de MapView
-    this.getCategories     = opts.getCategories;     // fn → [{key,label_es,emoji,icon3d_url}]
-    this.onCategorySelect  = opts.onCategorySelect;  // fn(categoryKey)
+    this.mapView          = opts.mapView;          // MapView instance
+    this.getCategories    = opts.getCategories;    // fn → [{key,label_es,emoji,icon3d_url}]
+    this.onCategorySelect = opts.onCategorySelect; // fn(key)
 
-    this._active    = false;
-    this._query     = '';
-    this._debounce  = null;
-    this._catChips  = null;  // div de chips de categoría en footer
+    this._active   = false;
+    this._query    = '';
+    this._debounce = null;
 
     this._injectStyles();
+    this._installViewportListener();
   }
 
   // ── API pública ───────────────────────────────────────────────────
@@ -29,39 +22,28 @@ export class SearchBar {
     if (this._active) return;
     this._active = true;
 
-    // Ocultar topbar (avatar + search btn)
+    const gsap  = window.gsap;
     const topbar = document.getElementById('topbar');
+    const panel  = document.getElementById('map-results-panel');
+
     if (topbar) {
-      const gsap = window.gsap;
-      if (gsap) {
-        gsap.to(topbar, { x: 120, opacity: 0, duration: 0.22, ease: 'power2.in',
-          onComplete: () => { topbar.style.pointerEvents = 'none'; }
-        });
-      } else {
-        topbar.style.transform = 'translateX(120px)';
-        topbar.style.opacity   = '0';
-        topbar.style.pointerEvents = 'none';
-      }
+      topbar.style.pointerEvents = 'none';
+      if (gsap) gsap.to(topbar, { x: 120, opacity: 0, duration: 0.2, ease: 'power2.in' });
+      else { topbar.style.transform = 'translateX(120px)'; topbar.style.opacity = '0'; }
+    }
+    if (panel) {
+      panel.style.pointerEvents = 'none';
+      if (gsap) gsap.to(panel, { y: 40, opacity: 0, duration: 0.18, ease: 'power2.in' });
+      else { panel.style.transform = 'translateY(40px)'; panel.style.opacity = '0'; }
     }
 
-    // Ocultar panel inferior
-    const panel = document.getElementById('map-results-panel');
-    if (panel) {
-      const gsap = window.gsap;
-      if (gsap) {
-        gsap.to(panel, { y: 40, opacity: 0, duration: 0.2, ease: 'power2.in',
-          onComplete: () => { panel.style.pointerEvents = 'none'; }
-        });
-      } else {
-        panel.style.transform = 'translateY(40px)';
-        panel.style.opacity   = '0';
-        panel.style.pointerEvents = 'none';
-      }
-    }
+    // Mover fila de subcats a modo búsqueda
+    const subcatsRow = document.getElementById('map-subcategories-footer');
+    if (subcatsRow) subcatsRow.classList.add('in-search-mode');
 
     this._showOverlay();
     this._showCategoryChips();
-    console.log('🔍 Búsqueda global activada');
+    console.log('🔍 SearchBar activada');
   }
 
   deactivate() {
@@ -69,136 +51,116 @@ export class SearchBar {
     this._active = false;
     this._query  = '';
 
-    // Restaurar topbar
+    const gsap   = window.gsap;
     const topbar = document.getElementById('topbar');
+    const panel  = document.getElementById('map-results-panel');
+
     if (topbar) {
       topbar.style.pointerEvents = '';
-      const gsap = window.gsap;
-      if (gsap) {
-        gsap.to(topbar, { x: 0, opacity: 1, duration: 0.28, ease: 'power2.out', clearProps: 'all' });
-      } else {
-        topbar.style.transform = '';
-        topbar.style.opacity   = '';
-      }
+      if (gsap) gsap.to(topbar, { x: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'all' });
+      else { topbar.style.transform = ''; topbar.style.opacity = ''; }
     }
-
-    // Restaurar panel
-    const panel = document.getElementById('map-results-panel');
     if (panel) {
       panel.style.pointerEvents = '';
-      const gsap = window.gsap;
-      if (gsap) {
-        gsap.to(panel, { y: 0, opacity: 1, duration: 0.28, ease: 'power2.out', clearProps: 'all' });
-      } else {
-        panel.style.transform = '';
-        panel.style.opacity   = '';
-      }
+      if (gsap) gsap.to(panel, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'all' });
+      else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
 
+    // Restaurar fila subcats
+    const subcatsRow = document.getElementById('map-subcategories-footer');
+    if (subcatsRow) subcatsRow.classList.remove('in-search-mode');
+
     this._hideOverlay();
-    this._hideCategoryChips();
     this._hideResults();
+    this._hideCategoryChips();
     this._restoreMarkers();
-    console.log('🔍 Búsqueda global desactivada');
+    console.log('🔍 SearchBar desactivada');
   }
 
   isActive() { return this._active; }
 
-  // ── Overlay (barra de búsqueda) ───────────────────────────────────
+  // ── Overlay ───────────────────────────────────────────────────────
 
   _showOverlay() {
-    const existing = document.getElementById('wp-search-overlay');
+    var existing = document.getElementById('wp-sbar');
     if (existing) existing.remove();
 
-    const count = this._getCount();
-    const overlay = document.createElement('div');
-    overlay.id = 'wp-search-overlay';
-
-    overlay.innerHTML = `
-      <img class="wps-icon"
-        src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png"
-        onerror="this.style.display='none'">
-      <input id="wps-input" class="wps-input" type="search"
-        placeholder="Buscar un lugar"
-        autocomplete="new-password" autocorrect="off"
-        autocapitalize="off" spellcheck="false"
-        name="wp-search-x${Date.now()}" readonly>
-      <button id="wps-clear" class="wps-clear">✕</button>
-      <span id="wps-count" class="wps-count">${count}</span>
-      <button id="wps-filter" class="wps-filter" title="Filtros">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M5.78584 3C4.24726 3 3 4.24726 3 5.78584C3 6.59295 3.28872 7.37343 3.81398 7.98623L6.64813 11.2927C7.73559 12.5614 8.33333 14.1773 8.33333 15.8483V18C8.33333 19.6569 9.67648 21 11.3333 21H12.6667C14.3235 21 15.6667 19.6569 15.6667 18V15.8483C15.6667 14.1773 16.2644 12.5614 17.3519 11.2927L20.186 7.98624C20.7113 7.37343 21 6.59294 21 5.78584C21 4.24726 19.7527 3 18.2142 3H5.78584Z"/>
-        </svg>
-      </button>
-      <button id="wps-close" class="wps-close">✕</button>
-    `;
+    var count   = this._getCount();
+    var overlay = document.createElement('div');
+    overlay.id  = 'wp-sbar';
+    overlay.innerHTML =
+      '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
+      '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="wps-x' + Date.now() + '" readonly>' +
+      '<button id="wps-clear" class="wps-clear">✕</button>' +
+      '<span id="wps-count" class="wps-count">' + count + '</span>' +
+      '<button id="wps-filter" class="wps-filter" title="Filtros"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg></button>' +
+      '<button id="wps-close" class="wps-close">✕</button>';
     document.body.appendChild(overlay);
 
-    // Activar input después de un frame
-    const input = document.getElementById('wps-input');
-    setTimeout(() => {
+    var self  = this;
+    var input = document.getElementById('wps-input');
+
+    setTimeout(function() {
       input.removeAttribute('readonly');
       input.blur();
-      requestAnimationFrame(() => input.focus());
+      requestAnimationFrame(function() { input.focus(); });
     }, 50);
 
-    input.addEventListener('input', (e) => this._onInput(e.target.value));
-    input.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.deactivate(); });
+    input.addEventListener('input', function(e) { self._onInput(e.target.value); });
+    input.addEventListener('keydown', function(e) { if (e.key === 'Escape') self.deactivate(); });
 
-    const clearBtn = document.getElementById('wps-clear');
-    clearBtn.addEventListener('click', (e) => {
+    var clearBtn = document.getElementById('wps-clear');
+    input.addEventListener('input', function() {
+      clearBtn.classList.toggle('visible', input.value.length > 0);
+    });
+    clearBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       input.value = '';
       clearBtn.classList.remove('visible');
       input.focus();
-      this._onInput('');
+      self._onInput('');
     });
 
-    input.addEventListener('input', () => {
-      clearBtn.classList.toggle('visible', input.value.length > 0);
-    });
-
-    document.getElementById('wps-close').addEventListener('click', (e) => {
+    document.getElementById('wps-close').addEventListener('click', function(e) {
       e.stopPropagation();
-      this.deactivate();
+      self.deactivate();
     });
-
-    document.getElementById('wps-filter').addEventListener('click', (e) => {
+    document.getElementById('wps-filter').addEventListener('click', function(e) {
       e.stopPropagation();
-      this._openFilterSheet();
+      console.log('🔧 Filtros — próximamente');
     });
 
-    // Cerrar al tocar el mapa (fuera del overlay y resultados)
-    setTimeout(() => {
-      this._mapClickHandler = (e) => {
-        const overlay = document.getElementById('wp-search-overlay');
-        const results = document.getElementById('wp-search-results');
-        if (overlay && overlay.contains(e.target)) return;
+    // Tap en mapa cierra resultados pero no la barra
+    setTimeout(function() {
+      self._mapClick = function(e) {
+        var bar     = document.getElementById('wp-sbar');
+        var results = document.getElementById('wp-sresults');
+        if (bar     && bar.contains(e.target)) return;
         if (results && results.contains(e.target)) return;
-        this._hideResults();
-        const inp = document.getElementById('wps-input');
+        self._hideResults();
+        var inp = document.getElementById('wps-input');
         if (inp) inp.blur();
       };
-      document.addEventListener('click', this._mapClickHandler);
+      document.addEventListener('click', self._mapClick);
     }, 300);
   }
 
   _hideOverlay() {
-    const overlay = document.getElementById('wp-search-overlay');
-    if (overlay) overlay.remove();
-    if (this._mapClickHandler) {
-      document.removeEventListener('click', this._mapClickHandler);
-      this._mapClickHandler = null;
+    var o = document.getElementById('wp-sbar');
+    if (o) o.remove();
+    if (this._mapClick) {
+      document.removeEventListener('click', this._mapClick);
+      this._mapClick = null;
     }
   }
 
-  // ── Input handler ─────────────────────────────────────────────────
+  // ── Input ─────────────────────────────────────────────────────────
 
   _onInput(value) {
     this._query = value.toLowerCase().trim();
     clearTimeout(this._debounce);
 
-    const countEl = document.getElementById('wps-count');
+    var countEl = document.getElementById('wps-count');
 
     if (this._query.length === 0) {
       this._hideResults();
@@ -207,159 +169,172 @@ export class SearchBar {
       return;
     }
 
-    this._debounce = setTimeout(() => {
-      const places = this._getPlaces();
-      const matches = places.filter((p) => {
-        const name    = (p.name || '').toLowerCase();
-        const address = (p.formattedAddress || p.formatted_address || p.vicinity || '').toLowerCase();
-        return name.includes(this._query) || address.includes(this._query);
+    var self = this;
+    this._debounce = setTimeout(function() {
+      var places  = self._getPlaces();
+      var matches = places.filter(function(p) {
+        var name = (p.name || '').toLowerCase();
+        var addr = (p.formattedAddress || p.formatted_address || p.vicinity || '').toLowerCase();
+        return name.includes(self._query) || addr.includes(self._query);
       });
 
-      if (countEl) {
-        countEl.textContent = matches.length + ' resultado' + (matches.length !== 1 ? 's' : '');
-      }
+      var label = matches.length + ' resultado' + (matches.length !== 1 ? 's' : '');
+      if (countEl) countEl.textContent = label;
+      var overlayCount = document.getElementById('wps-count');
+      if (overlayCount) overlayCount.textContent = label;
 
-      this._highlightMarkers(matches);
-      this._renderResults(matches);
+      self._highlightMarkers(matches);
+      self._renderResults(matches);
     }, 200);
   }
 
-  // ── Resultados (minifichas en footer) ─────────────────────────────
+  // ── Minifichas ────────────────────────────────────────────────────
 
   _renderResults(places) {
     this._hideResults();
 
-    const container = document.createElement('div');
-    container.id = 'wp-search-results';
+    var container = document.createElement('div');
+    container.id  = 'wp-sresults';
 
     if (places.length === 0) {
-      container.innerHTML = `
-        <div class="wps-no-results">
-          <span class="wps-no-results-emoji">🥺</span>
-          <span class="wps-no-results-text">No se encontraron resultados</span>
-        </div>`;
+      container.innerHTML =
+        '<div class="wps-noresult">' +
+        '<span style="font-size:20px;">🥺</span>' +
+        '<span>No se encontraron resultados</span>' +
+        '</div>';
       document.body.appendChild(container);
+      this._positionResults();
+      this._syncCategoryChips();
       return;
     }
 
-    const self = this;
+    var self = this;
+    var allPlaces = this._getPlaces();
+
     places.slice(0, 20).forEach(function(place) {
-      const allPlaces = self._getPlaces();
-      const placeIdx  = allPlaces.indexOf(place);
-      const raw   = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
-      const photo = raw ? ('/api/photo-proxy?url=' + encodeURIComponent(raw)) : null;
-      const rating      = place.rating ? Number(place.rating).toFixed(1) : '';
-      const ratingCount = place.userRatingCount ? '(' + place.userRatingCount + ')' : '';
-      const address     = (place.vicinity || place.formattedAddress || '').substring(0, 35);
+      var idx   = allPlaces.indexOf(place);
+      var raw   = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
+      var photo = raw ? ('/api/photo-proxy?url=' + encodeURIComponent(raw)) : null;
+      var rating = place.rating ? Number(place.rating).toFixed(1) : '';
+      var rCount = place.userRatingCount ? '(' + place.userRatingCount + ')' : '';
+      var address = (place.vicinity || place.formattedAddress || '').substring(0, 35);
+      var icon = (self.mapView && self.mapView.currentCatData && self.mapView.currentCatData.icon) || '💎';
 
       // Badge horario
-      let badgeClass = 'no-hours', badgeText = 'Sin horario';
-      const oh = place.regularOpeningHours;
+      var badgeClass = 'no-hours', badgeText = 'Sin horario';
+      var oh = place.regularOpeningHours;
       if (oh && oh.periods && oh.periods.length > 0) {
-        const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
-        let isOpen = false, closingSoon = false, closeTime = '', opensAt = '';
-        oh.periods.filter(p => p.open && p.open.day === day).forEach(p => {
+        var now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+        var isOpen = false, closingSoon = false, closeTime = '';
+        oh.periods.filter(function(p) { return p.open && p.open.day === day; }).forEach(function(p) {
           if (!p.open || !p.close) return;
-          const openM  = p.open.hour  * 60 + (p.open.minute  || 0);
-          const closeM = p.close.hour * 60 + (p.close.minute || 0);
+          var openM = p.open.hour * 60 + (p.open.minute || 0);
+          var closeM = p.close.hour * 60 + (p.close.minute || 0);
           if (mins >= openM && mins < closeM) {
             isOpen = true;
-            const left = closeM - mins;
-            const h12 = p.close.hour > 12 ? p.close.hour - 12 : (p.close.hour || 12);
-            const m0  = (p.close.minute || 0).toString().padStart(2, '0');
+            var left = closeM - mins;
+            var h12 = p.close.hour > 12 ? p.close.hour - 12 : (p.close.hour || 12);
+            var m0 = (p.close.minute || 0).toString().padStart(2, '0');
             closeTime = h12 + ':' + m0 + ' ' + (p.close.hour >= 12 ? 'PM' : 'AM');
             if (left > 0 && left <= 60) closingSoon = true;
           }
         });
-        if (isOpen) {
-          badgeClass = closingSoon ? 'closing-soon' : 'open';
-          badgeText  = closingSoon && closeTime ? 'Cierra ' + closeTime : 'Abierto';
-        } else {
-          badgeClass = 'closed'; badgeText = opensAt ? 'Abre ' + opensAt : 'Cerrado';
-        }
+        if (isOpen) { badgeClass = closingSoon ? 'closing-soon' : 'open'; badgeText = closingSoon && closeTime ? 'Cierra ' + closeTime : 'Abierto'; }
+        else { badgeClass = 'closed'; badgeText = 'Cerrado'; }
       }
 
-      const priceLevel  = place.priceLevel || (place.rating >= 4.5 ? 3 : place.rating >= 4 ? 2 : 1);
-      const priceSymbol = '$'.repeat(Math.min(priceLevel, 3));
+      var price = '$'.repeat(Math.min(place.priceLevel || 1, 3));
 
-      const card = document.createElement('div');
-      card.className = 'wps-minicard';
-      card.dataset.placeIndex = placeIdx;
-      card.innerHTML = (photo
-        ? `<img src="${photo}" class="wps-minicard-photo" alt="${place.name}">`
-        : `<div class="wps-minicard-icon">${(self.mapView && self.mapView.currentCatData && self.mapView.currentCatData.icon) || '💎'}</div>`)
-        + `<div class="wps-minicard-body">
-            <div class="wps-minicard-header">
-              <span class="wps-minicard-badge ${badgeClass}">${badgeText}</span>
-              <span class="wps-minicard-price">${priceSymbol}</span>
-            </div>
-            <div class="wps-minicard-name">${place.name}</div>
-            <div class="wps-minicard-address">${address}${address.length >= 35 ? '...' : ''}</div>
-            <div class="wps-minicard-rating">
-              <span class="wps-minicard-star">⭐</span>
-              <span class="wps-minicard-rating-val">${rating}</span>
-              <span class="wps-minicard-rating-cnt">${ratingCount}</span>
-            </div>
-          </div>`;
+      var card = document.createElement('div');
+      card.className = 'wps-card';
+      card.dataset.idx = idx;
+      card.innerHTML =
+        (photo ? '<img src="' + photo + '" class="wps-card-photo" alt="' + place.name + '">' :
+                 '<div class="wps-card-icon">' + icon + '</div>') +
+        '<div class="wps-card-body">' +
+          '<div class="wps-card-header">' +
+            '<span class="wps-card-badge ' + badgeClass + '">' + badgeText + '</span>' +
+            '<span class="wps-card-price">' + price + '</span>' +
+          '</div>' +
+          '<div class="wps-card-name">' + place.name + '</div>' +
+          '<div class="wps-card-addr">' + address + (address.length >= 35 ? '...' : '') + '</div>' +
+          '<div class="wps-card-rating">' +
+            '<span>⭐</span>' +
+            '<span class="wps-card-rval">' + rating + '</span>' +
+            '<span class="wps-card-rcnt">' + rCount + '</span>' +
+          '</div>' +
+        '</div>';
 
-      card.addEventListener('click', (e) => {
+      card.addEventListener('click', function(e) {
         e.stopPropagation();
-        self._onResultClick(placeIdx);
+        self._onCardClick(parseInt(card.dataset.idx));
       });
-
       container.appendChild(card);
     });
 
     document.body.appendChild(container);
-    // Ocultar chips de categoría cuando hay minifichas
+    this._positionResults();
     this._syncCategoryChips();
   }
 
-  _onResultClick(placeIdx) {
-    const mv = this.mapView;
+  _onCardClick(idx) {
+    var mv = this.mapView;
     if (!mv) return;
-    const places = this._getPlaces();
-    const place  = places[placeIdx];
+    var places = this._getPlaces();
+    var place  = places[idx];
     if (!place) return;
-    const lat = (place.location && place.location.lat) || place.lat;
-    const lng = (place.location && place.location.lng) || place.lng;
-    if (lat && lng) {
-      mv.getMap().flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
-    }
-    const raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
-    mv._showMiniCard(place, placeIdx, raw);
-    console.log('✅ Mini-ficha mostrada desde búsqueda');
+    var lat = (place.location && place.location.lat) || place.lat;
+    var lng = (place.location && place.location.lng) || place.lng;
+    if (lat && lng) mv.getMap().flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+    var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
+    mv._showMiniCard(place, idx, raw);
   }
 
   _hideResults() {
-    const existing = document.getElementById('wp-search-results');
-    if (existing) existing.remove();
+    var r = document.getElementById('wp-sresults');
+    if (r) r.remove();
     this._syncCategoryChips();
   }
 
-  // ── Highlight de pins ─────────────────────────────────────────────
+  // Posicionar minifichas sobre el teclado virtual (visualViewport)
+  _positionResults() {
+    var r = document.getElementById('wp-sresults');
+    if (!r) return;
+    if (window.visualViewport) {
+      var kbH = window.innerHeight - window.visualViewport.height;
+      r.style.bottom = kbH > 100 ? (kbH + 10) + 'px' : '0px';
+    } else {
+      r.style.bottom = '0px';
+    }
+  }
+
+  _installViewportListener() {
+    var self = this;
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function() {
+        if (self._active && self._query.length > 0) self._positionResults();
+      });
+    }
+  }
+
+  // ── Highlight pins ────────────────────────────────────────────────
 
   _highlightMarkers(matches) {
-    const mv = this.mapView;
-    if (!mv || !mv.markerEls) return;
-    const matchedPlaces = new Set(matches.map(p => p.place_id || p.name));
-    mv.markerEls.forEach((el, i) => {
-      const p   = mv.places && mv.places[i];
-      const key = p && (p.place_id || p.name);
-      if (matchedPlaces.has(key)) {
-        el.style.opacity = '1';
-        el.style.filter  = 'none';
-      } else {
-        el.style.opacity = '0.25';
-        el.style.filter  = 'grayscale(1)';
-      }
+    var mv = this.mapView;
+    if (!mv || !mv.markerEls || !mv.places) return;
+    var matched = new Set(matches.map(function(p) { return p.place_id || p.name; }));
+    mv.markerEls.forEach(function(el, i) {
+      var p = mv.places[i];
+      var key = p && (p.place_id || p.name);
+      el.style.opacity = matched.has(key) ? '1'    : '0.2';
+      el.style.filter  = matched.has(key) ? 'none' : 'grayscale(1)';
     });
   }
 
   _restoreMarkers() {
-    const mv = this.mapView;
+    var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    mv.markerEls.forEach((el) => {
+    mv.markerEls.forEach(function(el) {
       el.style.opacity = '';
       el.style.filter  = '';
     });
@@ -369,261 +344,235 @@ export class SearchBar {
 
   _showCategoryChips() {
     this._hideCategoryChips();
-
-    const cats = this.getCategories ? this.getCategories() : [];
+    var cats = this.getCategories ? this.getCategories() : [];
     if (!cats.length) return;
 
-    const container = document.createElement('div');
-    container.id = 'wp-search-cat-chips';
-    container.style.cssText = [
-      'position:fixed', 'bottom:16px', 'left:0', 'right:0',
-      'z-index:99997', 'display:flex', 'gap:8px',
-      'padding:0 16px', 'overflow-x:auto', 'scrollbar-width:none',
-      'animation:wpsSlideUp 0.3s ease', 'transition:opacity 0.25s ease',
-    ].join(';');
+    var container = document.createElement('div');
+    container.id  = 'wp-scats';
 
-    const mv = this.mapView;
-    const currentKey = mv && mv.currentCatId;
+    var mv = this.mapView;
+    var currentKey = mv && mv.currentCatId;
+    var self = this;
 
-    cats.forEach((cat) => {
-      const isActive = cat.key === currentKey;
-      const chip = document.createElement('div');
-      chip.className = 'wps-cat-chip';
-      chip.style.cssText = [
-        'display:inline-flex', 'align-items:center', 'gap:6px',
-        'padding:10px 16px',
-        'background:' + (isActive ? '#6366f1' : 'white'),
-        'color:' + (isActive ? 'white' : '#111827'),
-        'border:2px solid ' + (isActive ? '#6366f1' : 'rgba(0,0,0,0.1)'),
-        'border-radius:50px', 'font-size:14px', 'font-weight:600',
-        'white-space:nowrap', 'cursor:pointer', 'flex-shrink:0',
-        'box-shadow:0 2px 10px rgba(0,0,0,0.1)',
-        'touch-action:manipulation',
-        '-webkit-tap-highlight-color:transparent',
-      ].join(';');
-
+    cats.forEach(function(cat) {
+      var isActive = cat.key === currentKey;
+      var chip = document.createElement('div');
+      chip.className = 'wps-cat-chip' + (isActive ? ' active' : '');
       chip.innerHTML = cat.icon3d_url
-        ? `<img src="${cat.icon3d_url}" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.outerHTML='<span>${cat.emoji || ''}</span>'"><span>${cat.label_es}</span>`
-        : `<span>${cat.emoji || ''}</span><span>${cat.label_es}</span>`;
+        ? '<img src="' + cat.icon3d_url + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.outerHTML=\'<span>' + (cat.emoji || '') + '</span>\'"><span>' + (cat.label_es || cat.key) + '</span>'
+        : '<span>' + (cat.emoji || '') + '</span><span>' + (cat.label_es || cat.key) + '</span>';
 
-      const self = this;
-      chip.addEventListener('click', async () => {
-        // Limpiar búsqueda activa
+      chip.addEventListener('click', function() {
+        // Limpiar búsqueda
         self._query = '';
-        const inp = document.getElementById('wps-input');
+        var inp = document.getElementById('wps-input');
         if (inp) inp.value = '';
-        const clearBtn = document.getElementById('wps-clear');
-        if (clearBtn) clearBtn.classList.remove('visible');
+        var clr = document.getElementById('wps-clear');
+        if (clr) clr.classList.remove('visible');
         self._hideResults();
         self._restoreMarkers();
 
-        // Notificar al app para cargar categoría
+        // Actualizar estilos
+        container.querySelectorAll('.wps-cat-chip').forEach(function(c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+
+        // Cargar categoría
         if (self.onCategorySelect) self.onCategorySelect(cat.key);
 
-        // Actualizar estilo de chips
-        container.querySelectorAll('.wps-cat-chip').forEach((c) => {
-          c.style.background = 'white';
-          c.style.color = '#111827';
-          c.style.borderColor = 'rgba(0,0,0,0.1)';
-        });
-        chip.style.background   = '#6366f1';
-        chip.style.color        = 'white';
-        chip.style.borderColor  = '#6366f1';
-
-        // Actualizar count
-        setTimeout(() => {
-          const count = self._getCount();
-          const countEl = document.getElementById('wps-count');
-          if (countEl) countEl.textContent = count;
-        }, 500);
+        // Actualizar count después de carga
+        setTimeout(function() {
+          var countEl = document.getElementById('wps-count');
+          if (countEl) countEl.textContent = self._getCount();
+        }, 600);
       });
 
       container.appendChild(chip);
     });
 
     document.body.appendChild(container);
-    this._catChips = container;
 
     // Scroll al chip activo
-    setTimeout(() => {
-      const activeChip = container.querySelector('[style*="#6366f1"]');
-      if (activeChip) activeChip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    setTimeout(function() {
+      var active = container.querySelector('.wps-cat-chip.active');
+      if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 60);
   }
 
   _hideCategoryChips() {
-    const existing = document.getElementById('wp-search-cat-chips');
-    if (existing) {
-      existing.style.opacity   = '0';
-      existing.style.transform = 'translateY(20px)';
-      setTimeout(() => existing.remove(), 300);
-    }
-    this._catChips = null;
+    var existing = document.getElementById('wp-scats');
+    if (!existing) return;
+    existing.style.opacity   = '0';
+    existing.style.transform = 'translateY(20px)';
+    setTimeout(function() { existing.remove(); }, 280);
   }
 
   _syncCategoryChips() {
-    const chips   = document.getElementById('wp-search-cat-chips');
-    const results = document.getElementById('wp-search-results');
+    var chips   = document.getElementById('wp-scats');
+    var results = document.getElementById('wp-sresults');
     if (!chips) return;
-    const hasMinicards = results && results.querySelector('.wps-minicard');
-    chips.style.opacity       = hasMinicards ? '0' : '1';
-    chips.style.pointerEvents = hasMinicards ? 'none' : 'all';
-  }
-
-  // ── Filter sheet (placeholder) ────────────────────────────────────
-
-  _openFilterSheet() {
-    // TODO: migrar _openFilterSheet de himarco
-    console.log('🔧 Filter sheet — próximamente');
+    var hasCards = results && results.querySelector('.wps-card');
+    chips.style.opacity       = hasCards ? '0'    : '1';
+    chips.style.pointerEvents = hasCards ? 'none' : 'all';
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
 
   _getPlaces() {
-    const mv = this.mapView;
-    return (mv && mv.places) ? mv.places : [];
+    var mv = this.mapView;
+    // Usar allPlaces si está disponible (igual que himarco), fallback a places
+    return (mv && (mv.allPlaces || mv.places)) ? (mv.allPlaces || mv.places) : [];
   }
 
   _getCount() {
-    const places = this._getPlaces();
-    return places.length + ' lugares';
+    return this._getPlaces().length + ' lugares';
   }
 
   // ── Styles ────────────────────────────────────────────────────────
 
   _injectStyles() {
-    if (document.getElementById('wp-search-styles')) return;
-    const s = document.createElement('style');
-    s.id = 'wp-search-styles';
+    if (document.getElementById('wps-styles')) return;
+    var s = document.createElement('style');
+    s.id  = 'wps-styles';
     s.textContent = `
       @keyframes wpsExpand {
         from { opacity:0; transform:scaleX(0.85) translateY(-8px); }
-        to   { opacity:1; transform:scaleX(1)    translateY(0);    }
+        to   { opacity:1; transform:scaleX(1) translateY(0); }
       }
       @keyframes wpsSlideUp {
         from { opacity:0; transform:translateY(20px); }
-        to   { opacity:1; transform:translateY(0);    }
+        to   { opacity:1; transform:translateY(0); }
       }
-      #wp-search-cat-chips::-webkit-scrollbar { display:none; }
 
       /* ── Overlay bar ── */
-      #wp-search-overlay {
-        position: fixed;
-        top: calc(12px + env(safe-area-inset-top, 0px));
-        left: 12px; right: 12px;
-        z-index: 99999;
-        background: white;
-        border-radius: 50px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 0 14px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        animation: wpsExpand 0.25s ease;
+      #wp-sbar {
+        position:fixed;
+        top: calc(12px + env(safe-area-inset-top,0px));
+        left:12px; right:12px;
+        z-index:99999;
+        background:white;
+        border-radius:50px;
+        height:48px;
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:0 14px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.15);
+        animation:wpsExpand 0.25s ease;
       }
-      .wps-icon  { width:20px; height:20px; object-fit:contain; flex-shrink:0; }
+      .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
       .wps-input {
-        flex:1; border:none; background:transparent; outline:none;
-        font-size:15px; font-weight:600; color:#111827; min-width:0;
+        flex:1;border:none;background:transparent;outline:none;
+        font-size:15px;font-weight:600;color:#111827;min-width:0;
         font-family:'Inter Tight',system-ui,sans-serif;
         -webkit-appearance:none;
       }
-      .wps-input::placeholder { color:#9ca3af; font-weight:400; }
-      .wps-input::-webkit-search-cancel-button { display:none; }
+      .wps-input::placeholder{color:#9ca3af;font-weight:400;}
+      .wps-input::-webkit-search-cancel-button{display:none;}
       .wps-clear {
-        display:none; width:28px; height:28px; border-radius:50%;
-        border:none; background:rgba(0,0,0,0.08); color:#6b7280;
-        font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;
-        align-items:center; justify-content:center;
+        display:none;width:28px;height:28px;border-radius:50%;
+        border:none;background:rgba(0,0,0,0.08);color:#6b7280;
+        font-size:13px;cursor:pointer;align-items:center;
+        justify-content:center;flex-shrink:0;
         -webkit-tap-highlight-color:transparent;
       }
-      .wps-clear.visible { display:flex; }
+      .wps-clear.visible{display:flex;}
       .wps-count {
-        font-size:11px; font-weight:600; color:#9ca3af;
-        white-space:nowrap; flex-shrink:1; overflow:hidden;
-        text-overflow:ellipsis; max-width:90px;
+        font-size:11px;font-weight:600;color:#9ca3af;
+        white-space:nowrap;flex-shrink:1;overflow:hidden;
+        text-overflow:ellipsis;max-width:90px;
       }
-      .wps-filter, .wps-close {
-        width:32px; min-width:32px; height:32px; border-radius:50%;
-        border:none; background:rgba(0,0,0,0.08); color:#6b7280;
-        font-size:14px; font-weight:700; cursor:pointer;
-        display:flex; align-items:center; justify-content:center;
-        flex-shrink:0; -webkit-tap-highlight-color:transparent;
-        transition: background 0.2s;
+      .wps-filter,.wps-close {
+        width:32px;min-width:32px;height:32px;border-radius:50%;
+        border:none;background:rgba(0,0,0,0.08);color:#6b7280;
+        font-size:14px;font-weight:700;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;
+        flex-shrink:0;-webkit-tap-highlight-color:transparent;
+        transition:background 0.2s;
       }
-      .wps-filter:active, .wps-close:active { background:rgba(0,0,0,0.15); }
+      .wps-filter:active,.wps-close:active{background:rgba(0,0,0,0.15);}
 
-      /* ── Minifichas en footer ── */
-      #wp-search-results {
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        z-index: 99996;
-        display: flex;
-        gap: 12px;
-        padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px));
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        background: transparent;
-        scrollbar-width: none;
+      /* ── Minifichas scroll horizontal ── */
+      #wp-sresults {
+        position:fixed;
+        left:0;right:0;
+        z-index:99996;
+        display:flex;
+        gap:12px;
+        padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));
+        overflow-x:auto;overflow-y:hidden;
+        -webkit-overflow-scrolling:touch;
+        background:transparent;
+        scrollbar-width:none;
+        transition:bottom 0.25s ease;
       }
-      #wp-search-results::-webkit-scrollbar { display:none; }
+      #wp-sresults::-webkit-scrollbar{display:none;}
 
-      .wps-minicard {
-        display:flex; align-items:center; gap:10px; padding:10px 14px;
-        background:white; border:2px solid #e5e7eb; border-radius:16px;
+      .wps-card {
+        display:flex;align-items:center;gap:10px;
+        padding:10px 14px;background:white;
+        border:2px solid #e5e7eb;border-radius:16px;
         box-shadow:0 4px 12px rgba(0,0,0,0.08);
-        cursor:pointer; min-width:280px; max-width:300px; flex-shrink:0;
+        cursor:pointer;min-width:280px;max-width:300px;flex-shrink:0;
         -webkit-tap-highlight-color:transparent;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        transition:transform 0.15s,box-shadow 0.15s;
       }
-      .wps-minicard:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+      .wps-card:active{transform:scale(0.97);box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+      .wps-card-photo{width:70px;height:70px;object-fit:cover;border-radius:12px;flex-shrink:0;}
+      .wps-card-icon{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:12px;font-size:32px;flex-shrink:0;}
+      .wps-card-body{flex:1;min-width:0;}
+      .wps-card-header{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+      .wps-card-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;color:white;}
+      .wps-card-badge.open{background:#10b981;}
+      .wps-card-badge.closing-soon{background:#f59e0b;}
+      .wps-card-badge.closed{background:#ef4444;}
+      .wps-card-badge.no-hours{background:#6b7280;}
+      .wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
+      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
+      .wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
+      .wps-card-rating{display:flex;align-items:center;gap:4px;}
+      .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
+      .wps-card-rcnt{font-size:11px;color:#9ca3af;}
+      .wps-noresult{display:flex;align-items:center;gap:10px;padding:14px 18px;background:white;border-radius:16px;font-size:14px;color:#6b7280;box-shadow:0 4px 12px rgba(0,0,0,0.08);flex-shrink:0;}
 
-      .wps-minicard-photo {
-        width:70px; height:70px; object-fit:cover;
-        border-radius:12px; flex-shrink:0;
+      /* ── Chips de categoría en footer ── */
+      #wp-scats {
+        position:fixed;
+        bottom:calc(16px + env(safe-area-inset-bottom,0px));
+        left:0;right:0;
+        z-index:99997;
+        display:flex;
+        gap:8px;
+        padding:0 16px;
+        overflow-x:auto;
+        scrollbar-width:none;
+        animation:wpsSlideUp 0.3s ease;
+        transition:opacity 0.25s ease, transform 0.25s ease;
       }
-      .wps-minicard-icon {
-        width:70px; height:70px; display:flex;
-        align-items:center; justify-content:center;
-        background:linear-gradient(135deg,#8b5cf6,#7c3aed);
-        border-radius:12px; font-size:32px; flex-shrink:0;
+      #wp-scats::-webkit-scrollbar{display:none;}
+      .wps-cat-chip {
+        display:inline-flex;align-items:center;gap:6px;
+        padding:10px 16px;
+        background:white;color:#111827;
+        border:2px solid rgba(0,0,0,0.1);
+        border-radius:50px;font-size:14px;font-weight:600;
+        white-space:nowrap;cursor:pointer;flex-shrink:0;
+        box-shadow:0 2px 10px rgba(0,0,0,0.1);
+        touch-action:manipulation;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s,color 0.15s,border-color 0.15s;
       }
-      .wps-minicard-body { flex:1; min-width:0; }
-      .wps-minicard-header { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-      .wps-minicard-badge {
-        padding:4px 10px; border-radius:6px;
-        font-size:11px; font-weight:700; color:white; display:inline-block;
-      }
-      .wps-minicard-badge.open         { background:#10b981; }
-      .wps-minicard-badge.closing-soon  { background:#f59e0b; }
-      .wps-minicard-badge.closed        { background:#ef4444; }
-      .wps-minicard-badge.no-hours      { background:#6b7280; }
-      .wps-minicard-price  { font-size:14px; font-weight:700; color:#1f2937; }
-      .wps-minicard-name   {
-        font-size:15px; font-weight:800; color:#111827;
-        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-        margin-bottom:2px;
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
-      }
-      .wps-minicard-address {
-        font-size:12px; color:#6b7280;
-        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-        margin-bottom:4px;
-      }
-      .wps-minicard-rating { display:flex; align-items:center; gap:4px; }
-      .wps-minicard-star   { font-size:13px; }
-      .wps-minicard-rating-val { font-size:13px; font-weight:700; color:#f59e0b; }
-      .wps-minicard-rating-cnt { font-size:11px; color:#9ca3af; }
+      .wps-cat-chip.active{background:#6366f1;color:white;border-color:#6366f1;}
+      .wps-cat-chip:active{opacity:0.85;}
 
-      .wps-no-results {
-        display:flex; align-items:center; gap:10px;
-        padding:14px 18px; background:white; border-radius:16px;
-        font-size:14px; color:#6b7280;
-        box-shadow:0 4px 12px rgba(0,0,0,0.08); flex-shrink:0;
+      /* Fila de subcats — en modo búsqueda sube encima del panel */
+      .panel-subcats-scroll.in-search-mode {
+        position:fixed;
+        bottom:calc(72px + env(safe-area-inset-bottom,0px));
+        left:0;right:0;
+        z-index:99998;
+        background:transparent;
+        padding:0 12px;
       }
-      .wps-no-results-emoji { font-size:20px; }
     `;
     document.head.appendChild(s);
   }
