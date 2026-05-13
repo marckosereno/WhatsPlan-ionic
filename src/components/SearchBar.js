@@ -116,31 +116,34 @@ export class SearchBar {
     var res = document.getElementById('wp-sresults');
     var hasResults = res && res.querySelector('.wps-card');
 
-    if (hasResults) {
-      // Cerrar minicard si hay una abierta — SIN animateMinicardOut
-      // para evitar el problema de GSAP con opacity
-      if (mv && mv.miniCardMarker) {
-        var wrapper = mv.miniCardMarker.getElement();
-        mv.miniCardMarker = null;
-        mv.miniCardIndex  = -1;
-        mv.miniCardPlace  = null;
-        mv._miniCardPinRoot  = null;
-        mv._miniCardMarkerEl = null;
-        if (wrapper && wrapper._savedPinHTML !== undefined) {
-          wrapper.style.width     = '44px';
-          wrapper.style.height    = '44px';
-          wrapper.style.overflow  = 'visible';
-          wrapper.style.zIndex    = '';
-          wrapper.style.marginTop = '';
-          wrapper.innerHTML = wrapper._savedPinHTML;
-          delete wrapper._savedPinHTML;
-        }
+    // Siempre cerrar minicard si hay una abierta (independiente de minifichas)
+    if (mv && mv.miniCardMarker) {
+      var wrapper = mv.miniCardMarker.getElement();
+      mv.miniCardMarker    = null;
+      mv.miniCardIndex     = -1;
+      mv.miniCardPlace     = null;
+      mv._miniCardPinRoot  = null;
+      mv._miniCardMarkerEl = null;
+      if (wrapper && wrapper._savedPinHTML !== undefined) {
+        wrapper.style.width     = '44px';
+        wrapper.style.height    = '44px';
+        wrapper.style.overflow  = 'visible';
+        wrapper.style.zIndex    = '';
+        wrapper.style.marginTop = '';
+        wrapper.innerHTML = wrapper._savedPinHTML;
+        delete wrapper._savedPinHTML;
+        var z = mv.map ? mv.map.getZoom() : 0;
+        wrapper.querySelectorAll('.place-act-badge').forEach(function(b) {
+          b.style.opacity = z >= 15 ? '1' : '0';
+        });
       }
-      // Ocultar minifichas
-      this._hideResults();
-      // highlights se mantienen igual — no llamar _highlightMarkers aquí
     }
-    // Si no hay minifichas: no hacer nada (igual que himarco con return)
+
+    if (hasResults) {
+      // Con minifichas activas: ocultar minifichas, highlights se mantienen
+      this._hideResults();
+    }
+    // Sin minifichas: solo se cerró la minicard, highlights intactos
   }
 
   _showOverlay() {
