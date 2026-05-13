@@ -580,9 +580,15 @@ export class MapView {
     if (card) {
       // Animación de salida — restaurar pin al terminar
       const self = this;
-      animateMinicardOut(card, function() { self._restorePin(wrapper); });
+      animateMinicardOut(card, function() {
+        self._restorePin(wrapper);
+        // Disparar evento para que SearchBar re-aplique highlights
+        // DESPUÉS de que el pin fue restaurado
+        document.dispatchEvent(new CustomEvent('wp:minicardclosed'));
+      });
     } else {
       this._restorePin(wrapper);
+      document.dispatchEvent(new CustomEvent('wp:minicardclosed'));
     }
   }
 
