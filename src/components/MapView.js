@@ -255,6 +255,12 @@ export class MapView {
 
     this.map.on('click', (e) => {
       if (e.originalEvent.target.closest('.minicard-marker-content')) return;
+      // Si el SearchBar está activo, él maneja el cierre de minicard
+      // para poder re-aplicar highlights correctamente
+      if (window.wpApp && window.wpApp.searchBar && window.wpApp.searchBar.isActive()) {
+        window.wpApp.searchBar.onMapClick();
+        return;
+      }
       this._closeMiniCard();
     });
   }
@@ -582,13 +588,9 @@ export class MapView {
       const self = this;
       animateMinicardOut(card, function() {
         self._restorePin(wrapper);
-        // Disparar evento para que SearchBar re-aplique highlights
-        // DESPUÉS de que el pin fue restaurado
-        document.dispatchEvent(new CustomEvent('wp:minicardclosed'));
       });
     } else {
       this._restorePin(wrapper);
-      document.dispatchEvent(new CustomEvent('wp:minicardclosed'));
     }
   }
 
