@@ -79,16 +79,8 @@ export class SearchBar {
 
   // ── Overlay ───────────────────────────────────────────────────────
 
-  // Escuchar evento wp:minicardclosed que se dispara DESPUÉS de _restorePin
-  // para re-aplicar highlights en el momento correcto
-  _hookMiniCardClose() {
-    var self = this;
-    document.addEventListener('wp:minicardclosed', function() {
-      if (!self._active || self._query.length === 0) return;
-      // Re-aplicar highlight de búsqueda después de que el pin fue restaurado
-      self._highlightMarkers(self._currentMatches);
-    });
-  }
+  // Hook ya no necesario — onMapClick() maneja el cierre directamente
+  _hookMiniCardClose() {}
 
   // Mueve el footer de subcats al body para escapar del overflow:hidden del panel
   _moveSubcatsToBody() {
@@ -113,6 +105,42 @@ export class SearchBar {
     }
     this._subcatsOriginalParent  = null;
     this._subcatsOriginalSibling = null;
+  }
+
+  // Llamado por MapView cuando hay tap en el mapa y el SearchBar está activo
+  // Replica exactamente el comportamiento de himarco:
+  // - Si hay minifichas visibles: cerrar minicard del pin y ocultar minifichas
+  // - Los highlights NO se tocan — quedan como estaban
+  onMapClick() {
+    var mv  = this.mapView;
+    var res = document.getElementById('wp-sresults');
+    var hasResults = res && res.querySelector('.wps-card');
+
+    if (hasResults) {
+      // Cerrar minicard si hay una abierta — SIN animateMinicardOut
+      // para evitar el problema de GSAP con opacity
+      if (mv && mv.miniCardMarker) {
+        var wrapper = mv.miniCardMarker.getElement();
+        mv.miniCardMarker = null;
+        mv.miniCardIndex  = -1;
+        mv.miniCardPlace  = null;
+        mv._miniCardPinRoot  = null;
+        mv._miniCardMarkerEl = null;
+        if (wrapper && wrapper._savedPinHTML !== undefined) {
+          wrapper.style.width     = '44px';
+          wrapper.style.height    = '44px';
+          wrapper.style.overflow  = 'visible';
+          wrapper.style.zIndex    = '';
+          wrapper.style.marginTop = '';
+          wrapper.innerHTML = wrapper._savedPinHTML;
+          delete wrapper._savedPinHTML;
+        }
+      }
+      // Ocultar minifichas
+      this._hideResults();
+      // highlights se mantienen igual — no llamar _highlightMarkers aquí
+    }
+    // Si no hay minifichas: no hacer nada (igual que himarco con return)
   }
 
   _showOverlay() {
