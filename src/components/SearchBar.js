@@ -36,9 +36,9 @@ export class SearchBar {
       else { panel.style.transform = 'translateY(40px)'; panel.style.opacity = '0'; }
     }
 
-    // Mover row de subcats debajo de la barra
-    var subcatsRow = document.getElementById('map-subcategories-footer');
-    if (subcatsRow) subcatsRow.classList.add('in-search-mode');
+    // Sacar subcats del panel (overflow:hidden bloquea position:fixed)
+    // y moverlos al body para que puedan posicionarse libremente
+    this._moveSubcatsToBody();
 
     this._showOverlay();
     this._showCategoryChips();
@@ -64,8 +64,8 @@ export class SearchBar {
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
 
-    var subcatsRow = document.getElementById('map-subcategories-footer');
-    if (subcatsRow) subcatsRow.classList.remove('in-search-mode');
+    // Devolver subcats al panel
+    this._returnSubcatsToPanel();
 
     this._hideOverlay();
     this._hideResults();
@@ -76,6 +76,31 @@ export class SearchBar {
   isActive() { return this._active; }
 
   // ── Overlay ───────────────────────────────────────────────────────
+
+  // Mueve el footer de subcats al body para escapar del overflow:hidden del panel
+  _moveSubcatsToBody() {
+    var el = document.getElementById('map-subcategories-footer');
+    if (!el) return;
+    // Guardar referencia al padre original y al hermano siguiente
+    this._subcatsOriginalParent  = el.parentNode;
+    this._subcatsOriginalSibling = el.nextSibling;
+    el.classList.add('wps-subcats-floating');
+    document.body.appendChild(el);
+  }
+
+  // Devuelve el footer de subcats a su posición original dentro del panel
+  _returnSubcatsToPanel() {
+    var el = document.getElementById('map-subcategories-footer');
+    if (!el || !this._subcatsOriginalParent) return;
+    el.classList.remove('wps-subcats-floating');
+    if (this._subcatsOriginalSibling) {
+      this._subcatsOriginalParent.insertBefore(el, this._subcatsOriginalSibling);
+    } else {
+      this._subcatsOriginalParent.appendChild(el);
+    }
+    this._subcatsOriginalParent  = null;
+    this._subcatsOriginalSibling = null;
+  }
 
   _showOverlay() {
     var e = document.getElementById('wp-sbar');
@@ -168,7 +193,7 @@ export class SearchBar {
       if (countEl) countEl.textContent = label;
 
       // Highlight en mapa — matches normales, resto gris
-      self._highlightMarkers(matches, all);
+      self._highlightMarkers(matches);
       self._renderResults(matches);
     }, 200);
   }
@@ -261,8 +286,8 @@ export class SearchBar {
     var place  = places[idx];
     if (!place) return;
 
-    // Highlight solo ese marker
-    this._highlightSingle(idx);
+    // Highlight solo ese marker (por place_id/name, no por índice)
+    this._highlightSingle(place);
 
     // flyTo con zoom suave
     var lat = (place.location && place.location.lat) || place.lat;
@@ -301,12 +326,14 @@ export class SearchBar {
 
   // ── Highlight pins en el mapa ─────────────────────────────────────
 
-  _highlightMarkers(matches, all) {
+  _highlightMarkers(matches) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
+    // Usar el._place para match correcto (allPlaces y markerEls pueden tener índices distintos
+    // porque _renderPlaceMarkers salta places sin coordenadas)
     var matched = new Set(matches.map(function(p) { return p.place_id || p.name; }));
-    mv.markerEls.forEach(function(el, i) {
-      var p   = all[i];
+    mv.markerEls.forEach(function(el) {
+      var p   = el._place;
       var key = p && (p.place_id || p.name);
       var hit = matched.has(key);
       el.style.opacity = hit ? '1'    : '0.2';
@@ -314,12 +341,16 @@ export class SearchBar {
     });
   }
 
-  _highlightSingle(idx) {
+  _highlightSingle(place) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    mv.markerEls.forEach(function(el, i) {
-      el.style.opacity = i === idx ? '1'    : '0.2';
-      el.style.filter  = i === idx ? 'none' : 'grayscale(1)';
+    var key = place && (place.place_id || place.name);
+    mv.markerEls.forEach(function(el) {
+      var p    = el._place;
+      var eKey = p && (p.place_id || p.name);
+      var hit  = eKey === key;
+      el.style.opacity = hit ? '1'    : '0.2';
+      el.style.filter  = hit ? 'none' : 'grayscale(1)';
     });
   }
 
@@ -459,18 +490,24 @@ export class SearchBar {
       }
       .wps-filter:active,.wps-close:active{background:rgba(0,0,0,0.15);}
 
-      /* ── Subcats row en modo búsqueda — sube debajo de la barra ── */
-      .panel-subcats-scroll.in-search-mode {
-        position:fixed !important;
-        top:calc(68px + env(safe-area-inset-top,0px)) !important;
-        left:0 !important; right:0 !important;
-        bottom:auto !important;
-        z-index:99998 !important;
-        background:transparent !important;
-        width:100% !important;
-        box-sizing:border-box !important;
-        padding:0 12px !important;
+      /* ── Subcats flotando en body durante búsqueda ── */
+      .panel-subcats-scroll.wps-subcats-floating {
+        position:fixed;
+        top:calc(68px + env(safe-area-inset-top,0px));
+        left:0; right:0;
+        bottom:auto;
+        z-index:99998;
+        background:transparent;
+        width:100%;
+        box-sizing:border-box;
+        padding:4px 12px;
+        min-height:42px;
+        display:flex;
+        align-items:center;
+        overflow-x:auto;
+        scrollbar-width:none;
       }
+      .panel-subcats-scroll.wps-subcats-floating::-webkit-scrollbar { display:none; }
 
       /* ── Minifichas scroll horizontal ── */
       #wp-sresults {
