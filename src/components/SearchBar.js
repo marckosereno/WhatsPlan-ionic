@@ -38,10 +38,7 @@ export class SearchBar {
       else { panel.style.transform = 'translateY(40px)'; panel.style.opacity = '0'; }
     }
 
-    // Sacar subcats del panel (overflow:hidden bloquea position:fixed)
-    // y moverlos al body para que puedan posicionarse libremente
     this._moveSubcatsToBody();
-
     this._showOverlay();
     this._showCategoryChips();
   }
@@ -66,9 +63,7 @@ export class SearchBar {
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
 
-    // Devolver subcats al panel
     this._returnSubcatsToPanel();
-
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
@@ -77,23 +72,17 @@ export class SearchBar {
 
   isActive() { return this._active; }
 
-  // ── Overlay ───────────────────────────────────────────────────────
-
-  // Hook ya no necesario — onMapClick() maneja el cierre directamente
   _hookMiniCardClose() {}
 
-  // Mueve el footer de subcats al body para escapar del overflow:hidden del panel
   _moveSubcatsToBody() {
     var el = document.getElementById('map-subcategories-footer');
     if (!el) return;
-    // Guardar referencia al padre original y al hermano siguiente
     this._subcatsOriginalParent  = el.parentNode;
     this._subcatsOriginalSibling = el.nextSibling;
     el.classList.add('wps-subcats-floating');
     document.body.appendChild(el);
   }
 
-  // Devuelve el footer de subcats a su posición original dentro del panel
   _returnSubcatsToPanel() {
     var el = document.getElementById('map-subcategories-footer');
     if (!el || !this._subcatsOriginalParent) return;
@@ -107,16 +96,11 @@ export class SearchBar {
     this._subcatsOriginalSibling = null;
   }
 
-  // Llamado por MapView cuando hay tap en el mapa y el SearchBar está activo
-  // Replica exactamente el comportamiento de himarco:
-  // - Si hay minifichas visibles: cerrar minicard del pin y ocultar minifichas
-  // - Los highlights NO se tocan — quedan como estaban
   onMapClick() {
     var mv  = this.mapView;
     var res = document.getElementById('wp-sresults');
     var hasResults = res && res.querySelector('.wps-card');
 
-    // Siempre cerrar minicard si hay una abierta (independiente de minifichas)
     if (mv && mv.miniCardMarker) {
       var wrapper = mv.miniCardMarker.getElement();
       mv.miniCardMarker    = null;
@@ -140,11 +124,11 @@ export class SearchBar {
     }
 
     if (hasResults) {
-      // Con minifichas activas: ocultar minifichas, highlights se mantienen
       this._hideResults();
     }
-    // Sin minifichas: solo se cerró la minicard, highlights intactos
   }
+
+  // ── Overlay ───────────────────────────────────────────────────────
 
   _showOverlay() {
     var e = document.getElementById('wp-sbar');
@@ -155,7 +139,6 @@ export class SearchBar {
     overlay.innerHTML =
       '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="wps' + Date.now() + '" readonly>' +
-      '<button id="wps-clear" class="wps-clear">✕</button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>' +
       '<button id="wps-filter" class="wps-filter" title="Filtros"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg></button>' +
       '<button id="wps-close" class="wps-close">✕</button>';
@@ -169,20 +152,11 @@ export class SearchBar {
       requestAnimationFrame(function() { input.focus(); });
     }, 50);
 
-    var clearBtn = document.getElementById('wps-clear');
-    input.addEventListener('input', function(ev) {
-      clearBtn.classList.toggle('visible', input.value.length > 0);
-      self._onInput(ev.target.value);
-    });
+    // Escuchar tanto 'input' (escritura) como 'search' (clear nativo del browser)
+    input.addEventListener('input',  function(ev) { self._onInput(ev.target.value); });
+    input.addEventListener('search', function()   { self._onInput(input.value); });
     input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
 
-    clearBtn.addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      input.value = '';
-      clearBtn.classList.remove('visible');
-      input.focus();
-      self._onInput('');
-    });
     document.getElementById('wps-close').addEventListener('click', function(ev) {
       ev.stopPropagation(); self.deactivate();
     });
@@ -197,8 +171,6 @@ export class SearchBar {
         var res = document.getElementById('wp-sresults');
         if (bar && bar.contains(ev.target)) return;
         if (res && res.contains(ev.target)) return;
-        // Solo cerrar teclado — NO ocultar resultados
-        // Las minifichas se cierran cuando el usuario escribe de nuevo o limpia
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
@@ -238,7 +210,6 @@ export class SearchBar {
       var label = matches.length + ' resultado' + (matches.length !== 1 ? 's' : '');
       if (countEl) countEl.textContent = label;
 
-      // Highlight en mapa — matches normales, resto gris
       self._currentMatches = matches;
       self._highlightMarkers(matches);
       self._renderResults(matches);
@@ -277,7 +248,6 @@ export class SearchBar {
       var address = (place.vicinity || place.formattedAddress || '').substring(0, 35);
       var icon = (self.mapView && self.mapView.currentCatData && self.mapView.currentCatData.icon) || '💎';
 
-      // Badge horario
       var badgeClass = 'no-hours', badgeText = 'Sin horario';
       var oh = place.regularOpeningHours;
       if (oh && oh.periods && oh.periods.length > 0) {
@@ -338,14 +308,11 @@ export class SearchBar {
     var place  = places[idx];
     if (!place) return;
 
-    // 1. Cancelar cualquier animación GSAP pendiente sobre el wrapper anterior
     var gsap = window.gsap;
     if (mv.miniCardMarker) {
       var oldWrapper = mv.miniCardMarker.getElement();
       var oldCard = oldWrapper && oldWrapper.querySelector('.minicard-marker-content');
-      // Matar animación GSAP si existe — evita que opacity:0 quede colgado
       if (gsap && oldCard) gsap.killTweensOf(oldCard);
-      // Restaurar pin anterior instantáneamente sin animación
       mv.miniCardMarker    = null;
       mv.miniCardIndex     = -1;
       mv.miniCardPlace     = null;
@@ -361,19 +328,12 @@ export class SearchBar {
       }
     }
 
-    // 2. Highlight del pin seleccionado
     this._highlightSingle(place);
 
-    // 3. Efecto zoom out → zoom in
-    // Debe correr DESPUÉS del touchcancel que WhatsPlan dispara sobre markers
-    // para evitar que MapLibre cancele la animación
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
       var map = mv.getMap();
-      // Esperar 2 frames para que touchcancel sea procesado por MapLibre
-      // antes de iniciar la animación del mapa
-      // Doble rAF para dejar que MapLibre procese el touchcancel antes de animar
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
           map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
@@ -381,9 +341,6 @@ export class SearchBar {
       });
     }
 
-    // 4. Mostrar nueva minicard INMEDIATAMENTE en paralelo con flyTo
-    // _showMiniCard internamente llama _closeMiniCard pero miniCardMarker ya es null
-    // así que no hará nada — la nueva minicard se construye limpiamente
     var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
     mv._showMiniCard(place, idx, raw);
   }
@@ -394,14 +351,12 @@ export class SearchBar {
     this._syncCategoryChips();
   }
 
-  // Posicionar minifichas sobre el teclado (visualViewport)
   _positionResults() {
     var r = document.getElementById('wp-sresults');
     if (!r) return;
     var kbH = window.visualViewport ? (window.innerHeight - window.visualViewport.height) : 0;
     var isNoResult = r.classList.contains('wps-results-noresult-mode');
     if (isNoResult) {
-      // No-results: solo visible cuando el teclado está abierto
       r.style.display = kbH > 100 ? 'flex' : 'none';
       r.style.bottom  = kbH > 100 ? (kbH + 10) + 'px' : '0px';
     } else {
@@ -419,7 +374,7 @@ export class SearchBar {
     }
   }
 
-  // ── Highlight pins en el mapa ─────────────────────────────────────
+  // ── Highlight pins ─────────────────────────────────────────────────
 
   _highlightMarkers(matches) {
     var mv = this.mapView;
@@ -429,8 +384,8 @@ export class SearchBar {
       var p   = el._place;
       var key = p && (p.place_id || p.name);
       var hit = matched.has(key);
-      el.style.opacity   = hit ? '1'      : '0.2';
-      el.style.filter    = hit ? 'none'   : 'grayscale(1)';
+      el.style.opacity   = hit ? '1'    : '0.2';
+      el.style.filter    = hit ? 'none' : 'grayscale(1)';
       el.style.transform = '';
       el.style.zIndex    = '';
     });
@@ -449,19 +404,16 @@ export class SearchBar {
       var isSelected = key === selectedKey;
 
       if (isSelected) {
-        // Pin seleccionado: color normal + escala ligera
         el.style.opacity   = '1';
         el.style.filter    = 'none';
         el.style.transform = 'scale(1.25)';
         el.style.zIndex    = '9999';
       } else if (isMatch) {
-        // Otros matches: color normal, sin destacar
         el.style.opacity   = '1';
         el.style.filter    = 'none';
         el.style.transform = '';
         el.style.zIndex    = '';
       } else {
-        // No coinciden: gris
         el.style.opacity   = '0.2';
         el.style.filter    = 'grayscale(1)';
         el.style.transform = '';
@@ -506,8 +458,6 @@ export class SearchBar {
         self._query = '';
         var inp = document.getElementById('wps-input');
         if (inp) inp.value = '';
-        var clr = document.getElementById('wps-clear');
-        if (clr) clr.classList.remove('visible');
         self._hideResults();
         self._restoreMarkers();
         container.querySelectorAll('.wps-cat-chip').forEach(function(c) { c.classList.remove('active'); });
@@ -571,7 +521,6 @@ export class SearchBar {
         to   { opacity:1; transform:translateY(0); }
       }
 
-      /* ── Overlay bar ── */
       #wp-sbar {
         position:fixed;
         top:calc(12px + env(safe-area-inset-top,0px));
@@ -583,21 +532,15 @@ export class SearchBar {
         animation:wpsExpand 0.25s ease;
       }
       .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
+
+      /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:600;color:#111827;min-width:0;
         font-family:'Inter Tight',system-ui,sans-serif;
-        -webkit-appearance:none;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;}
-      .wps-input::-webkit-search-cancel-button{display:none;}
-      .wps-clear {
-        display:none;width:28px;height:28px;border-radius:50%;
-        border:none;background:rgba(0,0,0,0.08);color:#6b7280;
-        font-size:13px;cursor:pointer;align-items:center;justify-content:center;
-        flex-shrink:0;-webkit-tap-highlight-color:transparent;
-      }
-      .wps-clear.visible{display:flex;}
+
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
       .wps-filter,.wps-close{
         width:32px;min-width:32px;height:32px;border-radius:50%;
@@ -608,26 +551,19 @@ export class SearchBar {
       }
       .wps-filter:active,.wps-close:active{background:rgba(0,0,0,0.15);}
 
-      /* ── Subcats flotando en body durante búsqueda ── */
       .panel-subcats-scroll.wps-subcats-floating {
         position:fixed;
         top:calc(68px + env(safe-area-inset-top,0px));
-        left:0; right:0;
-        bottom:auto;
+        left:0; right:0; bottom:auto;
         z-index:99998;
         background:transparent;
-        width:100%;
-        box-sizing:border-box;
-        padding:4px 12px;
-        min-height:42px;
-        display:flex;
-        align-items:center;
-        overflow-x:auto;
-        scrollbar-width:none;
+        width:100%; box-sizing:border-box;
+        padding:4px 12px; min-height:42px;
+        display:flex; align-items:center;
+        overflow-x:auto; scrollbar-width:none;
       }
       .panel-subcats-scroll.wps-subcats-floating::-webkit-scrollbar { display:none; }
 
-      /* ── Minifichas scroll horizontal ── */
       #wp-sresults {
         position:fixed;
         left:0;right:0;
@@ -665,24 +601,18 @@ export class SearchBar {
       .wps-card-rating{display:flex;align-items:center;gap:4px;}
       .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
       .wps-card-rcnt{font-size:11px;color:#9ca3af;}
-      /* No results — centrado en el container */
-      .wps-results-noresult-mode {
-        justify-content:center !important;
-      }
+
+      .wps-results-noresult-mode { justify-content:center !important; }
       .wps-noresult {
         display:flex; align-items:center; gap:10px;
-        padding:14px 18px;
-        background:white;
-        border:2px solid #e5e7eb;
-        border-radius:16px;
+        padding:14px 18px; background:white;
+        border:2px solid #e5e7eb; border-radius:16px;
         box-shadow:0 4px 12px rgba(0,0,0,0.08);
-        min-width:280px; max-width:300px;
-        flex-shrink:0;
+        min-width:280px; max-width:300px; flex-shrink:0;
       }
       .wps-noresult-emoji { font-size:24px; }
       .wps-noresult-text  { font-size:14px; font-weight:600; color:#6b7280; }
 
-      /* ── Chips de categoría en footer ── */
       #wp-scats{
         position:fixed;
         bottom:calc(16px + env(safe-area-inset-bottom,0px));
