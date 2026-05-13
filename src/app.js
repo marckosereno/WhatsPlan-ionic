@@ -85,6 +85,10 @@ async function renderMapCategories() {
     // Swap atómico: un solo repaint, sin frame vacío
     container.innerHTML = '';
     container.appendChild(fragment);
+    // Cachear categorías para el SearchBar
+    window.wpApp._categories = cats.map(function(cat) {
+      return { key: cat.key, label_es: cat.label_es || cat.key, emoji: cat.emoji || '', icon3d_url: cat.icon3d_url || '' };
+    });
     console.log('✅ ' + cats.length + ' categorías desde Supabase');
   } catch(err) {
     console.warn('⚠️ renderMapCategories:', err.message);
@@ -315,22 +319,16 @@ function setupActivitySubscription(mv) {
       });
       window.wpApp.subcatRow = subcatRow;
 
-      // SearchBar — se crea aquí para tener acceso a mv ya listo
+      // SearchBar — se crea aquí para tener acceso a mv y categories
       const searchBar = new SearchBar({
-        onPlaceSelect: function(place) {
-          if (place.lat && place.lng) {
-            mv.getMap().flyTo({ center: [place.lng, place.lat], zoom: 17, duration: 800 });
-          }
-          const places = mv.places || [];
-          const idx = places.findIndex(function(p) {
-            return (p.place_id || p.placeId) === place.place_id;
-          });
-          if (idx !== -1) {
-            mv._showMiniCard(places[idx], idx, places[idx].photo_url || null);
-          }
-        },
-        getCurrentCategory: function() {
-          return (window.wpApp.mapView && window.wpApp.mapView.currentCatId) || null;
+        mapView: mv,
+        getCategories: function() { return window.wpApp._categories || []; },
+        onCategorySelect: function(catKey) {
+          // Simular tap en el chip de categoría correspondiente
+          const container = document.getElementById('map-categories-footer');
+          if (!container) return;
+          const chip = container.querySelector('[data-menu-key="' + catKey + '"]');
+          if (chip) chip.click();
         }
       });
       window.wpApp.searchBar = searchBar;
@@ -339,8 +337,8 @@ function setupActivitySubscription(mv) {
       if (searchBtn) {
         searchBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          if (searchBar.isOpen()) searchBar.close();
-          else searchBar.open();
+          if (searchBar.isActive()) searchBar.deactivate();
+          else searchBar.activate();
         });
       }
     });
