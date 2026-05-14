@@ -463,18 +463,10 @@ export class PlaceModal {
       }
     }
 
+    // Solo el handle dispara el drag — evita conflicto con scroll de fotos y contenido
     handle.addEventListener('touchstart', onStart, { passive: true });
     handle.addEventListener('touchmove',  onMove,  { passive: false });
     handle.addEventListener('touchend',   onEnd,   { passive: true });
-    card.addEventListener('touchstart', function(e) {
-      if (e.target.closest('.wp-modal-scroll-body') || e.target.closest('.wp-modal-photos')) return;
-      onStart(e);
-    }, { passive: true });
-    card.addEventListener('touchmove', function(e) {
-      if (!dragging) return;
-      onMove(e);
-    }, { passive: false });
-    card.addEventListener('touchend', onEnd, { passive: true });
   }
 
   _setMini(mini) {
@@ -579,6 +571,10 @@ export class PlaceModal {
         width: 38px; height: 4px; background: #dde3ea;
         border-radius: 2px; margin: 10px auto 0; flex-shrink: 0;
         transition: background 0.2s, width 0.2s;
+        /* Área táctil generosa para el drag */
+        padding: 12px 40px;
+        box-sizing: content-box;
+        cursor: grab;
       }
 
       /* ── Top ── */
