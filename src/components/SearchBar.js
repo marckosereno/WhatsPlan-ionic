@@ -674,7 +674,7 @@ export class SearchBar {
         border-radius:50px;
         font-size:14px;font-weight:700;white-space:nowrap;
         cursor:pointer;flex-shrink:0;
-        box-shadow:0 3px 8px rgba(0,0,0,0.12);
+        box-shadow:none;
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
