@@ -39,32 +39,46 @@
   overflow: visible;
 }
 
-/* ── Wrapper — borde blanco o gradiente naranja si hay actividad ── */
+/* ── Wrapper — forma blob orgánica ── */
 .place-pin-wrapper {
   position: relative;
   width: 25px;
   height: 25px;
-  border-radius: 11px;
+  border-radius: 42% 58% 55% 45% / 48% 44% 56% 52%;
   padding: 2px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s, box-shadow 0.15s;
   z-index: 1;
+  background: white;
+}
+
+/* Borde iridiscente animado — solo en modo highlight (SearchBar) */
+.place-pin-wrapper.pin-iridescent {
+  background: conic-gradient(
+    #ff6b6b, #ffd93d, #6bcb77, #4d96ff,
+    #c77dff, #ff6b6b
+  );
+  animation: pin-iris-spin 2s linear infinite;
+}
+@keyframes pin-iris-spin {
+  to { filter: hue-rotate(360deg); }
 }
 
 /* ── pin-inner: shimmer → foto ── */
 .pin-inner {
   width: 100%;
   height: 100%;
-  border-radius: 9px;
+  border-radius: 40% 60% 53% 47% / 46% 42% 58% 54%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   overflow: hidden;
   transition: opacity 0.35s ease;
+  background: white;
 }
 
 /* Loading: shimmer exacto del original */
@@ -88,10 +102,10 @@
 .pin-dot {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 42% 58% 55% 45% / 48% 44% 56% 52%;
   background: #2563eb;
   border: 2.5px solid white;
-  box-shadow: 0 2px 6px rgba(99,102,241,0.5);
+  box-shadow: 0 2px 6px rgba(37,99,235,0.5);
   display: block;
 }
 
