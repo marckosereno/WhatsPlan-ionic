@@ -425,25 +425,21 @@ export class SearchBar {
       var isMatch    = matched.has(key);
       var isSelected = key === selectedKey;
 
-      var wrapper = el.querySelector('.place-pin-wrapper') || el.querySelector('.pin-dot');
       if (isSelected) {
         el.style.opacity   = '1';
         el.style.filter    = 'none';
         el.style.transform = 'scale(1.25)';
         el.style.zIndex    = '9999';
-        if (wrapper) wrapper.classList.add('pin-iridescent');
       } else if (isMatch) {
         el.style.opacity   = '1';
         el.style.filter    = 'none';
         el.style.transform = '';
         el.style.zIndex    = '';
-        if (wrapper) wrapper.classList.remove('pin-iridescent');
       } else {
         el.style.opacity   = '0.2';
         el.style.filter    = 'grayscale(1)';
         el.style.transform = '';
         el.style.zIndex    = '';
-        if (wrapper) wrapper.classList.remove('pin-iridescent');
       }
     });
   }
@@ -456,8 +452,6 @@ export class SearchBar {
       el.style.filter    = '';
       el.style.transform = '';
       el.style.zIndex    = '';
-      var wrapper = el.querySelector('.place-pin-wrapper') || el.querySelector('.pin-dot');
-      if (wrapper) wrapper.classList.remove('pin-iridescent');
     });
   }
 
