@@ -23,24 +23,36 @@ export class PlaceModal {
   show(place) {
     this._place = place;
     this._snap  = 'full';
-    this._card.classList.remove('snapped-mini');
-    this._card.style.maxHeight = '';
-    this._card.style.transform = '';
 
     this._populate(place);
 
-    // Bloquear pointer-events durante la apertura para evitar que el
-    // click/touchend que abrió el modal llegue al backdrop y lo cierre
     var self = this;
+    var card = this._card;
+    var backdrop = document.getElementById('wp-pm-backdrop');
+
+    // Resetear estado
+    card.classList.remove('snapped-mini');
+    card.style.maxHeight = '';
+    card.style.transition = 'none';
+    card.style.transform  = 'translateY(100%)';
+    if (backdrop) { backdrop.style.opacity = '1'; backdrop.style.pointerEvents = 'none'; }
+
+    // Mostrar overlay sin pointer events todavía
     this._el.style.pointerEvents = 'none';
     this._el.classList.remove('wp-pm-hidden');
+    this._el.classList.add('wp-pm-visible');
 
+    // Doble rAF + 10ms timeout — exactamente como himarco
     requestAnimationFrame(function() {
-      self._el.classList.add('wp-pm-visible');
-      // Habilitar interacción después de que la animación termine (400ms)
-      setTimeout(function() {
-        self._el.style.pointerEvents = '';
-      }, 420);
+      requestAnimationFrame(function() {
+        card.style.transition = 'transform 0.36s cubic-bezier(0.32,0.72,0,1)';
+        card.style.transform  = 'translateY(0)';
+        // Habilitar pointer events después de que la animación termine
+        setTimeout(function() {
+          self._el.style.pointerEvents = '';
+          if (backdrop) backdrop.style.pointerEvents = 'auto';
+        }, 400);
+      });
     });
   }
 
@@ -300,15 +312,12 @@ export class PlaceModal {
   _wireEvents() {
     var self = this;
 
-    // Backdrop cierra — stopPropagation para que no burbujee al mapa
+    // Backdrop — igual que himarco: colapsa a mini, no cierra
     document.getElementById('wp-pm-backdrop').addEventListener('click', function(e) {
       e.stopPropagation();
-      self.hide();
+      if (self._snap === 'mini') { self.hide(); return; }
+      self._snapTo('mini');
     });
-    document.getElementById('wp-pm-backdrop').addEventListener('touchend', function(e) {
-      e.stopPropagation();
-      self.hide();
-    }, { passive: true });
 
     document.getElementById('wp-pm-close').addEventListener('click', function(e) {
       e.stopPropagation(); self.hide();
@@ -349,6 +358,7 @@ export class PlaceModal {
     var getFullH = function() { return window.innerHeight * 0.88; };
     var getMiniH = function() { return window.innerHeight * 0.26; };
 
+    self._snapTo = function(target, animate) { snapTo(target, animate); };
     var snapTo = function(target, animate) {
       snap = target;
       var backdrop = document.getElementById('wp-pm-backdrop');
