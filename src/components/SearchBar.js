@@ -462,11 +462,6 @@ export class SearchBar {
     var cats = this.getCategories ? this.getCategories() : [];
     if (!cats.length) return;
 
-    // Gradiente de fondo debajo de los chips
-    var wrap = document.createElement('div');
-    wrap.id  = 'wp-scats-wrap';
-    document.body.appendChild(wrap);
-
     var container = document.createElement('div');
     container.id  = 'wp-scats';
     var mv  = this.mapView;
@@ -507,14 +502,9 @@ export class SearchBar {
 
   _hideCategoryChips() {
     var e = document.getElementById('wp-scats');
-    var w = document.getElementById('wp-scats-wrap');
     if (!e) return;
     e.style.opacity = '0'; e.style.transform = 'translateY(20px)';
-    if (w) { w.style.opacity = '0'; }
-    setTimeout(function() {
-      e.remove();
-      if (w) w.remove();
-    }, 280);
+    setTimeout(function() { e.remove(); }, 280);
   }
 
   _syncCategoryChips() {
@@ -664,16 +654,6 @@ export class SearchBar {
       .wps-noresult-emoji { font-size:24px; }
       .wps-noresult-text  { font-size:14px; font-weight:600; color:#6b7280; }
 
-      /* Gradiente debajo de los chips — mismo efecto que top del mapa */
-      #wp-scats-wrap {
-        position:fixed;
-        bottom:0;
-        left:0;right:0;
-        z-index:99998;
-        padding:calc(16px + env(safe-area-inset-bottom,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));
-        background:linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0) 100%);
-        pointer-events:none;
-      }
       #wp-scats{
         position:fixed;
         bottom:calc(20px + env(safe-area-inset-bottom,0px));
