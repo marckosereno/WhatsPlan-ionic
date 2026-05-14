@@ -332,9 +332,9 @@ export class SubcategoryRow {
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
       /* Marcador de ubicación en el mapa */
-      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#6366f1; }
+      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#2563eb; }
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
-      .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#6366f1; }
+      .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#2563eb; }
 
       /* ── Chip LIVE dentro del scroll (mismo tamaño que subcategory chips) ── */
       .hm-live-chip {
@@ -376,7 +376,7 @@ export class SubcategoryRow {
       }
       .subcategory-footer-chip:active { background: #ebebeb; }
       .subcategory-footer-chip.active {
-        background: #6366f1;
+        background: #2563eb;
         border-color: transparent;
         color: white;
         font-weight: 600;
@@ -390,7 +390,7 @@ export class SubcategoryRow {
       }
       .hm-loading-chip__spin {
         width: 12px; height: 12px;
-        border: 2px solid rgba(99,102,241,0.2); border-top-color: #6366f1;
+        border: 2px solid rgba(37,99,235,0.2); border-top-color: #2563eb;
         border-radius: 50%; animation: spin 0.75s linear infinite;
       }
       @keyframes spin { to { transform: rotate(360deg); } }
