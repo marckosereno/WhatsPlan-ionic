@@ -27,6 +27,7 @@ export class PlaceModal {
     this._mini = false;
 
     var self = this;
+    this._justOpened = true;
     this._el.classList.remove('hidden');
 
     // Dejar que el browser procese el touchcancel antes de animar
@@ -41,6 +42,8 @@ export class PlaceModal {
         } else {
           self._card.style.transform = '';
         }
+        // Limpiar flag después de que pasen los eventos del tap inicial
+        setTimeout(function() { self._justOpened = false; }, 600);
       });
     });
   }
@@ -379,8 +382,10 @@ export class PlaceModal {
   _wireEvents() {
     var self = this;
 
-    // Backdrop
-    document.getElementById('wp-modal-backdrop').addEventListener('click', function() {
+    // Backdrop — ignorar el primer click (viene del tap que abrió el modal)
+    var backdropEl = document.getElementById('wp-modal-backdrop');
+    backdropEl.addEventListener('click', function() {
+      if (self._justOpened) return;
       self.hide();
     });
 
