@@ -39,51 +39,32 @@
   overflow: visible;
 }
 
-/* ── Wrapper — forma blob orgánica ── */
+/* ── Wrapper — borde blanco o gradiente naranja si hay actividad ── */
 .place-pin-wrapper {
   position: relative;
-  width: 31px;
-  height: 31px;
-  border-radius: 0;
-  padding: 3px;
+  width: 25px;
+  height: 25px;
+  border-radius: 11px;
+  padding: 2px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
   z-index: 1;
-  background: white;
-  clip-path: path('M15.5,3.1 C17.36,3.1 18.6,5.27 20.46,5.27 C22.32,5.27 24.18,3.72 25.73,5.27 C27.28,6.82 25.73,8.68 25.73,10.54 C25.73,12.4 27.9,13.64 27.9,15.5 C27.9,17.36 25.73,18.6 25.73,20.46 C25.73,22.32 27.28,24.18 25.73,25.73 C24.18,27.28 22.32,25.73 20.46,25.73 C18.6,25.73 17.36,27.9 15.5,27.9 C13.64,27.9 12.4,25.73 10.54,25.73 C8.68,25.73 6.82,27.28 5.27,25.73 C3.72,24.18 5.27,22.32 5.27,20.46 C5.27,18.6 3.1,17.36 3.1,15.5 C3.1,13.64 5.27,12.4 5.27,10.54 C5.27,8.68 3.72,6.82 5.27,5.27 C6.82,3.72 8.68,5.27 10.54,5.27 C12.4,5.27 13.64,3.1 15.5,3.1 Z');
-  filter:
-    drop-shadow(0 0 2px rgba(255,255,255,0.95))
-    drop-shadow(0 3px 8px rgba(0,0,0,0.3))
-    drop-shadow(0 1px 3px rgba(0,0,0,0.2));
-}
-
-/* Borde iridiscente animado — solo en modo highlight (SearchBar) */
-.place-pin-wrapper.pin-iridescent {
-  background: conic-gradient(
-    #ff6b6b, #ffd93d, #6bcb77, #4d96ff,
-    #c77dff, #ff6b6b
-  );
-  animation: pin-iris-spin 2s linear infinite;
-}
-@keyframes pin-iris-spin {
-  to { filter: hue-rotate(360deg); }
 }
 
 /* ── pin-inner: shimmer → foto ── */
 .pin-inner {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  background: #f1f5f9;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   overflow: hidden;
   transition: opacity 0.35s ease;
-  background: white;
 }
 
 /* Loading: shimmer exacto del original */
@@ -105,13 +86,12 @@
 
 /* ── Pin sin foto: punto azul indigo ── */
 .pin-dot {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  clip-path: path('M9 0 C10.5 0 11.5 2 13 2.5 C14.5 3 16 2 17 3.5 C18 5 16.5 6.5 17 8 C17.5 9.5 19 11 18 12.5 C17 14 15 13.5 13.5 14.5 C12 15.5 11.5 17.5 10 18 C8.5 18.5 7.5 16.5 6 16 C4.5 15.5 2.5 16.5 1.5 15 C0.5 13.5 1.5 11.5 1 10 C0.5 8.5 -1 7 -0.5 5.5 C0 4 2 3.5 3 2.5 C4 1.5 4 0 5.5 -0.5 C7 -1 7.5 0 9 0Z');
   background: #2563eb;
   border: 2.5px solid white;
-  box-shadow: 0 2px 6px rgba(37,99,235,0.5);
+  box-shadow: 0 2px 6px rgba(99,102,241,0.5);
   display: block;
 }
 
