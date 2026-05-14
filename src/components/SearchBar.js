@@ -659,23 +659,38 @@ export class SearchBar {
       }
       #wp-scats::-webkit-scrollbar{display:none;}
       .wps-cat-chip{
-        display:inline-flex;align-items:center;gap:6px;padding:11px 18px;
-        background:white;color:#374151;
+        display:inline-flex;align-items:center;gap:6px;
+        padding:11px 20px;
+        background:white;
+        color:#374151;
         border:none;
-        border-radius:50px;font-size:14px;font-weight:700;white-space:nowrap;
+        border-radius:50px;
+        font-size:14px;font-weight:700;white-space:nowrap;
         cursor:pointer;flex-shrink:0;
-        box-shadow:0 2px 12px rgba(0,0,0,0.12);
+        box-shadow:
+          0 1px 0 rgba(255,255,255,0.8) inset,
+          0 4px 0 rgba(0,0,0,0.1),
+          0 6px 12px rgba(0,0,0,0.1);
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-        transition:all 0.2s ease;
+        transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-cat-chip.active{
-        background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 100%);
+        background:#2563eb;
         color:white;
-        box-shadow:0 4px 16px rgba(59,130,246,0.45);
-        transform:scale(1.04);
+        box-shadow:
+          0 1px 0 rgba(255,255,255,0.25) inset,
+          0 4px 0 #1a4dbf,
+          0 6px 16px rgba(37,99,235,0.45);
+        transform:translateY(-1px);
       }
-      .wps-cat-chip:active{transform:scale(0.96);opacity:0.9;}
+      .wps-cat-chip:active{
+        transform:translateY(3px);
+        box-shadow:
+          0 1px 0 rgba(255,255,255,0.25) inset,
+          0 1px 0 #1a4dbf,
+          0 2px 8px rgba(37,99,235,0.3);
+      }
     `;
     document.head.appendChild(s);
   }
