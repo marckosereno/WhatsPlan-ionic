@@ -35,6 +35,13 @@ ion-app::before {
   pointer-events: none; z-index: 9998;
 }
 
+/* ── Gradiente inferior — difumina el mapa hacia el panel ── */
+ion-app::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 90px;
+  background: linear-gradient(to top, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.45) 55%, rgba(255,255,255,0) 100%);
+  pointer-events: none; z-index: 1;
+}
+
 /* ── Sombra blanca INFERIOR ── */
 
 
