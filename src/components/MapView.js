@@ -345,6 +345,8 @@ export class MapView {
       try { custom = await CustomPlaceService.getByCategory(menuKey); } catch(_) {}
       this.allPlaces = [...(json.places || []), ...custom];
       this._renderPlaceMarkers(this.allPlaces);
+      // Notificar al SearchBar que el conteo cambió
+      document.dispatchEvent(new CustomEvent('wp:placesloaded', { detail: { count: this.allPlaces.length } }));
     } catch(e) { console.error('❌ loadCategory:', e); }
     if (this._allLandmarks) this._renderLandmarks([]);
   }
