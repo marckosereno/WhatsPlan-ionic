@@ -659,7 +659,7 @@ export class SearchBar {
         bottom:calc(20px + env(safe-area-inset-bottom,0px));
         left:0;right:0;z-index:99999;
         display:flex;gap:8px;
-        padding:12px 16px 20px;
+        padding:0 16px;
         overflow-x:auto;
         overflow-y:visible;
         scrollbar-width:none;
@@ -670,12 +670,12 @@ export class SearchBar {
       #wp-scats::-webkit-scrollbar{display:none;}
       .wps-cat-chip{
         display:inline-flex;align-items:center;gap:6px;
-        padding:11px 20px;
+        padding:8px 14px;
         background:white;
         color:#374151;
         border:none;
         border-radius:50px;
-        font-size:14px;font-weight:700;white-space:nowrap;
+        font-size:13px;font-weight:700;white-space:nowrap;
         cursor:pointer;flex-shrink:0;
         box-shadow:none;
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
@@ -685,7 +685,7 @@ export class SearchBar {
       .wps-cat-chip.active{
         background:#2563eb;
         color:white;
-        box-shadow:0 4px 0 #1a4dbf, 0 8px 20px rgba(37,99,235,0.4);
+        box-shadow:none;
       }
       .wps-cat-chip:active{
         transform:translateY(2px);
