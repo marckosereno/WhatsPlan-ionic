@@ -628,7 +628,7 @@ export class SearchBar {
       }
       .wps-card:active{transform:scale(0.97);box-shadow:0 2px 6px rgba(0,0,0,0.1);}
       .wps-card-photo{width:70px;height:70px;object-fit:cover;border-radius:12px;flex-shrink:0;}
-      .wps-card-icon{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:12px;font-size:32px;flex-shrink:0;}
+      .wps-card-icon{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--wp-blue),var(--wp-blue-dark));border-radius:12px;font-size:32px;flex-shrink:0;}
       .wps-card-body{flex:1;min-width:0;}
       .wps-card-header{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
       .wps-card-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;color:white;}
