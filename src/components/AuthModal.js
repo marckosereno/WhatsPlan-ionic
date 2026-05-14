@@ -169,7 +169,7 @@ export class AuthModal {
         font-family: 'Inter Tight', system-ui, sans-serif;
         background: #fafafa;
       }
-      .auth-input:focus { border-color: #6366f1; background: white; }
+      .auth-input:focus { border-color: #2563eb; background: white; }
 
       .auth-btn-primary {
         padding: 15px;
