@@ -128,7 +128,7 @@ async function renderAuthButton(user) {
     btn.innerHTML = `
       <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png"
         style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'">
-      <span style="position:absolute;bottom:-6px;right:-4px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;box-shadow:0 1px 4px rgba(124,58,237,0.4);">+</span>`;
+      <span style="position:absolute;bottom:-6px;right:-4px;background:linear-gradient(135deg,#60a5fa,#2563eb);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;box-shadow:0 1px 4px rgba(37,99,235,0.4);">+</span>`;
   }
 }
 
