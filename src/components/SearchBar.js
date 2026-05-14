@@ -34,8 +34,10 @@ export class SearchBar {
     }
     if (panel) {
       panel.style.pointerEvents = 'none';
-      if (gsap) gsap.to(panel, { y: 40, opacity: 0, duration: 0.18, ease: 'power2.in' });
-      else { panel.style.transform = 'translateY(40px)'; panel.style.opacity = '0'; }
+      if (gsap) gsap.to(panel, { y: 40, opacity: 0, duration: 0.18, ease: 'power2.in',
+        onComplete: function() { panel.style.display = 'none'; }
+      });
+      else { panel.style.display = 'none'; }
     }
 
     this._moveSubcatsToBody();
@@ -58,8 +60,12 @@ export class SearchBar {
       else { topbar.style.transform = ''; topbar.style.opacity = ''; }
     }
     if (panel) {
+      panel.style.display = '';
       panel.style.pointerEvents = '';
-      if (gsap) gsap.to(panel, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'all' });
+      if (gsap) gsap.fromTo(panel,
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'all' }
+      );
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
 
@@ -456,6 +462,11 @@ export class SearchBar {
     var cats = this.getCategories ? this.getCategories() : [];
     if (!cats.length) return;
 
+    // Gradiente de fondo debajo de los chips
+    var wrap = document.createElement('div');
+    wrap.id  = 'wp-scats-wrap';
+    document.body.appendChild(wrap);
+
     var container = document.createElement('div');
     container.id  = 'wp-scats';
     var mv  = this.mapView;
@@ -496,9 +507,14 @@ export class SearchBar {
 
   _hideCategoryChips() {
     var e = document.getElementById('wp-scats');
+    var w = document.getElementById('wp-scats-wrap');
     if (!e) return;
     e.style.opacity = '0'; e.style.transform = 'translateY(20px)';
-    setTimeout(function() { e.remove(); }, 280);
+    if (w) { w.style.opacity = '0'; }
+    setTimeout(function() {
+      e.remove();
+      if (w) w.remove();
+    }, 280);
   }
 
   _syncCategoryChips() {
@@ -648,6 +664,16 @@ export class SearchBar {
       .wps-noresult-emoji { font-size:24px; }
       .wps-noresult-text  { font-size:14px; font-weight:600; color:#6b7280; }
 
+      /* Gradiente debajo de los chips — mismo efecto que top del mapa */
+      #wp-scats-wrap {
+        position:fixed;
+        bottom:0;
+        left:0;right:0;
+        z-index:99998;
+        padding:calc(16px + env(safe-area-inset-bottom,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));
+        background:linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0) 100%);
+        pointer-events:none;
+      }
       #wp-scats{
         position:fixed;
         bottom:calc(20px + env(safe-area-inset-bottom,0px));
@@ -656,6 +682,7 @@ export class SearchBar {
         overflow-x:auto;scrollbar-width:none;
         animation:wpsSlideUp 0.3s ease;
         transition:opacity 0.25s ease,transform 0.25s ease;
+        pointer-events:all;
       }
       #wp-scats::-webkit-scrollbar{display:none;}
       .wps-cat-chip{
