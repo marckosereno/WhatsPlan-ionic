@@ -10,6 +10,7 @@ import { initSupabase, AuthService, ActivityService, ProfileService } from '/src
 import { isSuperUser }      from '/src/services/SuperUserService.js';
 import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
+import { PlaceModal }       from '/src/components/PlaceModal.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 import { appState }         from '/src/state/AppState.js';
@@ -313,6 +314,20 @@ function setupActivitySubscription(mv) {
     Promise.all([mapReady, catsReady]).then(() => {
       animatePanelIn(document.getElementById('map-results-panel'));
       setupCategories(mv);
+
+      // PlaceModal — bottom sheet de detalles
+      const placeModal = new PlaceModal({
+        proxyPhoto: function(url) {
+          return url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null;
+        },
+        getCurrentUser: function() { return window.wpApp.currentUser; }
+      });
+      window.wpApp.placeModal = placeModal;
+
+      // Al tocar la minicard → abrir el modal de detalles
+      mv.onPlaceSelect = function(place) {
+        placeModal.show(place);
+      };
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
         onSubcatSelect: (value) => filterBySubcat(mv, value),
