@@ -667,10 +667,7 @@ export class SearchBar {
         border-radius:50px;
         font-size:14px;font-weight:700;white-space:nowrap;
         cursor:pointer;flex-shrink:0;
-        box-shadow:
-          0 1px 0 rgba(255,255,255,0.8) inset,
-          0 4px 0 rgba(0,0,0,0.1),
-          0 6px 12px rgba(0,0,0,0.1);
+        box-shadow:0 3px 8px rgba(0,0,0,0.12);
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
@@ -678,18 +675,12 @@ export class SearchBar {
       .wps-cat-chip.active{
         background:#2563eb;
         color:white;
-        box-shadow:
-          0 1px 0 rgba(255,255,255,0.25) inset,
-          0 4px 0 #1a4dbf,
-          0 6px 16px rgba(37,99,235,0.45);
+        box-shadow:0 4px 0 #1a4dbf, 0 6px 16px rgba(37,99,235,0.35);
         transform:translateY(-1px);
       }
       .wps-cat-chip:active{
         transform:translateY(3px);
-        box-shadow:
-          0 1px 0 rgba(255,255,255,0.25) inset,
-          0 1px 0 #1a4dbf,
-          0 2px 8px rgba(37,99,235,0.3);
+        box-shadow:0 1px 0 #1a4dbf;
       }
     `;
     document.head.appendChild(s);
