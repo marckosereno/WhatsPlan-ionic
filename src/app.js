@@ -290,7 +290,7 @@ function setupActivitySubscription(mv) {
     console.log('🗺️ Creando MapView...');
     const mv = new MapView();
     window.wpApp.mapView = mv;
-    mv.onPlaceSelect = (place) => console.log('📍 PlaceSheet TODO:', place.name);
+    // onPlaceSelect se asigna en Promise.all cuando PlaceModal está listo
     console.log('✅ MapView creado');
 
     const authModal = new AuthModal({
