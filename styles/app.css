@@ -246,6 +246,11 @@ ion-app::before {
   --safe-left:   env(safe-area-inset-left,   0px);
   --safe-right:  env(safe-area-inset-right,  0px);
   --vh: 1vh; /* sobreescrito por ios-fixes.js */
+
+  /* ── Brand colors ── */
+  --wp-blue:       #2563eb;  /* Azul principal WhatsPlan */
+  --wp-blue-dark:  #1a4dbf;  /* Sombra 3D / hover */
+  --wp-blue-glow:  rgba(37, 99, 235, 0.35); /* Glow / sombra difusa */
 }
 
 /* Usar --vh en vez de vh para altura real en iOS */
