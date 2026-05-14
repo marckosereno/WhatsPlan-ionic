@@ -658,7 +658,7 @@ export class SearchBar {
         position:fixed;
         bottom:calc(20px + env(safe-area-inset-bottom,0px));
         left:0;right:0;z-index:99999;
-        display:flex;gap:8px;padding:0 16px;
+        display:flex;gap:8px;padding:12px 16px;
         overflow-x:auto;scrollbar-width:none;
         animation:wpsSlideUp 0.3s ease;
         transition:opacity 0.25s ease,transform 0.25s ease;
