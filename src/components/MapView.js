@@ -440,7 +440,7 @@ export class MapView {
     const borderGrad = hasAct ? 'linear-gradient(145deg,#fde68a 0%,#f59e0b 40%,#f97316 100%)' : '#ffffff';
     const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map?.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
     const pulseHtml  = hasAct ? `<div class="pin-pulse-ring" style="display:block"></div><div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>` : '';
-    const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
+    const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#2563eb':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
 
     // Label — igual que PWA original (solo si NO es featured)
     const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
@@ -809,7 +809,7 @@ export class MapView {
         badge.style.display = 'flex';
         const place = el._place;
         if (place?.featured) {
-          const bg   = place.featured==='verified'?'#059669':place.featured==='premium'?'#7c3aed':'rgba(0,0,0,0.65)';
+          const bg   = place.featured==='verified'?'#059669':place.featured==='premium'?'#2563eb':'rgba(0,0,0,0.65)';
           const icon = place.featured==='verified'?'✓':'⭐';
           badge.style.background = bg; badge.innerHTML = icon;
         }
@@ -873,7 +873,7 @@ export class MapView {
         '<div style="font-size:11px;font-weight:800;color:#1f2937;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
         closest.place.name + '</div>' +
         '<div style="font-size:9px;font-weight:700;background:' +
-        (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#8b5cf6,#6366f1)':'linear-gradient(135deg,#f59e0b,#f97316)') +
+        (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)') +
         ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
       root.appendChild(nameEl);
     }
