@@ -418,55 +418,92 @@ export class PlaceModal {
     });
   }
 
-  // ── Drag to dismiss / mini mode ───────────────────────────────────
+  // ── Drag — igual que himarco: maxHeight, dos snaps ──────────────────
 
   _wireDrag() {
     var self = this;
     var card = this._card;
-    var startY = 0, currentY = 0, dragging = false;
-    var fullH = 0;
+    var FULL_H = function() { return window.innerHeight * 0.88; };
+    var MINI_H = function() { return window.innerHeight * 0.26; };
+    var SNAP_FULL = 0, SNAP_MINI = 1;
+    var currentSnap = SNAP_FULL;
+    var startY = 0, startCardH = 0, isDragging = false;
 
-    var handle = card.querySelector('.wp-modal-handle');
+    var snapTo = function(snap, animate) {
+      var isMini = snap === SNAP_MINI;
+      card.style.transition = animate !== false
+        ? 'max-height 0.32s cubic-bezier(0.32,0.72,0,1)' : 'none';
 
-    function onStart(e) {
-      startY   = e.touches ? e.touches[0].clientY : e.clientY;
-      currentY = startY;
-      dragging = true;
-      fullH    = card.getBoundingClientRect().height;
-      card.style.transition = 'none';
-    }
-
-    function onMove(e) {
-      if (!dragging) return;
-      currentY = e.touches ? e.touches[0].clientY : e.clientY;
-      var dy = currentY - startY;
-      if (dy < 0) return; // no subir más del 100%
-      card.style.transform = 'translateY(' + dy + 'px)';
-      e.preventDefault();
-    }
-
-    function onEnd() {
-      if (!dragging) return;
-      dragging = false;
-      card.style.transition = '';
-      var dy = currentY - startY;
-
-      if (dy > fullH * 0.5) {
-        // Descartar completamente
-        self.hide();
-      } else if (dy > fullH * 0.22) {
-        // Mini mode — mostrar solo header + botones
-        self._setMini(true);
+      var backdrop = document.getElementById('wp-modal-backdrop');
+      if (isMini) {
+        card.style.maxHeight = MINI_H() + 'px';
+        card.classList.add('snapped-mini');
+        currentSnap = SNAP_MINI;
+        if (backdrop) { backdrop.style.opacity = '0'; backdrop.style.pointerEvents = 'none'; }
+        self._el.style.pointerEvents = 'none';
+        card.style.pointerEvents = 'auto';
       } else {
-        // Volver a posición completa
-        card.style.transform = '';
+        card.style.maxHeight = '';
+        card.classList.remove('snapped-mini');
+        currentSnap = SNAP_FULL;
+        if (backdrop) { backdrop.style.opacity = '1'; backdrop.style.pointerEvents = 'auto'; }
+        self._el.style.pointerEvents = 'all';
+        card.style.pointerEvents = 'auto';
       }
-    }
+    };
 
-    // Solo el handle dispara el drag — evita conflicto con scroll de fotos y contenido
-    handle.addEventListener('touchstart', onStart, { passive: true });
-    handle.addEventListener('touchmove',  onMove,  { passive: false });
-    handle.addEventListener('touchend',   onEnd,   { passive: true });
+    var onStart = function(e) {
+      if (e.target.closest('button, a, .wp-modal-photos, .wp-modal-scroll-body')) return;
+      isDragging  = true;
+      startY      = e.touches ? e.touches[0].clientY : e.clientY;
+      startCardH  = card.getBoundingClientRect().height;
+      card.style.transition = 'none';
+
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend',  onEnd,  { passive: true });
+    };
+
+    var onMove = function(e) {
+      if (!isDragging) return;
+      var y     = e.touches ? e.touches[0].clientY : e.clientY;
+      var delta = y - startY;
+      var fullH = FULL_H(), miniH = MINI_H();
+      var newH  = Math.min(fullH, Math.max(miniH, startCardH - delta));
+      card.style.maxHeight = newH + 'px';
+
+      var backdrop = document.getElementById('wp-modal-backdrop');
+      if (backdrop) {
+        var ratio = (newH - miniH) / (fullH - miniH);
+        backdrop.style.opacity = Math.max(0, Math.min(1, ratio)).toString();
+      }
+      if (e.cancelable) e.preventDefault();
+    };
+
+    var onEnd = function(e) {
+      if (!isDragging) return;
+      isDragging = false;
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend',  onEnd);
+
+      var y     = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+      var delta = y - startY;
+
+      if (currentSnap === SNAP_FULL) {
+        snapTo(delta > 80 ? SNAP_MINI : SNAP_FULL);
+      } else {
+        snapTo(delta < -80 ? SNAP_FULL : SNAP_MINI);
+      }
+    };
+
+    // Drag zones: handle + top + (igual que himarco)
+    var zones = [
+      card.querySelector('.wp-modal-handle'),
+      card.querySelector('.wp-modal-top'),
+    ].filter(Boolean);
+
+    zones.forEach(function(zone) {
+      zone.addEventListener('touchstart', onStart, { passive: true });
+    });
   }
 
   _setMini(mini) {
@@ -569,12 +606,8 @@ export class PlaceModal {
       /* ── Handle ── */
       .wp-modal-handle {
         width: 38px; height: 4px; background: #dde3ea;
-        border-radius: 2px; margin: 10px auto 0; flex-shrink: 0;
+        border-radius: 2px; margin: 10px auto 6px; flex-shrink: 0;
         transition: background 0.2s, width 0.2s;
-        /* Área táctil generosa para el drag */
-        padding: 12px 40px;
-        box-sizing: content-box;
-        cursor: grab;
       }
 
       /* ── Top ── */
