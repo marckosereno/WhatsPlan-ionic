@@ -26,18 +26,23 @@ export class PlaceModal {
     this._populate(place);
     this._mini = false;
 
+    var self = this;
     this._el.classList.remove('hidden');
-    requestAnimationFrame(() => {
-      this._el.classList.add('visible');
-      this._card.style.transform = '';
-    });
 
-    if (window.gsap) {
-      window.gsap.fromTo(this._card,
-        { y: '100%' },
-        { y: '0%', duration: 0.38, ease: 'power3.out', clearProps: 'transform' }
-      );
-    }
+    // Dejar que el browser procese el touchcancel antes de animar
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        self._el.classList.add('visible');
+        if (window.gsap) {
+          window.gsap.fromTo(self._card,
+            { y: '100%' },
+            { y: '0%', duration: 0.4, ease: 'power3.out', clearProps: 'transform' }
+          );
+        } else {
+          self._card.style.transform = '';
+        }
+      });
+    });
   }
 
   hide() {
