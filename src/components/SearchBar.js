@@ -650,8 +650,8 @@ export class SearchBar {
 
       #wp-scats{
         position:fixed;
-        bottom:calc(16px + env(safe-area-inset-bottom,0px));
-        left:0;right:0;z-index:99997;
+        bottom:calc(20px + env(safe-area-inset-bottom,0px));
+        left:0;right:0;z-index:99999;
         display:flex;gap:8px;padding:0 16px;
         overflow-x:auto;scrollbar-width:none;
         animation:wpsSlideUp 0.3s ease;
@@ -675,12 +675,11 @@ export class SearchBar {
       .wps-cat-chip.active{
         background:#2563eb;
         color:white;
-        box-shadow:0 4px 0 #1a4dbf, 0 6px 16px rgba(37,99,235,0.35);
-        transform:translateY(-1px);
+        box-shadow:0 4px 0 #1a4dbf, 0 8px 20px rgba(37,99,235,0.4);
       }
       .wps-cat-chip:active{
-        transform:translateY(3px);
-        box-shadow:0 1px 0 #1a4dbf;
+        transform:translateY(2px);
+        box-shadow:0 2px 0 #1a4dbf;
       }
     `;
     document.head.appendChild(s);
