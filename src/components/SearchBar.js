@@ -394,6 +394,14 @@ export class SearchBar {
         if (self._active) self._positionResults();
       });
     }
+    // Actualizar count cuando MapView carga nuevos lugares
+    document.addEventListener('wp:placesloaded', function(e) {
+      if (!self._active) return;
+      var countEl = document.getElementById('wps-count');
+      if (countEl && self._query.length === 0) {
+        countEl.textContent = (e.detail.count) + ' lugares';
+      }
+    });
   }
 
   // ── Highlight pins ─────────────────────────────────────────────────
@@ -425,21 +433,25 @@ export class SearchBar {
       var isMatch    = matched.has(key);
       var isSelected = key === selectedKey;
 
+      var wrapper = el.querySelector('.place-pin-wrapper') || el.querySelector('.pin-dot');
       if (isSelected) {
         el.style.opacity   = '1';
         el.style.filter    = 'none';
         el.style.transform = 'scale(1.25)';
         el.style.zIndex    = '9999';
+        if (wrapper) wrapper.classList.add('pin-iridescent');
       } else if (isMatch) {
         el.style.opacity   = '1';
         el.style.filter    = 'none';
         el.style.transform = '';
         el.style.zIndex    = '';
+        if (wrapper) wrapper.classList.remove('pin-iridescent');
       } else {
         el.style.opacity   = '0.2';
         el.style.filter    = 'grayscale(1)';
         el.style.transform = '';
         el.style.zIndex    = '';
+        if (wrapper) wrapper.classList.remove('pin-iridescent');
       }
     });
   }
@@ -452,6 +464,8 @@ export class SearchBar {
       el.style.filter    = '';
       el.style.transform = '';
       el.style.zIndex    = '';
+      var wrapper = el.querySelector('.place-pin-wrapper') || el.querySelector('.pin-dot');
+      if (wrapper) wrapper.classList.remove('pin-iridescent');
     });
   }
 
@@ -485,10 +499,7 @@ export class SearchBar {
         container.querySelectorAll('.wps-cat-chip').forEach(function(c) { c.classList.remove('active'); });
         chip.classList.add('active');
         if (self.onCategorySelect) self.onCategorySelect(cat.key);
-        setTimeout(function() {
-          var countEl = document.getElementById('wps-count');
-          if (countEl) countEl.textContent = self._getCount();
-        }, 700);
+        // El count se actualiza via evento wp:placesloaded cuando MapView termina de cargar
       });
       container.appendChild(chip);
     });
