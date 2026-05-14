@@ -659,15 +659,23 @@ export class SearchBar {
       }
       #wp-scats::-webkit-scrollbar{display:none;}
       .wps-cat-chip{
-        display:inline-flex;align-items:center;gap:6px;padding:10px 16px;
-        background:white;color:#111827;border:2px solid rgba(0,0,0,0.1);
-        border-radius:50px;font-size:14px;font-weight:600;white-space:nowrap;
-        cursor:pointer;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.1);
+        display:inline-flex;align-items:center;gap:6px;padding:11px 18px;
+        background:white;color:#374151;
+        border:none;
+        border-radius:50px;font-size:14px;font-weight:700;white-space:nowrap;
+        cursor:pointer;flex-shrink:0;
+        box-shadow:0 2px 12px rgba(0,0,0,0.12);
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-        transition:background 0.15s,color 0.15s,border-color 0.15s;
+        transition:all 0.2s ease;
+        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      .wps-cat-chip.active{background:#6366f1;color:white;border-color:#6366f1;}
-      .wps-cat-chip:active{opacity:0.85;}
+      .wps-cat-chip.active{
+        background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 100%);
+        color:white;
+        box-shadow:0 4px 16px rgba(59,130,246,0.45);
+        transform:scale(1.04);
+      }
+      .wps-cat-chip:active{transform:scale(0.96);opacity:0.9;}
     `;
     document.head.appendChild(s);
   }
