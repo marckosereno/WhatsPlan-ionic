@@ -254,8 +254,10 @@ function setupCategories(mv) {
     });
   });
 
-  // Animar chips DESPUÉS de que todos los clones estén en el DOM
-  animateChipsIn(Array.from(container.querySelectorAll('.category-footer-chip')));
+  // Chips ya visibles — solo asegurar opacity:1 sin animación de posición
+  Array.from(container.querySelectorAll('.category-footer-chip')).forEach(function(c) {
+    c.style.opacity = '1';
+  });
 }
 
 // ── Actividades ───────────────────────────────────────────────────────
