@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       editorial_summary:          editorial_summary || null,
       description:                description || editorial_summary || null,
       opening_hours:              opening_hours || null,
-      featured:                   featured === true || featured === 'featured' || featured === 'true',
+      featured:                   featured || null, // string: 'featured', 'verified', 'premium'
       hidden:                     hidden === true || hidden === 'true' || false,
       business_status:            'OPERATIONAL',
     };
