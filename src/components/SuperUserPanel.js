@@ -2000,7 +2000,7 @@ export class SuperUserPanel {
         if(mapView&&mapView.currentCatId)await mapView.loadCategory(mapView.currentCatId);
 
         if (isEdit) {
-          this._showToast('✅ Cambios guardados en Airtable');
+          this._showToast('✅ Cambios guardados');
           // Pequeña pausa para que el toast sea visible, luego volver al hub
           setTimeout(() => this._openPlaces(), 1200);
         } else {
