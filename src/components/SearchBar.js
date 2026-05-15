@@ -224,7 +224,7 @@ export class SearchBar {
     this._debounce = setTimeout(function() {
       var all     = self._getAllPlaces();
       var matches = all.filter(function(p) {
-        var name = (p.name || '').toLowerCase();
+        var name = (p.name || p.place_name || p.displayName || '').toLowerCase();
         var addr = (p.formattedAddress || p.formatted_address || p.vicinity || '').toLowerCase();
         return name.includes(self._query) || addr.includes(self._query);
       });
@@ -409,10 +409,12 @@ export class SearchBar {
   _highlightMarkers(matches) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    var matched = new Set(matches.map(function(p) { return p.place_id || p.name; }));
+    var matched = new Set(matches.map(function(p) {
+      return p.place_id || p.placeId || p.name;
+    }));
     mv.markerEls.forEach(function(el) {
       var p   = el._place;
-      var key = p && (p.place_id || p.name);
+      var key = p && (p.place_id || p.placeId || p.name);
       var hit = matched.has(key);
       el.style.opacity   = hit ? '1'    : '0.2';
       el.style.filter    = hit ? 'none' : 'grayscale(1)';
@@ -424,12 +426,14 @@ export class SearchBar {
   _highlightSingle(place) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    var selectedKey = place && (place.place_id || place.name);
-    var matched     = new Set(this._currentMatches.map(function(p) { return p.place_id || p.name; }));
+    var selectedKey = place && (place.place_id || place.placeId || place.name);
+    var matched     = new Set(this._currentMatches.map(function(p) {
+      return p.place_id || p.placeId || p.name;
+    }));
 
     mv.markerEls.forEach(function(el) {
       var p   = el._place;
-      var key = p && (p.place_id || p.name);
+      var key = p && (p.place_id || p.placeId || p.name);
       var isMatch    = matched.has(key);
       var isSelected = key === selectedKey;
 
