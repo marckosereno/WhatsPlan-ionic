@@ -374,16 +374,26 @@ export class SearchBar {
   }
 
   _positionResults() {
-    var r = document.getElementById('wp-sresults');
-    if (!r) return;
     var kbH = window.visualViewport ? (window.innerHeight - window.visualViewport.height) : 0;
-    var isNoResult = r.classList.contains('wps-results-noresult-mode');
-    if (isNoResult) {
-      r.style.display = kbH > 100 ? 'flex' : 'none';
-      r.style.bottom  = kbH > 100 ? (kbH + 10) + 'px' : '0px';
-    } else {
-      r.style.display = '';
-      r.style.bottom  = kbH > 100 ? (kbH + 10) + 'px' : '0px';
+
+    // Mover minifichas arriba del teclado
+    var r = document.getElementById('wp-sresults');
+    if (r) {
+      var isNoResult = r.classList.contains('wps-results-noresult-mode');
+      if (isNoResult) {
+        r.style.display = kbH > 100 ? 'flex' : 'none';
+      } else {
+        r.style.display = '';
+      }
+      r.style.bottom = kbH > 100 ? (kbH + 10) + 'px' : '0px';
+    }
+
+    // Mover chips de categoría arriba del teclado también
+    var chips = document.getElementById('wp-scats');
+    if (chips) {
+      chips.style.bottom = kbH > 100
+        ? (kbH + 10) + 'px'
+        : 'calc(16px + env(safe-area-inset-bottom,0px))';
     }
   }
 
