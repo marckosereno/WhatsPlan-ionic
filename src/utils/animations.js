@@ -22,10 +22,11 @@ export function animateChipsIn(chips) {
     chips.forEach(function(c) { c.style.opacity = '1'; });
     return;
   }
+  // Sin y — evita que el panel salte al animar chips
   g().fromTo(chips,
-    { opacity: 0, y: 10 },
-    { opacity: 1, y: 0,
-      duration: 0.3, ease: 'power2.out',
+    { opacity: 0 },
+    { opacity: 1,
+      duration: 0.25, ease: 'power2.out',
       stagger: 0.04, clearProps: 'all' }
   );
 }
