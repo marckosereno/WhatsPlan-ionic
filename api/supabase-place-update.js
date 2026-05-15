@@ -13,77 +13,74 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'PATCH') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(500).json({ success: false, message: 'Supabase credentials no configuradas. Verificar SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  }
+
   try {
-    const {
-      place_id,
-      place_name, category, lat, lng,
-      formatted_address, phone, website,
-      photo_url, photos_urls, rating, user_ratings_total,
-      subcategory_tags, types,
-      reviews, editorial_summary, opening_hours, description,
-      featured, hidden,
-    } = req.body;
+    const body = req.body;
+    const place_id = body.place_id;
 
     if (!place_id) {
       return res.status(400).json({ success: false, message: 'place_id es requerido' });
     }
 
+    // Construir solo los campos que vienen en el body
     const fields = { updated_at: new Date().toISOString() };
 
-    if (place_name         !== undefined) fields.place_name              = place_name;
-    if (category           !== undefined) fields.category                = category;
-    if (lat                !== undefined) fields.lat                     = parseFloat(lat);
-    if (lng                !== undefined) fields.lng                     = parseFloat(lng);
-    if (formatted_address  !== undefined) fields.formatted_address       = formatted_address || '';
-    if (rating             !== undefined) fields.rating                  = rating ? parseFloat(rating) : null;
-    if (photo_url          !== undefined) fields.photo_url               = photo_url || null;
-    if (website            !== undefined) fields.website                 = website || null;
-    if (types              !== undefined) fields.types                   = types || null;
-    if (hidden             !== undefined) fields.hidden                  = Boolean(hidden);
-    if (phone              !== undefined) fields.formatted_phone_number  = phone || null;
-    if (user_ratings_total !== undefined) fields.user_ratings_total      = user_ratings_total ? parseInt(user_ratings_total) : null;
-    if (reviews            !== undefined) fields.reviews                 = reviews?.length ? reviews : null;
-    if (editorial_summary  !== undefined) fields.editorial_summary       = editorial_summary || null;
-    if (description        !== undefined) fields.description             = description || null;
-    if (opening_hours      !== undefined) fields.opening_hours           = opening_hours || null;
+    if (body.place_name         != null) fields.place_name              = body.place_name;
+    if (body.category           != null) fields.category                = body.category;
+    if (body.lat                != null) fields.lat                     = parseFloat(body.lat);
+    if (body.lng                != null) fields.lng                     = parseFloat(body.lng);
+    if (body.formatted_address  != null) fields.formatted_address       = body.formatted_address;
+    if (body.rating             != null) fields.rating                  = body.rating ? parseFloat(body.rating) : null;
+    if (body.photo_url          != null) fields.photo_url               = body.photo_url || null;
+    if (body.website            != null) fields.website                 = body.website || null;
+    if (body.types              != null) fields.types                   = body.types || null;
+    if (body.hidden             != null) fields.hidden                  = Boolean(body.hidden);
+    if (body.phone              != null) fields.formatted_phone_number  = body.phone || null;
+    if (body.user_ratings_total != null) fields.user_ratings_total      = body.user_ratings_total ? parseInt(body.user_ratings_total) : null;
+    if (body.reviews            != null) fields.reviews                 = body.reviews?.length ? body.reviews : null;
+    if (body.editorial_summary  != null) fields.editorial_summary       = body.editorial_summary || null;
+    if (body.description        != null) fields.description             = body.description || null;
+    if (body.opening_hours      != null) fields.opening_hours           = body.opening_hours || null;
+    if (body.featured           != null) fields.featured                = body.featured || null;
 
-    if (photos_urls !== undefined) {
-      fields.photos_urls = Array.isArray(photos_urls) ? photos_urls : null;
+    if (body.photos_urls != null) {
+      fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
     }
 
-    if (subcategory_tags !== undefined) {
-      const arr = Array.isArray(subcategory_tags)
-        ? subcategory_tags
-        : (subcategory_tags || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (body.subcategory_tags != null) {
+      const arr = Array.isArray(body.subcategory_tags)
+        ? body.subcategory_tags
+        : (body.subcategory_tags || '').split(',').map(s => s.trim()).filter(Boolean);
       fields.subcategory_tags = arr.join(',') || null;
     }
 
-    if (featured !== undefined) {
-      // Guardar string directamente: 'featured', 'verified', 'premium', o null
-      fields.featured = featured || null;
-    }
+    console.log(`📝 Updating place_id: ${place_id}`, Object.keys(fields));
 
-    // Actualizar en Supabase por place_id
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey':        SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type':  'application/json',
-          'Prefer':        'return=representation',
-        },
-        body: JSON.stringify(fields),
-      }
-    );
+    const url = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type':  'application/json',
+        'Prefer':        'return=representation',
+      },
+      body: JSON.stringify(fields),
+    });
+
+    const responseText = await response.text();
+    console.log(`📝 Supabase response ${response.status}:`, responseText.slice(0, 200));
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Supabase error ${response.status}: ${err}`);
+      throw new Error(`Supabase error ${response.status}: ${responseText}`);
     }
 
-    const data = await response.json();
+    let data;
+    try { data = JSON.parse(responseText); } catch(e) { data = []; }
+
     if (!data || data.length === 0) {
       return res.status(404).json({ success: false, message: `No se encontró lugar con place_id: ${place_id}` });
     }
