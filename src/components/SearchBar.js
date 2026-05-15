@@ -442,13 +442,13 @@ export class SearchBar {
       var key = p && (p.place_id || p.placeId || p.name);
       var hit = matched.has(key);
       if (hit) hitCount++;
-      // Aplicar al elemento raíz Y al pin-root por si hay herencia CSS
-      el.style.setProperty('opacity', hit ? '1' : '0.2', 'important');
-      el.style.setProperty('filter',  hit ? 'none' : 'grayscale(1)', 'important');
-      el.style.transform = '';
-      el.style.zIndex    = '';
+      // Aplicar al .maplibregl-marker (padre) que es lo que MapLibre controla
+      var marker = el.closest('.maplibregl-marker') || el.parentElement || el;
+      marker.style.opacity   = hit ? '1'    : '0.15';
+      marker.style.filter    = hit ? 'none' : 'grayscale(1)';
+      marker.style.transform = marker.style.transform || '';
+      marker.style.zIndex    = hit ? '2' : '1';
     });
-    console.log('✅ Highlight aplicado:', hitCount, 'hits de', mv.markerEls.length, 'markers');
   }
 
   _highlightSingle(place) {
@@ -492,6 +492,10 @@ export class SearchBar {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
     mv.markerEls.forEach(function(el) {
+      var marker = el.closest('.maplibregl-marker') || el.parentElement || el;
+      marker.style.opacity   = '';
+      marker.style.filter    = '';
+      marker.style.zIndex    = '';
       el.style.opacity   = '';
       el.style.filter    = '';
       el.style.transform = '';
