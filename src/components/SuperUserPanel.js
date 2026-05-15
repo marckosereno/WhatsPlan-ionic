@@ -1996,16 +1996,10 @@ export class SuperUserPanel {
         if (!data.success) throw new Error(data.message || JSON.stringify(data));
         modal.remove();
 
-        // Invalidar cache
-
-        const mapView=window.wpApp?.mapView;
-        if(mapView&&mapView.currentCatId)await mapView.loadCategory(mapView.currentCatId);
-
-        // Limpiar caché en memoria y recargar inmediatamente
+        // Limpiar caché y recargar inmediatamente
         const mapView = window.wpApp?.mapView;
         if (mapView && mapView.currentCatId) {
           const cat = mapView.currentCatId;
-          // _clear_cache=1 limpia el caché del servidor, forzando lectura fresca de Supabase
           await fetch('/api/supabase-places?category=' + cat + '&_clear_cache=1');
           await mapView.loadCategory(cat);
         }
