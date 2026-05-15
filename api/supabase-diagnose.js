@@ -1,45 +1,33 @@
-// ====================================================================
-// /api/supabase-diagnose.js — Diagnóstico temporal
-// GET /api/supabase-diagnose?place_id=ChIJMa_gTQ17ZYYR6-SjjGZ4ePw
-// ====================================================================
+// /api/supabase-diagnose.js
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
-  const { place_id } = req.query;
-
-  // 1. Verificar credenciales
-  const creds = {
-    has_url:          !!SUPABASE_URL,
-    has_service_key:  !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    has_anon_key:     !!process.env.SUPABASE_ANON_KEY,
-    key_prefix:       SUPABASE_KEY ? SUPABASE_KEY.slice(0,20) + '...' : 'MISSING',
-    url_prefix:       SUPABASE_URL ? SUPABASE_URL.slice(0,30) + '...' : 'MISSING',
-  };
-
-  if (!place_id) return res.json({ creds });
-
-  // 2. Intentar un PATCH real
+  // Test PATCH directo
   try {
-    const url = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}`;
-    const response = await fetch(url, {
+    const testId = 'ChIJMa_gTQ17ZYYR6-SjjGZ4ePw';
+    const url = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${testId}`;
+    
+    const r = await fetch(url, {
       method: 'PATCH',
       headers: {
-        'apikey':        SUPABASE_KEY,
+        'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type':  'application/json',
-        'Prefer':        'return=representation',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
       },
-      body: JSON.stringify({ description: 'test_' + Date.now() }),
+      body: JSON.stringify({ description: 'diagnose_' + Date.now() }),
     });
-    const text = await response.text();
+
+    const text = await r.text();
     return res.json({
-      creds,
-      patch_status: response.status,
-      patch_response: text.slice(0, 500),
-      success: response.ok,
+      status: r.status,
+      ok: r.ok,
+      response: text.slice(0, 500),
+      key_type: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon',
+      url_set: !!SUPABASE_URL,
     });
   } catch(e) {
-    return res.json({ creds, error: e.message });
+    return res.json({ error: e.message });
   }
 }
