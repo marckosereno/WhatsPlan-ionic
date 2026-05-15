@@ -27,7 +27,8 @@ export default async function handler(req, res) {
   try {
     // Construir query a Supabase REST API
     const hiddenFilter = include_hidden ? '' : '&hidden=eq.false';
-    let url = `${SUPABASE_URL}/rest/v1/places?select=*&order=featured.desc,rating.desc` + hiddenFilter;
+    // featured es text: ordenar nulls al final, luego por rating
+    let url = `${SUPABASE_URL}/rest/v1/places?select=*&order=featured.desc.nullslast,rating.desc` + hiddenFilter;
     if (category && category !== 'ALL') {
       url += `&category=eq.${encodeURIComponent(category)}`;
     }
@@ -59,7 +60,7 @@ export default async function handler(req, res) {
         place_id:                  r.place_id,
         name:                      r.place_name,
         displayName:               r.place_name,
-        featured:                  r.featured || false,
+        featured:                  r.featured || null, // string: 'featured', 'verified', 'premium'
         category:                  r.category,
         description:               r.description || '',
         subcategory_tags:          r.subcategory_tags || '',
