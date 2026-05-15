@@ -14,19 +14,20 @@ const CACHE_TTL = 60 * 60 * 1000; // 1 hora
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { category } = req.query;
-  const cacheKey = category || 'all';
+  const { category, include_hidden } = req.query;
+  const cacheKey = (category || 'all') + (include_hidden ? '_hidden' : '');
   const now = Date.now();
 
   // Cache hit
-  if (cache[cacheKey] && (now - cache[cacheKey].timestamp < CACHE_TTL)) {
+  if (!include_hidden && cache[cacheKey] && (now - cache[cacheKey].timestamp < CACHE_TTL)) {
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
     return res.status(200).json({ success: true, places: cache[cacheKey].data, cached: true });
   }
 
   try {
     // Construir query a Supabase REST API
-    let url = `${SUPABASE_URL}/rest/v1/places?hidden=eq.false&select=*&order=featured.desc,rating.desc`;
+    const hiddenFilter = include_hidden ? '' : '&hidden=eq.false';
+    let url = `${SUPABASE_URL}/rest/v1/places?select=*&order=featured.desc,rating.desc` + hiddenFilter;
     if (category && category !== 'ALL') {
       url += `&category=eq.${encodeURIComponent(category)}`;
     }
