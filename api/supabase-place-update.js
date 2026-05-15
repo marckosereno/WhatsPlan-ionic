@@ -58,8 +58,9 @@ export default async function handler(req, res) {
       fields.subcategory_tags = arr.join(',') || null;
     }
 
-    if (featured !== undefined && featured !== null && featured !== '') {
-      fields.featured = featured === true || featured === 'featured' || featured === 'true';
+    if (featured !== undefined) {
+      // Guardar string directamente: 'featured', 'verified', 'premium', o null
+      fields.featured = featured || null;
     }
 
     // Actualizar en Supabase por place_id
