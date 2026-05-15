@@ -100,6 +100,8 @@ async function renderMapCategories() {
 async function renderAuthButton(user) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
+  // Quitar skeleton cuando el avatar ya cargó
+  btn.classList.remove('avatar-skeleton');
 
   if (!user) {
     btn.style.border = '2px solid rgba(255,255,255,0.6)';
@@ -316,7 +318,7 @@ function setupActivitySubscription(mv) {
     const catsReady = renderMapCategories();
 
     Promise.all([mapReady, catsReady]).then(() => {
-      animatePanelIn(document.getElementById('map-results-panel'));
+      // Panel ya visible desde el HTML — solo hacer setup de categorías
       setupCategories(mv);
 
       // PlaceModal — bottom sheet de detalles
