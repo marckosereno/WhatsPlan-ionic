@@ -1985,13 +1985,15 @@ export class SuperUserPanel {
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
         };
+        console.log('📤 Payload enviado:', JSON.stringify(payload).slice(0, 500));
         const res = await fetch(isEdit ? '/api/supabase-place-update' : '/api/supabase-place-save', {
           method: isEdit ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (!data.success) throw new Error(data.message);
+        console.log('📥 Respuesta:', JSON.stringify(data).slice(0, 300));
+        if (!data.success) throw new Error(data.message || JSON.stringify(data));
         modal.remove();
 
         // Invalidar cache
