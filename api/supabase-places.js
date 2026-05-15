@@ -62,6 +62,10 @@ export default async function handler(req, res) {
         category:                  r.category,
         description:               r.description || '',
         subcategory_tags:          r.subcategory_tags || '',
+        // subcategoryTags como array para filterBySubcat
+        subcategoryTags:           r.subcategory_tags
+          ? r.subcategory_tags.split(',').map(function(t) { return t.trim(); }).filter(Boolean)
+          : [],
         rating:                    r.rating ? parseFloat(r.rating) : null,
         userRatingCount:           r.user_ratings_total || 0,
         formattedAddress:          r.formatted_address || '',
