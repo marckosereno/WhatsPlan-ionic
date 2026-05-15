@@ -18,15 +18,15 @@ export default async function handler(req, res) {
   const cacheKey = (category || 'all') + (include_hidden ? '_hidden' : '');
   const now = Date.now();
 
-  // Limpiar caché si SuperPanel lo solicita tras un update
-  if (_clear_cache) {
+  // Limpiar caché si SuperPanel lo solicita
+  if (_clear_cache || include_hidden) {
     delete cache[cacheKey];
-    delete cache[cacheKey + '_hidden'];
+    delete cache[cacheKey.replace('_hidden','')];
   }
 
-  // Cache hit — solo si no se forzó limpiar
+  // Cache hit — solo para requests normales de usuarios
   if (!include_hidden && !_clear_cache && cache[cacheKey] && (now - cache[cacheKey].timestamp < CACHE_TTL)) {
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+    res.setHeader('Cache-Control', 'no-cache');
     return res.status(200).json({ success: true, places: cache[cacheKey].data, cached: true });
   }
 
@@ -99,10 +99,13 @@ try {
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
-    // Guardar en cache
-    cache[cacheKey] = { data: places, timestamp: now };
-
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+    // Solo cachear requests normales — no SuperPanel ni _clear_cache
+    if (!_clear_cache && !include_hidden) {
+      cache[cacheKey] = { data: places, timestamp: now };
+      res.setHeader('Cache-Control', 'no-cache');
+    } else {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
     res.status(200).json({ success: true, places, count: places.length, category: cacheKey, cached: false });
 
   } catch(error) {
