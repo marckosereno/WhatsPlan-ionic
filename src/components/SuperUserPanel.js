@@ -1091,7 +1091,7 @@ export class SuperUserPanel {
     if (currentCat) {
       try {
         if (listEl) listEl.innerHTML = '<div style="color:#6b7280;font-size:13px;text-align:center;padding:20px;">Cargando lugares...</div>';
-        const res = await fetch('/api/airtable-places?category=' + encodeURIComponent(currentCat) + '&include_hidden=true&_t=' + Date.now());
+        const res = await fetch('/api/supabase-places?category=' + encodeURIComponent(currentCat) + '&include_hidden=true');
         const data = await res.json();
         if (data.success && data.places?.length) {
           places = data.places;
@@ -1255,7 +1255,7 @@ export class SuperUserPanel {
         const nowHidden = place._hidden === true;
         btn.textContent = '⏳';
         try {
-          const res = await fetch('/api/airtable-place-update', {
+          const res = await fetch('/api/supabase-place-update', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ place_id: place.place_id, hidden: !nowHidden }),
@@ -1365,7 +1365,7 @@ export class SuperUserPanel {
     menu.querySelector('.su-del-confirm-yes').addEventListener('click', async () => {
       menu.remove();
       try {
-        const res = await fetch('/api/airtable-place-delete?place_id=' + encodeURIComponent(place.place_id), { method: 'DELETE' });
+        const res = await fetch('/api/supabase-place-delete?place_id=' + encodeURIComponent(place.place_id), { method: 'DELETE' });
         if (!res.ok) throw new Error(await res.text());
         row.remove();
         const mapView = window.wpApp?.mapView;
@@ -1450,7 +1450,7 @@ export class SuperUserPanel {
         const pid = p.place_id || p.placeId;
         if (!pid) { fail++; continue; }
         try {
-          const res = await fetch('/api/airtable-place-update', {
+          const res = await fetch('/api/supabase-place-update', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ place_id: pid, subcategory_tags: tagsArr }),
@@ -1985,7 +1985,7 @@ export class SuperUserPanel {
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
         };
-        const res = await fetch(isEdit ? '/api/airtable-place-update' : '/api/airtable-place-save', {
+        const res = await fetch(isEdit ? '/api/supabase-place-update' : '/api/supabase-place-save', {
           method: isEdit ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
