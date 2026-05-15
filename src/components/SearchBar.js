@@ -436,15 +436,19 @@ export class SearchBar {
       console.log('matched Set tiene', matched.size, 'items, markerEls:', mv.markerEls.length);
     }
 
+    var hitCount = 0;
     mv.markerEls.forEach(function(el) {
       var p   = el._place;
       var key = p && (p.place_id || p.placeId || p.name);
       var hit = matched.has(key);
-      el.style.opacity   = hit ? '1'    : '0.2';
-      el.style.filter    = hit ? 'none' : 'grayscale(1)';
+      if (hit) hitCount++;
+      // Aplicar al elemento raíz Y al pin-root por si hay herencia CSS
+      el.style.setProperty('opacity', hit ? '1' : '0.2', 'important');
+      el.style.setProperty('filter',  hit ? 'none' : 'grayscale(1)', 'important');
       el.style.transform = '';
       el.style.zIndex    = '';
     });
+    console.log('✅ Highlight aplicado:', hitCount, 'hits de', mv.markerEls.length, 'markers');
   }
 
   _highlightSingle(place) {
