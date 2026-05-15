@@ -338,7 +338,7 @@ export class MapView {
     this._clearPlaceMarkers();
     try {
       const _t  = Date.now();
-      const res  = await fetch(`/api/airtable-places?category=${menuKey}&_t=${_t}`);
+      const res  = await fetch(`/api/supabase-places?category=${menuKey}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       let custom = [];
