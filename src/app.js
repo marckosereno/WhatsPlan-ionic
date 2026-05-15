@@ -189,7 +189,11 @@ function filterBySubcat(mv, subcatValue) {
 
   let visible = 0;
   mv.allPlaces.forEach((place, i) => {
-    const tags = place.subcategoryTags || [];
+    // Soportar tanto array como string "tag1,tag2" (formato Supabase)
+    let tags = place.subcategoryTags || place.subcategory_tags || '';
+    if (typeof tags === 'string') {
+      tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
     const match = tags.some(tag => tag.toLowerCase() === subcatValue.toLowerCase());
     if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
     if (match) visible++;
