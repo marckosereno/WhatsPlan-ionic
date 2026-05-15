@@ -409,9 +409,33 @@ export class SearchBar {
   _highlightMarkers(matches) {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
-    var matched = new Set(matches.map(function(p) {
-      return p.place_id || p.placeId || p.name;
-    }));
+
+    // Debug — ver qué keys hay en matches vs markers
+    var matchKeys = matches.map(function(p) { return p.place_id || p.placeId || p.name; });
+    var matched   = new Set(matchKeys);
+
+    // Loggear primer match y primer marker para comparar
+    if (matches.length > 0) {
+      var firstMatch = matches[0];
+      console.log('🔍 HIGHLIGHT DEBUG — primer match:', {
+        place_id:  firstMatch.place_id,
+        placeId:   firstMatch.placeId,
+        name:      firstMatch.name,
+        key_usado: firstMatch.place_id || firstMatch.placeId || firstMatch.name
+      });
+    }
+    if (mv.markerEls.length > 0) {
+      var firstEl = mv.markerEls[0];
+      var firstP  = firstEl._place;
+      console.log('🗺️ HIGHLIGHT DEBUG — primer marker._place:', {
+        place_id: firstP && firstP.place_id,
+        placeId:  firstP && firstP.placeId,
+        name:     firstP && firstP.name,
+        key_usado: firstP && (firstP.place_id || firstP.placeId || firstP.name)
+      });
+      console.log('matched Set tiene', matched.size, 'items, markerEls:', mv.markerEls.length);
+    }
+
     mv.markerEls.forEach(function(el) {
       var p   = el._place;
       var key = p && (p.place_id || p.placeId || p.name);
