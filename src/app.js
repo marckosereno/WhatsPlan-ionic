@@ -373,6 +373,24 @@ function setupActivitySubscription(mv) {
           else searchBar.activate();
         });
       }
+
+      // +Actividad — función próximamente
+      const actBtn = document.getElementById('topbar-activity-btn');
+      if (actBtn) {
+        actBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          console.log('+ Actividad — próximamente');
+        });
+      }
+
+      // Mensajes — función próximamente
+      const msgBtn = document.getElementById('topbar-messages-btn');
+      if (msgBtn) {
+        msgBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          console.log('Mensajes — próximamente');
+        });
+      }
     });
 
     console.log('✅ WhatsPlan listo');
