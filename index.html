@@ -35,6 +35,15 @@
       padding: 0; position: relative;
     }
     #topbar-auth-btn:active { transform: scale(0.9); }
+    @keyframes avatar-shimmer {
+      0%   { background-position: -200px 0; }
+      100% { background-position:  200px 0; }
+    }
+    #topbar-auth-btn.avatar-skeleton {
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background-size: 400px 100%;
+      animation: avatar-shimmer 1.4s ease-in-out infinite;
+    }
   </style>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
@@ -70,10 +79,10 @@
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       </button>
-      <button id="topbar-auth-btn" title="Mi perfil / Login"></button>
+      <button id="topbar-auth-btn" title="Mi perfil / Login" class="avatar-skeleton"></button>
     </div>
 
-    <div id="map-results-panel" class="map-results-panel-float" style="opacity:0">
+    <div id="map-results-panel" class="map-results-panel-float" style="opacity:1">
       <!-- Fila subcategorías: GPS (primer chip) + chips en scroll horizontal -->
       <div class="panel-scroll-wrap">
         <div id="map-subcategories-footer" class="panel-subcats-scroll">
