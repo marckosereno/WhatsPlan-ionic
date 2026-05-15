@@ -9,22 +9,28 @@ const SUPABASE_SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY; // server-side k
 
 // Caché en memoria — por si hay cold starts frecuentes
 const cache = {};
-const CACHE_TTL = 60 * 60 * 1000; // 1 hora
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { category, include_hidden } = req.query;
+  const { category, include_hidden, _clear_cache } = req.query;
   const cacheKey = (category || 'all') + (include_hidden ? '_hidden' : '');
   const now = Date.now();
 
-  // Cache hit
-  if (!include_hidden && cache[cacheKey] && (now - cache[cacheKey].timestamp < CACHE_TTL)) {
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+  // Limpiar caché si SuperPanel lo solicita tras un update
+  if (_clear_cache) {
+    delete cache[cacheKey];
+    delete cache[cacheKey + '_hidden'];
+  }
+
+  // Cache hit — solo si no se forzó limpiar
+  if (!include_hidden && !_clear_cache && cache[cacheKey] && (now - cache[cacheKey].timestamp < CACHE_TTL)) {
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
     return res.status(200).json({ success: true, places: cache[cacheKey].data, cached: true });
   }
 
-  try {
+try {
     // Construir query a Supabase REST API
     const hiddenFilter = include_hidden ? '' : '&hidden=eq.false';
     // featured es text: ordenar nulls al final, luego por rating
@@ -96,7 +102,7 @@ export default async function handler(req, res) {
     // Guardar en cache
     cache[cacheKey] = { data: places, timestamp: now };
 
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
     res.status(200).json({ success: true, places, count: places.length, category: cacheKey, cached: false });
 
   } catch(error) {
