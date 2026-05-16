@@ -145,28 +145,28 @@ export class SearchBar {
     var chipInitW = chipRect ? chipRect.width : 120;
     var targetW   = window.innerWidth - 24;
 
-    // ── 1. +Actividad: solo fade out sin ningún movimiento ──
+    // ── 1. +Actividad: solo opacity, sin transform de ningún tipo ──
     if (actBtn) {
+      if (gsap) gsap.killTweensOf(actBtn);
+      // Limpiar cualquier transform residual primero
+      actBtn.style.transform = '';
+      actBtn.style.willChange = 'opacity';
       if (gsap) {
-        gsap.killTweensOf(actBtn);
-        gsap.to(actBtn, { opacity: 0, duration: 0.15, ease: 'power2.in',
-          onComplete: function() {
-            actBtn.style.visibility = 'hidden';
-            actBtn.style.opacity    = '';
-          }
+        gsap.to(actBtn, { opacity: 0, duration: 0.12, ease: 'power1.in',
+          onComplete: function() { actBtn.style.visibility = 'hidden'; actBtn.style.opacity = '1'; actBtn.style.willChange = ''; }
         });
       } else { actBtn.style.visibility = 'hidden'; }
     }
 
     // ── 2. Ocultar msg/avatar/searchIcon ──
-    if (msgBtn)    msgBtn.style.display    = 'none';
-    if (authBtn)   authBtn.style.display   = 'none';
-    if (searchBtn) searchBtn.style.display = 'none';
+    if (msgBtn)    { msgBtn.style.display    = 'none'; }
+    if (authBtn)   { authBtn.style.display   = 'none'; }
+    if (searchBtn) { searchBtn.style.display = 'none'; }
 
     // ── 3. Inyectar contenido ──
     var inner = document.createElement('div');
     inner.id  = 'wps-inner';
-    inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;transform:translateX(10px);';
+    inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;';
     inner.innerHTML =
       '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
@@ -203,23 +203,24 @@ export class SearchBar {
       chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
       chip.style.left     = 'auto';
       chip.style.width    = chipInitW + 'px';
+      chip.style.zIndex   = '99999';
     }
 
-    // ── 5. Animación más rápida ──
+    // ── 5. Animación ultra rápida ──
     if (chip && gsap) {
       gsap.timeline()
-        .to(chip,     { width: targetW, duration: 0.28, ease: 'expo.out' })
-        .to(inner,    { opacity: 1, x: 0, duration: 0.18, ease: 'power2.out', clearProps: 'transform' }, '-=0.14')
-        .to(filterBtn,{ opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(3)' }, '-=0.08')
-        .to(closeBtn, { opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(3)',
+        .to(chip,      { width: targetW, duration: 0.22, ease: 'expo.out' })
+        .to(inner,     { opacity: 1, duration: 0.14, ease: 'power2.out' }, '-=0.1')
+        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.18, ease: 'back.out(3)' }, '-=0.06')
+        .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.18, ease: 'back.out(3)',
           onComplete: function() {
             var inp = document.getElementById('wps-input');
-            if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 20); }
+            if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 10); }
           }
-        }, '-=0.16');
+        }, '-=0.12');
     } else if (chip) {
       chip.style.width = targetW + 'px';
-      inner.style.opacity = '1'; inner.style.transform = '';
+      inner.style.opacity = '1';
       filterBtn.style.opacity = '1'; filterBtn.style.transform = '';
       closeBtn.style.opacity  = '1'; closeBtn.style.transform  = '';
     }
@@ -258,7 +259,7 @@ export class SearchBar {
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 400);
+    }, 350);
   }
 
   _hideOverlay() {
@@ -277,21 +278,21 @@ export class SearchBar {
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
       if (chip) {
-        chip.style.position = '';
-        chip.style.top = ''; chip.style.right = '';
-        chip.style.left = ''; chip.style.width = '';
+        chip.style.position = ''; chip.style.top = '';
+        chip.style.right = ''; chip.style.left = '';
+        chip.style.width = ''; chip.style.zIndex = '';
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn)    msgBtn.style.display    = '';
       if (authBtn)   authBtn.style.display   = '';
-      // +Actividad regresa con fade — sin salto vertical
       if (actBtn) {
+        if (gsap) gsap.killTweensOf(actBtn);
+        actBtn.style.transform  = '';
         actBtn.style.visibility = '';
         if (gsap) {
-          gsap.killTweensOf(actBtn);
           gsap.fromTo(actBtn,
             { opacity: 0 },
-            { opacity: 1, duration: 0.22, ease: 'power2.out', clearProps: 'all' }
+            { opacity: 1, duration: 0.18, ease: 'power2.out', clearProps: 'opacity' }
           );
         }
       }
@@ -300,12 +301,10 @@ export class SearchBar {
     if (chip && gsap) {
       gsap.timeline()
         .to([filterEl, closeEl].filter(Boolean), {
-          opacity: 0, scale: 0.3, duration: 0.14, ease: 'power2.in', stagger: 0.03
+          opacity: 0, scale: 0.3, duration: 0.1, ease: 'power2.in', stagger: 0.02
         })
-        .to(inner, { opacity: 0, x: 8, duration: 0.12, ease: 'power2.in' }, '-=0.06')
-        .to(chip,  { width: '', duration: 0.26, ease: 'expo.in',
-          onComplete: restoreAll
-        }, '-=0.06');
+        .to(inner, { opacity: 0, duration: 0.1, ease: 'power2.in' }, '-=0.05')
+        .to(chip,  { width: '', duration: 0.2, ease: 'expo.in', onComplete: restoreAll }, '-=0.05');
     } else {
       restoreAll();
     }
