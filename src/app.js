@@ -393,14 +393,6 @@ function setupActivitySubscription(mv) {
       }
     });
 
-    // Al volver a la app desde background, cerrar búsqueda si estaba activa
-    document.addEventListener('visibilitychange', function() {
-      if (!document.hidden) {
-        var sb = window.wpApp && window.wpApp.searchBar;
-        if (sb && sb.isActive()) sb.deactivate();
-      }
-    });
-
     console.log('✅ WhatsPlan listo');
   } catch(err) {
     console.error('❌ Error crítico:', err.message, err.stack);
