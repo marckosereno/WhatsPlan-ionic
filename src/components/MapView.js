@@ -571,26 +571,37 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Centrar el pin en el área visible considerando:
-      // 1. Barra de búsqueda arriba (~68px)
-      // 2. Panel de categorías abajo (~120px)  
-      // 3. Teclado virtual si está abierto
-      // Usamos visualViewport para el área realmente visible
-      const vv = window.visualViewport;
-      const visibleTop    = vv ? vv.offsetTop : 0;
-      const visibleHeight = vv ? vv.height : window.innerHeight;
-      const topUI    = 68;  // barra de búsqueda
-      const bottomUI = 120; // panel categorías
-      // Centro del área útil (entre topUI y bottomUI)
-      const usableH  = visibleHeight - topUI - bottomUI;
-      // Queremos el pin en el 60% desde arriba del área útil
-      // para que la minicard (que sale encima) quede centrada
-      const pinTargetY = visibleTop + topUI + (usableH * 0.65);
-      // Centro del canvas del mapa
-      const mapH = this.map.getCanvas().clientHeight;
-      const mapCenterY = mapH / 2;
-      // offset = diferencia entre donde queremos el pin y el centro del canvas
-      const offsetY = pinTargetY - mapCenterY;
+      // Obtener posiciones reales de los elementos UI
+      const searchBar = document.getElementById('topbar-right-chip');
+      const panel     = document.getElementById('map-results-panel');
+      const vv        = window.visualViewport;
+
+      // Área visible real (visualViewport excluye teclado en ambos Chrome y WebView)
+      const visibleH = vv ? vv.height : window.innerHeight;
+
+      // Borde superior: bottom de la barra de búsqueda
+      const topEdge = searchBar
+        ? searchBar.getBoundingClientRect().bottom + 8
+        : 68;
+
+      // Borde inferior: top del panel O top del teclado
+      const panelRect = panel && panel.style.display !== 'none'
+        ? panel.getBoundingClientRect().top
+        : visibleH;
+      const bottomEdge = Math.min(panelRect - 8, visibleH - 8);
+
+      // Centro del área útil
+      const areaCenterY = topEdge + (bottomEdge - topEdge) / 2;
+
+      // La minicard aparece 45px encima del pin
+      // Entonces queremos el pin en areaCenterY + mitad de minicard (~45px)
+      const minicardH  = 90;
+      const pinTargetY = areaCenterY + (minicardH / 2);
+
+      // Offset respecto al centro del canvas del mapa
+      const mapH      = this.map.getCanvas().clientHeight;
+      const offsetY   = pinTargetY - (mapH / 2);
+
       this.map.easeTo({
         center: [lng, lat],
         duration: 300,
