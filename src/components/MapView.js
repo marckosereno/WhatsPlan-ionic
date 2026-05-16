@@ -571,29 +571,16 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Calcular offset usando posiciones reales del DOM
-      const vv       = window.visualViewport;
-      const visibleH = vv ? vv.height : window.innerHeight;
-      const mapH     = this.map.getCanvas().clientHeight;
+      const vv  = window.visualViewport;
+      const mapH = this.map.getCanvas().clientHeight;
 
-      // Top edge: bottom de la barra de búsqueda
-      const chip    = document.getElementById('topbar-right-chip');
-      const topEdge = chip ? chip.getBoundingClientRect().bottom + 8 : 68;
+      // Teclado abierto: visualViewport.height < window.innerHeight
+      const kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
-      // Bottom edge: SIEMPRE usar visualViewport height
-      // ignorar cualquier panel flotante que pueda interferir
-      const bottomEdge = visibleH - 8;
-
-      // Centro del área útil
-      const areaCenterY = topEdge + (bottomEdge - topEdge) / 2;
-
-      // Pin target: centro del área - mitad de minicard
-      // minicard tiene 90px y aparece 45px arriba del pin
-      const pinTargetY = areaCenterY + 45;
-
-      const offsetY = pinTargetY - (mapH / 2);
-
-      console.log('minicard offset:', {topEdge, bottomEdge, areaCenterY, pinTargetY, mapH, offsetY, visibleH});
+      // Sin teclado: offset 0 (centrado normal)
+      // Con teclado: mover el centro del mapa hacia arriba en kbH/2
+      // para que el pin quede en el área visible sobre el teclado
+      const offsetY = kbH > 100 ? -(kbH / 2) : 0;
 
       this.map.easeTo({
         center: [lng, lat],
