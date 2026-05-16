@@ -23,15 +23,11 @@ export class SearchBar {
   activate() {
     if (this._active) return;
     this._active = true;
-    var gsap   = window.gsap;
-    var topbar = document.getElementById('topbar');
-    var panel  = document.getElementById('map-results-panel');
+    var gsap  = window.gsap;
+    var panel = document.getElementById('map-results-panel');
 
-    if (topbar) {
-      topbar.style.pointerEvents = 'none';
-      if (gsap) gsap.to(topbar, { x: 120, opacity: 0, duration: 0.2, ease: 'power2.in' });
-      else { topbar.style.transform = 'translateX(120px)'; topbar.style.opacity = '0'; }
-    }
+    // Topbar NO se oculta — el chip se expande in-place
+    // Solo ocultar el panel
     if (panel) {
       panel.style.pointerEvents = 'none';
       if (gsap) gsap.to(panel, { y: 40, opacity: 0, duration: 0.18, ease: 'power2.in',
@@ -54,11 +50,9 @@ export class SearchBar {
     var topbar = document.getElementById('topbar');
     var panel  = document.getElementById('map-results-panel');
 
-    if (topbar) {
-      topbar.style.pointerEvents = '';
-      if (gsap) gsap.to(topbar, { x: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'all' });
-      else { topbar.style.transform = ''; topbar.style.opacity = ''; }
-    }
+    // Topbar nunca se ocultó — solo restaurar pointer events
+    var topbar = document.getElementById('topbar');
+    if (topbar) topbar.style.pointerEvents = '';
     if (panel) {
       panel.style.display = '';
       panel.style.pointerEvents = '';
