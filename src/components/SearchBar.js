@@ -177,32 +177,37 @@ export class SearchBar {
       chip.appendChild(closeBtn);
     }
 
-    // 4. Expandir chip al ancho del topbar
-    if (chip && topbar) {
-      var targetW = topbar.getBoundingClientRect().width;
+    // 4. Expandir chip al ancho completo — desde posición actual hasta left:0
+    if (chip) {
       chip.style.transition = 'none';
+      // Calcular ancho target = pantalla - 12px*2 (márgenes del topbar)
+      var targetW = window.innerWidth - 24;
 
       if (gsap) {
-        setTimeout(function() {
-          gsap.to(chip, {
+        // Secuencia: primero ocultar msg/avatar, luego expandir con spring
+        gsap.timeline()
+          .to(chip, {
             width: targetW + 'px',
-            duration: 0.38, ease: 'power3.out',
-            onComplete: function() {
-              // Mostrar input y close
-              if (gsap) gsap.to(inner, { opacity: 1, duration: 0.2 });
-              else inner.style.opacity = '1';
+            duration: 0.5,
+            ease: 'expo.out',
+            delay: 0.1,
+          })
+          .to(inner, {
+            opacity: 1,
+            duration: 0.25,
+            ease: 'power2.out',
+            onStart: function() {
+              if (searchBtn) searchBtn.style.display = 'none';
               closeBtn.style.opacity = '1';
-              // Ocultar search icon
-              if (searchBtn) { searchBtn.style.display = 'none'; }
-              // Focus input
-              var input = document.getElementById('wps-input');
-              if (input) {
-                input.removeAttribute('readonly');
-                setTimeout(function() { input.focus(); }, 50);
-              }
+            }
+          }, '-=0.1')
+          .add(function() {
+            var input = document.getElementById('wps-input');
+            if (input) {
+              input.removeAttribute('readonly');
+              setTimeout(function() { input.focus(); }, 30);
             }
           });
-        }, 180); // After msg/avatar fade
       } else {
         chip.style.width = targetW + 'px';
         inner.style.opacity = '1';
