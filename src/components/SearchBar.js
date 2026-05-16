@@ -141,34 +141,36 @@ export class SearchBar {
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
 
+    // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
     var chipRect  = chip ? chip.getBoundingClientRect() : null;
     var chipInitW = chipRect ? chipRect.width : 120;
     var targetW   = window.innerWidth - 24;
 
-    // ── 1. +Actividad: desactivar transitions CSS primero, luego animar ──
-    if (actBtn) {
-      if (gsap) gsap.killTweensOf(actBtn);
-      // Desactivar transition CSS para evitar saltos
-      actBtn.style.transition = 'none';
-      actBtn.style.transform  = 'none';
-      // Forzar reflow
-      actBtn.getBoundingClientRect();
-      // Ahora animar solo con CSS sin transform
-      actBtn.style.transition = 'opacity 0.16s linear';
-      actBtn.style.opacity    = '0';
-      setTimeout(function() {
-        actBtn.style.display = 'none';
-        actBtn.style.transition = '';
-        actBtn.style.opacity = '';
-      }, 160);
+    if (chip && chipRect) {
+      chip.style.position = 'fixed';
+      chip.style.top      = chipRect.top + 'px';
+      chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
+      chip.style.left     = 'auto';
+      chip.style.width    = chipInitW + 'px';
+      chip.style.zIndex   = '99999';
     }
 
-    // ── 2. Marcar y ocultar msg/avatar ──
-    if (msgBtn)  { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
-    if (authBtn) { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
+    // ── PASO 1: Ahora sí ocultar actBtn — el chip ya está fijo, no se moverá ──
+    if (actBtn) {
+      // Quitar TODA transición CSS antes de manipular
+      actBtn.style.transition = 'none';
+      actBtn.style.transform  = 'none';
+      actBtn.getBoundingClientRect(); // reflow
+      actBtn.style.opacity = '0';
+      setTimeout(function() { actBtn.style.display = 'none'; }, 16);
+    }
+
+    // ── PASO 2: Ocultar msg/avatar ──
+    if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
+    if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
     if (searchBtn) searchBtn.style.display = 'none';
 
-    // ── 3. Inyectar contenido ──
+    // ── PASO 3: Inyectar contenido ──
     var inner = document.createElement('div');
     inner.id  = 'wps-inner';
     inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;';
@@ -201,17 +203,7 @@ export class SearchBar {
       chip.appendChild(closeBtn);
     }
 
-    // ── 4. Fijar chip con position:fixed ──
-    if (chip && chipRect) {
-      chip.style.position = 'fixed';
-      chip.style.top      = chipRect.top + 'px';
-      chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
-      chip.style.left     = 'auto';
-      chip.style.width    = chipInitW + 'px';
-      chip.style.zIndex   = '99999';
-    }
-
-    // ── 5. Animación ──
+    // ── PASO 4: Animar expansión ──
     if (chip && gsap) {
       gsap.timeline()
         .to(chip,      { width: targetW, duration: 0.2,  ease: 'expo.out' })
@@ -230,7 +222,7 @@ export class SearchBar {
       closeBtn.style.opacity  = '1'; closeBtn.style.transform  = '';
     }
 
-    // ── 6. Eventos ──
+    // ── PASO 5: Eventos ──
     setTimeout(function() {
       var input      = document.getElementById('wps-input');
       var clearBtnEl = document.getElementById('wps-clear');
@@ -290,17 +282,20 @@ export class SearchBar {
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
       if (authBtn && authBtn.dataset.wpHidden) { authBtn.style.display = ''; delete authBtn.dataset.wpHidden; }
-
-      // +Actividad: mostrar con display flex primero, luego fade in
+      // +Actividad: restore display, sin transform
       if (actBtn) {
         if (gsap) gsap.killTweensOf(actBtn);
         actBtn.style.transition = 'none';
         actBtn.style.opacity    = '0';
+        actBtn.style.transform  = 'none';
         actBtn.style.display    = '';
-        actBtn.getBoundingClientRect(); // reflow
-        actBtn.style.transition = 'opacity 0.2s linear';
+        actBtn.getBoundingClientRect();
+        actBtn.style.transition = 'opacity 0.2s';
         actBtn.style.opacity    = '';
-        setTimeout(function() { actBtn.style.transition = ''; }, 220);
+        setTimeout(function() {
+          actBtn.style.transition = '';
+          actBtn.style.transform  = '';
+        }, 220);
       }
     };
 
