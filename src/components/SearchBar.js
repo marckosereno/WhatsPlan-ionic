@@ -141,15 +141,17 @@ export class SearchBar {
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
 
-    // Guardar ancho inicial del chip
-    var chipInitW = chip ? chip.getBoundingClientRect().width : 120;
-    // Target = mismo ancho que tenia el overlay anterior (pantalla - 24px)
+    var chipRect  = chip ? chip.getBoundingClientRect() : null;
+    var chipInitW = chipRect ? chipRect.width : 120;
     var targetW   = window.innerWidth - 24;
 
-    // ── 1. Fade out +Actividad con slide ──────────────────
+    // ── 1. +Actividad slide hacia la izquierda y desaparece ──
     if (actBtn && gsap) {
-      gsap.to(actBtn, { x: -8, opacity: 0, duration: 0.18, ease: 'power2.in',
-        onComplete: function() { actBtn.style.visibility = 'hidden'; actBtn.style.transform = ''; }
+      gsap.to(actBtn, { x: -24, opacity: 0, duration: 0.22, ease: 'power3.in',
+        onComplete: function() {
+          actBtn.style.visibility = 'hidden';
+          gsap.set(actBtn, { clearProps: 'x,opacity' });
+        }
       });
     } else if (actBtn) { actBtn.style.visibility = 'hidden'; }
 
@@ -161,7 +163,7 @@ export class SearchBar {
     // ── 3. Inyectar contenido ─────────────────────────────
     var inner = document.createElement('div');
     inner.id  = 'wps-inner';
-    inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;transform:translateX(8px);';
+    inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;transform:translateX(10px);';
     inner.innerHTML =
       '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
@@ -173,18 +175,16 @@ export class SearchBar {
         '</svg></button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>';
 
-    // Botón filtro
     var filterBtn = document.createElement('button');
     filterBtn.id = 'wps-filter-chip';
     filterBtn.className = 'topbar-icon-btn';
-    filterBtn.style.cssText = 'opacity:0;transform:scale(0.4);flex-shrink:0;';
+    filterBtn.style.cssText = 'opacity:0;transform:scale(0.3);flex-shrink:0;';
     filterBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="#374151"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg>';
 
-    // Botón cerrar
     var closeBtn = document.createElement('button');
     closeBtn.id = 'wps-close-chip';
     closeBtn.className = 'topbar-icon-btn';
-    closeBtn.style.cssText = 'opacity:0;transform:scale(0.4);flex-shrink:0;font-size:15px;font-weight:700;color:#374151;';
+    closeBtn.style.cssText = 'opacity:0;transform:scale(0.3);flex-shrink:0;font-size:15px;font-weight:700;color:#374151;';
     closeBtn.textContent = '✕';
 
     if (chip) {
@@ -193,43 +193,27 @@ export class SearchBar {
       chip.appendChild(closeBtn);
     }
 
-    // ── 4. ANIMACIÓN PRINCIPAL ────────────────────────────
-    // Fijar chip a la derecha con position fixed para que crezca hacia la izquierda
-    if (chip) {
-      var chipRect2 = chip.getBoundingClientRect();
+    // ── 4. Fijar chip con position:fixed anclado a la derecha ──
+    if (chip && chipRect) {
       chip.style.position = 'fixed';
-      chip.style.top      = chipRect2.top + 'px';
-      chip.style.right    = (window.innerWidth - chipRect2.right) + 'px';
+      chip.style.top      = chipRect.top + 'px';
+      chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
       chip.style.left     = 'auto';
       chip.style.width    = chipInitW + 'px';
     }
 
+    // ── 5. ANIMACIÓN — más rápida y fluida ────────────────
     if (chip && gsap) {
       gsap.timeline()
-        .fromTo(chip,
-          { width: chipInitW },
-          { width: targetW, duration: 0.55, ease: 'expo.out' }
-        )
-        // Input aparece con slide desde la derecha
-        .to(inner,
-          { opacity: 1, x: 0, duration: 0.3, ease: 'power3.out',
-            clearProps: 'transform' },
-          '-=0.2'
-        )
-        // Botones aparecen con pop elástico en cascada
-        .to(filterBtn,
-          { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(2.5)' },
-          '-=0.1'
-        )
-        .to(closeBtn,
-          { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(2.5)',
-            onComplete: function() {
-              var inp = document.getElementById('wps-input');
-              if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 30); }
-            }
-          },
-          '-=0.25'
-        );
+        .to(chip, { width: targetW, duration: 0.38, ease: 'expo.out' })
+        .to(inner, { opacity: 1, x: 0, duration: 0.22, ease: 'power2.out', clearProps: 'transform' }, '-=0.18')
+        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(3)' }, '-=0.1')
+        .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(3)',
+          onComplete: function() {
+            var inp = document.getElementById('wps-input');
+            if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 30); }
+          }
+        }, '-=0.2');
     } else if (chip) {
       chip.style.width = targetW + 'px';
       inner.style.opacity = '1'; inner.style.transform = '';
@@ -237,7 +221,7 @@ export class SearchBar {
       closeBtn.style.opacity  = '1'; closeBtn.style.transform  = '';
     }
 
-    // ── 5. Eventos ─────────────────────────────────────────
+    // ── 6. Eventos ────────────────────────────────────────
     setTimeout(function() {
       var input      = document.getElementById('wps-input');
       var clearBtnEl = document.getElementById('wps-clear');
@@ -271,7 +255,7 @@ export class SearchBar {
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 600);
+    }, 500);
   }
 
   _hideOverlay() {
@@ -285,41 +269,56 @@ export class SearchBar {
     var filterEl  = document.getElementById('wps-filter-chip');
     var closeEl   = document.getElementById('wps-close-chip');
 
-    // Remover elementos inyectados
-    if (inner)    inner.remove();
-    if (filterEl) filterEl.remove();
-    if (closeEl)  closeEl.remove();
-
-    // Restaurar botones
-    if (searchBtn) searchBtn.style.display = '';
-    if (msgBtn)    msgBtn.style.display    = '';
-    if (authBtn)   authBtn.style.display   = '';
-
-    // Colapsar chip y restaurar posición
+    // ── Animación inversa ────────────────────────────────
     if (chip && gsap) {
-      gsap.to(chip, { width: '', duration: 0.32, ease: 'power4.in',
-        onComplete: function() {
-          chip.style.position = '';
-          chip.style.top      = '';
-          chip.style.right    = '';
-          chip.style.left     = '';
-          chip.style.width    = '';
-        }
-      });
-    } else if (chip) {
-      chip.style.position = '';
-      chip.style.top = ''; chip.style.right = ''; chip.style.left = '';
-      chip.style.width = '';
+      gsap.timeline()
+        // Botones desaparecen con pop inverso
+        .to([filterEl, closeEl].filter(Boolean), {
+          opacity: 0, scale: 0.3, duration: 0.18, ease: 'power2.in', stagger: 0.04
+        })
+        // Input fade out
+        .to(inner, { opacity: 0, x: 10, duration: 0.16, ease: 'power2.in' }, '-=0.08')
+        // Chip colapsa
+        .to(chip, {
+          width: '',
+          duration: 0.32, ease: 'expo.in',
+          onComplete: function() {
+            // Limpiar elementos inyectados
+            if (inner)    inner.remove();
+            if (filterEl) filterEl.remove();
+            if (closeEl)  closeEl.remove();
+            // Restaurar posición del chip
+            chip.style.position = '';
+            chip.style.top      = '';
+            chip.style.right    = '';
+            chip.style.left     = '';
+            chip.style.width    = '';
+            // Restaurar botones
+            if (searchBtn) searchBtn.style.display = '';
+            if (msgBtn)    msgBtn.style.display    = '';
+            if (authBtn)   authBtn.style.display   = '';
+            // +Actividad regresa desde la izquierda
+            if (actBtn) {
+              actBtn.style.visibility = '';
+              gsap.fromTo(actBtn,
+                { x: -24, opacity: 0 },
+                { x: 0, opacity: 1, duration: 0.28, ease: 'expo.out', clearProps: 'all' }
+              );
+            }
+          }
+        }, '-=0.1');
+    } else {
+      // Sin GSAP
+      if (inner)    inner.remove();
+      if (filterEl) filterEl.remove();
+      if (closeEl)  closeEl.remove();
+      chip.style.position = ''; chip.style.top = ''; chip.style.right = '';
+      chip.style.left = ''; chip.style.width = '';
+      if (searchBtn) searchBtn.style.display = '';
+      if (msgBtn)    msgBtn.style.display    = '';
+      if (authBtn)   authBtn.style.display   = '';
+      if (actBtn)    actBtn.style.visibility = '';
     }
-
-    // Restaurar +Actividad con slide in
-    if (actBtn && gsap) {
-      actBtn.style.visibility = '';
-      gsap.fromTo(actBtn,
-        { x: -12, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.3, ease: 'back.out(1.5)', clearProps: 'all' }
-      );
-    } else if (actBtn) { actBtn.style.visibility = ''; }
 
     if (this._mapClick) { document.removeEventListener('click', this._mapClick); this._mapClick = null; }
   }
