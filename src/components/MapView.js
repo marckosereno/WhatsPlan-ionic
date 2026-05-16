@@ -571,9 +571,22 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Igual que himarco: easeTo simple sin offset ni padding
-      // MapLibre centra el pin en el canvas visible del mapa
-      this.map.easeTo({ center: [lng, lat], duration: 300 });
+      // La minicard aparece ENCIMA del pin (marginTop:-45px + altura minicard ~70px)
+      // Para que quede centrada visualmente, bajar el punto de enfoque
+      // usando padding bottom = mitad del canvas + altura de la minicard
+      var kbH = window.visualViewport
+        ? Math.max(0, window.innerHeight - window.visualViewport.height)
+        : 0;
+      // Con teclado: padding bottom extra para que el pin quede en la mitad inferior
+      // Sin teclado: padding pequeño suficiente para ver la minicard
+      var padBottom = kbH > 100
+        ? Math.round(kbH * 0.5)
+        : 120;
+      this.map.easeTo({
+        center: [lng, lat],
+        duration: 300,
+        padding: { top: 80, bottom: padBottom, left: 20, right: 20 }
+      });
     }
   }
 
