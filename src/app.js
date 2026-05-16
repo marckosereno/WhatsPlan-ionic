@@ -294,8 +294,12 @@ function setupActivitySubscription(mv) {
       console.log('🔐 Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
       appState.setUser(user);
-      await renderAuthButton(user);
-      animateAvatarSwap(document.getElementById('topbar-auth-btn'));
+      // No tocar el avatar si la búsqueda está activa
+      var sb = window.wpApp && window.wpApp.searchBar;
+      if (!sb || !sb.isActive()) {
+        await renderAuthButton(user);
+        animateAvatarSwap(document.getElementById('topbar-auth-btn'));
+      }
       if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
       if (!user && window.wpApp.superPanel) {
         window.wpApp.superPanel.unmount();
