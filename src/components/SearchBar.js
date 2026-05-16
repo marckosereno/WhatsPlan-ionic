@@ -137,73 +137,165 @@ export class SearchBar {
   // ── Overlay ───────────────────────────────────────────────────────
 
   _showOverlay() {
-    var e = document.getElementById('wp-sbar');
-    if (e) e.remove();
-    var count   = this._getCount();
-    var overlay = document.createElement('div');
-    overlay.id  = 'wp-sbar';
-    overlay.innerHTML =
-      '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
-      '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="wps' + Date.now() + '" readonly>' +
-      '<button id="wps-clear" class="wps-clear" aria-label="Limpiar"><svg viewBox="0 0 14 14" width="10" height="10" fill="white"><path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>' +
-      '<span id="wps-count" class="wps-count">' + count + '</span>' +
-      '<button id="wps-filter" class="wps-filter" title="Filtros"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg></button>' +
-      '<button id="wps-close" class="wps-close">✕</button>';
-    document.body.appendChild(overlay);
-
     var self  = this;
-    var input = document.getElementById('wps-input');
+    var count = this._getCount();
+    var gsap  = window.gsap;
+
+    var actBtn  = document.getElementById('topbar-activity-btn');
+    var chip    = document.getElementById('topbar-right-chip');
+    var msgBtn  = document.getElementById('topbar-messages-btn');
+    var authBtn = document.getElementById('topbar-auth-btn');
+    var topbar  = document.getElementById('topbar');
+
+    // 1. Slide out +Actividad hacia la izquierda
+    if (actBtn) {
+      if (gsap) {
+        gsap.to(actBtn, { x: -20, opacity: 0, duration: 0.2, ease: 'power2.in',
+          onComplete: function() { actBtn.style.visibility = 'hidden'; }
+        });
+      } else { actBtn.style.visibility = 'hidden'; }
+    }
+
+    // 2. Ocultar mensajes y avatar — fade out
+    if (msgBtn) { msgBtn.style.transition = 'opacity 0.15s'; msgBtn.style.opacity = '0'; setTimeout(function() { msgBtn.style.display = 'none'; msgBtn.style.opacity = ''; msgBtn.style.transition = ''; }, 150); }
+    if (authBtn) { authBtn.style.transition = 'opacity 0.15s'; authBtn.style.opacity = '0'; setTimeout(function() { authBtn.style.display = 'none'; authBtn.style.opacity = ''; authBtn.style.transition = ''; }, 150); }
+
+    // 3. Inyectar contenido de búsqueda en el chip
+    var inner = document.createElement('div');
+    inner.id  = 'wps-inner';
+    inner.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;min-width:0;opacity:0;overflow:hidden;';
+    inner.innerHTML =
+      '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
+      '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
+      '<button id="wps-clear" class="wps-clear" aria-label="Limpiar"><svg viewBox="0 0 14 14" width="10" height="10" fill="white"><path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>' +
+      '<span id="wps-count" class="wps-count">' + count + '</span>';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.id = 'wps-close-chip';
+    closeBtn.className = 'topbar-icon-btn wps-close-chip-btn';
+    closeBtn.style.cssText = 'opacity:0;transition:opacity 0.2s;flex-shrink:0;';
+    closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+    // Insert before the search button
+    var searchBtn = document.getElementById('topbar-search-btn');
+    if (chip && searchBtn) {
+      chip.insertBefore(inner, searchBtn);
+      chip.appendChild(closeBtn);
+    }
+
+    // 4. Expandir chip al ancho del topbar
+    if (chip && topbar) {
+      var targetW = topbar.getBoundingClientRect().width;
+      chip.style.transition = 'none';
+
+      if (gsap) {
+        setTimeout(function() {
+          gsap.to(chip, {
+            width: targetW + 'px',
+            duration: 0.38, ease: 'power3.out',
+            onComplete: function() {
+              // Mostrar input y close
+              if (gsap) gsap.to(inner, { opacity: 1, duration: 0.2 });
+              else inner.style.opacity = '1';
+              closeBtn.style.opacity = '1';
+              // Ocultar search icon
+              if (searchBtn) { searchBtn.style.display = 'none'; }
+              // Focus input
+              var input = document.getElementById('wps-input');
+              if (input) {
+                input.removeAttribute('readonly');
+                setTimeout(function() { input.focus(); }, 50);
+              }
+            }
+          });
+        }, 180); // After msg/avatar fade
+      } else {
+        chip.style.width = targetW + 'px';
+        inner.style.opacity = '1';
+        closeBtn.style.opacity = '1';
+        if (searchBtn) searchBtn.style.display = 'none';
+      }
+    }
+
+    // 5. Wire eventos
     setTimeout(function() {
-      input.removeAttribute('readonly');
-      input.blur();
-      requestAnimationFrame(function() { input.focus(); });
-    }, 50);
+      var input   = document.getElementById('wps-input');
+      var clearBtn = document.getElementById('wps-clear');
+      if (!input) return;
 
-    var clearBtn = document.getElementById('wps-clear');
-    input.addEventListener('input', function(ev) {
-      clearBtn.classList.toggle('visible', input.value.length > 0);
-      self._onInput(ev.target.value);
-    });
-    // También escuchar 'search' por si el browser usa su clear nativo
-    input.addEventListener('search', function() {
-      clearBtn.classList.toggle('visible', input.value.length > 0);
-      self._onInput(input.value);
-    });
-    input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
+      input.addEventListener('input', function(ev) {
+        if (clearBtn) clearBtn.classList.toggle('visible', input.value.length > 0);
+        self._onInput(ev.target.value);
+      });
+      input.addEventListener('search', function() {
+        if (clearBtn) clearBtn.classList.toggle('visible', input.value.length > 0);
+        self._onInput(input.value);
+      });
+      input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          input.value = '';
+          clearBtn.classList.remove('visible');
+          input.focus();
+          self._onInput('');
+        });
+      }
+      var closeBtnEl = document.getElementById('wps-close-chip');
+      if (closeBtnEl) closeBtnEl.addEventListener('click', function(ev) { ev.stopPropagation(); self.deactivate(); });
 
-    clearBtn.addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      input.value = '';
-      clearBtn.classList.remove('visible');
-      input.focus();
-      self._onInput('');
-    });
-
-    document.getElementById('wps-close').addEventListener('click', function(ev) {
-      ev.stopPropagation(); self.deactivate();
-    });
-    document.getElementById('wps-filter').addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      console.log('🔧 Filtros próximamente');
-    });
-
-    setTimeout(function() {
       self._mapClick = function(ev) {
-        var bar = document.getElementById('wp-sbar');
-        var res = document.getElementById('wp-sresults');
-        if (bar && bar.contains(ev.target)) return;
-        if (res && res.contains(ev.target)) return;
+        var chip = document.getElementById('topbar-right-chip');
+        var res  = document.getElementById('wp-sresults');
+        if (chip && chip.contains(ev.target)) return;
+        if (res  && res.contains(ev.target)) return;
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 300);
+    }, 600);
   }
 
   _hideOverlay() {
-    var o = document.getElementById('wp-sbar');
-    if (o) o.remove();
+    var gsap    = window.gsap;
+    var chip    = document.getElementById('topbar-right-chip');
+    var actBtn  = document.getElementById('topbar-activity-btn');
+    var msgBtn  = document.getElementById('topbar-messages-btn');
+    var authBtn = document.getElementById('topbar-auth-btn');
+    var searchBtn = document.getElementById('topbar-search-btn');
+    var inner   = document.getElementById('wps-inner');
+    var closeChip = document.getElementById('wps-close-chip');
+
+    // Remove injected elements
+    if (inner) inner.remove();
+    if (closeChip) closeChip.remove();
+
+    // Restore search icon
+    if (searchBtn) searchBtn.style.display = '';
+
+    // Restore msg and avatar
+    if (msgBtn) { msgBtn.style.display = ''; }
+    if (authBtn) { authBtn.style.display = ''; }
+
+    // Collapse chip back
+    if (chip) {
+      if (gsap) {
+        gsap.to(chip, { width: '', duration: 0.28, ease: 'power3.in', clearProps: 'width' });
+      } else {
+        chip.style.width = '';
+      }
+    }
+
+    // Restore +Actividad
+    if (actBtn) {
+      actBtn.style.visibility = '';
+      if (gsap) {
+        gsap.fromTo(actBtn, { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.28, ease: 'power2.out', clearProps: 'all' });
+      }
+    }
+
     if (this._mapClick) { document.removeEventListener('click', this._mapClick); this._mapClick = null; }
   }
+
 
   // ── Input ─────────────────────────────────────────────────────────
 
@@ -600,16 +692,10 @@ export class SearchBar {
         to   { opacity:1; transform:translateY(0); }
       }
 
-      #wp-sbar {
-        position:fixed;
-        top:calc(12px + env(safe-area-inset-top,0px));
-        left:12px; right:12px;
-        z-index:99999;
-        background:white; border-radius:50px; height:48px;
-        display:flex; align-items:center; gap:8px; padding:0 14px;
-        box-shadow:0 4px 20px rgba(0,0,0,0.15);
-        animation:wpsExpand 0.25s ease;
-      }
+      /* Chip derecho expandible en modo búsqueda */
+      #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
+      #wps-inner { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
+      .wps-close-chip-btn { color:#374151; }
       .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
 
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
