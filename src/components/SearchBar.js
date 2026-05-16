@@ -145,22 +145,25 @@ export class SearchBar {
     var chipInitW = chipRect ? chipRect.width : 120;
     var targetW   = window.innerWidth - 24;
 
-    // ── 1. +Actividad slide hacia la izquierda y desaparece ──
-    if (actBtn && gsap) {
-      gsap.to(actBtn, { x: -24, opacity: 0, duration: 0.22, ease: 'power3.in',
-        onComplete: function() {
-          actBtn.style.visibility = 'hidden';
-          gsap.set(actBtn, { clearProps: 'x,opacity' });
-        }
-      });
-    } else if (actBtn) { actBtn.style.visibility = 'hidden'; }
+    // ── 1. +Actividad: solo fade out sin ningún movimiento ──
+    if (actBtn) {
+      if (gsap) {
+        gsap.killTweensOf(actBtn);
+        gsap.to(actBtn, { opacity: 0, duration: 0.15, ease: 'power2.in',
+          onComplete: function() {
+            actBtn.style.visibility = 'hidden';
+            actBtn.style.opacity    = '';
+          }
+        });
+      } else { actBtn.style.visibility = 'hidden'; }
+    }
 
-    // ── 2. Ocultar msg/avatar/searchIcon ──────────────────
+    // ── 2. Ocultar msg/avatar/searchIcon ──
     if (msgBtn)    msgBtn.style.display    = 'none';
     if (authBtn)   authBtn.style.display   = 'none';
     if (searchBtn) searchBtn.style.display = 'none';
 
-    // ── 3. Inyectar contenido ─────────────────────────────
+    // ── 3. Inyectar contenido ──
     var inner = document.createElement('div');
     inner.id  = 'wps-inner';
     inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;transform:translateX(10px);';
@@ -193,7 +196,7 @@ export class SearchBar {
       chip.appendChild(closeBtn);
     }
 
-    // ── 4. Fijar chip con position:fixed anclado a la derecha ──
+    // ── 4. Fijar chip con position:fixed ──
     if (chip && chipRect) {
       chip.style.position = 'fixed';
       chip.style.top      = chipRect.top + 'px';
@@ -202,18 +205,18 @@ export class SearchBar {
       chip.style.width    = chipInitW + 'px';
     }
 
-    // ── 5. ANIMACIÓN — más rápida y fluida ────────────────
+    // ── 5. Animación más rápida ──
     if (chip && gsap) {
       gsap.timeline()
-        .to(chip, { width: targetW, duration: 0.38, ease: 'expo.out' })
-        .to(inner, { opacity: 1, x: 0, duration: 0.22, ease: 'power2.out', clearProps: 'transform' }, '-=0.18')
-        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(3)' }, '-=0.1')
-        .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(3)',
+        .to(chip,     { width: targetW, duration: 0.28, ease: 'expo.out' })
+        .to(inner,    { opacity: 1, x: 0, duration: 0.18, ease: 'power2.out', clearProps: 'transform' }, '-=0.14')
+        .to(filterBtn,{ opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(3)' }, '-=0.08')
+        .to(closeBtn, { opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(3)',
           onComplete: function() {
             var inp = document.getElementById('wps-input');
-            if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 30); }
+            if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 20); }
           }
-        }, '-=0.2');
+        }, '-=0.16');
     } else if (chip) {
       chip.style.width = targetW + 'px';
       inner.style.opacity = '1'; inner.style.transform = '';
@@ -221,7 +224,7 @@ export class SearchBar {
       closeBtn.style.opacity  = '1'; closeBtn.style.transform  = '';
     }
 
-    // ── 6. Eventos ────────────────────────────────────────
+    // ── 6. Eventos ──
     setTimeout(function() {
       var input      = document.getElementById('wps-input');
       var clearBtnEl = document.getElementById('wps-clear');
@@ -255,7 +258,7 @@ export class SearchBar {
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 500);
+    }, 400);
   }
 
   _hideOverlay() {
@@ -269,55 +272,42 @@ export class SearchBar {
     var filterEl  = document.getElementById('wps-filter-chip');
     var closeEl   = document.getElementById('wps-close-chip');
 
-    // ── Animación inversa ────────────────────────────────
-    if (chip && gsap) {
-      gsap.timeline()
-        // Botones desaparecen con pop inverso
-        .to([filterEl, closeEl].filter(Boolean), {
-          opacity: 0, scale: 0.3, duration: 0.18, ease: 'power2.in', stagger: 0.04
-        })
-        // Input fade out
-        .to(inner, { opacity: 0, x: 10, duration: 0.16, ease: 'power2.in' }, '-=0.08')
-        // Chip colapsa
-        .to(chip, {
-          width: '',
-          duration: 0.32, ease: 'expo.in',
-          onComplete: function() {
-            // Limpiar elementos inyectados
-            if (inner)    inner.remove();
-            if (filterEl) filterEl.remove();
-            if (closeEl)  closeEl.remove();
-            // Restaurar posición del chip
-            chip.style.position = '';
-            chip.style.top      = '';
-            chip.style.right    = '';
-            chip.style.left     = '';
-            chip.style.width    = '';
-            // Restaurar botones
-            if (searchBtn) searchBtn.style.display = '';
-            if (msgBtn)    msgBtn.style.display    = '';
-            if (authBtn)   authBtn.style.display   = '';
-            // +Actividad regresa desde la izquierda
-            if (actBtn) {
-              actBtn.style.visibility = '';
-              gsap.fromTo(actBtn,
-                { x: -24, opacity: 0 },
-                { x: 0, opacity: 1, duration: 0.28, ease: 'expo.out', clearProps: 'all' }
-              );
-            }
-          }
-        }, '-=0.1');
-    } else {
-      // Sin GSAP
+    var restoreAll = function() {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
-      chip.style.position = ''; chip.style.top = ''; chip.style.right = '';
-      chip.style.left = ''; chip.style.width = '';
+      if (chip) {
+        chip.style.position = '';
+        chip.style.top = ''; chip.style.right = '';
+        chip.style.left = ''; chip.style.width = '';
+      }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn)    msgBtn.style.display    = '';
       if (authBtn)   authBtn.style.display   = '';
-      if (actBtn)    actBtn.style.visibility = '';
+      // +Actividad regresa con fade — sin salto vertical
+      if (actBtn) {
+        actBtn.style.visibility = '';
+        if (gsap) {
+          gsap.killTweensOf(actBtn);
+          gsap.fromTo(actBtn,
+            { opacity: 0 },
+            { opacity: 1, duration: 0.22, ease: 'power2.out', clearProps: 'all' }
+          );
+        }
+      }
+    };
+
+    if (chip && gsap) {
+      gsap.timeline()
+        .to([filterEl, closeEl].filter(Boolean), {
+          opacity: 0, scale: 0.3, duration: 0.14, ease: 'power2.in', stagger: 0.03
+        })
+        .to(inner, { opacity: 0, x: 8, duration: 0.12, ease: 'power2.in' }, '-=0.06')
+        .to(chip,  { width: '', duration: 0.26, ease: 'expo.in',
+          onComplete: restoreAll
+        }, '-=0.06');
+    } else {
+      restoreAll();
     }
 
     if (this._mapClick) { document.removeEventListener('click', this._mapClick); this._mapClick = null; }
