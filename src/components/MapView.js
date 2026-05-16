@@ -535,7 +535,7 @@ export class MapView {
     wrapper.style.height   = 'auto';
     wrapper.style.overflow = 'visible';
     wrapper.style.zIndex   = '9999';
-    wrapper.style.marginTop = '-45px';
+    wrapper.style.marginTop = '-30px'; // minicard centrada sobre el pin
 
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
@@ -571,22 +571,7 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // La minicard aparece ENCIMA del pin (marginTop:-45px + altura minicard ~70px)
-      // Para que quede centrada visualmente, bajar el punto de enfoque
-      // usando padding bottom = mitad del canvas + altura de la minicard
-      var kbH = window.visualViewport
-        ? Math.max(0, window.innerHeight - window.visualViewport.height)
-        : 0;
-      // Con teclado: padding bottom extra para que el pin quede en la mitad inferior
-      // Sin teclado: padding pequeño suficiente para ver la minicard
-      var padBottom = kbH > 100
-        ? Math.round(kbH * 0.5)
-        : 120;
-      this.map.easeTo({
-        center: [lng, lat],
-        duration: 300,
-        padding: { top: 80, bottom: padBottom, left: 20, right: 20 }
-      });
+      this.map.easeTo({ center: [lng, lat], duration: 300 });
     }
   }
 
