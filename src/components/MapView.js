@@ -535,7 +535,7 @@ export class MapView {
     wrapper.style.height   = 'auto';
     wrapper.style.overflow = 'visible';
     wrapper.style.zIndex   = '9999';
-    wrapper.style.marginTop = '-30px'; // minicard centrada sobre el pin
+    wrapper.style.marginTop = '-45px';
 
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
@@ -571,7 +571,31 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      this.map.easeTo({ center: [lng, lat], duration: 300 });
+      // Centrar el pin en el área visible considerando:
+      // 1. Barra de búsqueda arriba (~68px)
+      // 2. Panel de categorías abajo (~120px)  
+      // 3. Teclado virtual si está abierto
+      // Usamos visualViewport para el área realmente visible
+      const vv = window.visualViewport;
+      const visibleTop    = vv ? vv.offsetTop : 0;
+      const visibleHeight = vv ? vv.height : window.innerHeight;
+      const topUI    = 68;  // barra de búsqueda
+      const bottomUI = 120; // panel categorías
+      // Centro del área útil (entre topUI y bottomUI)
+      const usableH  = visibleHeight - topUI - bottomUI;
+      // Queremos el pin en el 60% desde arriba del área útil
+      // para que la minicard (que sale encima) quede centrada
+      const pinTargetY = visibleTop + topUI + (usableH * 0.65);
+      // Centro del canvas del mapa
+      const mapH = this.map.getCanvas().clientHeight;
+      const mapCenterY = mapH / 2;
+      // offset = diferencia entre donde queremos el pin y el centro del canvas
+      const offsetY = pinTargetY - mapCenterY;
+      this.map.easeTo({
+        center: [lng, lat],
+        duration: 300,
+        offset: [0, offsetY]
+      });
     }
   }
 
