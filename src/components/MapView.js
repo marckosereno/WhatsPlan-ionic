@@ -571,11 +571,17 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Calcular offset para centrar en área visible sobre el teclado
-      var kbH = window.visualViewport
-        ? (window.innerHeight - window.visualViewport.height)
-        : 0;
-      var offsetY = kbH > 100 ? -(kbH / 2) : 0;
+      // Centrar el pin en el área visible considerando el teclado
+      // visibleH = altura del viewport sin teclado
+      var vvH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      var kbH = window.innerHeight - vvH;
+      // El pin tiene marginTop:-45px, la minicard mide ~70px
+      // Queremos que la minicard quede centrada verticalmente en el área visible
+      // offsetY negativo = mover el centro del mapa hacia abajo = pin sube visualmente
+      // offsetY positivo = mover centro arriba = pin baja
+      // Con teclado: centrar en la mitad del área visible (vvH/2 desde top)
+      // Sin teclado: centrar normal con compensación del pin (-60px para que quede centrado)
+      var offsetY = kbH > 100 ? -(kbH / 2) + 30 : -60;
       this.map.easeTo({
         center: [lng, lat],
         duration: 300,
