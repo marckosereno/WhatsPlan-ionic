@@ -581,7 +581,9 @@ export class MapView {
       // offsetY positivo = mover centro arriba = pin baja
       // Con teclado: centrar en la mitad del área visible (vvH/2 desde top)
       // Sin teclado: centrar normal con compensación del pin (-60px para que quede centrado)
-      var offsetY = kbH > 100 ? -(kbH / 2) + 30 : -60;
+      // offset positivo Y = el pin se mueve hacia abajo en pantalla
+      // Con teclado: mover pin hacia abajo para que quede en área visible
+      var offsetY = kbH > 100 ? (kbH / 2) - 40 : 0;
       this.map.easeTo({
         center: [lng, lat],
         duration: 300,
