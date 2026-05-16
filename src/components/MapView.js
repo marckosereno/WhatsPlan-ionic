@@ -584,11 +584,15 @@ export class MapView {
         ? searchBar.getBoundingClientRect().bottom + 8
         : 68;
 
-      // Borde inferior: top del panel O top del teclado
+      // Borde inferior: top del panel de categorías (no wp-sresults)
+      // wp-sresults puede estar visible en el primer tap — ignorarlo
       const panelRect = panel && panel.style.display !== 'none'
         ? panel.getBoundingClientRect().top
         : visibleH;
-      const bottomEdge = Math.min(panelRect - 8, visibleH - 8);
+      // Usar el menor entre el panel y visualViewport
+      // pero nunca menos de la mitad de la pantalla (evita que wp-sresults interfiera)
+      const rawBottom  = Math.min(panelRect - 8, visibleH - 8);
+      const bottomEdge = Math.max(rawBottom, visibleH * 0.5);
 
       // Centro del área útil
       const areaCenterY = topEdge + (bottomEdge - topEdge) / 2;
