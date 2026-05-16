@@ -571,40 +571,29 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Obtener posiciones reales de los elementos UI
-      const searchBar = document.getElementById('topbar-right-chip');
-      const panel     = document.getElementById('map-results-panel');
-      const vv        = window.visualViewport;
-
-      // Área visible real (visualViewport excluye teclado en ambos Chrome y WebView)
+      // Calcular offset usando posiciones reales del DOM
+      const vv       = window.visualViewport;
       const visibleH = vv ? vv.height : window.innerHeight;
+      const mapH     = this.map.getCanvas().clientHeight;
 
-      // Borde superior: bottom de la barra de búsqueda
-      const topEdge = searchBar
-        ? searchBar.getBoundingClientRect().bottom + 8
-        : 68;
+      // Top edge: bottom de la barra de búsqueda
+      const chip    = document.getElementById('topbar-right-chip');
+      const topEdge = chip ? chip.getBoundingClientRect().bottom + 8 : 68;
 
-      // Borde inferior: top del panel de categorías (no wp-sresults)
-      // wp-sresults puede estar visible en el primer tap — ignorarlo
-      const panelRect = panel && panel.style.display !== 'none'
-        ? panel.getBoundingClientRect().top
-        : visibleH;
-      // Usar el menor entre el panel y visualViewport
-      // pero nunca menos de la mitad de la pantalla (evita que wp-sresults interfiera)
-      const rawBottom  = Math.min(panelRect - 8, visibleH - 8);
-      const bottomEdge = Math.max(rawBottom, visibleH * 0.5);
+      // Bottom edge: SIEMPRE usar visualViewport height
+      // ignorar cualquier panel flotante que pueda interferir
+      const bottomEdge = visibleH - 8;
 
       // Centro del área útil
       const areaCenterY = topEdge + (bottomEdge - topEdge) / 2;
 
-      // La minicard aparece 45px encima del pin
-      // Entonces queremos el pin en areaCenterY + mitad de minicard (~45px)
-      const minicardH  = 90;
-      const pinTargetY = areaCenterY + (minicardH / 2);
+      // Pin target: centro del área - mitad de minicard
+      // minicard tiene 90px y aparece 45px arriba del pin
+      const pinTargetY = areaCenterY + 45;
 
-      // Offset respecto al centro del canvas del mapa
-      const mapH      = this.map.getCanvas().clientHeight;
-      const offsetY   = pinTargetY - (mapH / 2);
+      const offsetY = pinTargetY - (mapH / 2);
+
+      console.log('minicard offset:', {topEdge, bottomEdge, areaCenterY, pinTargetY, mapH, offsetY, visibleH});
 
       this.map.easeTo({
         center: [lng, lat],
