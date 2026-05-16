@@ -141,37 +141,50 @@ export class SearchBar {
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
 
-    // 1. Ocultar +Actividad
-    if (actBtn) {
-      if (gsap) gsap.to(actBtn, { opacity:0, duration:0.15, ease:'power2.in', onComplete:function(){ actBtn.style.visibility='hidden'; } });
-      else actBtn.style.visibility = 'hidden';
-    }
+    // Guardar ancho inicial del chip
+    var chipInitW = chip ? chip.getBoundingClientRect().width : 120;
+    // Target = mismo ancho que tenia el overlay anterior (pantalla - 24px)
+    var targetW   = window.innerWidth - 24;
 
-    // 2. Ocultar mensajes y avatar de inmediato
-    if (msgBtn)  msgBtn.style.display  = 'none';
-    if (authBtn) authBtn.style.display = 'none';
+    // ── 1. Fade out +Actividad con slide ──────────────────
+    if (actBtn && gsap) {
+      gsap.to(actBtn, { x: -8, opacity: 0, duration: 0.18, ease: 'power2.in',
+        onComplete: function() { actBtn.style.visibility = 'hidden'; actBtn.style.transform = ''; }
+      });
+    } else if (actBtn) { actBtn.style.visibility = 'hidden'; }
+
+    // ── 2. Ocultar msg/avatar/searchIcon ──────────────────
+    if (msgBtn)    msgBtn.style.display    = 'none';
+    if (authBtn)   authBtn.style.display   = 'none';
     if (searchBtn) searchBtn.style.display = 'none';
 
-    // 3. Inyectar input + botones dentro del chip
+    // ── 3. Inyectar contenido ─────────────────────────────
     var inner = document.createElement('div');
     inner.id  = 'wps-inner';
-    inner.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;min-width:0;opacity:0;overflow:hidden;';
+    inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;transform:translateX(8px);';
     inner.innerHTML =
-      '<img class="wps-icon" src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png" onerror="this.style.display=\'none\'">' +
-      '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
-      '<button id="wps-clear" class="wps-clear" aria-label="Limpiar"><svg viewBox="0 0 14 14" width="10" height="10" fill="white"><path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>' +
+      '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
+      'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
+      '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" ' +
+      'autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
+      '<button id="wps-clear" class="wps-clear" aria-label="Limpiar">' +
+        '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
+          '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
+        '</svg></button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>';
 
+    // Botón filtro
     var filterBtn = document.createElement('button');
     filterBtn.id = 'wps-filter-chip';
     filterBtn.className = 'topbar-icon-btn';
-    filterBtn.style.cssText = 'opacity:0;flex-shrink:0;';
-    filterBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#374151"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg>';
+    filterBtn.style.cssText = 'opacity:0;transform:scale(0.4);flex-shrink:0;';
+    filterBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="#374151"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg>';
 
+    // Botón cerrar
     var closeBtn = document.createElement('button');
     closeBtn.id = 'wps-close-chip';
     closeBtn.className = 'topbar-icon-btn';
-    closeBtn.style.cssText = 'opacity:0;flex-shrink:0;font-size:16px;font-weight:700;color:#374151;border:none;background:transparent;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;';
+    closeBtn.style.cssText = 'opacity:0;transform:scale(0.4);flex-shrink:0;font-size:15px;font-weight:700;color:#374151;';
     closeBtn.textContent = '✕';
 
     if (chip) {
@@ -180,38 +193,47 @@ export class SearchBar {
       chip.appendChild(closeBtn);
     }
 
-    // 4. Chip se expande hacia la izquierda al ancho completo del topbar
-    var targetW = window.innerWidth - 24; // 12px margen cada lado
-    if (chip) {
-      if (gsap) {
-        gsap.fromTo(chip,
-          { width: chip.getBoundingClientRect().width + 'px' },
-          {
-            width: targetW + 'px',
-            duration: 0.45,
-            ease: 'power4.out',
+    // ── 4. ANIMACIÓN PRINCIPAL ────────────────────────────
+    if (chip && gsap) {
+      gsap.timeline()
+        // Chip se expande hacia la izquierda — spring suave
+        .fromTo(chip,
+          { width: chipInitW },
+          { width: targetW, duration: 0.55, ease: 'expo.out' }
+        )
+        // Input aparece con slide desde la derecha
+        .to(inner,
+          { opacity: 1, x: 0, duration: 0.3, ease: 'power3.out',
+            clearProps: 'transform' },
+          '-=0.2'
+        )
+        // Botones aparecen con pop elástico en cascada
+        .to(filterBtn,
+          { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(2.5)' },
+          '-=0.1'
+        )
+        .to(closeBtn,
+          { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(2.5)',
             onComplete: function() {
-              gsap.to(inner, { opacity:1, duration:0.2, ease:'power2.out' });
-              gsap.to([filterBtn, closeBtn], { opacity:1, duration:0.15, stagger:0.04 });
               var inp = document.getElementById('wps-input');
-              if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 40); }
+              if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 30); }
             }
-          }
+          },
+          '-=0.25'
         );
-      } else {
-        chip.style.width = targetW + 'px';
-        inner.style.opacity = '1';
-        filterBtn.style.opacity = '1';
-        closeBtn.style.opacity = '1';
-      }
+    } else if (chip) {
+      chip.style.width = targetW + 'px';
+      inner.style.opacity = '1'; inner.style.transform = '';
+      filterBtn.style.opacity = '1'; filterBtn.style.transform = '';
+      closeBtn.style.opacity  = '1'; closeBtn.style.transform  = '';
     }
 
-    // 5. Eventos
+    // ── 5. Eventos ─────────────────────────────────────────
     setTimeout(function() {
-      var input    = document.getElementById('wps-input');
+      var input      = document.getElementById('wps-input');
       var clearBtnEl = document.getElementById('wps-clear');
-      var filterBtnEl = document.getElementById('wps-filter-chip');
-      var closeBtnEl  = document.getElementById('wps-close-chip');
+      var filterEl   = document.getElementById('wps-filter-chip');
+      var closeEl    = document.getElementById('wps-close-chip');
       if (!input) return;
 
       input.addEventListener('input', function(ev) {
@@ -222,14 +244,15 @@ export class SearchBar {
         if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
         self._onInput(input.value);
       });
-      input.addEventListener('keydown', function(ev) { if (ev.key==='Escape') self.deactivate(); });
+      input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
       if (clearBtnEl) {
         clearBtnEl.addEventListener('click', function(ev) {
-          ev.stopPropagation(); input.value=''; clearBtnEl.classList.remove('visible'); input.focus(); self._onInput('');
+          ev.stopPropagation(); input.value = ''; clearBtnEl.classList.remove('visible');
+          input.focus(); self._onInput('');
         });
       }
-      if (closeBtnEl)  closeBtnEl.addEventListener('click',  function(ev){ ev.stopPropagation(); self.deactivate(); });
-      if (filterBtnEl) filterBtnEl.addEventListener('click', function(ev){ ev.stopPropagation(); console.log('Filtros próximamente'); });
+      if (closeEl)  closeEl.addEventListener('click',  function(ev){ ev.stopPropagation(); self.deactivate(); });
+      if (filterEl) filterEl.addEventListener('click', function(ev){ ev.stopPropagation(); console.log('Filtros próximamente'); });
 
       self._mapClick = function(ev) {
         var ch  = document.getElementById('topbar-right-chip');
@@ -239,7 +262,7 @@ export class SearchBar {
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 500);
+    }, 600);
   }
 
   _hideOverlay() {
@@ -250,26 +273,32 @@ export class SearchBar {
     var authBtn   = document.getElementById('topbar-auth-btn');
     var searchBtn = document.getElementById('topbar-search-btn');
     var inner     = document.getElementById('wps-inner');
-    var filterChip = document.getElementById('wps-filter-chip');
-    var closeChip  = document.getElementById('wps-close-chip');
+    var filterEl  = document.getElementById('wps-filter-chip');
+    var closeEl   = document.getElementById('wps-close-chip');
 
-    if (inner)      inner.remove();
-    if (filterChip) filterChip.remove();
-    if (closeChip)  closeChip.remove();
+    // Remover elementos inyectados
+    if (inner)    inner.remove();
+    if (filterEl) filterEl.remove();
+    if (closeEl)  closeEl.remove();
 
+    // Restaurar botones
     if (searchBtn) searchBtn.style.display = '';
     if (msgBtn)    msgBtn.style.display    = '';
     if (authBtn)   authBtn.style.display   = '';
 
-    if (chip) {
-      if (gsap) gsap.to(chip, { width:'', duration:0.3, ease:'power3.in', clearProps:'width' });
-      else chip.style.width = '';
-    }
+    // Colapsar chip con ease out
+    if (chip && gsap) {
+      gsap.to(chip, { width: '', duration: 0.32, ease: 'power4.in', clearProps: 'width' });
+    } else if (chip) { chip.style.width = ''; }
 
-    if (actBtn) {
+    // Restaurar +Actividad con slide in
+    if (actBtn && gsap) {
       actBtn.style.visibility = '';
-      if (gsap) gsap.fromTo(actBtn, { opacity:0 }, { opacity:1, duration:0.25, ease:'power2.out', clearProps:'all' });
-    }
+      gsap.fromTo(actBtn,
+        { x: -12, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.3, ease: 'back.out(1.5)', clearProps: 'all' }
+      );
+    } else if (actBtn) { actBtn.style.visibility = ''; }
 
     if (this._mapClick) { document.removeEventListener('click', this._mapClick); this._mapClick = null; }
   }
