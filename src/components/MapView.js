@@ -571,24 +571,9 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Centrar el pin en el área visible considerando el teclado
-      // visibleH = altura del viewport sin teclado
-      var vvH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      var kbH = window.innerHeight - vvH;
-      // El pin tiene marginTop:-45px, la minicard mide ~70px
-      // Queremos que la minicard quede centrada verticalmente en el área visible
-      // offsetY negativo = mover el centro del mapa hacia abajo = pin sube visualmente
-      // offsetY positivo = mover centro arriba = pin baja
-      // Con teclado: centrar en la mitad del área visible (vvH/2 desde top)
-      // Sin teclado: centrar normal con compensación del pin (-60px para que quede centrado)
-      // offset positivo Y = el pin se mueve hacia abajo en pantalla
-      // Con teclado: mover pin hacia abajo para que quede en área visible
-      var offsetY = kbH > 100 ? (kbH / 2) - 40 : 0;
-      this.map.easeTo({
-        center: [lng, lat],
-        duration: 300,
-        offset: [0, offsetY]
-      });
+      // Igual que himarco: easeTo simple sin offset ni padding
+      // MapLibre centra el pin en el canvas visible del mapa
+      this.map.easeTo({ center: [lng, lat], duration: 300 });
     }
   }
 
