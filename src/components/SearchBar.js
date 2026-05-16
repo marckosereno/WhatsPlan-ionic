@@ -194,9 +194,18 @@ export class SearchBar {
     }
 
     // ── 4. ANIMACIÓN PRINCIPAL ────────────────────────────
+    // Fijar chip a la derecha con position fixed para que crezca hacia la izquierda
+    if (chip) {
+      var chipRect2 = chip.getBoundingClientRect();
+      chip.style.position = 'fixed';
+      chip.style.top      = chipRect2.top + 'px';
+      chip.style.right    = (window.innerWidth - chipRect2.right) + 'px';
+      chip.style.left     = 'auto';
+      chip.style.width    = chipInitW + 'px';
+    }
+
     if (chip && gsap) {
       gsap.timeline()
-        // Chip se expande hacia la izquierda — spring suave
         .fromTo(chip,
           { width: chipInitW },
           { width: targetW, duration: 0.55, ease: 'expo.out' }
@@ -286,10 +295,22 @@ export class SearchBar {
     if (msgBtn)    msgBtn.style.display    = '';
     if (authBtn)   authBtn.style.display   = '';
 
-    // Colapsar chip con ease out
+    // Colapsar chip y restaurar posición
     if (chip && gsap) {
-      gsap.to(chip, { width: '', duration: 0.32, ease: 'power4.in', clearProps: 'width' });
-    } else if (chip) { chip.style.width = ''; }
+      gsap.to(chip, { width: '', duration: 0.32, ease: 'power4.in',
+        onComplete: function() {
+          chip.style.position = '';
+          chip.style.top      = '';
+          chip.style.right    = '';
+          chip.style.left     = '';
+          chip.style.width    = '';
+        }
+      });
+    } else if (chip) {
+      chip.style.position = '';
+      chip.style.top = ''; chip.style.right = ''; chip.style.left = '';
+      chip.style.width = '';
+    }
 
     // Restaurar +Actividad con slide in
     if (actBtn && gsap) {
