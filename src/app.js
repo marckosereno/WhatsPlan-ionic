@@ -100,8 +100,8 @@ async function renderMapCategories() {
 async function renderAuthButton(user) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
-  // Si la búsqueda está activa, el avatar está oculto — no tocar nada
-  if (window.wpApp && window.wpApp.searchBar && window.wpApp.searchBar.isActive()) return;
+  // Si el botón está oculto por la búsqueda, no tocar nada
+  if (btn.dataset.wpHidden === '1') return;
   btn.classList.remove('avatar-skeleton');
 
   if (!user) {
