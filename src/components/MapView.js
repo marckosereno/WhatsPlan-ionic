@@ -570,7 +570,18 @@ export class MapView {
 
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
-    this.map.easeTo({ center: [lng, lat], duration: 300 });
+    if (lat && lng) {
+      // Calcular offset para centrar en área visible sobre el teclado
+      var kbH = window.visualViewport
+        ? (window.innerHeight - window.visualViewport.height)
+        : 0;
+      var offsetY = kbH > 100 ? -(kbH / 2) : 0;
+      this.map.easeTo({
+        center: [lng, lat],
+        duration: 300,
+        offset: [0, offsetY]
+      });
+    }
   }
 
   _closeMiniCard() {
