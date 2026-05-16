@@ -145,28 +145,28 @@ export class SearchBar {
     var chipInitW = chipRect ? chipRect.width : 120;
     var targetW   = window.innerWidth - 24;
 
-    // ── 1. +Actividad: slide izquierda con CSS transition puro ──
+    // ── 1. +Actividad: desactivar transitions CSS primero, luego animar ──
     if (actBtn) {
       if (gsap) gsap.killTweensOf(actBtn);
-      // Resetear cualquier transform de GSAP
-      actBtn.style.cssText += ';transform:none;opacity:1;';
-      // Forzar reflow para que la transición funcione
-      actBtn.offsetWidth;
-      actBtn.style.transition = 'transform 0.18s ease-in, opacity 0.18s ease-in';
-      actBtn.style.transform  = 'translateX(-32px)';
+      // Desactivar transition CSS para evitar saltos
+      actBtn.style.transition = 'none';
+      actBtn.style.transform  = 'none';
+      // Forzar reflow
+      actBtn.getBoundingClientRect();
+      // Ahora animar solo con CSS sin transform
+      actBtn.style.transition = 'opacity 0.16s linear';
       actBtn.style.opacity    = '0';
       setTimeout(function() {
-        actBtn.style.visibility = 'hidden';
+        actBtn.style.display = 'none';
         actBtn.style.transition = '';
-        actBtn.style.transform  = '';
-        actBtn.style.opacity    = '';
-      }, 180);
+        actBtn.style.opacity = '';
+      }, 160);
     }
 
-    // ── 2. Ocultar con data-attr para tracking ──
-    if (msgBtn)    { msgBtn.dataset.searchHidden = '1';    msgBtn.style.display    = 'none'; }
-    if (authBtn)   { authBtn.dataset.searchHidden = '1';   authBtn.style.display   = 'none'; }
-    if (searchBtn) { searchBtn.style.display = 'none'; }
+    // ── 2. Marcar y ocultar msg/avatar ──
+    if (msgBtn)  { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
+    if (authBtn) { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
+    if (searchBtn) searchBtn.style.display = 'none';
 
     // ── 3. Inyectar contenido ──
     var inner = document.createElement('div');
@@ -211,7 +211,7 @@ export class SearchBar {
       chip.style.zIndex   = '99999';
     }
 
-    // ── 5. Animación ultra rápida con GSAP ──
+    // ── 5. Animación ──
     if (chip && gsap) {
       gsap.timeline()
         .to(chip,      { width: targetW, duration: 0.2,  ease: 'expo.out' })
@@ -283,25 +283,24 @@ export class SearchBar {
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
       if (chip) {
-        chip.style.position = ''; chip.style.top = '';
-        chip.style.right = ''; chip.style.left = '';
-        chip.style.width = ''; chip.style.zIndex = '';
+        chip.style.position = ''; chip.style.top    = '';
+        chip.style.right    = ''; chip.style.left   = '';
+        chip.style.width    = ''; chip.style.zIndex = '';
       }
       if (searchBtn) searchBtn.style.display = '';
-      // Restaurar solo los que ocultamos nosotros
-      if (msgBtn  && msgBtn.dataset.searchHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.searchHidden; }
-      if (authBtn && authBtn.dataset.searchHidden) { authBtn.style.display = ''; delete authBtn.dataset.searchHidden; }
-      // +Actividad: slide desde la izquierda con CSS
+      if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
+      if (authBtn && authBtn.dataset.wpHidden) { authBtn.style.display = ''; delete authBtn.dataset.wpHidden; }
+
+      // +Actividad: mostrar con display flex primero, luego fade in
       if (actBtn) {
         if (gsap) gsap.killTweensOf(actBtn);
-        actBtn.style.visibility = '';
-        actBtn.style.transform  = 'translateX(-24px)';
+        actBtn.style.transition = 'none';
         actBtn.style.opacity    = '0';
-        actBtn.offsetWidth; // reflow
-        actBtn.style.transition = 'transform 0.22s ease-out, opacity 0.22s ease-out';
-        actBtn.style.transform  = '';
+        actBtn.style.display    = '';
+        actBtn.getBoundingClientRect(); // reflow
+        actBtn.style.transition = 'opacity 0.2s linear';
         actBtn.style.opacity    = '';
-        setTimeout(function() { actBtn.style.transition = ''; }, 230);
+        setTimeout(function() { actBtn.style.transition = ''; }, 220);
       }
     };
 
