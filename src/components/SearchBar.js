@@ -465,7 +465,10 @@ export class SearchBar {
       var map = mv.getMap();
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-          map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+          var kbH = window.visualViewport
+            ? (window.innerHeight - window.visualViewport.height) : 0;
+          var offsetY = kbH > 100 ? -(kbH / 2) : 0;
+          map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
         });
       });
     }
