@@ -145,22 +145,27 @@ export class SearchBar {
     var chipInitW = chipRect ? chipRect.width : 120;
     var targetW   = window.innerWidth - 24;
 
-    // ── 1. +Actividad: solo opacity, sin transform de ningún tipo ──
+    // ── 1. +Actividad: slide izquierda con CSS transition puro ──
     if (actBtn) {
       if (gsap) gsap.killTweensOf(actBtn);
-      // Limpiar cualquier transform residual primero
-      actBtn.style.transform = '';
-      actBtn.style.willChange = 'opacity';
-      if (gsap) {
-        gsap.to(actBtn, { opacity: 0, duration: 0.12, ease: 'power1.in',
-          onComplete: function() { actBtn.style.visibility = 'hidden'; actBtn.style.opacity = '1'; actBtn.style.willChange = ''; }
-        });
-      } else { actBtn.style.visibility = 'hidden'; }
+      // Resetear cualquier transform de GSAP
+      actBtn.style.cssText += ';transform:none;opacity:1;';
+      // Forzar reflow para que la transición funcione
+      actBtn.offsetWidth;
+      actBtn.style.transition = 'transform 0.18s ease-in, opacity 0.18s ease-in';
+      actBtn.style.transform  = 'translateX(-32px)';
+      actBtn.style.opacity    = '0';
+      setTimeout(function() {
+        actBtn.style.visibility = 'hidden';
+        actBtn.style.transition = '';
+        actBtn.style.transform  = '';
+        actBtn.style.opacity    = '';
+      }, 180);
     }
 
-    // ── 2. Ocultar msg/avatar/searchIcon ──
-    if (msgBtn)    { msgBtn.style.display    = 'none'; }
-    if (authBtn)   { authBtn.style.display   = 'none'; }
+    // ── 2. Ocultar con data-attr para tracking ──
+    if (msgBtn)    { msgBtn.dataset.searchHidden = '1';    msgBtn.style.display    = 'none'; }
+    if (authBtn)   { authBtn.dataset.searchHidden = '1';   authBtn.style.display   = 'none'; }
     if (searchBtn) { searchBtn.style.display = 'none'; }
 
     // ── 3. Inyectar contenido ──
@@ -206,18 +211,18 @@ export class SearchBar {
       chip.style.zIndex   = '99999';
     }
 
-    // ── 5. Animación ultra rápida ──
+    // ── 5. Animación ultra rápida con GSAP ──
     if (chip && gsap) {
       gsap.timeline()
-        .to(chip,      { width: targetW, duration: 0.22, ease: 'expo.out' })
-        .to(inner,     { opacity: 1, duration: 0.14, ease: 'power2.out' }, '-=0.1')
-        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.18, ease: 'back.out(3)' }, '-=0.06')
-        .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.18, ease: 'back.out(3)',
+        .to(chip,      { width: targetW, duration: 0.2,  ease: 'expo.out' })
+        .to(inner,     { opacity: 1,     duration: 0.12, ease: 'power1.out' }, '-=0.08')
+        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)' }, '-=0.04')
+        .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)',
           onComplete: function() {
             var inp = document.getElementById('wps-input');
-            if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 10); }
+            if (inp) { inp.removeAttribute('readonly'); inp.focus(); }
           }
-        }, '-=0.12');
+        }, '-=0.1');
     } else if (chip) {
       chip.style.width = targetW + 'px';
       inner.style.opacity = '1';
@@ -259,7 +264,7 @@ export class SearchBar {
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 350);
+    }, 300);
   }
 
   _hideOverlay() {
@@ -283,28 +288,28 @@ export class SearchBar {
         chip.style.width = ''; chip.style.zIndex = '';
       }
       if (searchBtn) searchBtn.style.display = '';
-      if (msgBtn)    msgBtn.style.display    = '';
-      if (authBtn)   authBtn.style.display   = '';
+      // Restaurar solo los que ocultamos nosotros
+      if (msgBtn  && msgBtn.dataset.searchHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.searchHidden; }
+      if (authBtn && authBtn.dataset.searchHidden) { authBtn.style.display = ''; delete authBtn.dataset.searchHidden; }
+      // +Actividad: slide desde la izquierda con CSS
       if (actBtn) {
         if (gsap) gsap.killTweensOf(actBtn);
-        actBtn.style.transform  = '';
         actBtn.style.visibility = '';
-        if (gsap) {
-          gsap.fromTo(actBtn,
-            { opacity: 0 },
-            { opacity: 1, duration: 0.18, ease: 'power2.out', clearProps: 'opacity' }
-          );
-        }
+        actBtn.style.transform  = 'translateX(-24px)';
+        actBtn.style.opacity    = '0';
+        actBtn.offsetWidth; // reflow
+        actBtn.style.transition = 'transform 0.22s ease-out, opacity 0.22s ease-out';
+        actBtn.style.transform  = '';
+        actBtn.style.opacity    = '';
+        setTimeout(function() { actBtn.style.transition = ''; }, 230);
       }
     };
 
     if (chip && gsap) {
       gsap.timeline()
-        .to([filterEl, closeEl].filter(Boolean), {
-          opacity: 0, scale: 0.3, duration: 0.1, ease: 'power2.in', stagger: 0.02
-        })
-        .to(inner, { opacity: 0, duration: 0.1, ease: 'power2.in' }, '-=0.05')
-        .to(chip,  { width: '', duration: 0.2, ease: 'expo.in', onComplete: restoreAll }, '-=0.05');
+        .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.1, ease: 'power2.in', stagger: 0.02 })
+        .to(inner, { opacity: 0, duration: 0.08, ease: 'power1.in' }, '-=0.04')
+        .to(chip,  { width: '', duration: 0.18, ease: 'expo.in', onComplete: restoreAll }, '-=0.04');
     } else {
       restoreAll();
     }
