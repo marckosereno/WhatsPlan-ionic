@@ -135,26 +135,24 @@ export class SearchBar {
     var count = this._getCount();
     var gsap  = window.gsap;
 
-    var actBtn  = document.getElementById('topbar-activity-btn');
-    var chip    = document.getElementById('topbar-right-chip');
-    var msgBtn  = document.getElementById('topbar-messages-btn');
-    var authBtn = document.getElementById('topbar-auth-btn');
-    var topbar  = document.getElementById('topbar');
+    var actBtn    = document.getElementById('topbar-activity-btn');
+    var chip      = document.getElementById('topbar-right-chip');
+    var searchBtn = document.getElementById('topbar-search-btn');
+    var msgBtn    = document.getElementById('topbar-messages-btn');
+    var authBtn   = document.getElementById('topbar-auth-btn');
 
-    // 1. Slide out +Actividad hacia la izquierda
+    // 1. Ocultar +Actividad
     if (actBtn) {
-      if (gsap) {
-        gsap.to(actBtn, { x: -20, opacity: 0, duration: 0.2, ease: 'power2.in',
-          onComplete: function() { actBtn.style.visibility = 'hidden'; }
-        });
-      } else { actBtn.style.visibility = 'hidden'; }
+      if (gsap) gsap.to(actBtn, { opacity:0, duration:0.15, ease:'power2.in', onComplete:function(){ actBtn.style.visibility='hidden'; } });
+      else actBtn.style.visibility = 'hidden';
     }
 
-    // 2. Ocultar mensajes y avatar — fade out
-    if (msgBtn) { msgBtn.style.transition = 'opacity 0.15s'; msgBtn.style.opacity = '0'; setTimeout(function() { msgBtn.style.display = 'none'; msgBtn.style.opacity = ''; msgBtn.style.transition = ''; }, 150); }
-    if (authBtn) { authBtn.style.transition = 'opacity 0.15s'; authBtn.style.opacity = '0'; setTimeout(function() { authBtn.style.display = 'none'; authBtn.style.opacity = ''; authBtn.style.transition = ''; }, 150); }
+    // 2. Ocultar mensajes y avatar de inmediato
+    if (msgBtn)  msgBtn.style.display  = 'none';
+    if (authBtn) authBtn.style.display = 'none';
+    if (searchBtn) searchBtn.style.display = 'none';
 
-    // 3. Inyectar contenido de búsqueda en el chip
+    // 3. Inyectar input + botones dentro del chip
     var inner = document.createElement('div');
     inner.id  = 'wps-inner';
     inner.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;min-width:0;opacity:0;overflow:hidden;';
@@ -164,132 +162,113 @@ export class SearchBar {
       '<button id="wps-clear" class="wps-clear" aria-label="Limpiar"><svg viewBox="0 0 14 14" width="10" height="10" fill="white"><path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>';
 
+    var filterBtn = document.createElement('button');
+    filterBtn.id = 'wps-filter-chip';
+    filterBtn.className = 'topbar-icon-btn';
+    filterBtn.style.cssText = 'opacity:0;flex-shrink:0;';
+    filterBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#374151"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg>';
+
     var closeBtn = document.createElement('button');
     closeBtn.id = 'wps-close-chip';
-    closeBtn.className = 'topbar-icon-btn wps-close-chip-btn';
-    closeBtn.style.cssText = 'opacity:0;transition:opacity 0.2s;flex-shrink:0;';
-    closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+    closeBtn.className = 'topbar-icon-btn';
+    closeBtn.style.cssText = 'opacity:0;flex-shrink:0;font-size:16px;font-weight:700;color:#374151;border:none;background:transparent;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;';
+    closeBtn.textContent = '✕';
 
-    // Insert before the search button
-    var searchBtn = document.getElementById('topbar-search-btn');
-    if (chip && searchBtn) {
-      chip.insertBefore(inner, searchBtn);
+    if (chip) {
+      chip.insertBefore(inner, chip.firstChild);
+      chip.appendChild(filterBtn);
       chip.appendChild(closeBtn);
     }
 
-    // 4. Expandir chip al ancho completo — desde posición actual hasta left:0
+    // 4. Chip se expande hacia la izquierda al ancho completo del topbar
+    var targetW = window.innerWidth - 24; // 12px margen cada lado
     if (chip) {
-      chip.style.transition = 'none';
-      // Calcular ancho target = pantalla - 12px*2 (márgenes del topbar)
-      var targetW = window.innerWidth - 24;
-
       if (gsap) {
-        // Secuencia: primero ocultar msg/avatar, luego expandir con spring
-        gsap.timeline()
-          .to(chip, {
+        gsap.fromTo(chip,
+          { width: chip.getBoundingClientRect().width + 'px' },
+          {
             width: targetW + 'px',
-            duration: 0.5,
-            ease: 'expo.out',
-            delay: 0.1,
-          })
-          .to(inner, {
-            opacity: 1,
-            duration: 0.25,
-            ease: 'power2.out',
-            onStart: function() {
-              if (searchBtn) searchBtn.style.display = 'none';
-              closeBtn.style.opacity = '1';
+            duration: 0.45,
+            ease: 'power4.out',
+            onComplete: function() {
+              gsap.to(inner, { opacity:1, duration:0.2, ease:'power2.out' });
+              gsap.to([filterBtn, closeBtn], { opacity:1, duration:0.15, stagger:0.04 });
+              var inp = document.getElementById('wps-input');
+              if (inp) { inp.removeAttribute('readonly'); setTimeout(function(){ inp.focus(); }, 40); }
             }
-          }, '-=0.1')
-          .add(function() {
-            var input = document.getElementById('wps-input');
-            if (input) {
-              input.removeAttribute('readonly');
-              setTimeout(function() { input.focus(); }, 30);
-            }
-          });
+          }
+        );
       } else {
         chip.style.width = targetW + 'px';
         inner.style.opacity = '1';
+        filterBtn.style.opacity = '1';
         closeBtn.style.opacity = '1';
-        if (searchBtn) searchBtn.style.display = 'none';
       }
     }
 
-    // 5. Wire eventos
+    // 5. Eventos
     setTimeout(function() {
-      var input   = document.getElementById('wps-input');
-      var clearBtn = document.getElementById('wps-clear');
+      var input    = document.getElementById('wps-input');
+      var clearBtnEl = document.getElementById('wps-clear');
+      var filterBtnEl = document.getElementById('wps-filter-chip');
+      var closeBtnEl  = document.getElementById('wps-close-chip');
       if (!input) return;
 
       input.addEventListener('input', function(ev) {
-        if (clearBtn) clearBtn.classList.toggle('visible', input.value.length > 0);
+        if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
         self._onInput(ev.target.value);
       });
       input.addEventListener('search', function() {
-        if (clearBtn) clearBtn.classList.toggle('visible', input.value.length > 0);
+        if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
         self._onInput(input.value);
       });
-      input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
-      if (clearBtn) {
-        clearBtn.addEventListener('click', function(ev) {
-          ev.stopPropagation();
-          input.value = '';
-          clearBtn.classList.remove('visible');
-          input.focus();
-          self._onInput('');
+      input.addEventListener('keydown', function(ev) { if (ev.key==='Escape') self.deactivate(); });
+      if (clearBtnEl) {
+        clearBtnEl.addEventListener('click', function(ev) {
+          ev.stopPropagation(); input.value=''; clearBtnEl.classList.remove('visible'); input.focus(); self._onInput('');
         });
       }
-      var closeBtnEl = document.getElementById('wps-close-chip');
-      if (closeBtnEl) closeBtnEl.addEventListener('click', function(ev) { ev.stopPropagation(); self.deactivate(); });
+      if (closeBtnEl)  closeBtnEl.addEventListener('click',  function(ev){ ev.stopPropagation(); self.deactivate(); });
+      if (filterBtnEl) filterBtnEl.addEventListener('click', function(ev){ ev.stopPropagation(); console.log('Filtros próximamente'); });
 
       self._mapClick = function(ev) {
-        var chip = document.getElementById('topbar-right-chip');
-        var res  = document.getElementById('wp-sresults');
-        if (chip && chip.contains(ev.target)) return;
-        if (res  && res.contains(ev.target)) return;
+        var ch  = document.getElementById('topbar-right-chip');
+        var res = document.getElementById('wp-sresults');
+        if (ch  && ch.contains(ev.target)) return;
+        if (res && res.contains(ev.target)) return;
         input.blur();
       };
       document.addEventListener('click', self._mapClick);
-    }, 600);
+    }, 500);
   }
 
   _hideOverlay() {
-    var gsap    = window.gsap;
-    var chip    = document.getElementById('topbar-right-chip');
-    var actBtn  = document.getElementById('topbar-activity-btn');
-    var msgBtn  = document.getElementById('topbar-messages-btn');
-    var authBtn = document.getElementById('topbar-auth-btn');
+    var gsap      = window.gsap;
+    var chip      = document.getElementById('topbar-right-chip');
+    var actBtn    = document.getElementById('topbar-activity-btn');
+    var msgBtn    = document.getElementById('topbar-messages-btn');
+    var authBtn   = document.getElementById('topbar-auth-btn');
     var searchBtn = document.getElementById('topbar-search-btn');
-    var inner   = document.getElementById('wps-inner');
-    var closeChip = document.getElementById('wps-close-chip');
+    var inner     = document.getElementById('wps-inner');
+    var filterChip = document.getElementById('wps-filter-chip');
+    var closeChip  = document.getElementById('wps-close-chip');
 
-    // Remove injected elements
-    if (inner) inner.remove();
-    if (closeChip) closeChip.remove();
+    if (inner)      inner.remove();
+    if (filterChip) filterChip.remove();
+    if (closeChip)  closeChip.remove();
 
-    // Restore search icon
     if (searchBtn) searchBtn.style.display = '';
+    if (msgBtn)    msgBtn.style.display    = '';
+    if (authBtn)   authBtn.style.display   = '';
 
-    // Restore msg and avatar
-    if (msgBtn) { msgBtn.style.display = ''; }
-    if (authBtn) { authBtn.style.display = ''; }
-
-    // Collapse chip back
     if (chip) {
-      if (gsap) {
-        gsap.to(chip, { width: '', duration: 0.28, ease: 'power3.in', clearProps: 'width' });
-      } else {
-        chip.style.width = '';
-      }
+      if (gsap) gsap.to(chip, { width:'', duration:0.3, ease:'power3.in', clearProps:'width' });
+      else chip.style.width = '';
     }
 
-    // Restore +Actividad
     if (actBtn) {
       actBtn.style.visibility = '';
-      if (gsap) {
-        gsap.fromTo(actBtn, { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.28, ease: 'power2.out', clearProps: 'all' });
-      }
+      if (gsap) gsap.fromTo(actBtn, { opacity:0 }, { opacity:1, duration:0.25, ease:'power2.out', clearProps:'all' });
     }
 
     if (this._mapClick) { document.removeEventListener('click', this._mapClick); this._mapClick = null; }
