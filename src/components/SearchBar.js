@@ -476,35 +476,33 @@ export class SearchBar {
 
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
-    var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
-
     if (lat && lng) {
       var map = mv.getMap();
       var vv  = window.visualViewport;
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
-      var doFlyAndShow = function() {
-        // flyTo y showMiniCard juntos — mapa ya tiene tamaño correcto
+      var doFlyTo = function() {
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
-        mv._showMiniCard(place, idx, raw);
       };
 
       if (kbH > 100) {
-        // Teclado abierto — blur y esperar cierre completo
+        // Forzar blur en todos los inputs activos
         var inp = document.getElementById('wps-input');
         if (inp) inp.blur();
         if (document.activeElement && document.activeElement !== document.body) {
           document.activeElement.blur();
         }
-        // 500ms garantiza que el teclado cerró en Chrome Y WebView
-        setTimeout(doFlyAndShow, 500);
+
+        // Esperar tiempo fijo suficiente para que el teclado cierre en CUALQUIER WebView
+        // Android keyboard animation = ~300ms, añadir 200ms buffer = 500ms total
+        setTimeout(doFlyTo, 500);
       } else {
-        requestAnimationFrame(doFlyAndShow);
+        requestAnimationFrame(doFlyTo);
       }
-    } else {
-      // Sin coordenadas — mostrar minicard igual
-      mv._showMiniCard(place, idx, raw);
     }
+
+    var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
+    mv._showMiniCard(place, idx, raw);
   }
 
   _hideResults() {
