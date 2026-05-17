@@ -538,64 +538,6 @@ export class MapView {
 
     wrapper.style.marginTop = '-45px';
 
-    // Si el teclado está abierto, reposicionar minicard cuando cierre
-    const _vv  = window.visualViewport;
-    const _kbH = _vv ? Math.max(0, window.innerHeight - _vv.height) : 0;
-    if (_kbH > 100) {
-      const _wrapper = wrapper;
-      const _self    = this;
-      const _reposition = function() {
-        // Teclado cerrado — centrar minicard con marginTop calculado
-        var _canvasH = _self.map ? _self.map.getCanvas().clientHeight : window.innerHeight;
-        var _topbar  = document.getElementById('topbar-right-chip');
-        var _topEdge = _topbar ? _topbar.getBoundingClientRect().bottom : 68;
-        var _panelEl = document.getElementById('map-results-panel');
-        var _botEdge = _panelEl ? _panelEl.getBoundingClientRect().top : _canvasH;
-        var _center  = _topEdge + (_botEdge - _topEdge) / 2;
-        // pin está en _canvasH/2, queremos que centro minicard esté en _center
-        // minicard altura ~90px, la card está 45px encima del pin
-        var _mt = Math.round(_center - _canvasH / 2);
-        _wrapper.style.marginTop = _mt + 'px';
-      };
-
-      // Método 1: visualViewport resize (Chrome)
-      if (_vv) {
-        var _onResize = function() {
-          var _kbNow = Math.max(0, window.innerHeight - _vv.height);
-          if (_kbNow < 100) {
-            _vv.removeEventListener('resize', _onResize);
-            setTimeout(_reposition, 50);
-          }
-        };
-        _vv.addEventListener('resize', _onResize);
-      }
-
-      // Método 2: blur del input wps (WebView — dispara cuando teclado cierra)
-      var _inp = document.getElementById('wps-input');
-      if (_inp) {
-        var _onBlur = function() {
-          _inp.removeEventListener('blur', _onBlur);
-          setTimeout(_reposition, 100);
-        };
-        _inp.addEventListener('blur', _onBlur);
-      }
-
-      // Método 3: focusout global (último recurso)
-      var _onFocusOut = function(e) {
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-          document.removeEventListener('focusout', _onFocusOut, true);
-          setTimeout(_reposition, 150);
-        }
-      };
-      document.addEventListener('focusout', _onFocusOut, true);
-
-      // Limpiar listeners después de 1s si nada disparó
-      setTimeout(function() {
-        if (_vv) _vv.removeEventListener('resize', arguments[0]);
-        document.removeEventListener('focusout', _onFocusOut, true);
-      }, 1000);
-    }
-
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
       ${photoUrl
