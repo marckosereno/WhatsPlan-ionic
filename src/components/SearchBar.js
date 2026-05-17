@@ -479,13 +479,14 @@ export class SearchBar {
     if (lat && lng) {
       var map = mv.getMap();
       var vv  = window.visualViewport;
-      // Capturar vv.height AHORA en el momento del tap
-      // En Capacitor el teclado cierra antes del JS, así que kbH puede ser 0
-      // pero podemos saber si el teclado estaba abierto comparando con el canvas
+      // Detectar teclado usando flag global — funciona en Capacitor donde
+      // el teclado cierra antes de que JS capture el tap
       var vvHeightAtTap = vv ? vv.height : window.innerHeight;
       var canvasAtTap   = map.getCanvas().clientHeight;
-      // Si el canvas es mayor que vv.height, el teclado estaba/está abierto
-      var kbH = Math.max(0, canvasAtTap - vvHeightAtTap);
+      var kbH = Math.max(
+        Math.max(0, canvasAtTap - vvHeightAtTap), // Chrome/WebView
+        window._wpKeyboardWasOpen ? 200 : 0        // Capacitor flag
+      );
 
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
