@@ -491,7 +491,7 @@ export class SearchBar {
         });
         // Offset negativo en Y para que la minicard (45px encima del pin)
         // quede centrada en el área visible
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, -60] });
+        map.easeTo({ center: [lng, lat], zoom: 17, duration: 350, offset: [0, -60] });
       };
 
       if (kbH > 100) {
