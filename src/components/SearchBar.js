@@ -486,8 +486,6 @@ export class SearchBar {
       // flyTo con offset calculado en el momento de ejecución
       // para centrar la minicard en el área visible REAL
       var doFlyTo = function() {
-        // Calcular offset en el momento exacto que se ejecuta
-        // (teclado ya cerrado en este punto)
         var vvNow    = window.visualViewport;
         var canvasH  = map.getCanvas().clientHeight;
         var topbar   = document.getElementById('topbar-right-chip');
@@ -496,11 +494,25 @@ export class SearchBar {
         var botEdge  = (panel && panel.offsetParent !== null)
           ? panel.getBoundingClientRect().top - 8
           : canvasH - 120;
-        // Centro del área útil (entre topbar y panel)
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
-        // offset = donde queremos el pin - centro del canvas
-        // pin debe estar 45px debajo del centro de la minicard
         var offsetY = Math.round(areaCenter + 45 - canvasH / 2);
+
+        // DEBUG OVERLAY — ver valores en pantalla
+        var dbg = document.getElementById('_wp_dbg') || document.createElement('div');
+        dbg.id = '_wp_dbg';
+        dbg.style.cssText = 'position:fixed;bottom:200px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;padding:8px;border-radius:8px;z-index:999999;font-family:monospace;';
+        dbg.innerHTML =
+          'innerH: ' + window.innerHeight + '<br>' +
+          'vv.height: ' + (vvNow ? vvNow.height : 'N/A') + '<br>' +
+          'canvasH: ' + canvasH + '<br>' +
+          'topEdge: ' + topEdge + '<br>' +
+          'botEdge: ' + botEdge + '<br>' +
+          'areaCenter: ' + areaCenter + '<br>' +
+          'offsetY: ' + offsetY + '<br>' +
+          'kbH_at_tap: ' + kbH;
+        document.body.appendChild(dbg);
+        setTimeout(function() { dbg.remove(); }, 8000);
+
         mv._showMiniCard(place, idx, raw);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
