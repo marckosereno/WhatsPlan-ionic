@@ -478,34 +478,24 @@ export class SearchBar {
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
       var map = mv.getMap();
-      var doFlyTo = function() {
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
-      };
       var vv  = window.visualViewport;
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
+      var doFlyTo = function() {
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+      };
+
       if (kbH > 100) {
-        // Teclado abierto — forzar blur para cerrarlo
+        // Forzar blur en todos los inputs activos
         var inp = document.getElementById('wps-input');
         if (inp) inp.blur();
-        document.activeElement && document.activeElement.blur && document.activeElement.blur();
+        if (document.activeElement && document.activeElement !== document.body) {
+          document.activeElement.blur();
+        }
 
-        // Polling con altura de referencia capturada ANTES del blur
-        // WebView actualiza window.innerHeight cuando el teclado cierra
-        var refH = window.innerHeight;
-        var waited = 0;
-        var poll = setInterval(function() {
-          waited += 50;
-          var vvNow   = window.visualViewport;
-          var kbNow   = vvNow ? Math.max(0, window.innerHeight - vvNow.height) : 0;
-          // En WebView el innerHeight puede crecer cuando cierra el teclado
-          var innerGrew = window.innerHeight > refH + 50;
-          if (kbNow < 100 || innerGrew || waited > 800) {
-            clearInterval(poll);
-            // Extra delay para que el layout se estabilice
-            setTimeout(doFlyTo, 80);
-          }
-        }, 50);
+        // Esperar tiempo fijo suficiente para que el teclado cierre en CUALQUIER WebView
+        // Android keyboard animation = ~300ms, añadir 200ms buffer = 500ms total
+        setTimeout(doFlyTo, 500);
       } else {
         requestAnimationFrame(doFlyTo);
       }
