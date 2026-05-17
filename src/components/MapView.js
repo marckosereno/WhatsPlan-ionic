@@ -571,8 +571,42 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Igual que himarco: flyTo simple, sin offset ni padding
-      this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+      // Obtener posiciones reales de los elementos UI
+      const searchBar = document.getElementById('topbar-right-chip');
+      const panel     = document.getElementById('map-results-panel');
+      const vv        = window.visualViewport;
+
+      // Área visible real (visualViewport excluye teclado en ambos Chrome y WebView)
+      const visibleH = vv ? vv.height : window.innerHeight;
+
+      // Borde superior: bottom de la barra de búsqueda
+      const topEdge = searchBar
+        ? searchBar.getBoundingClientRect().bottom + 8
+        : 68;
+
+      // Borde inferior: top del panel O top del teclado
+      const panelRect = panel && panel.style.display !== 'none'
+        ? panel.getBoundingClientRect().top
+        : visibleH;
+      const bottomEdge = Math.min(panelRect - 8, visibleH - 8);
+
+      // Centro del área útil
+      const areaCenterY = topEdge + (bottomEdge - topEdge) / 2;
+
+      // La minicard aparece 45px encima del pin
+      // Entonces queremos el pin en areaCenterY + mitad de minicard (~45px)
+      const minicardH  = 90;
+      const pinTargetY = areaCenterY + (minicardH / 2);
+
+      // Offset respecto al centro del canvas del mapa
+      const mapH      = this.map.getCanvas().clientHeight;
+      const offsetY   = pinTargetY - (mapH / 2);
+
+      this.map.easeTo({
+        center: [lng, lat],
+        duration: 300,
+        offset: [0, offsetY]
+      });
     }
   }
 
