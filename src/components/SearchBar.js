@@ -484,9 +484,14 @@ export class SearchBar {
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
       var doFlyAndShow = function() {
-        // flyTo y showMiniCard juntos — mapa ya tiene tamaño correcto
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
-        mv._showMiniCard(place, idx, raw);
+        // Mostrar minicard cuando el flyTo termina (moveend)
+        // Así el zoom effect se ve completo Y el mapa está en tamaño correcto
+        map.once('moveend', function() {
+          mv._showMiniCard(place, idx, raw);
+        });
+        // Offset negativo en Y para que la minicard (45px encima del pin)
+        // quede centrada en el área visible
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, -60] });
       };
 
       if (kbH > 100) {
