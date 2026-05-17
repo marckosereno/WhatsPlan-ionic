@@ -490,12 +490,12 @@ export class SearchBar {
         var canvasH  = map.getCanvas().clientHeight;
         var topbar   = document.getElementById('topbar-right-chip');
         var topEdge  = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        var panel    = document.getElementById('map-results-panel');
-        var botEdge  = (panel && panel.offsetParent !== null)
-          ? panel.getBoundingClientRect().top - 8
-          : canvasH - 120;
+        // Usar canvasH como botEdge — ignorar panel para calcular área completa visible
+        var botEdge    = canvasH;
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
-        var offsetY = Math.round(areaCenter + 45 - canvasH / 2);
+        // pin debe quedar en areaCenter para que minicard (-45px arriba) quede centrada
+        var pinTarget  = areaCenter;
+        var offsetY    = Math.round(pinTarget - canvasH / 2);
 
         // DEBUG OVERLAY — ver valores en pantalla
         var dbg = document.getElementById('_wp_dbg') || document.createElement('div');
