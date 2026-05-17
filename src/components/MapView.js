@@ -536,21 +536,32 @@ export class MapView {
     wrapper.style.overflow = 'visible';
     wrapper.style.zIndex   = '9999';
 
-    // Calcular marginTop para centrar la minicard en el área visible
-    // La minicard mide ~90px y aparece encima del pin
-    // Pin está en el centro del canvas del mapa
-    // Para centrar: mover la minicard hacia abajo (marginTop positivo)
-    // de forma que su centro coincida con el centro del canvas
-    const _vv      = window.visualViewport;
-    const _canvasH = this.map ? this.map.getCanvas().clientHeight : window.innerHeight;
-    const _kbH     = _vv ? Math.max(0, window.innerHeight - _vv.height) : 0;
-    // Centro del área visible (sin teclado)
-    const _visibleCenterY = (_canvasH - _kbH) / 2;
-    // El pin está en _canvasH/2, la minicard tiene 90px
-    // Para que el centro de la minicard esté en _visibleCenterY:
-    // marginTop = _visibleCenterY - _canvasH/2 - 45 (mitad minicard)
-    const _mt = Math.round(_visibleCenterY - (_canvasH / 2) - 45);
-    wrapper.style.marginTop = _mt + 'px';
+    // marginTop -45px por defecto (igual que himarco)
+    wrapper.style.marginTop = '-45px';
+
+    // Si el teclado está abierto, recalcular marginTop después de que cierre
+    const _vv  = window.visualViewport;
+    const _kbH = _vv ? Math.max(0, window.innerHeight - _vv.height) : 0;
+    if (_kbH > 100) {
+      const _wrapper = wrapper;
+      const _map     = this.map;
+      // Esperar a que el teclado cierre y recalcular
+      var _kbPoll = setInterval(function() {
+        var _kbNow = _vv ? Math.max(0, window.innerHeight - _vv.height) : 0;
+        if (_kbNow < 100) {
+          clearInterval(_kbPoll);
+          // Teclado cerrado — recalcular marginTop con tamaño real del mapa
+          var _canvasH = _map ? _map.getCanvas().clientHeight : window.innerHeight;
+          var _topbar  = document.getElementById('topbar-right-chip');
+          var _topEdge = _topbar ? _topbar.getBoundingClientRect().bottom + 8 : 68;
+          var _areaH   = _canvasH - _topEdge;
+          var _mt      = Math.round((_areaH / 2) - 45 - _topEdge);
+          _wrapper.style.marginTop = _mt + 'px';
+        }
+      }, 50);
+      // Timeout máximo 600ms
+      setTimeout(function() { clearInterval(_kbPoll); }, 600);
+    }
 
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
