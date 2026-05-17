@@ -26,6 +26,21 @@ export class SearchBar {
     var gsap  = window.gsap;
     var panel = document.getElementById('map-results-panel');
 
+    // Cerrar minicard si hay una abierta
+    var mv = this.mapView;
+    if (mv && mv.miniCardMarker) {
+      mv._closeMiniCard ? mv._closeMiniCard() : (function() {
+        var w = mv.miniCardMarker.getElement();
+        if (w && w._savedPinHTML !== undefined) {
+          w.style.width = '44px'; w.style.height = '44px';
+          w.style.overflow = 'visible'; w.style.zIndex = '';
+          w.style.marginTop = ''; w.innerHTML = w._savedPinHTML;
+          delete w._savedPinHTML;
+        }
+        mv.miniCardMarker = null; mv.miniCardIndex = -1; mv.miniCardPlace = null;
+      })();
+    }
+
     // Topbar NO se oculta — el chip se expande in-place
     // Solo ocultar el panel
     if (panel) {
@@ -464,25 +479,28 @@ export class SearchBar {
     if (lat && lng) {
       var map = mv.getMap();
       var doFlyTo = function() {
-        // En este punto el teclado ya se cerró — kbH debe ser 0
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
       };
-      var vv = window.visualViewport;
+      var vv  = window.visualViewport;
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+
       if (kbH > 100) {
-        // Teclado abierto — esperar a que se cierre antes de flyTo
-        var onKbClose = function() {
-          vv.removeEventListener('resize', onKbClose);
-          setTimeout(doFlyTo, 50);
-        };
-        vv.addEventListener('resize', onKbClose);
-        // Fallback: si el teclado no dispara resize en 400ms, hacer flyTo igual
-        setTimeout(function() {
-          vv.removeEventListener('resize', onKbClose);
-          doFlyTo();
-        }, 400);
+        // Teclado abierto — el input va a perder foco → teclado se cierra
+        // Intentar blur del input para forzar cierre del teclado
+        var inp = document.getElementById('wps-input');
+        if (inp) inp.blur();
+
+        // Esperar cierre del teclado con polling (funciona en Chrome Y WebView)
+        var waited = 0;
+        var poll = setInterval(function() {
+          waited += 50;
+          var kbNow = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+          if (kbNow < 100 || waited > 600) {
+            clearInterval(poll);
+            setTimeout(doFlyTo, 50);
+          }
+        }, 50);
       } else {
-        // Teclado ya cerrado — flyTo directo
         requestAnimationFrame(doFlyTo);
       }
     }
