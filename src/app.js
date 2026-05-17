@@ -398,35 +398,53 @@ function setupActivitySubscription(mv) {
       }
     });
 
-    // Listener global: cerrar minicard cuando se abre el teclado virtual
-    // Funciona en Chrome Y WebView independientemente del SearchBar
+    // ── Cerrar minicard al abrir teclado — múltiples métodos ──────────
+    var _forceCloseMiniCard = function() {
+      var mv = window.wpApp && window.wpApp.mapView;
+      if (!mv) return;
+      if (typeof mv._closeMiniCard === 'function') {
+        mv._closeMiniCard();
+      } else if (mv.miniCardMarker) {
+        var w = mv.miniCardMarker.getElement();
+        if (w && w._savedPinHTML !== undefined) {
+          w.style.width = '44px'; w.style.height = '44px';
+          w.style.overflow = 'visible'; w.style.zIndex = '';
+          w.style.marginTop = ''; w.innerHTML = w._savedPinHTML;
+          delete w._savedPinHTML;
+        }
+        mv.miniCardMarker    = null; mv.miniCardIndex     = -1;
+        mv.miniCardPlace     = null; mv._miniCardPinRoot  = null;
+        mv._miniCardMarkerEl = null;
+      }
+    };
+
+    // Método 1: visualViewport resize (Chrome)
     if (window.visualViewport) {
       var _lastKbH = 0;
       window.visualViewport.addEventListener('resize', function() {
         var kbH = window.innerHeight - window.visualViewport.height;
-        if (kbH > 100 && _lastKbH <= 100) {
-          // Teclado se abrió — cerrar minicard
-          var mv = window.wpApp && window.wpApp.mapView;
-          if (mv) {
-            if (typeof mv._closeMiniCard === 'function') {
-              mv._closeMiniCard();
-            } else if (mv.miniCardMarker) {
-              var w = mv.miniCardMarker.getElement();
-              if (w && w._savedPinHTML !== undefined) {
-                w.style.width = '44px'; w.style.height = '44px';
-                w.style.overflow = 'visible'; w.style.zIndex = '';
-                w.style.marginTop = ''; w.innerHTML = w._savedPinHTML;
-                delete w._savedPinHTML;
-              }
-              mv.miniCardMarker = null; mv.miniCardIndex = -1;
-              mv.miniCardPlace  = null; mv._miniCardPinRoot = null;
-              mv._miniCardMarkerEl = null;
-            }
-          }
-        }
+        if (kbH > 100 && _lastKbH <= 100) _forceCloseMiniCard();
         _lastKbH = kbH;
       });
     }
+
+    // Método 2: focus en cualquier input (WebView y Chrome)
+    document.addEventListener('focusin', function(e) {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        // Pequeño delay para que el teclado empiece a subir
+        setTimeout(_forceCloseMiniCard, 50);
+        setTimeout(_forceCloseMiniCard, 200); // doble seguridad
+      }
+    }, true);
+
+    // Método 3: polling activo cuando hay minicard abierta (WebView fallback)
+    setInterval(function() {
+      var mv = window.wpApp && window.wpApp.mapView;
+      if (!mv || !mv.miniCardMarker) return;
+      var vv  = window.visualViewport;
+      var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+      if (kbH > 100) _forceCloseMiniCard();
+    }, 100);
 
     console.log('✅ WhatsPlan listo');
   } catch(err) {
