@@ -490,10 +490,14 @@ export class SearchBar {
         var canvasH  = map.getCanvas().clientHeight;
         var topbar   = document.getElementById('topbar-right-chip');
         var topEdge  = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        // Usar canvasH como botEdge — ignorar panel para calcular área completa visible
-        var botEdge    = canvasH;
-        var areaCenter = topEdge + (botEdge - topEdge) / 2;
-        // pin debe quedar en areaCenter para que minicard (-45px arriba) quede centrada
+        // kbH real = canvas - visualViewport.height
+        // En Capacitor el canvas NO se reduce con el teclado
+        var vvH        = vvNow ? vvNow.height : canvasH;
+        var kbHReal    = Math.max(0, canvasH - vvH);
+        // Área visible real = canvas sin el teclado
+        var visibleH   = canvasH - kbHReal;
+        // Centro del área útil visible (entre topbar y fondo visible)
+        var areaCenter = topEdge + (visibleH - topEdge) / 2;
         var pinTarget  = areaCenter;
         var offsetY    = Math.round(pinTarget - canvasH / 2);
 
@@ -505,8 +509,9 @@ export class SearchBar {
           'innerH: ' + window.innerHeight + '<br>' +
           'vv.height: ' + (vvNow ? vvNow.height : 'N/A') + '<br>' +
           'canvasH: ' + canvasH + '<br>' +
+          'kbHReal: ' + kbHReal + '<br>' +
+          'visibleH: ' + visibleH + '<br>' +
           'topEdge: ' + topEdge + '<br>' +
-          'botEdge: ' + botEdge + '<br>' +
           'areaCenter: ' + areaCenter + '<br>' +
           'offsetY: ' + offsetY + '<br>' +
           'kbH_at_tap: ' + kbH;
