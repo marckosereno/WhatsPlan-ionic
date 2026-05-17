@@ -535,7 +535,22 @@ export class MapView {
     wrapper.style.height   = 'auto';
     wrapper.style.overflow = 'visible';
     wrapper.style.zIndex   = '9999';
-    wrapper.style.marginTop = '-45px';
+
+    // Calcular marginTop para centrar la minicard en el área visible
+    // La minicard mide ~90px y aparece encima del pin
+    // Pin está en el centro del canvas del mapa
+    // Para centrar: mover la minicard hacia abajo (marginTop positivo)
+    // de forma que su centro coincida con el centro del canvas
+    const _vv      = window.visualViewport;
+    const _canvasH = this.map ? this.map.getCanvas().clientHeight : window.innerHeight;
+    const _kbH     = _vv ? Math.max(0, window.innerHeight - _vv.height) : 0;
+    // Centro del área visible (sin teclado)
+    const _visibleCenterY = (_canvasH - _kbH) / 2;
+    // El pin está en _canvasH/2, la minicard tiene 90px
+    // Para que el centro de la minicard esté en _visibleCenterY:
+    // marginTop = _visibleCenterY - _canvasH/2 - 45 (mitad minicard)
+    const _mt = Math.round(_visibleCenterY - (_canvasH / 2) - 45);
+    wrapper.style.marginTop = _mt + 'px';
 
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
