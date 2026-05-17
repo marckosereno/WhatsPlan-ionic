@@ -484,11 +484,9 @@ export class SearchBar {
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
       var doFlyTo = function() {
-        // offset -60: mueve el punto de enfoque hacia abajo para que
-        // la minicard (que aparece 45px encima del pin) quede centrada
-        map.once('moveend', function() {
-          mv._showMiniCard(place, idx, raw);
-        });
+        // Mostrar minicard inmediatamente como el original
+        // offset -60 centra la minicard sin cambiar el efecto del vuelo
+        mv._showMiniCard(place, idx, raw);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, -60] });
       };
 
