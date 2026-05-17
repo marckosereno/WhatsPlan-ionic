@@ -484,11 +484,9 @@ export class SearchBar {
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
       var doFlyAndShow = function() {
-        // flyTo original — offset -60 centra la minicard
-        map.once('moveend', function() {
-          mv._showMiniCard(place, idx, raw);
-        });
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, -60] });
+        // flyTo y showMiniCard juntos — mapa ya tiene tamaño correcto
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+        mv._showMiniCard(place, idx, raw);
       };
 
       if (kbH > 100) {
