@@ -541,8 +541,45 @@ export class SearchBar {
 
   _installViewportListener() {
     var self = this;
+
+    // Detectar apertura del teclado globalmente — cerrar minicard inmediatamente
+    var lastKbH = 0;
+    var closeMiniCardNow = function() {
+      var mv = self.mapView;
+      if (!mv) return;
+      // Intentar _closeMiniCard primero
+      if (typeof mv._closeMiniCard === 'function') {
+        mv._closeMiniCard();
+        return;
+      }
+      // Fallback manual
+      if (mv.miniCardMarker) {
+        var w = mv.miniCardMarker.getElement();
+        if (w && w._savedPinHTML !== undefined) {
+          w.style.width    = '44px';
+          w.style.height   = '44px';
+          w.style.overflow = 'visible';
+          w.style.zIndex   = '';
+          w.style.marginTop = '';
+          w.innerHTML = w._savedPinHTML;
+          delete w._savedPinHTML;
+        }
+        mv.miniCardMarker = null;
+        mv.miniCardIndex  = -1;
+        mv.miniCardPlace  = null;
+        mv._miniCardPinRoot  = null;
+        mv._miniCardMarkerEl = null;
+      }
+    };
+
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', function() {
+        var kbH = window.innerHeight - window.visualViewport.height;
+        // Teclado se abrió (kbH creció > 100) — cerrar minicard
+        if (kbH > 100 && lastKbH <= 100) {
+          closeMiniCardNow();
+        }
+        lastKbH = kbH;
         if (self._active) self._positionResults();
       });
     }
