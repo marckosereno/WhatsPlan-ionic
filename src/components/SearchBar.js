@@ -463,14 +463,28 @@ export class SearchBar {
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
       var map = mv.getMap();
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          var kbH = window.visualViewport
-            ? (window.innerHeight - window.visualViewport.height) : 0;
-          var offsetY = kbH > 100 ? -(kbH / 2) : 0;
-          map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
-        });
-      });
+      var doFlyTo = function() {
+        // En este punto el teclado ya se cerró — kbH debe ser 0
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+      };
+      var vv = window.visualViewport;
+      var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+      if (kbH > 100) {
+        // Teclado abierto — esperar a que se cierre antes de flyTo
+        var onKbClose = function() {
+          vv.removeEventListener('resize', onKbClose);
+          setTimeout(doFlyTo, 50);
+        };
+        vv.addEventListener('resize', onKbClose);
+        // Fallback: si el teclado no dispara resize en 400ms, hacer flyTo igual
+        setTimeout(function() {
+          vv.removeEventListener('resize', onKbClose);
+          doFlyTo();
+        }, 400);
+      } else {
+        // Teclado ya cerrado — flyTo directo
+        requestAnimationFrame(doFlyTo);
+      }
     }
 
     var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
