@@ -485,19 +485,25 @@ export class SearchBar {
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
       if (kbH > 100) {
-        // Teclado abierto — el input va a perder foco → teclado se cierra
-        // Intentar blur del input para forzar cierre del teclado
+        // Teclado abierto — forzar blur para cerrarlo
         var inp = document.getElementById('wps-input');
         if (inp) inp.blur();
+        document.activeElement && document.activeElement.blur && document.activeElement.blur();
 
-        // Esperar cierre del teclado con polling (funciona en Chrome Y WebView)
+        // Polling con altura de referencia capturada ANTES del blur
+        // WebView actualiza window.innerHeight cuando el teclado cierra
+        var refH = window.innerHeight;
         var waited = 0;
         var poll = setInterval(function() {
           waited += 50;
-          var kbNow = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
-          if (kbNow < 100 || waited > 600) {
+          var vvNow   = window.visualViewport;
+          var kbNow   = vvNow ? Math.max(0, window.innerHeight - vvNow.height) : 0;
+          // En WebView el innerHeight puede crecer cuando cierra el teclado
+          var innerGrew = window.innerHeight > refH + 50;
+          if (kbNow < 100 || innerGrew || waited > 800) {
             clearInterval(poll);
-            setTimeout(doFlyTo, 50);
+            // Extra delay para que el layout se estabilice
+            setTimeout(doFlyTo, 80);
           }
         }, 50);
       } else {
