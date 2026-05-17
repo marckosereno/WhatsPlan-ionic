@@ -571,22 +571,8 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      const vv  = window.visualViewport;
-      const mapH = this.map.getCanvas().clientHeight;
-
-      // Teclado abierto: visualViewport.height < window.innerHeight
-      const kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
-
-      // Sin teclado: offset 0 (centrado normal)
-      // Con teclado: mover el centro del mapa hacia arriba en kbH/2
-      // para que el pin quede en el área visible sobre el teclado
-      const offsetY = kbH > 100 ? -(kbH / 2) : 0;
-
-      this.map.easeTo({
-        center: [lng, lat],
-        duration: 300,
-        offset: [0, offsetY]
-      });
+      // Igual que himarco: flyTo simple, sin offset ni padding
+      this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
     }
   }
 
