@@ -398,6 +398,31 @@ function setupActivitySubscription(mv) {
       }
     });
 
+    // Trackear altura del teclado globalmente — antes de que Capacitor lo cierre
+    window._wpLastKbH = 0;
+    window._wpVvHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function() {
+        var vvH = window.visualViewport.height;
+        var kbH = Math.max(0, window.innerHeight - vvH);
+        window._wpVvHeight = vvH;
+        window._wpLastKbH  = kbH;
+      });
+    }
+    // También trackear con focusin/focusout
+    document.addEventListener('focusin', function(e) {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        // Teclado va a abrirse — marcar flag
+        window._wpKeyboardWasOpen = true;
+      }
+    }, true);
+    document.addEventListener('focusout', function(e) {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        // Teclado va a cerrarse
+        setTimeout(function() { window._wpKeyboardWasOpen = false; }, 500);
+      }
+    }, true);
+
     // ── Cerrar minicard al abrir teclado — múltiples métodos ──────────
     var _forceCloseMiniCard = function() {
       var mv = window.wpApp && window.wpApp.mapView;
