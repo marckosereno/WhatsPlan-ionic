@@ -398,6 +398,36 @@ function setupActivitySubscription(mv) {
       }
     });
 
+    // Listener global: cerrar minicard cuando se abre el teclado virtual
+    // Funciona en Chrome Y WebView independientemente del SearchBar
+    if (window.visualViewport) {
+      var _lastKbH = 0;
+      window.visualViewport.addEventListener('resize', function() {
+        var kbH = window.innerHeight - window.visualViewport.height;
+        if (kbH > 100 && _lastKbH <= 100) {
+          // Teclado se abrió — cerrar minicard
+          var mv = window.wpApp && window.wpApp.mapView;
+          if (mv) {
+            if (typeof mv._closeMiniCard === 'function') {
+              mv._closeMiniCard();
+            } else if (mv.miniCardMarker) {
+              var w = mv.miniCardMarker.getElement();
+              if (w && w._savedPinHTML !== undefined) {
+                w.style.width = '44px'; w.style.height = '44px';
+                w.style.overflow = 'visible'; w.style.zIndex = '';
+                w.style.marginTop = ''; w.innerHTML = w._savedPinHTML;
+                delete w._savedPinHTML;
+              }
+              mv.miniCardMarker = null; mv.miniCardIndex = -1;
+              mv.miniCardPlace  = null; mv._miniCardPinRoot = null;
+              mv._miniCardMarkerEl = null;
+            }
+          }
+        }
+        _lastKbH = kbH;
+      });
+    }
+
     console.log('✅ WhatsPlan listo');
   } catch(err) {
     console.error('❌ Error crítico:', err.message, err.stack);
