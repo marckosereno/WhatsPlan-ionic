@@ -481,8 +481,15 @@ export class SearchBar {
       var vv  = window.visualViewport;
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
 
+      var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
+
       var doFlyTo = function() {
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+        // offset -60: mueve el punto de enfoque hacia abajo para que
+        // la minicard (que aparece 45px encima del pin) quede centrada
+        map.once('moveend', function() {
+          mv._showMiniCard(place, idx, raw);
+        });
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, -60] });
       };
 
       if (kbH > 100) {
@@ -500,9 +507,6 @@ export class SearchBar {
         requestAnimationFrame(doFlyTo);
       }
     }
-
-    var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
-    mv._showMiniCard(place, idx, raw);
   }
 
   _hideResults() {
