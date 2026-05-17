@@ -479,27 +479,26 @@ export class SearchBar {
     if (lat && lng) {
       var map = mv.getMap();
       var vv  = window.visualViewport;
-      var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+      // Capturar vv.height AHORA en el momento del tap
+      // En Capacitor el teclado cierra antes del JS, así que kbH puede ser 0
+      // pero podemos saber si el teclado estaba abierto comparando con el canvas
+      var vvHeightAtTap = vv ? vv.height : window.innerHeight;
+      var canvasAtTap   = map.getCanvas().clientHeight;
+      // Si el canvas es mayor que vv.height, el teclado estaba/está abierto
+      var kbH = Math.max(0, canvasAtTap - vvHeightAtTap);
 
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
-      // flyTo con offset calculado en el momento de ejecución
-      // para centrar la minicard en el área visible REAL
       var doFlyTo = function() {
-        var vvNow    = window.visualViewport;
-        var canvasH  = map.getCanvas().clientHeight;
-        var topbar   = document.getElementById('topbar-right-chip');
-        var topEdge  = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        // kbH real = canvas - visualViewport.height
-        // En Capacitor el canvas NO se reduce con el teclado
-        var vvH        = vvNow ? vvNow.height : canvasH;
-        var kbHReal    = Math.max(0, canvasH - vvH);
-        // Área visible real = canvas sin el teclado
-        var visibleH   = canvasH - kbHReal;
-        // Centro del área útil visible (entre topbar y fondo visible)
+        var vvNow   = window.visualViewport;
+        var canvasH = map.getCanvas().clientHeight;
+        var topbar  = document.getElementById('topbar-right-chip');
+        var topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        // Usar vv.height actual (teclado ya cerrado en este punto)
+        var vvH      = vvNow ? vvNow.height : canvasH;
+        var visibleH = Math.min(vvH, canvasH);
         var areaCenter = topEdge + (visibleH - topEdge) / 2;
-        var pinTarget  = areaCenter;
-        var offsetY    = Math.round(pinTarget - canvasH / 2);
+        var offsetY    = Math.round(areaCenter - canvasH / 2);
 
         // DEBUG OVERLAY — ver valores en pantalla
         var dbg = document.getElementById('_wp_dbg') || document.createElement('div');
@@ -514,6 +513,7 @@ export class SearchBar {
           'topEdge: ' + topEdge + '<br>' +
           'areaCenter: ' + areaCenter + '<br>' +
           'offsetY: ' + offsetY + '<br>' +
+          'vvHeightAtTap: ' + vvHeightAtTap + '<br>' +
           'kbH_at_tap: ' + kbH;
         document.body.appendChild(dbg);
         setTimeout(function() { dbg.remove(); }, 8000);
@@ -522,7 +522,7 @@ export class SearchBar {
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
-      if (kbH > 100) {
+      if (kbH > 50) {
         var inp = document.getElementById('wps-input');
         if (inp) inp.blur();
         if (document.activeElement && document.activeElement !== document.body) {
