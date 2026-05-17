@@ -508,7 +508,6 @@ export class SearchBar {
           'innerH: ' + window.innerHeight + '<br>' +
           'vv.height: ' + (vvNow ? vvNow.height : 'N/A') + '<br>' +
           'canvasH: ' + canvasH + '<br>' +
-          'kbHReal: ' + kbHReal + '<br>' +
           'visibleH: ' + visibleH + '<br>' +
           'topEdge: ' + topEdge + '<br>' +
           'areaCenter: ' + areaCenter + '<br>' +
