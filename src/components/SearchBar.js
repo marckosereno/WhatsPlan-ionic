@@ -483,22 +483,48 @@ export class SearchBar {
 
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
+      // flyTo con offset calculado en el momento de ejecución
+      // para centrar la minicard en el área visible REAL
       var doFlyTo = function() {
+        // Calcular offset en el momento exacto que se ejecuta
+        // (teclado ya cerrado en este punto)
+        var vvNow    = window.visualViewport;
+        var canvasH  = map.getCanvas().clientHeight;
+        var topbar   = document.getElementById('topbar-right-chip');
+        var topEdge  = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        var panel    = document.getElementById('map-results-panel');
+        var botEdge  = (panel && panel.offsetParent !== null)
+          ? panel.getBoundingClientRect().top - 8
+          : canvasH - 120;
+        // Centro del área útil (entre topbar y panel)
+        var areaCenter = topEdge + (botEdge - topEdge) / 2;
+        // offset = donde queremos el pin - centro del canvas
+        // pin debe estar 45px debajo del centro de la minicard
+        var offsetY = Math.round(areaCenter + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw);
-        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+        map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
       if (kbH > 100) {
-        // Forzar blur en todos los inputs activos
         var inp = document.getElementById('wps-input');
         if (inp) inp.blur();
         if (document.activeElement && document.activeElement !== document.body) {
           document.activeElement.blur();
         }
-
-        // Esperar tiempo fijo suficiente para que el teclado cierre en CUALQUIER WebView
-        // Android keyboard animation = ~300ms, añadir 200ms buffer = 500ms total
-        setTimeout(doFlyTo, 500);
+        // Esperar cierre del teclado — detectar via innerHeight (WebView) o vv resize (Chrome)
+        var refInnerH = window.innerHeight;
+        var waited    = 0;
+        var kbClosePoll = setInterval(function() {
+          waited += 30;
+          var vvNow  = window.visualViewport;
+          var kbNow  = vvNow ? Math.max(0, window.innerHeight - vvNow.height) : 0;
+          var grew   = window.innerHeight > refInnerH + 30; // WebView: innerHeight crece
+          if (kbNow < 100 || grew || waited > 700) {
+            clearInterval(kbClosePoll);
+            // Delay extra para que el layout se estabilice
+            setTimeout(doFlyTo, 80);
+          }
+        }, 30);
       } else {
         requestAnimationFrame(doFlyTo);
       }
