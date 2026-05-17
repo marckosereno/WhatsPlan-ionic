@@ -484,12 +484,7 @@ export class SearchBar {
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
       var doFlyTo = function() {
-        // flyTo exactamente igual al original — sin offset
-        // _showMiniCard en moveend para que el mapa ya esté en tamaño correcto
-        // (sin offset no hay curva ni efecto de baja/sube)
-        map.once('moveend', function() {
-          mv._showMiniCard(place, idx, raw);
-        });
+        mv._showMiniCard(place, idx, raw);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
       };
 
