@@ -389,15 +389,20 @@ export class MapView {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
         }
-        // Si el teclado está abierto, hacer blur y mostrar minicard inmediatamente
+        // Mismo protocolo que autocompletado: cerrar teclado y esperar
         const vv  = window.visualViewport;
         const kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+        const self = this;
         if (kbH > 50 || window._wpKeyboardWasOpen) {
           if (document.activeElement && document.activeElement.tagName === 'INPUT') {
             document.activeElement.blur();
           }
+          setTimeout(function() {
+            self._showMiniCard(place, index, rawPhoto);
+          }, 500);
+        } else {
+          this._showMiniCard(place, index, rawPhoto);
         }
-        this._showMiniCard(place, index, rawPhoto);
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
