@@ -713,9 +713,15 @@ export class SearchBar {
     if (!mv || !mv.markerEls) return;
     mv.markerEls.forEach(function(el) {
       var marker = el.closest('.maplibregl-marker') || el.parentElement || el;
-      marker.style.opacity   = '';
-      marker.style.filter    = '';
-      marker.style.zIndex    = '';
+      // Usar removeProperty para limpiar cualquier valor incluyendo !important
+      marker.style.removeProperty('opacity');
+      marker.style.removeProperty('filter');
+      marker.style.removeProperty('z-index');
+      marker.style.opacity = '';
+      marker.style.filter  = '';
+      marker.style.zIndex  = '';
+      el.style.removeProperty('opacity');
+      el.style.removeProperty('filter');
       el.style.opacity   = '';
       el.style.filter    = '';
       el.style.transform = '';
