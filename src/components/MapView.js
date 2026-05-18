@@ -399,7 +399,7 @@ export class MapView {
           }
           setTimeout(function() {
             self._showMiniCard(place, index, rawPhoto);
-          }, 500);
+          }, 150);
         } else {
           this._showMiniCard(place, index, rawPhoto);
         }
