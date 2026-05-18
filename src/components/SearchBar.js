@@ -509,7 +509,8 @@ export class SearchBar {
         // Nunca menor a la mitad del área visible
         botEdge = Math.max(botEdge, visibleH * 0.5);
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
-        var offsetY    = Math.round(areaCenter - canvasH / 2);
+        // +45: minicard aparece 45px ENCIMA del pin (igual que MapView)
+        var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
