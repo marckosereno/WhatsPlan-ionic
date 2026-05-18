@@ -113,38 +113,64 @@ export class SubcategoryRow {
     }
   }
 
-  _startGps() {
-    if (!navigator.geolocation) return;
-    // Marcar como "arrancando" inmediatamente para que el toggle funcione
+  async _startGps() {
     this._gpsStarting = true;
     this._gpsEl.classList.add('loading');
 
-    this._gpsWatchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        this._lastGpsPos = { lat, lng };
-        this._upsertLocationMarker(lat, lng);
-        if (!this._gpsActive) {
-          this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
-          this._gpsActive   = true;
-          this._gpsStarting = false;
-          this._gpsEl.classList.remove('loading');
-          this._gpsEl.classList.add('active');
-          this._insertLiveChip();
-        }
-      },
-      (err) => {
-        console.warn('⚠️ GPS:', err.message);
+    const onPosition = (lat, lng) => {
+      this._lastGpsPos = { lat, lng };
+      this._upsertLocationMarker(lat, lng);
+      if (!this._gpsActive) {
+        this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 600 });
+        this._gpsActive   = true;
         this._gpsStarting = false;
         this._gpsEl.classList.remove('loading');
-      },
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 }
-    );
+        this._gpsEl.classList.add('active');
+        this._insertLiveChip();
+      }
+    };
+
+    const onError = (err) => {
+      console.warn('⚠️ GPS:', err.message || err);
+      this._gpsStarting = false;
+      this._gpsEl.classList.remove('loading');
+    };
+
+    // Usar Capacitor Geolocation si está disponible (APK), sino browser
+    try {
+      const { Geolocation } = await import('@capacitor/geolocation');
+      // Pedir permiso primero
+      await Geolocation.requestPermissions();
+      this._gpsWatchId = await Geolocation.watchPosition(
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 },
+        (pos, err) => {
+          if (err) { onError(err); return; }
+          onPosition(pos.coords.latitude, pos.coords.longitude);
+        }
+      );
+    } catch (e) {
+      // Fallback a browser geolocation
+      if (!navigator.geolocation) { onError({ message: 'GPS no disponible' }); return; }
+      this._gpsWatchId = navigator.geolocation.watchPosition(
+        (pos) => onPosition(pos.coords.latitude, pos.coords.longitude),
+        onError,
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 }
+      );
+      this._gpsUsingBrowser = true;
+    }
   }
 
-  _stopGps() {
+  async _stopGps() {
     if (this._gpsWatchId != null) {
-      navigator.geolocation.clearWatch(this._gpsWatchId);
+      if (this._gpsUsingBrowser) {
+        navigator.geolocation.clearWatch(this._gpsWatchId);
+        this._gpsUsingBrowser = false;
+      } else {
+        try {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          await Geolocation.clearWatch({ id: this._gpsWatchId });
+        } catch(e) {}
+      }
       this._gpsWatchId = null;
     }
     if (this._locationMarker) {
