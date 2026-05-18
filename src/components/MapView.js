@@ -594,15 +594,14 @@ export class MapView {
       const results = document.getElementById('wp-sresults');
       const panel   = document.getElementById('map-results-panel');
 
-      // Bot edge: el elemento UI más bajo visible en el área útil
-      // Prioridad: panel de resultados > scats > panel principal
+      // Bot edge: ignorar wp-sresults (minifichas que aparecen arriba del mapa)
+      // Solo usar scats (chips subcategorías) y panel principal
       let botEdge;
-      const panelTop  = panel  && panel.offsetParent  !== null ? panel.getBoundingClientRect().top  : 9999;
-      const scatsTop  = scats  && scats.offsetParent  !== null ? scats.getBoundingClientRect().top  : 9999;
-      const resultTop = results && results.offsetParent !== null ? results.getBoundingClientRect().top : 9999;
+      const panelTop = panel && panel.offsetParent !== null ? panel.getBoundingClientRect().top : 9999;
+      const scatsTop = scats && scats.offsetParent !== null ? scats.getBoundingClientRect().top : 9999;
 
-      // Usar el borde más cercano al área visible
-      const candidates = [panelTop, scatsTop, resultTop].filter(v => v > topEdge + 50 && v < visibleH + 50);
+      // Usar el más bajo entre panel y scats, ignorando wp-sresults
+      const candidates = [panelTop, scatsTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
