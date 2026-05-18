@@ -498,26 +498,18 @@ export class SearchBar {
         // Usar vv.height actual (teclado ya cerrado en este punto)
         var vvH      = vvNow ? vvNow.height : canvasH;
         var visibleH = Math.min(vvH, canvasH);
-        var areaCenter = topEdge + (visibleH - topEdge) / 2;
+        // Bot edge: chips de subcategorías o resultados si están visibles
+        var scats    = document.getElementById('wp-scats');
+        var results  = document.getElementById('wp-sresults');
+        var botEl    = (scats && scats.offsetParent !== null) ? scats :
+                       (results && results.offsetParent !== null) ? results : null;
+        var botEdge  = botEl
+          ? botEl.getBoundingClientRect().top - 8
+          : visibleH;
+        // Nunca menor a la mitad del área visible
+        botEdge = Math.max(botEdge, visibleH * 0.5);
+        var areaCenter = topEdge + (botEdge - topEdge) / 2;
         var offsetY    = Math.round(areaCenter - canvasH / 2);
-
-        // DEBUG OVERLAY — ver valores en pantalla
-        var dbg = document.getElementById('_wp_dbg') || document.createElement('div');
-        dbg.id = '_wp_dbg';
-        dbg.style.cssText = 'position:fixed;bottom:200px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;padding:8px;border-radius:8px;z-index:999999;font-family:monospace;';
-        dbg.innerHTML =
-          'innerH: ' + window.innerHeight + '<br>' +
-          'vv.height: ' + (vvNow ? vvNow.height : 'N/A') + '<br>' +
-          'canvasH: ' + canvasH + '<br>' +
-          'visibleH: ' + visibleH + '<br>' +
-          'topEdge: ' + topEdge + '<br>' +
-          'areaCenter: ' + areaCenter + '<br>' +
-          'offsetY: ' + offsetY + '<br>' +
-          'vvHeightAtTap: ' + vvHeightAtTap + '<br>' +
-          'kbH_at_tap: ' + kbH;
-        document.body.appendChild(dbg);
-        setTimeout(function() { dbg.remove(); }, 8000);
-
         mv._showMiniCard(place, idx, raw);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
