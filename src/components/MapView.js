@@ -609,8 +609,12 @@ export class MapView {
       const candidates = [panelTop, scatsTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
+      // La minicard tiene ~90px y aparece 45px ENCIMA del pin (marginTop:-45px)
+      // Para que el CENTRO de la minicard quede en areaCenter:
+      // pin debe estar en areaCenter + 45
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
-      const offsetY    = Math.round(areaCenter - canvasH / 2);
+      const pinTarget  = areaCenter + 45;
+      const offsetY    = Math.round(pinTarget - canvasH / 2);
 
       // DEBUG — ver valores en pantalla
       var _d = document.getElementById('_mv_dbg') || document.createElement('div');
