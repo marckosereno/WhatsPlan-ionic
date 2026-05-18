@@ -389,7 +389,21 @@ export class MapView {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
         }
-        this._showMiniCard(place, index, rawPhoto);
+        // Si el teclado está abierto, cerrarlo antes de abrir la minicard
+        const vv  = window.visualViewport;
+        const kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+        if (kbH > 50 || window._wpKeyboardWasOpen) {
+          // Blur de cualquier input activo para cerrar teclado
+          if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+            document.activeElement.blur();
+          }
+          const self = this;
+          setTimeout(function() {
+            self._showMiniCard(place, index, rawPhoto);
+          }, 500);
+        } else {
+          this._showMiniCard(place, index, rawPhoto);
+        }
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
