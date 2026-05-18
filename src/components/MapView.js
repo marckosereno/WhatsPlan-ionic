@@ -586,18 +586,16 @@ export class MapView {
       const results = document.getElementById('wp-sresults');
       const panel   = document.getElementById('map-results-panel');
 
+      // Bot edge: el elemento UI más bajo visible en el área útil
+      // Prioridad: panel de resultados > scats > panel principal
       let botEdge;
-      if (scats && scats.offsetParent !== null && scats.getBoundingClientRect().top < visibleH) {
-        botEdge = scats.getBoundingClientRect().top - 8;
-      } else if (results && results.offsetParent !== null) {
-        botEdge = results.getBoundingClientRect().top - 8;
-      } else if (panel && panel.offsetParent !== null) {
-        botEdge = panel.getBoundingClientRect().top - 8;
-      } else {
-        botEdge = visibleH - 8;
-      }
-      // Nunca menor a la mitad del área visible
-      botEdge = Math.max(botEdge, visibleH * 0.4);
+      const panelTop  = panel  && panel.offsetParent  !== null ? panel.getBoundingClientRect().top  : 9999;
+      const scatsTop  = scats  && scats.offsetParent  !== null ? scats.getBoundingClientRect().top  : 9999;
+      const resultTop = results && results.offsetParent !== null ? results.getBoundingClientRect().top : 9999;
+
+      // Usar el borde más cercano al área visible
+      const candidates = [panelTop, scatsTop, resultTop].filter(v => v > topEdge + 50 && v < visibleH + 50);
+      botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
       const offsetY    = Math.round(areaCenter - canvasH / 2);
