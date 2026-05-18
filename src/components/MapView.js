@@ -602,6 +602,14 @@ export class MapView {
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
       const offsetY    = Math.round(areaCenter - canvasH / 2);
 
+      // DEBUG — ver valores en pantalla
+      var _d = document.getElementById('_mv_dbg') || document.createElement('div');
+      _d.id = '_mv_dbg';
+      _d.style.cssText = 'position:fixed;top:150px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:10px;padding:8px;border-radius:8px;z-index:999999;font-family:monospace;pointer-events:none;';
+      _d.innerHTML = 'canvasH:'+canvasH+' vvH:'+vvH+' visH:'+visibleH+'<br>topEdge:'+Math.round(topEdge)+' botEdge:'+Math.round(botEdge)+'<br>areaCenter:'+Math.round(areaCenter)+' offsetY:'+offsetY+'<br>scats:'+(scats&&scats.offsetParent!==null?Math.round(scats.getBoundingClientRect().top):'no')+' panel:'+(panel&&panel.offsetParent!==null?Math.round(panel.getBoundingClientRect().top):'no');
+      document.body.appendChild(_d);
+      setTimeout(function(){_d.remove();},6000);
+
       this.map.easeTo({
         center: [lng, lat],
         duration: 300,
