@@ -572,22 +572,32 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // Mismo cálculo que SearchBar._onCardClick
       const vv      = window.visualViewport;
       const canvasH = this.map.getCanvas().clientHeight;
       const vvH     = vv ? vv.height : canvasH;
       const visibleH = Math.min(vvH, canvasH);
 
+      // Top edge: bottom de la barra de búsqueda o topbar
       const topbar  = document.getElementById('topbar-right-chip');
       const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
 
-      // Bot edge: chips de subcategorías, resultados, o fondo visible
+      // Bot edge: buscar el elemento visible más alto en la parte inferior
       const scats   = document.getElementById('wp-scats');
       const results = document.getElementById('wp-sresults');
-      const botEl   = (scats && scats.offsetParent !== null) ? scats :
-                      (results && results.offsetParent !== null) ? results : null;
-      let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
-      botEdge       = Math.max(botEdge, visibleH * 0.5);
+      const panel   = document.getElementById('map-results-panel');
+
+      let botEdge;
+      if (scats && scats.offsetParent !== null && scats.getBoundingClientRect().top < visibleH) {
+        botEdge = scats.getBoundingClientRect().top - 8;
+      } else if (results && results.offsetParent !== null) {
+        botEdge = results.getBoundingClientRect().top - 8;
+      } else if (panel && panel.offsetParent !== null) {
+        botEdge = panel.getBoundingClientRect().top - 8;
+      } else {
+        botEdge = visibleH - 8;
+      }
+      // Nunca menor a la mitad del área visible
+      botEdge = Math.max(botEdge, visibleH * 0.4);
 
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
       const offsetY    = Math.round(areaCenter - canvasH / 2);
