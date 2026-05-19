@@ -52,10 +52,11 @@ export class SubcategoryRow {
     this.onSubcatSelect = onSubcatSelect;
 
     this._gpsActive       = false;
-    this._gpsStarting     = false;  // bandera para el estado "arrancando"
+    this._gpsStarting     = false;
     this._gpsWatchId      = null;
     this._lastGpsPos      = null;
     this._locationMarker  = null;
+    this._gpsUsingBrowser = false;
 
     this._liveActive        = false;
     this._liveBtn           = null;
@@ -86,7 +87,6 @@ export class SubcategoryRow {
     const footer = document.getElementById('map-subcategories-footer');
     if (!footer) return;
 
-    // Remover skeleton placeholder si existe
     const sk = footer.querySelector('.hm-gps-skeleton');
     if (sk) sk.remove();
 
@@ -105,7 +105,6 @@ export class SubcategoryRow {
   }
 
   _toggleGps() {
-    // Si está activo O está arrancando, apagar
     if (this._gpsActive || this._gpsStarting) {
       this._stopGps();
     } else {
@@ -131,26 +130,36 @@ export class SubcategoryRow {
     };
 
     const onError = (err) => {
-      console.warn('⚠️ GPS:', err.message || err);
+      console.warn('⚠️ GPS error:', err.message || err);
       this._gpsStarting = false;
       this._gpsEl.classList.remove('loading');
     };
 
-    // Usar Capacitor Geolocation si está disponible (APK), sino browser
-    try {
-      const { Geolocation } = await import('@capacitor/geolocation');
-      // Pedir permiso primero
-      await Geolocation.requestPermissions();
-      this._gpsWatchId = await Geolocation.watchPosition(
-        { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 },
-        (pos, err) => {
-          if (err) { onError(err); return; }
-          onPosition(pos.coords.latitude, pos.coords.longitude);
+    // Detectar si estamos en Capacitor nativo
+    const isCapacitor = window.Capacitor &&
+                        window.Capacitor.isNativePlatform &&
+                        window.Capacitor.isNativePlatform();
+
+    if (isCapacitor) {
+      try {
+        const Geolocation = window.Capacitor.Plugins.Geolocation;
+        const perm = await Geolocation.requestPermissions();
+        if (perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
+          onError('Permiso denegado'); return;
         }
-      );
-    } catch (e) {
-      // Fallback a browser geolocation
-      if (!navigator.geolocation) { onError({ message: 'GPS no disponible' }); return; }
+        this._gpsWatchId = await Geolocation.watchPosition(
+          { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 },
+          (pos, err) => {
+            if (err) { onError(err); return; }
+            onPosition(pos.coords.latitude, pos.coords.longitude);
+          }
+        );
+      } catch (e) {
+        onError(e.message || e);
+      }
+    } else {
+      // Fallback browser (web)
+      if (!navigator.geolocation) { onError('GPS no disponible'); return; }
       this._gpsWatchId = navigator.geolocation.watchPosition(
         (pos) => onPosition(pos.coords.latitude, pos.coords.longitude),
         onError,
@@ -167,7 +176,7 @@ export class SubcategoryRow {
         this._gpsUsingBrowser = false;
       } else {
         try {
-          const { Geolocation } = await import('@capacitor/geolocation');
+          const Geolocation = window.Capacitor.Plugins.Geolocation;
           await Geolocation.clearWatch({ id: this._gpsWatchId });
         } catch(e) {}
       }
@@ -214,7 +223,6 @@ export class SubcategoryRow {
     chip.innerHTML = '<span class="hm-live-dot"></span>LIVE';
     chip.addEventListener('click', () => this._toggleLive());
 
-    // Insertar justo después del botón GPS (segundo elemento del scroll)
     const gpsEl = this._footerEl.querySelector('#map-gps-btn');
     if (gpsEl && gpsEl.nextSibling) {
       this._footerEl.insertBefore(chip, gpsEl.nextSibling);
