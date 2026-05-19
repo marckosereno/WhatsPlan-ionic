@@ -129,10 +129,38 @@ export class SubcategoryRow {
       }
     };
 
-    const onError = (err) => {
-      console.warn('⚠️ GPS error:', err.message || err);
+    const onError = async (err) => {
+      const msg = err.message || err || '';
+      console.warn('⚠️ GPS error:', msg);
       this._gpsStarting = false;
       this._gpsEl.classList.remove('loading');
+
+      // Si ubicación del sistema está apagada, abrir ajustes
+      const isLocationOff = typeof msg === 'string' && (
+        msg.includes('not enabled') ||
+        msg.includes('disabled') ||
+        msg.includes('unavailable')
+      );
+      if (isLocationOff) {
+        const isCapacitor = window.Capacitor &&
+                            window.Capacitor.isNativePlatform &&
+                            window.Capacitor.isNativePlatform();
+        if (isCapacitor && window.Capacitor.Plugins.NativeSettings) {
+          // Abrir ajustes de ubicación directamente
+          try {
+            await window.Capacitor.Plugins.NativeSettings.openAndroid({
+              option: 'location'
+            });
+          } catch(e) {}
+        } else if (isCapacitor && window.Capacitor.Plugins.Diagnostic) {
+          try {
+            await window.Capacitor.Plugins.Diagnostic.switchToLocationSettings();
+          } catch(e) {}
+        } else {
+          // Fallback: mostrar alerta nativa
+          alert('Activa la ubicación en Ajustes del teléfono para usar el GPS.');
+        }
+      }
     };
 
     // Detectar si estamos en Capacitor nativo
@@ -143,15 +171,26 @@ export class SubcategoryRow {
     if (isCapacitor) {
       try {
         const Geolocation = window.Capacitor.Plugins.Geolocation;
+
+        // Primero intentar obtener posición actual para detectar si GPS está apagado
+        try {
+          await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000 });
+        } catch(e) {
+          // Si falla aquí, probablemente GPS apagado
+          await onError(e);
+          return;
+        }
+
         const perm = await Geolocation.requestPermissions();
         if (perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
           onError('Permiso denegado'); return;
         }
+
         this._gpsWatchId = await Geolocation.watchPosition(
           { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 },
           (pos, err) => {
             if (err) { onError(err); return; }
-            onPosition(pos.coords.latitude, pos.coords.longitude);
+            if (pos) onPosition(pos.coords.latitude, pos.coords.longitude);
           }
         );
       } catch (e) {
