@@ -30,7 +30,8 @@ ion-app {
 
 /* ── Sombra blanca SUPERIOR ── */
 ion-app::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 90px;
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: calc(90px + env(safe-area-inset-top, 0px));
   background: linear-gradient(to bottom, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.45) 55%, rgba(255,255,255,0) 100%);
   pointer-events: none; z-index: 9998;
 }
@@ -60,6 +61,7 @@ ion-app::after {
   flex-direction: column;
   z-index: 40;
   padding: 12px 0 10px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 16px));
   gap: 8px;
   font-family: 'Inter Tight', system-ui, sans-serif;
   overflow: hidden;
