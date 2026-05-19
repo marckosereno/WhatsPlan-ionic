@@ -9,6 +9,13 @@ import { isIOS, isCapacitor } from './dom.js';
 // ── Variable CSS --vh para viewport real en iOS ──────────────────────
 export function setAppHeight() {
   const vh = window.innerHeight * 0.01;
+
+  // Ignorar cambios pequeños — evita el salto al volver de background en Android
+  if (window._initialVh) {
+    const deltaH = Math.abs(vh - window._initialVh) * 100;
+    if (deltaH < 100) return;
+  }
+
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 
   if (!window._initialVh) {
@@ -60,15 +67,18 @@ function applyScrollFix() {
 function applyMapResumeFix() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      // MapView ya tiene su propio resize listener,
-      // pero forzamos un reflow del canvas por si acaso
       setTimeout(() => {
+        // Reflow del canvas
         const canvas = document.querySelector('#map-container canvas');
         if (canvas) {
           canvas.style.opacity = '0.99';
           requestAnimationFrame(() => { canvas.style.opacity = ''; });
         }
-      }, 150);
+        // Recalcular --vh con altura real estabilizada de Android
+        const currentVh = window.innerHeight * 0.01;
+        window._initialVh = currentVh;
+        document.documentElement.style.setProperty('--vh', `${currentVh}px`);
+      }, 300);
     }
   });
 }
