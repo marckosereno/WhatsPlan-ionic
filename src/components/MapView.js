@@ -159,7 +159,11 @@ export class MapView {
           console.log('📱 App visible, refrescando mapa...');
           setTimeout(() => {
             try {
+              // Evitar flash gris al volver: fondo igual al mapa antes del resize
+              const canvas = document.querySelector('#map-container canvas');
+              if (canvas) canvas.style.background = '#e8e8e8';
               this.map.resize();
+              requestAnimationFrame(() => { if (canvas) canvas.style.background = ''; });
               // Si hay una categoría seleccionada pero no hay marcadores, recargar
               if (this.currentCatId && this.markers.length === 0) {
                 console.log('🔄 Recargando categoría tras pausa:', this.currentCatId);
