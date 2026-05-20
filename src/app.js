@@ -293,6 +293,14 @@ function setupActivitySubscription(mv) {
           try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
         }
       });
+      // Listener nativo de Capacitor (más confiable que visibilitychange en Android)
+      try {
+        window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+          if (state.isActive) {
+            try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
+          }
+        });
+      } catch(e) {}
     }
 
     await waitForMapLibre();
