@@ -159,6 +159,7 @@ export class SearchBar {
     // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
     var chipRect  = chip ? chip.getBoundingClientRect() : null;
     var chipInitW = chipRect ? chipRect.width : 120;
+    this._chipInitW = chipInitW;
     var targetW   = window.innerWidth - 24;
 
     if (chip && chipRect) {
@@ -316,9 +317,9 @@ export class SearchBar {
 
     if (chip && gsap) {
       gsap.timeline()
-        .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.1, ease: 'power2.in', stagger: 0.02 })
-        .to(inner, { opacity: 0, duration: 0.08, ease: 'power1.in' }, '-=0.04')
-        .to(chip,  { width: '', duration: 0.18, ease: 'expo.in', onComplete: restoreAll }, '-=0.04');
+        .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
+        .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
+        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
     } else {
       restoreAll();
     }
