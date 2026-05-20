@@ -287,6 +287,12 @@ function setupActivitySubscription(mv) {
     // Forzar status bar icons oscuros (negros)
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
       try { await window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
+      // Reforzar cada vez que la app vuelve al frente
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
+        }
+      });
     }
 
     await waitForMapLibre();
