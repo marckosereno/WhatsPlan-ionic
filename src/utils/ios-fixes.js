@@ -9,10 +9,20 @@ import { isIOS, isCapacitor } from './dom.js';
 // ── Variable CSS --vh para viewport real en iOS ──────────────────────
 export function setAppHeight() {
   const vh = window.innerHeight * 0.01;
-  document.documentElement.style.setProperty('--vh', `${vh}px`);
 
+  // Guardar la altura inicial y no actualizarla si el cambio es pequeño
+  // (evita el salto cuando Android muestra diálogos de permisos)
   if (!window._initialVh) {
     window._initialVh = vh;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  } else {
+    const deltaH = Math.abs(vh - window._initialVh) * 100;
+    if (deltaH > 100) {
+      // Cambio grande (rotación de pantalla) — actualizar
+      window._initialVh = vh;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    // Cambio pequeño (diálogo, teclado) — ignorar, mantener altura original
   }
 }
 
