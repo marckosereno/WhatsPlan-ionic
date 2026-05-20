@@ -284,6 +284,11 @@ function setupActivitySubscription(mv) {
     // iOS / Capacitor fixes — lo primero, antes de montar nada
     initIOSFixes();
 
+    // Forzar status bar icons oscuros (negros)
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      try { await window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
+    }
+
     await waitForMapLibre();
     console.log('✅ MapLibre listo');
 
