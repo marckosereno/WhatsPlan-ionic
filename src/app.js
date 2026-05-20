@@ -286,6 +286,8 @@ function setupActivitySubscription(mv) {
 
     // Forzar status bar icons oscuros (negros)
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      // Esperar a que Capacitor inicialice completamente antes de setear el style
+      setTimeout(() => { try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {} }, 500);
       try { await window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
       // Reforzar cada vez que la app vuelve al frente
       document.addEventListener('visibilitychange', () => {
