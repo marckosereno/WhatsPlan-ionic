@@ -287,20 +287,28 @@ function setupActivitySubscription(mv) {
     // Forzar status bar icons oscuros (negros)
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
       // Esperar a que Capacitor inicialice completamente antes de setear el style
-      setTimeout(() => { try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {} }, 500);
-      try { await window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
+      // Capacitor 7 — usar SystemBars si está disponible, sino StatusBar
+      const setDarkIcons = () => {
+        try {
+          if (window.Capacitor.Plugins.SystemBars) {
+            window.Capacitor.Plugins.SystemBars.setStyle({ style: 'LIGHT' });
+          } else {
+            window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' });
+          }
+        } catch(e) {}
+      };
+      // Aplicar inmediatamente y con delay para asegurar que Capacitor esté listo
+      setDarkIcons();
+      setTimeout(setDarkIcons, 300);
+      setTimeout(setDarkIcons, 800);
       // Reforzar cada vez que la app vuelve al frente
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
-        }
+        if (document.visibilityState === 'visible') setDarkIcons();
       });
-      // Listener nativo de Capacitor (más confiable que visibilitychange en Android)
+      // Listener nativo de Capacitor
       try {
         window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
-          if (state.isActive) {
-            try { window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' }); } catch(e) {}
-          }
+          if (state.isActive) setDarkIcons();
         });
       } catch(e) {}
     }
