@@ -286,6 +286,7 @@ export class SearchBar {
     var filterEl  = document.getElementById('wps-filter-chip');
     var closeEl   = document.getElementById('wps-close-chip');
 
+    var self2 = this;
     var restoreAll = function() {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
@@ -313,6 +314,8 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
+      // Restaurar markers DESPUES de que la animacion termine
+      self2._restoreMarkers();
     };
 
     if (chip && gsap) {
