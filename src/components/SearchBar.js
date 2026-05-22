@@ -90,7 +90,7 @@ export class SearchBar {
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
-    // _restoreMarkers se llama en restoreAll despues de la animacion de cierre
+    this._restoreMarkers();
   }
 
   isActive() { return this._active; }
@@ -295,6 +295,7 @@ export class SearchBar {
     var closeEl   = document.getElementById('wps-close-chip');
 
     var self2 = this;
+    var self2 = this;
     var restoreAll = function() {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
@@ -322,16 +323,16 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
-      // Liberar tamaño fijo del mapa y restaurar markers
+      // Restaurar markers y liberar tamaño del mapa
+      self2._restoreMarkers();
       var mapContainer = document.getElementById('map-container');
       if (mapContainer) {
         mapContainer.style.width  = '';
         mapContainer.style.height = '';
       }
-      self2._restoreMarkers();
-      var mv = self2.mapView;
-      if (mv && mv.map) {
-        requestAnimationFrame(function() { mv.map.resize(); });
+      var mv2 = self2.mapView;
+      if (mv2 && mv2.map) {
+        requestAnimationFrame(function() { mv2.map.resize(); });
       }
     };
 
@@ -734,34 +735,24 @@ export class SearchBar {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
     mv.markerEls.forEach(function(el) {
-      // El marker de MapLibre envuelve el elemento — buscar el padre .maplibregl-marker
-      var marker = el.parentElement;
-      while (marker && !marker.classList.contains('maplibregl-marker')) {
-        marker = marker.parentElement;
-      }
-      if (!marker) marker = el.parentElement || el;
-
-      // Forzar visibilidad en el padre
-      marker.style.opacity = '1';
-      marker.style.filter  = '';
-      marker.style.zIndex  = '';
+      var marker = el.closest('.maplibregl-marker') || el.parentElement || el;
+      // Limpiar estilos del marker padre (donde _highlightMarkers aplica opacity)
       marker.style.removeProperty('opacity');
       marker.style.removeProperty('filter');
       marker.style.removeProperty('z-index');
-      // Forzar de nuevo tras removeProperty
-      marker.style.opacity = '';
-      marker.style.filter  = '';
-
-      // Limpiar el elemento hijo
-      el.style.opacity   = '';
-      el.style.filter    = '';
-      el.style.transform = '';
-      el.style.zIndex    = '';
+      marker.style.removeProperty('transform');
+      marker.style.opacity   = '1';
+      marker.style.filter    = '';
+      marker.style.zIndex    = '';
+      // Limpiar estilos del elemento hijo también
       el.style.removeProperty('opacity');
       el.style.removeProperty('filter');
       el.style.removeProperty('transform');
       el.style.removeProperty('z-index');
-
+      el.style.opacity   = '1';
+      el.style.filter    = '';
+      el.style.transform = '';
+      el.style.zIndex    = '';
       var wrapper = el.querySelector('.place-pin-wrapper') || el.querySelector('.pin-dot');
       if (wrapper) wrapper.classList.remove('pin-iridescent');
     });
@@ -783,7 +774,7 @@ export class SearchBar {
     cats.forEach(function(cat) {
       var isActive = cat.key === cur;
       var chip = document.createElement('div');
-      chip.className = 'whatsplan-scat-btn' + (isActive ? ' whatsplan-scat-selected' : '');
+      chip.className = 'wps-cat-chip' + (isActive ? ' active' : '');
       chip.innerHTML = cat.icon3d_url
         ? '<img src="' + cat.icon3d_url + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.outerHTML=\'<span>' + (cat.emoji || '') + '</span>\'"><span>' + (cat.label_es || cat.key) + '</span>'
         : '<span>' + (cat.emoji || '') + '</span><span>' + (cat.label_es || cat.key) + '</span>';
@@ -794,8 +785,8 @@ export class SearchBar {
         if (inp) inp.value = '';
         self._hideResults();
         self._restoreMarkers();
-        container.querySelectorAll('.whatsplan-scat-btn').forEach(function(c) { c.classList.remove('whatsplan-scat-selected'); });
-        chip.classList.add('whatsplan-scat-selected');
+        container.querySelectorAll('.wps-cat-chip').forEach(function(c) { c.classList.remove('active'); });
+        chip.classList.add('active');
         if (self.onCategorySelect) self.onCategorySelect(cat.key);
         // El count se actualiza via evento wp:placesloaded cuando MapView termina de cargar
       });
@@ -804,7 +795,7 @@ export class SearchBar {
 
     document.body.appendChild(container);
     setTimeout(function() {
-      var active = container.querySelector('.whatsplan-scat-selected');
+      var active = container.querySelector('.wps-cat-chip.active');
       if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 80);
   }
@@ -972,7 +963,7 @@ export class SearchBar {
         pointer-events:all;
       }
       #wp-scats::-webkit-scrollbar{display:none;}
-      .whatsplan-scat-btn{
+      .wps-cat-chip{
         display:inline-flex;align-items:center;gap:6px;
         padding:8px 14px;
         background:white;
@@ -986,12 +977,16 @@ export class SearchBar {
         transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      .whatsplan-scat-btn.whatsplan-scat-selected{
+      .wps-cat-chip.active{
         background:var(--wp-blue, #2563eb);
         color:white;
         box-shadow:0 4px 0 #1a4dbf;
       }
-      .whatsplan-scat-btn:active{
+      .wps-cat-chip:active{
+        transform:translateY(3px);
+        box-shadow:0 1px 0 #1a4dbf;
+      }
+      .wps-cat-chip:active{
         transform:translateY(2px);
         box-shadow:0 2px 0 #1a4dbf;
       }
