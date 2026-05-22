@@ -974,13 +974,14 @@ export class SearchBar {
       #wp-scats::-webkit-scrollbar{display:none;}
       #wp-scats .wps-cat-chip{
         display:inline-flex;align-items:center;gap:6px;
-        padding:8px 14px;
+        padding:6px 14px;
         background:white;
         color:#374151;
         border:none;
         border-radius:50px;
         font-size:13px;font-weight:700;white-space:nowrap;
         line-height:1;
+        height:29px;
         cursor:pointer;flex-shrink:0;
         box-sizing:border-box;
         box-shadow:none;
