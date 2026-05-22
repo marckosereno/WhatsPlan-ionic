@@ -715,16 +715,20 @@ export class SearchBar {
     if (!mv || !mv.markerEls) return;
     mv.markerEls.forEach(function(el) {
       var marker = el.closest('.maplibregl-marker') || el.parentElement || el;
-      // Usar removeProperty para limpiar cualquier valor incluyendo !important
+      // Limpiar estilos del marker padre (donde _highlightMarkers aplica opacity)
       marker.style.removeProperty('opacity');
       marker.style.removeProperty('filter');
       marker.style.removeProperty('z-index');
-      marker.style.opacity = '';
-      marker.style.filter  = '';
-      marker.style.zIndex  = '';
+      marker.style.removeProperty('transform');
+      marker.style.opacity   = '1';
+      marker.style.filter    = '';
+      marker.style.zIndex    = '';
+      // Limpiar estilos del elemento hijo también
       el.style.removeProperty('opacity');
       el.style.removeProperty('filter');
-      el.style.opacity   = '';
+      el.style.removeProperty('transform');
+      el.style.removeProperty('z-index');
+      el.style.opacity   = '1';
       el.style.filter    = '';
       el.style.transform = '';
       el.style.zIndex    = '';
