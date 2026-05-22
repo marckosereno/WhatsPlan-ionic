@@ -972,7 +972,7 @@ export class SearchBar {
         pointer-events:all;
       }
       #wp-scats::-webkit-scrollbar{display:none;}
-      .wps-cat-chip{
+      #wp-scats .wps-cat-chip{
         display:inline-flex;align-items:center;gap:6px;
         padding:8px 14px;
         background:white;
@@ -988,16 +988,12 @@ export class SearchBar {
         transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      .wps-cat-chip.active{
+      #wp-scats .wps-cat-chip.active{
         background:var(--wp-blue, #2563eb);
         color:white;
         box-shadow:0 4px 0 #1a4dbf;
       }
-      .wps-cat-chip:active{
-        transform:translateY(3px);
-        box-shadow:0 1px 0 #1a4dbf;
-      }
-      .wps-cat-chip:active{
+      #wp-scats .wps-cat-chip:active{
         transform:translateY(2px);
         box-shadow:0 2px 0 #1a4dbf;
       }
