@@ -314,8 +314,12 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
-      // Restaurar markers DESPUES de que la animacion termine
+      // Restaurar markers y recalcular posiciones del mapa
       self2._restoreMarkers();
+      var mv = self2.mapView;
+      if (mv && mv.map) {
+        setTimeout(function() { mv.map.resize(); }, 50);
+      }
     };
 
     if (chip && gsap) {
