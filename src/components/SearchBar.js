@@ -54,6 +54,14 @@ export class SearchBar {
     this._moveSubcatsToBody();
     this._showOverlay();
     this._showCategoryChips();
+
+    // Fijar tamaño del mapa para que el resize del chip no mueva los pines
+    var mapContainer = document.getElementById('map-container');
+    if (mapContainer && mv && mv.map) {
+      var rect = mapContainer.getBoundingClientRect();
+      mapContainer.style.width  = rect.width  + 'px';
+      mapContainer.style.height = rect.height + 'px';
+    }
   }
 
   deactivate() {
@@ -314,13 +322,16 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
-      // Restaurar markers y recalcular posiciones del mapa
+      // Liberar tamaño fijo del mapa y restaurar markers
+      var mapContainer = document.getElementById('map-container');
+      if (mapContainer) {
+        mapContainer.style.width  = '';
+        mapContainer.style.height = '';
+      }
       self2._restoreMarkers();
       var mv = self2.mapView;
       if (mv && mv.map) {
-        requestAnimationFrame(function() {
-          mv.map.resize();
-        });
+        requestAnimationFrame(function() { mv.map.resize(); });
       }
     };
 
