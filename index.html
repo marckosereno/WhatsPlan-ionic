@@ -1,15 +1,6 @@
-
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script>
-  tailwind.config = {
-    corePlugins: {
-      preflight: false
-    }
-  }
-</script>
 <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
@@ -36,6 +27,13 @@
     .category-name { font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important; }
     /* ── Topbar layout ── */
     #topbar > * { pointer-events: auto; }
+    /* Proteger componentes del preflight de Tailwind */
+    .wps-cat-chip {
+      line-height: 1 !important;
+      box-sizing: border-box !important;
+      font-size: 13px !important;
+      padding: 8px 14px !important;
+    }
     #topbar-auth-btn.avatar-skeleton {
       background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
       background-size: 400px 100%;
