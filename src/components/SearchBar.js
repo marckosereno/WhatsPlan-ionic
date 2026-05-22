@@ -318,7 +318,14 @@ export class SearchBar {
       self2._restoreMarkers();
       var mv = self2.mapView;
       if (mv && mv.map) {
-        setTimeout(function() { mv.map.resize(); }, 50);
+        var canvas = document.querySelector('#map-container canvas');
+        if (canvas) canvas.style.opacity = '0';
+        mv.map.resize();
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            if (canvas) canvas.style.opacity = '';
+          });
+        });
       }
     };
 
