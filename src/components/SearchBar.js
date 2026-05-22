@@ -783,7 +783,7 @@ export class SearchBar {
     cats.forEach(function(cat) {
       var isActive = cat.key === cur;
       var chip = document.createElement('div');
-      chip.className = 'wp-category-pill' + (isActive ? ' wp-category-pill--active' : '');
+      chip.className = 'whatsplan-scat-btn' + (isActive ? ' whatsplan-scat-selected' : '');
       chip.innerHTML = cat.icon3d_url
         ? '<img src="' + cat.icon3d_url + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.outerHTML=\'<span>' + (cat.emoji || '') + '</span>\'"><span>' + (cat.label_es || cat.key) + '</span>'
         : '<span>' + (cat.emoji || '') + '</span><span>' + (cat.label_es || cat.key) + '</span>';
@@ -794,8 +794,8 @@ export class SearchBar {
         if (inp) inp.value = '';
         self._hideResults();
         self._restoreMarkers();
-        container.querySelectorAll('.wp-category-pill').forEach(function(c) { c.classList.remove('wp-category-pill--active'); });
-        chip.classList.add('wp-category-pill--active');
+        container.querySelectorAll('.whatsplan-scat-btn').forEach(function(c) { c.classList.remove('whatsplan-scat-selected'); });
+        chip.classList.add('whatsplan-scat-selected');
         if (self.onCategorySelect) self.onCategorySelect(cat.key);
         // El count se actualiza via evento wp:placesloaded cuando MapView termina de cargar
       });
@@ -804,7 +804,7 @@ export class SearchBar {
 
     document.body.appendChild(container);
     setTimeout(function() {
-      var active = container.querySelector('.wp-category-pill--active');
+      var active = container.querySelector('.whatsplan-scat-selected');
       if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 80);
   }
@@ -972,29 +972,26 @@ export class SearchBar {
         pointer-events:all;
       }
       #wp-scats::-webkit-scrollbar{display:none;}
-      #wp-scats .wp-category-pill{
+      .whatsplan-scat-btn{
         display:inline-flex;align-items:center;gap:6px;
-        padding:6px 14px;
+        padding:8px 14px;
         background:white;
         color:#374151;
         border:none;
         border-radius:50px;
         font-size:13px;font-weight:700;white-space:nowrap;
-        line-height:1;
-        height:29px;
         cursor:pointer;flex-shrink:0;
-        box-sizing:border-box;
         box-shadow:none;
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      #wp-scats .wp-category-pill--active{
+      .whatsplan-scat-btn.whatsplan-scat-selected{
         background:var(--wp-blue, #2563eb);
         color:white;
         box-shadow:0 4px 0 #1a4dbf;
       }
-      #wp-scats .wp-category-pill:active{
+      .whatsplan-scat-btn:active{
         transform:translateY(2px);
         box-shadow:0 2px 0 #1a4dbf;
       }
