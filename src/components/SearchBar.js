@@ -852,14 +852,14 @@ export class SearchBar {
       }
       .wps-clear.visible { display:flex; }
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
-      .wps-filter,.wps-close{
-        width:32px;min-width:32px;height:32px;border-radius:50%;
-        border:none;background:rgba(0,0,0,0.08);color:#6b7280;
-        font-size:14px;font-weight:700;cursor:pointer;display:flex;
-        align-items:center;justify-content:center;flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;transition:background 0.2s;
+      /* filter/close usan topbar-icon-btn de Tailwind + fondo gris */
+      #wps-filter-chip, #wps-close-chip {
+        background: rgba(0,0,0,0.08) !important;
+        color: #6b7280;
       }
-      .wps-filter:active,.wps-close:active{background:rgba(0,0,0,0.15);}
+      #wps-filter-chip:active, #wps-close-chip:active {
+        background: rgba(0,0,0,0.15) !important;
+      }
 
       .panel-subcats-scroll.wps-subcats-floating {
         position:fixed;
