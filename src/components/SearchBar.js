@@ -783,7 +783,7 @@ export class SearchBar {
     cats.forEach(function(cat) {
       var isActive = cat.key === cur;
       var chip = document.createElement('div');
-      chip.className = 'wps-cat-chip' + (isActive ? ' active' : '');
+      chip.className = 'wp-category-pill' + (isActive ? ' wp-category-pill--active' : '');
       chip.innerHTML = cat.icon3d_url
         ? '<img src="' + cat.icon3d_url + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.outerHTML=\'<span>' + (cat.emoji || '') + '</span>\'"><span>' + (cat.label_es || cat.key) + '</span>'
         : '<span>' + (cat.emoji || '') + '</span><span>' + (cat.label_es || cat.key) + '</span>';
@@ -794,8 +794,8 @@ export class SearchBar {
         if (inp) inp.value = '';
         self._hideResults();
         self._restoreMarkers();
-        container.querySelectorAll('.wps-cat-chip').forEach(function(c) { c.classList.remove('active'); });
-        chip.classList.add('active');
+        container.querySelectorAll('.wp-category-pill').forEach(function(c) { c.classList.remove('wp-category-pill--active'); });
+        chip.classList.add('wp-category-pill--active');
         if (self.onCategorySelect) self.onCategorySelect(cat.key);
         // El count se actualiza via evento wp:placesloaded cuando MapView termina de cargar
       });
@@ -804,7 +804,7 @@ export class SearchBar {
 
     document.body.appendChild(container);
     setTimeout(function() {
-      var active = container.querySelector('.wps-cat-chip.active');
+      var active = container.querySelector('.wp-category-pill--active');
       if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 80);
   }
@@ -972,7 +972,7 @@ export class SearchBar {
         pointer-events:all;
       }
       #wp-scats::-webkit-scrollbar{display:none;}
-      #wp-scats .wps-cat-chip{
+      #wp-scats .wp-category-pill{
         display:inline-flex;align-items:center;gap:6px;
         padding:6px 14px;
         background:white;
@@ -989,12 +989,12 @@ export class SearchBar {
         transition:all 0.15s ease;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
-      #wp-scats .wps-cat-chip.active{
+      #wp-scats .wp-category-pill--active{
         background:var(--wp-blue, #2563eb);
         color:white;
         box-shadow:0 4px 0 #1a4dbf;
       }
-      #wp-scats .wps-cat-chip:active{
+      #wp-scats .wp-category-pill:active{
         transform:translateY(2px);
         box-shadow:0 2px 0 #1a4dbf;
       }
