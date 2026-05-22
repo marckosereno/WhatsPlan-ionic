@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
-<script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
   <meta charset="UTF-8">
@@ -17,35 +15,6 @@
   <link href="https://db.onlinewebfonts.com/c/557602b15207c6d67bbdda171a4157dd?family=Yahoo+Sans+Bold+Regular" rel="stylesheet">
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=inter-tight:400,500,600,700&display=swap" rel="stylesheet">
-
-  <style>
-    @font-face {
-      font-family: 'Yahoo Sans Bold Regular';
-      src: url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff2') format('woff2'),
-           url('https://db.onlinewebfonts.com/t/557602b15207c6d67bbdda171a4157dd.woff')  format('woff');
-      font-weight: normal; font-style: normal; font-display: swap;
-    }
-    .category-name { font-family: 'Yahoo Sans Bold Regular', -apple-system, system-ui, sans-serif !important; }
-    /* ── Topbar layout ── */
-    #topbar > * { pointer-events: auto; }
-    /* Proteger componentes del preflight de Tailwind */
-    .wps-cat-chip {
-      line-height: 1 !important;
-      box-sizing: border-box !important;
-      font-size: 13px !important;
-      padding: 8px 14px !important;
-    }
-    #topbar-auth-btn.avatar-skeleton {
-      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-      background-size: 400px 100%;
-      animation: avatar-shimmer 1.4s ease-in-out infinite;
-      border: none;
-    }
-    @keyframes avatar-shimmer {
-      0%   { background-position: -200px 0; }
-      100% { background-position:  200px 0; }
-    }
-  </style>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
@@ -63,83 +32,67 @@
   </svg>
 
 <div id="map-results-panel" class="map-results-panel-float" style="opacity:1;transform:translateY(0)">
-      <!-- Fila subcategorías: GPS (primer chip) + chips en scroll horizontal -->
-      <div class="panel-scroll-wrap">
-        <div id="map-subcategories-footer" class="panel-subcats-scroll">
-          <!-- GPS skeleton — se reemplaza cuando SubcategoryRow.js arranca -->
-          <div class="hm-gps-skeleton"></div>
-        </div>
+  <div class="panel-scroll-wrap">
+    <div id="map-subcategories-footer" class="panel-subcats-scroll">
+      <div class="hm-gps-skeleton"></div>
+    </div>
+  </div>
+  <div class="panel-scroll-wrap">
+    <div id="map-categories-footer" class="panel-categories-scroll">
+      <div class="category-footer-chip category-chip-skeleton">
+        <div class="category-icon-circle cat-sk-circle"></div>
+        <div class="cat-sk-label"></div>
       </div>
-      <!-- Fila categorías principales — skeletons pre-render -->
-      <div class="panel-scroll-wrap">
-        <div id="map-categories-footer" class="panel-categories-scroll">
-          <div class="category-footer-chip category-chip-skeleton">
-            <div class="category-icon-circle cat-sk-circle"></div>
-            <div class="cat-sk-label"></div>
-          </div>
-          <div class="category-footer-chip category-chip-skeleton">
-            <div class="category-icon-circle cat-sk-circle"></div>
-            <div class="cat-sk-label"></div>
-          </div>
-          <div class="category-footer-chip category-chip-skeleton">
-            <div class="category-icon-circle cat-sk-circle"></div>
-            <div class="cat-sk-label"></div>
-          </div>
-          <div class="category-footer-chip category-chip-skeleton">
-            <div class="category-icon-circle cat-sk-circle"></div>
-            <div class="cat-sk-label"></div>
-          </div>
-          <div class="category-footer-chip category-chip-skeleton">
-            <div class="category-icon-circle cat-sk-circle"></div>
-            <div class="cat-sk-label"></div>
-          </div>
-          <div class="category-footer-chip category-chip-skeleton">
-            <div class="category-icon-circle cat-sk-circle"></div>
-            <div class="cat-sk-label"></div>
-          </div>
-        </div>
+      <div class="category-footer-chip category-chip-skeleton">
+        <div class="category-icon-circle cat-sk-circle"></div>
+        <div class="cat-sk-label"></div>
+      </div>
+      <div class="category-footer-chip category-chip-skeleton">
+        <div class="category-icon-circle cat-sk-circle"></div>
+        <div class="cat-sk-label"></div>
+      </div>
+      <div class="category-footer-chip category-chip-skeleton">
+        <div class="category-icon-circle cat-sk-circle"></div>
+        <div class="cat-sk-label"></div>
+      </div>
+      <div class="category-footer-chip category-chip-skeleton">
+        <div class="category-icon-circle cat-sk-circle"></div>
+        <div class="cat-sk-label"></div>
+      </div>
+      <div class="category-footer-chip category-chip-skeleton">
+        <div class="category-icon-circle cat-sk-circle"></div>
+        <div class="cat-sk-label"></div>
       </div>
     </div>
+  </div>
+</div>
 
-    <ion-app animated="false">
-    <div id="map-container" class="map-container"></div>
+<ion-app animated="false">
+  <div id="map-container" class="map-container"></div>
 
-    <div id="topbar"
-         class="fixed left-3 right-3 z-[9999] flex items-center justify-between pointer-events-none"
-         style="top: calc(12px + env(safe-area-inset-top, 0px))">
-
-      <!-- Izquierda: +Actividad -->
-      <button id="topbar-activity-btn"
-              title="Agregar actividad"
-              class="pointer-events-auto flex items-center gap-[6px] bg-white/85 backdrop-blur-xl border-[1.5px] border-white/90 rounded-full px-4 py-[10px] text-[13px] font-bold text-gray-900 shadow-[0_4px_20px_rgba(0,0,0,0.10)] cursor-pointer touch-manipulation active:scale-95">
-        <span class="act-plus w-[18px] h-[18px] bg-blue-600 rounded-full flex items-center justify-center text-white text-[13px] font-extrabold leading-none shrink-0">+</span>
-        Actividad
+  <div id="topbar">
+    <button id="topbar-activity-btn" title="Agregar actividad">
+      <span class="act-plus">+</span>
+      Actividad
+    </button>
+    <div id="topbar-right-chip">
+      <button id="topbar-search-btn" class="topbar-icon-btn" title="Buscar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
       </button>
-
-      <!-- Derecha: chip con búsqueda + mensajes + avatar -->
-      <div id="topbar-right-chip"
-           class="pointer-events-auto flex items-center gap-0.5 bg-white/85 backdrop-blur-xl border-[1.5px] border-white/90 rounded-full pl-2 pr-[5px] py-[5px] shadow-[0_4px_20px_rgba(0,0,0,0.10)] min-h-[46px]">
-        <button id="topbar-search-btn" class="topbar-icon-btn w-9 h-9 rounded-full border-none bg-transparent flex items-center justify-center cursor-pointer touch-manipulation p-0 transition-[background,transform] duration-150 active:bg-black/[0.08] active:scale-90" title="Buscar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"
-               stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-            <circle cx="11" cy="11" r="8"/>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </button>
-        <button id="topbar-messages-btn" class="topbar-icon-btn w-9 h-9 rounded-full border-none bg-transparent flex items-center justify-center cursor-pointer touch-manipulation p-0 transition-[background,transform] duration-150 active:bg-black/[0.08] active:scale-90" title="Mensajes">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"
-               stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-        </button>
-        <button id="topbar-auth-btn"
-                title="Mi perfil / Login"
-                class="avatar-skeleton w-9 h-9 rounded-full bg-white/75 border-2 border-white/80 shadow-[0_2px_8px_rgba(37,99,235,0.25)] flex items-center justify-center overflow-visible cursor-pointer touch-manipulation p-0 relative shrink-0 transition-[opacity,transform] duration-[250ms] active:scale-90">
-        </button>
-      </div>
+      <button id="topbar-messages-btn" class="topbar-icon-btn" title="Mensajes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button id="topbar-auth-btn" title="Mi perfil / Login" class="avatar-skeleton"></button>
     </div>
-
-  </ion-app>
+  </div>
+</ion-app>
 
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
   <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
@@ -147,4 +100,4 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script type="module" src="/src/app.js"></script>
 </body>
-</html><!-- no-op -->
+</html>
