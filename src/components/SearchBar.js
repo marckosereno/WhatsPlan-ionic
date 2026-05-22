@@ -82,7 +82,7 @@ export class SearchBar {
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
-    this._restoreMarkers();
+    // _restoreMarkers se llama en restoreAll despues de la animacion de cierre
   }
 
   isActive() { return this._active; }
@@ -717,24 +717,34 @@ export class SearchBar {
     var mv = this.mapView;
     if (!mv || !mv.markerEls) return;
     mv.markerEls.forEach(function(el) {
-      var marker = el.closest('.maplibregl-marker') || el.parentElement || el;
-      // Limpiar estilos del marker padre (donde _highlightMarkers aplica opacity)
+      // El marker de MapLibre envuelve el elemento — buscar el padre .maplibregl-marker
+      var marker = el.parentElement;
+      while (marker && !marker.classList.contains('maplibregl-marker')) {
+        marker = marker.parentElement;
+      }
+      if (!marker) marker = el.parentElement || el;
+
+      // Forzar visibilidad en el padre
+      marker.style.opacity = '1';
+      marker.style.filter  = '';
+      marker.style.zIndex  = '';
       marker.style.removeProperty('opacity');
       marker.style.removeProperty('filter');
       marker.style.removeProperty('z-index');
-      marker.style.removeProperty('transform');
-      marker.style.opacity   = '1';
-      marker.style.filter    = '';
-      marker.style.zIndex    = '';
-      // Limpiar estilos del elemento hijo también
+      // Forzar de nuevo tras removeProperty
+      marker.style.opacity = '';
+      marker.style.filter  = '';
+
+      // Limpiar el elemento hijo
+      el.style.opacity   = '';
+      el.style.filter    = '';
+      el.style.transform = '';
+      el.style.zIndex    = '';
       el.style.removeProperty('opacity');
       el.style.removeProperty('filter');
       el.style.removeProperty('transform');
       el.style.removeProperty('z-index');
-      el.style.opacity   = '1';
-      el.style.filter    = '';
-      el.style.transform = '';
-      el.style.zIndex    = '';
+
       var wrapper = el.querySelector('.place-pin-wrapper') || el.querySelector('.pin-dot');
       if (wrapper) wrapper.classList.remove('pin-iridescent');
     });
@@ -953,7 +963,9 @@ export class SearchBar {
         border:none;
         border-radius:50px;
         font-size:13px;font-weight:700;white-space:nowrap;
+        line-height:1;
         cursor:pointer;flex-shrink:0;
+        box-sizing:border-box;
         box-shadow:none;
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
