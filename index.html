@@ -2,7 +2,15 @@
 <html lang="es">
 <head>
 <script>
-  tailwind.config = { corePlugins: { preflight: false } }
+  tailwind.config = {
+    corePlugins: {
+      preflight: false,
+      fontSize: false
+    },
+    theme: {
+      extend: {}
+    }
+  }
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
