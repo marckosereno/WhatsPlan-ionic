@@ -58,7 +58,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel-float {
   position: fixed;
-  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   background: white;
