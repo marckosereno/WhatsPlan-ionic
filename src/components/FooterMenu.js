@@ -64,6 +64,8 @@ export class FooterMenu {
         background: rgba(255,255,255,0.88);
         backdrop-filter: blur(16px) saturate(1.8);
         -webkit-backdrop-filter: blur(16px) saturate(1.8);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+        border-radius: 50px;
         cursor: pointer;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
@@ -72,36 +74,21 @@ export class FooterMenu {
         flex-shrink: 0;
       }
 
-      /* Icon pill — left side of group */
+      /* Icon pill */
       .wp-pill-icon {
         width: 42px;
         color: #374151;
-        border-radius: 50px 0 0 50px;
-        box-shadow: -2px 0 0 rgba(255,255,255,0.9), 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
       }
       .wp-pill-icon svg { width: 20px; height: 20px; }
 
-      /* Label pill — right side of group */
+      /* Label pill */
       .wp-pill-label {
-        padding: 0 14px 0 10px;
+        padding: 0 14px;
         font-size: 13px;
         font-weight: 700;
         color: #374151;
         font-family: 'Inter Tight', system-ui, sans-serif;
         white-space: nowrap;
-        border-radius: 0 50px 50px 0;
-        box-shadow: 2px 0 0 rgba(255,255,255,0.9), 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-      }
-
-      /* When label comes BEFORE icon (right side) */
-      .wp-menu-side .wp-pill-label:first-child {
-        border-radius: 50px 0 0 50px;
-        padding: 0 10px 0 14px;
-        box-shadow: -2px 0 0 rgba(255,255,255,0.9), 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-      }
-      .wp-menu-side .wp-pill-icon:last-child {
-        border-radius: 0 50px 50px 0;
-        box-shadow: 2px 0 0 rgba(255,255,255,0.9), 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
       }
 
       /* Active state */
