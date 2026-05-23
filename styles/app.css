@@ -336,7 +336,7 @@ ion-app {
 #topbar-activity-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 10px 16px;
-  font-size: 13px; font-weight: 700; color: #0e6080;
+  font-size: 13px; font-weight: 700; color: #ffffff;
   font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
 }
 #topbar-activity-btn:active { transform: scale(0.92); }
