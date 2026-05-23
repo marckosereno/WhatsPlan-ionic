@@ -160,6 +160,13 @@ export function initLiquidGlass() {
   chips.forEach(chip => {
     if (hasSupport) {
       requestAnimationFrame(() => requestAnimationFrame(() => applyToChip(chip)));
+
+      // Recalcular cuando el chip cambia de tamaño (searchbar expand/collapse)
+      const ro = new ResizeObserver(() => {
+        chip._lgDone = false;
+        requestAnimationFrame(() => applyToChip(chip));
+      });
+      ro.observe(chip);
     } else {
       applyFallback(chip);
     }
