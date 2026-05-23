@@ -10,8 +10,8 @@ import { initSupabase, AuthService, ActivityService, ProfileService } from '/src
 import { isSuperUser }      from '/src/services/SuperUserService.js';
 import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
-import { initLiquidGlass, updateLGParam, getLGParams } from '/src/utils/liquid-glass.js';
-import { LiquidGlassPanel } from '/src/components/LiquidGlassPanel.js';
+import { initLiquidGlass }  from '/src/utils/liquid-glass.js';
+import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal }       from '/src/components/PlaceModal.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
@@ -287,10 +287,10 @@ function setupActivitySubscription(mv) {
     initIOSFixes();
 
     // Liquid Glass topbar
-    setTimeout(() => {
-      initLiquidGlass();
-      new LiquidGlassPanel();
-    }, 200);
+    setTimeout(initLiquidGlass, 200);
+
+    // Pulse spring universal
+    setTimeout(initWpTap, 400);
 
     // Forzar status bar icons oscuros (negros)
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
