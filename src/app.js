@@ -292,7 +292,7 @@ function setupActivitySubscription(mv) {
       initLiquidGlass();
       window.wpLiquidGlass = { updateParam: updateLGParam, getParams: getLGParams };
       new LiquidGlassPanel();
-    }, 200);
+    }, 300);
 
     // Pulse spring universal
     setTimeout(initWpTap, 400);
