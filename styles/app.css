@@ -281,23 +281,24 @@ ion-app {
 #topbar-activity-btn,
 #topbar-right-chip {
   position: relative;
-  isolation: isolate;
   border-radius: 50px;
   border: none;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: hidden;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
-/* Refraction layer — inyectado por liquid-glass.js via .lg-active */
-/* Specular + BG — manejado por .lg-spec div inyectado por liquid-glass.js */
+
 
 #topbar-activity-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 10px 16px;
-  font-size: 13px; font-weight: 700; color: inherit;
+  font-size: 13px; font-weight: 700; color: #111827;
   font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
 }
 #topbar-activity-btn:active { transform: scale(0.92); }
@@ -321,12 +322,12 @@ ion-app {
   width: 36px; height: 36px; border-radius: 50%;
   border: none; background: transparent;
   display: flex; align-items: center; justify-content: center;
-  color: inherit; cursor: pointer;
+  color: #374151; cursor: pointer;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   transition: background 0.15s;
   padding: 0; position: relative; z-index: 2;
 }
-.topbar-icon-btn:active { background: rgba(37,99,235,0.08); }
+.topbar-icon-btn:active { background: rgba(0,0,0,0.07); }
 
 #topbar-auth-btn {
   width: 36px; height: 36px; border-radius: 50%;
