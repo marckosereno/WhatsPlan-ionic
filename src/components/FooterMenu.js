@@ -32,19 +32,12 @@ export class FooterMenu {
       }
 
       .wp-menu-bar {
-        background: rgba(255,255,255,0.92);
-        backdrop-filter: blur(20px) saturate(1.8);
-        -webkit-backdrop-filter: blur(20px) saturate(1.8);
-        border-radius: 28px 28px 20px 20px;
+        background: transparent;
         padding: 8px 12px 10px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        box-shadow:
-          0 -1px 0 rgba(255,255,255,0.8),
-          0 8px 32px rgba(0,0,0,0.08),
-          0 -4px 24px rgba(80,160,255,0.08);
-        pointer-events: all;
+        pointer-events: none;
         height: 68px;
         position: relative;
       }
@@ -52,40 +45,41 @@ export class FooterMenu {
       .wp-menu-side {
         display: flex;
         align-items: center;
-        gap: 4px;
-        flex: 1;
+        gap: 8px;
       }
-      .wp-menu-side.right { justify-content: flex-end; }
 
       .wp-menu-item {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        gap: 3px;
+        gap: 7px;
         cursor: pointer;
-        padding: 6px 12px;
-        border-radius: 16px;
+        padding: 10px 16px;
+        border-radius: 50px;
+        background: rgba(255,255,255,0.88);
+        backdrop-filter: blur(16px) saturate(1.8);
+        -webkit-backdrop-filter: blur(16px) saturate(1.8);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
         position: relative;
-        min-width: 60px;
+        pointer-events: all;
         will-change: transform;
       }
 
       .wp-menu-icon {
-        width: 26px; height: 26px;
+        width: 22px; height: 22px;
         display: flex; align-items: center; justify-content: center;
-        color: #9ca3af;
-        transition: color 0.25s ease;
+        color: #374151;
+        flex-shrink: 0;
       }
-      .wp-menu-icon svg { width: 24px; height: 24px; }
+      .wp-menu-icon svg { width: 20px; height: 20px; }
 
       .wp-menu-label {
-        font-size: 10px;
-        font-weight: 600;
-        color: #9ca3af;
+        font-size: 13px;
+        font-weight: 700;
+        color: #374151;
         white-space: nowrap;
-        transition: color 0.25s ease, opacity 0.25s ease;
         font-family: 'Inter Tight', system-ui, sans-serif;
       }
 
@@ -95,15 +89,15 @@ export class FooterMenu {
       /* Center button */
       .wp-menu-center {
         flex-shrink: 0;
-        width: 58px; height: 58px;
-        margin-top: -22px;
+        width: 54px; height: 54px;
         position: relative;
         z-index: 2;
         will-change: transform;
+        pointer-events: all;
       }
 
       .wp-menu-center-btn {
-        width: 58px; height: 58px;
+        width: 54px; height: 54px;
         border-radius: 50%;
         background: linear-gradient(145deg, #3b82f6, #1d4ed8);
         border: 3px solid white;
@@ -120,7 +114,7 @@ export class FooterMenu {
         color: white;
         will-change: transform;
       }
-      .wp-menu-center-btn svg { width: 24px; height: 24px; }
+      .wp-menu-center-btn svg { width: 22px; height: 22px; }
     `;
     document.head.appendChild(s);
   }
