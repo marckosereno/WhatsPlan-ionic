@@ -10,7 +10,7 @@ import { initSupabase, AuthService, ActivityService, ProfileService } from '/src
 import { isSuperUser }      from '/src/services/SuperUserService.js';
 import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
-import { initLiquidGlass }  from '/src/utils/liquid-glass.js';
+import { initLiquidGlass, updateLGParam, getLGParams } from '/src/utils/liquid-glass.js';
 import { LiquidGlassPanel } from '/src/components/LiquidGlassPanel.js';
 import { PlaceModal }       from '/src/components/PlaceModal.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
