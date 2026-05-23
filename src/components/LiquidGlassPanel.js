@@ -163,7 +163,12 @@ export class LiquidGlassPanel {
   }
 
   _dispatch() {
+    // Disparar evento para liquid-glass.js
     document.dispatchEvent(new CustomEvent('wp:lgparams', { detail: { ...this.params } }));
+    // También llamar directo si está disponible
+    if (window.wpLiquidGlass && window.wpLiquidGlass.updateParam) {
+      Object.entries(this.params).forEach(([k,v]) => window.wpLiquidGlass.updateParam(k,v));
+    }
   }
 
   toggle() { this.visible ? this.hide() : this.show(); }
