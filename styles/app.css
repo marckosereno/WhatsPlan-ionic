@@ -311,26 +311,25 @@ ion-app {
   z-index: -2;
 }
 
-/* Fondo interior azul metálico */
+/* Fondo interior frosted */
 #topbar-activity-btn::after,
 #topbar-right-chip::after {
   content: '';
   position: absolute; inset: 1px;
   border-radius: 50px;
-  background: linear-gradient(
-    145deg,
-    rgba(200,220,255,0.72) 0%,
-    rgba(180,210,255,0.58) 30%,
-    rgba(210,228,255,0.65) 60%,
-    rgba(195,218,255,0.70) 100%
+  background: linear-gradient(39deg,
+    hsla(0,0%,100%,.85) 0%,
+    hsla(0,0%,100%,.85) 30%,
+    rgba(255,255,255,.85) 60%,
+    rgba(255,255,255,.85) 100%
   );
   backdrop-filter: blur(18px) saturate(2) brightness(1.08);
   -webkit-backdrop-filter: blur(18px) saturate(2) brightness(1.08);
   box-shadow:
     inset 0 1.5px 0 rgba(255,255,255,0.95),
-    inset 0 -1px 0 rgba(120,170,255,0.25),
+    inset 0 -1px 0 rgba(255,255,255,0.2),
     inset 1.5px 0 0 rgba(255,255,255,0.6),
-    inset -1.5px 0 0 rgba(120,170,255,0.15),
+    inset -1.5px 0 0 rgba(255,255,255,0.15),
     0 8px 32px rgba(37,99,235,0.18),
     0 2px 8px rgba(0,0,0,0.10);
   z-index: -1;
@@ -340,7 +339,7 @@ ion-app {
 #topbar-activity-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 10px 16px;
-  font-size: 13px; font-weight: 700; color: #1e3a8a;
+  font-size: 13px; font-weight: 700; color: #111827;
   font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
 }
 #topbar-activity-btn:active { transform: scale(0.92); }
@@ -366,13 +365,13 @@ ion-app {
   width: 36px; height: 36px; border-radius: 50%;
   border: none; background: transparent;
   display: flex; align-items: center; justify-content: center;
-  color: #1e3a8a; cursor: pointer;
+  color: #374151; cursor: pointer;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   transition: background 0.15s;
   padding: 0;
   position: relative; z-index: 2;
 }
-.topbar-icon-btn:active { background: rgba(37,99,235,0.08); }
+.topbar-icon-btn:active { background: rgba(0,0,0,0.07); }
 
 #topbar-auth-btn {
   width: 36px; height: 36px; border-radius: 50%;
