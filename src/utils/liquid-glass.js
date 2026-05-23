@@ -87,7 +87,7 @@ function applyToChip(chip) {
   const H = Math.ceil(rect.height) || 46;
 
   const { url, maxDisp } = genPillDM(W, H, 0.30, 1.5);
-  const scale = maxDisp * Math.min(W, H) * 1.2; // Mayor scale = refraccion mas visible
+  const scale = maxDisp * Math.min(W, H) * 0.47; // refraction level 0.47
   const filterId = 'lg-' + chip.id;
 
   // SVG filter
