@@ -12,6 +12,7 @@ import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
 import { initLiquidGlass, updateLGParam, getLGParams } from '/src/utils/liquid-glass.js';
 import { LiquidGlassPanel } from '/src/components/LiquidGlassPanel.js';
+import { FooterMenu }       from '/src/components/FooterMenu.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal }       from '/src/components/PlaceModal.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
@@ -293,6 +294,14 @@ function setupActivitySubscription(mv) {
       window.wpLiquidGlass = { updateParam: updateLGParam, getParams: getLGParams };
       new LiquidGlassPanel();
     }, 300);
+
+    // Footer menu
+    const footerMenu = new FooterMenu({
+      onActividades: () => { console.log('Actividades'); },
+      onHome:        () => { console.log('Home/Mapa'); },
+      onSocial:      () => { console.log('Social'); },
+    });
+    footerMenu.animateIn();
 
     // Pulse spring universal
     setTimeout(initWpTap, 400);
