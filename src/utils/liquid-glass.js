@@ -1,139 +1,167 @@
 // ====================================================================
 // WHATSPLAN — src/utils/liquid-glass.js
-// Liquid Glass effect for topbar chips
-// Chrome/WebView: SVG displacement map refraction + specular pulse
-// Safari/iOS: graceful fallback to frosted glass (CSS only)
+// Liquid Glass — SVG displacement map (algoritmo kube.io)
+// Chrome/WebView: refracción real, fondo transparente
+// Safari/iOS: fallback frosted glass automático
 // ====================================================================
 
-function genPillDisplacementMap(W, H, bezelFrac) {
+function convexSquircle(t) {
+  return Math.pow(1 - Math.pow(1 - t, 4), 0.25);
+}
+
+function genPillDM(W, H, bezelFrac, n2) {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(W, H);
-  const cx = W / 2, cy = H / 2;
-  const rx = W / 2, ry = H / 2;
+  const cx = W/2, cy = H/2;
+  const capR = Math.min(W, H) / 2;
+  const halfInner = Math.max(0, cx - capR);
+  const n1 = 1.0;
+
+  const SAMPLES = 128;
+  const disps = [];
+  let maxDisp = 0;
+  for (let i = 0; i < SAMPLES; i++) {
+    const t = i / (SAMPLES - 1);
+    const dt = 0.001;
+    const dh = (convexSquircle(Math.min(1,t+dt)) - convexSquircle(Math.max(0,t-dt))) / (2*dt);
+    const nx = -dh, ny = 1;
+    const len = Math.sqrt(nx*nx + ny*ny);
+    const sinI = Math.abs(nx/len);
+    const sinR = (n1/n2) * sinI;
+    if (sinR > 1) { disps.push(0); continue; }
+    const d = Math.tan(Math.asin(sinR)) - Math.tan(Math.asin(sinI));
+    disps.push(Math.abs(d));
+    maxDisp = Math.max(maxDisp, Math.abs(d));
+  }
+  const norm = maxDisp || 1;
 
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      const nx = (x - cx) / rx;
-      const ny = (y - cy) / ry;
+      const idx = (y*W+x)*4;
+      const absDx = x - cx, absDy = y - cy;
 
-      // Squircle distance (superellipse n=4 — igual que Apple)
-      const q = Math.pow(Math.abs(nx), 4) + Math.pow(Math.abs(ny), 4);
-      const distBorder = 1 - Math.pow(q, 0.25);
-
-      let dx = 128, dy = 128;
-
-      if (distBorder >= 0 && distBorder < bezelFrac) {
-        const t = distBorder / bezelFrac;
-
-        // Convex squircle surface function
-        const surf = (tt) => Math.pow(1 - Math.pow(1 - tt, 4), 0.25);
-        const dt = 0.0005;
-        const dh = (surf(Math.min(1, t + dt)) - surf(Math.max(0, t - dt))) / (2 * dt);
-
-        // Snell's law — n1=1 (air), n2=1.5 (glass)
-        const sinI = Math.min(Math.abs(dh) * 0.75, 0.95);
-        const sinR = sinI / 1.5;
-        const disp = (sinR - sinI) * 1.9;
-
-        const r = Math.sqrt(nx * nx + ny * ny);
-        if (r > 0.001) {
-          const ang = Math.atan2(ny, nx);
-          dx = Math.round(128 + Math.cos(ang) * disp * 127);
-          dy = Math.round(128 + Math.sin(ang) * disp * 127);
-          dx = Math.max(0, Math.min(255, dx));
-          dy = Math.max(0, Math.min(255, dy));
-        }
+      let dtb;
+      if (Math.abs(absDx) <= halfInner) {
+        dtb = capR - Math.abs(absDy);
+      } else {
+        const lx = Math.abs(absDx) - halfInner;
+        dtb = capR - Math.sqrt(lx*lx + absDy*absDy);
       }
 
-      img.data[i]     = dx;
-      img.data[i + 1] = dy;
-      img.data[i + 2] = 128;
-      img.data[i + 3] = 255;
+      if (dtb < 0 || dtb/capR > bezelFrac) {
+        img.data[idx] = img.data[idx+1] = 128;
+        img.data[idx+2] = 128; img.data[idx+3] = 255;
+        continue;
+      }
+
+      const t = (dtb/capR) / bezelFrac;
+      const si = Math.min(Math.floor(t*(SAMPLES-1)), SAMPLES-2);
+      const fr = t*(SAMPLES-1) - si;
+      const mag = (disps[si]*(1-fr) + disps[si+1]*fr) / norm;
+
+      let ox, oy;
+      if (Math.abs(absDx) <= halfInner) {
+        ox = 0; oy = absDy < 0 ? -1 : (absDy > 0 ? 1 : 0);
+      } else {
+        const ang = Math.atan2(absDy, absDx - Math.sign(absDx)*halfInner);
+        ox = Math.cos(ang); oy = Math.sin(ang);
+      }
+
+      img.data[idx]   = Math.max(0,Math.min(255,Math.round(128 + ox*mag*127)));
+      img.data[idx+1] = Math.max(0,Math.min(255,Math.round(128 + oy*mag*127)));
+      img.data[idx+2] = 128; img.data[idx+3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
-  return canvas.toDataURL();
+  return { url: canvas.toDataURL(), maxDisp };
 }
 
-function createSVGFilter(id, W, H, dmUrl) {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('width', '0');
-  svg.setAttribute('height', '0');
-  svg.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;';
+function applyToChip(chip) {
+  if (chip._lgDone) return;
+  chip._lgDone = true;
 
-  svg.innerHTML = `
-    <defs>
-      <filter id="${id}" x="-10%" y="-10%" width="120%" height="120%"
-              color-interpolation-filters="sRGB" primitiveUnits="userSpaceOnUse">
-        <feImage href="${dmUrl}" result="dm" preserveAspectRatio="none"
-                 x="0" y="0" width="${W}" height="${H}"/>
-        <feDisplacementMap in="SourceGraphic" in2="dm"
-          scale="16" xChannelSelector="R" yChannelSelector="G" result="d"/>
-        <feComponentTransfer in="d">
-          <feFuncR type="linear" slope="1.04" intercept="0.012"/>
-          <feFuncG type="linear" slope="1.04" intercept="0.012"/>
-          <feFuncB type="linear" slope="1.04" intercept="0.012"/>
-        </feComponentTransfer>
-      </filter>
-    </defs>`;
-
-  document.body.appendChild(svg);
-  return id;
-}
-
-function applyLiquidGlassToChip(chip) {
   const rect = chip.getBoundingClientRect();
-  const W = Math.ceil(rect.width) || 120;
+  const W = Math.ceil(rect.width) || 140;
   const H = Math.ceil(rect.height) || 46;
 
+  const { url, maxDisp } = genPillDM(W, H, 0.30, 1.5);
+  const scale = maxDisp * Math.min(W, H) * 1.2; // Mayor scale = refraccion mas visible
   const filterId = 'lg-' + chip.id;
-  const dmUrl = genPillDisplacementMap(W, H, 0.30);
-  createSVGFilter(filterId, W, H, dmUrl);
 
-  // Aplicar refracción via backdrop-filter con SVG filter
-  chip.style.setProperty('--lg-filter', `url(#${filterId})`);
+  // SVG filter
+  const old = document.getElementById('lgsvg-' + chip.id);
+  if (old) old.remove();
 
-  // Inyectar el pseudo-elemento de refracción via clase
-  chip.classList.add('lg-active');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.id = 'lgsvg-' + chip.id;
+  svg.setAttribute('width','0'); svg.setAttribute('height','0');
+  svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;';
+  svg.innerHTML = `<defs>
+    <filter id="${filterId}" x="-8%" y="-8%" width="116%" height="116%"
+            color-interpolation-filters="sRGB" primitiveUnits="userSpaceOnUse">
+      <feImage href="${url}" result="dm" preserveAspectRatio="none"
+               x="0" y="0" width="${W}" height="${H}"/>
+      <feDisplacementMap in="SourceGraphic" in2="dm"
+        scale="${scale.toFixed(1)}"
+        xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feComponentTransfer in="d">
+        <feFuncR type="linear" slope="1.06" intercept="0.015"/>
+        <feFuncG type="linear" slope="1.06" intercept="0.015"/>
+        <feFuncB type="linear" slope="1.06" intercept="0.015"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>`;
+  document.body.appendChild(svg);
+
+  // Inyectar div de refracción si no existe
+  let refr = chip.querySelector('.lg-refr');
+  if (!refr) {
+    refr = document.createElement('div');
+    refr.className = 'lg-refr';
+    refr.style.cssText = `position:absolute;inset:0;border-radius:inherit;z-index:-1;`;
+    chip.insertBefore(refr, chip.firstChild);
+  }
+
+  refr.style.backdropFilter = `url(#${filterId})`;
+  refr.style.webkitBackdropFilter = `url(#${filterId})`;
 }
 
-function addLiquidPulse(chip) {
-  chip.addEventListener('pointerdown', () => {
-    chip.style.transition = 'transform 0.1s ease';
-    chip.style.transform = 'scale(0.92)';
-  });
-  chip.addEventListener('pointerup', () => {
-    chip.style.transition = 'transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    chip.style.transform = 'scale(1.05)';
-    setTimeout(() => {
-      chip.style.transition = 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      chip.style.transform = 'scale(1)';
-    }, 200);
-  });
-  chip.addEventListener('pointercancel', () => {
-    chip.style.transition = 'transform 0.2s ease';
-    chip.style.transform = 'scale(1)';
-  });
+function supportsBackdropSVG() {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;width:1px;height:1px;backdrop-filter:url(#x);-webkit-backdrop-filter:url(#x);';
+  document.body.appendChild(el);
+  const cs = getComputedStyle(el);
+  const ok = (cs.backdropFilter||'').includes('url') ||
+             (cs.webkitBackdropFilter||'').includes('url');
+  document.body.removeChild(el);
+  return ok;
+}
+
+// Fallback para Safari/iOS — frosted glass clásico
+function applyFallback(chip) {
+  chip.style.background = 'rgba(255,255,255,0.82)';
+  chip.style.backdropFilter = 'blur(16px) saturate(1.8)';
+  chip.style.webkitBackdropFilter = 'blur(16px) saturate(1.8)';
+  chip.style.boxShadow = '0 4px 20px rgba(0,0,0,0.10)';
 }
 
 export function initLiquidGlass() {
-  // Solo aplicar refracción en Chrome/WebView (soporta SVG como backdrop-filter)
-  const supportsBackdropSVG = CSS.supports('backdrop-filter', 'url(#test)') ||
-                               CSS.supports('-webkit-backdrop-filter', 'url(#test)');
-
   const chips = [
     document.getElementById('topbar-activity-btn'),
     document.getElementById('topbar-right-chip'),
   ].filter(Boolean);
 
+  if (!chips.length) return;
+
+  const hasSupport = supportsBackdropSVG();
+
   chips.forEach(chip => {
-    if (supportsBackdropSVG) {
-      applyLiquidGlassToChip(chip);
+    if (hasSupport) {
+      requestAnimationFrame(() => requestAnimationFrame(() => applyToChip(chip)));
+    } else {
+      applyFallback(chip);
     }
-    addLiquidPulse(chip);
   });
 }
