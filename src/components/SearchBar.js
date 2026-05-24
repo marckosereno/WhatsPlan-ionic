@@ -884,12 +884,13 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin-right:6px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
+        margin-left:4px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
