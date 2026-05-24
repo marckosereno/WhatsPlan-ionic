@@ -36,8 +36,8 @@ ion-app::before {
     rgba(147,197,253,0.22) 55%,
     rgba(147,197,253,0) 100%
   );
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
@@ -51,8 +51,8 @@ ion-app::after {
     rgba(96,165,250,0.18) 55%,
     rgba(96,165,250,0) 100%
   );
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
   -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 1;
@@ -300,7 +300,7 @@ ion-app {
   gap: 8px; pointer-events: auto;
 }
 
-/* Avatar — pill circular independiente */
+/* Avatar primero (izquierda), notif a su derecha */
 #topbar-auth-btn {
   width: 44px; height: 44px; border-radius: 9999px;
   background: rgba(255,255,255,0.88);
