@@ -57,7 +57,7 @@ export class FooterMenu {
 
       /* Individual pill — icon or label */
       .wp-pill {
-        height: 50px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -76,7 +76,7 @@ export class FooterMenu {
 
       /* Icon pill */
       .wp-pill-icon {
-        width: 50px;
+        width: 48px;
         color: #374151;
       }
       .wp-pill-icon svg { width: 22px; height: 22px; }
@@ -106,7 +106,7 @@ export class FooterMenu {
       }
 
       .wp-menu-center-btn {
-        width: 60px; height: 60px;
+        width: 48px; height: 48px;
         border-radius: 50%;
         background: linear-gradient(145deg, #3b82f6, #1d4ed8);
         border: 3px solid white;
@@ -123,7 +123,7 @@ export class FooterMenu {
         color: white;
         will-change: transform;
       }
-      .wp-menu-center-btn svg { width: 26px; height: 26px; }
+      .wp-menu-center-btn svg { width: 22px; height: 22px; }
     `;
     document.head.appendChild(s);
   }
