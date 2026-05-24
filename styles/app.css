@@ -36,17 +36,25 @@ ion-app::before {
     rgba(147,197,253,0.22) 55%,
     rgba(147,197,253,0) 100%
   );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
 }
 
 /* ── Gradiente inferior — difumina el mapa hacia el panel ── */
 ion-app::after {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 140px;
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 160px;
   background: linear-gradient(to top,
     rgba(96,165,250,0.5) 0%,
-    rgba(96,165,250,0.18) 35%,
-    rgba(96,165,250,0) 90%
+    rgba(96,165,250,0.18) 55%,
+    rgba(96,165,250,0) 100%
   );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
+  mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 1;
 }
 
@@ -58,7 +66,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel-float {
   position: fixed;
-  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(104px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   background: white;
