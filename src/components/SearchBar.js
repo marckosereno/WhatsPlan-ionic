@@ -300,21 +300,29 @@ export class SearchBar {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
+
+      // Restaurar topbar-left PRIMERO para que el flexbox recalcule
+      var topbarLeft2 = document.getElementById('topbar-left');
+      if (topbarLeft2 && topbarLeft2.dataset.wpHidden) {
+        topbarLeft2.style.display = '';
+        delete topbarLeft2.dataset.wpHidden;
+      }
+
+      // Luego limpiar chip — quedará en su posición natural (derecha)
       if (chip) {
         chip.style.position = ''; chip.style.top    = '';
         chip.style.right    = ''; chip.style.left   = '';
         chip.style.width    = ''; chip.style.zIndex = '';
       }
+
       if (searchBtn) searchBtn.style.display = '';
-      if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
-      // Restaurar topbar-left (avatar + notif)
-      var topbarLeft2 = document.getElementById('topbar-left');
-      if (topbarLeft2 && topbarLeft2.dataset.wpHidden) {
-        topbarLeft2.style.display = '';
-        delete topbarLeft2.dataset.wpHidden;
-        if (gsap) gsap.fromTo(topbarLeft2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+      if (msgBtn  && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
+
+      // Animar topbar-left entrada
+      if (topbarLeft2 && gsap) {
+        gsap.fromTo(topbarLeft2, { opacity: 0, x: -8 }, { opacity: 1, x: 0, duration: 0.25, ease: 'power2.out' });
       }
-      // Restaurar label Buscar con pulse
+      // Pulse label Buscar
       var searchLabel2 = document.getElementById('topbar-search-label');
       if (searchLabel2) {
         searchLabel2.style.display = '';
