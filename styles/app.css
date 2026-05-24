@@ -66,7 +66,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel-float {
   position: fixed;
-  bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(128px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   background: white;
@@ -321,10 +321,10 @@ ion-app {
   border: none;
 }
 
-/* ── Pill Buscar — derecha ── */
+/* ── Pill Buscar — derecha, solo label ── */
 #topbar-right-chip {
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 16px 0 12px;
+  display: flex; align-items: center;
+  padding: 0 20px;
   height: 44px;
   border-radius: 9999px;
   border: none;
@@ -342,15 +342,6 @@ ion-app {
   font-size: 15px; font-weight: 600; color: #374151;
   font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
   white-space: nowrap;
-}
-
-.topbar-icon-btn {
-  width: 22px; height: 22px;
-  border: none; background: transparent;
-  display: flex; align-items: center; justify-content: center;
-  color: #374151; cursor: pointer;
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  padding: 0; flex-shrink: 0;
 }
 
 /* Ocultar elementos no usados */
