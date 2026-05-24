@@ -294,13 +294,7 @@ ion-app {
 #topbar > * { pointer-events: auto; }
 
 /* ── Liquid Glass chips ── */
-/* ── Left group: avatar + notif ── */
-#topbar-left {
-  display: flex; align-items: center;
-  gap: 8px; pointer-events: auto;
-}
-
-/* Avatar primero (izquierda), notif a su derecha */
+/* ── Avatar solo izquierda ── */
 #topbar-auth-btn {
   width: 44px; height: 44px; border-radius: 9999px;
   background: rgba(255,255,255,0.88);
@@ -357,8 +351,8 @@ ion-app {
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  margin-left: auto;
   flex-shrink: 0;
+  margin-left: auto;
 }
 #topbar-right-chip:active { transform: scale(0.96); }
 
