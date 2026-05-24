@@ -106,7 +106,7 @@ export class FooterMenu {
       }
 
       .wp-menu-center-btn {
-        width: 56px; height: 56px;
+        width: 44px; height: 44px;
         border-radius: 50%;
         background: linear-gradient(145deg, #3b82f6, #1d4ed8);
         border: 3px solid white;
@@ -123,7 +123,7 @@ export class FooterMenu {
         color: white;
         will-change: transform;
       }
-      .wp-menu-center-btn svg { width: 26px; height: 26px; }
+      .wp-menu-center-btn svg { width: 22px; height: 22px; }
     `;
     document.head.appendChild(s);
   }
