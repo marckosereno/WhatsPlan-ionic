@@ -175,10 +175,13 @@ export class SearchBar {
     this._chipInitW = chipInitW;
     var targetW   = window.innerWidth - 24;
 
+    var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 0;
+    this._chipRight = chipRight;
+
     if (chip && chipRect) {
       chip.style.position = 'fixed';
       chip.style.top      = chipRect.top + 'px';
-      chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
+      chip.style.right    = chipRight + 'px';
       chip.style.left     = 'auto';
       chip.style.width    = chipInitW + 'px';
       chip.style.zIndex   = '99999';
@@ -308,11 +311,17 @@ export class SearchBar {
         delete topbarLeft2.dataset.wpHidden;
       }
 
-      // Luego limpiar chip — quedará en su posición natural (derecha)
+      // Restaurar chip a su posición natural (derecha)
       if (chip) {
-        chip.style.position = ''; chip.style.top    = '';
-        chip.style.right    = ''; chip.style.left   = '';
-        chip.style.width    = ''; chip.style.zIndex = '';
+        chip.style.width    = (self2._chipInitW || 120) + 'px';
+        chip.style.position = '';
+        chip.style.top      = '';
+        chip.style.left     = '';
+        chip.style.zIndex   = '';
+        chip.style.right    = '';
+        chip.style.marginLeft = 'auto';
+        // Forzar reflow para que el flexbox recalcule
+        chip.getBoundingClientRect();
       }
 
       if (searchBtn) searchBtn.style.display = '';
