@@ -51,10 +51,6 @@ export class SearchBar {
       else { panel.style.display = 'none'; }
     }
 
-    // Ocultar label "Buscar"
-    var searchLabel = document.getElementById('topbar-search-label');
-    if (searchLabel) searchLabel.style.display = 'none';
-
     this._moveSubcatsToBody();
     this._showOverlay();
     this._showCategoryChips();
@@ -90,14 +86,13 @@ export class SearchBar {
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
 
-    // Restaurar label "Buscar"
-    var searchLabel = document.getElementById('topbar-search-label');
-    if (searchLabel) searchLabel.style.display = '';
-
     this._returnSubcatsToPanel();
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
+    // Restaurar label Buscar por si acaso
+    var sl = document.getElementById('topbar-search-label');
+    if (sl) sl.style.display = '';
     this._restoreMarkers();
   }
 
@@ -171,6 +166,8 @@ export class SearchBar {
     var searchBtn = document.getElementById('topbar-search-btn');
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
+    var topbarLeft = document.getElementById('topbar-left');
+    var searchLabel = document.getElementById('topbar-search-label');
 
     // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
     var chipRect  = chip ? chip.getBoundingClientRect() : null;
@@ -187,19 +184,14 @@ export class SearchBar {
       chip.style.zIndex   = '99999';
     }
 
-    // ── PASO 1: Ahora sí ocultar actBtn — el chip ya está fijo, no se moverá ──
-    if (actBtn) {
-      // Quitar TODA transición CSS antes de manipular
-      actBtn.style.transition = 'none';
-      actBtn.style.transform  = 'none';
-      actBtn.getBoundingClientRect(); // reflow
-      actBtn.style.opacity = '0';
-      setTimeout(function() { actBtn.style.display = 'none'; }, 16);
-    }
+    // ── PASO 1: Ocultar label Buscar y topbar-left ──
+    if (searchLabel) searchLabel.style.display = 'none';
+    if (topbarLeft) { topbarLeft.dataset.wpHidden = '1'; topbarLeft.style.display = 'none'; }
+    if (actBtn) { actBtn.style.opacity = '0'; setTimeout(function() { actBtn.style.display = 'none'; }, 16); }
 
-    // ── PASO 2: Ocultar msg/avatar ──
+    // ── PASO 2: Ocultar msg/avatar (compatibilidad) ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
-    if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
+    if (authBtn)   { authBtn.dataset.wpHidden = '1'; }
     if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
@@ -315,21 +307,21 @@ export class SearchBar {
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
-      if (authBtn && authBtn.dataset.wpHidden) { authBtn.style.display = ''; delete authBtn.dataset.wpHidden; }
-      // +Actividad: restore display, sin transform
-      if (actBtn) {
-        if (gsap) gsap.killTweensOf(actBtn);
-        actBtn.style.transition = 'none';
-        actBtn.style.opacity    = '0';
-        actBtn.style.transform  = 'none';
-        actBtn.style.display    = '';
-        actBtn.getBoundingClientRect();
-        actBtn.style.transition = 'opacity 0.2s';
-        actBtn.style.opacity    = '';
-        setTimeout(function() {
-          actBtn.style.transition = '';
-          actBtn.style.transform  = '';
-        }, 220);
+      // Restaurar topbar-left (avatar + notif)
+      var topbarLeft2 = document.getElementById('topbar-left');
+      if (topbarLeft2 && topbarLeft2.dataset.wpHidden) {
+        topbarLeft2.style.display = '';
+        delete topbarLeft2.dataset.wpHidden;
+        if (gsap) gsap.fromTo(topbarLeft2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+      }
+      // Restaurar label Buscar con pulse
+      var searchLabel2 = document.getElementById('topbar-search-label');
+      if (searchLabel2) {
+        searchLabel2.style.display = '';
+        if (gsap) gsap.fromTo(searchLabel2,
+          { scale: 0.85, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)' }
+        );
       }
       // Restaurar markers y liberar tamaño del mapa
       self2._restoreMarkers();
@@ -348,17 +340,7 @@ export class SearchBar {
       gsap.timeline()
         .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
         .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
-        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.22, ease: 'expo.out', onComplete: function() {
-          restoreAll();
-          // Pulse spring on the label after restore
-          var label = document.getElementById('topbar-search-label');
-          if (label && gsap) {
-            gsap.fromTo(label,
-              { scale: 0.85, opacity: 0 },
-              { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)' }
-            );
-          }
-        }}, '-=0.06');
+        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
     } else {
       restoreAll();
     }
@@ -894,13 +876,12 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin-right:4px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
-        margin-left:4px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
