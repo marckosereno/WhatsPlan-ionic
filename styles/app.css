@@ -294,27 +294,37 @@ ion-app {
 #topbar > * { pointer-events: auto; }
 
 /* ── Liquid Glass chips ── */
-/* ── Chip Actividad — Medium 35px, azul sólido ── */
-#topbar-activity-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 16px;
-  height: 44px;
-  border-radius: 9999px;
-  border: none;
-  background: #2563eb;
-  box-shadow: 0 4px 20px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
-  font-size: 15px; font-weight: 600; color: white;
-  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
-  cursor: pointer; touch-action: manipulation;
+/* ── Avatar izquierda — independiente ── */
+#topbar-auth-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.88);
+  border: 2.5px solid rgba(255,255,255,0.95);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 8px rgba(37,99,235,0.12);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+  padding: 0; flex-shrink: 0;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
-#topbar-activity-btn:active { transform: scale(0.92); }
+#topbar-auth-btn:active { transform: scale(0.92); }
 
-/* ── Chip derecho — Medium 35px, frosted glass ── */
+@keyframes avatar-shimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position:  200px 0; }
+}
+#topbar-auth-btn.avatar-skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 400px 100%;
+  animation: avatar-shimmer 1.4s ease-in-out infinite;
+  border: none;
+}
+
+/* ── Pill Buscar — derecha ── */
 #topbar-right-chip {
-  display: flex; align-items: center; gap: 2px;
-  padding: 0 5px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 16px 0 12px;
   height: 44px;
   border-radius: 9999px;
   border: none;
@@ -328,49 +338,25 @@ ion-app {
 }
 #topbar-right-chip:active { transform: scale(0.96); }
 
-.act-plus {
-  width: 16px; height: 16px;
-  background: rgba(255,255,255,0.25); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: white; font-size: 11px; font-weight: 800; line-height: 1;
-  flex-shrink: 0;
+.topbar-search-label {
+  font-size: 15px; font-weight: 600; color: #374151;
+  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
+  white-space: nowrap;
 }
 
-/* Small 28px icon buttons */
 .topbar-icon-btn {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 22px; height: 22px;
   border: none; background: transparent;
   display: flex; align-items: center; justify-content: center;
   color: #374151; cursor: pointer;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s;
-  padding: 0;
+  padding: 0; flex-shrink: 0;
 }
-.topbar-icon-btn:active { background: rgba(0,0,0,0.07); }
 
-#topbar-auth-btn {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.72);
-  border: 2px solid rgba(255,255,255,0.85);
-  box-shadow: 0 2px 8px rgba(37,99,235,0.25);
-  display: flex; align-items: center; justify-content: center;
-  overflow: visible; cursor: pointer; touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.25s, transform 0.25s;
-  padding: 0; position: relative; flex-shrink: 0; z-index: 2;
-}
-#topbar-auth-btn:active { transform: scale(0.9); }
-
-@keyframes avatar-shimmer {
-  0%   { background-position: -200px 0; }
-  100% { background-position:  200px 0; }
-}
-#topbar-auth-btn.avatar-skeleton {
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-  background-size: 400px 100%;
-  animation: avatar-shimmer 1.4s ease-in-out infinite;
-  border: none;
-}
+/* Ocultar elementos no usados */
+#topbar-activity-btn { display: none !important; }
+#topbar-messages-btn { display: none !important; }
+.act-plus { display: none; }
 
 /* ════════════════════════════════════════════════════════════
    WP-TAP — Pulse spring universal para elementos táctiles
