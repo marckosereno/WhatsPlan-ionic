@@ -51,7 +51,7 @@ export class SearchBar {
       else { panel.style.display = 'none'; }
     }
 
-    // Ocultar label "Buscar" al abrir searchbar
+    // Ocultar label "Buscar"
     var searchLabel = document.getElementById('topbar-search-label');
     if (searchLabel) searchLabel.style.display = 'none';
 
@@ -200,7 +200,7 @@ export class SearchBar {
     // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
     if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
-    // searchBtn is now the chip itself — no need to hide
+    if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
     var inner = document.createElement('div');
@@ -313,7 +313,7 @@ export class SearchBar {
         chip.style.right    = ''; chip.style.left   = '';
         chip.style.width    = ''; chip.style.zIndex = '';
       }
-      // searchBtn is chip — restored by restoreAll
+      if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
       if (authBtn && authBtn.dataset.wpHidden) { authBtn.style.display = ''; delete authBtn.dataset.wpHidden; }
       // +Actividad: restore display, sin transform
@@ -348,7 +348,17 @@ export class SearchBar {
       gsap.timeline()
         .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
         .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
-        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
+        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.22, ease: 'expo.out', onComplete: function() {
+          restoreAll();
+          // Pulse spring on the label after restore
+          var label = document.getElementById('topbar-search-label');
+          if (label && gsap) {
+            gsap.fromTo(label,
+              { scale: 0.85, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)' }
+            );
+          }
+        }}, '-=0.06');
     } else {
       restoreAll();
     }
@@ -884,12 +894,13 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin-right:4px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
+        margin-left:4px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
@@ -902,7 +913,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:0 12px; height:44px;
+        padding:4px 12px; min-height:42px;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
