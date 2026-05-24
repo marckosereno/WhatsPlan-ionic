@@ -294,33 +294,15 @@ ion-app {
 #topbar > * { pointer-events: auto; }
 
 /* ── Liquid Glass chips ── */
-/* ── Left group: notif + avatar ── */
+/* ── Left group: avatar + notif ── */
 #topbar-left {
   display: flex; align-items: center;
-  gap: 0; pointer-events: auto;
+  gap: 8px; pointer-events: auto;
 }
 
-/* Notificaciones — pill icon */
-#topbar-notif-btn {
-  height: 44px; width: 44px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(16px) saturate(1.8);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-  border-radius: 9999px 0 0 9999px;
-  border: none; cursor: pointer;
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
-  color: #374151; flex-shrink: 0;
-}
-#topbar-notif-btn:active { transform: scale(0.92); }
-#topbar-notif-btn svg { width: 20px; height: 20px; }
-
-/* Avatar — pill icon pegado al notif */
+/* Avatar — pill circular independiente */
 #topbar-auth-btn {
-  width: 44px; height: 44px;
-  border-radius: 0 9999px 9999px 0;
+  width: 44px; height: 44px; border-radius: 9999px;
   background: rgba(255,255,255,0.88);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
@@ -333,6 +315,22 @@ ion-app {
   padding: 0; flex-shrink: 0;
 }
 #topbar-auth-btn:active { transform: scale(0.92); }
+
+/* Notificaciones — pill circular independiente */
+#topbar-notif-btn {
+  width: 44px; height: 44px; border-radius: 9999px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  border: none; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+  color: #374151; flex-shrink: 0;
+}
+#topbar-notif-btn:active { transform: scale(0.92); }
+#topbar-notif-btn svg { width: 20px; height: 20px; }
 
 @keyframes avatar-shimmer {
   0%   { background-position: -200px 0; }
