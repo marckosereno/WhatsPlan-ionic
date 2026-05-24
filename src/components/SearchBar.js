@@ -200,7 +200,7 @@ export class SearchBar {
     // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
     if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
-    if (searchBtn) searchBtn.style.display = 'none';
+    // searchBtn is now the chip itself — no need to hide
 
     // ── PASO 3: Inyectar contenido ──
     var inner = document.createElement('div');
@@ -313,7 +313,7 @@ export class SearchBar {
         chip.style.right    = ''; chip.style.left   = '';
         chip.style.width    = ''; chip.style.zIndex = '';
       }
-      if (searchBtn) searchBtn.style.display = '';
+      // searchBtn is chip — restored by restoreAll
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
       if (authBtn && authBtn.dataset.wpHidden) { authBtn.style.display = ''; delete authBtn.dataset.wpHidden; }
       // +Actividad: restore display, sin transform
@@ -902,7 +902,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:0 12px; height:44px; min-height:44px;
+        padding:0 12px; height:44px;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
