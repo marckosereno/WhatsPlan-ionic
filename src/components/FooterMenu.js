@@ -34,8 +34,8 @@ export class FooterMenu {
         position: fixed;
         bottom: 0; left: 0; right: 0;
         z-index: 9995;
-        padding: 0 20px;
-        padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+        padding: 0 16px;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
         pointer-events: none;
       }
 
@@ -44,7 +44,7 @@ export class FooterMenu {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 76px;
+        height: 60px;
         pointer-events: none;
       }
 
@@ -57,7 +57,7 @@ export class FooterMenu {
 
       /* Individual pill — icon or label */
       .wp-pill {
-        height: 48px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -65,7 +65,7 @@ export class FooterMenu {
         backdrop-filter: blur(16px) saturate(1.8);
         -webkit-backdrop-filter: blur(16px) saturate(1.8);
         box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-        border-radius: 50px;
+        border-radius: 9999px;
         cursor: pointer;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
@@ -76,15 +76,15 @@ export class FooterMenu {
 
       /* Icon pill */
       .wp-pill-icon {
-        width: 48px;
+        width: 28px;
         color: #374151;
       }
-      .wp-pill-icon svg { width: 22px; height: 22px; }
+      .wp-pill-icon svg { width: 16px; height: 16px; }
 
       /* Label pill */
       .wp-pill-label {
-        padding: 0 18px;
-        font-size: 14px;
+        padding: 0 12px;
+        font-size: 13px;
         font-weight: 700;
         color: #374151;
         font-family: 'Yahoo Sans Bold Regular', 'Inter Tight', system-ui, sans-serif;
@@ -106,10 +106,10 @@ export class FooterMenu {
       }
 
       .wp-menu-center-btn {
-        width: 48px; height: 48px;
+        width: 44px; height: 44px;
         border-radius: 50%;
         background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-        border: 1px solid white;
+        border: 3px solid white;
         box-shadow:
           0 8px 24px rgba(37,99,235,0.45),
           0 2px 8px rgba(0,0,0,0.12),
