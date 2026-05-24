@@ -66,7 +66,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel-float {
   position: fixed;
-  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   background: white;
@@ -298,7 +298,7 @@ ion-app {
 #topbar-activity-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 0 16px;
-  height: 35px;
+  height: 44px;
   border-radius: 9999px;
   border: none;
   background: #2563eb;
@@ -315,7 +315,7 @@ ion-app {
 #topbar-right-chip {
   display: flex; align-items: center; gap: 2px;
   padding: 0 5px 0 10px;
-  height: 35px;
+  height: 44px;
   border-radius: 9999px;
   border: none;
   background: rgba(255,255,255,0.88);
@@ -338,7 +338,7 @@ ion-app {
 
 /* Small 28px icon buttons */
 .topbar-icon-btn {
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   border: none; background: transparent;
   display: flex; align-items: center; justify-content: center;
   color: #374151; cursor: pointer;
@@ -349,7 +349,7 @@ ion-app {
 .topbar-icon-btn:active { background: rgba(0,0,0,0.07); }
 
 #topbar-auth-btn {
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   background: rgba(255,255,255,0.72);
   border: 2px solid rgba(255,255,255,0.85);
   box-shadow: 0 2px 8px rgba(37,99,235,0.25);
