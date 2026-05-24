@@ -51,6 +51,10 @@ export class SearchBar {
       else { panel.style.display = 'none'; }
     }
 
+    // Ocultar label "Buscar" al abrir searchbar
+    var searchLabel = document.getElementById('topbar-search-label');
+    if (searchLabel) searchLabel.style.display = 'none';
+
     this._moveSubcatsToBody();
     this._showOverlay();
     this._showCategoryChips();
@@ -85,6 +89,10 @@ export class SearchBar {
       );
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
+
+    // Restaurar label "Buscar"
+    var searchLabel = document.getElementById('topbar-search-label');
+    if (searchLabel) searchLabel.style.display = '';
 
     this._returnSubcatsToPanel();
     this._hideOverlay();
