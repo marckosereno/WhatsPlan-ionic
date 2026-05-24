@@ -109,7 +109,7 @@ export class FooterMenu {
         width: 48px; height: 48px;
         border-radius: 50%;
         background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-        border: 3px solid white;
+        border: 1px solid white;
         box-shadow:
           0 8px 24px rgba(37,99,235,0.45),
           0 2px 8px rgba(0,0,0,0.12),
