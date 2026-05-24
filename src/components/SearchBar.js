@@ -902,7 +902,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:4px 12px; min-height:42px;
+        padding:0 12px; height:44px; min-height:44px;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
