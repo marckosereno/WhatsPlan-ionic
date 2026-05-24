@@ -34,8 +34,8 @@ export class FooterMenu {
         position: fixed;
         bottom: 0; left: 0; right: 0;
         z-index: 9995;
-        padding: 0 16px;
-        padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+        padding: 0 20px;
+        padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
         pointer-events: none;
       }
 
@@ -44,7 +44,7 @@ export class FooterMenu {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 64px;
+        height: 76px;
         pointer-events: none;
       }
 
@@ -57,7 +57,7 @@ export class FooterMenu {
 
       /* Individual pill — icon or label */
       .wp-pill {
-        height: 42px;
+        height: 50px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -76,15 +76,15 @@ export class FooterMenu {
 
       /* Icon pill */
       .wp-pill-icon {
-        width: 42px;
+        width: 50px;
         color: #374151;
       }
-      .wp-pill-icon svg { width: 20px; height: 20px; }
+      .wp-pill-icon svg { width: 22px; height: 22px; }
 
       /* Label pill */
       .wp-pill-label {
-        padding: 0 14px;
-        font-size: 13px;
+        padding: 0 18px;
+        font-size: 14px;
         font-weight: 700;
         color: #374151;
         font-family: 'Yahoo Sans Bold Regular', 'Inter Tight', system-ui, sans-serif;
@@ -106,7 +106,7 @@ export class FooterMenu {
       }
 
       .wp-menu-center-btn {
-        width: 52px; height: 52px;
+        width: 60px; height: 60px;
         border-radius: 50%;
         background: linear-gradient(145deg, #3b82f6, #1d4ed8);
         border: 3px solid white;
@@ -123,7 +123,7 @@ export class FooterMenu {
         color: white;
         will-change: transform;
       }
-      .wp-menu-center-btn svg { width: 22px; height: 22px; }
+      .wp-menu-center-btn svg { width: 26px; height: 26px; }
     `;
     document.head.appendChild(s);
   }
