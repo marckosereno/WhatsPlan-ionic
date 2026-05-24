@@ -36,8 +36,8 @@ ion-app::before {
     rgba(147,197,253,0.22) 55%,
     rgba(147,197,253,0) 100%
   );
-  backdrop-filter: blur(0.5px);
-  -webkit-backdrop-filter: blur(0.5px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
@@ -51,8 +51,8 @@ ion-app::after {
     rgba(96,165,250,0.18) 55%,
     rgba(96,165,250,0) 100%
   );
-  backdrop-filter: blur(0.5px);
-  -webkit-backdrop-filter: blur(0.5px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 1;
@@ -66,7 +66,7 @@ ion-app::after {
    ════════════════════════════════════════════════════════════ */
 .map-results-panel-float {
   position: fixed;
-  bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(128px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   background: white;
@@ -294,19 +294,43 @@ ion-app {
 #topbar > * { pointer-events: auto; }
 
 /* ── Liquid Glass chips ── */
-/* ── Avatar izquierda — independiente ── */
-#topbar-auth-btn {
-  width: 44px; height: 44px; border-radius: 50%;
+/* ── Left group: notif + avatar ── */
+#topbar-left {
+  display: flex; align-items: center;
+  gap: 0; pointer-events: auto;
+}
+
+/* Notificaciones — pill icon */
+#topbar-notif-btn {
+  height: 44px; width: 44px;
+  display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,0.88);
-  border: 2.5px solid rgba(255,255,255,0.95);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 8px rgba(37,99,235,0.12);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  border-radius: 9999px 0 0 9999px;
+  border: none; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+  color: #374151; flex-shrink: 0;
+}
+#topbar-notif-btn:active { transform: scale(0.92); }
+#topbar-notif-btn svg { width: 20px; height: 20px; }
+
+/* Avatar — pill icon pegado al notif */
+#topbar-auth-btn {
+  width: 44px; height: 44px;
+  border-radius: 0 9999px 9999px 0;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  border: none;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden; cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
   padding: 0; flex-shrink: 0;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 #topbar-auth-btn:active { transform: scale(0.92); }
 
