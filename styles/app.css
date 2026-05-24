@@ -36,8 +36,8 @@ ion-app::before {
     rgba(147,197,253,0.22) 55%,
     rgba(147,197,253,0) 100%
   );
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
@@ -51,8 +51,8 @@ ion-app::after {
     rgba(96,165,250,0.18) 55%,
     rgba(96,165,250,0) 100%
   );
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
   -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 1;
