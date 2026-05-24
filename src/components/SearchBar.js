@@ -166,7 +166,7 @@ export class SearchBar {
     var searchBtn = document.getElementById('topbar-search-btn');
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
-    var topbarLeft = document.getElementById('topbar-left');
+    var notifBtn = document.getElementById('topbar-notif-btn');
     var searchLabel = document.getElementById('topbar-search-label');
 
     // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
@@ -184,14 +184,14 @@ export class SearchBar {
       chip.style.zIndex   = '99999';
     }
 
-    // ── PASO 1: Ocultar label Buscar y topbar-left ──
+    // ── PASO 1: Ocultar label Buscar, topbar-right-group y avatar ──
     if (searchLabel) searchLabel.style.display = 'none';
-    if (topbarLeft) { topbarLeft.dataset.wpHidden = '1'; topbarLeft.style.display = 'none'; }
+    if (notifBtn) { notifBtn.dataset.wpHidden = '1'; notifBtn.style.display = 'none'; }
+    if (authBtn) { authBtn.dataset.wpHidden = '1'; authBtn.style.opacity = '0'; setTimeout(function(){ authBtn.style.display = 'none'; }, 16); }
     if (actBtn) { actBtn.style.opacity = '0'; setTimeout(function() { actBtn.style.display = 'none'; }, 16); }
 
-    // ── PASO 2: Ocultar msg/avatar (compatibilidad) ──
+    // ── PASO 2: Ocultar msg (compatibilidad) ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
-    if (authBtn)   { authBtn.dataset.wpHidden = '1'; }
     if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
@@ -302,7 +302,7 @@ export class SearchBar {
       if (closeEl)  closeEl.remove();
 
       // Restaurar topbar-left PRIMERO para que el flexbox recalcule
-      var topbarLeft2 = document.getElementById('topbar-left');
+      var notifBtn2 = document.getElementById('topbar-notif-btn');
       if (topbarLeft2 && topbarLeft2.dataset.wpHidden) {
         topbarLeft2.style.display = '';
         delete topbarLeft2.dataset.wpHidden;
@@ -317,10 +317,18 @@ export class SearchBar {
 
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
-
-      // Animar topbar-left entrada
-      if (topbarLeft2 && gsap) {
-        gsap.fromTo(topbarLeft2, { opacity: 0, x: -8 }, { opacity: 1, x: 0, duration: 0.25, ease: 'power2.out' });
+      // Restaurar avatar
+      if (authBtn && authBtn.dataset.wpHidden) {
+        authBtn.style.display = '';
+        delete authBtn.dataset.wpHidden;
+        if (gsap) gsap.fromTo(authBtn, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+        setTimeout(function(){ authBtn.style.opacity = ''; }, 300);
+      }
+      // Restaurar notif btn
+      if (notifBtn2 && notifBtn2.dataset.wpHidden) {
+        notifBtn2.style.display = '';
+        delete notifBtn2.dataset.wpHidden;
+        if (gsap) gsap.fromTo(notifBtn2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
       }
       // Pulse label Buscar
       var searchLabel2 = document.getElementById('topbar-search-label');
