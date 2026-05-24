@@ -416,12 +416,12 @@ function setupActivitySubscription(mv) {
       });
       window.wpApp.searchBar = searchBar;
 
-      const searchBtn = document.getElementById('topbar-search-btn');
+      // Pill buscar — ahora el topbar-right-chip activa la searchbar
+      const searchBtn = document.getElementById('topbar-right-chip');
       if (searchBtn) {
         searchBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          if (searchBar.isActive()) searchBar.deactivate();
-          else searchBar.activate();
+          if (!searchBar.isActive()) searchBar.activate();
         });
       }
 
