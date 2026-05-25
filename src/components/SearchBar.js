@@ -55,13 +55,7 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // Fijar tamaño del mapa para que el resize del chip no mueva los pines
-    var mapContainer = document.getElementById('map-container');
-    if (mapContainer && mv && mv.map) {
-      var rect = mapContainer.getBoundingClientRect();
-      mapContainer.style.width  = rect.width  + 'px';
-      mapContainer.style.height = rect.height + 'px';
-    }
+    // NO fijar mapa - pines deben permanecer visibles siempre
   }
 
   deactivate() {
@@ -324,23 +318,16 @@ export class SearchBar {
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
       if (authBtn && authBtn.dataset.wpHidden) {
         delete authBtn.dataset.wpHidden;
-        // Esperar a que el mapa termine de re-renderizar pines
-        // usando doble rAF + timeout para garantizar que el hilo esté libre
+        // Restaurar avatar en siguiente frame - independiente de los pines
         requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            setTimeout(function() {
-              if (gsap) gsap.killTweensOf(authBtn);
-              authBtn.style.transition    = 'none';
-              authBtn.style.transform     = 'none';
-              authBtn.style.opacity       = '0';
-              authBtn.getBoundingClientRect();
-              authBtn.style.visibility    = '';
-              authBtn.style.pointerEvents = '';
-              authBtn.style.transition    = '';
-              authBtn.style.transform     = '';
-              authBtn.style.opacity       = '1';
-            }, 120);
-          });
+          if (gsap) gsap.killTweensOf(authBtn);
+          authBtn.style.transition    = 'none';
+          authBtn.style.transform     = 'none';
+          authBtn.getBoundingClientRect();
+          authBtn.style.visibility    = '';
+          authBtn.style.pointerEvents = '';
+          authBtn.style.transition    = '';
+          authBtn.style.transform     = '';
         });
       }
       // +Actividad: restore display, sin transform
@@ -358,17 +345,8 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
-      // Restaurar markers y liberar tamaño del mapa
+      // Restaurar markers
       self2._restoreMarkers();
-      var mapContainer = document.getElementById('map-container');
-      if (mapContainer) {
-        mapContainer.style.width  = '';
-        mapContainer.style.height = '';
-      }
-      var mv2 = self2.mapView;
-      if (mv2 && mv2.map) {
-        requestAnimationFrame(function() { mv2.map.resize(); });
-      }
     };
 
     if (chip && gsap) {
