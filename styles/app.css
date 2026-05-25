@@ -337,7 +337,13 @@ ion-app {
   border: none;
 }
 
-/* ── Pill Buscar — derecha, solo label ── */
+/* ── Grupo derecho fijo ── */
+#topbar-right {
+  display: flex; align-items: center;
+  gap: 8px; flex-shrink: 0;
+}
+
+/* ── Pill Buscar ── */
 #topbar-right-chip {
   display: flex; align-items: center;
   padding: 0 20px;
@@ -352,7 +358,6 @@ ion-app {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  margin-left: auto;
 }
 #topbar-right-chip:active { transform: scale(0.96); }
 
