@@ -55,7 +55,13 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // NO fijar mapa - pines deben permanecer visibles siempre
+    // Fijar tamaño del mapa para que el resize del chip no mueva los pines
+    var mapContainer = document.getElementById('map-container');
+    if (mapContainer && mv && mv.map) {
+      var rect = mapContainer.getBoundingClientRect();
+      mapContainer.style.width  = rect.width  + 'px';
+      mapContainer.style.height = rect.height + 'px';
+    }
   }
 
   deactivate() {
@@ -166,10 +172,10 @@ export class SearchBar {
 
     var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 12;
     this._chipRight = chipRight;
-    var avatarEl   = document.getElementById('topbar-auth-btn');
-    var avatarRect = avatarEl ? avatarEl.getBoundingClientRect() : null;
-    var targetW    = avatarRect ? (window.innerWidth - avatarRect.left - chipRight) : (window.innerWidth - 24);
-    this._targetW  = targetW;
+    var avatarEl  = document.getElementById('topbar-auth-btn');
+    var avRect    = avatarEl ? avatarEl.getBoundingClientRect() : null;
+    var targetW   = avRect ? (window.innerWidth - avRect.left - chipRight) : (window.innerWidth - 24);
+    this._targetW = targetW;
     if (chip && chipRect) {
       chip.style.position    = 'fixed';
       chip.style.top         = chipRect.top + 'px';
@@ -180,7 +186,6 @@ export class SearchBar {
       chip.style.paddingLeft = '12px';
       chip.style.paddingRight= '2px';
       chip.style.height      = '44px';
-      // Guardar y vaciar contenido del chip
       this._chipHTML = chip.innerHTML;
       chip.innerHTML = '';
     }
@@ -198,6 +203,8 @@ export class SearchBar {
     // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
     if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.visibility = 'hidden'; authBtn.style.pointerEvents = 'none'; }
+    var notifBtn = document.getElementById('topbar-notif-btn');
+    if (notifBtn)  { notifBtn.dataset.wpHidden = '1'; notifBtn.style.visibility = 'hidden'; notifBtn.style.pointerEvents = 'none'; }
     if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
@@ -308,27 +315,26 @@ export class SearchBar {
       if (closeEl)  closeEl.remove();
       if (chip) {
         chip.style.cssText = '';
-        // Restaurar contenido original del chip
-        if (self2._chipHTML !== undefined) {
-          chip.innerHTML = self2._chipHTML;
-          self2._chipHTML = undefined;
-        }
+        if (self2._chipHTML !== undefined) { chip.innerHTML = self2._chipHTML; self2._chipHTML = undefined; }
       }
       if (searchBtn) searchBtn.style.display = '';
-      if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
+      if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display=''; delete msgBtn.dataset.wpHidden; }
+      // Restaurar avatar ANTES de _restoreMarkers para evitar freeze
       if (authBtn && authBtn.dataset.wpHidden) {
         delete authBtn.dataset.wpHidden;
-        // Restaurar avatar en siguiente frame - independiente de los pines
-        requestAnimationFrame(function() {
-          if (gsap) gsap.killTweensOf(authBtn);
-          authBtn.style.transition    = 'none';
-          authBtn.style.transform     = 'none';
-          authBtn.getBoundingClientRect();
-          authBtn.style.visibility    = '';
-          authBtn.style.pointerEvents = '';
-          authBtn.style.transition    = '';
-          authBtn.style.transform     = '';
-        });
+        if (gsap) gsap.killTweensOf(authBtn);
+        authBtn.style.transition = 'none';
+        authBtn.style.transform  = 'none';
+        authBtn.getBoundingClientRect();
+        authBtn.style.transition  = '';
+        authBtn.style.transform   = '';
+        authBtn.style.visibility  = '';
+        authBtn.style.pointerEvents = '';
+      }
+      var _notif = document.getElementById('topbar-notif-btn');
+      if (_notif && _notif.dataset.wpHidden) {
+        delete _notif.dataset.wpHidden;
+        _notif.style.visibility = ''; _notif.style.pointerEvents = '';
       }
       // +Actividad: restore display, sin transform
       if (actBtn) {
@@ -345,8 +351,17 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
-      // Restaurar markers
+      // Restaurar markers y liberar tamaño del mapa
       self2._restoreMarkers();
+      var mapContainer = document.getElementById('map-container');
+      if (mapContainer) {
+        mapContainer.style.width  = '';
+        mapContainer.style.height = '';
+      }
+      var mv2 = self2.mapView;
+      if (mv2 && mv2.map) {
+        requestAnimationFrame(function() { mv2.map.resize(); });
+      }
     };
 
     if (chip && gsap) {
@@ -868,7 +883,7 @@ export class SearchBar {
         font-size:15px;font-weight:400;color:#111827;min-width:0;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Inter Tight',system-ui,sans-serif;}
+      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
 
       .wps-clear {
         display:none;
@@ -946,7 +961,7 @@ export class SearchBar {
       .wps-card-badge.closed{background:#ef4444;}
       .wps-card-badge.no-hours{background:#6b7280;}
       .wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
-      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Inter Tight',system-ui,sans-serif;}
+      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
       .wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
       .wps-card-rating{display:flex;align-items:center;gap:4px;}
       .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
@@ -989,7 +1004,7 @@ export class SearchBar {
         box-shadow:none;
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-cat-chip.active{
         background:var(--wp-blue, #2563eb);
