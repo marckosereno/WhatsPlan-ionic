@@ -923,7 +923,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:0 6px 0 12px; height:44px; min-height:44px; box-sizing:border-box;
+        padding:0 2px 0 12px; height:44px; min-height:44px; box-sizing:border-box;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
