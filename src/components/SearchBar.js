@@ -213,7 +213,7 @@ export class SearchBar {
     inner.innerHTML =
       '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
-      '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" ' +
+      '<input id="wps-input" class="wps-input" type="search" placeholder="" ' +
       'autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
       '<button id="wps-clear" class="wps-clear" aria-label="Limpiar">' +
         '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
@@ -880,7 +880,7 @@ export class SearchBar {
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:12px;font-weight:400;color:#111827;min-width:0;
+        font-size:15px;font-weight:400;color:#111827;min-width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
