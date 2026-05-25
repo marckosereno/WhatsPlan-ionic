@@ -324,17 +324,24 @@ export class SearchBar {
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
       if (authBtn && authBtn.dataset.wpHidden) {
         delete authBtn.dataset.wpHidden;
-        // Defer to avoid freeze when map is re-rendering pins
-        setTimeout(function() {
-          if (gsap) gsap.killTweensOf(authBtn);
-          authBtn.style.transition    = 'none';
-          authBtn.style.transform     = 'none';
-          authBtn.getBoundingClientRect();
-          authBtn.style.transition    = '';
-          authBtn.style.transform     = '';
-          authBtn.style.visibility    = '';
-          authBtn.style.pointerEvents = '';
-        }, 80);
+        // Esperar a que el mapa termine de re-renderizar pines
+        // usando doble rAF + timeout para garantizar que el hilo esté libre
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            setTimeout(function() {
+              if (gsap) gsap.killTweensOf(authBtn);
+              authBtn.style.transition    = 'none';
+              authBtn.style.transform     = 'none';
+              authBtn.style.opacity       = '0';
+              authBtn.getBoundingClientRect();
+              authBtn.style.visibility    = '';
+              authBtn.style.pointerEvents = '';
+              authBtn.style.transition    = '';
+              authBtn.style.transform     = '';
+              authBtn.style.opacity       = '1';
+            }, 120);
+          });
+        });
       }
       // +Actividad: restore display, sin transform
       if (actBtn) {
