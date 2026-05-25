@@ -87,7 +87,7 @@ export class FooterMenu {
         font-size: 15px;
         font-weight: 700;
         color: #374151;
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-family: 'Inter Tight', system-ui, sans-serif; font-weight: 500;
         white-space: nowrap;
       }
 
