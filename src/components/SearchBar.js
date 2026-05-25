@@ -189,8 +189,6 @@ export class SearchBar {
     }
 
     // ── PASO 1: Ahora sí ocultar actBtn — el chip ya está fijo, no se moverá ──
-    var _sl = document.getElementById('topbar-search-label');
-    if (_sl) _sl.style.visibility = 'hidden';
     if (actBtn) {
       // Quitar TODA transición CSS antes de manipular
       actBtn.style.transition = 'none';
@@ -314,8 +312,6 @@ export class SearchBar {
       if (chip) { chip.style.cssText = ''; }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
-      var _sl2 = document.getElementById('topbar-search-label');
-      if (_sl2) _sl2.style.visibility = '';
       if (authBtn && authBtn.dataset.wpHidden) {
         if (gsap) gsap.killTweensOf(authBtn);
         authBtn.style.transition = 'none';
