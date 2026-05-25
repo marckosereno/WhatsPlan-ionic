@@ -51,10 +51,6 @@ export class SearchBar {
       else { panel.style.display = 'none'; }
     }
 
-    // Ocultar label "Buscar" al abrir searchbar
-    var searchLabel = document.getElementById('topbar-search-label');
-    if (searchLabel) searchLabel.style.display = 'none';
-
     this._moveSubcatsToBody();
     this._showOverlay();
     this._showCategoryChips();
@@ -89,10 +85,6 @@ export class SearchBar {
       );
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
-
-    // Restaurar label "Buscar"
-    var searchLabel = document.getElementById('topbar-search-label');
-    if (searchLabel) searchLabel.style.display = '';
 
     this._returnSubcatsToPanel();
     this._hideOverlay();
@@ -172,48 +164,46 @@ export class SearchBar {
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
 
-    // ── PASO 0: Fijar chip PRIMERO ──
+    // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
     var chipRect  = chip ? chip.getBoundingClientRect() : null;
     var chipInitW = chipRect ? chipRect.width : 120;
     this._chipInitW = chipInitW;
+    var targetW   = window.innerWidth - 24;
+
     var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 12;
     this._chipRight = chipRight;
-
-    // targetW = toda la pantalla menos márgenes (avatar oculto con visibility, no ocupa)
-    var avatarRect = authBtn ? authBtn.getBoundingClientRect() : null;
-    var leftEdge   = avatarRect ? avatarRect.left : 12;
-    var targetW    = window.innerWidth - leftEdge - chipRight;
+    var avatarEl   = document.getElementById('topbar-auth-btn');
+    var avatarRect = avatarEl ? avatarEl.getBoundingClientRect() : null;
+    var targetW    = avatarRect ? (window.innerWidth - avatarRect.left - chipRight) : (window.innerWidth - 24);
     this._targetW  = targetW;
-
     if (chip && chipRect) {
-      chip.style.position      = 'fixed';
-      chip.style.top           = chipRect.top + 'px';
-      chip.style.right         = chipRight + 'px';
-      chip.style.left          = 'auto';
-      chip.style.width         = chipInitW + 'px';
-      chip.style.zIndex        = '99999';
-      chip.style.paddingLeft   = '12px';
-      chip.style.paddingRight  = '2px';
-      chip.style.borderRadius  = '9999px';
-      chip.style.height        = '44px';
+      chip.style.position    = 'fixed';
+      chip.style.top         = chipRect.top + 'px';
+      chip.style.right       = chipRight + 'px';
+      chip.style.left        = 'auto';
+      chip.style.width       = chipInitW + 'px';
+      chip.style.zIndex      = '99999';
+      chip.style.paddingLeft = '12px';
+      chip.style.paddingRight= '2px';
+      chip.style.height      = '44px';
     }
 
-    // ── PASO 1: Ocultar actBtn ──
+    // ── PASO 1: Ahora sí ocultar actBtn — el chip ya está fijo, no se moverá ──
+    var _sl = document.getElementById('topbar-search-label');
+    if (_sl) _sl.style.visibility = 'hidden';
     if (actBtn) {
+      // Quitar TODA transición CSS antes de manipular
       actBtn.style.transition = 'none';
       actBtn.style.transform  = 'none';
-      actBtn.getBoundingClientRect();
+      actBtn.getBoundingClientRect(); // reflow
       actBtn.style.opacity = '0';
       setTimeout(function() { actBtn.style.display = 'none'; }, 16);
     }
 
-    // ── PASO 2: Ocultar avatar con visibility (notif se queda) ──
+    // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
     if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.visibility = 'hidden'; authBtn.style.pointerEvents = 'none'; }
     if (searchBtn) searchBtn.style.display = 'none';
-    // Ocultar label Buscar
-    var srchLabel = document.getElementById('topbar-search-label');
-    if (srchLabel) srchLabel.style.visibility = 'hidden';
 
     // ── PASO 3: Inyectar contenido ──
     var inner = document.createElement('div');
@@ -323,24 +313,19 @@ export class SearchBar {
       if (closeEl)  closeEl.remove();
       if (chip) { chip.style.cssText = ''; }
       if (searchBtn) searchBtn.style.display = '';
-      if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display=''; delete msgBtn.dataset.wpHidden; }
-      // Restaurar label Buscar
-      var sl2 = document.getElementById('topbar-search-label');
-      if (sl2) { sl2.style.visibility=''; if(gsap) gsap.fromTo(sl2,{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:'back.out(2)'}); }
-      // Restaurar avatar — clearProps:all primero, luego fade
-      var _auth = document.getElementById('topbar-auth-btn');
-      if (_auth) {
-        if (gsap) gsap.killTweensOf(_auth);
-        // Limpiar todo inline style residual excepto visibility
-        _auth.removeAttribute('style');
-        _auth.style.opacity = '0';
-        delete _auth.dataset.wpHidden;
-        requestAnimationFrame(function() {
-          if (gsap) gsap.to(_auth, { opacity: 1, duration: 0.25, ease: 'power2.out',
-            clearProps: 'opacity'
-          });
-          else _auth.style.opacity = '';
-        });
+      if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
+      var _sl2 = document.getElementById('topbar-search-label');
+      if (_sl2) _sl2.style.visibility = '';
+      if (authBtn && authBtn.dataset.wpHidden) {
+        if (gsap) gsap.killTweensOf(authBtn);
+        authBtn.style.transition = 'none';
+        authBtn.style.transform  = 'none';
+        authBtn.getBoundingClientRect();
+        authBtn.style.transition  = '';
+        authBtn.style.transform   = '';
+        authBtn.style.visibility  = '';
+        authBtn.style.pointerEvents = '';
+        delete authBtn.dataset.wpHidden;
       }
       // +Actividad: restore display, sin transform
       if (actBtn) {
@@ -374,7 +359,7 @@ export class SearchBar {
       gsap.timeline()
         .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
         .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
-        .to(chip,  { width: (this._chipInitW || 120) + 'px', right: (this._chipRight || chipRight || 12), duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
+        .to(chip,  { width: (this._chipInitW || 120) + 'px', right: (this._chipRight || 12), duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
     } else {
       restoreAll();
     }
@@ -910,9 +895,15 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:10px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 6px 0 4px;}
-      #wps-filter-chip{width:32px;min-width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.08)!important;color:#6b7280!important;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:background 0.2s;}
-      #wps-close-chip{width:32px;min-width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.08)!important;color:#6b7280!important;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;margin-right:6px;-webkit-tap-highlight-color:transparent;transition:background 0.2s;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;max-width:68px;overflow:hidden;text-overflow:ellipsis;}
+      .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
+        width:32px;min-width:32px;height:32px;border-radius:50%;
+        border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
+        font-size:14px;font-weight:700;cursor:pointer;display:flex;
+        align-items:center;justify-content:center;flex-shrink:0;
+        -webkit-tap-highlight-color:transparent;transition:background 0.2s;
+      }
+      #wps-close-chip{ margin-left:4px; margin-right:5px; }
       .wps-filter:active,.wps-close:active,
       #wps-filter-chip:active,#wps-close-chip:active{background:rgba(0,0,0,0.15) !important;}
 
