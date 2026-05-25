@@ -337,10 +337,11 @@ ion-app {
   border: none;
 }
 
-/* ── Grupo derecho fijo ── */
+/* ── Grupo derecho fijo — siempre a la derecha ── */
 #topbar-right {
   display: flex; align-items: center;
   gap: 8px; flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* ── Pill Buscar ── */
