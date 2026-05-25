@@ -302,51 +302,36 @@ export class SearchBar {
     var closeEl   = document.getElementById('wps-close-chip');
 
     var self2 = this;
-    var self2 = this;
     var restoreAll = function() {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
 
-      // Restaurar topbar-left PRIMERO para que el flexbox recalcule
-      var notifBtn2 = document.getElementById('topbar-notif-btn');
-      var topbarRight2 = document.getElementById('topbar-right');
-      if (topbarLeft2 && topbarLeft2.dataset.wpHidden) {
-        topbarLeft2.style.display = '';
-        delete topbarLeft2.dataset.wpHidden;
-      }
-
-      // Restaurar chip — limpiar todos los estilos inline
-      if (chip) {
-        chip.style.cssText = '';
-      }
-      // Restaurar visibility de avatar y notif
-      if (authBtn && authBtn.dataset.wpHidden) {
-        authBtn.style.visibility = '';
-        authBtn.style.pointerEvents = '';
-        delete authBtn.dataset.wpHidden;
-        if (gsap) gsap.fromTo(authBtn, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power2.out' });
-      }
+      // 1. Restaurar chip primero
+      if (chip) chip.style.cssText = '';
 
       if (searchBtn) searchBtn.style.display = '';
-      if (msgBtn  && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
-      // Restaurar avatar y notif con visibility
-      if (authBtn && authBtn.dataset.wpHidden) {
-        authBtn.style.visibility = '';
-        authBtn.style.pointerEvents = '';
-        delete authBtn.dataset.wpHidden;
-        if (gsap) gsap.fromTo(authBtn, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+      if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
+
+      // 2. Restaurar avatar
+      var authBtn2 = document.getElementById('topbar-auth-btn');
+      if (authBtn2) {
+        authBtn2.style.visibility = '';
+        authBtn2.style.pointerEvents = '';
+        delete authBtn2.dataset.wpHidden;
+        if (gsap) gsap.fromTo(authBtn2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
       }
-      if (notifBtn2 && notifBtn2.dataset.wpHidden) {
+
+      // 3. Restaurar notif
+      var notifBtn2 = document.getElementById('topbar-notif-btn');
+      if (notifBtn2) {
         notifBtn2.style.visibility = '';
         notifBtn2.style.pointerEvents = '';
         delete notifBtn2.dataset.wpHidden;
         if (gsap) gsap.fromTo(notifBtn2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
       }
-      // Restaurar label buscar visibility
-      var searchLabel3 = document.getElementById('topbar-search-label');
-      if (searchLabel3) searchLabel3.style.visibility = '';
-      // Pulse label Buscar
+
+      // 4. Restaurar label Buscar con pulse
       var searchLabel2 = document.getElementById('topbar-search-label');
       if (searchLabel2) {
         searchLabel2.style.visibility = '';
@@ -877,14 +862,14 @@ export class SearchBar {
 
       /* Chip derecho expandible en modo búsqueda */
       #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
-      #wps-inner { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
+      #wps-inner { display:flex; align-items:center; gap:8px; flex:1; min-width:0; overflow:hidden; }
       .wps-close-chip-btn { color:#374151; }
       .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
 
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:600;color:#111827;min-width:0;
+        font-size:15px;font-weight:600;color:#111827;min-width:0;width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
@@ -908,7 +893,7 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin-right:6px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;margin-right:6px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
