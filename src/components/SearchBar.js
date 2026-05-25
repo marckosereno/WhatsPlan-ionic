@@ -55,13 +55,7 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // Fijar tamaño del mapa para que el resize del chip no mueva los pines
-    var mapContainer = document.getElementById('map-container');
-    if (mapContainer && mv && mv.map) {
-      var rect = mapContainer.getBoundingClientRect();
-      mapContainer.style.width  = rect.width  + 'px';
-      mapContainer.style.height = rect.height + 'px';
-    }
+    // Mapa NO se toca - pines completamente independientes
   }
 
   deactivate() {
@@ -90,7 +84,7 @@ export class SearchBar {
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
-    this._restoreMarkers();
+    // Pines independientes - NO se restauran al desactivar
   }
 
   isActive() { return this._active; }
@@ -203,8 +197,7 @@ export class SearchBar {
     // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
     if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.visibility = 'hidden'; authBtn.style.pointerEvents = 'none'; }
-    var notifBtn = document.getElementById('topbar-notif-btn');
-    if (notifBtn)  { notifBtn.dataset.wpHidden = '1'; notifBtn.style.visibility = 'hidden'; notifBtn.style.pointerEvents = 'none'; }
+    // Notif NUNCA se oculta
     if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
@@ -319,23 +312,15 @@ export class SearchBar {
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display=''; delete msgBtn.dataset.wpHidden; }
-      // Restaurar avatar ANTES de _restoreMarkers para evitar freeze
+      // Avatar - restauración instantánea, sin GSAP ni transforms
       if (authBtn && authBtn.dataset.wpHidden) {
         delete authBtn.dataset.wpHidden;
         if (gsap) gsap.killTweensOf(authBtn);
-        authBtn.style.transition = 'none';
-        authBtn.style.transform  = 'none';
-        authBtn.getBoundingClientRect();
-        authBtn.style.transition  = '';
-        authBtn.style.transform   = '';
-        authBtn.style.visibility  = '';
+        // Solo cambiar visibility - NADA MAS
+        authBtn.style.visibility = '';
         authBtn.style.pointerEvents = '';
       }
-      var _notif = document.getElementById('topbar-notif-btn');
-      if (_notif && _notif.dataset.wpHidden) {
-        delete _notif.dataset.wpHidden;
-        _notif.style.visibility = ''; _notif.style.pointerEvents = '';
-      }
+      // Notif no se ocultó, no hay que restaurar
       // +Actividad: restore display, sin transform
       if (actBtn) {
         if (gsap) gsap.killTweensOf(actBtn);
@@ -351,17 +336,7 @@ export class SearchBar {
           actBtn.style.transform  = '';
         }, 220);
       }
-      // Restaurar markers y liberar tamaño del mapa
-      self2._restoreMarkers();
-      var mapContainer = document.getElementById('map-container');
-      if (mapContainer) {
-        mapContainer.style.width  = '';
-        mapContainer.style.height = '';
-      }
-      var mv2 = self2.mapView;
-      if (mv2 && mv2.map) {
-        requestAnimationFrame(function() { mv2.map.resize(); });
-      }
+      // Pines INDEPENDIENTES - no se tocan al cerrar barra
     };
 
     if (chip && gsap) {
