@@ -176,11 +176,13 @@ export class SearchBar {
     var targetW   = window.innerWidth - 24;
 
     var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 0;
+    var chipTop   = chipRect ? chipRect.top : 0;
     this._chipRight = chipRight;
+    this._chipTop   = chipTop;
 
     if (chip && chipRect) {
       chip.style.position = 'fixed';
-      chip.style.top      = chipRect.top + 'px';
+      chip.style.top      = chipTop + 'px';
       chip.style.right    = chipRight + 'px';
       chip.style.left     = 'auto';
       chip.style.width    = chipInitW + 'px';
@@ -312,17 +314,25 @@ export class SearchBar {
         delete topbarLeft2.dataset.wpHidden;
       }
 
-      // Restaurar chip a su posición natural (derecha)
+      // Restaurar chip — volver a posición fixed original primero
       if (chip) {
+        chip.style.position = 'fixed';
+        chip.style.top      = (self2._chipTop || 0) + 'px';
+        chip.style.right    = (self2._chipRight || 0) + 'px';
+        chip.style.left     = 'auto';
         chip.style.width    = (self2._chipInitW || 120) + 'px';
-        chip.style.position = '';
-        chip.style.top      = '';
-        chip.style.left     = '';
-        chip.style.zIndex   = '';
-        chip.style.right    = '';
-        chip.style.marginLeft = 'auto';
-        // Forzar reflow para que el flexbox recalcule
-        chip.getBoundingClientRect();
+        chip.style.zIndex   = '99999';
+        // Esperar un frame y luego limpiar al flujo normal
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            chip.style.position = '';
+            chip.style.top      = '';
+            chip.style.right    = '';
+            chip.style.left     = '';
+            chip.style.zIndex   = '';
+            chip.style.width    = '';
+          });
+        });
       }
 
       if (searchBtn) searchBtn.style.display = '';
