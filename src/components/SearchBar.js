@@ -179,9 +179,9 @@ export class SearchBar {
     var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 12;
     this._chipRight = chipRight;
 
-    // Calcular targetW: desde el borde derecho del avatar + gap
+    // targetW = toda la pantalla menos márgenes (avatar oculto con visibility, no ocupa)
     var avatarRect = authBtn ? authBtn.getBoundingClientRect() : null;
-    var leftEdge   = avatarRect ? (avatarRect.right + 8) : 12;
+    var leftEdge   = avatarRect ? avatarRect.left : 12;
     var targetW    = window.innerWidth - leftEdge - chipRight;
     this._targetW  = targetW;
 
@@ -323,13 +323,18 @@ export class SearchBar {
       // Restaurar label Buscar
       var sl2 = document.getElementById('topbar-search-label');
       if (sl2) { sl2.style.visibility=''; if(gsap) gsap.fromTo(sl2,{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:'back.out(2)'}); }
-      // Restaurar avatar solo con pulse, sin translate
+      // Restaurar avatar — solo fade, sin translate ni scale
       if (authBtn && authBtn.dataset.wpHidden) {
-        authBtn.style.visibility = ''; authBtn.style.pointerEvents = '';
+        authBtn.style.visibility = '';
+        authBtn.style.pointerEvents = '';
+        authBtn.style.transform = '';
+        authBtn.style.opacity = '0';
         delete authBtn.dataset.wpHidden;
         if (gsap) {
           gsap.killTweensOf(authBtn);
-          gsap.fromTo(authBtn, { scale: 0.75 }, { scale: 1, duration: 0.32, ease: 'back.out(2.5)', clearProps: 'transform' });
+          gsap.to(authBtn, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+        } else {
+          authBtn.style.opacity = '';
         }
       }
       // +Actividad: restore display, sin transform
@@ -902,7 +907,7 @@ export class SearchBar {
       .wps-clear.visible { display:flex; }
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;}
       #wps-filter-chip{width:32px;min-width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.08)!important;color:#6b7280!important;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:background 0.2s;}
-      #wps-close-chip{width:32px;min-width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.08)!important;color:#6b7280!important;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;margin-right:4px;-webkit-tap-highlight-color:transparent;transition:background 0.2s;}
+      #wps-close-chip{width:32px;min-width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.08)!important;color:#6b7280!important;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;margin-right:6px;-webkit-tap-highlight-color:transparent;transition:background 0.2s;}
       .wps-filter:active,.wps-close:active,
       #wps-filter-chip:active,#wps-close-chip:active{background:rgba(0,0,0,0.15) !important;}
 
