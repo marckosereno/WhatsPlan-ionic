@@ -312,18 +312,20 @@ export class SearchBar {
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
-      // Restaurar auth con pulse
-      if (authBtn && authBtn.dataset.wpHidden) {
-        authBtn.style.visibility = ''; authBtn.style.pointerEvents = '';
-        delete authBtn.dataset.wpHidden;
-        if (gsap) gsap.fromTo(authBtn, { scale:0.7 }, { scale:1, duration:0.35, ease:'back.out(2.5)' });
-      }
-      // Restaurar notif con pulse
-      var notifBtn3 = document.getElementById('topbar-notif-btn');
-      if (notifBtn3) {
-        notifBtn3.style.visibility = ''; notifBtn3.style.pointerEvents = '';
-        if (gsap) gsap.fromTo(notifBtn3, { scale:0.7 }, { scale:1, duration:0.35, ease:'back.out(2.5)', delay:0.05 });
-      }
+      // Restaurar auth + notif con pulse — defer para evitar congelamiento con pines
+      var _authBtn = authBtn;
+      var _notifBtn = document.getElementById('topbar-notif-btn');
+      requestAnimationFrame(function() {
+        if (_authBtn && _authBtn.dataset.wpHidden) {
+          _authBtn.style.visibility = ''; _authBtn.style.pointerEvents = '';
+          delete _authBtn.dataset.wpHidden;
+          if (gsap) gsap.fromTo(_authBtn, { scale:0.7 }, { scale:1, duration:0.35, ease:'back.out(2.5)' });
+        }
+        if (_notifBtn) {
+          _notifBtn.style.visibility = ''; _notifBtn.style.pointerEvents = '';
+          if (gsap) gsap.fromTo(_notifBtn, { scale:0.7 }, { scale:1, duration:0.35, ease:'back.out(2.5)', delay:0.04 });
+        }
+      });
       // Restaurar label Buscar
       var sl = document.getElementById('topbar-search-label');
       if (sl) { sl.style.visibility = ''; }
@@ -872,8 +874,7 @@ export class SearchBar {
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:600;color:#111827;min-width:0;
-        padding-right:8px;
+        font-size:15px;font-weight:600;color:#111827;min-width:0;width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
@@ -897,20 +898,20 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding-right:6px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 8px;}
       #wps-filter-chip{
-        width:32px;min-width:32px;height:32px;border-radius:50%;
+        width:34px;min-width:34px;height:34px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       #wps-close-chip{
-        width:32px;min-width:32px;height:32px;border-radius:50%;
+        width:34px;min-width:34px;height:34px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
-        margin-left:6px;
+        margin-left:4px;margin-right:4px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
@@ -923,7 +924,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:0 2px 0 12px; height:44px; min-height:44px; box-sizing:border-box;
+        padding:0 0px 0 12px; height:44px; min-height:44px; box-sizing:border-box; overflow:visible;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
