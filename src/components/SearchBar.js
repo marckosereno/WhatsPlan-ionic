@@ -206,7 +206,7 @@ export class SearchBar {
     inner.id  = 'wps-inner';
     inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;';
     inner.innerHTML =
-      '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
+      '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0;margin-right:4px" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" ' +
       'autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
@@ -214,7 +214,7 @@ export class SearchBar {
         '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
           '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
         '</svg></button>' +
-      '<span id="wps-count" class="wps-count">' + count + '</span>';
+      '<span id="wps-count" class="wps-count" style="margin-left:auto;padding-right:2px">' + count + '</span>';
 
     var filterBtn = document.createElement('button');
     filterBtn.id = 'wps-filter-chip';
@@ -313,24 +313,28 @@ export class SearchBar {
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
 
-      // 2. Restaurar avatar
+      // 2. Restaurar avatar con pulse spring
       var authBtn2 = document.getElementById('topbar-auth-btn');
       if (authBtn2) {
         authBtn2.style.visibility = '';
         authBtn2.style.pointerEvents = '';
-        authBtn2.style.opacity = '0';
         delete authBtn2.dataset.wpHidden;
-        if (gsap) gsap.to(authBtn2, { opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.05 });
+        if (gsap) gsap.fromTo(authBtn2,
+          { scale: 0.7 },
+          { scale: 1, duration: 0.35, ease: 'back.out(2.5)' }
+        );
       }
 
-      // 3. Restaurar notif
+      // 3. Restaurar notif con pulse spring
       var notifBtn2 = document.getElementById('topbar-notif-btn');
       if (notifBtn2) {
         notifBtn2.style.visibility = '';
         notifBtn2.style.pointerEvents = '';
-        notifBtn2.style.opacity = '0';
         delete notifBtn2.dataset.wpHidden;
-        if (gsap) gsap.to(notifBtn2, { opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.05 });
+        if (gsap) gsap.fromTo(notifBtn2,
+          { scale: 0.7 },
+          { scale: 1, duration: 0.35, ease: 'back.out(2.5)', delay: 0.05 }
+        );
       }
 
       // 4. Restaurar label Buscar con pulse
@@ -864,7 +868,7 @@ export class SearchBar {
 
       /* Chip derecho expandible en modo búsqueda */
       #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
-      #wps-inner { display:flex; align-items:center; gap:8px; flex:1; min-width:0; height:100%; overflow:hidden; }
+      #wps-inner { display:flex; align-items:center; gap:4px; flex:1; min-width:0; height:100%; }
       .wps-close-chip-btn { color:#374151; }
       .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
 
@@ -895,13 +899,13 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;margin-right:4px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
-        margin-left:4px;
+        margin-left:2px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
