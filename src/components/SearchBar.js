@@ -214,7 +214,7 @@ export class SearchBar {
       '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="..." ' +
-      'autocomplete="new-password" autocorrect="off" autocapitalize="sentences" spellcheck="false" readonly>' +
+      'autocomplete="new-password" autocorrect="off" autocapitalize="words" spellcheck="false" readonly>' +
       '<button id="wps-clear" class="wps-clear" aria-label="Limpiar">' +
         '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
           '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
@@ -881,9 +881,9 @@ export class SearchBar {
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:400;color:#111827;min-width:0;
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
+      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Inter Tight',system-ui,sans-serif;}
 
       .wps-clear {
         display:none;
@@ -961,7 +961,7 @@ export class SearchBar {
       .wps-card-badge.closed{background:#ef4444;}
       .wps-card-badge.no-hours{background:#6b7280;}
       .wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
-      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
+      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Inter Tight',system-ui,sans-serif;}
       .wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
       .wps-card-rating{display:flex;align-items:center;gap:4px;}
       .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
@@ -1004,7 +1004,7 @@ export class SearchBar {
         box-shadow:none;
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wps-cat-chip.active{
         background:var(--wp-blue, #2563eb);
