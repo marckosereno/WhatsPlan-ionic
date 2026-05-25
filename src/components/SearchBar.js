@@ -327,19 +327,22 @@ export class SearchBar {
       // Restaurar label Buscar
       var sl2 = document.getElementById('topbar-search-label');
       if (sl2) { sl2.style.visibility=''; if(gsap) gsap.fromTo(sl2,{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:'back.out(2)'}); }
-      // Restaurar avatar — solo fade, sin translate ni scale
-      if (authBtn && authBtn.dataset.wpHidden) {
-        authBtn.style.visibility = '';
-        authBtn.style.pointerEvents = '';
-        authBtn.style.transform = '';
-        authBtn.style.opacity = '0';
-        delete authBtn.dataset.wpHidden;
-        if (gsap) {
-          gsap.killTweensOf(authBtn);
-          gsap.to(authBtn, { opacity: 1, duration: 0.3, ease: 'power2.out' });
-        } else {
-          authBtn.style.opacity = '';
-        }
+      // Restaurar avatar — solo fade, sin tocar transform ni position
+      var _auth = document.getElementById('topbar-auth-btn');
+      if (_auth) {
+        if (gsap) gsap.killTweensOf(_auth);
+        _auth.style.visibility = '';
+        _auth.style.pointerEvents = '';
+        _auth.style.transform = 'none';
+        _auth.style.opacity = '0';
+        delete _auth.dataset.wpHidden;
+        requestAnimationFrame(function() {
+          _auth.style.transform = '';
+          if (gsap) gsap.to(_auth, { opacity: 1, duration: 0.25, ease: 'power2.out',
+            onComplete: function(){ _auth.style.opacity = ''; }
+          });
+          else _auth.style.opacity = '';
+        });
       }
       // +Actividad: restore display, sin transform
       if (actBtn) {
@@ -885,7 +888,8 @@ export class SearchBar {
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:600;color:#111827;min-width:0;
+        font-size:15px;font-weight:600;color:#111827;min-width:0;width:0;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
