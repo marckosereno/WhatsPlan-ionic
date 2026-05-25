@@ -51,6 +51,10 @@ export class SearchBar {
       else { panel.style.display = 'none'; }
     }
 
+    // Ocultar label "Buscar" al abrir searchbar
+    var searchLabel = document.getElementById('topbar-search-label');
+    if (searchLabel) searchLabel.style.display = 'none';
+
     this._moveSubcatsToBody();
     this._showOverlay();
     this._showCategoryChips();
@@ -85,6 +89,10 @@ export class SearchBar {
       );
       else { panel.style.transform = ''; panel.style.opacity = ''; }
     }
+
+    // Restaurar label "Buscar"
+    var searchLabel = document.getElementById('topbar-search-label');
+    if (searchLabel) searchLabel.style.display = '';
 
     this._returnSubcatsToPanel();
     this._hideOverlay();
@@ -191,11 +199,7 @@ export class SearchBar {
 
     // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
-    if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.visibility = 'hidden'; authBtn.style.pointerEvents = 'none'; }
-    var notifBtn = document.getElementById('topbar-notif-btn');
-    if (notifBtn)  { notifBtn.dataset.wpHidden = '1'; notifBtn.style.visibility = 'hidden'; notifBtn.style.pointerEvents = 'none'; }
-    var srchLabel = document.getElementById('topbar-search-label');
-    if (srchLabel) srchLabel.style.visibility = 'hidden';
+    if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
     if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
@@ -310,15 +314,8 @@ export class SearchBar {
         chip.style.width    = ''; chip.style.zIndex = '';
       }
       if (searchBtn) searchBtn.style.display = '';
-      if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display=''; delete msgBtn.dataset.wpHidden; }
-      var sl2 = document.getElementById('topbar-search-label');
-      if (sl2) { sl2.style.visibility=''; if(gsap) gsap.fromTo(sl2,{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:'back.out(2)'}); }
-      var _a = document.getElementById('topbar-auth-btn');
-      var _n = document.getElementById('topbar-notif-btn');
-      requestAnimationFrame(function(){
-        if (_a && _a.dataset.wpHidden) { _a.style.visibility=''; _a.style.pointerEvents=''; delete _a.dataset.wpHidden; if(gsap) gsap.fromTo(_a,{scale:0.75},{scale:1,duration:0.3,ease:'back.out(2.5)'}); }
-        if (_n && _n.dataset.wpHidden) { _n.style.visibility=''; _n.style.pointerEvents=''; delete _n.dataset.wpHidden; if(gsap) gsap.fromTo(_n,{scale:0.75},{scale:1,duration:0.3,ease:'back.out(2.5)',delay:0.04}); }
-      });
+      if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
+      if (authBtn && authBtn.dataset.wpHidden) { authBtn.style.display = ''; delete authBtn.dataset.wpHidden; }
       // +Actividad: restore display, sin transform
       if (actBtn) {
         if (gsap) gsap.killTweensOf(actBtn);
@@ -863,7 +860,7 @@ export class SearchBar {
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:600;color:#111827;min-width:0;width:0;
+        font-size:15px;font-weight:600;color:#111827;min-width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
@@ -887,7 +884,7 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
@@ -895,7 +892,6 @@ export class SearchBar {
         align-items:center;justify-content:center;flex-shrink:0;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
-      #wps-close-chip{ margin-left:4px;margin-right:4px; }
       .wps-filter:active,.wps-close:active,
       #wps-filter-chip:active,#wps-close-chip:active{background:rgba(0,0,0,0.15) !important;}
 
