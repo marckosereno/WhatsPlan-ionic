@@ -167,6 +167,7 @@ export class SearchBar {
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
     var notifBtn = document.getElementById('topbar-notif-btn');
+    var topbarRight = document.getElementById('topbar-right');
     var searchLabel = document.getElementById('topbar-search-label');
 
     // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
@@ -309,30 +310,15 @@ export class SearchBar {
 
       // Restaurar topbar-left PRIMERO para que el flexbox recalcule
       var notifBtn2 = document.getElementById('topbar-notif-btn');
+      var topbarRight2 = document.getElementById('topbar-right');
       if (topbarLeft2 && topbarLeft2.dataset.wpHidden) {
         topbarLeft2.style.display = '';
         delete topbarLeft2.dataset.wpHidden;
       }
 
-      // Restaurar chip — volver a posición fixed original primero
+      // Restaurar chip — limpiar todos los estilos inline
       if (chip) {
-        chip.style.position = 'fixed';
-        chip.style.top      = (self2._chipTop || 0) + 'px';
-        chip.style.right    = (self2._chipRight || 0) + 'px';
-        chip.style.left     = 'auto';
-        chip.style.width    = (self2._chipInitW || 120) + 'px';
-        chip.style.zIndex   = '99999';
-        // Esperar un frame y luego limpiar al flujo normal
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            chip.style.position = '';
-            chip.style.top      = '';
-            chip.style.right    = '';
-            chip.style.left     = '';
-            chip.style.zIndex   = '';
-            chip.style.width    = '';
-          });
-        });
+        chip.style.cssText = '';
       }
 
       if (searchBtn) searchBtn.style.display = '';
