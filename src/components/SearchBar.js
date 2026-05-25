@@ -206,7 +206,7 @@ export class SearchBar {
     inner.id  = 'wps-inner';
     inner.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;opacity:0;';
     inner.innerHTML =
-      '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0;margin-right:4px" ' +
+      '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="Buscar un lugar" ' +
       'autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
@@ -214,7 +214,7 @@ export class SearchBar {
         '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
           '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
         '</svg></button>' +
-      '<span id="wps-count" class="wps-count" style="margin-left:auto;padding-right:2px">' + count + '</span>';
+      '<div id="wps-right-group"><span id="wps-count" class="wps-count">' + count + '</span></div>';
 
     var filterBtn = document.createElement('button');
     filterBtn.id = 'wps-filter-chip';
@@ -227,11 +227,13 @@ export class SearchBar {
     closeBtn.className = 'topbar-icon-btn';
     closeBtn.style.cssText = 'opacity:0;transform:scale(0.3);flex-shrink:0;font-size:15px;font-weight:700;color:#374151;';
     closeBtn.textContent = '✕';
+    // Append filter+close into right group
+    var rightGroup = inner.querySelector('#wps-right-group');
+    if (rightGroup) { rightGroup.appendChild(filterBtn); rightGroup.appendChild(closeBtn); }
 
     if (chip) {
       chip.insertBefore(inner, chip.firstChild);
-      chip.appendChild(filterBtn);
-      chip.appendChild(closeBtn);
+      // filter+close already appended to wps-right-group inside inner
     }
 
     // ── PASO 4: Animar expansión — fijar left:12px para expandir correctamente ──
@@ -899,13 +901,14 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;}
+
+      #wps-right-group{display:flex;align-items:center;gap:4px;margin-left:auto;padding-right:6px;flex-shrink:0;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;padding-right:4px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
-        margin-left:2px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
