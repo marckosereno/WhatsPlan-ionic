@@ -186,13 +186,9 @@ export class SearchBar {
       chip.style.paddingLeft = '12px';
       chip.style.paddingRight= '2px';
       chip.style.height      = '44px';
-      // Ocultar texto/label del chip (span o textNode)
-      Array.from(chip.childNodes).forEach(function(n) {
-        if (n.nodeType === 3 || (n.nodeType === 1 && n.id !== 'wps-inner' && n.id !== 'wps-filter-chip' && n.id !== 'wps-close-chip')) {
-          n._wpHidden = true;
-          if (n.style) n.style.display = 'none';
-        }
-      });
+      // Guardar y vaciar contenido del chip
+      this._chipHTML = chip.innerHTML;
+      chip.innerHTML = '';
     }
 
     // ── PASO 1: Ahora sí ocultar actBtn — el chip ya está fijo, no se moverá ──
@@ -318,10 +314,11 @@ export class SearchBar {
       if (closeEl)  closeEl.remove();
       if (chip) {
         chip.style.cssText = '';
-        // Restaurar hijos ocultos del chip
-        Array.from(chip.childNodes).forEach(function(n) {
-          if (n._wpHidden) { if (n.style) n.style.display = ''; n._wpHidden = false; }
-        });
+        // Restaurar contenido original del chip
+        if (self2._chipHTML !== undefined) {
+          chip.innerHTML = self2._chipHTML;
+          self2._chipHTML = undefined;
+        }
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
