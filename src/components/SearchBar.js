@@ -865,7 +865,7 @@ export class SearchBar {
 
       /* Chip derecho expandible en modo búsqueda */
       #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
-      #wps-inner { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
+      #wps-inner { display:flex; align-items:center; gap:0; flex:1; min-width:0; height:100%; }
       .wps-close-chip-btn { color:#374151; }
       .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
 
@@ -873,6 +873,7 @@ export class SearchBar {
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:600;color:#111827;min-width:0;
+        padding-right:8px;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
@@ -896,13 +897,20 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;}
-      .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding-right:6px;}
+      #wps-filter-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
-        margin-left:4px;
+        -webkit-tap-highlight-color:transparent;transition:background 0.2s;
+      }
+      #wps-close-chip{
+        width:32px;min-width:32px;height:32px;border-radius:50%;
+        border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
+        font-size:14px;font-weight:700;cursor:pointer;display:flex;
+        align-items:center;justify-content:center;flex-shrink:0;
+        margin-left:6px;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
       .wps-filter:active,.wps-close:active,
@@ -915,7 +923,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:0 8px 0 12px; height:44px; min-height:44px; box-sizing:border-box;
+        padding:0 6px 0 12px; height:44px; min-height:44px; box-sizing:border-box;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
