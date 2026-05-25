@@ -862,7 +862,7 @@ export class SearchBar {
 
       /* Chip derecho expandible en modo búsqueda */
       #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
-      #wps-inner { display:flex; align-items:center; gap:8px; flex:1; min-width:0; overflow:hidden; }
+      #wps-inner { display:flex; align-items:center; gap:8px; flex:1; min-width:0; height:100%; overflow:hidden; }
       .wps-close-chip-btn { color:#374151; }
       .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
 
@@ -893,7 +893,7 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;margin-right:6px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-right:4px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
@@ -912,7 +912,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:4px 12px; min-height:42px;
+        padding:0 12px; height:44px; min-height:44px; box-sizing:border-box;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
