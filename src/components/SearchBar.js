@@ -173,10 +173,12 @@ export class SearchBar {
     this._chipInitW = chipInitW;
     var targetW   = window.innerWidth - 24;
 
+    var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 12;
+    this._chipRight = chipRight;
     if (chip && chipRect) {
       chip.style.position = 'fixed';
       chip.style.top      = chipRect.top + 'px';
-      chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
+      chip.style.right    = chipRight + 'px';
       chip.style.left     = 'auto';
       chip.style.width    = chipInitW + 'px';
       chip.style.zIndex   = '99999';
@@ -232,10 +234,10 @@ export class SearchBar {
       chip.appendChild(closeBtn);
     }
 
-    // ── PASO 4: Animar expansión ──
+    // ── PASO 4: Animar expansión hacia ambos lados ──
     if (chip && gsap) {
       gsap.timeline()
-        .to(chip,      { width: targetW, duration: 0.2,  ease: 'expo.out' })
+        .to(chip,      { width: targetW, right: 12, duration: 0.2,  ease: 'expo.out' })
         .to(inner,     { opacity: 1,     duration: 0.12, ease: 'power1.out' }, '-=0.08')
         .to(filterBtn, { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)' }, '-=0.04')
         .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)',
@@ -306,9 +308,7 @@ export class SearchBar {
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
       if (chip) {
-        chip.style.position = ''; chip.style.top    = '';
-        chip.style.right    = ''; chip.style.left   = '';
-        chip.style.width    = ''; chip.style.zIndex = '';
+        chip.style.cssText = '';
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display = ''; delete msgBtn.dataset.wpHidden; }
@@ -360,7 +360,7 @@ export class SearchBar {
       gsap.timeline()
         .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
         .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
-        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
+        .to(chip,  { width: (this._chipInitW || 120) + 'px', right: (this._chipRight || 12), duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
     } else {
       restoreAll();
     }
