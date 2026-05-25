@@ -323,15 +323,18 @@ export class SearchBar {
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn  && msgBtn.dataset.wpHidden)  { msgBtn.style.display  = ''; delete msgBtn.dataset.wpHidden; }
       if (authBtn && authBtn.dataset.wpHidden) {
-        if (gsap) gsap.killTweensOf(authBtn);
-        authBtn.style.transition = 'none';
-        authBtn.style.transform  = 'none';
-        authBtn.getBoundingClientRect();
-        authBtn.style.transition  = '';
-        authBtn.style.transform   = '';
-        authBtn.style.visibility  = '';
-        authBtn.style.pointerEvents = '';
         delete authBtn.dataset.wpHidden;
+        // Defer to avoid freeze when map is re-rendering pins
+        setTimeout(function() {
+          if (gsap) gsap.killTweensOf(authBtn);
+          authBtn.style.transition    = 'none';
+          authBtn.style.transform     = 'none';
+          authBtn.getBoundingClientRect();
+          authBtn.style.transition    = '';
+          authBtn.style.transform     = '';
+          authBtn.style.visibility    = '';
+          authBtn.style.pointerEvents = '';
+        }, 80);
       }
       // +Actividad: restore display, sin transform
       if (actBtn) {
