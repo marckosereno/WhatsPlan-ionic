@@ -186,12 +186,16 @@ export class SearchBar {
     this._targetW  = targetW;
 
     if (chip && chipRect) {
-      chip.style.position = 'fixed';
-      chip.style.top      = chipRect.top + 'px';
-      chip.style.right    = chipRight + 'px';
-      chip.style.left     = 'auto';
-      chip.style.width    = chipInitW + 'px';
-      chip.style.zIndex   = '99999';
+      chip.style.position      = 'fixed';
+      chip.style.top           = chipRect.top + 'px';
+      chip.style.right         = chipRight + 'px';
+      chip.style.left          = 'auto';
+      chip.style.width         = chipInitW + 'px';
+      chip.style.zIndex        = '99999';
+      chip.style.paddingLeft   = '12px';
+      chip.style.paddingRight  = '2px';
+      chip.style.borderRadius  = '9999px';
+      chip.style.height        = '44px';
     }
 
     // ── PASO 1: Ocultar actBtn ──
