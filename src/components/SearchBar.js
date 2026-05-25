@@ -880,7 +880,7 @@ export class SearchBar {
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:600;color:#111827;min-width:0;
+        font-size:12px;font-weight:400;color:#111827;min-width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
