@@ -163,7 +163,6 @@ export class SearchBar {
     var searchBtn = document.getElementById('topbar-search-btn');
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
-    var notifBtn  = document.getElementById('topbar-notif-btn');
 
     // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
     var chipRect  = chip ? chip.getBoundingClientRect() : null;
@@ -171,23 +170,16 @@ export class SearchBar {
     this._chipInitW = chipInitW;
     var targetW   = window.innerWidth - 24;
 
-    var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 12;
-    this._chipRight = chipRight;
     if (chip && chipRect) {
       chip.style.position = 'fixed';
       chip.style.top      = chipRect.top + 'px';
-      chip.style.right    = chipRight + 'px';
+      chip.style.right    = (window.innerWidth - chipRect.right) + 'px';
       chip.style.left     = 'auto';
       chip.style.width    = chipInitW + 'px';
       chip.style.zIndex   = '99999';
     }
 
     // ── PASO 1: Ahora sí ocultar actBtn — el chip ya está fijo, no se moverá ──
-    // Ocultar label, avatar y notif con visibility (preserva layout)
-    var searchLabel = document.getElementById('topbar-search-label');
-    if (searchLabel) searchLabel.style.visibility = 'hidden';
-    if (authBtn) { authBtn.dataset.wpHidden='1'; authBtn.style.visibility='hidden'; authBtn.style.pointerEvents='none'; }
-    if (notifBtn) { notifBtn.dataset.wpHidden='1'; notifBtn.style.visibility='hidden'; notifBtn.style.pointerEvents='none'; }
     if (actBtn) {
       // Quitar TODA transición CSS antes de manipular
       actBtn.style.transition = 'none';
@@ -199,7 +191,11 @@ export class SearchBar {
 
     // ── PASO 2: Ocultar msg/avatar ──
     if (msgBtn)    { msgBtn.dataset.wpHidden  = '1'; msgBtn.style.display  = 'none'; }
-    if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.display = 'none'; }
+    if (authBtn)   { authBtn.dataset.wpHidden = '1'; authBtn.style.visibility = 'hidden'; authBtn.style.pointerEvents = 'none'; }
+    var notifBtn = document.getElementById('topbar-notif-btn');
+    if (notifBtn)  { notifBtn.dataset.wpHidden = '1'; notifBtn.style.visibility = 'hidden'; notifBtn.style.pointerEvents = 'none'; }
+    var srchLabel = document.getElementById('topbar-search-label');
+    if (srchLabel) srchLabel.style.visibility = 'hidden';
     if (searchBtn) searchBtn.style.display = 'none';
 
     // ── PASO 3: Inyectar contenido ──
@@ -238,7 +234,7 @@ export class SearchBar {
     // ── PASO 4: Animar expansión ──
     if (chip && gsap) {
       gsap.timeline()
-        .to(chip,      { width: targetW, right: 12, duration: 0.2,  ease: 'expo.out' })
+        .to(chip,      { width: targetW, duration: 0.2,  ease: 'expo.out' })
         .to(inner,     { opacity: 1,     duration: 0.12, ease: 'power1.out' }, '-=0.08')
         .to(filterBtn, { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)' }, '-=0.04')
         .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)',
@@ -308,26 +304,20 @@ export class SearchBar {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
       if (closeEl)  closeEl.remove();
-      if (chip) { chip.style.cssText = ''; }
+      if (chip) {
+        chip.style.position = ''; chip.style.top    = '';
+        chip.style.right    = ''; chip.style.left   = '';
+        chip.style.width    = ''; chip.style.zIndex = '';
+      }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display=''; delete msgBtn.dataset.wpHidden; }
-      // Restaurar label
-      var sl = document.getElementById('topbar-search-label');
-      if (sl) { sl.style.visibility=''; if(gsap) gsap.fromTo(sl,{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:'back.out(2)'}); }
-      // Restaurar avatar + notif con rAF para evitar freeze
-      var _auth = document.getElementById('topbar-auth-btn');
-      var _notif = document.getElementById('topbar-notif-btn');
+      var sl2 = document.getElementById('topbar-search-label');
+      if (sl2) { sl2.style.visibility=''; if(gsap) gsap.fromTo(sl2,{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:'back.out(2)'}); }
+      var _a = document.getElementById('topbar-auth-btn');
+      var _n = document.getElementById('topbar-notif-btn');
       requestAnimationFrame(function(){
-        if (_auth && _auth.dataset.wpHidden) {
-          _auth.style.visibility=''; _auth.style.pointerEvents='';
-          delete _auth.dataset.wpHidden;
-          if(gsap) gsap.fromTo(_auth,{scale:0.75},{scale:1,duration:0.3,ease:'back.out(2.5)'});
-        }
-        if (_notif && _notif.dataset.wpHidden) {
-          _notif.style.visibility=''; _notif.style.pointerEvents='';
-          delete _notif.dataset.wpHidden;
-          if(gsap) gsap.fromTo(_notif,{scale:0.75},{scale:1,duration:0.3,ease:'back.out(2.5)',delay:0.04});
-        }
+        if (_a && _a.dataset.wpHidden) { _a.style.visibility=''; _a.style.pointerEvents=''; delete _a.dataset.wpHidden; if(gsap) gsap.fromTo(_a,{scale:0.75},{scale:1,duration:0.3,ease:'back.out(2.5)'}); }
+        if (_n && _n.dataset.wpHidden) { _n.style.visibility=''; _n.style.pointerEvents=''; delete _n.dataset.wpHidden; if(gsap) gsap.fromTo(_n,{scale:0.75},{scale:1,duration:0.3,ease:'back.out(2.5)',delay:0.04}); }
       });
       // +Actividad: restore display, sin transform
       if (actBtn) {
@@ -361,7 +351,7 @@ export class SearchBar {
       gsap.timeline()
         .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
         .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
-        .to(chip,  { width: (this._chipInitW || 120) + 'px', right: (this._chipRight || 12), duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
+        .to(chip,  { width: (this._chipInitW || 120) + 'px', duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
     } else {
       restoreAll();
     }
@@ -866,11 +856,11 @@ export class SearchBar {
 
       /* Chip derecho expandible en modo búsqueda */
       #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
-      #wps-inner { display:flex; align-items:center; gap:0; flex:1; min-width:0; height:100%; }
+      #wps-inner { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
       .wps-close-chip-btn { color:#374151; }
-      .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0;margin-right:6px; }
+      .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
 
-      /* Input ocupa todo el espacio disponible */
+      /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:600;color:#111827;min-width:0;width:0;
@@ -897,25 +887,16 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      /* Count empujado a la derecha con margin-left:auto */
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 6px;}
-      /* Filtro */
-      #wps-filter-chip{
-        width:34px;min-width:34px;height:34px;border-radius:50%;
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;}
+      .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
+        width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
         -webkit-tap-highlight-color:transparent;transition:background 0.2s;
       }
-      /* X cerrar pegado al borde derecho */
-      #wps-close-chip{
-        width:34px;min-width:34px;height:34px;border-radius:50%;
-        border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
-        font-size:14px;font-weight:700;cursor:pointer;display:flex;
-        align-items:center;justify-content:center;flex-shrink:0;
-        margin-left:4px;margin-right:4px;
-        -webkit-tap-highlight-color:transparent;transition:background 0.2s;
-      }
+      #wps-close-chip{ margin-left:4px;margin-right:4px; }
+      .wps-filter:active,.wps-close:active,
       #wps-filter-chip:active,#wps-close-chip:active{background:rgba(0,0,0,0.15) !important;}
 
       .panel-subcats-scroll.wps-subcats-floating {
@@ -925,7 +906,7 @@ export class SearchBar {
         z-index:99998;
         background:transparent;
         width:100%; box-sizing:border-box;
-        padding:0 0 0 12px; height:44px; min-height:44px; box-sizing:border-box;
+        padding:4px 12px; min-height:42px;
         display:flex; align-items:center;
         overflow-x:auto; scrollbar-width:none;
       }
