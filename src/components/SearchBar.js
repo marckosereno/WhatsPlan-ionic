@@ -318,8 +318,9 @@ export class SearchBar {
       if (authBtn2) {
         authBtn2.style.visibility = '';
         authBtn2.style.pointerEvents = '';
+        authBtn2.style.opacity = '0';
         delete authBtn2.dataset.wpHidden;
-        if (gsap) gsap.fromTo(authBtn2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+        if (gsap) gsap.to(authBtn2, { opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.05 });
       }
 
       // 3. Restaurar notif
@@ -327,8 +328,9 @@ export class SearchBar {
       if (notifBtn2) {
         notifBtn2.style.visibility = '';
         notifBtn2.style.pointerEvents = '';
+        notifBtn2.style.opacity = '0';
         delete notifBtn2.dataset.wpHidden;
-        if (gsap) gsap.fromTo(notifBtn2, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+        if (gsap) gsap.to(notifBtn2, { opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.05 });
       }
 
       // 4. Restaurar label Buscar con pulse
@@ -869,7 +871,7 @@ export class SearchBar {
       /* Input con clear nativo del browser — sin -webkit-appearance:none */
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:600;color:#111827;min-width:0;width:0;
+        font-size:15px;font-weight:600;color:#111827;min-width:0;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
@@ -893,7 +895,7 @@ export class SearchBar {
         font-family:system-ui,sans-serif;
       }
       .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-right:4px;}
+      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;margin-right:4px;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:32px;min-width:32px;height:32px;border-radius:50%;
         border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
