@@ -213,8 +213,8 @@ export class SearchBar {
     inner.innerHTML =
       '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
-      '<input id="wps-input" class="wps-input" type="search" placeholder="" ' +
-      'autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" readonly>' +
+      '<input id="wps-input" class="wps-input" type="search" placeholder="..." ' +
+      'autocomplete="new-password" autocorrect="off" autocapitalize="sentences" spellcheck="false" readonly>' +
       '<button id="wps-clear" class="wps-clear" aria-label="Limpiar">' +
         '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
           '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
