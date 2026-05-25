@@ -281,7 +281,7 @@ ion-app::after {
 ion-app {
   height: calc(var(--vh, 1vh) * 100);
 }
-/* ── Fuente global chips de navegación — Yahoo Sans ── */
+/* ── Fuente global chips de navegación — Inter Tight ── */
 #topbar-right-chip,
 #topbar-notif-btn,
 .wp-pill,
@@ -291,7 +291,8 @@ ion-app {
 .hm-live-chip,
 .hm-loading-chip,
 #topbar-activity-btn {
-  font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  font-weight: 500;
 }
 
 /* ── Topbar ─────────────────────────────────────────────────────────── */
@@ -372,7 +373,7 @@ ion-app {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 600; color: #374151;
+  font-size: 15px; font-weight: 400; color: #374151;
   font-family: 'Inter Tight', system-ui, sans-serif;
   white-space: nowrap;
 }
