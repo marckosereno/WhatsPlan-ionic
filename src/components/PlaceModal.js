@@ -25,6 +25,7 @@ export class PlaceModal {
     const card = this._card;
     this._el.classList.remove('wp-pm-hidden');
     this._el.classList.add('wp-pm-visible');
+    document.body.classList.add('wp-pm-open');
     card.style.transition = 'none';
     card.style.transform  = 'translateY(100%)';
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -39,6 +40,7 @@ export class PlaceModal {
     setTimeout(() => {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
+      document.body.classList.remove('wp-pm-open');
       if (this.onClose) this.onClose();
     }, 340);
   }
@@ -263,9 +265,9 @@ export class PlaceModal {
     if (!carousel) return;
     // Each slide is 75% width, centered with peek on sides
     // Offset = i * slideWidth (75vw) - centering offset
-    const slideW = carousel.offsetWidth * 0.75 + 12; // 75% + gap
+    const slideW = carousel.offsetWidth * 0.46 + 10; // 46% + gap
     carousel.style.transition = animate ? 'transform 0.35s cubic-bezier(0.32,0.72,0,1)' : 'none';
-    carousel.style.transform  = `translateX(calc(${12.5}% - ${i * slideW}px))`;
+    carousel.style.transform  = `translateX(calc(4% - ${i * slideW}px))`;
     this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
     // Scale active slide
     this._el.querySelectorAll('.wp-pm-slide').forEach((s, idx) => {
@@ -560,18 +562,41 @@ export class PlaceModal {
         background:transparent;
       }
 
+      /* Sombra azul top más oscura y extendida cuando ficha está abierta */
+      body.wp-pm-open .ion-app::before,
+      body.wp-pm-open ion-app::before {
+        background:linear-gradient(to bottom,
+          rgba(59,130,246,0.75) 0%,
+          rgba(96,165,250,0.55) 45%,
+          rgba(147,197,253,0.2) 75%,
+          transparent 100%) !important;
+        height:200px !important;
+      }
+
       /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
       .wp-pm-topbar {
         position:absolute;
         top:0; left:0; right:0;
-        /* mismo padding que #topbar: top: 12px + safe-area, left/right: 12px */
         padding-top:calc(12px + env(safe-area-inset-top, 0px));
         padding-left:12px; padding-right:12px; padding-bottom:0;
         display:flex; align-items:center; gap:8px;
         pointer-events:auto;
         z-index:2;
-        /* transparente — se ve la sombra azul del mapa detrás */
         background:transparent;
+      }
+      /* Sombra azul más oscura y extendida cuando la ficha está abierta */
+      .wp-pm:not(.wp-pm-hidden) ~ * #topbar::before,
+      .wp-pm-card::before {
+        content:''; position:absolute;
+        top:0; left:0; right:0;
+        height:calc(env(safe-area-inset-top, 0px) + 200px);
+        background:linear-gradient(to bottom,
+          rgba(96,165,250,0.75) 0%,
+          rgba(147,197,253,0.45) 55%,
+          transparent 100%);
+        backdrop-filter:blur(0.5px);
+        pointer-events:none;
+        z-index:0;
       }
       /* Botones topbar: 44px como chips del sistema */
       .wp-pm-tb-btn {
@@ -604,32 +629,31 @@ export class PlaceModal {
         flex:1;
       }
 
-      /* ── Hero peek carousel — empieza tras el topbar ── */
+      /* ── Hero peek carousel — portrait, 2 slides + peek 3a ── */
       .wp-pm-hero {
         position:absolute;
-        /* top = safe-area + 12px (topbar padding-top) + 44px (chip height) + 12px (gap) */
         top:calc(env(safe-area-inset-top, 0px) + 68px);
         left:0; right:0;
-        height:210px;
+        height:290px;
         overflow:hidden; background:transparent;
-        padding:0 0 24px;
         z-index:1;
+        /* padding top separa del topbar, padding bottom separa del panel */
+        padding:14px 0 18px;
       }
-      /* Carousel track — overflow visible para peek */
+      /* Carousel track */
       .wp-pm-carousel {
         display:flex; align-items:center;
-        height:185px;
+        height:100%;
         will-change:transform;
-        padding:0;
       }
-      /* Cada slide: 75% del ancho, con gap para ver los laterales */
+      /* Slide portrait: 46% ancho — 2 slides visibles + asoma la 3a */
       .wp-pm-slide {
-        min-width:75%; height:100%;
+        min-width:46%; height:100%;
         border-radius:22px;
         background:center/cover no-repeat #e2e8f0;
-        flex-shrink:0; margin:0 6px;
+        flex-shrink:0; margin:0 5px;
         transition:transform 0.35s ease, opacity 0.35s ease;
-        transform:scale(0.9); opacity:0.65;
+        transform:scale(0.93); opacity:0.55;
         overflow:hidden;
       }
       .wp-pm-slide-placeholder {
@@ -640,21 +664,21 @@ export class PlaceModal {
 
       /* Dots */
       .wp-pm-dots {
-        position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+        position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
         display:flex; gap:5px; align-items:center;
       }
       .wp-pm-dot {
-        width:6px; height:6px; border-radius:9999px;
+        width:5px; height:5px; border-radius:9999px;
         background:#cbd5e1; cursor:pointer;
         transition:all 0.2s ease;
       }
-      .wp-pm-dot.active { background:#3b82f6; width:18px; }
+      .wp-pm-dot.active { background:#3b82f6; width:14px; }
 
       /* ── Body — panel blanco con border-radius:32px que sube desde abajo ── */
       .wp-pm-body {
         position:absolute;
-        /* top = safe-area + 68px (topbar) + 210px (hero) - 24px (overlap con dots) */
-        top:calc(env(safe-area-inset-top, 0px) + 254px);
+        /* top = safe-area + 68px (topbar) + 290px (hero) */
+        top:calc(env(safe-area-inset-top, 0px) + 358px);
         left:0; right:0; bottom:0;
         overflow-y:auto; overflow-x:hidden;
         -webkit-overflow-scrolling:touch;
