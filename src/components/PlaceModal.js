@@ -526,62 +526,119 @@ export class PlaceModal {
   }
 
   _wireHeroSwipe() {
-    const self    = this;
-    const hero    = this._el.querySelector('#wp-pm-hero');
-    let startX = 0, startT = 0, tracking = false, baseX = 0;
+    const self = this;
+    const hero = this._el.querySelector('#wp-pm-hero');
+    let startX = 0, startT = 0, lastX = 0, lastT = 0;
+    let tracking = false, baseX = 0, velX = 0;
+    let rafId = null;
 
-    const getSlideW = () => {
-      const c = self._el.querySelector('#wp-pm-carousel');
+    const getCarousel = () => self._el.querySelector('#wp-pm-carousel');
+    const getSlideW   = () => {
+      const c = getCarousel();
       return c ? c.getBoundingClientRect().width * 0.44 + 8 : 180;
     };
+    const snapX = i => 8 - i * getSlideW();
 
-    const getBaseTranslate = (i) => 8 - i * getSlideW();
+    // Animated spring snap
+    const springTo = (targetX, fromX, fromV) => {
+      if (rafId) cancelAnimationFrame(rafId);
+      const stiffness = 280, damping = 28, mass = 1;
+      let x = fromX, v = fromV;
+      const step = () => {
+        const f = -stiffness * (x - targetX) - damping * v;
+        v += (f / mass) * (1/60);
+        x += v * (1/60);
+        const c = getCarousel();
+        if (c) { c.style.transition = 'none'; c.style.transform = `translateX(${x}px)`; }
+        if (Math.abs(x - targetX) < 0.5 && Math.abs(v) < 0.5) {
+          if (c) c.style.transform = `translateX(${targetX}px)`;
+          return;
+        }
+        rafId = requestAnimationFrame(step);
+      };
+      rafId = requestAnimationFrame(step);
+    };
 
     hero.addEventListener('touchstart', e => {
       if (e.touches.length !== 1) return;
-      startX   = e.touches[0].clientX;
-      startT   = Date.now();
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      startX = lastX = e.touches[0].clientX;
+      startT = lastT = Date.now();
       tracking = true;
-      baseX    = getBaseTranslate(self._currentPhoto);
-      const carousel = self._el.querySelector('#wp-pm-carousel');
-      if (carousel) carousel.style.transition = 'none';
+      velX = 0;
+      const c = getCarousel();
+      // Read current actual translateX to start from
+      if (c) {
+        c.style.transition = 'none';
+        const mat = new DOMMatrix(getComputedStyle(c).transform);
+        baseX = mat.m41;
+      } else {
+        baseX = snapX(self._currentPhoto);
+      }
     }, { passive: true });
 
     hero.addEventListener('touchmove', e => {
-      if (!tracking) return;
-      const dx       = e.touches[0].clientX - startX;
-      const carousel = self._el.querySelector('#wp-pm-carousel');
-      if (!carousel) return;
-      const n      = self._photos.length;
-      // Elastic resistance at edges
-      let resist = 1;
-      if ((self._currentPhoto === 0 && dx > 0) || (self._currentPhoto === n-1 && dx < 0)) {
-        resist = 0.25;
-      }
-      carousel.style.transform = `translateX(${baseX + dx * resist}px)`;
-    }, { passive: true });
+      if (!tracking || e.touches.length !== 1) return;
+      const x  = e.touches[0].clientX;
+      const dx = x - startX;
+      const now = Date.now();
+      // Velocity tracking
+      velX = (x - lastX) / Math.max(1, now - lastT) * 16;
+      lastX = x; lastT = now;
 
-    hero.addEventListener('touchend', e => {
-      if (!tracking) return;
-      tracking = false;
-      if (e.changedTouches.length !== 1) return;
-      const dx = e.changedTouches[0].clientX - startX;
-      const dt = Date.now() - startT;
-      const n  = self._photos.length;
-      if (n < 2) { self._goToPhoto(self._currentPhoto); return; }
-      // Snap: require 40px or fast flick
+      const n = self._photos.length;
       const slideW = getSlideW();
-      const flick  = Math.abs(dx) > 40 || (Math.abs(dx) > 20 && dt < 250);
-      let next = self._currentPhoto;
-      if (flick) next += dx < 0 ? 1 : -1;
-      next = Math.max(0, Math.min(n - 1, next));
-      self._goToPhoto(next, true);
+      // Rubber band at edges
+      let tx = baseX + dx;
+      const minX = snapX(n - 1);
+      const maxX = snapX(0);
+      if (tx > maxX)      tx = maxX + (tx - maxX) * 0.18;
+      else if (tx < minX) tx = minX + (tx - minX) * 0.18;
+
+      const c = getCarousel();
+      if (c) c.style.transform = `translateX(${tx}px)`;
     }, { passive: true });
 
-    hero.addEventListener('touchcancel', () => {
+    const onEnd = e => {
       if (!tracking) return;
       tracking = false;
-      self._goToPhoto(self._currentPhoto, true);
+      const endX = e.changedTouches ? e.changedTouches[0].clientX : lastX;
+      const dx   = endX - startX;
+      const dt   = Date.now() - startT;
+      const n    = self._photos.length;
+      const slideW = getSlideW();
+
+      // How many slides to advance based on drag distance + velocity
+      const totalDx  = baseX + dx - snapX(self._currentPhoto);
+      const momentum = velX * 8; // project velocity forward
+      const total    = dx + momentum;
+      let advance    = Math.round(-total / slideW);
+      // Cap at max slides per gesture based on speed
+      const maxAdv   = Math.max(1, Math.min(n, Math.abs(Math.round(momentum / slideW)) + 1));
+      advance        = Math.max(-maxAdv, Math.min(maxAdv, advance));
+
+      let next = Math.max(0, Math.min(n - 1, self._currentPhoto + advance));
+      // Read current carousel X for smooth spring from current position
+      const c = getCarousel();
+      let curX = snapX(self._currentPhoto);
+      if (c) {
+        const mat = new DOMMatrix(getComputedStyle(c).transform);
+        curX = mat.m41;
+      }
+      self._currentPhoto = next;
+      self._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
+        d.classList.toggle('active', idx === next)
+      );
+      springTo(snapX(next), curX, velX * 60);
+    };
+
+    hero.addEventListener('touchend',   onEnd, { passive: true });
+    hero.addEventListener('touchcancel', () => {
+      tracking = false;
+      const c = getCarousel();
+      let curX = snapX(self._currentPhoto);
+      if (c) { const m = new DOMMatrix(getComputedStyle(c).transform); curX = m.m41; }
+      springTo(snapX(self._currentPhoto), curX, 0);
     }, { passive: true });
   }
 
