@@ -629,6 +629,22 @@ export class PlaceModal {
         flex:1;
       }
 
+      /* Fondo blanco difuminado detrás del carousel —
+         sube desde el panel y se pierde hacia la sombra azul del top */
+      .wp-pm-hero::before {
+        content:'';
+        position:absolute; inset:0;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0)    0%,
+          rgba(255,255,255,0.55) 30%,
+          rgba(255,255,255,0.85) 65%,
+          rgba(255,255,255,1)    100%);
+        z-index:0;
+        pointer-events:none;
+      }
+      .wp-pm-carousel { position:relative; z-index:1; }
+      .wp-pm-dots     { z-index:2; }
+
       /* ── Hero peek carousel — portrait, 2 slides + peek 3a ── */
       .wp-pm-hero {
         position:absolute;
