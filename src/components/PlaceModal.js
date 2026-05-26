@@ -63,11 +63,8 @@ export class PlaceModal {
           <button class="wp-pm-tb-btn" id="wp-pm-back">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <!-- Search pill -->
-          <div class="wp-pm-tb-search">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <span class="wp-pm-tb-search-label" id="wp-pm-tb-name">Search Places</span>
-          </div>
+          <!-- Nombre del lugar centrado -->
+          <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
           <!-- Share -->
           <button class="wp-pm-tb-btn" id="wp-pm-share">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -611,22 +608,19 @@ export class PlaceModal {
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
       }
       .wp-pm-tb-btn:active { transform:scale(0.92); }
-      /* Search pill — mismos estilos que #topbar-right-chip */
-      .wp-pm-tb-search {
-        flex:1; height:44px; border-radius:9999px;
-        background:rgba(255,255,255,0.88);
-        backdrop-filter:blur(16px) saturate(1.8);
-        -webkit-backdrop-filter:blur(16px) saturate(1.8);
-        box-shadow:0 4px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
-        display:flex; align-items:center; gap:8px;
-        padding:0 16px;
-        cursor:default;
-      }
-      .wp-pm-tb-search-label {
-        font-size:15px; font-weight:400; color:#374151;
-        font-family:'Inter Tight',system-ui,sans-serif;
+      /* Nombre centrado en topbar — outline blanco */
+      .wp-pm-tb-title {
+        flex:1; text-align:center;
+        font-size:16px; font-weight:700; color:#fff;
+        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        flex:1;
+        text-shadow:
+          0 0 12px rgba(0,0,0,0.25),
+          0 1px 3px rgba(0,0,0,0.2);
+        /* outline blanco con text-stroke */
+        -webkit-text-stroke: 3px rgba(255,255,255,0.85);
+        paint-order: stroke fill;
+        letter-spacing:-0.01em;
       }
 
       /* Fondo blanco difuminado detrás del carousel —
@@ -636,8 +630,8 @@ export class PlaceModal {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0.55) 30%,
-          rgba(255,255,255,0.85) 65%,
+          rgba(255,255,255,0.7)  20%,
+          rgba(255,255,255,0.92) 55%,
           rgba(255,255,255,1)    100%);
         z-index:0;
         pointer-events:none;
@@ -700,8 +694,7 @@ export class PlaceModal {
         -webkit-overflow-scrolling:touch;
         scrollbar-width:none;
         background:#fff;
-        border-radius:32px 32px 0 0;
-        box-shadow:0 -4px 24px rgba(0,0,0,0.08);
+        border-radius:0;
         padding-top:8px;
         padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));
       }
