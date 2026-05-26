@@ -800,7 +800,7 @@ export class PlaceModal {
         box-shadow:0 4px 16px rgba(37,99,235,0.35);
         flex:1.15;
       }
-    \`;
+    `;
     document.head.appendChild(s);
   }
 }
