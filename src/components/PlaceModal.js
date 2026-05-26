@@ -275,23 +275,32 @@ export class PlaceModal {
       dotsEl.style.display = 'none';
     }
 
-    // Swipe
-    this._wireHeroSwipe();
-    // Set initial position
-    this._goToPhoto(0, false);
+    // Set initial position first so layout is stable
+    requestAnimationFrame(() => {
+      this._goToPhoto(0, false);
+    });
+    // Wire swipe once
+    if (!this._swipeWired) {
+      this._wireHeroSwipe();
+      this._swipeWired = true;
+    }
   }
 
   _goToPhoto(i, animate = true) {
+    const n = this._photos.length;
+    if (n === 0) return;
+    // Clamp
+    i = Math.max(0, Math.min(n - 1, i));
     this._currentPhoto = i;
     const carousel = this._el.querySelector('#wp-pm-carousel');
     if (!carousel) return;
-    // Each slide is 75% width, centered with peek on sides
-    // Offset = i * slideWidth (75vw) - centering offset
-    const slideW = carousel.offsetWidth * 0.44 + 8; // 44% + gap
-    carousel.style.transition = animate ? 'transform 0.35s cubic-bezier(0.32,0.72,0,1)' : 'none';
-    carousel.style.transform  = `translateX(calc(8px - ${i * slideW}px))`;
-    this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
-    // No visual effects on slides
+    // Slide width: 44% of carousel + 8px gap, calculated once from actual DOM
+    const slideW = carousel.getBoundingClientRect().width * 0.44 + 8;
+    carousel.style.transition = animate ? 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' : 'none';
+    carousel.style.transform  = `translateX(${8 - i * slideW}px)`;
+    this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
+      d.classList.toggle('active', idx === i)
+    );
   }
 
   _populateHeader(place) {
@@ -519,21 +528,34 @@ export class PlaceModal {
 
   _wireHeroSwipe() {
     const hero = this._el.querySelector('#wp-pm-hero');
-    let startX = 0, startT = 0;
+    let startX = 0, startT = 0, tracking = false;
+
     hero.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX;
-      startT = Date.now();
+      if (e.touches.length !== 1) return;
+      startX   = e.touches[0].clientX;
+      startT   = Date.now();
+      tracking = true;
     }, { passive: true });
+
+    hero.addEventListener('touchmove', e => {
+      // prevent vertical scroll hijack only if horizontal
+    }, { passive: true });
+
     hero.addEventListener('touchend', e => {
+      if (!tracking) return;
+      tracking = false;
+      if (e.changedTouches.length !== 1) return;
       const dx = e.changedTouches[0].clientX - startX;
       const dt = Date.now() - startT;
-      if (Math.abs(dx) < 30 || dt > 400) return;
+      // Only advance ONE slide, require clear horizontal swipe
+      if (Math.abs(dx) < 40 || dt > 500) return;
       const n = this._photos.length;
       if (n < 2) return;
-      let next = this._currentPhoto + (dx < 0 ? 1 : -1);
-      next = Math.max(0, Math.min(n - 1, next));
-      this._goToPhoto(next);
+      const dir  = dx < 0 ? 1 : -1;
+      this._goToPhoto(this._currentPhoto + dir);
     }, { passive: true });
+
+    hero.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
