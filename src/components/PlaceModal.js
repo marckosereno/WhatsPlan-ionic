@@ -287,20 +287,11 @@ export class PlaceModal {
     if (!carousel) return;
     // Each slide is 75% width, centered with peek on sides
     // Offset = i * slideWidth (75vw) - centering offset
-    const slideW = carousel.offsetWidth * 0.46 + 10; // 46% + gap
+    const slideW = carousel.offsetWidth * 0.44 + 8; // 44% + gap
     carousel.style.transition = animate ? 'transform 0.35s cubic-bezier(0.32,0.72,0,1)' : 'none';
-    carousel.style.transform  = `translateX(calc(4% - ${i * slideW}px))`;
+    carousel.style.transform  = `translateX(calc(8px - ${i * slideW}px))`;
     this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
-    // Active slide full size, others smaller and shifted down
-    this._el.querySelectorAll('.wp-pm-slide').forEach((s, idx) => {
-      if (idx === i) {
-        s.style.transform = 'scale(1) translateY(0)';
-        s.style.opacity   = '1';
-      } else {
-        s.style.transform = 'scale(0.82) translateY(8%)';
-        s.style.opacity   = '0.5';
-      }
-    });
+    // No visual effects on slides
   }
 
   _populateHeader(place) {
@@ -683,17 +674,13 @@ export class PlaceModal {
         height:100%;
         will-change:transform;
       }
-      /* Slide portrait: active más grande, inactive más pequeño y bajado */
+      /* Slide portrait: simple, sin efectos visuales */
       .wp-pm-slide {
-        min-width:46%; height:100%;
+        min-width:44%; height:100%;
         border-radius:22px;
         background:center/cover no-repeat #e2e8f0;
-        flex-shrink:0; margin:0 5px;
-        transition:transform 0.35s cubic-bezier(0.32,0.72,0,1), opacity 0.35s ease;
-        transform:scale(0.82) translateY(8%);
-        opacity:0.5;
+        flex-shrink:0; margin:0 4px;
         overflow:hidden;
-        align-self:flex-end;
       }
       .wp-pm-slide-placeholder {
         display:flex; align-items:center; justify-content:center;
