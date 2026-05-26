@@ -26,6 +26,17 @@ export class PlaceModal {
     this._el.classList.remove('wp-pm-hidden');
     this._el.classList.add('wp-pm-visible');
     document.body.classList.add('wp-pm-open');
+    // Ocultar topbar del mapa con pulse
+    var mapTopbar = document.getElementById('topbar');
+    var gsapG = window.gsap;
+    if (mapTopbar && gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
+        onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
+      });
+    } else if (mapTopbar) {
+      mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+    }
     card.style.transition = 'none';
     card.style.transform  = 'translateY(100%)';
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -41,6 +52,20 @@ export class PlaceModal {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
+      // Restaurar topbar del mapa con pulse
+      var mapTopbar = document.getElementById('topbar');
+      if (mapTopbar) {
+        mapTopbar.style.visibility = '';
+        mapTopbar.style.pointerEvents = '';
+        var gsapG = window.gsap;
+        if (gsapG) {
+          gsapG.killTweensOf(mapTopbar);
+          gsapG.fromTo(mapTopbar,
+            { scale: 0.85, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
+          );
+        }
+      }
       if (this.onClose) this.onClose();
     }, 340);
   }
@@ -611,14 +636,10 @@ export class PlaceModal {
       /* Nombre centrado en topbar — outline blanco */
       .wp-pm-tb-title {
         flex:1; text-align:center;
-        font-size:16px; font-weight:700; color:#fff;
+        font-size:16px; font-weight:700; color:#111;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        text-shadow:
-          0 0 12px rgba(0,0,0,0.25),
-          0 1px 3px rgba(0,0,0,0.2);
-        /* outline blanco con text-stroke */
-        -webkit-text-stroke: 3px rgba(255,255,255,0.85);
+        -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
         paint-order: stroke fill;
         letter-spacing:-0.01em;
       }
@@ -629,10 +650,10 @@ export class PlaceModal {
         content:'';
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0.7)  20%,
-          rgba(255,255,255,0.92) 55%,
-          rgba(255,255,255,1)    100%);
+          rgba(255,255,255,0.2)  0%,
+          rgba(255,255,255,0.82) 12%,
+          rgba(255,255,255,0.96) 40%,
+          rgba(255,255,255,1)    70%);
         z-index:0;
         pointer-events:none;
       }
