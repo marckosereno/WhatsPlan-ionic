@@ -53,26 +53,30 @@ export class PlaceModal {
       <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
       <div class="wp-pm-card" id="wp-pm-card">
 
-        <!-- ── HERO CARRUSEL ── -->
-        <div class="wp-pm-hero" id="wp-pm-hero">
-          <div class="wp-pm-hero-img" id="wp-pm-hero-img"></div>
-          <div class="wp-pm-hero-gradient"></div>
-
+        <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
+        <div class="wp-pm-topbar" id="wp-pm-topbar">
           <!-- Botón back -->
-          <button class="wp-pm-icon-btn wp-pm-back" id="wp-pm-back">
+          <button class="wp-pm-tb-btn" id="wp-pm-back">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-
+          <!-- Search pill -->
+          <div class="wp-pm-tb-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="wp-pm-tb-search-label" id="wp-pm-tb-name">Search Places</span>
+          </div>
           <!-- Share -->
-          <button class="wp-pm-icon-btn wp-pm-share-btn" id="wp-pm-share">
+          <button class="wp-pm-tb-btn" id="wp-pm-share">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
+        </div>
 
+        <!-- ── HERO — peek carousel, no fullwidth ── -->
+        <div class="wp-pm-hero" id="wp-pm-hero">
+          <div class="wp-pm-carousel" id="wp-pm-carousel">
+            <!-- slides injected by JS -->
+          </div>
           <!-- Dots carrusel -->
           <div class="wp-pm-dots" id="wp-pm-dots"></div>
-
-          <!-- Thumbnails strip derecha -->
-          <div class="wp-pm-thumbs-strip" id="wp-pm-thumbs-strip"></div>
         </div>
 
         <!-- ── BODY SCROLLABLE ── -->
@@ -194,6 +198,9 @@ export class PlaceModal {
 
   _populate(place) {
     this._populateHero(place);
+    // Set topbar search label to place name
+    const tbName = this._el.querySelector('#wp-pm-tb-name');
+    if (tbName) tbName.textContent = place.name || 'Detalles';
     this._populateHeader(place);
     this._populateAddress(place);
     this._populateStats(place);
@@ -209,9 +216,8 @@ export class PlaceModal {
   }
 
   _populateHero(place) {
-    const heroImg  = this._el.querySelector('#wp-pm-hero-img');
+    const carousel = this._el.querySelector('#wp-pm-carousel');
     const dotsEl   = this._el.querySelector('#wp-pm-dots');
-    const thumbs   = this._el.querySelector('#wp-pm-thumbs-strip');
 
     let photos = [];
     if (place.photoUrl) photos.push(place.photoUrl);
@@ -219,43 +225,51 @@ export class PlaceModal {
     this._photos = photos.map(u => this.proxyPhoto(u)).filter(Boolean);
     this._currentPhoto = 0;
 
-    if (this._photos.length > 0) {
-      heroImg.style.backgroundImage = `url(${this._photos[0]})`;
-    } else {
-      heroImg.style.background = 'linear-gradient(135deg,#1e293b,#334155)';
-      heroImg.innerHTML = `<div class="wp-pm-hero-emoji">${place.emoji || '📍'}</div>`;
+    // Si no hay fotos, emoji placeholder
+    if (this._photos.length === 0) {
+      carousel.innerHTML = `<div class="wp-pm-slide wp-pm-slide-placeholder"><span>${place.emoji || '📍'}</span></div>`;
+      dotsEl.style.display = 'none';
+      return;
     }
 
-    // Dots
-    dotsEl.innerHTML = this._photos.slice(0,8).map((_, i) =>
-      `<span class="wp-pm-dot${i===0?' active':''}" data-i="${i}"></span>`
+    // Slides peek carousel
+    carousel.innerHTML = this._photos.map((u, i) =>
+      `<div class="wp-pm-slide" data-i="${i}" style="background-image:url(${u})"></div>`
     ).join('');
 
-    dotsEl.querySelectorAll('.wp-pm-dot').forEach(dot => {
-      dot.addEventListener('click', () => this._goToPhoto(parseInt(dot.dataset.i)));
-    });
-
-    // Thumbnails strip (máx 4)
+    // Dots
     if (this._photos.length > 1) {
-      thumbs.innerHTML = this._photos.slice(1,5).map((u, i) =>
-        `<div class="wp-pm-thumb-mini" data-i="${i+1}" style="background-image:url(${u})"></div>`
+      dotsEl.innerHTML = this._photos.slice(0,8).map((_, i) =>
+        `<span class="wp-pm-dot${i===0?' active':''}" data-i="${i}"></span>`
       ).join('');
-      thumbs.querySelectorAll('.wp-pm-thumb-mini').forEach(t => {
-        t.addEventListener('click', () => this._goToPhoto(parseInt(t.dataset.i)));
+      dotsEl.querySelectorAll('.wp-pm-dot').forEach(dot => {
+        dot.addEventListener('click', () => this._goToPhoto(parseInt(dot.dataset.i)));
       });
     } else {
-      thumbs.style.display = 'none';
+      dotsEl.style.display = 'none';
     }
 
-    // Swipe hero
+    // Swipe
     this._wireHeroSwipe();
+    // Set initial position
+    this._goToPhoto(0, false);
   }
 
-  _goToPhoto(i) {
+  _goToPhoto(i, animate = true) {
     this._currentPhoto = i;
-    const heroImg = this._el.querySelector('#wp-pm-hero-img');
-    heroImg.style.backgroundImage = `url(${this._photos[i]})`;
+    const carousel = this._el.querySelector('#wp-pm-carousel');
+    if (!carousel) return;
+    // Each slide is 75% width, centered with peek on sides
+    // Offset = i * slideWidth (75vw) - centering offset
+    const slideW = carousel.offsetWidth * 0.75 + 12; // 75% + gap
+    carousel.style.transition = animate ? 'transform 0.35s cubic-bezier(0.32,0.72,0,1)' : 'none';
+    carousel.style.transform  = `translateX(calc(${12.5}% - ${i * slideW}px))`;
     this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
+    // Scale active slide
+    this._el.querySelectorAll('.wp-pm-slide').forEach((s, idx) => {
+      s.style.transform = idx === i ? 'scale(1)' : 'scale(0.9)';
+      s.style.opacity   = idx === i ? '1' : '0.65';
+    });
   }
 
   _populateHeader(place) {
@@ -483,16 +497,19 @@ export class PlaceModal {
 
   _wireHeroSwipe() {
     const hero = this._el.querySelector('#wp-pm-hero');
-    let startX = 0;
-    hero.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+    let startX = 0, startT = 0;
+    hero.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startT = Date.now();
+    }, { passive: true });
     hero.addEventListener('touchend', e => {
       const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) < 40) return;
+      const dt = Date.now() - startT;
+      if (Math.abs(dx) < 30 || dt > 400) return;
       const n = this._photos.length;
       if (n < 2) return;
       let next = this._currentPhoto + (dx < 0 ? 1 : -1);
-      if (next < 0) next = n - 1;
-      if (next >= n) next = 0;
+      next = Math.max(0, Math.min(n - 1, next));
       this._goToPhoto(next);
     }, { passive: true });
   }
@@ -525,18 +542,14 @@ export class PlaceModal {
       }
       .wp-pm-hidden { display:none !important; }
 
-      .wp-pm-backdrop {
-        position:absolute; inset:0;
-        background:rgba(0,0,0,0.4);
-        -webkit-tap-highlight-color:transparent;
-      }
+      .wp-pm-backdrop { display:none; }
 
       /* Panel — border-radius:32px sistema WhatsPlan */
       .wp-pm-card {
         position:relative; width:100%;
-        max-height:92dvh;
+        height:100dvh; max-height:100dvh;
         background:#fff;
-        border-radius:32px 32px 0 0;
+        border-radius:0;
         box-shadow:0 -8px 48px rgba(0,0,0,0.18);
         display:flex; flex-direction:column;
         overflow:hidden;
@@ -545,67 +558,85 @@ export class PlaceModal {
         font-family:'Inter Tight',system-ui,sans-serif;
       }
 
-      /* ── Hero ── */
-      .wp-pm-hero {
-        position:relative; width:100%; height:230px; flex-shrink:0;
-        background:#1e293b; overflow:hidden;
+      /* ── Topbar ficha — sustituye topbar principal ── */
+      .wp-pm-topbar {
+        display:flex; align-items:center; gap:8px;
+        padding:12px 12px 8px;
+        flex-shrink:0;
+        background:#fff;
+        box-shadow:0 4px 16px rgba(147,197,253,0.35);
       }
-      .wp-pm-hero-img {
-        width:100%; height:100%;
-        background:center/cover no-repeat;
-        transition:background-image 0.25s ease;
-      }
-      .wp-pm-hero-gradient {
-        position:absolute; inset:0;
-        background:linear-gradient(to bottom,rgba(0,0,0,0.25) 0%,transparent 40%,rgba(0,0,0,0.2) 100%);
-      }
-      .wp-pm-hero-emoji {
-        position:absolute; inset:0;
-        display:flex; align-items:center; justify-content:center;
-        font-size:72px;
-      }
-
-      /* icon-btn: 36px sistema WhatsPlan */
-      .wp-pm-icon-btn {
-        position:absolute; top:12px;
-        width:36px; height:36px; border-radius:9999px;
+      /* Botones topbar: 44px como chips del sistema */
+      .wp-pm-tb-btn {
+        width:44px; height:44px; border-radius:9999px; flex-shrink:0;
         border:none; background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
-        box-shadow:0 2px 12px rgba(0,0,0,0.15);
+        box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
         display:flex; align-items:center; justify-content:center;
         color:#374151; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
       }
-      .wp-pm-icon-btn:active { transform:scale(0.9); }
-      .wp-pm-back     { left:12px; }
-      .wp-pm-share-btn { right:12px; }
+      .wp-pm-tb-btn:active { transform:scale(0.92); }
+      /* Search pill — mismos estilos que #topbar-right-chip */
+      .wp-pm-tb-search {
+        flex:1; height:44px; border-radius:9999px;
+        background:rgba(255,255,255,0.88);
+        backdrop-filter:blur(16px) saturate(1.8);
+        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        box-shadow:0 4px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
+        display:flex; align-items:center; gap:8px;
+        padding:0 16px;
+        cursor:default;
+      }
+      .wp-pm-tb-search-label {
+        font-size:15px; font-weight:400; color:#374151;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        flex:1;
+      }
 
-      /* Dots carrusel */
+      /* ── Hero peek carousel ── */
+      .wp-pm-hero {
+        position:relative; width:100%; height:210px; flex-shrink:0;
+        overflow:hidden; background:#f1f5f9;
+        padding:0 0 24px;
+      }
+      /* Carousel track — overflow visible para peek */
+      .wp-pm-carousel {
+        display:flex; align-items:center;
+        height:185px;
+        will-change:transform;
+        padding:0;
+      }
+      /* Cada slide: 75% del ancho, con gap para ver los laterales */
+      .wp-pm-slide {
+        min-width:75%; height:100%;
+        border-radius:22px;
+        background:center/cover no-repeat #e2e8f0;
+        flex-shrink:0; margin:0 6px;
+        transition:transform 0.35s ease, opacity 0.35s ease;
+        transform:scale(0.9); opacity:0.65;
+        overflow:hidden;
+      }
+      .wp-pm-slide-placeholder {
+        display:flex; align-items:center; justify-content:center;
+        font-size:64px; background:#f1f5f9;
+        transform:scale(1) !important; opacity:1 !important;
+      }
+
+      /* Dots */
       .wp-pm-dots {
-        position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+        position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
         display:flex; gap:5px; align-items:center;
       }
       .wp-pm-dot {
         width:6px; height:6px; border-radius:9999px;
-        background:rgba(255,255,255,0.55);
-        cursor:pointer; transition:all 0.2s ease;
+        background:#cbd5e1; cursor:pointer;
+        transition:all 0.2s ease;
       }
-      .wp-pm-dot.active { background:#fff; width:18px; }
-
-      /* Thumbnails strip derecha */
-      .wp-pm-thumbs-strip {
-        position:absolute; right:10px; top:12px;
-        display:flex; flex-direction:column; gap:5px;
-      }
-      .wp-pm-thumb-mini {
-        width:36px; height:36px; border-radius:8px;
-        background:center/cover no-repeat;
-        border:2px solid rgba(255,255,255,0.7);
-        cursor:pointer; transition:transform 0.15s;
-      }
-      .wp-pm-thumb-mini:active { transform:scale(0.93); }
+      .wp-pm-dot.active { background:#3b82f6; width:18px; }
 
       /* ── Body ── */
       .wp-pm-body {
@@ -615,10 +646,7 @@ export class PlaceModal {
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
 
-      .wp-pm-handle {
-        width:38px; height:4px; background:#e2e8f0;
-        border-radius:2px; margin:10px auto 12px;
-      }
+      .wp-pm-handle { display:none; }
 
       /* Header row — nombre + badges */
       .wp-pm-header-row {
