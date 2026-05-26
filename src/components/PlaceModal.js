@@ -24,6 +24,7 @@ export class PlaceModal {
     this._populate(place);
     const card = this._card;
     this._el.classList.remove('wp-pm-hidden');
+    this._el.classList.add('wp-pm-visible');
     card.style.transition = 'none';
     card.style.transform  = 'translateY(100%)';
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -37,6 +38,7 @@ export class PlaceModal {
     this._card.style.transform  = 'translateY(100%)';
     setTimeout(() => {
       this._el.classList.add('wp-pm-hidden');
+      this._el.classList.remove('wp-pm-visible');
       if (this.onClose) this.onClose();
     }, 340);
   }
@@ -537,34 +539,39 @@ export class PlaceModal {
     s.textContent = `
       /* ── Modal wrapper ── */
       .wp-pm {
-        position:fixed; inset:0; z-index:9999;
-        display:flex; align-items:flex-end;
+        position:fixed; inset:0; z-index:9998;
+        display:flex; flex-direction:column;
+        pointer-events:none;
       }
       .wp-pm-hidden { display:none !important; }
+      .wp-pm.wp-pm-visible { pointer-events:all; }
 
       .wp-pm-backdrop { display:none; }
 
-      /* Panel — border-radius:32px sistema WhatsPlan */
+      /* Card ocupa toda la pantalla pero el top es transparente */
       .wp-pm-card {
-        position:relative; width:100%;
-        height:100dvh; max-height:100dvh;
-        background:#fff;
-        border-radius:0;
-        box-shadow:0 -8px 48px rgba(0,0,0,0.18);
+        position:absolute; inset:0;
         display:flex; flex-direction:column;
         overflow:hidden;
         transform:translateY(100%);
         will-change:transform;
         font-family:'Inter Tight',system-ui,sans-serif;
+        /* Sin background en la card — el topbar y body tienen su propio bg */
+        background:transparent;
       }
 
-      /* ── Topbar ficha — sustituye topbar principal ── */
+      /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
       .wp-pm-topbar {
+        position:absolute;
+        top:0; left:0; right:0;
+        /* mismo padding que #topbar: top: 12px + safe-area, left/right: 12px */
+        padding-top:calc(12px + env(safe-area-inset-top, 0px));
+        padding-left:12px; padding-right:12px; padding-bottom:0;
         display:flex; align-items:center; gap:8px;
-        padding:12px 12px 8px;
-        flex-shrink:0;
-        background:#fff;
-        box-shadow:0 4px 16px rgba(147,197,253,0.35);
+        pointer-events:auto;
+        z-index:2;
+        /* transparente — se ve la sombra azul del mapa detrás */
+        background:transparent;
       }
       /* Botones topbar: 44px como chips del sistema */
       .wp-pm-tb-btn {
@@ -597,11 +604,16 @@ export class PlaceModal {
         flex:1;
       }
 
-      /* ── Hero peek carousel ── */
+      /* ── Hero peek carousel — empieza tras el topbar ── */
       .wp-pm-hero {
-        position:relative; width:100%; height:210px; flex-shrink:0;
-        overflow:hidden; background:#f1f5f9;
+        position:absolute;
+        /* top = safe-area + 12px (topbar padding-top) + 44px (chip height) + 12px (gap) */
+        top:calc(env(safe-area-inset-top, 0px) + 68px);
+        left:0; right:0;
+        height:210px;
+        overflow:hidden; background:transparent;
         padding:0 0 24px;
+        z-index:1;
       }
       /* Carousel track — overflow visible para peek */
       .wp-pm-carousel {
@@ -638,14 +650,22 @@ export class PlaceModal {
       }
       .wp-pm-dot.active { background:#3b82f6; width:18px; }
 
-      /* ── Body ── */
+      /* ── Body — panel blanco con border-radius:32px que sube desde abajo ── */
       .wp-pm-body {
-        flex:1; overflow-y:auto; overflow-x:hidden;
+        position:absolute;
+        /* top = safe-area + 68px (topbar) + 210px (hero) - 24px (overlap con dots) */
+        top:calc(env(safe-area-inset-top, 0px) + 254px);
+        left:0; right:0; bottom:0;
+        overflow-y:auto; overflow-x:hidden;
         -webkit-overflow-scrolling:touch;
         scrollbar-width:none;
+        background:#fff;
+        border-radius:32px 32px 0 0;
+        box-shadow:0 -4px 24px rgba(0,0,0,0.08);
+        padding-top:8px;
+        padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
-
       .wp-pm-handle { display:none; }
 
       /* Header row — nombre + badges */
@@ -812,12 +832,13 @@ export class PlaceModal {
         display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
       }
 
-      /* ── CTA bottom bar — height:44px, border-radius:9999px ── */
+      /* ── CTA bottom bar — fixed at bottom ── */
       .wp-pm-bottom {
+        position:absolute; bottom:0; left:0; right:0;
         padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
         background:#fff;
         box-shadow:0 -16px 24px 8px white;
-        flex-shrink:0;
+        z-index:2;
       }
       .wp-pm-cta {
         width:100%; height:44px; border-radius:9999px; border:none;
