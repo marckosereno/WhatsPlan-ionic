@@ -291,10 +291,15 @@ export class PlaceModal {
     carousel.style.transition = animate ? 'transform 0.35s cubic-bezier(0.32,0.72,0,1)' : 'none';
     carousel.style.transform  = `translateX(calc(4% - ${i * slideW}px))`;
     this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
-    // Scale active slide
+    // Active slide full size, others smaller and shifted down
     this._el.querySelectorAll('.wp-pm-slide').forEach((s, idx) => {
-      s.style.transform = idx === i ? 'scale(1)' : 'scale(0.9)';
-      s.style.opacity   = idx === i ? '1' : '0.65';
+      if (idx === i) {
+        s.style.transform = 'scale(1) translateY(0)';
+        s.style.opacity   = '1';
+      } else {
+        s.style.transform = 'scale(0.82) translateY(8%)';
+        s.style.opacity   = '0.5';
+      }
     });
   }
 
@@ -650,10 +655,11 @@ export class PlaceModal {
         content:'';
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.2)  0%,
-          rgba(255,255,255,0.82) 12%,
-          rgba(255,255,255,0.96) 40%,
-          rgba(255,255,255,1)    70%);
+          rgba(255,255,255,0)    0%,
+          rgba(255,255,255,0)    8%,
+          rgba(255,255,255,0.75) 22%,
+          rgba(255,255,255,0.96) 50%,
+          rgba(255,255,255,1)    72%);
         z-index:0;
         pointer-events:none;
       }
@@ -677,15 +683,17 @@ export class PlaceModal {
         height:100%;
         will-change:transform;
       }
-      /* Slide portrait: 46% ancho — 2 slides visibles + asoma la 3a */
+      /* Slide portrait: active más grande, inactive más pequeño y bajado */
       .wp-pm-slide {
         min-width:46%; height:100%;
         border-radius:22px;
         background:center/cover no-repeat #e2e8f0;
         flex-shrink:0; margin:0 5px;
-        transition:transform 0.35s ease, opacity 0.35s ease;
-        transform:scale(0.93); opacity:0.55;
+        transition:transform 0.35s cubic-bezier(0.32,0.72,0,1), opacity 0.35s ease;
+        transform:scale(0.82) translateY(8%);
+        opacity:0.5;
         overflow:hidden;
+        align-self:flex-end;
       }
       .wp-pm-slide-placeholder {
         display:flex; align-items:center; justify-content:center;
