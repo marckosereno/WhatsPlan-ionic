@@ -110,6 +110,9 @@ export class PlaceModal {
           <div class="wp-pm-dots" id="wp-pm-dots"></div>
         </div>
 
+        <!-- Sombra fija encima del body scrolleable -->
+        <div class="wp-pm-top-fade"></div>
+
         <!-- ── BODY SCROLLABLE ── -->
         <div class="wp-pm-body" id="wp-pm-body">
           <div class="wp-pm-handle"></div>
@@ -900,15 +903,16 @@ export class PlaceModal {
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
-      /* Sombra blanca fija en el top del panel — info se desvanece al scrollear */
-      .wp-pm-body::before {
-        content:'';
-        position:absolute; top:0; left:0; right:0;
-        height:40px;
+      /* Sombra fija encima del body — elemento hermano, no ::before */
+      .wp-pm-top-fade {
+        position:absolute;
+        top:calc(env(safe-area-inset-top, 0px) + 358px);
+        left:0; right:0;
+        height:36px;
         background:linear-gradient(to bottom,
           rgba(255,255,255,1)   0%,
           rgba(255,255,255,0)   100%);
-        z-index:10;
+        z-index:20;
         pointer-events:none;
       }
 
