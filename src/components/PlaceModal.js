@@ -26,8 +26,7 @@ export class PlaceModal {
     this._el.classList.remove('wp-pm-hidden');
     this._el.classList.add('wp-pm-visible');
     document.body.classList.add('wp-pm-open');
-    // Force repaint so blue shadow appears instantly without transition
-    document.body.offsetHeight;
+
     // Ocultar topbar del mapa con pulse
     var mapTopbar = document.getElementById('topbar');
     var gsapG = window.gsap;
@@ -769,17 +768,7 @@ export class PlaceModal {
         background:transparent;
       }
 
-      /* Sombra azul top más oscura y extendida cuando ficha está abierta */
-      body.wp-pm-open .ion-app::before,
-      body.wp-pm-open ion-app::before {
-        background:linear-gradient(to bottom,
-          rgba(59,130,246,0.65) 0%,
-          rgba(96,165,250,0.4)  40%,
-          rgba(147,197,253,0.15) 70%,
-          transparent 100%) !important;
-        height:140px !important;
-        transition:none !important;
-      }
+      /* Shadow handled in app.css */
 
       /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
       .wp-pm-topbar {
