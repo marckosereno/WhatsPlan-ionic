@@ -287,6 +287,14 @@ export class PlaceModal {
       `<div class="wp-pm-slide" data-i="${i}" style="background-image:url(${u})"></div>`
     ).join('');
 
+    // Foto unica: ampliar y centrar, sin dots
+    if (this._photos.length === 1) {
+      carousel.classList.add('single-photo');
+      dotsEl.style.display = 'none';
+      return;
+    }
+    carousel.classList.remove('single-photo');
+
     // Dots — always rebuild, show for any count
     dotsEl.innerHTML = '';
     dotsEl.style.display = '';
@@ -874,6 +882,14 @@ export class PlaceModal {
         display:flex; align-items:center; justify-content:center;
         font-size:64px; background:#f1f5f9;
         transform:scale(1) !important; opacity:1 !important;
+      }
+      /* Foto única: ocupa ancho de 2 slides, centrada */
+      .wp-pm-carousel.single-photo {
+        justify-content:center;
+      }
+      .wp-pm-carousel.single-photo .wp-pm-slide {
+        min-width:88%;
+        margin:0 4px;
       }
 
       /* Dots */
