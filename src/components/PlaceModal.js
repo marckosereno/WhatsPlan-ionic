@@ -429,7 +429,8 @@ export class PlaceModal {
     textEl.textContent  = '';
 
     const placeId = place.place_id || place.id;
-    if (!placeId) return;
+    console.log('[AI desc] place_id:', placeId, '| keys:', Object.keys(place).join(','));
+    if (!placeId) { console.warn('[AI desc] no place_id found'); return; }
 
     // Check if place already has ai_descriptions
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
