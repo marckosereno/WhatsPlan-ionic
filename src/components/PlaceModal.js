@@ -441,28 +441,25 @@ export class PlaceModal {
       return;
     }
 
-    // Mostrar skeleton mientras genera
-    block.style.display = '';
-    textEl.innerHTML = '<span class="wp-pm-ai-loading">✦ Generando descripción...</span>';
-
-    // Generate via POST
+    // Generate via POST — show block only on success
     fetch('/api/groq-description', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ place_id: placeId }),
     })
-    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(r => {
+      if (r.status === 404) { console.warn('[AI desc] endpoint not deployed yet'); return null; }
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    })
     .then(data => {
-      if (data.description) {
-        textEl.textContent = '';
-        this._typewrite(textEl, data.description);
-      } else {
-        block.style.display = 'none';
-      }
+      if (!data || !data.description) { block.style.display = 'none'; return; }
+      block.style.display = '';
+      textEl.textContent  = '';
+      this._typewrite(textEl, data.description);
     })
     .catch(err => {
       console.warn('[AI desc]', err.message || err);
-      textEl.textContent = '';
       block.style.display = 'none';
     });
   }
