@@ -41,19 +41,6 @@ ion-app::before {
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
-  transition: none;
-}
-
-/* Misma sombra, nuevos parámetros cuando la ficha está abierta */
-body.wp-pm-open ion-app::before {
-  height: 160px;
-  background: linear-gradient(to bottom,
-    rgba(59,130,246,0.65) 0%,
-    rgba(96,165,250,0.38) 45%,
-    rgba(147,197,253,0.1) 75%,
-    rgba(147,197,253,0) 100%
-  );
-  transition: none;
 }
 
 /* ── Gradiente inferior — difumina el mapa hacia el panel ── */
