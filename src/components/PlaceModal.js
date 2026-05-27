@@ -461,7 +461,8 @@ export class PlaceModal {
       }
     })
     .catch(err => {
-      console.warn('[AI desc]', err);
+      console.warn('[AI desc]', err.message || err);
+      textEl.textContent = '';
       block.style.display = 'none';
     });
   }
