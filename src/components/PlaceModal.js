@@ -26,6 +26,8 @@ export class PlaceModal {
     this._el.classList.remove('wp-pm-hidden');
     this._el.classList.add('wp-pm-visible');
     document.body.classList.add('wp-pm-open');
+    // Force repaint so blue shadow appears instantly without transition
+    document.body.offsetHeight;
     // Ocultar topbar del mapa con pulse
     var mapTopbar = document.getElementById('topbar');
     var gsapG = window.gsap;
@@ -423,15 +425,18 @@ export class PlaceModal {
   _populateAI(place) {
     const block  = this._el.querySelector('#wp-pm-ai-block');
     const textEl = this._el.querySelector('#wp-pm-ai-text');
+    const icon   = this._el.querySelector('.wp-pm-ai-icon');
     if (!block || !textEl) return;
 
-    // Hide initially
+    // Cancel any previous typewriter + fetch
+    if (this._aiAbort) this._aiAbort();
+    this._aiAbort = null;
+
     block.style.display = 'none';
     textEl.textContent  = '';
 
     const placeId = place.place_id || place.id;
-    console.log('[AI desc] place_id:', placeId, '| keys:', Object.keys(place).join(','));
-    if (!placeId) { console.warn('[AI desc] no place_id found'); return; }
+    if (!placeId) return;
 
     // Check if place already has ai_descriptions
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
@@ -443,36 +448,52 @@ export class PlaceModal {
       return;
     }
 
-    // Generate via GET
+    let aborted = false;
+    let cancelTypewrite = null;
+    this._aiAbort = () => {
+      aborted = true;
+      if (cancelTypewrite) cancelTypewrite();
+      block.style.display = 'none';
+      textEl.textContent  = '';
+      if (icon) icon.classList.remove('wp-pm-ai-pulse');
+    };
+
     fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
-    .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
-    .then(({ ok, status, data }) => {
-      console.log('[AI desc] response:', status, JSON.stringify(data));
-      if (!ok) return null;
-      return data;
-    })
-    .then(data => {
-      if (!data || !data.description) { block.style.display = 'none'; return; }
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (aborted) return;
+      if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
       block.style.display = '';
       textEl.textContent  = '';
-      this._typewrite(textEl, data.description);
+      if (icon) icon.classList.add('wp-pm-ai-pulse');
+      cancelTypewrite = this._typewrite(textEl, data.description, null, () => {
+        if (icon) icon.classList.remove('wp-pm-ai-pulse');
+      });
     })
-    .catch(err => {
-      console.warn('[AI desc]', err.message || err);
-      block.style.display = 'none';
-    });
+    .catch(() => { if (!aborted) block.style.display = 'none'; });
   }
 
-  _typewrite(el, text) {
+  _typewrite(el, text, onStart, onDone) {
     el.textContent = '';
     let i = 0;
+    let cancelled = false;
+    let timer = null;
     const step = () => {
+      if (cancelled) return;
       if (i < text.length) {
         el.textContent += text[i++];
-        setTimeout(step, 18);
+        timer = setTimeout(step, 16);
+      } else {
+        if (onDone) onDone();
       }
     };
-    step();
+    if (onStart) onStart();
+    timer = setTimeout(step, 16);
+    // Return cancel fn
+    return function cancel() {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }
 
   _populateServices(place) {
@@ -752,10 +773,12 @@ export class PlaceModal {
       body.wp-pm-open .ion-app::before,
       body.wp-pm-open ion-app::before {
         background:linear-gradient(to bottom,
-          rgba(59,130,246,0.4)  0%,
-          rgba(96,165,250,0.18) 25%,
+          rgba(59,130,246,0.65) 0%,
+          rgba(96,165,250,0.4)  40%,
+          rgba(147,197,253,0.15) 70%,
           transparent 100%) !important;
-        height:70px !important;
+        height:140px !important;
+        transition:none !important;
       }
 
       /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
@@ -814,10 +837,10 @@ export class PlaceModal {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0.75) 5%,
-          rgba(255,255,255,0.92) 12%,
-          rgba(255,255,255,0.98) 25%,
-          rgba(255,255,255,1)    42%);
+          rgba(255,255,255,0)    15%,
+          rgba(255,255,255,0.7)  30%,
+          rgba(255,255,255,0.92) 50%,
+          rgba(255,255,255,1)    68%);
         z-index:0;
         pointer-events:none;
       }
@@ -893,7 +916,18 @@ export class PlaceModal {
       }
       .wp-pm-ai-icon {
         flex-shrink:0; margin-top:1px;
-        opacity:0.55;
+        opacity:0.7; color:#374151;
+        transition:color 0.3s ease;
+      }
+      @keyframes wp-ai-pulse {
+        0%   { color:#60a5fa; opacity:1; }
+        25%  { color:#3b82f6; opacity:0.8; }
+        50%  { color:#93c5fd; opacity:1; }
+        75%  { color:#1d4ed8; opacity:0.85; }
+        100% { color:#60a5fa; opacity:1; }
+      }
+      .wp-pm-ai-pulse {
+        animation: wp-ai-pulse 1.2s ease-in-out infinite;
       }
       .wp-pm-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c;
