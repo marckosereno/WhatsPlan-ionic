@@ -837,15 +837,15 @@ export class PlaceModal {
         z-index:0;
         pointer-events:none;
       }
-      /* Fade blanco debajo del carousel — suaviza el scroll de la info */
+      /* Fade blanco pegado al slide */
       .wp-pm-body::before {
         content:'';
         position:sticky; top:0;
         display:block;
-        height:32px; margin-bottom:-32px;
+        height:16px; margin-bottom:-16px;
         background:linear-gradient(to bottom,
-          rgba(255,255,255,1)   0%,
-          rgba(255,255,255,0)   100%);
+          rgba(255,255,255,1)  0%,
+          rgba(255,255,255,0)  100%);
         z-index:10;
         pointer-events:none;
       }
@@ -984,13 +984,9 @@ export class PlaceModal {
         padding:2px 20px 12px; font-size:13px; color:#8e8e93;
         line-height:1.45; font-weight:400;
         font-family:'Inter Tight',system-ui,sans-serif;
+        max-width:calc(100% - 54px);
       }
       .wp-pm-addr-row svg { flex-shrink:0; margin-top:2px; }
-      #wp-pm-addr {
-        display:-webkit-box; -webkit-line-clamp:1;
-        -webkit-box-orient:vertical; overflow:hidden;
-        max-width:calc(100% - 20px);
-      }
 
       /* ── Stats — box con separadores ── */
       .wp-pm-stats-row {
