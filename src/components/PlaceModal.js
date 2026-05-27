@@ -23,11 +23,11 @@ export class PlaceModal {
     this._place = place;
     this._populate(place);
     const card = this._card;
-    this._el.classList.remove('wp-pm-hidden');
-    this._el.classList.add('wp-pm-visible');
+
+    // 1. Sombra azul cambia ANTES — instantánea, misma posición
     document.body.classList.add('wp-pm-open');
 
-    // Ocultar topbar del mapa con pulse
+    // 2. Ocultar topbar del mapa
     var mapTopbar = document.getElementById('topbar');
     var gsapG = window.gsap;
     if (mapTopbar && gsapG) {
@@ -38,6 +38,10 @@ export class PlaceModal {
     } else if (mapTopbar) {
       mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
     }
+
+    // 3. Modal sube — sombra ya está lista
+    this._el.classList.remove('wp-pm-hidden');
+    this._el.classList.add('wp-pm-visible');
     card.style.transition = 'none';
     card.style.transform  = 'translateY(100%)';
     requestAnimationFrame(() => requestAnimationFrame(() => {
