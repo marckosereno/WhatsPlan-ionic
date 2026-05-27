@@ -840,17 +840,7 @@ export class PlaceModal {
 
       .wp-pm-carousel { position:relative; z-index:1; }
       .wp-pm-dots     { z-index:2; }
-      /* Sombra blanca justo debajo de los dots */
-      .wp-pm-hero::after {
-        content:'';
-        position:absolute; bottom:0; left:0; right:0;
-        height:28px;
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,0)   0%,
-          rgba(255,255,255,1)   100%);
-        z-index:3;
-        pointer-events:none;
-      }
+
 
       /* ── Hero peek carousel — portrait, 2 slides + peek 3a ── */
       .wp-pm-hero {
@@ -910,6 +900,17 @@ export class PlaceModal {
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
+      /* Sombra blanca fija en el top del panel — info se desvanece al scrollear */
+      .wp-pm-body::before {
+        content:'';
+        position:absolute; top:0; left:0; right:0;
+        height:40px;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,1)   0%,
+          rgba(255,255,255,0)   100%);
+        z-index:10;
+        pointer-events:none;
+      }
 
       /* ── AI Description block ── */
       .wp-pm-ai-block {
