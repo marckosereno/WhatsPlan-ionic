@@ -441,14 +441,10 @@ export class PlaceModal {
       return;
     }
 
-    // Generate via POST — show block only on success
-    fetch('/api/groq-description', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ place_id: placeId }),
-    })
+    // Generate via GET
+    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
     .then(r => {
-      if (r.status === 404) { console.warn('[AI desc] endpoint not deployed yet'); return null; }
+      if (r.status === 404) { console.warn('[AI desc] endpoint not found'); return null; }
       if (!r.ok) throw new Error(r.status);
       return r.json();
     })
