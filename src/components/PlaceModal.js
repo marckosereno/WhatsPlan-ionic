@@ -817,7 +817,7 @@ export class PlaceModal {
         background:#fff;
         border-radius:0;
         padding-top:20px;
-        padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));
+        padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
@@ -851,25 +851,30 @@ export class PlaceModal {
       }
       .wp-pm-addr-row svg { flex-shrink:0; margin-top:2px; }
 
-      /* ── Stats inline estilo Apple Maps ── */
+      /* ── Stats — box con separadores ── */
       .wp-pm-stats-row {
-        display:flex; align-items:center; gap:0;
-        padding:0 20px 16px;
+        display:flex; align-items:stretch;
+        margin:0 20px 16px;
+        background:#f2f2f7; border-radius:16px;
+        overflow:hidden;
       }
       .wp-pm-stat {
-        display:flex; align-items:center; gap:5px;
+        flex:1; display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        padding:12px 8px; gap:3px;
       }
       .wp-pm-stat-val {
-        font-size:15px; font-weight:600; color:#0a0a0a;
+        font-size:17px; font-weight:600; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-lbl {
-        font-size:13px; color:#8e8e93; font-weight:400;
+        font-size:10px; color:#8e8e93; font-weight:500;
+        text-transform:uppercase; letter-spacing:0.05em;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
-        width:1px; height:14px; background:#d1d1d6; margin:0 10px;
+        width:0.5px; background:#c6c6c8; margin:10px 0;
       }
 
       /* ── Botones acción — frosted glass como topbar chips ── */
@@ -1005,26 +1010,35 @@ export class PlaceModal {
       }
 
       /* ── CTA bottom bar — fixed at bottom ── */
+      /* ── CTA flotante sin container ── */
       .wp-pm-bottom {
-        position:absolute; bottom:0; left:0; right:0;
-        padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));
-        background:rgba(255,255,255,0.92);
-        backdrop-filter:blur(20px) saturate(1.8);
-        -webkit-backdrop-filter:blur(20px) saturate(1.8);
-        border-top:0.5px solid rgba(0,0,0,0.1);
-        z-index:2;
+        position:absolute; bottom:calc(16px + env(safe-area-inset-bottom,0px));
+        left:20px; right:20px;
+        background:transparent;
+        border:none; z-index:2;
+        pointer-events:none;
       }
       .wp-pm-cta {
-        width:100%; height:50px; border-radius:16px; border:none;
-        background:#007aff;
+        width:100%; height:52px; border-radius:9999px; border:none;
+        /* Liquid blue glass */
+        background:rgba(0,122,255,0.82);
+        backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
+        -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
+        box-shadow:
+          0 8px 32px rgba(0,122,255,0.45),
+          0 2px 8px rgba(0,122,255,0.3),
+          inset 0 1px 0 rgba(255,255,255,0.35),
+          inset 0 -1px 0 rgba(0,0,0,0.1);
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), filter 0.15s;
         font-family:'Inter Tight',system-ui,sans-serif;
         letter-spacing:-0.01em;
+        pointer-events:auto;
+        text-shadow:0 1px 3px rgba(0,0,0,0.15);
       }
-      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.88); }
+      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.9); }
     `;
     document.head.appendChild(s);
   }
