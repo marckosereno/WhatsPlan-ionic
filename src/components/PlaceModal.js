@@ -86,13 +86,13 @@ export class PlaceModal {
         <div class="wp-pm-topbar" id="wp-pm-topbar">
           <!-- Botón back -->
           <button class="wp-pm-tb-btn" id="wp-pm-back">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
           </button>
           <!-- Nombre del lugar centrado -->
           <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
           <!-- Share -->
           <button class="wp-pm-tb-btn" id="wp-pm-share">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
           </button>
         </div>
 
@@ -126,6 +126,7 @@ export class PlaceModal {
 
           <!-- AI Description -->
           <div class="wp-pm-ai-block" id="wp-pm-ai-block" style="display:none">
+            <svg class="wp-pm-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="#374151" xmlns="http://www.w3.org/2000/svg"><path d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
             <div class="wp-pm-ai-text" id="wp-pm-ai-text"></div>
           </div>
 
@@ -751,10 +752,10 @@ export class PlaceModal {
       body.wp-pm-open .ion-app::before,
       body.wp-pm-open ion-app::before {
         background:linear-gradient(to bottom,
-          rgba(59,130,246,0.6)  0%,
-          rgba(96,165,250,0.35) 35%,
+          rgba(59,130,246,0.4)  0%,
+          rgba(96,165,250,0.18) 25%,
           transparent 100%) !important;
-        height:100px !important;
+        height:70px !important;
       }
 
       /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
@@ -813,10 +814,10 @@ export class PlaceModal {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0.6)  8%,
-          rgba(255,255,255,0.88) 18%,
-          rgba(255,255,255,0.97) 35%,
-          rgba(255,255,255,1)    55%);
+          rgba(255,255,255,0.75) 5%,
+          rgba(255,255,255,0.92) 12%,
+          rgba(255,255,255,0.98) 25%,
+          rgba(255,255,255,1)    42%);
         z-index:0;
         pointer-events:none;
       }
@@ -885,21 +886,20 @@ export class PlaceModal {
       /* ── AI Description block ── */
       .wp-pm-ai-block {
         margin:0 20px 14px;
-        padding:12px 14px;
-        background:linear-gradient(135deg,rgba(0,122,255,0.06),rgba(88,86,214,0.06));
-        border-radius:16px;
-        border-left:3px solid rgba(0,122,255,0.4);
+        padding:0;
+        background:transparent;
         position:relative;
+        display:flex; align-items:flex-start; gap:8px;
       }
-      .wp-pm-ai-block::before {
-        content:'✦';
-        position:absolute; top:10px; right:12px;
-        font-size:10px; color:rgba(0,122,255,0.4);
+      .wp-pm-ai-icon {
+        flex-shrink:0; margin-top:1px;
+        opacity:0.55;
       }
       .wp-pm-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c;
         font-family:'Inter Tight',system-ui,sans-serif;
-        font-weight:400; font-style:italic;
+        font-weight:400; font-style:normal;
+        flex:1;
       }
 
       /* ── Nombre + badges ── */
