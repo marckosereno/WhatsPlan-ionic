@@ -116,11 +116,20 @@ export class PlaceModal {
 
           <!-- Nombre + badges -->
           <div class="wp-pm-header-row">
-            <h2 class="wp-pm-name" id="wp-pm-name"></h2>
-            <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </span>
-            <span class="wp-pm-featured-badge" id="wp-pm-featured" style="display:none"></span>
+            <!-- Badge arriba del título -->
+            <div class="wp-pm-badges-top">
+              <span class="wp-pm-featured-badge" id="wp-pm-featured" style="display:none"></span>
+            </div>
+            <!-- Título + save -->
+            <div class="wp-pm-title-row">
+              <h2 class="wp-pm-name" id="wp-pm-name"></h2>
+              <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </span>
+              <button class="wp-pm-save-btn" id="wp-pm-save" title="Guardar">
+                <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M400,480a16,16,0,0,1-10.63-4L256,357.41,122.63,476A16,16,0,0,1,96,464V96a64.07,64.07,0,0,1,64-64H352a64.07,64.07,0,0,1,64,64V464a16,16,0,0,1-16,16Z"/></svg>
+              </button>
+            </div>
           </div>
 
           <!-- Dirección -->
@@ -609,6 +618,10 @@ export class PlaceModal {
     this._el.querySelector('#wp-pm-cta').addEventListener('click', () => {
       console.log('Planear visita:', this._place);
     });
+    const saveBtn = this._el.querySelector('#wp-pm-save');
+    if (saveBtn) saveBtn.addEventListener('click', function() {
+      this.classList.toggle('saved');
+    });
   }
 
   _wireHeroSwipe() {
@@ -918,23 +931,40 @@ export class PlaceModal {
 
       /* ── Nombre + badges ── */
       .wp-pm-header-row {
-        display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+        display:flex; flex-direction:column; gap:4px;
         padding:0 20px 4px;
       }
+      .wp-pm-badges-top {
+        display:flex; align-items:center; gap:6px; min-height:0;
+      }
+      .wp-pm-title-row {
+        display:flex; align-items:center; gap:8px;
+      }
       .wp-pm-name {
-        font-size:26px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
+        font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
         font-family:'Inter Tight',system-ui,sans-serif;
         line-height:1.1; letter-spacing:-0.03em;
       }
-      .wp-pm-verified { display:flex; align-items:center; }
+      .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
       .wp-pm-featured-badge {
-        font-size:11px; font-weight:600; padding:4px 10px;
+        font-size:10px; font-weight:700; padding:3px 8px;
         border-radius:9999px; white-space:nowrap;
         letter-spacing:0.01em;
       }
       .wp-pm-badge-featured { background:#fef9ee; color:#c97800; border:1px solid #fde68a; }
       .wp-pm-badge-verified  { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
       .wp-pm-badge-premium   { background:#fdf4ff; color:#9333ea; border:1px solid #e9d5ff; }
+      /* Save button */
+      .wp-pm-save-btn {
+        width:36px; height:36px; border-radius:9999px; flex-shrink:0;
+        border:none; background:rgba(118,118,128,0.12);
+        display:flex; align-items:center; justify-content:center;
+        color:#8e8e93; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm-save-btn:active { transform:scale(0.92); }
+      .wp-pm-save-btn.saved { color:#007aff; background:rgba(0,122,255,0.12); }
 
       /* ── Dirección ── */
       .wp-pm-addr-row {
