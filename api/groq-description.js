@@ -14,19 +14,25 @@ const SB = {
 };
 
 async function getPlace(place_id) {
-  // Try place_id field first, then id field
-  const fields = 'place_id,name,category,subcategory_tags,rating,reviews,ai_descriptions,editorialSummary';
-  
-  let url = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}&select=${fields}&limit=1`;
+  // First: try with ai_descriptions column
+  let url  = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}&select=place_id,place_name,name,category,subcategory_tags,rating,reviews,ai_descriptions,editorial_summary&limit=1`;
   let r    = await fetch(url, { headers: SB });
   let data = await r.json();
-  if (Array.isArray(data) && data.length > 0) return data[0];
 
-  // Fallback: try by id
-  url  = `${SUPABASE_URL}/rest/v1/places?id=eq.${encodeURIComponent(place_id)}&select=${fields}&limit=1`;
-  r    = await fetch(url, { headers: SB });
-  data = await r.json();
-  return data?.[0] || null;
+  // If column doesn't exist Supabase returns error object
+  if (!Array.isArray(data) || data.length === 0) {
+    // Fallback without ai_descriptions
+    url  = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}&select=place_id,place_name,name,category,subcategory_tags,rating,reviews,editorial_summary&limit=1`;
+    r    = await fetch(url, { headers: SB });
+    data = await r.json();
+  }
+
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const row = data[0];
+  // Normalize name field
+  if (!row.name) row.name = row.place_name || '';
+  if (!row.editorialSummary) row.editorialSummary = row.editorial_summary || '';
+  return row;
 }
 
 async function saveDescriptions(place_id, descriptions) {
@@ -98,6 +104,7 @@ export default async function handler(req, res) {
 
   try {
     const place = await getPlace(place_id);
+    console.log('[groq] getPlace result:', place ? 'FOUND: ' + place.name : 'NOT FOUND for: ' + place_id);
     if (!place) return res.status(404).json({ error: `Place not found: ${place_id}` });
 
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
