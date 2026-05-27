@@ -30,7 +30,8 @@ ion-app {
 
 /* ── Sombra blanca SUPERIOR ── */
 ion-app::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px;
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 100px;
   background: linear-gradient(to bottom,
     rgba(147,197,253,0.55) 0%,
     rgba(147,197,253,0.22) 55%,
@@ -41,6 +42,18 @@ ion-app::before {
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
+  transition: none;
+}
+
+/* Misma sombra — nuevos valores cuando la ficha está abierta, sin transición */
+body.wp-pm-open ion-app::before {
+  height: 160px;
+  background: linear-gradient(to bottom,
+    rgba(59,130,246,0.65) 0%,
+    rgba(96,165,250,0.38) 45%,
+    rgba(147,197,253,0.1) 75%,
+    rgba(147,197,253,0) 100%
+  );
 }
 
 /* ── Gradiente inferior — difumina el mapa hacia el panel ── */
