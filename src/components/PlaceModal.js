@@ -837,20 +837,20 @@ export class PlaceModal {
         z-index:0;
         pointer-events:none;
       }
-      /* Fade blanco pegado al slide */
-      .wp-pm-body::before {
-        content:'';
-        position:sticky; top:0;
-        display:block;
-        height:16px; margin-bottom:-16px;
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,1)  0%,
-          rgba(255,255,255,0)  100%);
-        z-index:10;
-        pointer-events:none;
-      }
+
       .wp-pm-carousel { position:relative; z-index:1; }
       .wp-pm-dots     { z-index:2; }
+      /* Sombra blanca justo debajo de los dots */
+      .wp-pm-hero::after {
+        content:'';
+        position:absolute; bottom:0; left:0; right:0;
+        height:28px;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0)   0%,
+          rgba(255,255,255,1)   100%);
+        z-index:3;
+        pointer-events:none;
+      }
 
       /* ── Hero peek carousel — portrait, 2 slides + peek 3a ── */
       .wp-pm-hero {
