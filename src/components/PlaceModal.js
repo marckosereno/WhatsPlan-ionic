@@ -124,6 +124,11 @@ export class PlaceModal {
             <span id="wp-pm-addr"></span>
           </div>
 
+          <!-- AI Description -->
+          <div class="wp-pm-ai-block" id="wp-pm-ai-block" style="display:none">
+            <div class="wp-pm-ai-text" id="wp-pm-ai-text"></div>
+          </div>
+
           <!-- Stats: rating · reseñas · precio -->
           <div class="wp-pm-stats-row" id="wp-pm-stats-row">
             <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
@@ -232,6 +237,7 @@ export class PlaceModal {
     this._populateStats(place);
     this._populateActions(place);
     this._populateDescription(place);
+    this._populateAI(place);
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
@@ -411,6 +417,56 @@ export class PlaceModal {
       descEl.textContent = text;
       readMore.style.display = 'none';
     }
+  }
+
+  _populateAI(place) {
+    const block  = this._el.querySelector('#wp-pm-ai-block');
+    const textEl = this._el.querySelector('#wp-pm-ai-text');
+    if (!block || !textEl) return;
+
+    // Hide initially
+    block.style.display = 'none';
+    textEl.textContent  = '';
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) return;
+
+    // Check if place already has ai_descriptions
+    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
+    if (existing.length > 0) {
+      // Show a random one immediately
+      const desc = existing[Math.floor(Math.random() * existing.length)];
+      block.style.display = '';
+      this._typewrite(textEl, desc);
+      return;
+    }
+
+    // Generate via POST (non-blocking)
+    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ place_id: placeId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.description) {
+        block.style.display = '';
+        this._typewrite(textEl, data.description);
+      }
+    })
+    .catch(() => {}); // silent fail
+  }
+
+  _typewrite(el, text) {
+    el.textContent = '';
+    let i = 0;
+    const step = () => {
+      if (i < text.length) {
+        el.textContent += text[i++];
+        setTimeout(step, 18);
+      }
+    };
+    step();
   }
 
   _populateServices(place) {
@@ -821,6 +877,26 @@ export class PlaceModal {
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
+
+      /* ── AI Description block ── */
+      .wp-pm-ai-block {
+        margin:0 20px 14px;
+        padding:12px 14px;
+        background:linear-gradient(135deg,rgba(0,122,255,0.06),rgba(88,86,214,0.06));
+        border-radius:16px;
+        border-left:3px solid rgba(0,122,255,0.4);
+        position:relative;
+      }
+      .wp-pm-ai-block::before {
+        content:'✦';
+        position:absolute; top:10px; right:12px;
+        font-size:10px; color:rgba(0,122,255,0.4);
+      }
+      .wp-pm-ai-text {
+        font-size:14px; line-height:1.6; color:#3a3a3c;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        font-weight:400; font-style:italic;
+      }
 
       /* ── Nombre + badges ── */
       .wp-pm-header-row {
