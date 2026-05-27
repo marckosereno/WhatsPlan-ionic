@@ -124,11 +124,6 @@ export class PlaceModal {
             <span id="wp-pm-addr"></span>
           </div>
 
-          <!-- AI Description -->
-          <div class="wp-pm-ai-block" id="wp-pm-ai-block" style="display:none">
-            <div class="wp-pm-ai-text" id="wp-pm-ai-text"></div>
-          </div>
-
           <!-- Stats: rating · reseñas · precio -->
           <div class="wp-pm-stats-row" id="wp-pm-stats-row">
             <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
@@ -237,7 +232,6 @@ export class PlaceModal {
     this._populateStats(place);
     this._populateActions(place);
     this._populateDescription(place);
-    this._populateAI(place);
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
@@ -417,66 +411,6 @@ export class PlaceModal {
       descEl.textContent = text;
       readMore.style.display = 'none';
     }
-  }
-
-  _populateAI(place) {
-    const block  = this._el.querySelector('#wp-pm-ai-block');
-    const textEl = this._el.querySelector('#wp-pm-ai-text');
-    if (!block || !textEl) return;
-
-    // Hide initially
-    block.style.display = 'none';
-    textEl.textContent  = '';
-
-    const placeId = place.place_id || place.id;
-    if (!placeId) return;
-
-    // Check if place already has ai_descriptions
-    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
-    if (existing.length > 0) {
-      // Show a random one immediately
-      const desc = existing[Math.floor(Math.random() * existing.length)];
-      block.style.display = '';
-      this._typewrite(textEl, desc);
-      return;
-    }
-
-    // Mostrar skeleton mientras genera
-    block.style.display = '';
-    textEl.innerHTML = '<span class="wp-pm-ai-loading">✦ Generando descripción...</span>';
-
-    // Generate via POST
-    fetch('/api/groq-description', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ place_id: placeId }),
-    })
-    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(data => {
-      if (data.description) {
-        textEl.textContent = '';
-        this._typewrite(textEl, data.description);
-      } else {
-        block.style.display = 'none';
-      }
-    })
-    .catch(err => {
-      console.warn('[AI desc]', err.message || err);
-      textEl.textContent = '';
-      block.style.display = 'none';
-    });
-  }
-
-  _typewrite(el, text) {
-    el.textContent = '';
-    let i = 0;
-    const step = () => {
-      if (i < text.length) {
-        el.textContent += text[i++];
-        setTimeout(step, 18);
-      }
-    };
-    step();
   }
 
   _populateServices(place) {
@@ -872,9 +806,10 @@ export class PlaceModal {
       }
       .wp-pm-dot.active { background:#3b82f6; width:14px; }
 
-      /* ── Body ── */
+      /* ── Body — panel blanco con border-radius:32px que sube desde abajo ── */
       .wp-pm-body {
         position:absolute;
+        /* top = safe-area + 68px (topbar) + 290px (hero) */
         top:calc(env(safe-area-inset-top, 0px) + 358px);
         left:0; right:0; bottom:0;
         overflow-y:auto; overflow-x:hidden;
@@ -882,249 +817,195 @@ export class PlaceModal {
         scrollbar-width:none;
         background:#fff;
         border-radius:0;
-        padding-top:20px;
-        padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));
+        padding-top:8px;
+        padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
 
-      /* ── AI Description block ── */
-      .wp-pm-ai-block {
-        margin:0 20px 14px;
-        padding:12px 14px;
-        background:linear-gradient(135deg,rgba(0,122,255,0.06),rgba(88,86,214,0.06));
-        border-radius:16px;
-        border-left:3px solid rgba(0,122,255,0.4);
-        position:relative;
-      }
-      .wp-pm-ai-block::before {
-        content:'✦';
-        position:absolute; top:10px; right:12px;
-        font-size:10px; color:rgba(0,122,255,0.4);
-      }
-      .wp-pm-ai-text {
-        font-size:14px; line-height:1.6; color:#3a3a3c;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        font-weight:400; font-style:italic;
-      }
-
-      /* ── Nombre + badges ── */
+      /* Header row — nombre + badges */
       .wp-pm-header-row {
-        display:flex; align-items:center; flex-wrap:wrap; gap:8px;
-        padding:0 20px 4px;
+        display:flex; align-items:flex-start; flex-wrap:wrap; gap:6px;
+        padding:0 16px 6px;
       }
       .wp-pm-name {
-        font-size:24px; font-weight:700; color:#0a0a0a; margin:0; flex:1;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        line-height:1.15; letter-spacing:-0.02em;
+        font-size:20px; font-weight:800; color:#111; margin:0; flex:1;
+        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
+        line-height:1.2; text-transform:capitalize;
       }
-      .wp-pm-verified { display:flex; align-items:center; }
+      .wp-pm-verified { display:flex; align-items:center; margin-top:3px; }
       .wp-pm-featured-badge {
-        font-size:11px; font-weight:600; padding:4px 10px;
-        border-radius:9999px; white-space:nowrap;
-        letter-spacing:0.01em;
+        font-size:10px; font-weight:700; padding:3px 8px;
+        border-radius:9999px; margin-top:3px; white-space:nowrap;
       }
-      .wp-pm-badge-featured { background:#fef9ee; color:#c97800; border:1px solid #fde68a; }
-      .wp-pm-badge-verified  { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
-      .wp-pm-badge-premium   { background:#fdf4ff; color:#9333ea; border:1px solid #e9d5ff; }
+      .wp-pm-badge-featured  { background:#fef3c7; color:#d97706; }
+      .wp-pm-badge-verified  { background:#dbeafe; color:#1d4ed8; }
+      .wp-pm-badge-premium   { background:#fce7f3; color:#be185d; }
 
-      /* ── Dirección ── */
+      /* Dirección — font:13px gap:6px */
       .wp-pm-addr-row {
-        display:flex; align-items:flex-start; gap:5px;
-        padding:2px 20px 12px; font-size:13px; color:#8e8e93;
-        line-height:1.45; font-weight:400;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        display:flex; align-items:flex-start; gap:6px;
+        padding:0 16px 10px; font-size:13px; color:#6b7280; line-height:1.4;
       }
-      .wp-pm-addr-row svg { flex-shrink:0; margin-top:2px; }
+      .wp-pm-addr-row svg { flex-shrink:0; margin-top:1px; }
 
-      /* ── Stats — box con separadores ── */
+      /* Stats row — 3 columnas con separadores */
       .wp-pm-stats-row {
         display:flex; align-items:stretch;
-        margin:0 20px 16px;
-        background:#f2f2f7; border-radius:16px;
+        margin:0 16px 12px;
+        background:#f8fafc; border-radius:22px;
         overflow:hidden;
       }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
         align-items:center; justify-content:center;
-        padding:12px 8px; gap:3px;
+        padding:10px 8px; gap:2px;
       }
       .wp-pm-stat-val {
-        font-size:17px; font-weight:600; color:#0a0a0a;
+        font-size:15px; font-weight:700; color:#111;
         display:flex; align-items:center; gap:3px;
-        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-lbl {
-        font-size:10px; color:#8e8e93; font-weight:500;
-        text-transform:uppercase; letter-spacing:0.05em;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-size:10px; color:#9ca3af; font-weight:500;
+        text-transform:uppercase; letter-spacing:0.04em;
       }
       .wp-pm-stat-sep {
-        width:0.5px; background:#c6c6c8; margin:10px 0;
+        width:1px; background:#e2e8f0; margin:10px 0;
       }
 
-      /* ── Botones acción — frosted glass como topbar chips ── */
+      /* Actions row — botones 44px */
       .wp-pm-actions-row {
-        display:flex; gap:8px; padding:0 20px 16px;
+        display:flex; gap:8px; padding:0 16px 12px;
       }
       .wp-pm-action-btn {
         flex:1; height:44px; border-radius:9999px;
-        border:none;
-        background:rgba(118,118,128,0.12);
+        border:1.5px solid #e2e8f0; background:#fff;
         display:flex; align-items:center; justify-content:center; gap:6px;
-        font-size:14px; font-weight:500; color:#0a0a0a; cursor:pointer;
+        font-size:13px; font-weight:600; color:#374151; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.15s;
+        transition:all 0.15s cubic-bezier(0.34,1.56,0.64,1);
         font-family:'Inter Tight',system-ui,sans-serif;
-        letter-spacing:-0.01em;
       }
-      .wp-pm-action-btn:active { transform:scale(0.96); background:rgba(118,118,128,0.2); }
-      .wp-pm-action-btn svg { opacity:0.7; }
+      .wp-pm-action-btn:active { transform:scale(0.96); background:#f8fafc; }
 
-      /* ── Divider iOS style ── */
-      .wp-pm-divider {
-        height:0.5px; background:#c6c6c8;
-        margin:4px 20px 16px;
-      }
+      /* Divider */
+      .wp-pm-divider { height:1px; background:#f1f5f9; margin:4px 16px 12px; }
 
-      /* ── Section title iOS style ── */
+      /* Section title */
       .wp-pm-section-title {
-        font-size:11px; font-weight:600; color:#8e8e93;
-        padding:0 20px 8px;
-        text-transform:uppercase; letter-spacing:0.06em;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-size:14px; font-weight:700; color:#111;
+        padding:0 16px 8px;
       }
 
-      /* ── Description ── */
+      /* Description */
       .wp-pm-desc-block { padding-bottom:4px; }
       .wp-pm-desc-text {
-        font-size:15px; line-height:1.6; color:#3a3a3c;
-        padding:0 20px 4px;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        font-weight:400;
+        font-size:14px; line-height:1.6; color:#555;
+        padding:0 16px 4px;
       }
       .wp-pm-read-more {
-        border:none; background:none; color:#007aff;
-        font-size:15px; font-weight:400; cursor:pointer;
-        padding:0 20px 12px;
+        border:none; background:none; color:#3b82f6;
+        font-size:14px; font-weight:600; cursor:pointer;
+        padding:0 16px 8px;
         font-family:'Inter Tight',system-ui,sans-serif;
-        -webkit-tap-highlight-color:transparent;
       }
 
-      /* ── Tags iOS pills ── */
+      /* Tags — border-radius:9999px, height derivada del padding */
       .wp-pm-tags-row {
-        display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 12px;
+        display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 8px;
       }
       .wp-pm-tag {
-        height:32px; padding:0 14px; border-radius:9999px;
-        background:rgba(118,118,128,0.12); color:#3a3a3c;
+        height:36px; padding:0 14px; border-radius:9999px;
+        background:#f1f5f9; color:#374151;
         font-size:13px; font-weight:500;
         display:flex; align-items:center; gap:4px;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-tag-accent { background:#eff6ff; color:#2563eb; }
+      .wp-pm-tag-accent {
+        background:#eff6ff; color:#1d4ed8;
+      }
 
-      /* ── Horarios ── */
+      /* Horarios */
+      .wp-pm-hours-block { }
       .wp-pm-hours-trigger {
         display:flex; align-items:center; gap:8px;
-        padding:0 20px 8px; cursor:pointer;
+        padding:0 16px 8px; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
       }
       .wp-pm-hours-today {
-        font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-size:14px; color:#374151; font-weight:500; flex:1;
       }
       .wp-pm-hours-status {
-        font-size:12px; font-weight:600;
+        font-size:12px; font-weight:700;
         padding:2px 8px; border-radius:9999px;
       }
-      .wp-pm-open   { background:#e8fdf0; color:#34c759; }
-      .wp-pm-closed { background:#fff1f0; color:#ff3b30; }
+      .wp-pm-open   { background:#dcfce7; color:#16a34a; }
+      .wp-pm-closed { background:#fee2e2; color:#dc2626; }
       .wp-pm-chevron { transition:transform 0.25s ease; flex-shrink:0; }
       .wp-pm-hours-list {
         max-height:0; overflow:hidden;
         transition:max-height 0.3s ease;
-        padding:0 20px;
+        padding:0 16px;
       }
       .wp-pm-hours-list.expanded { max-height:300px; }
       .wp-pm-hours-row {
         display:flex; justify-content:space-between;
-        padding:8px 0; font-size:14px; color:#8e8e93;
-        border-bottom:0.5px solid #e5e5ea;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        padding:7px 0; font-size:13px; color:#6b7280;
+        border-bottom:1px solid #f9fafb;
       }
       .wp-pm-hours-row:last-child { border-bottom:none; }
       .wp-pm-hours-day { min-width:90px; }
       .wp-pm-today .wp-pm-hours-day,
-      .wp-pm-today .wp-pm-hours-time { color:#0a0a0a; font-weight:600; }
+      .wp-pm-today .wp-pm-hours-time { color:#111; font-weight:700; }
 
-      /* ── Reviews ── */
+      /* Reviews */
       .wp-pm-reviews-block { padding-bottom:8px; }
       .wp-pm-reviews-list {
-        display:flex; flex-direction:column; gap:10px;
-        padding:0 20px;
+        display:flex; flex-direction:column; gap:8px;
+        padding:0 16px;
       }
       .wp-pm-review-card {
-        background:#f2f2f7;
-        border-radius:22px;
-        padding:14px 16px;
+        background:#f9fafb; border-radius:22px;
+        padding:12px 14px;
       }
       .wp-pm-review-top {
-        display:flex; align-items:center; gap:10px; margin-bottom:8px;
+        display:flex; align-items:center; gap:8px; margin-bottom:6px;
       }
+      /* avatar: 36px sistema WhatsPlan */
       .wp-pm-review-avatar {
         width:36px; height:36px; border-radius:9999px; flex-shrink:0;
-        background:linear-gradient(135deg,#007aff,#5856d6);
-        color:#fff; font-size:15px; font-weight:600;
+        background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+        color:#fff; font-size:14px; font-weight:700;
         display:flex; align-items:center; justify-content:center;
-        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
-      .wp-pm-review-name {
-        font-size:14px; font-weight:600; color:#0a0a0a;
-        font-family:'Inter Tight',system-ui,sans-serif;
-      }
-      .wp-pm-review-time {
-        font-size:11px; color:#8e8e93;
-        font-family:'Inter Tight',system-ui,sans-serif;
-      }
-      .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
+      .wp-pm-review-name { font-size:13px; font-weight:700; color:#111; }
+      .wp-pm-review-time { font-size:10px; color:#9ca3af; }
+      .wp-pm-review-stars { font-size:13px; color:#f59e0b; margin-left:auto; }
       .wp-pm-review-text {
-        font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
-        font-family:'Inter Tight',system-ui,sans-serif; font-weight:400;
+        font-size:13px; color:#555; line-height:1.55; margin:0;
         display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
       }
 
       /* ── CTA bottom bar — fixed at bottom ── */
-      /* ── CTA flotante sin container ── */
       .wp-pm-bottom {
-        position:absolute; bottom:calc(16px + env(safe-area-inset-bottom,0px));
-        left:20px; right:20px;
-        background:transparent;
-        border:none; z-index:2;
-        pointer-events:none;
+        position:absolute; bottom:0; left:0; right:0;
+        padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
+        background:#fff;
+        box-shadow:0 -16px 24px 8px white;
+        z-index:2;
       }
       .wp-pm-cta {
-        width:100%; height:52px; border-radius:9999px; border:none;
-        /* Liquid blue glass */
-        background:rgba(0,122,255,0.82);
-        backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
-        -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
-        box-shadow:
-          0 8px 32px rgba(0,122,255,0.45),
-          0 2px 8px rgba(0,122,255,0.3),
-          inset 0 1px 0 rgba(255,255,255,0.35),
-          inset 0 -1px 0 rgba(0,0,0,0.1);
-        color:#fff; font-size:17px; font-weight:600; cursor:pointer;
+        width:100%; height:44px; border-radius:9999px; border:none;
+        background:linear-gradient(135deg,#3b82f6,#1d4ed8);
+        color:#fff; font-size:15px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), filter 0.15s;
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
         font-family:'Inter Tight',system-ui,sans-serif;
-        letter-spacing:-0.01em;
-        pointer-events:auto;
-        text-shadow:0 1px 3px rgba(0,0,0,0.15);
+        box-shadow:0 4px 20px rgba(37,99,235,0.35);
       }
-      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.9); }
+      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.92); }
     `;
     document.head.appendChild(s);
   }
