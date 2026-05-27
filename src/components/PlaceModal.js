@@ -444,10 +444,11 @@ export class PlaceModal {
 
     // Generate via GET
     fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
-    .then(r => {
-      if (r.status === 404) { console.warn('[AI desc] endpoint not found'); return null; }
-      if (!r.ok) throw new Error(r.status);
-      return r.json();
+    .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
+    .then(({ ok, status, data }) => {
+      console.log('[AI desc] response:', status, JSON.stringify(data));
+      if (!ok) return null;
+      return data;
     })
     .then(data => {
       if (!data || !data.description) { block.style.display = 'none'; return; }
