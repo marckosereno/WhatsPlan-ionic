@@ -429,8 +429,7 @@ export class PlaceModal {
     textEl.textContent  = '';
 
     const placeId = place.place_id || place.id;
-    console.log('[AI desc] place_id:', placeId, '| keys:', Object.keys(place).join(','));
-    if (!placeId) { console.warn('[AI desc] no place_id found'); return; }
+    if (!placeId) return;
 
     // Check if place already has ai_descriptions
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
@@ -442,22 +441,28 @@ export class PlaceModal {
       return;
     }
 
-    // Generate via GET
-    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
-    .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
-    .then(({ ok, status, data }) => {
-      console.log('[AI desc] response:', status, JSON.stringify(data));
-      if (!ok) return null;
-      return data;
+    // Mostrar skeleton mientras genera
+    block.style.display = '';
+    textEl.innerHTML = '<span class="wp-pm-ai-loading">✦ Generando descripción...</span>';
+
+    // Generate via POST
+    fetch('/api/groq-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ place_id: placeId }),
     })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(data => {
-      if (!data || !data.description) { block.style.display = 'none'; return; }
-      block.style.display = '';
-      textEl.textContent  = '';
-      this._typewrite(textEl, data.description);
+      if (data.description) {
+        textEl.textContent = '';
+        this._typewrite(textEl, data.description);
+      } else {
+        block.style.display = 'none';
+      }
     })
     .catch(err => {
       console.warn('[AI desc]', err.message || err);
+      textEl.textContent = '';
       block.style.display = 'none';
     });
   }
