@@ -806,10 +806,9 @@ export class PlaceModal {
       }
       .wp-pm-dot.active { background:#3b82f6; width:14px; }
 
-      /* ── Body — panel blanco con border-radius:32px que sube desde abajo ── */
+      /* ── Body ── */
       .wp-pm-body {
         position:absolute;
-        /* top = safe-area + 68px (topbar) + 290px (hero) */
         top:calc(env(safe-area-inset-top, 0px) + 358px);
         left:0; right:0; bottom:0;
         overflow-y:auto; overflow-x:hidden;
@@ -817,195 +816,215 @@ export class PlaceModal {
         scrollbar-width:none;
         background:#fff;
         border-radius:0;
-        padding-top:8px;
-        padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));
+        padding-top:20px;
+        padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
 
-      /* Header row — nombre + badges */
+      /* ── Nombre + badges ── */
       .wp-pm-header-row {
-        display:flex; align-items:flex-start; flex-wrap:wrap; gap:6px;
-        padding:0 16px 6px;
+        display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+        padding:0 20px 4px;
       }
       .wp-pm-name {
-        font-size:20px; font-weight:800; color:#111; margin:0; flex:1;
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
-        line-height:1.2; text-transform:capitalize;
+        font-size:24px; font-weight:700; color:#0a0a0a; margin:0; flex:1;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        line-height:1.15; letter-spacing:-0.02em;
       }
-      .wp-pm-verified { display:flex; align-items:center; margin-top:3px; }
+      .wp-pm-verified { display:flex; align-items:center; }
       .wp-pm-featured-badge {
-        font-size:10px; font-weight:700; padding:3px 8px;
-        border-radius:9999px; margin-top:3px; white-space:nowrap;
+        font-size:11px; font-weight:600; padding:4px 10px;
+        border-radius:9999px; white-space:nowrap;
+        letter-spacing:0.01em;
       }
-      .wp-pm-badge-featured  { background:#fef3c7; color:#d97706; }
-      .wp-pm-badge-verified  { background:#dbeafe; color:#1d4ed8; }
-      .wp-pm-badge-premium   { background:#fce7f3; color:#be185d; }
+      .wp-pm-badge-featured { background:#fef9ee; color:#c97800; border:1px solid #fde68a; }
+      .wp-pm-badge-verified  { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+      .wp-pm-badge-premium   { background:#fdf4ff; color:#9333ea; border:1px solid #e9d5ff; }
 
-      /* Dirección — font:13px gap:6px */
+      /* ── Dirección ── */
       .wp-pm-addr-row {
-        display:flex; align-items:flex-start; gap:6px;
-        padding:0 16px 10px; font-size:13px; color:#6b7280; line-height:1.4;
+        display:flex; align-items:flex-start; gap:5px;
+        padding:2px 20px 12px; font-size:13px; color:#8e8e93;
+        line-height:1.45; font-weight:400;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-addr-row svg { flex-shrink:0; margin-top:1px; }
+      .wp-pm-addr-row svg { flex-shrink:0; margin-top:2px; }
 
-      /* Stats row — 3 columnas con separadores */
+      /* ── Stats inline estilo Apple Maps ── */
       .wp-pm-stats-row {
-        display:flex; align-items:stretch;
-        margin:0 16px 12px;
-        background:#f8fafc; border-radius:22px;
-        overflow:hidden;
+        display:flex; align-items:center; gap:0;
+        padding:0 20px 16px;
       }
       .wp-pm-stat {
-        flex:1; display:flex; flex-direction:column;
-        align-items:center; justify-content:center;
-        padding:10px 8px; gap:2px;
+        display:flex; align-items:center; gap:5px;
       }
       .wp-pm-stat-val {
-        font-size:15px; font-weight:700; color:#111;
+        font-size:15px; font-weight:600; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-lbl {
-        font-size:10px; color:#9ca3af; font-weight:500;
-        text-transform:uppercase; letter-spacing:0.04em;
+        font-size:13px; color:#8e8e93; font-weight:400;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
-        width:1px; background:#e2e8f0; margin:10px 0;
+        width:1px; height:14px; background:#d1d1d6; margin:0 10px;
       }
 
-      /* Actions row — botones 44px */
+      /* ── Botones acción — frosted glass como topbar chips ── */
       .wp-pm-actions-row {
-        display:flex; gap:8px; padding:0 16px 12px;
+        display:flex; gap:8px; padding:0 20px 16px;
       }
       .wp-pm-action-btn {
         flex:1; height:44px; border-radius:9999px;
-        border:1.5px solid #e2e8f0; background:#fff;
+        border:none;
+        background:rgba(118,118,128,0.12);
         display:flex; align-items:center; justify-content:center; gap:6px;
-        font-size:13px; font-weight:600; color:#374151; cursor:pointer;
+        font-size:14px; font-weight:500; color:#0a0a0a; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.15s;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:-0.01em;
+      }
+      .wp-pm-action-btn:active { transform:scale(0.96); background:rgba(118,118,128,0.2); }
+      .wp-pm-action-btn svg { opacity:0.7; }
+
+      /* ── Divider iOS style ── */
+      .wp-pm-divider {
+        height:0.5px; background:#c6c6c8;
+        margin:4px 20px 16px;
+      }
+
+      /* ── Section title iOS style ── */
+      .wp-pm-section-title {
+        font-size:11px; font-weight:600; color:#8e8e93;
+        padding:0 20px 8px;
+        text-transform:uppercase; letter-spacing:0.06em;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-action-btn:active { transform:scale(0.96); background:#f8fafc; }
 
-      /* Divider */
-      .wp-pm-divider { height:1px; background:#f1f5f9; margin:4px 16px 12px; }
-
-      /* Section title */
-      .wp-pm-section-title {
-        font-size:14px; font-weight:700; color:#111;
-        padding:0 16px 8px;
-      }
-
-      /* Description */
+      /* ── Description ── */
       .wp-pm-desc-block { padding-bottom:4px; }
       .wp-pm-desc-text {
-        font-size:14px; line-height:1.6; color:#555;
-        padding:0 16px 4px;
+        font-size:15px; line-height:1.6; color:#3a3a3c;
+        padding:0 20px 4px;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        font-weight:400;
       }
       .wp-pm-read-more {
-        border:none; background:none; color:#3b82f6;
-        font-size:14px; font-weight:600; cursor:pointer;
-        padding:0 16px 8px;
+        border:none; background:none; color:#007aff;
+        font-size:15px; font-weight:400; cursor:pointer;
+        padding:0 20px 12px;
         font-family:'Inter Tight',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
       }
 
-      /* Tags — border-radius:9999px, height derivada del padding */
+      /* ── Tags iOS pills ── */
       .wp-pm-tags-row {
-        display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 8px;
+        display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 12px;
       }
       .wp-pm-tag {
-        height:36px; padding:0 14px; border-radius:9999px;
-        background:#f1f5f9; color:#374151;
+        height:32px; padding:0 14px; border-radius:9999px;
+        background:rgba(118,118,128,0.12); color:#3a3a3c;
         font-size:13px; font-weight:500;
         display:flex; align-items:center; gap:4px;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-tag-accent {
-        background:#eff6ff; color:#1d4ed8;
-      }
+      .wp-pm-tag-accent { background:#eff6ff; color:#2563eb; }
 
-      /* Horarios */
-      .wp-pm-hours-block { }
+      /* ── Horarios ── */
       .wp-pm-hours-trigger {
         display:flex; align-items:center; gap:8px;
-        padding:0 16px 8px; cursor:pointer;
+        padding:0 20px 8px; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
       }
       .wp-pm-hours-today {
-        font-size:14px; color:#374151; font-weight:500; flex:1;
+        font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-hours-status {
-        font-size:12px; font-weight:700;
+        font-size:12px; font-weight:600;
         padding:2px 8px; border-radius:9999px;
       }
-      .wp-pm-open   { background:#dcfce7; color:#16a34a; }
-      .wp-pm-closed { background:#fee2e2; color:#dc2626; }
+      .wp-pm-open   { background:#e8fdf0; color:#34c759; }
+      .wp-pm-closed { background:#fff1f0; color:#ff3b30; }
       .wp-pm-chevron { transition:transform 0.25s ease; flex-shrink:0; }
       .wp-pm-hours-list {
         max-height:0; overflow:hidden;
         transition:max-height 0.3s ease;
-        padding:0 16px;
+        padding:0 20px;
       }
       .wp-pm-hours-list.expanded { max-height:300px; }
       .wp-pm-hours-row {
         display:flex; justify-content:space-between;
-        padding:7px 0; font-size:13px; color:#6b7280;
-        border-bottom:1px solid #f9fafb;
+        padding:8px 0; font-size:14px; color:#8e8e93;
+        border-bottom:0.5px solid #e5e5ea;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-hours-row:last-child { border-bottom:none; }
       .wp-pm-hours-day { min-width:90px; }
       .wp-pm-today .wp-pm-hours-day,
-      .wp-pm-today .wp-pm-hours-time { color:#111; font-weight:700; }
+      .wp-pm-today .wp-pm-hours-time { color:#0a0a0a; font-weight:600; }
 
-      /* Reviews */
+      /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
       .wp-pm-reviews-list {
-        display:flex; flex-direction:column; gap:8px;
-        padding:0 16px;
+        display:flex; flex-direction:column; gap:10px;
+        padding:0 20px;
       }
       .wp-pm-review-card {
-        background:#f9fafb; border-radius:22px;
-        padding:12px 14px;
+        background:#f2f2f7;
+        border-radius:22px;
+        padding:14px 16px;
       }
       .wp-pm-review-top {
-        display:flex; align-items:center; gap:8px; margin-bottom:6px;
+        display:flex; align-items:center; gap:10px; margin-bottom:8px;
       }
-      /* avatar: 36px sistema WhatsPlan */
       .wp-pm-review-avatar {
         width:36px; height:36px; border-radius:9999px; flex-shrink:0;
-        background:linear-gradient(135deg,#3b82f6,#8b5cf6);
-        color:#fff; font-size:14px; font-weight:700;
+        background:linear-gradient(135deg,#007aff,#5856d6);
+        color:#fff; font-size:15px; font-weight:600;
         display:flex; align-items:center; justify-content:center;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
-      .wp-pm-review-name { font-size:13px; font-weight:700; color:#111; }
-      .wp-pm-review-time { font-size:10px; color:#9ca3af; }
-      .wp-pm-review-stars { font-size:13px; color:#f59e0b; margin-left:auto; }
+      .wp-pm-review-name {
+        font-size:14px; font-weight:600; color:#0a0a0a;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-review-time {
+        font-size:11px; color:#8e8e93;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
       .wp-pm-review-text {
-        font-size:13px; color:#555; line-height:1.55; margin:0;
+        font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
+        font-family:'Inter Tight',system-ui,sans-serif; font-weight:400;
         display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
       }
 
       /* ── CTA bottom bar — fixed at bottom ── */
       .wp-pm-bottom {
         position:absolute; bottom:0; left:0; right:0;
-        padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
-        background:#fff;
-        box-shadow:0 -16px 24px 8px white;
+        padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));
+        background:rgba(255,255,255,0.92);
+        backdrop-filter:blur(20px) saturate(1.8);
+        -webkit-backdrop-filter:blur(20px) saturate(1.8);
+        border-top:0.5px solid rgba(0,0,0,0.1);
         z-index:2;
       }
       .wp-pm-cta {
-        width:100%; height:44px; border-radius:9999px; border:none;
-        background:linear-gradient(135deg,#3b82f6,#1d4ed8);
-        color:#fff; font-size:15px; font-weight:600; cursor:pointer;
+        width:100%; height:50px; border-radius:16px; border:none;
+        background:#007aff;
+        color:#fff; font-size:17px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), filter 0.15s;
         font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 4px 20px rgba(37,99,235,0.35);
+        letter-spacing:-0.01em;
       }
-      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.92); }
+      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.88); }
     `;
     document.head.appendChild(s);
   }
