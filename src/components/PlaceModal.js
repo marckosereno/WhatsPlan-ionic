@@ -837,6 +837,18 @@ export class PlaceModal {
         z-index:0;
         pointer-events:none;
       }
+      /* Fade blanco debajo del carousel — suaviza el scroll de la info */
+      .wp-pm-body::before {
+        content:'';
+        position:sticky; top:0;
+        display:block;
+        height:32px; margin-bottom:-32px;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,1)   0%,
+          rgba(255,255,255,0)   100%);
+        z-index:10;
+        pointer-events:none;
+      }
       .wp-pm-carousel { position:relative; z-index:1; }
       .wp-pm-dots     { z-index:2; }
 
@@ -956,7 +968,7 @@ export class PlaceModal {
       .wp-pm-badge-premium   { background:#fdf4ff; color:#9333ea; border:1px solid #e9d5ff; }
       /* Save button */
       .wp-pm-save-btn {
-        width:36px; height:36px; border-radius:9999px; flex-shrink:0;
+        width:38px; height:38px; border-radius:9999px; flex-shrink:0;
         border:none; background:rgba(118,118,128,0.12);
         display:flex; align-items:center; justify-content:center;
         color:#8e8e93; cursor:pointer;
@@ -974,6 +986,11 @@ export class PlaceModal {
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-addr-row svg { flex-shrink:0; margin-top:2px; }
+      #wp-pm-addr {
+        display:-webkit-box; -webkit-line-clamp:1;
+        -webkit-box-orient:vertical; overflow:hidden;
+        max-width:calc(100% - 20px);
+      }
 
       /* ── Stats — box con separadores ── */
       .wp-pm-stats-row {
