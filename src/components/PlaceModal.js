@@ -751,11 +751,10 @@ export class PlaceModal {
       body.wp-pm-open .ion-app::before,
       body.wp-pm-open ion-app::before {
         background:linear-gradient(to bottom,
-          rgba(59,130,246,0.75) 0%,
-          rgba(96,165,250,0.55) 45%,
-          rgba(147,197,253,0.2) 75%,
+          rgba(59,130,246,0.6)  0%,
+          rgba(96,165,250,0.35) 35%,
           transparent 100%) !important;
-        height:200px !important;
+        height:100px !important;
       }
 
       /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
@@ -814,10 +813,10 @@ export class PlaceModal {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0)    8%,
-          rgba(255,255,255,0.75) 22%,
-          rgba(255,255,255,0.96) 50%,
-          rgba(255,255,255,1)    72%);
+          rgba(255,255,255,0.6)  8%,
+          rgba(255,255,255,0.88) 18%,
+          rgba(255,255,255,0.97) 35%,
+          rgba(255,255,255,1)    55%);
         z-index:0;
         pointer-events:none;
       }
