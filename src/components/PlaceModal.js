@@ -909,9 +909,9 @@ export class PlaceModal {
         padding:0 20px 4px;
       }
       .wp-pm-name {
-        font-size:24px; font-weight:700; color:#0a0a0a; margin:0; flex:1;
+        font-size:26px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
         font-family:'Inter Tight',system-ui,sans-serif;
-        line-height:1.15; letter-spacing:-0.02em;
+        line-height:1.1; letter-spacing:-0.03em;
       }
       .wp-pm-verified { display:flex; align-items:center; }
       .wp-pm-featured-badge {
@@ -945,9 +945,10 @@ export class PlaceModal {
         padding:12px 8px; gap:3px;
       }
       .wp-pm-stat-val {
-        font-size:17px; font-weight:600; color:#0a0a0a;
+        font-size:18px; font-weight:800; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
         font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:-0.02em;
       }
       .wp-pm-stat-lbl {
         font-size:10px; color:#8e8e93; font-weight:500;
@@ -967,7 +968,7 @@ export class PlaceModal {
         border:none;
         background:rgba(118,118,128,0.12);
         display:flex; align-items:center; justify-content:center; gap:6px;
-        font-size:14px; font-weight:500; color:#0a0a0a; cursor:pointer;
+        font-size:14px; font-weight:600; color:#0a0a0a; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.15s;
         font-family:'Inter Tight',system-ui,sans-serif;
@@ -984,9 +985,9 @@ export class PlaceModal {
 
       /* ── Section title iOS style ── */
       .wp-pm-section-title {
-        font-size:11px; font-weight:600; color:#8e8e93;
+        font-size:12px; font-weight:800; color:#0a0a0a;
         padding:0 20px 8px;
-        text-transform:uppercase; letter-spacing:0.06em;
+        letter-spacing:-0.01em;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
 
