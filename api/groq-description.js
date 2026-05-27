@@ -14,12 +14,18 @@ const SB = {
 };
 
 async function getPlace(place_id) {
-  const url = `${SUPABASE_URL}/rest/v1/places`
-    + `?place_id=eq.${encodeURIComponent(place_id)}`
-    + `&select=place_id,name,category,subcategory_tags,rating,reviews,ai_descriptions,editorialSummary`
-    + `&limit=1`;
-  const r    = await fetch(url, { headers: SB });
-  const data = await r.json();
+  // Try place_id field first, then id field
+  const fields = 'place_id,name,category,subcategory_tags,rating,reviews,ai_descriptions,editorialSummary';
+  
+  let url = `${SUPABASE_URL}/rest/v1/places?place_id=eq.${encodeURIComponent(place_id)}&select=${fields}&limit=1`;
+  let r    = await fetch(url, { headers: SB });
+  let data = await r.json();
+  if (Array.isArray(data) && data.length > 0) return data[0];
+
+  // Fallback: try by id
+  url  = `${SUPABASE_URL}/rest/v1/places?id=eq.${encodeURIComponent(place_id)}&select=${fields}&limit=1`;
+  r    = await fetch(url, { headers: SB });
+  data = await r.json();
   return data?.[0] || null;
 }
 
