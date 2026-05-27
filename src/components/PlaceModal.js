@@ -785,20 +785,7 @@ export class PlaceModal {
         z-index:2;
         background:transparent;
       }
-      /* Sombra azul más oscura y extendida cuando la ficha está abierta */
-      .wp-pm:not(.wp-pm-hidden) ~ * #topbar::before,
-      .wp-pm-card::before {
-        content:''; position:absolute;
-        top:0; left:0; right:0;
-        height:calc(env(safe-area-inset-top, 0px) + 200px);
-        background:linear-gradient(to bottom,
-          rgba(96,165,250,0.75) 0%,
-          rgba(147,197,253,0.45) 55%,
-          transparent 100%);
-        backdrop-filter:blur(0.5px);
-        pointer-events:none;
-        z-index:0;
-      }
+      /* Sombra azul manejada por ion-app::before en app.css */
       /* Botones topbar: 44px como chips del sistema */
       .wp-pm-tb-btn {
         width:44px; height:44px; border-radius:9999px; flex-shrink:0;
