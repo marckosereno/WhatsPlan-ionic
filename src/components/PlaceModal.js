@@ -23,10 +23,11 @@ export class PlaceModal {
     this._place = place;
     this._populate(place);
     const card = this._card;
-    this._el.classList.remove('wp-pm-hidden');
-    this._el.classList.add('wp-pm-visible');
+
+    // 1. Sombra azul cambia instantáneamente via clase CSS (transition:none en app.css)
     document.body.classList.add('wp-pm-open');
-    // Ocultar topbar del mapa con pulse
+
+    // 2. Ocultar topbar del mapa
     var mapTopbar = document.getElementById('topbar');
     var gsapG = window.gsap;
     if (mapTopbar && gsapG) {
@@ -37,6 +38,10 @@ export class PlaceModal {
     } else if (mapTopbar) {
       mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
     }
+
+    // 3. Modal sube — sombra ya está lista
+    this._el.classList.remove('wp-pm-hidden');
+    this._el.classList.add('wp-pm-visible');
     card.style.transition = 'none';
     card.style.transform  = 'translateY(100%)';
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -86,13 +91,13 @@ export class PlaceModal {
         <div class="wp-pm-topbar" id="wp-pm-topbar">
           <!-- Botón back -->
           <button class="wp-pm-tb-btn" id="wp-pm-back">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
           </button>
           <!-- Nombre del lugar centrado -->
           <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
           <!-- Share -->
           <button class="wp-pm-tb-btn" id="wp-pm-share">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
           </button>
         </div>
 
@@ -122,6 +127,12 @@ export class PlaceModal {
           <div class="wp-pm-addr-row" id="wp-pm-addr-row" style="display:none">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#6b7280" flex-shrink="0"><path fill-rule="evenodd" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
             <span id="wp-pm-addr"></span>
+          </div>
+
+          <!-- AI Description -->
+          <div class="wp-pm-ai-block" id="wp-pm-ai-block" style="display:none">
+            <svg class="wp-pm-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="#374151" xmlns="http://www.w3.org/2000/svg"><path d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
+            <div class="wp-pm-ai-text" id="wp-pm-ai-text"></div>
           </div>
 
           <!-- Stats: rating · reseñas · precio -->
@@ -232,6 +243,7 @@ export class PlaceModal {
     this._populateStats(place);
     this._populateActions(place);
     this._populateDescription(place);
+    this._populateAI(place);
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
@@ -411,6 +423,80 @@ export class PlaceModal {
       descEl.textContent = text;
       readMore.style.display = 'none';
     }
+  }
+
+  _populateAI(place) {
+    const block  = this._el.querySelector('#wp-pm-ai-block');
+    const textEl = this._el.querySelector('#wp-pm-ai-text');
+    const icon   = this._el.querySelector('.wp-pm-ai-icon');
+    if (!block || !textEl) return;
+
+    // Cancel any previous typewriter + fetch
+    if (this._aiAbort) this._aiAbort();
+    this._aiAbort = null;
+
+    block.style.display = 'none';
+    textEl.textContent  = '';
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) return;
+
+    // Check if place already has ai_descriptions
+    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
+    if (existing.length > 0) {
+      // Show a random one immediately
+      const desc = existing[Math.floor(Math.random() * existing.length)];
+      block.style.display = '';
+      this._typewrite(textEl, desc);
+      return;
+    }
+
+    let aborted = false;
+    let cancelTypewrite = null;
+    this._aiAbort = () => {
+      aborted = true;
+      if (cancelTypewrite) cancelTypewrite();
+      block.style.display = 'none';
+      textEl.textContent  = '';
+      if (icon) icon.classList.remove('wp-pm-ai-pulse');
+    };
+
+    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (aborted) return;
+      if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
+      block.style.display = '';
+      textEl.textContent  = '';
+      if (icon) icon.classList.add('wp-pm-ai-pulse');
+      cancelTypewrite = this._typewrite(textEl, data.description, null, () => {
+        if (icon) icon.classList.remove('wp-pm-ai-pulse');
+      });
+    })
+    .catch(() => { if (!aborted) block.style.display = 'none'; });
+  }
+
+  _typewrite(el, text, onStart, onDone) {
+    el.textContent = '';
+    let i = 0;
+    let cancelled = false;
+    let timer = null;
+    const step = () => {
+      if (cancelled) return;
+      if (i < text.length) {
+        el.textContent += text[i++];
+        timer = setTimeout(step, 16);
+      } else {
+        if (onDone) onDone();
+      }
+    };
+    if (onStart) onStart();
+    timer = setTimeout(step, 16);
+    // Return cancel fn
+    return function cancel() {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }
 
   _populateServices(place) {
@@ -686,16 +772,7 @@ export class PlaceModal {
         background:transparent;
       }
 
-      /* Sombra azul top más oscura y extendida cuando ficha está abierta */
-      body.wp-pm-open .ion-app::before,
-      body.wp-pm-open ion-app::before {
-        background:linear-gradient(to bottom,
-          rgba(59,130,246,0.75) 0%,
-          rgba(96,165,250,0.55) 45%,
-          rgba(147,197,253,0.2) 75%,
-          transparent 100%) !important;
-        height:200px !important;
-      }
+      /* Shadow handled in app.css */
 
       /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
       .wp-pm-topbar {
@@ -753,10 +830,10 @@ export class PlaceModal {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0)    8%,
-          rgba(255,255,255,0.75) 22%,
-          rgba(255,255,255,0.96) 50%,
-          rgba(255,255,255,1)    72%);
+          rgba(255,255,255,0)    15%,
+          rgba(255,255,255,0.7)  30%,
+          rgba(255,255,255,0.92) 50%,
+          rgba(255,255,255,1)    68%);
         z-index:0;
         pointer-events:none;
       }
@@ -806,10 +883,9 @@ export class PlaceModal {
       }
       .wp-pm-dot.active { background:#3b82f6; width:14px; }
 
-      /* ── Body — panel blanco con border-radius:32px que sube desde abajo ── */
+      /* ── Body ── */
       .wp-pm-body {
         position:absolute;
-        /* top = safe-area + 68px (topbar) + 290px (hero) */
         top:calc(env(safe-area-inset-top, 0px) + 358px);
         left:0; right:0; bottom:0;
         overflow-y:auto; overflow-x:hidden;
@@ -817,195 +893,260 @@ export class PlaceModal {
         scrollbar-width:none;
         background:#fff;
         border-radius:0;
-        padding-top:8px;
-        padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));
+        padding-top:20px;
+        padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
 
-      /* Header row — nombre + badges */
+      /* ── AI Description block ── */
+      .wp-pm-ai-block {
+        margin:0 20px 14px;
+        padding:0;
+        background:transparent;
+        position:relative;
+        display:flex; align-items:flex-start; gap:8px;
+      }
+      .wp-pm-ai-icon {
+        flex-shrink:0; margin-top:1px;
+        opacity:0.7; color:#374151;
+        transition:color 0.3s ease;
+      }
+      @keyframes wp-ai-pulse {
+        0%   { color:#60a5fa; opacity:1; }
+        25%  { color:#3b82f6; opacity:0.8; }
+        50%  { color:#93c5fd; opacity:1; }
+        75%  { color:#1d4ed8; opacity:0.85; }
+        100% { color:#60a5fa; opacity:1; }
+      }
+      .wp-pm-ai-pulse {
+        animation: wp-ai-pulse 1.2s ease-in-out infinite;
+      }
+      .wp-pm-ai-text {
+        font-size:14px; line-height:1.6; color:#3a3a3c;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        font-weight:400; font-style:normal;
+        flex:1;
+      }
+
+      /* ── Nombre + badges ── */
       .wp-pm-header-row {
-        display:flex; align-items:flex-start; flex-wrap:wrap; gap:6px;
-        padding:0 16px 6px;
+        display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+        padding:0 20px 4px;
       }
       .wp-pm-name {
-        font-size:20px; font-weight:800; color:#111; margin:0; flex:1;
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
-        line-height:1.2; text-transform:capitalize;
+        font-size:26px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        line-height:1.1; letter-spacing:-0.03em;
       }
-      .wp-pm-verified { display:flex; align-items:center; margin-top:3px; }
+      .wp-pm-verified { display:flex; align-items:center; }
       .wp-pm-featured-badge {
-        font-size:10px; font-weight:700; padding:3px 8px;
-        border-radius:9999px; margin-top:3px; white-space:nowrap;
+        font-size:11px; font-weight:600; padding:4px 10px;
+        border-radius:9999px; white-space:nowrap;
+        letter-spacing:0.01em;
       }
-      .wp-pm-badge-featured  { background:#fef3c7; color:#d97706; }
-      .wp-pm-badge-verified  { background:#dbeafe; color:#1d4ed8; }
-      .wp-pm-badge-premium   { background:#fce7f3; color:#be185d; }
+      .wp-pm-badge-featured { background:#fef9ee; color:#c97800; border:1px solid #fde68a; }
+      .wp-pm-badge-verified  { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+      .wp-pm-badge-premium   { background:#fdf4ff; color:#9333ea; border:1px solid #e9d5ff; }
 
-      /* Dirección — font:13px gap:6px */
+      /* ── Dirección ── */
       .wp-pm-addr-row {
-        display:flex; align-items:flex-start; gap:6px;
-        padding:0 16px 10px; font-size:13px; color:#6b7280; line-height:1.4;
+        display:flex; align-items:flex-start; gap:5px;
+        padding:2px 20px 12px; font-size:13px; color:#8e8e93;
+        line-height:1.45; font-weight:400;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-addr-row svg { flex-shrink:0; margin-top:1px; }
+      .wp-pm-addr-row svg { flex-shrink:0; margin-top:2px; }
 
-      /* Stats row — 3 columnas con separadores */
+      /* ── Stats — box con separadores ── */
       .wp-pm-stats-row {
         display:flex; align-items:stretch;
-        margin:0 16px 12px;
-        background:#f8fafc; border-radius:22px;
+        margin:0 20px 16px;
+        background:#f2f2f7; border-radius:16px;
         overflow:hidden;
       }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
         align-items:center; justify-content:center;
-        padding:10px 8px; gap:2px;
+        padding:12px 8px; gap:3px;
       }
       .wp-pm-stat-val {
-        font-size:15px; font-weight:700; color:#111;
+        font-size:18px; font-weight:800; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:-0.02em;
       }
       .wp-pm-stat-lbl {
-        font-size:10px; color:#9ca3af; font-weight:500;
-        text-transform:uppercase; letter-spacing:0.04em;
+        font-size:10px; color:#8e8e93; font-weight:500;
+        text-transform:uppercase; letter-spacing:0.05em;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
-        width:1px; background:#e2e8f0; margin:10px 0;
+        width:0.5px; background:#c6c6c8; margin:10px 0;
       }
 
-      /* Actions row — botones 44px */
+      /* ── Botones acción — frosted glass como topbar chips ── */
       .wp-pm-actions-row {
-        display:flex; gap:8px; padding:0 16px 12px;
+        display:flex; gap:8px; padding:0 20px 16px;
       }
       .wp-pm-action-btn {
         flex:1; height:44px; border-radius:9999px;
-        border:1.5px solid #e2e8f0; background:#fff;
+        border:none;
+        background:rgba(118,118,128,0.12);
         display:flex; align-items:center; justify-content:center; gap:6px;
-        font-size:13px; font-weight:600; color:#374151; cursor:pointer;
+        font-size:14px; font-weight:600; color:#0a0a0a; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.15s;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:-0.01em;
+      }
+      .wp-pm-action-btn:active { transform:scale(0.96); background:rgba(118,118,128,0.2); }
+      .wp-pm-action-btn svg { opacity:0.7; }
+
+      /* ── Divider iOS style ── */
+      .wp-pm-divider {
+        height:0.5px; background:#c6c6c8;
+        margin:4px 20px 16px;
+      }
+
+      /* ── Section title iOS style ── */
+      .wp-pm-section-title {
+        font-size:12px; font-weight:800; color:#0a0a0a;
+        padding:0 20px 8px;
+        letter-spacing:-0.01em;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-action-btn:active { transform:scale(0.96); background:#f8fafc; }
 
-      /* Divider */
-      .wp-pm-divider { height:1px; background:#f1f5f9; margin:4px 16px 12px; }
-
-      /* Section title */
-      .wp-pm-section-title {
-        font-size:14px; font-weight:700; color:#111;
-        padding:0 16px 8px;
-      }
-
-      /* Description */
+      /* ── Description ── */
       .wp-pm-desc-block { padding-bottom:4px; }
       .wp-pm-desc-text {
-        font-size:14px; line-height:1.6; color:#555;
-        padding:0 16px 4px;
+        font-size:15px; line-height:1.6; color:#3a3a3c;
+        padding:0 20px 4px;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        font-weight:400;
       }
       .wp-pm-read-more {
-        border:none; background:none; color:#3b82f6;
-        font-size:14px; font-weight:600; cursor:pointer;
-        padding:0 16px 8px;
+        border:none; background:none; color:#007aff;
+        font-size:15px; font-weight:400; cursor:pointer;
+        padding:0 20px 12px;
         font-family:'Inter Tight',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
       }
 
-      /* Tags — border-radius:9999px, height derivada del padding */
+      /* ── Tags iOS pills ── */
       .wp-pm-tags-row {
-        display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 8px;
+        display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 12px;
       }
       .wp-pm-tag {
-        height:36px; padding:0 14px; border-radius:9999px;
-        background:#f1f5f9; color:#374151;
+        height:32px; padding:0 14px; border-radius:9999px;
+        background:rgba(118,118,128,0.12); color:#3a3a3c;
         font-size:13px; font-weight:500;
         display:flex; align-items:center; gap:4px;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-tag-accent {
-        background:#eff6ff; color:#1d4ed8;
-      }
+      .wp-pm-tag-accent { background:#eff6ff; color:#2563eb; }
 
-      /* Horarios */
-      .wp-pm-hours-block { }
+      /* ── Horarios ── */
       .wp-pm-hours-trigger {
         display:flex; align-items:center; gap:8px;
-        padding:0 16px 8px; cursor:pointer;
+        padding:0 20px 8px; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
       }
       .wp-pm-hours-today {
-        font-size:14px; color:#374151; font-weight:500; flex:1;
+        font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-hours-status {
-        font-size:12px; font-weight:700;
+        font-size:12px; font-weight:600;
         padding:2px 8px; border-radius:9999px;
       }
-      .wp-pm-open   { background:#dcfce7; color:#16a34a; }
-      .wp-pm-closed { background:#fee2e2; color:#dc2626; }
+      .wp-pm-open   { background:#e8fdf0; color:#34c759; }
+      .wp-pm-closed { background:#fff1f0; color:#ff3b30; }
       .wp-pm-chevron { transition:transform 0.25s ease; flex-shrink:0; }
       .wp-pm-hours-list {
         max-height:0; overflow:hidden;
         transition:max-height 0.3s ease;
-        padding:0 16px;
+        padding:0 20px;
       }
       .wp-pm-hours-list.expanded { max-height:300px; }
       .wp-pm-hours-row {
         display:flex; justify-content:space-between;
-        padding:7px 0; font-size:13px; color:#6b7280;
-        border-bottom:1px solid #f9fafb;
+        padding:8px 0; font-size:14px; color:#8e8e93;
+        border-bottom:0.5px solid #e5e5ea;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-hours-row:last-child { border-bottom:none; }
       .wp-pm-hours-day { min-width:90px; }
       .wp-pm-today .wp-pm-hours-day,
-      .wp-pm-today .wp-pm-hours-time { color:#111; font-weight:700; }
+      .wp-pm-today .wp-pm-hours-time { color:#0a0a0a; font-weight:600; }
 
-      /* Reviews */
+      /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
       .wp-pm-reviews-list {
-        display:flex; flex-direction:column; gap:8px;
-        padding:0 16px;
+        display:flex; flex-direction:column; gap:10px;
+        padding:0 20px;
       }
       .wp-pm-review-card {
-        background:#f9fafb; border-radius:22px;
-        padding:12px 14px;
+        background:#f2f2f7;
+        border-radius:22px;
+        padding:14px 16px;
       }
       .wp-pm-review-top {
-        display:flex; align-items:center; gap:8px; margin-bottom:6px;
+        display:flex; align-items:center; gap:10px; margin-bottom:8px;
       }
-      /* avatar: 36px sistema WhatsPlan */
       .wp-pm-review-avatar {
         width:36px; height:36px; border-radius:9999px; flex-shrink:0;
-        background:linear-gradient(135deg,#3b82f6,#8b5cf6);
-        color:#fff; font-size:14px; font-weight:700;
+        background:linear-gradient(135deg,#007aff,#5856d6);
+        color:#fff; font-size:15px; font-weight:600;
         display:flex; align-items:center; justify-content:center;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
-      .wp-pm-review-name { font-size:13px; font-weight:700; color:#111; }
-      .wp-pm-review-time { font-size:10px; color:#9ca3af; }
-      .wp-pm-review-stars { font-size:13px; color:#f59e0b; margin-left:auto; }
+      .wp-pm-review-name {
+        font-size:14px; font-weight:600; color:#0a0a0a;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-review-time {
+        font-size:11px; color:#8e8e93;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
       .wp-pm-review-text {
-        font-size:13px; color:#555; line-height:1.55; margin:0;
+        font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
+        font-family:'Inter Tight',system-ui,sans-serif; font-weight:400;
         display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
       }
 
       /* ── CTA bottom bar — fixed at bottom ── */
+      /* ── CTA flotante sin container ── */
       .wp-pm-bottom {
-        position:absolute; bottom:0; left:0; right:0;
-        padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
-        background:#fff;
-        box-shadow:0 -16px 24px 8px white;
-        z-index:2;
+        position:absolute; bottom:calc(16px + env(safe-area-inset-bottom,0px));
+        left:20px; right:20px;
+        background:transparent;
+        border:none; z-index:2;
+        pointer-events:none;
       }
       .wp-pm-cta {
-        width:100%; height:44px; border-radius:9999px; border:none;
-        background:linear-gradient(135deg,#3b82f6,#1d4ed8);
-        color:#fff; font-size:15px; font-weight:600; cursor:pointer;
+        width:100%; height:52px; border-radius:9999px; border:none;
+        /* Liquid blue glass */
+        background:rgba(0,122,255,0.82);
+        backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
+        -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
+        box-shadow:
+          0 8px 32px rgba(0,122,255,0.45),
+          0 2px 8px rgba(0,122,255,0.3),
+          inset 0 1px 0 rgba(255,255,255,0.35),
+          inset 0 -1px 0 rgba(0,0,0,0.1);
+        color:#fff; font-size:17px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), filter 0.15s;
         font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 4px 20px rgba(37,99,235,0.35);
+        letter-spacing:-0.01em;
+        pointer-events:auto;
+        text-shadow:0 1px 3px rgba(0,0,0,0.15);
       }
-      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.92); }
+      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.9); }
     `;
     document.head.appendChild(s);
   }
