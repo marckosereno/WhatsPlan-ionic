@@ -817,10 +817,10 @@ export class PlaceModal {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0)    15%,
-          rgba(255,255,255,0.7)  30%,
-          rgba(255,255,255,0.92) 50%,
-          rgba(255,255,255,1)    68%);
+          rgba(255,255,255,0.5)  8%,
+          rgba(255,255,255,0.85) 22%,
+          rgba(255,255,255,0.97) 38%,
+          rgba(255,255,255,1)    52%);
         z-index:0;
         pointer-events:none;
       }
