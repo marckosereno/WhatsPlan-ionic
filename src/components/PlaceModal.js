@@ -172,18 +172,20 @@ export class PlaceModal {
                 <span id="wp-pm-open-label"></span>
               </span>
               <button class="wp-pm-tag-chip" id="wp-pm-tag-chip">+ Etiquetar lugar</button>
+              <div class="wp-pm-badges-actions">
+                <button class="wp-pm-save-btn" id="wp-pm-save" title="Guardar">
+                  <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M400,480a16,16,0,0,1-10.63-4L256,357.41,122.63,476A16,16,0,0,1,96,464V96a64.07,64.07,0,0,1,64-64H352a64.07,64.07,0,0,1,64,64V464a16,16,0,0,1-16,16Z"/></svg>
+                </button>
+                <button class="wp-pm-save-btn" id="wp-pm-share-body" title="Compartir">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+                </button>
+              </div>
             </div>
             <div class="wp-pm-title-row">
               <h2 class="wp-pm-name" id="wp-pm-name"></h2>
               <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </span>
-              <button class="wp-pm-save-btn" id="wp-pm-save" title="Guardar">
-                <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M400,480a16,16,0,0,1-10.63-4L256,357.41,122.63,476A16,16,0,0,1,96,464V96a64.07,64.07,0,0,1,64-64H352a64.07,64.07,0,0,1,64,64V464a16,16,0,0,1-16,16Z"/></svg>
-              </button>
-              <button class="wp-pm-save-btn" id="wp-pm-share-body" title="Compartir">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
-              </button>
             </div>
           </div>
 
@@ -400,21 +402,14 @@ export class PlaceModal {
       featured.style.display = '';
       featured.textContent   = labels[place.featured] || place.featured;
       featured.className     = `wp-pm-featured-badge wp-pm-badge-${place.featured}`;
-      // Borde gradiente en el pill de stats
+      // Borde highlight via clase CSS
       if (statsRow) {
-      const borders = {
-          premium : 'linear-gradient(135deg,#a855f7,#ec4899,#f59e0b)',
-          featured: 'linear-gradient(135deg,#f59e0b,#f97316)',
-          verified: 'linear-gradient(135deg,#3b82f6,#06b6d4)',
-        };
-        const grad = borders[place.featured] || borders.featured;
-        statsRow.style.background   = grad;
-        statsRow.style.padding      = '2px';
-        statsRow.style.borderRadius = '999px';
+        statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
+        statsRow.classList.add(`hl-${place.featured}`);
       }
     } else {
       if (featured) featured.style.display = 'none';
-      if (statsRow) { statsRow.style.background = ''; statsRow.style.padding = ''; }
+      if (statsRow) statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
     }
 
     // Open / closed badge — calculado desde horarios reales
@@ -1178,6 +1173,10 @@ export class PlaceModal {
       }
       .wp-pm-badges-top {
         display:flex; align-items:center; gap:6px; min-height:0;
+        justify-content:space-between;
+      }
+      .wp-pm-badges-actions {
+        display:flex; align-items:center; gap:4px; margin-left:auto;
       }
       .wp-pm-title-row {
         display:flex; align-items:center; gap:8px;
@@ -1186,8 +1185,6 @@ export class PlaceModal {
         font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
         font-family:'Inter Tight',system-ui,sans-serif;
         line-height:1.05; letter-spacing:-0.03em;
-        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-        overflow:hidden; text-overflow:ellipsis;
       }
       .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
       .wp-pm-featured-badge {
@@ -1309,7 +1306,7 @@ export class PlaceModal {
         padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
         line-height:1.15; font-weight:400;
         font-family:'Inter Tight',system-ui,sans-serif;
-        max-width:70%;
+        max-width:calc(100% - 40px);
       }
       #wp-pm-addr { display:inline; }
       .wp-pm-addr-copy {
@@ -1331,21 +1328,42 @@ export class PlaceModal {
       }
       .wp-pm-stats-row {
         display:flex; align-items:stretch;
-        background:rgba(255,255,255,0.88);
-        backdrop-filter:blur(16px) saturate(1.8);
-        -webkit-backdrop-filter:blur(16px) saturate(1.8);
-        box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
-        border-radius:999px;
-        height:44px;
+        border-radius:999px; height:44px; position:relative;
         transition:opacity 0.22s ease, transform 0.22s ease;
+        /* glass solo cuando NO hay highlight */
+        background:rgba(255,255,255,0.88);
+        -webkit-backdrop-filter:blur(20px) saturate(1.8);
+        backdrop-filter:blur(20px) saturate(1.8);
+        box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
       }
+      /* highlight: solo borde gradiente, sin glass */
+      .wp-pm-stats-row.hl-featured,
+      .wp-pm-stats-row.hl-premium,
+      .wp-pm-stats-row.hl-verified {
+        background:transparent;
+        -webkit-backdrop-filter:none;
+        backdrop-filter:none;
+        box-shadow:none;
+      }
+      /* borde gradiente via ::before */
+      .wp-pm-stats-row::before {
+        content:''; display:none; pointer-events:none;
+        position:absolute; inset:-2px; border-radius:999px; z-index:-1;
+      }
+      .wp-pm-stats-row.hl-featured::before { display:block; background:linear-gradient(135deg,#f59e0b,#f97316); }
+      .wp-pm-stats-row.hl-premium::before  { display:block; background:linear-gradient(135deg,#a855f7,#ec4899,#f59e0b); }
+      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#3b82f6,#06b6d4); }
       .wp-pm-stats-inner {
         display:flex; align-items:stretch;
-        border-radius:999px; overflow:hidden;
-        background:rgba(255,255,255,0.88);
-        backdrop-filter:blur(16px) saturate(1.8);
-        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        border-radius:999px;
+        /* sin overflow:hidden — mata backdrop-filter en WebView */
         flex:1; height:100%;
+        /* inner blanco para el highlight (actúa como relleno del borde) */
+        background:rgba(255,255,255,0.95);
+      }
+      /* sin highlight: inner transparente para que el glass del row se vea */
+      .wp-pm-stats-row:not(.hl-featured):not(.hl-premium):not(.hl-verified) .wp-pm-stats-inner {
+        background:transparent;
       }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
