@@ -181,7 +181,7 @@ export class PlaceModal {
 
           <!-- Dirección — sin icono, line-height ajustado -->
           <div class="wp-pm-addr-row" id="wp-pm-addr-row" style="display:none">
-            <span id="wp-pm-addr"></span><button class="wp-pm-addr-copy" id="wp-pm-addr-copy" title="Copiar dirección">
+            <span id="wp-pm-addr"></span>&#8202;<button class="wp-pm-addr-copy" id="wp-pm-addr-copy" title="Copiar dirección">
               <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             </button>
           </div>
@@ -315,18 +315,28 @@ export class PlaceModal {
       return;
     }
 
-    // Slides peek carousel
+    // Slides con skeleton + cuadro añadir foto al final
     carousel.innerHTML = this._photos.map((u, i) =>
-      `<div class="wp-pm-slide" data-i="${i}" style="background-image:url(${u})"></div>`
-    ).join('');
+      `<div class="wp-pm-slide wp-pm-slide-skeleton" data-i="${i}">
+         <img class="wp-pm-slide-img" src="${u}" alt="" loading="lazy"
+              onload="this.classList.add('loaded');this.parentElement.classList.remove('wp-pm-slide-skeleton')"
+              onerror="this.parentElement.classList.remove('wp-pm-slide-skeleton')">
+       </div>`
+    ).join('') +
+    `<div class="wp-pm-slide wp-pm-slide-add" id="wp-pm-slide-add" data-add="1">
+       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+       <span>Añadir foto</span>
+     </div>`;
 
     // Foto unica: ampliar y centrar, sin dots
     if (this._photos.length === 1) {
       carousel.classList.add('single-photo');
       dotsEl.style.display = 'none';
-      return;
+      // Aun con foto unica se muestra el add al final
+      carousel.classList.remove('single-photo'); // resetear para que add se vea
+    } else {
+      carousel.classList.remove('single-photo');
     }
-    carousel.classList.remove('single-photo');
 
     // Dots — always rebuild, show for any count
     dotsEl.innerHTML = '';
@@ -679,7 +689,11 @@ export class PlaceModal {
     this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
     this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
 
-    // Copiar dirección
+    // Añadir foto — por ahora placeholder hasta recibir indicaciones
+    this._el.addEventListener('click', (e) => {
+      const addSlide = e.target.closest('#wp-pm-slide-add');
+      if (addSlide) this._onAddPhoto();
+    });
     const copyBtn = this._el.querySelector('#wp-pm-addr-copy');
     if (copyBtn) copyBtn.addEventListener('click', () => {
       const addr = this._el.querySelector('#wp-pm-addr').textContent;
@@ -844,6 +858,12 @@ export class PlaceModal {
     }, { passive: true });
   }
 
+  // Placeholder — lógica completa pendiente de indicaciones
+  _onAddPhoto() {
+    console.log('Añadir foto:', this._place?.name);
+    // TODO: implementar flujo de subida de foto
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────
 
   _isOpenNow(place) {
@@ -955,7 +975,7 @@ export class PlaceModal {
         position:absolute;
         top:calc(env(safe-area-inset-top, 0px) + 68px);
         left:0; right:0;
-        height:290px;
+        height:240px;
         overflow:hidden; background:transparent;
         z-index:1;
         /* padding top separa del topbar, padding bottom separa del panel */
@@ -967,13 +987,45 @@ export class PlaceModal {
         height:100%;
         will-change:transform;
       }
-      /* Slide portrait: simple, sin efectos visuales */
+      /* Slide portrait */
       .wp-pm-slide {
         min-width:44%; height:100%;
         border-radius:22px;
         background:center/cover no-repeat #e2e8f0;
         flex-shrink:0; margin:0 4px;
-        overflow:hidden;
+        overflow:hidden; position:relative;
+      }
+      .wp-pm-slide-img {
+        width:100%; height:100%; object-fit:cover;
+        opacity:0; transition:opacity 0.3s ease;
+        position:absolute; inset:0;
+      }
+      .wp-pm-slide-img.loaded { opacity:1; }
+      @keyframes wp-skeleton-shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position:  200% 0; }
+      }
+      .wp-pm-slide-skeleton {
+        background: linear-gradient(90deg,
+          #e8eaed 25%, #f3f4f6 50%, #e8eaed 75%);
+        background-size: 200% 100%;
+        animation: wp-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      /* Cuadro añadir foto */
+      .wp-pm-slide-add {
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center; gap:8px;
+        background:rgba(0,0,0,0.04);
+        border:1.5px dashed rgba(0,0,0,0.18);
+        color:#8e8e93; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s, border-color 0.15s;
+      }
+      .wp-pm-slide-add:active { background:rgba(0,0,0,0.08); }
+      .wp-pm-slide-add span {
+        font-size:11px; font-weight:600;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:0.02em;
       }
       .wp-pm-slide-placeholder {
         display:flex; align-items:center; justify-content:center;
@@ -1154,13 +1206,13 @@ export class PlaceModal {
 
       /* ── Dirección ── */
       .wp-pm-addr-row {
-        display:flex; align-items:flex-start;
+        display:block;
         padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
         line-height:1.15; font-weight:400;
         font-family:'Inter Tight',system-ui,sans-serif;
         max-width:calc(100% - 54px);
-        gap:6px;
       }
+      #wp-pm-addr { display:inline; }
       .wp-pm-addr-copy {
         flex-shrink:0; border:none; background:transparent;
         color:#8e8e93; cursor:pointer; padding:0; margin-top:1px;
@@ -1357,8 +1409,8 @@ export class PlaceModal {
         backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
         -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
         box-shadow:
-          0 8px 32px rgba(0,122,255,0.45),
-          0 2px 8px rgba(0,122,255,0.3),
+          0 4px 14px rgba(0,122,255,0.22),
+          0 1px 4px rgba(0,122,255,0.14),
           inset 0 1px 0 rgba(255,255,255,0.35),
           inset 0 -1px 0 rgba(0,0,0,0.1);
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
