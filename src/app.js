@@ -320,35 +320,14 @@ function setupActivitySubscription(mv) {
       setTimeout(setDarkIcons, 800);
       // Reforzar cada vez que la app vuelve al frente
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          setDarkIcons();
-          _fixTopbarPosition();
-        }
+        if (document.visibilityState === 'visible') setDarkIcons();
       });
       // Listener nativo de Capacitor
       try {
         window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
-          if (state.isActive) {
-            setDarkIcons();
-            _fixTopbarPosition();
-          }
+          if (state.isActive) setDarkIcons();
         });
       } catch(e) {}
-    }
-
-    // Evita que el topbar "brinque" al volver a la app por recálculo de safe-area
-    function _fixTopbarPosition() {
-      const topbar = document.getElementById('topbar');
-      if (!topbar) return;
-      // Leer el safe-area real en este momento y fijar top explícitamente
-      const safeTop = parseInt(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--sat') || '0'
-      ) || 0;
-      // Quitar cualquier inline top previo para dejar que CSS env() actúe limpio
-      topbar.style.top = '';
-      // Forzar reflow para que el navegador aplique el valor correcto antes de pintar
-      void topbar.offsetHeight;
     }
 
     await waitForMapLibre();
