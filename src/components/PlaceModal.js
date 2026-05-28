@@ -95,8 +95,11 @@ export class PlaceModal {
           </button>
           <!-- Centro: stats (default) / nombre (al scrollear) -->
           <div class="wp-pm-tb-center">
+            <!-- Featured badge encima del pill -->
+            <span class="wp-pm-featured-badge" id="wp-pm-featured" style="display:none"></span>
             <!-- Stats pill en topbar -->
             <div class="wp-pm-stats-row" id="wp-pm-stats-row">
+              <div class="wp-pm-stats-inner">
               <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
                 <span class="wp-pm-stat-val"><span style="color:#f59e0b">★</span> <span id="wp-pm-rating"></span></span>
                 <span class="wp-pm-stat-lbl">Rating</span>
@@ -110,6 +113,7 @@ export class PlaceModal {
               <div class="wp-pm-stat" id="wp-pm-stat-price" style="display:none">
                 <span class="wp-pm-stat-val" id="wp-pm-price"></span>
                 <span class="wp-pm-stat-lbl">Precio</span>
+              </div>
               </div>
             </div>
             <!-- Nombre (aparece al scrollear) -->
@@ -163,7 +167,11 @@ export class PlaceModal {
           <!-- Nombre + badges -->
           <div class="wp-pm-header-row">
             <div class="wp-pm-badges-top">
-              <span class="wp-pm-featured-badge" id="wp-pm-featured" style="display:none"></span>
+              <span class="wp-pm-open-badge" id="wp-pm-open-badge" style="display:none">
+                <span class="wp-pm-open-dot" id="wp-pm-open-dot"></span>
+                <span id="wp-pm-open-label"></span>
+              </span>
+              <button class="wp-pm-tag-chip" id="wp-pm-tag-chip">+ Etiquetar lugar</button>
             </div>
             <div class="wp-pm-title-row">
               <h2 class="wp-pm-name" id="wp-pm-name"></h2>
@@ -382,18 +390,44 @@ export class PlaceModal {
     this._el.querySelector('#wp-pm-name').textContent = _cap(place.name);
 
     const verified = this._el.querySelector('#wp-pm-verified');
-    const featured = this._el.querySelector('#wp-pm-featured');
-    if (place.featured === 'verified' || place.featured === 'premium') {
-      verified.style.display = '';
-    } else {
-      verified.style.display = 'none';
-    }
+    if (verified) verified.style.display = (place.featured === 'verified' || place.featured === 'premium') ? '' : 'none';
+
+    // Featured badge en topbar + borde gradiente en pill
+    const featured  = this._el.querySelector('#wp-pm-featured');
+    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
     if (place.featured) {
+      const labels = { premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado' };
       featured.style.display = '';
-      featured.textContent = place.featured === 'premium' ? '⭐ Premium' : place.featured === 'featured' ? '✦ Destacado' : '✓ Verificado';
-      featured.className = `wp-pm-featured-badge wp-pm-badge-${place.featured}`;
+      featured.textContent   = labels[place.featured] || place.featured;
+      featured.className     = `wp-pm-featured-badge wp-pm-badge-${place.featured}`;
+      // Borde gradiente en el pill de stats
+      if (statsRow) {
+      const borders = {
+          premium : 'linear-gradient(135deg,#a855f7,#ec4899,#f59e0b)',
+          featured: 'linear-gradient(135deg,#f59e0b,#f97316)',
+          verified: 'linear-gradient(135deg,#3b82f6,#06b6d4)',
+        };
+        const grad = borders[place.featured] || borders.featured;
+        statsRow.style.background   = grad;
+        statsRow.style.padding      = '2px';
+        statsRow.style.borderRadius = '999px';
+      }
     } else {
-      featured.style.display = 'none';
+      if (featured) featured.style.display = 'none';
+      if (statsRow) { statsRow.style.background = ''; statsRow.style.padding = ''; }
+    }
+
+    // Open / closed badge
+    const openBadge = this._el.querySelector('#wp-pm-open-badge');
+    const openDot   = this._el.querySelector('#wp-pm-open-dot');
+    const openLabel = this._el.querySelector('#wp-pm-open-label');
+    if (openBadge && place.openNow !== undefined && place.openNow !== null) {
+      openBadge.style.display = '';
+      openBadge.className     = `wp-pm-open-badge ${place.openNow ? 'is-open' : 'is-closed'}`;
+      openDot.className       = `wp-pm-open-dot`;
+      openLabel.textContent   = place.openNow ? 'Abierto' : 'Cerrado';
+    } else if (openBadge) {
+      openBadge.style.display = 'none';
     }
   }
 
@@ -689,6 +723,10 @@ export class PlaceModal {
     this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
     this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
 
+    // Etiquetar lugar — placeholder hasta recibir indicaciones
+    const tagChip = this._el.querySelector('#wp-pm-tag-chip');
+    if (tagChip) tagChip.addEventListener('click', () => this._onTagPlace());
+
     // Añadir foto — por ahora placeholder hasta recibir indicaciones
     this._el.addEventListener('click', (e) => {
       const addSlide = e.target.closest('#wp-pm-slide-add');
@@ -856,6 +894,12 @@ export class PlaceModal {
       if (c) { const m = new DOMMatrix(getComputedStyle(c).transform); curX = m.m41; }
       springTo(snapX(self._currentPhoto), curX, 0);
     }, { passive: true });
+  }
+
+  // Placeholder — lógica completa pendiente de indicaciones
+  _onTagPlace() {
+    console.log('Etiquetar lugar:', this._place?.name);
+    // TODO: implementar flujo de etiquetado
   }
 
   // Placeholder — lógica completa pendiente de indicaciones
@@ -1138,7 +1182,9 @@ export class PlaceModal {
       .wp-pm-name {
         font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
         font-family:'Inter Tight',system-ui,sans-serif;
-        line-height:1.0; letter-spacing:-0.03em;
+        line-height:1.05; letter-spacing:-0.03em;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        overflow:hidden; text-overflow:ellipsis;
       }
       .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
       .wp-pm-featured-badge {
@@ -1149,6 +1195,45 @@ export class PlaceModal {
       .wp-pm-badge-featured { background:#fef9ee; color:#c97800; border:1px solid #fde68a; }
       .wp-pm-badge-verified  { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
       .wp-pm-badge-premium   { background:#fdf4ff; color:#9333ea; border:1px solid #e9d5ff; }
+
+      /* Featured encima del pill — posición absoluta */
+      .wp-pm-tb-center .wp-pm-featured-badge {
+        position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+        z-index:10; white-space:nowrap; pointer-events:none;
+        box-shadow:0 2px 8px rgba(0,0,0,0.10);
+      }
+
+      /* Open / closed */
+      .wp-pm-badges-top {
+        display:flex; align-items:center; gap:6px; min-height:0;
+      }
+      .wp-pm-open-badge {
+        display:inline-flex; align-items:center; gap:5px;
+        font-size:11px; font-weight:600;
+        padding:3px 9px; border-radius:999px;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:0.01em;
+      }
+      .wp-pm-open-badge.is-open  { background:rgba(52,199,89,0.12);  color:#1a7a35; }
+      .wp-pm-open-badge.is-closed{ background:rgba(255,59,48,0.10);  color:#c0392b; }
+      .wp-pm-open-dot {
+        width:6px; height:6px; border-radius:50%; flex-shrink:0;
+      }
+      .is-open  .wp-pm-open-dot { background:#34c759; box-shadow:0 0 5px rgba(52,199,89,0.6); }
+      .is-closed .wp-pm-open-dot{ background:#ff3b30; box-shadow:0 0 5px rgba(255,59,48,0.5); }
+
+      /* Etiquetar chip */
+      .wp-pm-tag-chip {
+        display:inline-flex; align-items:center;
+        font-size:11px; font-weight:600; color:#007aff;
+        background:rgba(0,122,255,0.08); border:1px solid rgba(0,122,255,0.2);
+        padding:3px 9px; border-radius:999px; cursor:pointer;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:0.01em;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s;
+      }
+      .wp-pm-tag-chip:active { background:rgba(0,122,255,0.16); }
       /* Save button */
       .wp-pm-save-btn {
         width:38px; height:38px; border-radius:9999px; flex-shrink:0;
@@ -1210,7 +1295,7 @@ export class PlaceModal {
         padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
         line-height:1.15; font-weight:400;
         font-family:'Inter Tight',system-ui,sans-serif;
-        max-width:calc(100% - 54px);
+        max-width:70%;
       }
       #wp-pm-addr { display:inline; }
       .wp-pm-addr-copy {
@@ -1240,10 +1325,17 @@ export class PlaceModal {
         transition:opacity 0.22s ease, transform 0.22s ease;
         max-width:100%;
       }
+      .wp-pm-stats-inner {
+        display:flex; align-items:stretch; border-radius:999px; overflow:hidden;
+        background:rgba(255,255,255,0.88);
+        backdrop-filter:blur(16px) saturate(1.8);
+        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        flex:1;
+      }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
         align-items:center; justify-content:center;
-        padding:6px 12px; gap:1px;
+        padding:6px 18px; gap:1px;
       }
       .wp-pm-stat-val {
         font-size:14px; font-weight:800; color:#0a0a0a;
