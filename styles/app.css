@@ -321,8 +321,6 @@ ion-app {
   display: flex; align-items: center;
   justify-content: space-between;
   pointer-events: none;
-  will-change: transform;
-  transform: translateZ(0);
 }
 #topbar > * { pointer-events: auto; }
 
