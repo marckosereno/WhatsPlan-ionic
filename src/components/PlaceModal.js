@@ -115,9 +115,32 @@ export class PlaceModal {
             <!-- Nombre (aparece al scrollear) -->
             <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
           </div>
-          <!-- Share -->
-          <button class="wp-pm-tb-btn" id="wp-pm-share">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+          <!-- Tres puntos -->
+          <button class="wp-pm-tb-btn" id="wp-pm-more">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          </button>
+        </div>
+
+        <!-- ── MORE MENU modal ── -->
+        <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
+        <div class="wp-pm-more-menu" id="wp-pm-more-menu" style="display:none">
+          <div class="wp-pm-more-handle"></div>
+          <button class="wp-pm-more-item" id="wp-pm-more-share">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+            <span>Compartir lugar</span>
+          </button>
+          <div class="wp-pm-more-sep"></div>
+          <button class="wp-pm-more-item" id="wp-pm-more-report">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Reportar problema</span>
+          </button>
+          <button class="wp-pm-more-item" id="wp-pm-more-sources">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+            <span>Acerca de las fuentes</span>
+          </button>
+          <button class="wp-pm-more-item" id="wp-pm-more-suggest">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            <span>Sugerir edición</span>
           </button>
         </div>
 
@@ -149,6 +172,9 @@ export class PlaceModal {
               </span>
               <button class="wp-pm-save-btn" id="wp-pm-save" title="Guardar">
                 <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M400,480a16,16,0,0,1-10.63-4L256,357.41,122.63,476A16,16,0,0,1,96,464V96a64.07,64.07,0,0,1,64-64H352a64.07,64.07,0,0,1,64,64V464a16,16,0,0,1-16,16Z"/></svg>
+              </button>
+              <button class="wp-pm-save-btn" id="wp-pm-share-body" title="Compartir">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
               </button>
             </div>
           </div>
@@ -251,7 +277,7 @@ export class PlaceModal {
     this._populateHero(place);
     // Set topbar search label to place name
     const tbName = this._el.querySelector('#wp-pm-tb-name');
-    if (tbName) tbName.textContent = place.name || 'Detalles';
+    if (tbName) tbName.textContent = (place.name || 'Detalles').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
     this._populateHeader(place);
     this._populateAddress(place);
     this._populateStats(place);
@@ -340,7 +366,8 @@ export class PlaceModal {
   }
 
   _populateHeader(place) {
-    this._el.querySelector('#wp-pm-name').textContent = place.name || '';
+    const _cap = s => s ? s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) : '';
+    this._el.querySelector('#wp-pm-name').textContent = _cap(place.name);
 
     const verified = this._el.querySelector('#wp-pm-verified');
     const featured = this._el.querySelector('#wp-pm-featured');
@@ -628,9 +655,34 @@ export class PlaceModal {
   _wireEvents() {
     this._el.querySelector('#wp-pm-backdrop').addEventListener('click', () => this.hide());
     this._el.querySelector('#wp-pm-back').addEventListener('click',    () => this.hide());
-    this._el.querySelector('#wp-pm-share').addEventListener('click', () => {
+
+    // ── More menu ──
+    const moreBtn     = this._el.querySelector('#wp-pm-more');
+    const moreMenu    = this._el.querySelector('#wp-pm-more-menu');
+    const moreOverlay = this._el.querySelector('#wp-pm-more-overlay');
+    const closeMore   = () => {
+      moreMenu.classList.remove('open');
+      setTimeout(() => { moreMenu.style.display = 'none'; moreOverlay.style.display = 'none'; }, 320);
+    };
+    moreBtn.addEventListener('click', () => {
+      moreMenu.style.display = ''; moreOverlay.style.display = '';
+      requestAnimationFrame(() => moreMenu.classList.add('open'));
+    });
+    moreOverlay.addEventListener('click', closeMore);
+    this._el.querySelector('#wp-pm-more-share').addEventListener('click', () => {
+      closeMore();
       if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
     });
+    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
+    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
+    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
+
+    // Share en ficha (junto al save)
+    const shareBody = this._el.querySelector('#wp-pm-share-body');
+    if (shareBody) shareBody.addEventListener('click', () => {
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+
     this._el.querySelector('#wp-pm-cta').addEventListener('click', () => {
       console.log('Planear visita:', this._place);
     });
@@ -1042,6 +1094,49 @@ export class PlaceModal {
       .wp-pm-save-btn:active { transform:scale(0.92); }
       .wp-pm-save-btn.saved { color:#007aff; background:rgba(0,122,255,0.12); }
 
+      /* ── More menu ── */
+      .wp-pm-more-overlay {
+        position:absolute; inset:0; z-index:300;
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(2px);
+        -webkit-backdrop-filter:blur(2px);
+      }
+      .wp-pm-more-menu {
+        position:absolute; left:12px; right:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        z-index:301;
+        background:rgba(255,255,255,0.96);
+        backdrop-filter:blur(24px) saturate(1.8);
+        -webkit-backdrop-filter:blur(24px) saturate(1.8);
+        border-radius:24px;
+        padding:8px 0 4px;
+        box-shadow:0 8px 40px rgba(0,0,0,0.18);
+        transform:translateY(110%);
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+      }
+      .wp-pm-more-menu.open {
+        transform:translateY(0);
+      }
+      .wp-pm-more-handle {
+        width:36px; height:4px; border-radius:2px;
+        background:rgba(0,0,0,0.15); margin:0 auto 8px;
+      }
+      .wp-pm-more-item {
+        width:100%; display:flex; align-items:center; gap:14px;
+        padding:14px 20px; border:none; background:transparent;
+        font-size:15px; font-weight:500; color:#1c1c1e;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        cursor:pointer; text-align:left;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s;
+      }
+      .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
+      .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
+      .wp-pm-more-sep {
+        height:0.5px; background:rgba(0,0,0,0.1);
+        margin:2px 20px;
+      }
+
       /* ── Dirección ── */
       .wp-pm-addr-row {
         display:flex; align-items:flex-start;
@@ -1084,7 +1179,8 @@ export class PlaceModal {
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
-        width:0.5px; background:#c6c6c8; margin:6px 0;
+        width:1px; background:rgba(0,0,0,0.15);
+        align-self:stretch; margin:8px 0; flex-shrink:0;
       }
 
       /* ── Botones acción — frosted glass como topbar chips ── */
