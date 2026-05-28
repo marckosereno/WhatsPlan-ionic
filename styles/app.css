@@ -309,6 +309,10 @@ ion-app {
 }
 
 /* ── Topbar ─────────────────────────────────────────────────────────── */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+}
+
 #topbar {
   position: fixed;
   top: calc(12px + env(safe-area-inset-top, 0px));
@@ -317,6 +321,8 @@ ion-app {
   display: flex; align-items: center;
   justify-content: space-between;
   pointer-events: none;
+  will-change: transform;
+  transform: translateZ(0);
 }
 #topbar > * { pointer-events: auto; }
 
