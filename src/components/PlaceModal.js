@@ -1056,7 +1056,7 @@ export class PlaceModal {
       /* ── Body ── */
       .wp-pm-body {
         position:absolute;
-        top:calc(env(safe-area-inset-top, 0px) + 358px);
+        top:calc(env(safe-area-inset-top, 0px) + 308px);
         left:0; right:0; bottom:0;
         overflow-y:auto; overflow-x:hidden;
         -webkit-overflow-scrolling:touch;
@@ -1071,7 +1071,7 @@ export class PlaceModal {
       /* Sombra fija encima del body — elemento hermano, no ::before */
       .wp-pm-top-fade {
         position:absolute;
-        top:calc(env(safe-area-inset-top, 0px) + 358px);
+        top:calc(env(safe-area-inset-top, 0px) + 308px);
         left:0; right:0;
         height:36px;
         background:linear-gradient(to bottom,
