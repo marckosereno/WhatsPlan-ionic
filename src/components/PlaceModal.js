@@ -417,17 +417,20 @@ export class PlaceModal {
       if (statsRow) { statsRow.style.background = ''; statsRow.style.padding = ''; }
     }
 
-    // Open / closed badge
+    // Open / closed badge — calculado desde horarios reales
     const openBadge = this._el.querySelector('#wp-pm-open-badge');
     const openDot   = this._el.querySelector('#wp-pm-open-dot');
     const openLabel = this._el.querySelector('#wp-pm-open-label');
-    if (openBadge && place.openNow !== undefined && place.openNow !== null) {
-      openBadge.style.display = '';
-      openBadge.className     = `wp-pm-open-badge ${place.openNow ? 'is-open' : 'is-closed'}`;
-      openDot.className       = `wp-pm-open-dot`;
-      openLabel.textContent   = place.openNow ? 'Abierto' : 'Cerrado';
-    } else if (openBadge) {
-      openBadge.style.display = 'none';
+    if (openBadge) {
+      const isOpen = this._isOpenNow(place);
+      if (isOpen !== null) {
+        openBadge.style.display = '';
+        openBadge.className     = `wp-pm-open-badge ${isOpen ? 'is-open' : 'is-closed'}`;
+        if (openDot) openDot.className = 'wp-pm-open-dot';
+        if (openLabel) openLabel.textContent = isOpen ? 'Abierto' : 'Cerrado';
+      } else {
+        openBadge.style.display = 'none';
+      }
     }
   }
 
@@ -1219,8 +1222,19 @@ export class PlaceModal {
       .wp-pm-open-dot {
         width:6px; height:6px; border-radius:50%; flex-shrink:0;
       }
-      .is-open  .wp-pm-open-dot { background:#34c759; box-shadow:0 0 5px rgba(52,199,89,0.6); }
-      .is-closed .wp-pm-open-dot{ background:#ff3b30; box-shadow:0 0 5px rgba(255,59,48,0.5); }
+      @keyframes wp-dot-pulse {
+        0%,100% { transform:scale(1);   opacity:1; }
+        50%      { transform:scale(1.5); opacity:0.6; }
+      }
+      .is-open  .wp-pm-open-dot {
+        background:#34c759;
+        box-shadow:0 0 5px rgba(52,199,89,0.6);
+        animation:wp-dot-pulse 1.8s ease-in-out infinite;
+      }
+      .is-closed .wp-pm-open-dot {
+        background:#ff3b30;
+        box-shadow:0 0 5px rgba(255,59,48,0.5);
+      }
 
       /* Etiquetar chip */
       .wp-pm-tag-chip {
@@ -1321,16 +1335,17 @@ export class PlaceModal {
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
         box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
-        border-radius:999px; overflow:hidden;
+        border-radius:999px;
+        height:44px;
         transition:opacity 0.22s ease, transform 0.22s ease;
-        max-width:100%;
       }
       .wp-pm-stats-inner {
-        display:flex; align-items:stretch; border-radius:999px; overflow:hidden;
+        display:flex; align-items:stretch;
+        border-radius:999px; overflow:hidden;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
-        flex:1;
+        flex:1; height:100%;
       }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
