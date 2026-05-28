@@ -116,8 +116,12 @@ export class PlaceModal {
               </div>
               </div>
             </div>
-            <!-- Nombre (aparece al scrollear) -->
-            <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
+            <!-- Photo pill con parallax (aparece al scrollear) -->
+            <div class="wp-pm-tb-photo-pill" id="wp-pm-tb-photo-pill">
+              <div class="wp-pm-tb-photo-bg" id="wp-pm-tb-photo-bg"></div>
+              <div class="wp-pm-tb-photo-overlay"></div>
+              <span class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</span>
+            </div>
           </div>
           <!-- Tres puntos -->
           <button class="wp-pm-tb-btn" id="wp-pm-more">
@@ -288,6 +292,13 @@ export class PlaceModal {
     // Set topbar search label to place name
     const tbName = this._el.querySelector('#wp-pm-tb-name');
     if (tbName) tbName.textContent = (place.name || 'Detalles').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+    // Foto del lugar en el photo pill del topbar
+    const photoBg = this._el.querySelector('#wp-pm-tb-photo-bg');
+    if (photoBg) {
+      const photoUrl = this._photos?.[0] || (place.photoUrl ? this.proxyPhoto(place.photoUrl) : null);
+      photoBg.style.backgroundImage = photoUrl ? `url(${photoUrl})` : 'none';
+    }
     this._populateHeader(place);
     this._populateAddress(place);
     this._populateStats(place);
@@ -298,12 +309,13 @@ export class PlaceModal {
     this._populateTags(place);
     this._populateHours(place);
     this._populateReviews(place);
-    // scroll body to top + reset topbar nombre/stats
+    // scroll body to top + reset topbar
     const body = this._el.querySelector('#wp-pm-body');
     if (body) body.scrollTop = 0;
-    const statsRow = this._el.querySelector('#wp-pm-stats-row');
-    if (tbName)   { tbName.style.opacity   = '0'; tbName.style.transform   = 'translateY(6px)'; }
-    if (statsRow) { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
+    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
+    const photoPill = this._el.querySelector('#wp-pm-tb-photo-pill');
+    if (statsRow)  { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
+    if (photoPill) photoPill.classList.remove('visible');
   }
 
   _populateHero(place) {
@@ -761,23 +773,35 @@ export class PlaceModal {
       this.classList.toggle('saved');
     });
 
-    // Scroll: stats se desvanecen → nombre aparece en topbar
-    const body      = this._el.querySelector('#wp-pm-body');
-    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
-    const tbName    = this._el.querySelector('#wp-pm-tb-name');
-    let   _scrolled = false;
-    if (body && statsRow && tbName) {
+    // Scroll: stats → photo pill parallax
+    const body       = this._el.querySelector('#wp-pm-body');
+    const statsRow   = this._el.querySelector('#wp-pm-stats-row');
+    const photoPill  = this._el.querySelector('#wp-pm-tb-photo-pill');
+    const photoBg    = this._el.querySelector('#wp-pm-tb-photo-bg');
+    const tbName     = this._el.querySelector('#wp-pm-tb-name');
+    let   _scrolled  = false;
+    if (body && statsRow && photoPill) {
       body.addEventListener('scroll', () => {
-        const nameEl  = body.querySelector('#wp-pm-name');
+        const nameEl    = body.querySelector('#wp-pm-name');
         const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
-        const past    = body.scrollTop > threshold;
+        const past      = body.scrollTop > threshold;
+
+        // Parallax continuo en la foto del pill
+        if (photoBg && past) {
+          const ratio = Math.min((body.scrollTop - threshold) / 120, 1);
+          photoBg.style.transform = `translateY(${ratio * 10}px)`;
+        }
+
         if (past === _scrolled) return;
         _scrolled = past;
+
+        // Stats: fade out
         statsRow.style.opacity       = past ? '0' : '1';
-        statsRow.style.transform     = past ? 'scale(0.9)' : 'scale(1)';
+        statsRow.style.transform     = past ? 'scale(0.88)' : 'scale(1)';
         statsRow.style.pointerEvents = past ? 'none' : '';
-        tbName.style.opacity         = past ? '1' : '0';
-        tbName.style.transform       = past ? 'translateY(0)' : 'translateY(6px)';
+
+        // Photo pill: fade in
+        photoPill.classList.toggle('visible', past);
       }, { passive: true });
     }
   }
@@ -982,20 +1006,40 @@ export class PlaceModal {
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
       }
       .wp-pm-tb-btn:active { transform:scale(0.92); }
-      /* Nombre centrado en topbar — superpuesto, aparece al scrollear */
-      .wp-pm-tb-title {
+      /* Photo pill — contenedor que reemplaza el stats pill al scrollear */
+      .wp-pm-tb-photo-pill {
         position:absolute; inset:0;
         display:flex; align-items:center; justify-content:center;
-        font-size:16px; font-weight:700; color:#111;
+        border-radius:999px; overflow:hidden;
+        box-shadow:0 4px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.2);
+        opacity:0; transform:scale(0.9);
+        transition:opacity 0.28s ease, transform 0.28s cubic-bezier(0.34,1.2,0.64,1);
+        pointer-events:none;
+      }
+      .wp-pm-tb-photo-pill.visible {
+        opacity:1; transform:scale(1); pointer-events:auto;
+      }
+      /* Foto de fondo con blur y parallax vía translateY */
+      .wp-pm-tb-photo-bg {
+        position:absolute; inset:-20px;   /* extra para parallax sin bordes */
+        background-size:cover; background-position:center;
+        filter:blur(10px) saturate(1.4) brightness(0.75);
+        will-change:transform;
+        transition:transform 0s linear;
+      }
+      /* Overlay oscuro semi-transparente */
+      .wp-pm-tb-photo-overlay {
+        position:absolute; inset:0;
+        background:rgba(0,0,0,0.28);
+      }
+      /* Nombre encima */
+      .wp-pm-tb-title {
+        position:relative; z-index:1;
+        font-size:15px; font-weight:700; color:#fff;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        padding:0 8px;
-        -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
-        paint-order: stroke fill;
-        letter-spacing:-0.01em;
-        opacity:0; transform:translateY(6px);
-        transition:opacity 0.22s ease, transform 0.22s ease;
-        pointer-events:none;
+        padding:0 16px; letter-spacing:-0.01em;
+        text-shadow:0 1px 4px rgba(0,0,0,0.3);
       }
 
       /* Fondo blanco difuminado detrás del carousel —
@@ -1331,21 +1375,21 @@ export class PlaceModal {
       }
       .wp-pm-stats-row {
         display:flex; align-items:stretch;
-        background:rgba(255,255,255,0.88);
-        backdrop-filter:blur(16px) saturate(1.8);
-        -webkit-backdrop-filter:blur(16px) saturate(1.8);
-        box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
         border-radius:999px;
         height:44px;
         transition:opacity 0.22s ease, transform 0.22s ease;
+        position:relative; overflow:hidden;
+        /* backdrop en el propio row, no en el inner */
+        background:rgba(255,255,255,0.82);
+        -webkit-backdrop-filter:blur(20px) saturate(1.8);
+        backdrop-filter:blur(20px) saturate(1.8);
+        box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
       }
       .wp-pm-stats-inner {
         display:flex; align-items:stretch;
-        border-radius:999px; overflow:hidden;
-        background:rgba(255,255,255,0.88);
-        backdrop-filter:blur(16px) saturate(1.8);
-        -webkit-backdrop-filter:blur(16px) saturate(1.8);
         flex:1; height:100%;
+        border-radius:999px;
+        /* sin overflow:hidden para no matar backdrop-filter */
       }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
