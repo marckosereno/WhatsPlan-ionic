@@ -314,8 +314,10 @@ export class PlaceModal {
     if (body) body.scrollTop = 0;
     const statsRow  = this._el.querySelector('#wp-pm-stats-row');
     const photoPill = this._el.querySelector('#wp-pm-tb-photo-pill');
+    const heroEl    = this._el.querySelector('#wp-pm-hero');
     if (statsRow)  { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
     if (photoPill) photoPill.classList.remove('visible');
+    if (heroEl)    { heroEl.style.transform = ''; heroEl.style.opacity = '1'; }
   }
 
   _populateHero(place) {
@@ -426,7 +428,7 @@ export class PlaceModal {
       }
     } else {
       if (featured) featured.style.display = 'none';
-      if (statsRow) { statsRow.style.background = ''; statsRow.style.padding = ''; }
+      if (statsRow) statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
     }
 
     // Open / closed badge — calculado desde horarios reales
@@ -773,35 +775,34 @@ export class PlaceModal {
       this.classList.toggle('saved');
     });
 
-    // Scroll: stats → photo pill parallax
+    // Scroll: parallax hero + stats → photo pill
     const body       = this._el.querySelector('#wp-pm-body');
     const statsRow   = this._el.querySelector('#wp-pm-stats-row');
     const photoPill  = this._el.querySelector('#wp-pm-tb-photo-pill');
-    const photoBg    = this._el.querySelector('#wp-pm-tb-photo-bg');
-    const tbName     = this._el.querySelector('#wp-pm-tb-name');
+    const hero       = this._el.querySelector('#wp-pm-hero');
     let   _scrolled  = false;
-    if (body && statsRow && photoPill) {
+    if (body && statsRow) {
       body.addEventListener('scroll', () => {
-        const nameEl    = body.querySelector('#wp-pm-name');
-        const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
-        const past      = body.scrollTop > threshold;
+        const sy = body.scrollTop;
 
-        // Parallax continuo en la foto del pill
-        if (photoBg && past) {
-          const ratio = Math.min((body.scrollTop - threshold) / 120, 1);
-          photoBg.style.transform = `translateY(${ratio * 10}px)`;
+        // ── Parallax hero: sube a 0.45x y se desvanece ──
+        if (hero) {
+          hero.style.transform = `translateY(${-sy * 0.45}px)`;
+          const fade = Math.max(0, 1 - sy / 140);
+          hero.style.opacity = fade;
         }
 
-        if (past === _scrolled) return;
-        _scrolled = past;
-
-        // Stats: fade out
-        statsRow.style.opacity       = past ? '0' : '1';
-        statsRow.style.transform     = past ? 'scale(0.88)' : 'scale(1)';
-        statsRow.style.pointerEvents = past ? 'none' : '';
-
-        // Photo pill: fade in
-        photoPill.classList.toggle('visible', past);
+        // ── Stats → photo pill threshold ──
+        const nameEl    = body.querySelector('#wp-pm-name');
+        const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
+        const past      = sy > threshold;
+        if (past !== _scrolled) {
+          _scrolled = past;
+          statsRow.style.opacity       = past ? '0' : '1';
+          statsRow.style.transform     = past ? 'scale(0.88)' : 'scale(1)';
+          statsRow.style.pointerEvents = past ? 'none' : '';
+          if (photoPill) photoPill.classList.toggle('visible', past);
+        }
       }, { passive: true });
     }
   }
@@ -1069,8 +1070,9 @@ export class PlaceModal {
         height:240px;
         overflow:hidden; background:transparent;
         z-index:1;
-        /* padding top separa del topbar, padding bottom separa del panel */
         padding:14px 0 18px;
+        will-change:transform, opacity;
+        transform-origin:top center;
       }
       /* Carousel track */
       .wp-pm-carousel {
@@ -1378,12 +1380,28 @@ export class PlaceModal {
         border-radius:999px;
         height:44px;
         transition:opacity 0.22s ease, transform 0.22s ease;
-        position:relative; overflow:hidden;
-        /* backdrop en el propio row, no en el inner */
+        position:relative;
         background:rgba(255,255,255,0.82);
         -webkit-backdrop-filter:blur(20px) saturate(1.8);
         backdrop-filter:blur(20px) saturate(1.8);
         box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
+      }
+      /* Borde gradiente highlight — pseudo sobre el pill, sin afectar el fondo */
+      .wp-pm-stats-row::before {
+        content:''; display:none;
+        position:absolute; inset:-2px; border-radius:999px; z-index:-1;
+      }
+      .wp-pm-stats-row.hl-featured::before {
+        display:block;
+        background:linear-gradient(135deg,#f59e0b,#f97316);
+      }
+      .wp-pm-stats-row.hl-premium::before {
+        display:block;
+        background:linear-gradient(135deg,#a855f7,#ec4899,#f59e0b);
+      }
+      .wp-pm-stats-row.hl-verified::before {
+        display:block;
+        background:linear-gradient(135deg,#3b82f6,#06b6d4);
       }
       .wp-pm-stats-inner {
         display:flex; align-items:stretch;
