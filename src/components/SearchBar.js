@@ -171,14 +171,8 @@ export class SearchBar {
     var targetW   = avRect ? (window.innerWidth - avRect.left - chipRight) : (window.innerWidth - 24);
     this._targetW = targetW;
     if (chip && chipRect) {
-      // Usar el top del #topbar como referencia en vez de chipRect.top,
-      // que puede estar desfasado si safe-area-inset-top aún no se estabilizó
-      var topbarEl = document.getElementById('topbar');
-      var chipTop  = topbarEl
-        ? topbarEl.getBoundingClientRect().top + (topbarEl.getBoundingClientRect().height - 44) / 2
-        : chipRect.top;
       chip.style.position    = 'fixed';
-      chip.style.top         = chipTop + 'px';
+      chip.style.top         = chipRect.top + 'px';
       chip.style.right       = chipRight + 'px';
       chip.style.left        = 'auto';
       chip.style.width       = chipInitW + 'px';
