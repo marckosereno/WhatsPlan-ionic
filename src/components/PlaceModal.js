@@ -93,8 +93,28 @@ export class PlaceModal {
           <button class="wp-pm-tb-btn" id="wp-pm-back">
             <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
           </button>
-          <!-- Nombre del lugar centrado -->
-          <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
+          <!-- Centro: stats (default) / nombre (al scrollear) -->
+          <div class="wp-pm-tb-center">
+            <!-- Stats pill en topbar -->
+            <div class="wp-pm-stats-row" id="wp-pm-stats-row">
+              <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
+                <span class="wp-pm-stat-val"><span style="color:#f59e0b">★</span> <span id="wp-pm-rating"></span></span>
+                <span class="wp-pm-stat-lbl">Rating</span>
+              </div>
+              <div class="wp-pm-stat-sep" id="wp-pm-sep1" style="display:none"></div>
+              <div class="wp-pm-stat" id="wp-pm-stat-reviews" style="display:none">
+                <span class="wp-pm-stat-val" id="wp-pm-reviews-count"></span>
+                <span class="wp-pm-stat-lbl">Reseñas</span>
+              </div>
+              <div class="wp-pm-stat-sep" id="wp-pm-sep2" style="display:none"></div>
+              <div class="wp-pm-stat" id="wp-pm-stat-price" style="display:none">
+                <span class="wp-pm-stat-val" id="wp-pm-price"></span>
+                <span class="wp-pm-stat-lbl">Precio</span>
+              </div>
+            </div>
+            <!-- Nombre (aparece al scrollear) -->
+            <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
+          </div>
           <!-- Share -->
           <button class="wp-pm-tb-btn" id="wp-pm-share">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
@@ -116,24 +136,6 @@ export class PlaceModal {
         <!-- ── BODY SCROLLABLE ── -->
         <div class="wp-pm-body" id="wp-pm-body">
           <div class="wp-pm-handle"></div>
-
-          <!-- Stats: rating · reseñas · precio — arriba del nombre -->
-          <div class="wp-pm-stats-row" id="wp-pm-stats-row">
-            <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
-              <span class="wp-pm-stat-val"><span style="color:#f59e0b">★</span> <span id="wp-pm-rating"></span></span>
-              <span class="wp-pm-stat-lbl">Rating</span>
-            </div>
-            <div class="wp-pm-stat-sep" id="wp-pm-sep1" style="display:none"></div>
-            <div class="wp-pm-stat" id="wp-pm-stat-reviews" style="display:none">
-              <span class="wp-pm-stat-val" id="wp-pm-reviews-count"></span>
-              <span class="wp-pm-stat-lbl">Reseñas</span>
-            </div>
-            <div class="wp-pm-stat-sep" id="wp-pm-sep2" style="display:none"></div>
-            <div class="wp-pm-stat" id="wp-pm-stat-price" style="display:none">
-              <span class="wp-pm-stat-val" id="wp-pm-price"></span>
-              <span class="wp-pm-stat-lbl">Precio</span>
-            </div>
-          </div>
 
           <!-- Nombre + badges -->
           <div class="wp-pm-header-row">
@@ -637,30 +639,24 @@ export class PlaceModal {
       this.classList.toggle('saved');
     });
 
-    // Scroll: ocultar stats → mostrar nombre en topbar
+    // Scroll: stats se desvanecen → nombre aparece en topbar
     const body      = this._el.querySelector('#wp-pm-body');
     const statsRow  = this._el.querySelector('#wp-pm-stats-row');
     const tbName    = this._el.querySelector('#wp-pm-tb-name');
     let   _scrolled = false;
     if (body && statsRow && tbName) {
       body.addEventListener('scroll', () => {
-        const threshold = statsRow.offsetHeight + 10;
-        const past      = body.scrollTop > threshold;
+        const nameEl  = body.querySelector('#wp-pm-name');
+        const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
+        const past    = body.scrollTop > threshold;
         if (past === _scrolled) return;
         _scrolled = past;
-        // Stats: fade out/in
-        statsRow.style.transition  = 'opacity 0.22s ease, transform 0.22s ease';
-        statsRow.style.opacity     = past ? '0' : '1';
-        statsRow.style.transform   = past ? 'translateY(-6px) scale(0.97)' : 'translateY(0) scale(1)';
+        statsRow.style.opacity       = past ? '0' : '1';
+        statsRow.style.transform     = past ? 'scale(0.9)' : 'scale(1)';
         statsRow.style.pointerEvents = past ? 'none' : '';
-        // Topbar nombre: fade in/out
-        tbName.style.transition    = 'opacity 0.22s ease, transform 0.22s ease';
-        tbName.style.opacity       = past ? '1' : '0';
-        tbName.style.transform     = past ? 'translateY(0)' : 'translateY(6px)';
+        tbName.style.opacity         = past ? '1' : '0';
+        tbName.style.transform       = past ? 'translateY(0)' : 'translateY(6px)';
       }, { passive: true });
-      // Estado inicial: nombre oculto en topbar
-      tbName.style.opacity   = '0';
-      tbName.style.transform = 'translateY(6px)';
     }
   }
 
@@ -852,15 +848,20 @@ export class PlaceModal {
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
       }
       .wp-pm-tb-btn:active { transform:scale(0.92); }
-      /* Nombre centrado en topbar — outline blanco */
+      /* Nombre centrado en topbar — superpuesto, aparece al scrollear */
       .wp-pm-tb-title {
-        flex:1; text-align:center;
+        position:absolute; inset:0;
+        display:flex; align-items:center; justify-content:center;
         font-size:16px; font-weight:700; color:#111;
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        padding:0 8px;
         -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
         paint-order: stroke fill;
         letter-spacing:-0.01em;
+        opacity:0; transform:translateY(6px);
+        transition:opacity 0.22s ease, transform 0.22s ease;
+        pointer-events:none;
       }
 
       /* Fondo blanco difuminado detrás del carousel —
@@ -1051,26 +1052,35 @@ export class PlaceModal {
         max-width:calc(100% - 54px);
       }
 
-      /* ── Stats — pills tipo topbar, arriba del nombre ── */
+      /* ── Stats — pill compacto en topbar ── */
+      .wp-pm-tb-center {
+        flex:1; position:relative;
+        display:flex; align-items:center; justify-content:center;
+        height:44px;
+      }
       .wp-pm-stats-row {
         display:flex; align-items:stretch;
-        margin:20px 20px 14px;
-        background:#f2f2f7; border-radius:999px;
-        overflow:hidden;
+        background:rgba(255,255,255,0.88);
+        backdrop-filter:blur(16px) saturate(1.8);
+        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        box-shadow:0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
+        border-radius:999px; overflow:hidden;
+        transition:opacity 0.22s ease, transform 0.22s ease;
+        max-width:100%;
       }
       .wp-pm-stat {
         flex:1; display:flex; flex-direction:column;
         align-items:center; justify-content:center;
-        padding:12px 8px; gap:3px;
+        padding:6px 12px; gap:1px;
       }
       .wp-pm-stat-val {
-        font-size:18px; font-weight:800; color:#0a0a0a;
+        font-size:14px; font-weight:800; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
         font-family:'Inter Tight',system-ui,sans-serif;
         letter-spacing:-0.02em;
       }
       .wp-pm-stat-lbl {
-        font-size:10px; color:#8e8e93; font-weight:500;
+        font-size:9px; color:#8e8e93; font-weight:500;
         text-transform:uppercase; letter-spacing:0.05em;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
