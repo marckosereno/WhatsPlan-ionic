@@ -965,11 +965,10 @@ export class PlaceModal {
       /* ── AI Description block ── */
       .wp-pm-ai-block {
         margin:0 20px 16px;
-        padding:14px 16px 16px;
-        background:linear-gradient(135deg,#eff6ff 0%,#f5f3ff 100%);
-        border-radius:20px;
-        border:1px solid rgba(59,130,246,0.12);
-        display:flex; flex-direction:column; gap:10px;
+        padding:0;
+        background:transparent;
+        border:none;
+        display:flex; flex-direction:column; gap:8px;
       }
       .wp-pm-ai-header {
         display:flex; align-items:center; gap:8px;
@@ -1000,16 +999,16 @@ export class PlaceModal {
         to   { opacity:1; transform:translateY(0); }
       }
       .wp-pm-ai-text {
-        font-size:14px; line-height:1.65; color:#1e3a5f;
+        font-size:14px; line-height:1.6; color:#3a3a3c;
         font-family:'Inter Tight',system-ui,sans-serif;
-        font-weight:400; font-style:italic;
+        font-weight:400; font-style:normal;
         animation: wp-ai-fadein 0.4s ease both;
       }
 
       /* ── Nombre + badges ── */
       .wp-pm-header-row {
-        display:flex; flex-direction:column; gap:4px;
-        padding:0 20px 4px;
+        display:flex; flex-direction:column; gap:2px;
+        padding:0 20px 2px;
       }
       .wp-pm-badges-top {
         display:flex; align-items:center; gap:6px; min-height:0;
@@ -1020,7 +1019,7 @@ export class PlaceModal {
       .wp-pm-name {
         font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
         font-family:'Inter Tight',system-ui,sans-serif;
-        line-height:1.1; letter-spacing:-0.03em;
+        line-height:1.0; letter-spacing:-0.03em;
       }
       .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
       .wp-pm-featured-badge {
@@ -1046,8 +1045,8 @@ export class PlaceModal {
       /* ── Dirección ── */
       .wp-pm-addr-row {
         display:flex; align-items:flex-start;
-        padding:1px 20px 10px; font-size:12.5px; color:#8e8e93;
-        line-height:1.2; font-weight:400;
+        padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
+        line-height:1.15; font-weight:400;
         font-family:'Inter Tight',system-ui,sans-serif;
         max-width:calc(100% - 54px);
       }
@@ -1085,7 +1084,7 @@ export class PlaceModal {
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
-        width:0.5px; background:#c6c6c8; margin:10px 0;
+        width:0.5px; background:#c6c6c8; margin:6px 0;
       }
 
       /* ── Botones acción — frosted glass como topbar chips ── */
