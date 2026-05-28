@@ -264,9 +264,8 @@ export class PlaceModal {
     const body = this._el.querySelector('#wp-pm-body');
     if (body) body.scrollTop = 0;
     const statsRow = this._el.querySelector('#wp-pm-stats-row');
-    const tbName   = this._el.querySelector('#wp-pm-tb-name');
-    if (statsRow) { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
     if (tbName)   { tbName.style.opacity   = '0'; tbName.style.transform   = 'translateY(6px)'; }
+    if (statsRow) { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
   }
 
   _populateHero(place) {
