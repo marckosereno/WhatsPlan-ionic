@@ -1,23 +1,34 @@
 // ====================================================================
 // WHATSPLAN — PlaceTagPicker.js
-// Full-screen blur + pills dashed/filled — selección múltiple
+// Singleton — un solo DOM, un solo set de listeners, estado siempre fresco
 // ====================================================================
 
 import { PLACE_TAGS } from '/src/services/PlaceTagService.js';
 
+// ── Singleton instance ────────────────────────────────────────────────
+let _instance = null;
+
 export class PlaceTagPicker {
   constructor({ onConfirm, onCancel } = {}) {
+    if (_instance) {
+      // Reusar singleton — solo actualizar callbacks
+      _instance.onConfirm = onConfirm || (() => {});
+      _instance.onCancel  = onCancel  || (() => {});
+      return _instance;
+    }
     this.onConfirm   = onConfirm || (() => {});
     this.onCancel    = onCancel  || (() => {});
     this._el         = null;
-    this._userTags   = [];   // ya guardadas en Supabase
-    this._session    = [];   // seleccionadas en esta sesión
+    this._userTags   = [];
+    this._session    = [];
     this._remaining  = 3;
     this._build();
+    _instance = this;
   }
 
   // ── API ──────────────────────────────────────────────────────────
   show(userTags = [], remaining = 3) {
+    // Actualizar estado ANTES de renderizar
     this._userTags  = [...userTags];
     this._session   = [];
     this._remaining = remaining;
@@ -28,51 +39,60 @@ export class PlaceTagPicker {
 
   hide() {
     this._el.classList.remove('wpt-in');
-    setTimeout(() => { this._el.style.display = 'none'; }, 300);
+    setTimeout(() => {
+      this._el.style.display = 'none';
+      // Limpiar sesión al cerrar
+      this._session  = [];
+      this._userTags = [];
+    }, 300);
   }
 
-  // ── Build ────────────────────────────────────────────────────────
+  // ── Build — solo se llama UNA vez en toda la vida del app ────────
   _build() {
-    // Si ya existe, reusar el DOM pero reconectar eventos con los callbacks frescos
-    const existing = document.getElementById('wpt-root');
-    if (existing) {
-      this._el = existing;
-      this._rewireEvents();
-      return;
-    }
+    // Eliminar cualquier instancia previa del DOM (por hot-reload)
+    const old = document.getElementById('wpt-root');
+    if (old) old.remove();
+
     const el = document.createElement('div');
     el.id = 'wpt-root';
     el.innerHTML = `
       <button class="wpt-close" id="wpt-close">✕</button>
       <div class="wpt-title">¿Cómo describirías<br>este lugar?</div>
       <div class="wpt-slots" id="wpt-slots"></div>
-      <div class="wpt-list" id="wpt-list"></div>
-      <button class="wpt-confirm" id="wpt-confirm" style="display:none">
-        Guardar etiquetas
-      </button>
+      <div class="wpt-list"  id="wpt-list"></div>
+      <button class="wpt-confirm" id="wpt-confirm" style="display:none">Guardar</button>
       <style>${this._css()}</style>
     `;
     document.body.appendChild(el);
     this._el = el;
-    this._wireEvents();
+
+    // ── Listeners — uno solo, siempre lee this en tiempo de ejecución ──
+    el.querySelector('#wpt-close').addEventListener('click', () => {
+      this.hide();
+      this.onCancel();
+    });
+
+    el.querySelector('#wpt-confirm').addEventListener('click', () => {
+      if (!this._session.length) return;
+      const payload = this._session.map(key => ({
+        tag: PLACE_TAGS.find(t => t.key === key),
+        action: 'add'
+      }));
+      this.hide();
+      this.onConfirm(payload);
+    });
+
+    // Delegación en el root — un solo listener para todos los pills
+    el.addEventListener('click', e => {
+      // Tap fuera (en el root directamente) → cerrar
+      if (e.target === el) { this.hide(); this.onCancel(); return; }
+      const pill = e.target.closest('.wpt-pill');
+      if (!pill) return;
+      this._toggle(pill.dataset.key);
+    });
   }
 
-  // Reconectar eventos cuando se reutiliza el DOM con callbacks frescos
-  _rewireEvents() {
-    // Clonar nodos para eliminar todos los listeners anteriores
-    const oldClose   = this._el.querySelector('#wpt-close');
-    const oldConfirm = this._el.querySelector('#wpt-confirm');
-    const newClose   = oldClose.cloneNode(true);
-    const newConfirm = oldConfirm.cloneNode(true);
-    oldClose.replaceWith(newClose);
-    oldConfirm.replaceWith(newConfirm);
-    // Clonar la lista para limpiar listeners de pills
-    const oldList = this._el.querySelector('#wpt-list');
-    const newList = oldList.cloneNode(true);
-    oldList.replaceWith(newList);
-    this._wireEvents();
-  }
-
+  // ── Render — reconstruye el contenido con estado actual ──────────
   _render() {
     const list  = this._el.querySelector('#wpt-list');
     const slots = this._el.querySelector('#wpt-slots');
@@ -84,6 +104,7 @@ export class PlaceTagPicker {
       : '⚠ Sin etiquetas disponibles';
     slots.className = 'wpt-slots ' + (rem > 0 ? 'wpt-s-ok' : 'wpt-s-no');
 
+    // Reconstruir pills con estado actual
     list.innerHTML = PLACE_TAGS.map(tag => {
       const already  = this._userTags.includes(tag.key);
       const selected = this._session.includes(tag.key);
@@ -91,67 +112,48 @@ export class PlaceTagPicker {
       return `<div class="wpt-pill${active ? ' wpt-active' : ''}" data-key="${tag.key}">
         <span class="wpt-em">${tag.emoji}</span>
         <span class="wpt-lbl">${tag.label}</span>
-        <button class="wpt-pill-btn${active ? ' wpt-pill-btn-active' : ''}">
+        <button class="wpt-pill-btn${active ? ' wpt-pill-btn-active' : ''}" tabindex="-1">
           ${active ? '−' : '+'}
         </button>
       </div>`;
     }).join('');
 
-    btn.style.display = this._session.length > 0 ? '' : 'none';
     const n = this._session.length;
-    btn.textContent = `Guardar ${n} etiqueta${n!==1?'s':''}`;
+    btn.style.display = n > 0 ? '' : 'none';
+    btn.textContent   = `Guardar ${n} etiqueta${n!==1?'s':''}`;
   }
 
+  // ── Toggle — modifica _session y re-renderiza ────────────────────
   _toggle(key) {
     const already = this._userTags.includes(key);
+
     if (already) {
-      // Quitar — pasar directo al confirm handler
+      // Ya etiquetado → quitar directamente (no requiere "Guardar")
       this.hide();
       const tag = PLACE_TAGS.find(t => t.key === key);
-      this.onConfirm([{ tag, action:'remove' }]);
+      this.onConfirm([{ tag, action: 'remove' }]);
       return;
     }
+
     const idx = this._session.indexOf(key);
     if (idx > -1) {
       this._session.splice(idx, 1);
     } else {
       if (this._session.length >= this._remaining) {
-        this._showLimitToast(); return;
+        this._showToast(`Máximo ${this._remaining} etiquetas por lugar`);
+        return;
       }
       this._session.push(key);
     }
     this._render();
   }
 
-  _showLimitToast() {
+  _showToast(msg) {
     const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-family:"Inter Tight",sans-serif;z-index:99999;white-space:nowrap;pointer-events:none;';
-    t.textContent = `Máximo ${this._remaining} etiquetas`;
+    t.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-family:"Inter Tight",sans-serif;z-index:99999;white-space:nowrap;pointer-events:none;';
+    t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 2000);
-  }
-
-  _wireEvents() {
-    this._el.querySelector('#wpt-close').addEventListener('click', () => {
-      this.hide(); this.onCancel();
-    });
-    this._el.querySelector('#wpt-confirm').addEventListener('click', () => {
-      if (!this._session.length) return;
-      const payload = this._session.map(key => ({
-        tag: PLACE_TAGS.find(t => t.key === key),
-        action: 'add'
-      }));
-      this.hide();
-      this.onConfirm(payload);
-    });
-    this._el.addEventListener('click', e => {
-      const pill = e.target.closest('.wpt-pill');
-      if (pill) this._toggle(pill.dataset.key);
-    });
-    // Tap fuera (en el blur) → cerrar
-    this._el.addEventListener('click', e => {
-      if (e.target === this._el) { this.hide(); this.onCancel(); }
-    });
+    setTimeout(() => t.remove(), 2200);
   }
 
   // ── CSS ──────────────────────────────────────────────────────────
@@ -159,44 +161,40 @@ export class PlaceTagPicker {
     #wpt-root {
       display:none; position:fixed; inset:0; z-index:99997;
       flex-direction:column; align-items:center;
-      padding:calc(24px + env(safe-area-inset-top,0px)) 24px
-              calc(32px + env(safe-area-inset-bottom,0px));
+      padding:calc(20px + env(safe-area-inset-top,0px)) 24px
+              calc(28px + env(safe-area-inset-bottom,0px));
       -webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
       backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
       background:rgba(255,255,255,0.12);
-      opacity:0; transition:opacity 0.28s ease;
+      opacity:0; transition:opacity 0.26s ease;
       overflow-y:auto;
     }
     #wpt-root.wpt-in { opacity:1; }
 
-    /* Cerrar */
     .wpt-close {
-      align-self:flex-end; margin-bottom:8px;
+      align-self:flex-end; margin-bottom:6px;
       width:34px; height:34px; border-radius:50%; border:none;
-      background:rgba(0,0,0,0.12); color:#1c1c1e;
+      background:rgba(0,0,0,0.10); color:#1c1c1e;
       font-size:15px; cursor:pointer; flex-shrink:0;
       display:flex; align-items:center; justify-content:center;
       -webkit-tap-highlight-color:transparent;
-      transition:background 0.15s;
     }
-    .wpt-close:active { background:rgba(0,0,0,0.22); }
+    .wpt-close:active { background:rgba(0,0,0,0.20); }
 
-    /* Título */
     .wpt-title {
-      font-size:28px; font-weight:800; color:#0a0a0a;
+      font-size:27px; font-weight:800; color:#0a0a0a;
       font-family:'Inter Tight',system-ui,sans-serif;
       text-align:center; line-height:1.2; letter-spacing:-0.03em;
-      margin-bottom:12px;
+      margin-bottom:10px;
       text-shadow:0 1px 8px rgba(255,255,255,0.5);
     }
 
-    /* Slots badge */
     .wpt-slots {
       display:flex; align-items:center; gap:6px;
       padding:5px 14px; border-radius:999px;
       font-size:12px; font-weight:700;
       font-family:'Inter Tight',system-ui,sans-serif;
-      margin-bottom:20px;
+      margin-bottom:18px; flex-shrink:0;
     }
     .wpt-s-ok { background:rgba(52,199,89,0.18); color:#15803d; }
     .wpt-s-no { background:rgba(255,59,48,0.15);  color:#c0392b; }
@@ -205,29 +203,14 @@ export class PlaceTagPicker {
       box-shadow:0 0 6px rgba(52,199,89,0.8); flex-shrink:0;
     }
 
-    /* Lista de pills — ancho natural, wrap, rotaciones */
     .wpt-list {
       display:flex; flex-direction:column; align-items:flex-start;
-      gap:10px; width:100%; max-width:400px;
-      padding:0 8px;
+      gap:10px; width:100%; max-width:400px; padding:0 8px;
     }
-    /* Alternar alineación para efecto escalonado */
+
     .wpt-pill:nth-child(odd)  { align-self:flex-start; }
     .wpt-pill:nth-child(even) { align-self:center; }
     .wpt-pill:nth-child(3n)   { align-self:flex-end; }
-
-    /* Pill — ancho natural */
-    .wpt-pill {
-      display:inline-flex; align-items:center; gap:10px;
-      padding:10px 16px 10px 14px;
-      border-radius:999px;
-      border:2px dashed rgba(0,0,0,0.22);
-      background:rgba(255,255,255,0.22);
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-      transition:background 0.18s, border 0.18s, box-shadow 0.18s;
-    }
-    /* Rotaciones leves por posición */
     .wpt-pill:nth-child(1)  { transform:rotate(-1.8deg); }
     .wpt-pill:nth-child(2)  { transform:rotate( 1.2deg); }
     .wpt-pill:nth-child(3)  { transform:rotate(-0.8deg); }
@@ -251,41 +234,42 @@ export class PlaceTagPicker {
     .wpt-pill:nth-child(21) { transform:rotate(-1.8deg); }
     .wpt-pill:nth-child(22) { transform:rotate( 0.8deg); }
     .wpt-pill:nth-child(23) { transform:rotate(-2.3deg); }
-    /* Active: sin rotación + resalto */
-    .wpt-pill.wpt-active {
-      transform:rotate(0deg) scale(1.04) !important;
-      background:rgba(255,255,255,0.88);
-      border:2px solid transparent;
-      box-shadow:0 6px 24px rgba(0,0,0,0.12);
+
+    .wpt-pill {
+      display:inline-flex; align-items:center; gap:10px;
+      padding:10px 16px 10px 14px; border-radius:999px;
+      border:2px dashed rgba(0,0,0,0.22);
+      background:rgba(255,255,255,0.22);
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      transition:background 0.16s, border 0.16s, box-shadow 0.16s;
     }
     .wpt-pill:not(.wpt-active):active {
       transform:rotate(0deg) scale(0.96) !important;
     }
-    .wpt-em { font-size:26px; flex-shrink:0; }
+    .wpt-pill.wpt-active {
+      transform:rotate(0deg) scale(1.03) !important;
+      background:rgba(255,255,255,0.88);
+      border:2px solid transparent;
+      box-shadow:0 6px 20px rgba(0,0,0,0.10);
+    }
+    .wpt-em  { font-size:24px; flex-shrink:0; }
     .wpt-lbl {
-      flex:1; font-size:20px; font-weight:700; color:#0a0a0a;
+      font-size:19px; font-weight:700; color:#0a0a0a;
       font-family:'Inter Tight',system-ui,sans-serif;
       letter-spacing:-0.02em;
     }
-    .wpt-pill.wpt-active .wpt-lbl { color:#0a0a0a; }
-
-    /* Botón +/− */
     .wpt-pill-btn {
-      width:30px; height:30px; border-radius:50%; border:none; flex-shrink:0;
-      background:rgba(0,0,0,0.15); color:#fff;
+      width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
+      background:rgba(0,0,0,0.13); color:#fff;
       font-size:18px; font-weight:300; cursor:pointer;
       display:flex; align-items:center; justify-content:center;
-      -webkit-tap-highlight-color:transparent;
-      transition:background 0.15s;
-      line-height:1;
+      pointer-events:none; line-height:1;
     }
-    .wpt-pill-btn-active {
-      background:#007aff;
-    }
+    .wpt-pill-btn-active { background:#007aff; }
 
-    /* Confirmar */
     .wpt-confirm {
-      margin-top:20px; width:100%; max-width:380px;
+      margin-top:18px; width:100%; max-width:380px; flex-shrink:0;
       height:52px; border-radius:999px; border:none;
       background:#007aff; color:#fff;
       font-size:16px; font-weight:700; cursor:pointer;
@@ -293,7 +277,6 @@ export class PlaceTagPicker {
       box-shadow:0 4px 20px rgba(0,122,255,0.35);
       -webkit-tap-highlight-color:transparent;
       transition:transform 0.15s, filter 0.15s;
-      flex-shrink:0;
     }
     .wpt-confirm:active { transform:scale(0.97); filter:brightness(0.92); }
   `;}
