@@ -44,18 +44,32 @@ export const TAG_MAP = Object.fromEntries(PLACE_TAGS.map(t => [t.key, t]));
 
 // ── Límites ──────────────────────────────────────────────────────────
 const MAX_TAGS_PER_USER_PER_PLACE = 3;
-const MIN_VOTES_TO_SHOW = 1; // mostrar desde 1 voto
+const MIN_VOTES_TO_SHOW = 1;
+
+// ── ID estable — siempre el mismo campo para el mismo lugar ──────────
+// Prioridad: place_id (Google) > placeId > id string no numérico > id numérico con prefijo
+function _stablePlaceId(placeOrId) {
+  if (typeof placeOrId === 'string') return placeOrId;
+  const p = placeOrId;
+  if (p.place_id)  return String(p.place_id);
+  if (p.placeId)   return String(p.placeId);
+  if (p._customId) return `custom_${p._customId}`;
+  if (p.id)        return `place_${p.id}`;
+  return null;
+}
 
 // ── PlaceTagService ──────────────────────────────────────────────────
 export const PlaceTagService = {
 
   // Obtener tags de un lugar con conteos
   async getTagsForPlace(placeId) {
+    const id = _stablePlaceId(placeId);
+    if (!id) return [];
     const sb = getSupabase();
     const { data, error } = await sb
       .from('place_tags')
       .select('tag_key, user_id')
-      .eq('place_id', placeId);
+      .eq('place_id', id);
 
     if (error) { console.error('PlaceTagService.getTagsForPlace:', error); return []; }
 
@@ -74,11 +88,13 @@ export const PlaceTagService = {
   // Tags que YA puso el usuario en este lugar
   async getUserTagsForPlace(placeId, userId) {
     if (!userId) return [];
+    const id = _stablePlaceId(placeId);
+    if (!id) return [];
     const sb = getSupabase();
     const { data } = await sb
       .from('place_tags')
       .select('tag_key')
-      .eq('place_id', placeId)
+      .eq('place_id', id)
       .eq('user_id', userId);
     return (data || []).map(r => r.tag_key);
   },
@@ -86,6 +102,8 @@ export const PlaceTagService = {
   // Agregar tag (con validaciones)
   async addTag(placeId, tagKey, userId) {
     if (!userId) throw new Error('Debes iniciar sesión para etiquetar');
+    const id = _stablePlaceId(placeId);
+    if (!id) throw new Error('Lugar sin identificador válido');
 
     const sb = getSupabase();
 
@@ -93,7 +111,7 @@ export const PlaceTagService = {
     const { count } = await sb
       .from('place_tags')
       .select('*', { count:'exact', head:true })
-      .eq('place_id', placeId)
+      .eq('place_id', id)
       .eq('user_id', userId);
 
     if (count >= MAX_TAGS_PER_USER_PER_PLACE) {
@@ -103,7 +121,7 @@ export const PlaceTagService = {
     // 2. Insertar (PK unique evita duplicados)
     const { error } = await sb
       .from('place_tags')
-      .insert({ place_id: placeId, tag_key: tagKey, user_id: userId });
+      .insert({ place_id: id, tag_key: tagKey, user_id: userId });
 
     if (error) {
       if (error.code === '23505') throw new Error('Ya pusiste esta etiqueta');
@@ -115,18 +133,21 @@ export const PlaceTagService = {
   // Quitar tag del usuario
   async removeTag(placeId, tagKey, userId) {
     if (!userId) return;
+    const id = _stablePlaceId(placeId);
+    if (!id) return;
     const sb = getSupabase();
     await sb
       .from('place_tags')
       .delete()
-      .eq('place_id', placeId)
+      .eq('place_id', id)
       .eq('tag_key', tagKey)
       .eq('user_id', userId);
   },
 
   // Toggle — si ya lo tiene lo quita, si no lo agrega
   async toggleTag(placeId, tagKey, userId) {
-    const existing = await this.getUserTagsForPlace(placeId, userId);
+    const id = _stablePlaceId(placeId);
+    const existing = await this.getUserTagsForPlace(id, userId);
     if (existing.includes(tagKey)) {
       await this.removeTag(placeId, tagKey, userId);
       return { action: 'removed' };
