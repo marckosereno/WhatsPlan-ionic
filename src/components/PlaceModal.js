@@ -944,39 +944,35 @@ export class PlaceModal {
       return;
     }
 
-    // Inicializar picker si no existe
-    if (!this._tagPicker) {
-      this._tagPicker = new PlaceTagPicker({
-        onConfirm: async (items) => {
-          // items es array de { tag, action }
-          const list = Array.isArray(items) ? items : [items];
-          let ok = 0;
-          for (const { tag, action } of list) {
-            try {
-              if (action === 'remove') {
-                await PlaceTagService.removeTag(placeId, tag.key, user.id);
-              } else {
-                await PlaceTagService.addTag(placeId, tag.key, user.id);
-                ok++;
-              }
-            } catch(err) {
-              window.wpApp?.showMapToast?.(err.message || 'Error al etiquetar', '#ff3b30');
-            }
-          }
-          if (ok > 0) window.wpApp?.showMapToast?.(`✓ ${ok} etiqueta${ok!==1?'s':''} guardada${ok!==1?'s':''}`, '#34c759');
-          this._populatePlaceTags(place);
-        },
-        onCancel: () => {}
-      });
-    }
-
-    // Cargar estado actual del usuario
-    const [userTags, allTags] = await Promise.all([
+    // Cargar estado actual del usuario para ESTE lugar
+    const [userTags] = await Promise.all([
       PlaceTagService.getUserTagsForPlace(placeId, user.id),
-      PlaceTagService.getTagsForPlace(placeId)
     ]);
     const remaining = Math.max(0, 3 - userTags.length);
-    this._tagPicker.show(userTags, remaining);
+
+    // Crear picker fresco por cada lugar — el closure captura placeId correcto
+    const picker = new PlaceTagPicker({
+      onConfirm: async (items) => {
+        const list = Array.isArray(items) ? items : [items];
+        let ok = 0;
+        for (const { tag, action } of list) {
+          try {
+            if (action === 'remove') {
+              await PlaceTagService.removeTag(placeId, tag.key, user.id);
+            } else {
+              await PlaceTagService.addTag(placeId, tag.key, user.id);
+              ok++;
+            }
+          } catch(err) {
+            window.wpApp?.showMapToast?.(err.message || 'Error al etiquetar', '#ff3b30');
+          }
+        }
+        if (ok > 0) window.wpApp?.showMapToast?.(`✓ ${ok} etiqueta${ok!==1?'s':''} guardada${ok!==1?'s':''}`, '#34c759');
+        this._populatePlaceTags(place);
+      },
+      onCancel: () => {}
+    });
+    picker.show(userTags, remaining);
   }
 
   // Placeholder — lógica completa pendiente de indicaciones
