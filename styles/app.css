@@ -56,6 +56,15 @@ body.wp-pm-open ion-app::before {
   );
 }
 
+/* Blur del mapa cuando la ficha está abierta */
+body.wp-pm-open .map-container {
+  filter: blur(6px) brightness(0.92);
+  transition: filter 0.32s ease;
+}
+.map-container {
+  transition: filter 0.28s ease;
+}
+
 /* ── Gradiente inferior — difumina el mapa hacia el panel ── */
 ion-app::after {
   content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 160px;
