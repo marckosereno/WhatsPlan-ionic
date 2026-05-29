@@ -33,8 +33,12 @@ export class PlaceTagPicker {
 
   // ── Build ────────────────────────────────────────────────────────
   _build() {
-    if (document.getElementById('wpt-root')) {
-      this._el = document.getElementById('wpt-root'); return;
+    // Si ya existe, reusar el DOM pero reconectar eventos con los callbacks frescos
+    const existing = document.getElementById('wpt-root');
+    if (existing) {
+      this._el = existing;
+      this._rewireEvents();
+      return;
     }
     const el = document.createElement('div');
     el.id = 'wpt-root';
@@ -50,6 +54,22 @@ export class PlaceTagPicker {
     `;
     document.body.appendChild(el);
     this._el = el;
+    this._wireEvents();
+  }
+
+  // Reconectar eventos cuando se reutiliza el DOM con callbacks frescos
+  _rewireEvents() {
+    // Clonar nodos para eliminar todos los listeners anteriores
+    const oldClose   = this._el.querySelector('#wpt-close');
+    const oldConfirm = this._el.querySelector('#wpt-confirm');
+    const newClose   = oldClose.cloneNode(true);
+    const newConfirm = oldConfirm.cloneNode(true);
+    oldClose.replaceWith(newClose);
+    oldConfirm.replaceWith(newConfirm);
+    // Clonar la lista para limpiar listeners de pills
+    const oldList = this._el.querySelector('#wpt-list');
+    const newList = oldList.cloneNode(true);
+    oldList.replaceWith(newList);
     this._wireEvents();
   }
 
