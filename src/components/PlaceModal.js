@@ -950,7 +950,7 @@ export class PlaceModal {
     ]);
     const remaining = Math.max(0, 3 - userTags.length);
 
-    // Crear picker fresco por cada lugar — el closure captura placeId correcto
+    // PlaceTagPicker es singleton — new() actualiza los callbacks automáticamente
     const picker = new PlaceTagPicker({
       onConfirm: async (items) => {
         const list = Array.isArray(items) ? items : [items];
