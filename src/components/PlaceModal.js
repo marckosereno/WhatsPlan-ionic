@@ -3,6 +3,9 @@
 // Ficha de lugar — diseño tipo Insightlancer/travel card
 // ====================================================================
 
+import { PlaceTagService } from '/src/services/PlaceTagService.js';
+import { PlaceTagPicker  } from '/src/components/PlaceTagPicker.js';
+
 export class PlaceModal {
   constructor(opts = {}) {
     this.proxyPhoto     = opts.proxyPhoto     || (u => u);
@@ -15,6 +18,7 @@ export class PlaceModal {
     this._photos        = [];
     this._injectStyles();
     this._build();
+    this._tagPicker = null;
   }
 
   // ── Public ────────────────────────────────────────────────────────
@@ -221,6 +225,12 @@ export class PlaceModal {
             </button>
           </div>
 
+          <!-- Tags contribuidos por usuarios -->
+          <div class="wp-pm-place-tags" id="wp-pm-place-tags" style="display:none">
+            <div class="wp-pm-tags-row" id="wp-pm-place-tags-row"></div>
+            <div class="wp-pm-divider"></div>
+          </div>
+
           <!-- Separador -->
           <div class="wp-pm-divider"></div>
 
@@ -300,6 +310,7 @@ export class PlaceModal {
     this._populateTags(place);
     this._populateHours(place);
     this._populateReviews(place);
+    this._populatePlaceTags(place);
     // scroll body to top + reset topbar nombre/stats
     const body = this._el.querySelector('#wp-pm-body');
     if (body) body.scrollTop = 0;
@@ -694,6 +705,32 @@ export class PlaceModal {
     }).join('');
   }
 
+  // ── Place Tags ───────────────────────────────────────────────────
+
+  async _populatePlaceTags(place) {
+    const block  = this._el.querySelector('#wp-pm-place-tags');
+    const tagsRow= this._el.querySelector('#wp-pm-place-tags-row');
+    if (!block || !tagsRow) return;
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) { block.style.display = 'none'; return; }
+
+    try {
+      const tags = await PlaceTagService.getTagsForPlace(placeId);
+      if (!tags.length) { block.style.display = 'none'; return; }
+
+      block.style.display = '';
+      tagsRow.innerHTML = tags.map(t =>
+        `<span class="wp-pm-tag wp-pm-user-tag" title="${t.count} persona${t.count !== 1 ? 's' : ''} lo etiquetó así">
+          ${t.emoji} ${t.label}
+          <span class="wp-pm-tag-count">×${t.count}</span>
+        </span>`
+      ).join('');
+    } catch(e) {
+      block.style.display = 'none';
+    }
+  }
+
   // ── Events ────────────────────────────────────────────────────────
 
   _wireEvents() {
@@ -894,10 +931,48 @@ export class PlaceModal {
     }, { passive: true });
   }
 
-  // Placeholder — lógica completa pendiente de indicaciones
-  _onTagPlace() {
-    console.log('Etiquetar lugar:', this._place?.name);
-    // TODO: implementar flujo de etiquetado
+  async _onTagPlace() {
+    const place = this._place;
+    if (!place) return;
+    const placeId = place.place_id || place.id;
+    if (!placeId) return;
+
+    // Verificar sesión
+    const user = this.getCurrentUser?.();
+    if (!user) {
+      window.wpApp?.showMapToast?.('Inicia sesión para etiquetar lugares', '#ff9f0a');
+      return;
+    }
+
+    // Inicializar picker si no existe
+    if (!this._tagPicker) {
+      this._tagPicker = new PlaceTagPicker({
+        onConfirm: async ({ tag, action }) => {
+          try {
+            if (action === 'remove') {
+              await PlaceTagService.removeTag(placeId, tag.key, user.id);
+              window.wpApp?.showMapToast?.(`Etiqueta "${tag.label}" eliminada`, '#8e8e93');
+            } else {
+              await PlaceTagService.addTag(placeId, tag.key, user.id);
+              window.wpApp?.showMapToast?.(`✓ "${tag.label}" añadida`, '#34c759');
+            }
+            // Refrescar tags en la ficha
+            this._populatePlaceTags(place);
+          } catch(err) {
+            window.wpApp?.showMapToast?.(err.message || 'Error al etiquetar', '#ff3b30');
+          }
+        },
+        onCancel: () => {}
+      });
+    }
+
+    // Cargar estado actual del usuario
+    const [userTags, allTags] = await Promise.all([
+      PlaceTagService.getUserTagsForPlace(placeId, user.id),
+      PlaceTagService.getTagsForPlace(placeId)
+    ]);
+    const remaining = Math.max(0, 3 - userTags.length);
+    this._tagPicker.show(userTags, remaining);
   }
 
   // Placeholder — lógica completa pendiente de indicaciones
@@ -1446,6 +1521,15 @@ export class PlaceModal {
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-tag-accent { background:#eff6ff; color:#2563eb; }
+      .wp-pm-user-tag {
+        background:rgba(118,118,128,0.10);
+        color:#3a3a3c; border:none;
+        font-weight:500; gap:4px;
+      }
+      .wp-pm-tag-count {
+        font-size:11px; font-weight:700;
+        color:#8e8e93; margin-left:2px;
+      }
 
       /* ── Horarios ── */
       .wp-pm-hours-trigger {
