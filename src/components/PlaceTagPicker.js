@@ -171,9 +171,9 @@ export class PlaceTagPicker {
       flex-direction:column; align-items:center; justify-content:center;
       gap:0;
       /* Fondo blur oscuro — sin panel */
-      background:rgba(0,0,0,0.55);
-      -webkit-backdrop-filter:blur(18px) saturate(1.2);
-      backdrop-filter:blur(18px) saturate(1.2);
+      background:rgba(255,255,255,0.08);
+      -webkit-backdrop-filter:blur(24px) saturate(1.6);
+      backdrop-filter:blur(24px) saturate(1.6);
       opacity:0; transition:opacity 0.28s ease;
     }
     #wpt-root.wpt-in { opacity:1; }
@@ -182,13 +182,13 @@ export class PlaceTagPicker {
     .wpt-close {
       position:absolute; top:calc(20px + env(safe-area-inset-top,0px)); right:20px;
       width:36px; height:36px; border-radius:50%; border:none;
-      background:rgba(255,255,255,0.15); color:#fff;
+      background:rgba(0,0,0,0.10); color:#1c1c1e;
       font-size:16px; cursor:pointer; display:flex;
       align-items:center; justify-content:center;
       -webkit-tap-highlight-color:transparent;
       transition:background 0.15s;
     }
-    .wpt-close:active { background:rgba(255,255,255,0.28); }
+    .wpt-close:active { background:rgba(0,0,0,0.18); }
 
     /* Badge */
     .wpt-badge {
@@ -200,8 +200,8 @@ export class PlaceTagPicker {
       font-family:'Inter Tight',system-ui,sans-serif;
       white-space:nowrap;
     }
-    .wpt-badge-ok { background:rgba(52,199,89,0.2); color:#4ade80; }
-    .wpt-badge-no { background:rgba(255,59,48,0.2);  color:#f87171; }
+    .wpt-badge-ok { background:rgba(52,199,89,0.15); color:#15803d; }
+    .wpt-badge-no { background:rgba(255,59,48,0.15);  color:#c0392b; }
     .wpt-dot-green {
       width:7px; height:7px; border-radius:50%;
       background:#34c759; flex-shrink:0;
@@ -218,8 +218,8 @@ export class PlaceTagPicker {
     .wpt-sel-bar {
       position:absolute; left:10%; right:10%;
       top:calc(50% - ${ITEM_H/2}px); height:${ITEM_H}px;
-      border-top:1px solid rgba(255,255,255,0.18);
-      border-bottom:1px solid rgba(255,255,255,0.18);
+      border-top:1px solid rgba(0,0,0,0.12);
+      border-bottom:1px solid rgba(0,0,0,0.12);
       border-radius:12px;
       z-index:2; pointer-events:none;
     }
@@ -231,11 +231,11 @@ export class PlaceTagPicker {
     }
     .wpt-fade-top {
       top:0;
-      background:linear-gradient(to bottom,rgba(0,0,0,0.92),rgba(0,0,0,0));
+      background:linear-gradient(to bottom,rgba(255,255,255,0.85),rgba(255,255,255,0));
     }
     .wpt-fade-bot {
       bottom:0;
-      background:linear-gradient(to top,rgba(0,0,0,0.92),rgba(0,0,0,0));
+      background:linear-gradient(to top,rgba(255,255,255,0.85),rgba(255,255,255,0));
     }
 
     /* Wheel */
@@ -265,7 +265,7 @@ export class PlaceTagPicker {
     .wpt-dot-empty { background:transparent; box-shadow:none; }
     .wpt-em { font-size:20px; flex-shrink:0; }
     .wpt-lbl {
-      font-size:22px; font-weight:700; color:#fff;
+      font-size:22px; font-weight:700; color:#0a0a0a;
       font-family:'Inter Tight',system-ui,sans-serif;
       letter-spacing:-0.02em; white-space:nowrap;
       transition:font-weight 0.18s ease;
@@ -278,12 +278,12 @@ export class PlaceTagPicker {
       position:absolute;
       bottom:calc(32px + env(safe-area-inset-bottom,0px));
       left:24px; right:24px; height:52px; border-radius:999px; border:none;
-      background:rgba(255,255,255,0.92);
-      font-size:16px; font-weight:700; color:#0a0a0a; cursor:pointer;
+      background:#007aff;
+      font-size:16px; font-weight:700; color:#fff; cursor:pointer;
       font-family:'Inter Tight',system-ui,sans-serif;
       -webkit-tap-highlight-color:transparent;
       transition:transform 0.15s, filter 0.15s, background 0.2s;
-      box-shadow:0 4px 24px rgba(0,0,0,0.3);
+      box-shadow:0 4px 20px rgba(0,122,255,0.35);
     }
     .wpt-confirm:active { transform:scale(0.97); filter:brightness(0.92); }
   `;}
