@@ -716,7 +716,7 @@ export class PlaceModal {
     if (!placeId) { block.style.display = 'none'; return; }
 
     try {
-      const tags = await PlaceTagService.getTagsForPlace(placeId);
+      const tags = await PlaceTagService.getTagsForPlace(place);
       if (!tags.length) { block.style.display = 'none'; return; }
 
       block.style.display = '';
@@ -946,7 +946,7 @@ export class PlaceModal {
 
     // Cargar estado actual del usuario para ESTE lugar
     const [userTags] = await Promise.all([
-      PlaceTagService.getUserTagsForPlace(placeId, user.id),
+      PlaceTagService.getUserTagsForPlace(place, user.id),
     ]);
     const remaining = Math.max(0, 3 - userTags.length);
 
@@ -958,9 +958,9 @@ export class PlaceModal {
         for (const { tag, action } of list) {
           try {
             if (action === 'remove') {
-              await PlaceTagService.removeTag(placeId, tag.key, user.id);
+              await PlaceTagService.removeTag(place, tag.key, user.id);
             } else {
-              await PlaceTagService.addTag(placeId, tag.key, user.id);
+              await PlaceTagService.addTag(place, tag.key, user.id);
               ok++;
             }
           } catch(err) {
