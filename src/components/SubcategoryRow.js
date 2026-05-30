@@ -470,11 +470,10 @@ export class SubcategoryRow {
         border-color: rgba(59,130,246,0.3);
         color: white; font-weight: 700;
         box-shadow:
-          0 4px 14px rgba(37,99,235,0.45),
-          0 1px 4px rgba(37,99,235,0.3),
-          inset 0 1.5px 0 rgba(255,255,255,0.28),
-          inset 0 -1px 0 rgba(0,0,0,0.15);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+          0 2px 8px rgba(37,99,235,0.25),
+          inset 0 1.5px 0 rgba(255,255,255,0.26),
+          inset 0 -1px 0 rgba(0,0,0,0.12);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.10);
       }
 
       /* Chip de carga */
