@@ -1024,11 +1024,10 @@ export class SearchBar {
         background:linear-gradient(150deg, #4f8ef7 0%, #2563eb 55%, #1d4ed8 100%);
         color:white; border-color:rgba(59,130,246,0.25);
         box-shadow:
-          0 5px 16px rgba(37,99,235,0.50),
-          0 2px 6px rgba(37,99,235,0.30),
-          inset 0 1.5px 0 rgba(255,255,255,0.30),
-          inset 0 -1px 0 rgba(0,0,0,0.15);
-        text-shadow:0 1px 2px rgba(0,0,0,0.15);
+          0 2px 8px rgba(37,99,235,0.28),
+          inset 0 1.5px 0 rgba(255,255,255,0.28),
+          inset 0 -1px 0 rgba(0,0,0,0.12);
+        text-shadow:0 1px 2px rgba(0,0,0,0.12);
       }
       .wps-cat-chip:not(.active):active{
         transform:scale(0.94);
