@@ -887,15 +887,23 @@ export class SearchBar {
       .wps-clear.visible { display:flex; }
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;max-width:68px;overflow:hidden;text-overflow:ellipsis;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
-        width:32px;min-width:32px;height:32px;border-radius:50%;
-        border:none;background:rgba(0,0,0,0.08) !important;color:#6b7280 !important;
+        width:36px;min-width:36px;height:36px;border-radius:50%;
+        border:1px solid rgba(255,255,255,0.7) !important;
+        background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(238,244,255,0.88)) !important;
+        color:#6b7280 !important;
         font-size:14px;font-weight:700;cursor:pointer;display:flex;
         align-items:center;justify-content:center;flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;transition:background 0.2s;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
+        box-shadow:0 3px 10px rgba(0,0,0,0.08),inset 0 1.5px 0 rgba(255,255,255,1) !important;
+        backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
       }
       #wps-close-chip{ margin-left:4px; margin-right:5px; }
       .wps-filter:active,.wps-close:active,
-      #wps-filter-chip:active,#wps-close-chip:active{background:rgba(0,0,0,0.15) !important;}
+      #wps-filter-chip:active,#wps-close-chip:active{
+        transform:scale(0.92) !important;
+        box-shadow:0 1px 4px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.8) !important;
+      }
 
       .panel-subcats-scroll.wps-subcats-floating {
         position:fixed;
@@ -936,11 +944,28 @@ export class SearchBar {
       .wps-card-icon{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--wp-blue),var(--wp-blue-dark));border-radius:12px;font-size:32px;flex-shrink:0;}
       .wps-card-body{flex:1;min-width:0;}
       .wps-card-header{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
-      .wps-card-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;color:white;}
-      .wps-card-badge.open{background:#10b981;}
-      .wps-card-badge.closing-soon{background:#f59e0b;}
-      .wps-card-badge.closed{background:#ef4444;}
-      .wps-card-badge.no-hours{background:#6b7280;}
+      .wps-card-badge{
+        padding:3px 10px;border-radius:999px;
+        font-size:11px;font-weight:700;color:white;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12);
+        letter-spacing:0.01em;
+      }
+      .wps-card-badge.open{
+        background:linear-gradient(135deg,#34d399,#10b981);
+        box-shadow:0 2px 8px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+      }
+      .wps-card-badge.closing-soon{
+        background:linear-gradient(135deg,#fbbf24,#f59e0b);
+        box-shadow:0 2px 8px rgba(245,158,11,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+      }
+      .wps-card-badge.closed{
+        background:linear-gradient(135deg,#f87171,#ef4444);
+        box-shadow:0 2px 8px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+      }
+      .wps-card-badge.no-hours{
+        background:linear-gradient(135deg,#9ca3af,#6b7280);
+        box-shadow:0 2px 6px rgba(107,114,128,0.30), inset 0 1px 0 rgba(255,255,255,0.2);
+      }
       .wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
       .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
       .wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
@@ -975,30 +1000,43 @@ export class SearchBar {
       #wp-scats::-webkit-scrollbar{display:none;}
       .wps-cat-chip{
         display:inline-flex;align-items:center;gap:6px;
-        padding:8px 14px;
-        background:white;
+        padding:0 16px; height:36px;
+        background:linear-gradient(170deg,
+          rgba(255,255,255,0.97) 0%,
+          rgba(238,244,255,0.92) 100%);
         color:#374151;
-        border:none;
-        border-radius:50px;
+        border:1px solid rgba(255,255,255,0.75);
+        border-radius:999px;
         font-size:13px;font-weight:700;white-space:nowrap;
         cursor:pointer;flex-shrink:0;
-        box-shadow:none;
+        box-shadow:
+          0 4px 12px rgba(0,0,0,0.10),
+          0 1px 3px rgba(0,0,0,0.06),
+          inset 0 1.5px 0 rgba(255,255,255,1),
+          inset 0 -1px 0 rgba(0,0,0,0.05);
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-        transition:all 0.15s ease;
+        transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
         font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
+        backdrop-filter:blur(12px) saturate(1.6);
+        -webkit-backdrop-filter:blur(12px) saturate(1.6);
       }
       .wps-cat-chip.active{
-        background:var(--wp-blue, #2563eb);
-        color:white;
-        box-shadow:0 4px 0 #1a4dbf;
+        background:linear-gradient(150deg, #4f8ef7 0%, #2563eb 55%, #1d4ed8 100%);
+        color:white; border-color:rgba(59,130,246,0.25);
+        box-shadow:
+          0 5px 16px rgba(37,99,235,0.50),
+          0 2px 6px rgba(37,99,235,0.30),
+          inset 0 1.5px 0 rgba(255,255,255,0.30),
+          inset 0 -1px 0 rgba(0,0,0,0.15);
+        text-shadow:0 1px 2px rgba(0,0,0,0.15);
       }
-      .wps-cat-chip:active{
-        transform:translateY(3px);
-        box-shadow:0 1px 0 #1a4dbf;
+      .wps-cat-chip:not(.active):active{
+        transform:scale(0.94);
+        box-shadow:0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
       }
-      .wps-cat-chip:active{
-        transform:translateY(2px);
-        box-shadow:0 2px 0 #1a4dbf;
+      .wps-cat-chip.active:active{
+        transform:scale(0.94);
+        filter:brightness(0.92);
       }
     `;
     document.head.appendChild(s);
