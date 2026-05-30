@@ -797,19 +797,43 @@ export class PlaceModal {
     const body      = this._el.querySelector('#wp-pm-body');
     const statsRow  = this._el.querySelector('#wp-pm-stats-row');
     const tbName    = this._el.querySelector('#wp-pm-tb-name');
+    const carousel  = this._el.querySelector('#wp-pm-carousel');
     let   _scrolled = false;
     if (body && statsRow && tbName) {
       body.addEventListener('scroll', () => {
-        const nameEl  = body.querySelector('#wp-pm-name');
+        const sy = body.scrollTop;
+
+        // ── Expansión progresiva de slides ──
+        // de 44% (sy=0) a 88% (sy>=120px), proporcional
+        if (carousel) {
+          const progress  = Math.min(sy / 120, 1);           // 0→1
+          const pct       = 44 + (88 - 44) * progress;       // 44%→88%
+          const slides    = carousel.querySelectorAll('.wp-pm-slide:not(.wp-pm-slide-add)');
+          slides.forEach(s => {
+            s.style.minWidth = pct + '%';
+            s.style.transition = 'min-width 0.12s linear';
+          });
+          // Recalcular posición del carrusel para que siga centrado en el slide activo
+          if (this._photos.length > 0) {
+            const slideW = carousel.getBoundingClientRect().width * (pct / 100) + 8;
+            const targetX = 8 - this._currentPhoto * slideW;
+            carousel.style.transition = 'none';
+            carousel.style.transform  = `translateX(${targetX}px)`;
+          }
+        }
+
+        // ── Stats → nombre ──
+        const nameEl    = body.querySelector('#wp-pm-name');
         const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
-        const past    = body.scrollTop > threshold;
-        if (past === _scrolled) return;
-        _scrolled = past;
-        statsRow.style.opacity       = past ? '0' : '1';
-        statsRow.style.transform     = past ? 'scale(0.9)' : 'scale(1)';
-        statsRow.style.pointerEvents = past ? 'none' : '';
-        tbName.style.opacity         = past ? '1' : '0';
-        tbName.style.transform       = past ? 'translateY(0)' : 'translateY(6px)';
+        const past      = sy > threshold;
+        if (past !== _scrolled) {
+          _scrolled = past;
+          statsRow.style.opacity       = past ? '0' : '1';
+          statsRow.style.transform     = past ? 'scale(0.9)' : 'scale(1)';
+          statsRow.style.pointerEvents = past ? 'none' : '';
+          tbName.style.opacity         = past ? '1' : '0';
+          tbName.style.transform       = past ? 'translateY(0)' : 'translateY(6px)';
+        }
       }, { passive: true });
     }
   }
@@ -1503,7 +1527,7 @@ export class PlaceModal {
         border:1px solid rgba(255,255,255,0.7);
         background:linear-gradient(170deg,rgba(255,255,255,0.95) 0%,rgba(238,244,255,0.88) 100%);
         display:flex; align-items:center; justify-content:center; gap:6px;
-        font-size:14px; font-weight:600; color:#1c1c1e; cursor:pointer;
+        font-size:12px; font-weight:600; color:#1c1c1e; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
         font-family:'Inter Tight',system-ui,sans-serif;
