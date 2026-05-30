@@ -1136,11 +1136,29 @@ export class PlaceModal {
         background:center/cover no-repeat #e2e8f0;
         flex-shrink:0; margin:0 4px;
         overflow:hidden; position:relative;
+        /* Sombra interior que une foto con borde */
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.18),
+          inset 0 -40px 40px -20px rgba(0,0,0,0.18),
+          0 6px 20px rgba(0,0,0,0.14);
       }
+      /* Vignette + saturación sobre cada slide */
+      .wp-pm-slide::after {
+        content:'';
+        position:absolute; inset:0; border-radius:22px;
+        background:radial-gradient(
+          ellipse at center,
+          rgba(0,0,0,0)    45%,
+          rgba(0,0,0,0.22) 100%
+        );
+        pointer-events:none; z-index:1;
+      }
+      /* Boost de color en la imagen */
       .wp-pm-slide-img {
         width:100%; height:100%; object-fit:cover;
         opacity:0; transition:opacity 0.3s ease;
         position:absolute; inset:0;
+        filter:contrast(1.05) saturate(1.12);
       }
       .wp-pm-slide-img.loaded { opacity:1; }
       @keyframes wp-skeleton-shimmer {
