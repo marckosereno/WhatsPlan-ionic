@@ -457,6 +457,13 @@ export class PlaceModal {
     const reviews = parseInt(place.userRatingCount) || 0;
     const price   = place.priceLevel;
 
+    // Reset todos los stats/seps antes de mostrar
+    ['#wp-pm-stat-rating','#wp-pm-stat-reviews','#wp-pm-stat-price',
+     '#wp-pm-sep1','#wp-pm-sep2'].forEach(id => {
+      const el = this._el.querySelector(id);
+      if (el) el.style.display = 'none';
+    });
+
     const show = (id, val) => {
       const el = this._el.querySelector(id);
       if (el) el.style.display = val ? '' : 'none';
@@ -809,7 +816,7 @@ export class PlaceModal {
         if (carousel) {
           const progress  = Math.min(sy / 120, 1);           // 0→1
           const pct       = 44 + (88 - 44) * progress;       // 44%→88%
-          const slides    = carousel.querySelectorAll('.wp-pm-slide:not(.wp-pm-slide-add)');
+          const slides    = carousel.querySelectorAll('.wp-pm-slide');
           slides.forEach(s => {
             s.style.minWidth = pct + '%';
             s.style.transition = 'min-width 0.12s linear';
@@ -1143,8 +1150,7 @@ export class PlaceModal {
         /* Sombra interior que une foto con borde */
         box-shadow:
           inset 0 0 0 1px rgba(255,255,255,0.18),
-          inset 0 -40px 40px -20px rgba(0,0,0,0.18),
-          0 6px 20px rgba(0,0,0,0.14);
+          inset 0 -40px 40px -20px rgba(0,0,0,0.18);
       }
       /* Vignette + saturación sobre cada slide */
       .wp-pm-slide::after {
