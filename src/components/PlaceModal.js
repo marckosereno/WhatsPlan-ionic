@@ -188,7 +188,7 @@ export class PlaceModal {
             <div class="wp-pm-title-row">
               <h2 class="wp-pm-name" id="wp-pm-name"></h2>
               <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#4a74f5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </span>
             </div>
           </div>
@@ -389,8 +389,9 @@ export class PlaceModal {
     this._currentPhoto = i;
     const carousel = this._el.querySelector('#wp-pm-carousel');
     if (!carousel) return;
-    // Slide width: 44% of carousel + 8px gap, calculated once from actual DOM
-    const slideW = carousel.getBoundingClientRect().width * 0.44 + 8;
+    // Leer ancho real del slide actual (puede estar expandido por scroll)
+    const firstSlide = carousel.querySelector('.wp-pm-slide:not(.wp-pm-slide-add)');
+    const slideW = firstSlide ? firstSlide.getBoundingClientRect().width + 8 : carousel.getBoundingClientRect().width * 0.44 + 8;
     carousel.style.transition = animate ? 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' : 'none';
     carousel.style.transform  = `translateX(${8 - i * slideW}px)`;
     this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
@@ -848,7 +849,10 @@ export class PlaceModal {
     const getCarousel = () => self._el.querySelector('#wp-pm-carousel');
     const getSlideW   = () => {
       const c = getCarousel();
-      return c ? c.getBoundingClientRect().width * 0.44 + 8 : 180;
+      if (!c) return 180;
+      // Leer el ancho real del primer slide (puede haber cambiado por expansión)
+      const firstSlide = c.querySelector('.wp-pm-slide:not(.wp-pm-slide-add)');
+      return firstSlide ? firstSlide.getBoundingClientRect().width + 8 : c.getBoundingClientRect().width * 0.44 + 8;
     };
     const snapX = i => 8 - i * getSlideW();
 
@@ -1211,7 +1215,7 @@ export class PlaceModal {
         background:#cbd5e1; cursor:pointer;
         transition:all 0.2s ease;
       }
-      .wp-pm-dot.active { background:#3b82f6; width:14px; }
+      .wp-pm-dot.active { background:#4a74f5; width:14px; }
 
       /* ── Body ── */
       .wp-pm-body {
@@ -1253,19 +1257,19 @@ export class PlaceModal {
         display:flex; align-items:center; gap:8px;
       }
       .wp-pm-ai-icon {
-        flex-shrink:0; color:#3b82f6;
+        flex-shrink:0; color:#4a74f5;
         transition:color 0.3s ease;
-        filter:drop-shadow(0 0 6px rgba(59,130,246,0.4));
+        filter:drop-shadow(0 0 6px rgba(74,116,245,0.4));
       }
       .wp-pm-ai-badge {
         font-size:10px; font-weight:700;
         letter-spacing:0.04em; text-transform:uppercase;
-        color:#1d4ed8;
-        background:linear-gradient(135deg,#dbeafe,#bfdbfe);
-        border:1px solid rgba(147,197,253,0.5);
+        color:#1540cc;
+        background:linear-gradient(135deg,#dce8fe,#c0d4fe);
+        border:1px solid rgba(160,190,253,0.5);
         padding:3px 9px; border-radius:999px;
         font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 2px 6px rgba(59,130,246,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+        box-shadow:0 2px 6px rgba(74,116,245,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       @keyframes wp-ai-pulse {
         0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
@@ -1318,9 +1322,9 @@ export class PlaceModal {
         box-shadow:0 2px 6px rgba(251,191,36,0.25),inset 0 1px 0 rgba(255,255,255,0.7);
       }
       .wp-pm-badge-verified {
-        background:linear-gradient(135deg,#dbeafe,#bfdbfe);
-        color:#1e40af; border:1px solid rgba(147,197,253,0.6);
-        box-shadow:0 2px 6px rgba(59,130,246,0.20),inset 0 1px 0 rgba(255,255,255,0.7);
+        background:linear-gradient(135deg,#dce8fe,#c0d4fe);
+        color:#1235a8; border:1px solid rgba(160,190,253,0.6);
+        box-shadow:0 2px 6px rgba(74,116,245,0.20),inset 0 1px 0 rgba(255,255,255,0.7);
       }
       .wp-pm-badge-premium {
         background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
@@ -1376,15 +1380,15 @@ export class PlaceModal {
       /* Etiquetar chip */
       .wp-pm-tag-chip {
         display:inline-flex; align-items:center;
-        font-size:11px; font-weight:700; color:#1d4ed8;
-        background:linear-gradient(135deg,#dbeafe,#bfdbfe);
-        border:1px solid rgba(147,197,253,0.5);
+        font-size:11px; font-weight:700; color:#1540cc;
+        background:linear-gradient(135deg,#dce8fe,#c0d4fe);
+        border:1px solid rgba(160,190,253,0.5);
         padding:3px 10px; border-radius:999px; cursor:pointer;
         font-family:'Inter Tight',system-ui,sans-serif;
         letter-spacing:0.01em;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        box-shadow:0 2px 6px rgba(59,130,246,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
+        box-shadow:0 2px 6px rgba(74,116,245,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
       /* Save button */
@@ -1401,10 +1405,10 @@ export class PlaceModal {
       }
       .wp-pm-save-btn:active { transform:scale(0.92); }
       .wp-pm-save-btn.saved {
-        color:#2563eb;
-        background:linear-gradient(135deg,#dbeafe,#bfdbfe);
-        border-color:rgba(147,197,253,0.5);
-        box-shadow:0 2px 8px rgba(59,130,246,0.22),inset 0 1px 0 rgba(255,255,255,0.8);
+        color:#1a5cf5;
+        background:linear-gradient(135deg,#dce8fe,#c0d4fe);
+        border-color:rgba(160,190,253,0.5);
+        box-shadow:0 2px 8px rgba(74,116,245,0.22),inset 0 1px 0 rgba(255,255,255,0.8);
       }
 
       /* ── More menu ── */
@@ -1502,7 +1506,7 @@ export class PlaceModal {
       }
       .wp-pm-stats-row.hl-featured::before { display:block; background:linear-gradient(135deg,#f59e0b,#f97316); }
       .wp-pm-stats-row.hl-premium::before  { display:block; background:linear-gradient(135deg,#a855f7,#ec4899,#f59e0b); }
-      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#3b82f6,#06b6d4); }
+      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#4a74f5,#06b6d4); }
       .wp-pm-stats-inner {
         display:flex; align-items:stretch;
         border-radius:999px;
@@ -1586,7 +1590,7 @@ export class PlaceModal {
         font-weight:400;
       }
       .wp-pm-read-more {
-        border:none; background:none; color:#007aff;
+        border:none; background:none; color:#1a5cf5;
         font-size:15px; font-weight:400; cursor:pointer;
         padding:0 20px 12px;
         font-family:'Inter Tight',system-ui,sans-serif;
@@ -1607,9 +1611,9 @@ export class PlaceModal {
         box-shadow:0 2px 6px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.9);
       }
       .wp-pm-tag-accent {
-        background:linear-gradient(135deg,#dbeafe,#bfdbfe);
-        border:1px solid rgba(147,197,253,0.5); color:#1e40af;
-        box-shadow:0 2px 6px rgba(59,130,246,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+        background:linear-gradient(135deg,#dce8fe,#c0d4fe);
+        border:1px solid rgba(160,190,253,0.5); color:#1235a8;
+        box-shadow:0 2px 6px rgba(74,116,245,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wp-pm-user-tag {
         background:linear-gradient(170deg,rgba(255,255,255,0.92),rgba(238,244,255,0.85));
@@ -1671,7 +1675,7 @@ export class PlaceModal {
       }
       .wp-pm-review-avatar {
         width:36px; height:36px; border-radius:9999px; flex-shrink:0;
-        background:linear-gradient(135deg,#007aff,#5856d6);
+        background:linear-gradient(135deg,#1a5cf5,#5856d6);
         color:#fff; font-size:15px; font-weight:600;
         display:flex; align-items:center; justify-content:center;
         font-family:'Inter Tight',system-ui,sans-serif;
@@ -1704,12 +1708,12 @@ export class PlaceModal {
       .wp-pm-cta {
         width:100%; height:52px; border-radius:9999px; border:none;
         /* Liquid blue glass */
-        background:rgba(0,122,255,0.82);
+        background:rgba(26,92,245,0.82);
         backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
         -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
         box-shadow:
-          0 4px 14px rgba(0,122,255,0.22),
-          0 1px 4px rgba(0,122,255,0.14),
+          0 4px 14px rgba(26,92,245,0.22),
+          0 1px 4px rgba(26,92,245,0.14),
           inset 0 1px 0 rgba(255,255,255,0.35),
           inset 0 -1px 0 rgba(0,0,0,0.1);
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
