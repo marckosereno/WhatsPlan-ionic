@@ -1133,14 +1133,16 @@ export class PlaceModal {
       .wp-pm-slide {
         min-width:44%; height:100%;
         border-radius:22px;
-        background:center/cover no-repeat #e2e8f0;
+        background:#e2e8f0 center/auto 100% no-repeat;
         flex-shrink:0; margin:0 4px;
         overflow:hidden; position:relative;
       }
       .wp-pm-slide-img {
-        width:100%; height:100%; object-fit:cover;
+        width:auto; height:100%; min-width:100%;
+        object-fit:none; object-position:center center;
         opacity:0; transition:opacity 0.3s ease;
-        position:absolute; inset:0;
+        position:absolute; left:50%; top:0;
+        transform:translateX(-50%);
       }
       .wp-pm-slide-img.loaded { opacity:1; }
       @keyframes wp-skeleton-shimmer {
