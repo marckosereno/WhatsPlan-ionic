@@ -443,21 +443,38 @@ export class SubcategoryRow {
       /* Chips de subcategoría — estilo nativo */
       .subcategory-footer-chip {
         display: inline-flex; align-items: center;
-        height: 30px; padding: 0 11px;
-        background: #f5f5f5;
-        border: 1px solid rgba(0,0,0,0.08);
+        height: 32px; padding: 0 14px;
+        background: linear-gradient(170deg,
+          rgba(255,255,255,0.95) 0%,
+          rgba(240,244,255,0.88) 100%);
+        border: 1px solid rgba(255,255,255,0.7);
         border-radius: 999px;
-        font-size: 12px; font-weight: 500;
+        font-size: 12.5px; font-weight: 600;
         color: #374151; white-space: nowrap; cursor: pointer;
-        transition: all 0.18s; flex-shrink: 0;
+        transition: all 0.18s cubic-bezier(0.34,1.2,0.64,1); flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
+        box-shadow:
+          0 3px 10px rgba(0,0,0,0.08),
+          0 1px 3px rgba(0,0,0,0.05),
+          inset 0 1.5px 0 rgba(255,255,255,1),
+          inset 0 -1px 0 rgba(0,0,0,0.04);
+        backdrop-filter: blur(12px) saturate(1.6);
+        -webkit-backdrop-filter: blur(12px) saturate(1.6);
       }
-      .subcategory-footer-chip:active { background: #ebebeb; }
+      .subcategory-footer-chip:active {
+        transform: scale(0.94);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+      }
       .subcategory-footer-chip.active {
-        background: #2563eb;
-        border-color: transparent;
-        color: white;
-        font-weight: 600;
+        background: linear-gradient(150deg, #3b82f6 0%, #2563eb 60%, #1d4ed8 100%);
+        border-color: rgba(59,130,246,0.3);
+        color: white; font-weight: 700;
+        box-shadow:
+          0 4px 14px rgba(37,99,235,0.45),
+          0 1px 4px rgba(37,99,235,0.3),
+          inset 0 1.5px 0 rgba(255,255,255,0.28),
+          inset 0 -1px 0 rgba(0,0,0,0.15);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.15);
       }
 
       /* Chip de carga */
