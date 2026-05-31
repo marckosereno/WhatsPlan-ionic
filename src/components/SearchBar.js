@@ -158,7 +158,24 @@ export class SearchBar {
     var msgBtn    = document.getElementById('topbar-messages-btn');
     var authBtn   = document.getElementById('topbar-auth-btn');
 
-    // ── PASO 0: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
+    // ── PASO 0: Limpiar cualquier estilo residual del chip (de sesión anterior
+    //    o del PlaceModal que pudo dejar el topbar en medio de una animación) ──
+    var topbarEl = document.getElementById('topbar');
+    if (topbarEl && window.gsap) { window.gsap.killTweensOf(topbarEl); }
+    if (chip) {
+      // Asegurar que el chip está en su posición natural antes de leer rect
+      chip.style.cssText = '';
+      void chip.getBoundingClientRect(); // reflow
+    }
+    if (topbarEl) {
+      // Asegurar que el topbar no tiene transform residual de la animación GSAP
+      topbarEl.style.transform = '';
+      topbarEl.style.opacity   = '1';
+      topbarEl.style.scale     = '';
+      void topbarEl.getBoundingClientRect(); // reflow
+    }
+
+    // ── PASO 0b: Fijar chip PRIMERO antes de tocar cualquier otro elemento ──
     var chipRect  = chip ? chip.getBoundingClientRect() : null;
     var chipInitW = chipRect ? chipRect.width : 120;
     this._chipInitW = chipInitW;
@@ -171,9 +188,6 @@ export class SearchBar {
     var targetW   = avRect ? (window.innerWidth - avRect.left - chipRight) : (window.innerWidth - 24);
     this._targetW = targetW;
     if (chip && chipRect) {
-      // Calcular top desde el #topbar (position:fixed estable) en vez de
-      // chipRect.top que puede estar desfasado si el teclado ya está visible
-      var topbarEl  = document.getElementById('topbar');
       var stableTop = topbarEl
         ? topbarEl.getBoundingClientRect().top + (topbarEl.getBoundingClientRect().height - 44) / 2
         : chipRect.top;
@@ -1021,10 +1035,10 @@ export class SearchBar {
         -webkit-backdrop-filter:blur(12px) saturate(1.6);
       }
       .wps-cat-chip.active{
-        background:linear-gradient(150deg, #4f8ef7 0%, #2563eb 55%, #1d4ed8 100%);
-        color:white; border-color:rgba(59,130,246,0.25);
+        background:linear-gradient(150deg, #5a85f7 0%, #1a5cf5 55%, #1540cc 100%);
+        color:white; border-color:rgba(74,116,245,0.25);
         box-shadow:
-          0 2px 8px rgba(37,99,235,0.28),
+          0 2px 8px rgba(26,92,245,0.28),
           inset 0 1.5px 0 rgba(255,255,255,0.28),
           inset 0 -1px 0 rgba(0,0,0,0.12);
         text-shadow:0 1px 2px rgba(0,0,0,0.12);
