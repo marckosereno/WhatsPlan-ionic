@@ -49,8 +49,8 @@ ion-app::before {
 body.wp-pm-open ion-app::before {
   height: 180px;
   background: linear-gradient(to bottom,
-    rgba(37,99,235,0.82) 0%,
-    rgba(59,130,246,0.55) 40%,
+    rgba(26,92,245,0.82) 0%,
+    rgba(74,116,245,0.55) 40%,
     rgba(96,165,250,0.2)  70%,
     rgba(147,197,253,0)   100%
   );
@@ -59,10 +59,10 @@ body.wp-pm-open ion-app::before {
 /* Blur del mapa cuando la ficha está abierta */
 body.wp-pm-open .map-container {
   filter: blur(6px) brightness(0.92);
-  transition: filter 0.32s ease;
+  transition: filter 0.18s ease;
 }
 .map-container {
-  transition: filter 0.28s ease;
+  transition: filter 0.12s ease;
 }
 
 /* ── Gradiente inferior — difumina el mapa hacia el panel ── */
@@ -296,8 +296,8 @@ ion-app::after {
   --vh: 1vh; /* sobreescrito por ios-fixes.js */
 
   /* ── Brand colors ── */
-  --wp-blue:       #2563eb;  /* Azul principal WhatsPlan */
-  --wp-blue-dark:  #1a4dbf;  /* Sombra 3D / hover */
+  --wp-blue:       #1a5cf5;  /* Azul principal WhatsPlan */
+  --wp-blue-dark:  #1438b8;  /* Sombra 3D / hover */
   --wp-blue-glow:  rgba(37, 99, 235, 0.35); /* Glow / sombra difusa */
 }
 
