@@ -3,8 +3,7 @@
 // Ficha de lugar — diseño tipo Insightlancer/travel card
 // ====================================================================
 
-import { PlaceTagService } from '/src/services/PlaceTagService.js';
-import { PlaceTagPicker  } from '/src/components/PlaceTagPicker.js';
+import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 
 export class PlaceModal {
   constructor(opts = {}) {
@@ -129,6 +128,18 @@ export class PlaceModal {
           </button>
         </div>
 
+        <!-- ── TAG SHEET modal ── -->
+        <div class="wp-pm-more-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
+        <div class="wp-pm-more-menu" id="wp-pm-tag-menu" style="display:none">
+          <div class="wp-pm-more-handle"></div>
+          <div class="wp-pm-tag-sheet-header">
+            <span class="wp-pm-tag-sheet-title">Etiquetar lugar</span>
+            <span class="wp-pm-tag-slots" id="wp-pm-tag-slots"></span>
+          </div>
+          <div id="wp-pm-tag-items"></div>
+          <div style="height:8px"></div>
+        </div>
+
         <!-- ── MORE MENU modal ── -->
         <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
         <div class="wp-pm-more-menu" id="wp-pm-more-menu" style="display:none">
@@ -222,7 +233,7 @@ export class PlaceModal {
             </button>
             <button class="wp-pm-action-btn" id="wp-pm-btn-maps">
               <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M272,464a16,16,0,0,1-16-16.42V264.13a8,8,0,0,0-8-8H64.41a16.31,16.31,0,0,1-15.49-10.65,16,16,0,0,1,8.41-19.87l384-176.15a16,16,0,0,1,21.22,21.19l-176,384A16,16,0,0,1,272,464Z"/></svg></span>
-              <span>Cómo llegar</span>
+              <span>Mapa</span>
             </button>
           </div>
           <div class="wp-pm-divider"></div>
@@ -1022,7 +1033,81 @@ export class PlaceModal {
     picker.show(userTags, remaining);
   }
 
-  // Placeholder — lógica completa pendiente de indicaciones
+  _openTagSheet(place, user, userTags, remaining) {
+    const overlay = this._el.querySelector('#wp-pm-tag-overlay');
+    const menu    = this._el.querySelector('#wp-pm-tag-menu');
+    const slots   = this._el.querySelector('#wp-pm-tag-slots');
+    const items   = this._el.querySelector('#wp-pm-tag-items');
+    if (!menu) return;
+
+    // Badge slots
+    slots.textContent = remaining > 0
+      ? `${remaining} disponible${remaining!==1?'s':''}`
+      : 'Sin etiquetas disponibles';
+    slots.style.color = remaining > 0 ? '#15803d' : '#c0392b';
+
+    // Renderizar tags
+    items.innerHTML = PLACE_TAGS.map(tag => {
+      const already = userTags.includes(tag.key);
+      return `<button class="wp-pm-more-item wp-pm-tag-item${already?' wp-pm-tag-item-done':''}" data-key="${tag.key}">
+        <span style="font-size:20px;width:28px;text-align:center;flex-shrink:0">${tag.emoji}</span>
+        <span style="flex:1;text-align:left">${tag.label}</span>
+        ${already
+          ? '<span style="font-size:11px;font-weight:700;color:#15803d;background:rgba(52,199,89,0.12);padding:2px 8px;border-radius:999px">✓ Etiquetado</span>'
+          : '<span style="font-size:18px;color:#8e8e93;line-height:1">+</span>'}
+      </button>`;
+    }).join('');
+
+    // Separadores entre categorías
+    let lastCat = '';
+    items.querySelectorAll('.wp-pm-tag-item').forEach((btn, i) => {
+      const tag = PLACE_TAGS[i];
+      if (tag.cat !== lastCat) {
+        if (lastCat) {
+          const sep = document.createElement('div');
+          sep.className = 'wp-pm-more-sep';
+          btn.before(sep);
+        }
+        lastCat = tag.cat;
+      }
+    });
+
+    const closeSheet = () => {
+      menu.classList.remove('open');
+      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; }, 320);
+    };
+
+    // Tap en tag
+    items.onclick = async (e) => {
+      const btn = e.target.closest('.wp-pm-tag-item');
+      if (!btn) return;
+      const key     = btn.dataset.key;
+      const already = userTags.includes(key);
+      try {
+        if (already) {
+          await PlaceTagService.removeTag(place, key, user.id);
+          window.wpApp?.showMapToast?.('Etiqueta eliminada', '#8e8e93');
+        } else {
+          if (remaining <= 0) {
+            window.wpApp?.showMapToast?.('Máximo 3 etiquetas por lugar', '#ff9f0a');
+            return;
+          }
+          await PlaceTagService.addTag(place, key, user.id);
+          window.wpApp?.showMapToast?.('✓ Etiqueta guardada', '#34c759');
+        }
+        closeSheet();
+        this._populateServices(place);
+      } catch(err) {
+        window.wpApp?.showMapToast?.(err.message || 'Error', '#ff3b30');
+      }
+    };
+
+    overlay.onclick = closeSheet;
+    overlay.style.display = '';
+    menu.style.display    = '';
+    requestAnimationFrame(() => menu.classList.add('open'));
+  }
+
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
     // TODO: implementar flujo de subida de foto
@@ -1477,6 +1562,19 @@ export class PlaceModal {
       }
       .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
+      .wp-pm-tag-sheet-header {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:4px 20px 8px;
+      }
+      .wp-pm-tag-sheet-title {
+        font-size:16px; font-weight:700; color:#0a0a0a;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-tag-slots {
+        font-size:12px; font-weight:600;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-tag-item-done { opacity:0.7; }
       .wp-pm-more-sep {
         height:0.5px; background:rgba(0,0,0,0.1);
         margin:2px 20px;
