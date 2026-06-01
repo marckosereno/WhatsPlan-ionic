@@ -1676,7 +1676,7 @@ if (!menu) return;
 
       /* Footer con CTA siempre visible */
       .wpt-float-footer {
-        flex-shrink:0; padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));
+        flex-shrink:0; padding:10px 16px 12px;
         border-top:1px solid rgba(0,0,0,0.06);
       }
       .wpt-cta-btn {
