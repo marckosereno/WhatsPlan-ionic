@@ -142,12 +142,13 @@ export class PlaceModal {
             <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
             <div class="wpt-fade-bot"></div>
           </div>
+          <div class="wpt-float-footer">
+            <button class="wpt-cta-btn" id="wp-pm-tag-save">
+              <span class="wpt-cta-label">Selecciona etiquetas</span>
+              <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
+            </button>
+          </div>
         </div>
-        <!-- CTA flotante fuera del modal -->
-        <button class="wpt-cta-float" id="wp-pm-tag-save" style="display:none">
-          Continuar
-          <span class="wpt-cta-badge" id="wp-pm-tag-badge">0</span>
-        </button>
 
         <!-- ── MORE MENU modal ── -->
         <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
@@ -1033,21 +1034,25 @@ if (!menu) return;
     };
     let session   = [];
 
-    const updateCTA = (prevLen) => {
-      const n = session.filter(k => !k.startsWith('__remove__')).length;
-      const badge = saveBtn.querySelector('#wp-pm-tag-badge');
+    const updateCTA = () => {
+      const n     = session.filter(k => !k.startsWith('__remove__')).length;
+      const label = saveBtn.querySelector('.wpt-cta-label');
+      const badge = saveBtn.querySelector('.wpt-cta-badge');
       if (n > 0) {
-        saveBtn.classList.add('visible');
+        saveBtn.classList.add('active');
+        if (label) label.textContent = 'Etiquetar lugar';
         if (badge) {
-          badge.textContent = n;
-          // Animación pop en el badge
+          badge.style.display = '';
+          badge.textContent   = n;
           badge.classList.remove('pop');
-          void badge.offsetWidth; // reflow
+          void badge.offsetWidth;
           badge.classList.add('pop');
-          setTimeout(() => badge.classList.remove('pop'), 220);
+          setTimeout(() => badge.classList.remove('pop'), 250);
         }
       } else {
-        saveBtn.classList.remove('visible');
+        saveBtn.classList.remove('active');
+        if (label) label.textContent = 'Selecciona etiquetas';
+        if (badge) badge.style.display = 'none';
       }
     };
 
@@ -1106,13 +1111,13 @@ if (!menu) return;
               btn.className = 'wp-pm-tag-item selected';
             }
           }
-          updateCTA(session.length);
+          updateCTA();
         };
       });
     };
 
     renderBody();
-    updateCTA(0);
+    updateCTA();
 
     const closeSheet = () => {
       menu.classList.remove('open','expanded');
@@ -1145,7 +1150,6 @@ if (!menu) return;
 
     overlay.style.display = '';
     menu.style.display    = '';
-    saveBtn.style.display = '';
     requestAnimationFrame(() => {
       overlay.classList.add('open');
       menu.classList.add('open');
@@ -1671,42 +1675,41 @@ if (!menu) return;
         z-index:2; pointer-events:none;
       }
 
-      /* CTA flotante centrado abajo */
-      .wpt-cta-float {
-        position:absolute;
-        bottom:calc(20px + env(safe-area-inset-bottom,0px));
-        left:50%; transform:translateX(-50%) translateY(80px);
-        z-index:402;
-        height:48px; padding:0 28px;
-        border-radius:999px; border:none;
-        background:#1a5cf5; color:#fff;
-        font-size:15px; font-weight:700;
+      /* Footer con CTA siempre visible */
+      .wpt-float-footer {
+        flex-shrink:0; padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));
+        border-top:1px solid rgba(0,0,0,0.06);
+      }
+      .wpt-cta-btn {
+        width:100%; height:48px; border-radius:999px; border:none;
+        background:rgba(0,0,0,0.06); color:#8e8e93;
+        font-size:15px; font-weight:600; cursor:pointer;
         font-family:'Inter Tight',system-ui,sans-serif;
-        display:inline-flex; align-items:center; gap:10px;
-        white-space:nowrap; cursor:pointer;
-        box-shadow:0 6px 20px rgba(26,92,245,0.40);
+        display:flex; align-items:center; justify-content:center; gap:10px;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1), filter 0.15s;
-        opacity:0;
+        transition:background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
-      .wpt-cta-float.visible {
-        opacity:1;
-        transform:translateX(-50%) translateY(0);
+      .wpt-cta-btn.active {
+        background:#1a5cf5; color:#fff;
+        box-shadow:0 6px 18px rgba(26,92,245,0.35);
       }
-      .wpt-cta-float:active { filter:brightness(0.92); }
+      .wpt-cta-btn:active { filter:brightness(0.92); }
+      .wpt-cta-label { transition:none; }
 
       /* Badge contador */
+      @keyframes wpt-pop {
+        0%   { transform:scale(1); }
+        50%  { transform:scale(1.5); }
+        100% { transform:scale(1); }
+      }
       .wpt-cta-badge {
         min-width:22px; height:22px; border-radius:999px;
         background:rgba(255,255,255,0.28);
         font-size:12px; font-weight:800;
         display:inline-flex; align-items:center; justify-content:center;
         padding:0 6px; line-height:1;
-        transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
       }
-      .wpt-cta-badge.pop {
-        transform:scale(1.5);
-      }
+      .wpt-cta-badge.pop { animation:wpt-pop 0.25s cubic-bezier(0.34,1.56,0.64,1); }
 
       .wpt-cat-label {
         font-size:13px; font-weight:700; color:#0a0a0a;
