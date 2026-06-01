@@ -1042,47 +1042,31 @@ export class PlaceModal {
     };
 
     const renderBody = () => {
-      // Agrupar por categoría
+      // Agrupar por categoría — todos los tags sin límite
       const cats = {};
       PLACE_TAGS.forEach(tag => {
         if (!cats[tag.cat]) cats[tag.cat] = [];
         cats[tag.cat].push(tag);
       });
 
-      let allTags = PLACE_TAGS;
-      let shown   = 0;
-      let html    = '';
-
+      let html = '';
       for (const [cat, tags] of Object.entries(cats)) {
-        const color = CAT_COLORS[cat] || '#94a3b8';
         let catHtml = '';
         for (const tag of tags) {
-          if (!showAll && shown >= MAX_VISIBLE) break;
-          const already   = userTags.includes(tag.key);
-          const selected  = session.includes(tag.key);
+          const already  = userTags.includes(tag.key);
+          const selected = session.includes(tag.key);
           const cls = already ? 'already-done' : selected ? 'selected' : '';
           catHtml += `<button class="wp-pm-tag-item ${cls}" data-key="${tag.key}" data-already="${already}">
             <span class="wp-pm-tag-icon">${tag.emoji}</span>
             <span class="wp-pm-tag-item-label">${tag.label}</span>
           </button>`;
-          shown++;
         }
         if (catHtml) {
-          html += `<div class="wpt-cat-title">${cat}</div>
-                   <div class="wpt-tag-grid">${catHtml}</div>`;
+          html += `<span class="wpt-cat-label">${cat}</span><div class="wpt-chip-row">${catHtml}</div>`;
         }
-        if (!showAll && shown >= MAX_VISIBLE) break;
-      }
-
-      // Botón ver más
-      if (!showAll && PLACE_TAGS.length > MAX_VISIBLE) {
-        html += `<button class="wpt-show-more" id="wpt-show-more">Ver más (${PLACE_TAGS.length - MAX_VISIBLE} etiquetas) →</button>`;
       }
 
       body.innerHTML = html;
-
-      // Listener ver más → expandir panel
-      const showMoreBtn = body.querySelector('#wpt-show-more');
 
 
       // Listeners de tags
