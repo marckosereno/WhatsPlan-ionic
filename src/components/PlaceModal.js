@@ -128,16 +128,19 @@ export class PlaceModal {
           </button>
         </div>
 
-        <!-- ── TAG SHEET modal ── -->
-        <div class="wp-pm-more-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
-        <div class="wp-pm-more-menu" id="wp-pm-tag-menu" style="display:none">
-          <div class="wp-pm-more-handle"></div>
-          <div class="wp-pm-tag-sheet-header">
-            <span class="wp-pm-tag-sheet-title">Etiquetar lugar</span>
-            <span class="wp-pm-tag-slots" id="wp-pm-tag-slots"></span>
+        <!-- ── TAG MODAL flotante ── -->
+        <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
+        <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
+          <div class="wpt-float-header">
+            <span class="wpt-float-title">Etiquetar lugar</span>
+            <span class="wpt-float-slots" id="wp-pm-tag-slots"></span>
           </div>
-          <div id="wp-pm-tag-items"></div>
-          <div style="height:8px"></div>
+          <div class="wpt-drum-wrap">
+            <div class="wpt-drum" id="wp-pm-tag-items"></div>
+            <div class="wpt-drum-fade-top"></div>
+            <div class="wpt-drum-fade-bot"></div>
+          </div>
+          <button class="wpt-save-btn" id="wp-pm-tag-save" style="display:none">Guardar etiquetas</button>
         </div>
 
         <!-- ── MORE MENU modal ── -->
@@ -1012,77 +1015,121 @@ export class PlaceModal {
   }
 
   _openTagSheet(place, user, userTags, remaining) {
-    const overlay = this._el.querySelector('#wp-pm-tag-overlay');
-    const menu    = this._el.querySelector('#wp-pm-tag-menu');
-    const slots   = this._el.querySelector('#wp-pm-tag-slots');
-    const items   = this._el.querySelector('#wp-pm-tag-items');
+    const overlay  = this._el.querySelector('#wp-pm-tag-overlay');
+    const menu     = this._el.querySelector('#wp-pm-tag-menu');
+    const slots    = this._el.querySelector('#wp-pm-tag-slots');
+    const drum     = this._el.querySelector('#wp-pm-tag-items');
+    const saveBtn  = this._el.querySelector('#wp-pm-tag-save');
     if (!menu) return;
 
-    // Badge slots
-    slots.textContent = remaining > 0
-      ? `${remaining} disponible${remaining!==1?'s':''}`
-      : 'Sin etiquetas disponibles';
-    slots.style.color = remaining > 0 ? '#15803d' : '#c0392b';
-
     const CAT_COLORS = {
-      'Ambiente'     : '#a78bfa', // violeta
-      'Público'      : '#60a5fa', // azul
-      'Accesibilidad': '#34d399', // verde
-      'Servicio'     : '#fb923c', // naranja
-      'Precio'       : '#facc15', // amarillo
-      'Destacado'    : '#f472b6', // rosa
+      'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
+      'Servicio':'#fb923c','Precio':'#facc15','Destacado':'#f472b6',
     };
 
-    // Renderizar por categoría con encabezados
-    let lastCat = '';
-    const rows = [];
-    PLACE_TAGS.forEach(tag => {
+    // Session de selección local
+    let session = [];
+    const updateSlots = () => {
+      const rem = remaining - session.length;
+      slots.textContent = rem > 0 ? `${rem} disponible${rem!==1?'s':''}` : 'Sin etiquetas disponibles';
+      slots.style.color = rem > 0 ? '#15803d' : '#c0392b';
+      saveBtn.style.display = session.length > 0 ? '' : 'none';
+      const n = session.length;
+      saveBtn.textContent = `Guardar ${n} etiqueta${n!==1?'s':''}`;
+    };
+    updateSlots();
+
+    // Renderizar cartas
+    drum.innerHTML = PLACE_TAGS.map(tag => {
       const already = userTags.includes(tag.key);
       const color   = CAT_COLORS[tag.cat] || '#94a3b8';
-      if (tag.cat !== lastCat) {
-        if (lastCat) rows.push(`<div class="wp-pm-more-sep"></div>`);
-        lastCat = tag.cat;
-      }
-      rows.push(`<button class="wp-pm-tag-item${already?' wp-pm-tag-item-done':''}" data-key="${tag.key}">
-        <span class="wp-pm-tag-icon" style="background:${color}20;color:${color}">
-          ${tag.emoji}
-        </span>
+      return `<button class="wp-pm-tag-item${already?' wp-pm-tag-item-done':''}" data-key="${tag.key}" data-already="${already}">
+        <span class="wp-pm-tag-icon" style="background:${color}18;color:${color}">${tag.emoji}</span>
         <span class="wp-pm-tag-item-label">${tag.label}</span>
-        ${already
-          ? '<span class="wp-pm-tag-done-chip">✓ Etiquetado</span>'
-          : '<span style="font-size:20px;color:#c7c7cc;line-height:1;font-weight:300">+</span>'}
-      </button>`);
-    });
-    items.innerHTML = rows.join('');
+        ${already ? '<span class="wp-pm-tag-done-chip">✓</span>' : '<span class="wpt-plus">+</span>'}
+      </button>`;
+    }).join('');
+
+    // Escala tipo drum — scroll listener
+    const CARD_H = 62; // padding + altura aprox de cada carta
+    let _centerIdx = 0;
+    const updateScale = () => {
+      const scrollTop = drum.scrollTop;
+      const idx = Math.round(scrollTop / CARD_H);
+      _centerIdx = Math.max(0, Math.min(PLACE_TAGS.length - 1, idx));
+      drum.querySelectorAll('.wp-pm-tag-item').forEach((el, i) => {
+        const dist = Math.abs(i - _centerIdx);
+        const scale   = Math.max(0.72, 1 - dist * 0.1);
+        const opacity = Math.max(0.25, 1 - dist * 0.22);
+        el.style.transform = `scale(${scale})`;
+        el.style.opacity   = opacity;
+        el.classList.toggle('wpt-center', dist === 0);
+      });
+    };
+    drum.addEventListener('scroll', updateScale, { passive: true });
+    // Init
+    requestAnimationFrame(() => { drum.scrollTop = 0; updateScale(); });
 
     const closeSheet = () => {
       menu.classList.remove('open');
-      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; }, 320);
+      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; session=[]; }, 280);
     };
 
-    // Tap en tag
-    items.onclick = async (e) => {
+    // Tap en carta
+    drum.onclick = (e) => {
       const btn = e.target.closest('.wp-pm-tag-item');
       if (!btn) return;
       const key     = btn.dataset.key;
-      const already = userTags.includes(key);
-      try {
-        if (already) {
-          await PlaceTagService.removeTag(place, key, user.id);
-          window.wpApp?.showMapToast?.('Etiqueta eliminada', '#8e8e93');
-        } else {
-          if (remaining <= 0) {
-            window.wpApp?.showMapToast?.('Máximo 3 etiquetas por lugar', '#ff9f0a');
-            return;
-          }
-          await PlaceTagService.addTag(place, key, user.id);
-          window.wpApp?.showMapToast?.('✓ Etiqueta guardada', '#34c759');
+      const already = btn.dataset.already === 'true';
+      const inSess  = session.includes(key);
+
+      if (already) {
+        // Quitar etiqueta ya guardada
+        btn.dataset.already = 'false';
+        btn.classList.remove('wp-pm-tag-item-done');
+        btn.querySelector('.wp-pm-tag-done-chip')?.remove();
+        const plus = document.createElement('span');
+        plus.className = 'wpt-plus'; plus.textContent = '+';
+        btn.appendChild(plus);
+        session.push('__remove__' + key);
+      } else if (inSess) {
+        // Deseleccionar de la sesión
+        session = session.filter(k => k !== key);
+        btn.classList.remove('wp-pm-tag-item-done','wpt-center');
+        btn.querySelector('.wp-pm-tag-done-chip')?.remove();
+        const plus = document.createElement('span');
+        plus.className = 'wpt-plus'; plus.textContent = '+';
+        btn.appendChild(plus);
+      } else {
+        if (session.filter(k=>!k.startsWith('__remove__')).length >= remaining) {
+          window.wpApp?.showMapToast?.('Máximo ' + remaining + ' etiquetas', '#ff9f0a');
+          return;
         }
-        closeSheet();
-        this._populateServices(place);
-      } catch(err) {
-        window.wpApp?.showMapToast?.(err.message || 'Error', '#ff3b30');
+        session.push(key);
+        btn.classList.add('wp-pm-tag-item-done');
+        btn.querySelector('.wpt-plus')?.remove();
+        const chip = document.createElement('span');
+        chip.className = 'wp-pm-tag-done-chip'; chip.textContent = '✓';
+        btn.appendChild(chip);
       }
+      updateSlots();
+    };
+
+    // Guardar
+    saveBtn.onclick = async () => {
+      for (const key of session) {
+        try {
+          if (key.startsWith('__remove__')) {
+            await PlaceTagService.removeTag(place, key.replace('__remove__',''), user.id);
+          } else {
+            await PlaceTagService.addTag(place, key, user.id);
+          }
+        } catch(err) { window.wpApp?.showMapToast?.(err.message||'Error','#ff3b30'); }
+      }
+      if (session.filter(k=>!k.startsWith('__remove__')).length > 0)
+        window.wpApp?.showMapToast?.('✓ Etiquetas guardadas','#34c759');
+      closeSheet();
+      this._populateServices(place);
     };
 
     overlay.onclick = closeSheet;
@@ -1545,42 +1592,117 @@ export class PlaceModal {
       }
       .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
-      .wp-pm-tag-sheet-header {
+      /* ── Tag modal flotante ── */
+      .wpt-overlay {
+        position:absolute; inset:0; z-index:400;
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+      }
+      .wpt-float {
+        position:absolute; left:20px; right:20px;
+        top:50%; transform:translateY(-50%) scale(0.92);
+        z-index:401;
+        background:rgba(255,255,255,0.96);
+        backdrop-filter:blur(24px) saturate(1.8);
+        -webkit-backdrop-filter:blur(24px) saturate(1.8);
+        border-radius:24px;
+        padding:16px 0 12px;
+        box-shadow:0 20px 60px rgba(0,0,0,0.22),0 4px 16px rgba(0,0,0,0.10);
+        opacity:0;
+        transition:opacity 0.24s ease, transform 0.28s cubic-bezier(0.34,1.1,0.64,1);
+      }
+      .wpt-float.open { opacity:1; transform:translateY(-50%) scale(1); }
+      .wpt-float-header {
         display:flex; align-items:center; justify-content:space-between;
-        padding:8px 20px 4px;
+        padding:0 18px 10px;
+        border-bottom:1px solid rgba(0,0,0,0.06);
+        margin-bottom:4px;
       }
-      .wp-pm-tag-sheet-title {
-        font-size:15px; font-weight:700; color:#0a0a0a;
+      .wpt-float-title {
+        font-size:14px; font-weight:700; color:#0a0a0a;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-tag-slots {
-        font-size:12px; font-weight:600;
+      .wpt-float-slots {
+        font-size:11px; font-weight:600;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      /* Items del tag sheet — estilo app icon */
+      /* Drum wrap */
+      .wpt-drum-wrap {
+        position:relative; height:260px; overflow:hidden;
+      }
+      .wpt-drum-fade-top {
+        position:absolute; top:0; left:0; right:0; height:70px;
+        background:linear-gradient(to bottom,rgba(255,255,255,0.98),rgba(255,255,255,0));
+        z-index:2; pointer-events:none;
+      }
+      .wpt-drum-fade-bot {
+        position:absolute; bottom:0; left:0; right:0; height:70px;
+        background:linear-gradient(to top,rgba(255,255,255,0.98),rgba(255,255,255,0));
+        z-index:2; pointer-events:none;
+      }
+      .wpt-drum {
+        height:100%; overflow-y:scroll; overflow-x:hidden;
+        scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
+        scrollbar-width:none; padding:88px 14px;
+        box-sizing:border-box;
+      }
+      .wpt-drum::-webkit-scrollbar { display:none; }
+      /* Carta individual */
       .wp-pm-tag-item {
-        display:flex; align-items:center; gap:14px;
-        padding:10px 16px; width:100%; border:none;
-        background:transparent; cursor:pointer; text-align:left;
+        display:flex; align-items:center; gap:12px;
+        padding:10px 14px;
+        border-radius:16px;
+        margin-bottom:8px;
+        border:2px dashed rgba(0,0,0,0.14);
+        background:rgba(255,255,255,0.5);
+        cursor:pointer; scroll-snap-align:center;
         -webkit-tap-highlight-color:transparent;
-        transition:background 0.12s;
+        transform-origin:center;
+        transition:transform 0.18s ease, opacity 0.18s ease, border 0.18s ease, background 0.18s ease;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-tag-item:active { background:rgba(0,0,0,0.04); }
+      .wp-pm-tag-item.wpt-center {
+        border:2px solid rgba(0,0,0,0.18);
+        background:rgba(255,255,255,0.95);
+        box-shadow:0 4px 16px rgba(0,0,0,0.08);
+      }
+      .wp-pm-tag-item.wp-pm-tag-item-done {
+        border:2px solid rgba(52,199,89,0.5);
+        background:rgba(52,199,89,0.06);
+      }
+      .wp-pm-tag-item.wp-pm-tag-item-done.wpt-center {
+        border:2px solid #34c759;
+        box-shadow:0 4px 16px rgba(52,199,89,0.18);
+      }
       .wp-pm-tag-icon {
-        width:36px; height:36px; border-radius:10px; flex-shrink:0;
+        width:38px; height:38px; border-radius:10px; flex-shrink:0;
         display:flex; align-items:center; justify-content:center;
-        font-size:18px;
-        box-shadow:0 2px 6px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.3);
+        font-size:20px;
+        box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.35);
       }
       .wp-pm-tag-item-label {
-        flex:1; font-size:15px; font-weight:500; color:#1c1c1e;
+        flex:1; font-size:14px; font-weight:600; color:#1c1c1e;
       }
       .wp-pm-tag-item-done .wp-pm-tag-item-label { color:#15803d; }
       .wp-pm-tag-done-chip {
-        font-size:11px; font-weight:700; color:#15803d;
-        background:rgba(52,199,89,0.12); padding:2px 8px;
+        font-size:10px; font-weight:700; color:#15803d;
+        background:rgba(52,199,89,0.15); padding:2px 7px;
         border-radius:999px; flex-shrink:0;
+      }
+      /* Botón guardar */
+      .wpt-save-btn {
+        display:block; width:calc(100% - 28px); margin:10px 14px 0;
+        height:44px; border-radius:999px; border:none;
+        background:#1a5cf5; color:#fff;
+        font-size:14px; font-weight:700; cursor:pointer;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        box-shadow:0 3px 12px rgba(26,92,245,0.30);
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s, filter 0.15s;
+      }
+      .wpt-save-btn:active { transform:scale(0.97); filter:brightness(0.92); }
+      .wpt-plus {
+        font-size:20px; color:#c7c7cc; line-height:1; font-weight:300; flex-shrink:0;
       }
       .wp-pm-more-sep {
         height:0.5px; background:rgba(0,0,0,0.1);
