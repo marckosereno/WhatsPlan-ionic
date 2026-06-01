@@ -1613,114 +1613,104 @@ export class PlaceModal {
       }
       .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
-      /* ── Tag modal — slide desde abajo ── */
+      /* ── Tag modal — mismo estilo que more menu ── */
       .wpt-overlay {
         position:absolute; inset:0; z-index:400;
-        background:rgba(0,0,0,0.25);
-        backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
         opacity:0; transition:opacity 0.24s ease;
       }
       .wpt-overlay.open { opacity:1; }
       .wpt-float {
-        position:absolute; left:0; right:0; bottom:0;
+        position:absolute; left:12px; right:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom,0px));
         z-index:401;
-        background:rgba(255,255,255,0.97);
+        background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
-        border-radius:24px 24px 0 0;
-        display:flex; flex-direction:column;
-        box-shadow:0 -4px 30px rgba(0,0,0,0.12);
+        border-radius:24px;
+        overflow:hidden;
+        box-shadow:0 8px 40px rgba(0,0,0,0.18);
         transform:translateY(110%);
-        transition:transform 0.32s cubic-bezier(0.34,1.1,0.64,1),
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1),
                    max-height 0.32s cubic-bezier(0.34,1.1,0.64,1);
-        max-height:52vh; overflow:hidden;
+        max-height:55vh; display:flex; flex-direction:column;
       }
       .wpt-float.open { transform:translateY(0); }
       .wpt-float.expanded { max-height:82vh; }
 
       /* Header */
       .wpt-float-top {
-        padding:18px 18px 12px; flex-shrink:0;
+        padding:4px 20px 10px; flex-shrink:0;
       }
-      .wpt-close-btn {
-        float:right; width:28px; height:28px; border-radius:50%; border:none;
-        background:rgba(0,0,0,0.07); color:#6b7280;
-        font-size:13px; cursor:pointer; display:flex;
-        align-items:center; justify-content:center; margin-left:8px;
-        -webkit-tap-highlight-color:transparent;
-      }
-      .wpt-close-btn:active { background:rgba(0,0,0,0.14); }
       .wpt-float-title {
-        font-size:19px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
-        font-family:'Inter Tight',system-ui,sans-serif; letter-spacing:-0.02em;
-        clear:right;
-      }
-      .wpt-float-sub {
-        font-size:12px; color:#8e8e93; margin:0;
+        font-size:13px; font-weight:700; color:#8e8e93; margin:0 0 0;
         font-family:'Inter Tight',system-ui,sans-serif;
+        letter-spacing:0.01em; text-transform:uppercase;
       }
+      .wpt-float-sub { display:none; }
 
       /* Body scrollable */
       .wpt-tag-body {
         flex:1; overflow-y:auto; overflow-x:hidden;
-        padding:4px 18px 8px; scrollbar-width:none;
+        scrollbar-width:none;
       }
       .wpt-tag-body::-webkit-scrollbar { display:none; }
 
-      /* Sección */
-      .wpt-cat-title {
-        font-size:13px; font-weight:700; color:#0a0a0a;
-        margin:14px 0 8px;
-        font-family:'Inter Tight',system-ui,sans-serif;
-      }
-      /* Grid de tags */
-      .wpt-tag-grid {
-        display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px;
-      }
-      /* Tag chip individual */
+      /* Items — igual que wp-pm-more-item */
       .wp-pm-tag-item {
-        display:inline-flex; align-items:center; gap:6px;
-        padding:6px 10px 6px 6px; border-radius:999px;
-        border:1.5px solid rgba(0,0,0,0.10);
-        background:#f9fafb; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s ease;
+        width:100%; display:flex; align-items:center; gap:14px;
+        padding:14px 20px; border:none; background:transparent;
+        font-size:15px; font-weight:500; color:#1c1c1e;
         font-family:'Inter Tight',system-ui,sans-serif;
+        cursor:pointer; text-align:left;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.12s;
+        box-sizing:border-box;
       }
-      .wp-pm-tag-item:active { transform:scale(0.95); }
+      .wp-pm-tag-item:active { background:rgba(0,0,0,0.05); }
       .wp-pm-tag-item.selected {
-        border-color:transparent;
-        background:#1a5cf5;
-        box-shadow:0 2px 8px rgba(26,92,245,0.28);
+        background:rgba(26,92,245,0.06);
+        color:#1a5cf5;
       }
-      .wp-pm-tag-item.already-done {
-        border-color:rgba(52,199,89,0.4);
-        background:rgba(52,199,89,0.08);
-      }
-      .wp-pm-tag-icon {
-        width:22px; height:22px; flex-shrink:0;
-        display:flex; align-items:center; justify-content:center;
-        font-size:16px; background:none;
-      }
-      .wp-pm-tag-item-label {
-        font-size:12.5px; font-weight:600; color:#1c1c1e; white-space:nowrap;
-      }
-      .wp-pm-tag-item.selected .wp-pm-tag-item-label { color:#fff; }
-      .wp-pm-tag-item.already-done .wp-pm-tag-item-label { color:#15803d; }
+      .wp-pm-tag-item.already-done { color:#15803d; }
+      .wp-pm-tag-item.selected .wp-pm-tag-item-label { font-weight:700; }
 
-      /* Ver más */
-      .wpt-show-more {
-        font-size:12px; font-weight:600; color:#1a5cf5;
-        background:none; border:none; cursor:pointer; padding:4px 0 8px;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        -webkit-tap-highlight-color:transparent;
+      .wp-pm-tag-icon {
+        width:24px; text-align:center; flex-shrink:0;
+        font-size:20px; background:none; line-height:1;
       }
+      .wp-pm-tag-item-label { flex:1; }
+
+      /* Check a la derecha */
+      .wpt-check-icon {
+        font-size:16px; color:#1a5cf5; flex-shrink:0;
+      }
+      .wpt-done-icon {
+        font-size:13px; font-weight:700; color:#15803d; flex-shrink:0;
+        background:rgba(52,199,89,0.12); padding:2px 8px; border-radius:999px;
+      }
+
+      /* Separador entre categorías */
+      .wpt-cat-title { display:none; }
+      .wpt-tag-grid { display:contents; }
+
+      /* Ver más — como item del menú */
+      .wpt-show-more {
+        width:100%; display:flex; align-items:center; gap:14px;
+        padding:14px 20px; border:none; background:transparent;
+        font-size:15px; font-weight:500; color:#1a5cf5;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        cursor:pointer; text-align:left; box-sizing:border-box;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.12s;
+      }
+      .wpt-show-more:active { background:rgba(0,0,0,0.04); }
 
       /* Footer */
       .wpt-float-footer {
         display:flex; align-items:center; gap:10px;
-        padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
-        border-top:1px solid rgba(0,0,0,0.06); flex-shrink:0;
+        padding:12px 16px; border-top:0.5px solid rgba(0,0,0,0.1); flex-shrink:0;
       }
       .wpt-float-slots {
         flex:1; font-size:12px; font-weight:600; color:#8e8e93;
@@ -1734,7 +1724,7 @@ export class PlaceModal {
         box-shadow:0 3px 10px rgba(26,92,245,0.28);
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s, filter 0.15s;
-        opacity:0.45;
+        opacity:0.4;
       }
       .wpt-save-btn.active { opacity:1; }
       .wpt-save-btn:active { transform:scale(0.96); filter:brightness(0.92); }
