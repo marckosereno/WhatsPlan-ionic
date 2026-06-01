@@ -295,7 +295,7 @@ export class PlaceModal {
               <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M216.08,192V335.85a40.08,40.08,0,0,0,80.15,0l.13-188.55a67.94,67.94,0,1,0-135.87,0V337.12a95.51,95.51,0,1,0,191,0V159.74" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></path></svg>
             </div>
             <div class="wpt-float-titles">
-              <span class="wpt-float-title">¿Cómo describes este lugar?</span>
+              <span class="wpt-float-title">Describe este lugar</span>
               <span class="wpt-float-sub">Elige hasta 3 etiquetas</span>
             </div>
             <button class="wpt-x-btn" id="wp-pm-tag-close">
@@ -1677,9 +1677,9 @@ export class PlaceModal {
       }
       .wpt-x-btn:active { background:rgba(0,0,0,0.16); }
 
-      /* Body wrap con scroll + fades */
+      /* Body wrap ocupa todo el espacio restante incluyendo el área del footer */
       .wpt-tag-body-wrap {
-        flex:1; position:relative; min-height:0;
+        flex:1; position:relative; min-height:0; overflow:hidden;
       }
       .wpt-tag-body {
         position:absolute; inset:0;
@@ -1695,17 +1695,17 @@ export class PlaceModal {
         z-index:2; pointer-events:none;
       }
       .wpt-fade-bot {
-        position:absolute; bottom:0; left:0; right:0; height:28px;
-        background:linear-gradient(to top,rgba(255,255,255,0.97),rgba(255,255,255,0));
+        position:absolute; bottom:0; left:0; right:0; height:88px;
+        background:linear-gradient(to top,rgba(255,255,255,1) 55%,rgba(255,255,255,0));
         z-index:2; pointer-events:none;
       }
 
       /* Footer con CTA siempre visible */
       .wpt-float-footer {
         position:absolute; bottom:0; left:0; right:0;
-        padding:12px 16px 16px;
-        background:linear-gradient(to top,rgba(255,255,255,1) 60%,rgba(255,255,255,0));
-        pointer-events:none;
+        padding:16px 16px 18px;
+        background:transparent;
+        pointer-events:none; z-index:3;
       }
       .wpt-float-footer .wpt-cta-btn { pointer-events:auto; }
       .wpt-cta-btn {
