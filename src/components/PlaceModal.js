@@ -1008,29 +1008,7 @@ export class PlaceModal {
     ]);
     const remaining = Math.max(0, 3 - userTags.length);
 
-    // PlaceTagPicker es singleton — new() actualiza los callbacks automáticamente
-    const picker = new PlaceTagPicker({
-      onConfirm: async (items) => {
-        const list = Array.isArray(items) ? items : [items];
-        let ok = 0;
-        for (const { tag, action } of list) {
-          try {
-            if (action === 'remove') {
-              await PlaceTagService.removeTag(place, tag.key, user.id);
-            } else {
-              await PlaceTagService.addTag(place, tag.key, user.id);
-              ok++;
-            }
-          } catch(err) {
-            window.wpApp?.showMapToast?.(err.message || 'Error al etiquetar', '#ff3b30');
-          }
-        }
-        if (ok > 0) window.wpApp?.showMapToast?.(`✓ ${ok} etiqueta${ok!==1?'s':''} guardada${ok!==1?'s':''}`, '#34c759');
-        this._populatePlaceTags(place);
-      },
-      onCancel: () => {}
-    });
-    picker.show(userTags, remaining);
+    this._openTagSheet(place, user, userTags, remaining);
   }
 
   _openTagSheet(place, user, userTags, remaining) {
