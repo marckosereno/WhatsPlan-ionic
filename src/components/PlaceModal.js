@@ -1635,23 +1635,38 @@ export class PlaceModal {
       }
       .wpt-float.open { transform:translateY(0); }
 
-      /* Header con X */
+      /* Header iOS — sin divider, sombra vs body */
       .wpt-float-top {
-        display:flex; align-items:center; justify-content:space-between;
-        padding:14px 16px 10px; flex-shrink:0;
-        border-bottom:1px solid rgba(0,0,0,0.06);
+        display:flex; align-items:center; gap:12px;
+        padding:16px 16px 14px; flex-shrink:0;
+        position:relative; z-index:2;
+        background:rgba(255,255,255,0.97);
+        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+      }
+      .wpt-float-icon {
+        width:40px; height:40px; border-radius:10px; flex-shrink:0;
+        background:linear-gradient(135deg,#dce8fe,#c0d4fe);
+        display:flex; align-items:center; justify-content:center;
+        color:#1a5cf5;
+        box-shadow:0 2px 8px rgba(26,92,245,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
+      }
+      .wpt-float-titles {
+        flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
       }
       .wpt-float-title {
-        font-size:14px; font-weight:700; color:#0a0a0a;
+        font-size:15px; font-weight:800; color:#0a0a0a;
         font-family:'Inter Tight',system-ui,sans-serif;
-        letter-spacing:-0.01em;
+        letter-spacing:-0.02em; line-height:1.2;
+      }
+      .wpt-float-sub {
+        font-size:12px; color:#8e8e93; font-weight:500;
+        font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wpt-x-btn {
         width:28px; height:28px; border-radius:50%; border:none;
-        background:rgba(0,0,0,0.07); color:#6b7280;
+        background:rgba(0,0,0,0.07); color:#6b7280; flex-shrink:0;
         display:flex; align-items:center; justify-content:center;
-        cursor:pointer; flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
         transition:background 0.15s;
       }
       .wpt-x-btn:active { background:rgba(0,0,0,0.14); }
@@ -1681,8 +1696,10 @@ export class PlaceModal {
 
       /* Footer con CTA siempre visible */
       .wpt-float-footer {
-        flex-shrink:0; padding:10px 16px 12px;
-        border-top:1px solid rgba(0,0,0,0.06);
+        flex-shrink:0; padding:10px 16px 14px;
+        position:relative; z-index:2;
+        background:rgba(255,255,255,0.97);
+        box-shadow:0 -4px 12px rgba(0,0,0,0.06);
       }
       .wpt-cta-btn {
         width:100%; height:48px; border-radius:999px; border:none;
