@@ -410,9 +410,9 @@ export class SubcategoryRow {
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
       /* Marcador de ubicación en el mapa */
-      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#2563eb; }
+      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#1a5cf5; }
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
-      .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#2563eb; }
+      .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#1a5cf5; }
 
       /* ── Chip LIVE dentro del scroll (mismo tamaño que subcategory chips) ── */
       .hm-live-chip {
@@ -466,11 +466,11 @@ export class SubcategoryRow {
         box-shadow: 0 1px 4px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .subcategory-footer-chip.active {
-        background: linear-gradient(150deg, #3b82f6 0%, #2563eb 60%, #1d4ed8 100%);
-        border-color: rgba(59,130,246,0.3);
+        background: linear-gradient(150deg, #4a74f5 0%, #1a5cf5 60%, #1540cc 100%);
+        border-color: rgba(74,116,245,0.3);
         color: white; font-weight: 700;
         box-shadow:
-          0 2px 8px rgba(37,99,235,0.25),
+          0 2px 8px rgba(26,92,245,0.25),
           inset 0 1.5px 0 rgba(255,255,255,0.26),
           inset 0 -1px 0 rgba(0,0,0,0.12);
         text-shadow: 0 1px 2px rgba(0,0,0,0.10);
@@ -484,7 +484,7 @@ export class SubcategoryRow {
       }
       .hm-loading-chip__spin {
         width: 12px; height: 12px;
-        border: 2px solid rgba(37,99,235,0.2); border-top-color: #2563eb;
+        border: 2px solid rgba(26,92,245,0.2); border-top-color: #1a5cf5;
         border-radius: 50%; animation: spin 0.75s linear infinite;
       }
       @keyframes spin { to { transform: rotate(360deg); } }
