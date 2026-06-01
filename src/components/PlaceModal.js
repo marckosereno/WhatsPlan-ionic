@@ -1018,21 +1018,19 @@ export class PlaceModal {
       return;
     }
 
-    // Cargar estado actual del usuario para ESTE lugar
-    const [userTags] = await Promise.all([
-      PlaceTagService.getUserTagsForPlace(place, user.id),
-    ]);
+    // Cargar estado actual del usuario — si falla red, abrir igual con vacío
+    let userTags = [];
+    try { userTags = await PlaceTagService.getUserTagsForPlace(place, user.id); } catch(_) {}
     const remaining = Math.max(0, 3 - userTags.length);
-
     this._openTagSheet(place, user, userTags, remaining);
   }
 
   _openTagSheet(place, user, userTags, remaining) {
-    const overlay  = this._el.querySelector('#wp-pm-tag-overlay');
-    const menu     = this._el.querySelector('#wp-pm-tag-menu');
-    const body     = this._el.querySelector('#wp-pm-tag-items');
-    const saveBtn  = this._el.querySelector('#wp-pm-tag-save');
-if (!menu) return;
+    const overlay  = document.getElementById('wp-pm-tag-overlay');
+    const menu     = document.getElementById('wp-pm-tag-menu');
+    const body     = document.getElementById('wp-pm-tag-items');
+    const saveBtn  = document.getElementById('wp-pm-tag-save');
+    if (!menu) return;
 
     const CAT_COLORS = {
       'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
