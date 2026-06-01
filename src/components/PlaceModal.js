@@ -277,32 +277,39 @@ export class PlaceModal {
           </button>
         </div>
 
-      <!-- ── TAG MODAL — fuera de wp-pm-card ── -->
-      <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
-      <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
-        <div class="wpt-float-top">
-          <span class="wpt-float-title">¿Cómo es este lugar?</span>
-          <button class="wpt-x-btn" id="wp-pm-tag-close">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="wpt-tag-body-wrap">
-          <div class="wpt-fade-top"></div>
-          <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
-          <div class="wpt-fade-bot"></div>
-        </div>
-        <div class="wpt-float-footer">
-          <button class="wpt-cta-btn" id="wp-pm-tag-save">
-            <span class="wpt-cta-label">Selecciona etiquetas</span>
-            <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
-          </button>
-        </div>
-      </div>
       </div>`;
 
     document.body.appendChild(el);
     this._el   = el;
     this._card = el.querySelector('#wp-pm-card');
+
+    // Tag modal — inyectado en body para evitar conflicto con transform del parent
+    if (!document.getElementById('wp-pm-tag-overlay')) {
+      const tagEl = document.createElement('div');
+      tagEl.innerHTML = `
+        <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
+        <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
+          <div class="wpt-float-top">
+            <span class="wpt-float-title">¿Cómo es este lugar?</span>
+            <button class="wpt-x-btn" id="wp-pm-tag-close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="wpt-tag-body-wrap">
+            <div class="wpt-fade-top"></div>
+            <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
+            <div class="wpt-fade-bot"></div>
+          </div>
+          <div class="wpt-float-footer">
+            <button class="wpt-cta-btn" id="wp-pm-tag-save">
+              <span class="wpt-cta-label">Selecciona etiquetas</span>
+              <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
+            </button>
+          </div>
+        </div>`;
+      while (tagEl.firstChild) document.body.appendChild(tagEl.firstChild);
+    }
+
     this._wireEvents();
   }
 
@@ -1126,7 +1133,7 @@ if (!menu) return;
       }, 320);
     };
 
-    const closeBtn = this._el.querySelector('#wp-pm-tag-close');
+    const closeBtn = document.getElementById('wp-pm-tag-close');
     if (closeBtn) closeBtn.onclick = closeSheet;
     overlay.onclick = closeSheet;
 
@@ -1610,22 +1617,22 @@ if (!menu) return;
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:absolute; inset:0; z-index:400;
+        position:fixed; inset:0; z-index:9998;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
       .wpt-float {
-        position:absolute; left:12px; right:12px;
-        bottom:calc(80px + env(safe-area-inset-bottom,0px));
-        z-index:401;
+        position:fixed; left:12px; right:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        z-index:9999;
         background:rgba(255,255,255,0.97);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
         border-radius:24px;
         box-shadow:0 8px 40px rgba(0,0,0,0.18);
-        transform:translateY(120%);
+        transform:translateY(110%);
         transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        max-height:58vh; min-height:280px; display:flex; flex-direction:column;
+        max-height:65vh; min-height:360px; display:flex; flex-direction:column;
         overflow:hidden;
       }
       .wpt-float.open { transform:translateY(0); }
