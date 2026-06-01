@@ -1635,6 +1635,7 @@ export class PlaceModal {
         transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1),
                    max-height 0.32s cubic-bezier(0.34,1.1,0.64,1);
         max-height:55vh; display:flex; flex-direction:column;
+        padding-top:8px;
       }
       .wpt-float.open { transform:translateY(0); }
       .wpt-float.expanded { max-height:82vh; }
@@ -1657,55 +1658,60 @@ export class PlaceModal {
       }
       .wpt-tag-body::-webkit-scrollbar { display:none; }
 
-      /* Items — igual que wp-pm-more-item */
+      /* Tags como chips en flujo */
+      .wpt-tag-body {
+        flex:1; overflow-y:auto; overflow-x:hidden;
+        padding:8px 16px 4px; scrollbar-width:none;
+      }
+      .wpt-tag-body::-webkit-scrollbar { display:none; }
+
+      .wpt-cat-label {
+        font-size:11px; font-weight:700; color:#8e8e93;
+        text-transform:uppercase; letter-spacing:0.04em;
+        margin:10px 0 6px;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        display:block;
+      }
+      .wpt-chip-row {
+        display:flex; flex-wrap:wrap; gap:7px; margin-bottom:2px;
+      }
+
+      /* Chip individual */
       .wp-pm-tag-item {
-        width:100%; display:flex; align-items:center; gap:14px;
-        padding:14px 20px; border:none; background:transparent;
-        font-size:15px; font-weight:500; color:#1c1c1e;
+        display:inline-flex; align-items:center; gap:5px;
+        padding:5px 11px 5px 8px; border-radius:999px;
+        border:1.5px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; cursor:pointer;
+        font-size:12.5px; font-weight:600; color:#1c1c1e;
         font-family:'Inter Tight',system-ui,sans-serif;
-        cursor:pointer; text-align:left;
         -webkit-tap-highlight-color:transparent;
-        transition:background 0.12s;
-        box-sizing:border-box;
+        transition:all 0.14s ease; white-space:nowrap;
       }
-      .wp-pm-tag-item:active { background:rgba(0,0,0,0.05); }
+      .wp-pm-tag-item:active { transform:scale(0.94); }
       .wp-pm-tag-item.selected {
-        background:rgba(26,92,245,0.06);
-        color:#1a5cf5;
+        background:#1a5cf5; border-color:#1a5cf5; color:#fff;
+        box-shadow:0 2px 8px rgba(26,92,245,0.28);
       }
-      .wp-pm-tag-item.already-done { color:#15803d; }
-      .wp-pm-tag-item.selected .wp-pm-tag-item-label { font-weight:700; }
-
+      .wp-pm-tag-item.already-done {
+        background:rgba(52,199,89,0.10);
+        border-color:rgba(52,199,89,0.35); color:#15803d;
+      }
       .wp-pm-tag-icon {
-        width:24px; text-align:center; flex-shrink:0;
-        font-size:20px; background:none; line-height:1;
+        font-size:14px; line-height:1; flex-shrink:0;
       }
-      .wp-pm-tag-item-label { flex:1; }
+      .wp-pm-tag-item-label { line-height:1.2; }
 
-      /* Check a la derecha */
-      .wpt-check-icon {
-        font-size:16px; color:#1a5cf5; flex-shrink:0;
-      }
-      .wpt-done-icon {
-        font-size:13px; font-weight:700; color:#15803d; flex-shrink:0;
-        background:rgba(52,199,89,0.12); padding:2px 8px; border-radius:999px;
-      }
-
-      /* Separador entre categorías */
-      .wpt-cat-title { display:none; }
-      .wpt-tag-grid { display:contents; }
-
-      /* Ver más — como item del menú */
+      /* Ver más */
       .wpt-show-more {
-        width:100%; display:flex; align-items:center; gap:14px;
-        padding:14px 20px; border:none; background:transparent;
-        font-size:15px; font-weight:500; color:#1a5cf5;
+        display:inline-flex; align-items:center; gap:4px;
+        padding:5px 11px; border-radius:999px; margin-top:6px;
+        border:1.5px dashed rgba(0,0,0,0.18); background:transparent;
+        font-size:12px; font-weight:600; color:#1a5cf5;
         font-family:'Inter Tight',system-ui,sans-serif;
-        cursor:pointer; text-align:left; box-sizing:border-box;
-        -webkit-tap-highlight-color:transparent;
-        transition:background 0.12s;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background 0.14s;
       }
-      .wpt-show-more:active { background:rgba(0,0,0,0.04); }
+      .wpt-show-more:active { background:rgba(26,92,245,0.06); }
 
       /* Footer */
       .wpt-float-footer {
