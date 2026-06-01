@@ -131,21 +131,23 @@ export class PlaceModal {
         <!-- ── TAG MODAL ── -->
         <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
         <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
-          <div class="wp-pm-more-handle"></div>
           <div class="wpt-float-top">
-            <h3 class="wpt-float-title">¿Cómo es este lugar?</h3>
-            <p class="wpt-float-sub">Elige hasta 3 etiquetas para describirlo.</p>
+            <span class="wpt-float-title">¿Cómo es este lugar?</span>
+            <button class="wpt-x-btn" id="wp-pm-tag-close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <div class="wpt-tag-body-wrap">
             <div class="wpt-fade-top"></div>
             <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
             <div class="wpt-fade-bot"></div>
           </div>
-          <div class="wpt-float-footer">
-            <span class="wpt-float-slots" id="wp-pm-tag-slots">0/3 seleccionadas</span>
-            <button class="wpt-save-btn" id="wp-pm-tag-save">Continuar</button>
-          </div>
         </div>
+        <!-- CTA flotante fuera del modal -->
+        <button class="wpt-cta-float" id="wp-pm-tag-save" style="display:none">
+          Continuar
+          <span class="wpt-cta-badge" id="wp-pm-tag-badge">0</span>
+        </button>
 
         <!-- ── MORE MENU modal ── -->
         <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
@@ -1022,10 +1024,8 @@ export class PlaceModal {
     const overlay  = this._el.querySelector('#wp-pm-tag-overlay');
     const menu     = this._el.querySelector('#wp-pm-tag-menu');
     const body     = this._el.querySelector('#wp-pm-tag-items');
-    const slotsEl  = this._el.querySelector('#wp-pm-tag-slots');
     const saveBtn  = this._el.querySelector('#wp-pm-tag-save');
-    const closeBtn = this._el.querySelector('#wp-pm-tag-close');
-    if (!menu) return;
+if (!menu) return;
 
     const CAT_COLORS = {
       'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
@@ -1033,12 +1033,22 @@ export class PlaceModal {
     };
     let session   = [];
 
-    const updateFooter = () => {
-      const n   = session.length;
-      const rem = remaining - n;
-      slotsEl.textContent = `${n}/3 seleccionadas`;
-      saveBtn.classList.toggle('active', n > 0);
-      saveBtn.textContent = n > 0 ? `Continuar (${n})` : 'Continuar';
+    const updateCTA = (prevLen) => {
+      const n = session.filter(k => !k.startsWith('__remove__')).length;
+      const badge = saveBtn.querySelector('#wp-pm-tag-badge');
+      if (n > 0) {
+        saveBtn.classList.add('visible');
+        if (badge) {
+          badge.textContent = n;
+          // Animación pop en el badge
+          badge.classList.remove('pop');
+          void badge.offsetWidth; // reflow
+          badge.classList.add('pop');
+          setTimeout(() => badge.classList.remove('pop'), 220);
+        }
+      } else {
+        saveBtn.classList.remove('visible');
+      }
     };
 
     const renderBody = () => {
@@ -1096,7 +1106,7 @@ export class PlaceModal {
               btn.className = 'wp-pm-tag-item selected';
             }
           }
-          updateFooter();
+          updateCTA(session.length);
         };
       });
     };
@@ -1112,6 +1122,8 @@ export class PlaceModal {
       }, 320);
     };
 
+    const closeBtn = this._el.querySelector('#wp-pm-tag-close');
+    if (closeBtn) closeBtn.onclick = closeSheet;
     overlay.onclick = closeSheet;
 
     saveBtn.onclick = async () => {
@@ -1133,6 +1145,7 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
+    saveBtn.style.display = '';
     requestAnimationFrame(() => {
       overlay.classList.add('open');
       menu.classList.add('open');
@@ -1600,56 +1613,99 @@ export class PlaceModal {
       }
       .wpt-float {
         position:absolute; left:12px; right:12px;
-        bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        bottom:calc(80px + env(safe-area-inset-bottom,0px));
         z-index:401;
-        background:rgba(255,255,255,0.96);
+        background:rgba(255,255,255,0.97);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
         border-radius:24px;
         box-shadow:0 8px 40px rgba(0,0,0,0.18);
-        transform:translateY(110%);
+        transform:translateY(120%);
         transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        max-height:60vh; min-height:240px; display:flex; flex-direction:column;
+        max-height:58vh; min-height:280px; display:flex; flex-direction:column;
+        overflow:hidden;
       }
       .wpt-float.open { transform:translateY(0); }
 
-      /* Handle — fuera del overflow ── */
-      .wpt-float .wp-pm-more-handle {
-        margin:12px auto 0; flex-shrink:0;
-      }
-
-      /* Header */
+      /* Header con X */
       .wpt-float-top {
-        padding:8px 20px 10px; flex-shrink:0;
+        display:flex; align-items:center; justify-content:space-between;
+        padding:14px 16px 10px; flex-shrink:0;
+        border-bottom:1px solid rgba(0,0,0,0.06);
       }
       .wpt-float-title {
-        font-size:13px; font-weight:700; color:#8e8e93;
+        font-size:14px; font-weight:700; color:#0a0a0a;
         font-family:'Inter Tight',system-ui,sans-serif;
-        letter-spacing:0.02em; text-transform:uppercase; margin:0;
+        letter-spacing:-0.01em;
       }
-      .wpt-float-sub { display:none; }
+      .wpt-x-btn {
+        width:28px; height:28px; border-radius:50%; border:none;
+        background:rgba(0,0,0,0.07); color:#6b7280;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; flex-shrink:0;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s;
+      }
+      .wpt-x-btn:active { background:rgba(0,0,0,0.14); }
 
       /* Body wrap con scroll + fades */
       .wpt-tag-body-wrap {
-        flex:1; position:relative; min-height:160px;
+        flex:1; position:relative; min-height:0;
       }
       .wpt-tag-body {
         position:absolute; inset:0;
         overflow-y:auto; overflow-x:hidden;
-        padding:4px 16px 8px;
+        padding:8px 16px 12px;
         scrollbar-width:none; box-sizing:border-box;
         -webkit-overflow-scrolling:touch;
       }
       .wpt-tag-body::-webkit-scrollbar { display:none; }
       .wpt-fade-top {
-        position:absolute; top:0; left:0; right:0; height:32px;
+        position:absolute; top:0; left:0; right:0; height:28px;
         background:linear-gradient(to bottom,rgba(255,255,255,0.97),rgba(255,255,255,0));
         z-index:2; pointer-events:none;
       }
       .wpt-fade-bot {
-        position:absolute; bottom:0; left:0; right:0; height:32px;
+        position:absolute; bottom:0; left:0; right:0; height:28px;
         background:linear-gradient(to top,rgba(255,255,255,0.97),rgba(255,255,255,0));
         z-index:2; pointer-events:none;
+      }
+
+      /* CTA flotante centrado abajo */
+      .wpt-cta-float {
+        position:absolute;
+        bottom:calc(20px + env(safe-area-inset-bottom,0px));
+        left:50%; transform:translateX(-50%) translateY(80px);
+        z-index:402;
+        height:48px; padding:0 28px;
+        border-radius:999px; border:none;
+        background:#1a5cf5; color:#fff;
+        font-size:15px; font-weight:700;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        display:inline-flex; align-items:center; gap:10px;
+        white-space:nowrap; cursor:pointer;
+        box-shadow:0 6px 20px rgba(26,92,245,0.40);
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1), filter 0.15s;
+        opacity:0;
+      }
+      .wpt-cta-float.visible {
+        opacity:1;
+        transform:translateX(-50%) translateY(0);
+      }
+      .wpt-cta-float:active { filter:brightness(0.92); }
+
+      /* Badge contador */
+      .wpt-cta-badge {
+        min-width:22px; height:22px; border-radius:999px;
+        background:rgba(255,255,255,0.28);
+        font-size:12px; font-weight:800;
+        display:inline-flex; align-items:center; justify-content:center;
+        padding:0 6px; line-height:1;
+        transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wpt-cta-badge.pop {
+        transform:scale(1.5);
       }
 
       .wpt-cat-label {
@@ -1690,27 +1746,7 @@ export class PlaceModal {
 
       .wpt-show-more { display:none; }
 
-      /* Footer */
-      .wpt-float-footer {
-        display:flex; align-items:center; gap:10px;
-        padding:12px 16px; border-top:0.5px solid rgba(0,0,0,0.1); flex-shrink:0;
-      }
-      .wpt-float-slots {
-        flex:1; font-size:12px; font-weight:600; color:#8e8e93;
-        font-family:'Inter Tight',system-ui,sans-serif;
-      }
-      .wpt-save-btn {
-        height:40px; padding:0 22px; border-radius:999px; border:none;
-        background:#1a5cf5; color:#fff;
-        font-size:13px; font-weight:700; cursor:pointer;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 3px 10px rgba(26,92,245,0.28);
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s, filter 0.15s;
-        opacity:0.4;
-      }
-      .wpt-save-btn.active { opacity:1; }
-      .wpt-save-btn:active { transform:scale(0.96); filter:brightness(0.92); }
+
       .wp-pm-more-sep {
         height:0.5px; background:rgba(0,0,0,0.1);
         margin:2px 20px;
