@@ -1024,31 +1024,36 @@ export class PlaceModal {
       : 'Sin etiquetas disponibles';
     slots.style.color = remaining > 0 ? '#15803d' : '#c0392b';
 
-    // Renderizar tags
-    items.innerHTML = PLACE_TAGS.map(tag => {
-      const already = userTags.includes(tag.key);
-      return `<button class="wp-pm-more-item wp-pm-tag-item${already?' wp-pm-tag-item-done':''}" data-key="${tag.key}">
-        <span style="font-size:20px;width:28px;text-align:center;flex-shrink:0">${tag.emoji}</span>
-        <span style="flex:1;text-align:left">${tag.label}</span>
-        ${already
-          ? '<span style="font-size:11px;font-weight:700;color:#15803d;background:rgba(52,199,89,0.12);padding:2px 8px;border-radius:999px">✓ Etiquetado</span>'
-          : '<span style="font-size:18px;color:#8e8e93;line-height:1">+</span>'}
-      </button>`;
-    }).join('');
+    const CAT_COLORS = {
+      'Ambiente'     : '#a78bfa', // violeta
+      'Público'      : '#60a5fa', // azul
+      'Accesibilidad': '#34d399', // verde
+      'Servicio'     : '#fb923c', // naranja
+      'Precio'       : '#facc15', // amarillo
+      'Destacado'    : '#f472b6', // rosa
+    };
 
-    // Separadores entre categorías
+    // Renderizar por categoría con encabezados
     let lastCat = '';
-    items.querySelectorAll('.wp-pm-tag-item').forEach((btn, i) => {
-      const tag = PLACE_TAGS[i];
+    const rows = [];
+    PLACE_TAGS.forEach(tag => {
+      const already = userTags.includes(tag.key);
+      const color   = CAT_COLORS[tag.cat] || '#94a3b8';
       if (tag.cat !== lastCat) {
-        if (lastCat) {
-          const sep = document.createElement('div');
-          sep.className = 'wp-pm-more-sep';
-          btn.before(sep);
-        }
+        if (lastCat) rows.push(`<div class="wp-pm-more-sep"></div>`);
         lastCat = tag.cat;
       }
+      rows.push(`<button class="wp-pm-tag-item${already?' wp-pm-tag-item-done':''}" data-key="${tag.key}">
+        <span class="wp-pm-tag-icon" style="background:${color}20;color:${color}">
+          ${tag.emoji}
+        </span>
+        <span class="wp-pm-tag-item-label">${tag.label}</span>
+        ${already
+          ? '<span class="wp-pm-tag-done-chip">✓ Etiquetado</span>'
+          : '<span style="font-size:20px;color:#c7c7cc;line-height:1;font-weight:300">+</span>'}
+      </button>`);
     });
+    items.innerHTML = rows.join('');
 
     const closeSheet = () => {
       menu.classList.remove('open');
@@ -1542,17 +1547,41 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       .wp-pm-tag-sheet-header {
         display:flex; align-items:center; justify-content:space-between;
-        padding:4px 20px 8px;
+        padding:8px 20px 4px;
       }
       .wp-pm-tag-sheet-title {
-        font-size:16px; font-weight:700; color:#0a0a0a;
+        font-size:15px; font-weight:700; color:#0a0a0a;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wp-pm-tag-slots {
         font-size:12px; font-weight:600;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
-      .wp-pm-tag-item-done { opacity:0.7; }
+      /* Items del tag sheet — estilo app icon */
+      .wp-pm-tag-item {
+        display:flex; align-items:center; gap:14px;
+        padding:10px 16px; width:100%; border:none;
+        background:transparent; cursor:pointer; text-align:left;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.12s;
+        font-family:'Inter Tight',system-ui,sans-serif;
+      }
+      .wp-pm-tag-item:active { background:rgba(0,0,0,0.04); }
+      .wp-pm-tag-icon {
+        width:36px; height:36px; border-radius:10px; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+        font-size:18px;
+        box-shadow:0 2px 6px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.3);
+      }
+      .wp-pm-tag-item-label {
+        flex:1; font-size:15px; font-weight:500; color:#1c1c1e;
+      }
+      .wp-pm-tag-item-done .wp-pm-tag-item-label { color:#15803d; }
+      .wp-pm-tag-done-chip {
+        font-size:11px; font-weight:700; color:#15803d;
+        background:rgba(52,199,89,0.12); padding:2px 8px;
+        border-radius:999px; flex-shrink:0;
+      }
       .wp-pm-more-sep {
         height:0.5px; background:rgba(0,0,0,0.1);
         margin:2px 20px;
