@@ -131,18 +131,15 @@ export class PlaceModal {
         <!-- ── TAG MODAL ── -->
         <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
         <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
-          <!-- Header -->
+          <div class="wp-pm-more-handle"></div>
           <div class="wpt-float-top">
-            <button class="wpt-close-btn" id="wp-pm-tag-close">✕</button>
             <h3 class="wpt-float-title">¿Cómo es este lugar?</h3>
             <p class="wpt-float-sub">Elige hasta 3 etiquetas para describirlo.</p>
           </div>
-          <!-- Lista con scroll -->
           <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
-          <!-- Footer -->
           <div class="wpt-float-footer">
             <span class="wpt-float-slots" id="wp-pm-tag-slots">0/3 seleccionadas</span>
-            <button class="wpt-save-btn" id="wp-pm-tag-save">Guardar</button>
+            <button class="wpt-save-btn" id="wp-pm-tag-save">Continuar</button>
           </div>
         </div>
 
@@ -1039,7 +1036,7 @@ export class PlaceModal {
       const rem = remaining - n;
       slotsEl.textContent = `${n}/3 seleccionadas`;
       saveBtn.classList.toggle('active', n > 0);
-      saveBtn.textContent = n > 0 ? `Guardar (${n})` : 'Guardar';
+      saveBtn.textContent = n > 0 ? `Continuar (${n})` : 'Continuar';
     };
 
     const renderBody = () => {
@@ -1063,7 +1060,7 @@ export class PlaceModal {
           const selected  = session.includes(tag.key);
           const cls = already ? 'already-done' : selected ? 'selected' : '';
           catHtml += `<button class="wp-pm-tag-item ${cls}" data-key="${tag.key}" data-already="${already}">
-            <span class="wp-pm-tag-icon" style="background:${color}18">${tag.emoji}</span>
+            <span class="wp-pm-tag-icon">${tag.emoji}</span>
             <span class="wp-pm-tag-item-label">${tag.label}</span>
           </button>`;
           shown++;
@@ -1077,15 +1074,19 @@ export class PlaceModal {
 
       // Botón ver más
       if (!showAll && PLACE_TAGS.length > MAX_VISIBLE) {
-        html += `<button class="wpt-show-more" id="wpt-show-more">Ver todas (${PLACE_TAGS.length}) →</button>`;
+        html += `<button class="wpt-show-more" id="wpt-show-more">Ver más (${PLACE_TAGS.length - MAX_VISIBLE} etiquetas) →</button>`;
       }
 
       body.innerHTML = html;
 
-      // Listener ver más
+      // Listener ver más → expandir panel
       const showMoreBtn = body.querySelector('#wpt-show-more');
       if (showMoreBtn) {
-        showMoreBtn.onclick = () => { showAll = true; renderBody(); };
+        showMoreBtn.onclick = () => {
+          showAll = true;
+          menu.classList.add('expanded');
+          renderBody();
+        };
       }
 
       // Listeners de tags
@@ -1124,12 +1125,15 @@ export class PlaceModal {
     updateFooter();
 
     const closeSheet = () => {
-      menu.classList.remove('open');
-      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; session=[]; showAll=false; }, 260);
+      menu.classList.remove('open','expanded');
+      overlay.classList.remove('open');
+      setTimeout(() => {
+        menu.style.display='none'; overlay.style.display='none';
+        session=[]; showAll=false;
+      }, 320);
     };
 
-    closeBtn.onclick  = closeSheet;
-    overlay.onclick   = closeSheet;
+    overlay.onclick = closeSheet;
 
     saveBtn.onclick = async () => {
       if (!session.length) return;
@@ -1150,7 +1154,10 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
-    requestAnimationFrame(() => menu.classList.add('open'));
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+      menu.classList.add('open');
+    });
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -1606,23 +1613,30 @@ export class PlaceModal {
       }
       .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
-      /* ── Tag modal ── */
+      /* ── Tag modal — slide desde abajo ── */
       .wpt-overlay {
         position:absolute; inset:0; z-index:400;
         background:rgba(0,0,0,0.25);
         backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+        opacity:0; transition:opacity 0.24s ease;
       }
+      .wpt-overlay.open { opacity:1; }
       .wpt-float {
-        position:absolute; left:14px; right:14px;
-        top:50%; transform:translateY(-50%) scale(0.94);
-        z-index:401; max-height:78vh;
-        background:#fff; border-radius:24px;
+        position:absolute; left:0; right:0; bottom:0;
+        z-index:401;
+        background:rgba(255,255,255,0.97);
+        backdrop-filter:blur(24px) saturate(1.8);
+        -webkit-backdrop-filter:blur(24px) saturate(1.8);
+        border-radius:24px 24px 0 0;
         display:flex; flex-direction:column;
-        box-shadow:0 20px 60px rgba(0,0,0,0.20),0 4px 16px rgba(0,0,0,0.08);
-        opacity:0; overflow:hidden;
-        transition:opacity 0.22s ease, transform 0.26s cubic-bezier(0.34,1.1,0.64,1);
+        box-shadow:0 -4px 30px rgba(0,0,0,0.12);
+        transform:translateY(110%);
+        transition:transform 0.32s cubic-bezier(0.34,1.1,0.64,1),
+                   max-height 0.32s cubic-bezier(0.34,1.1,0.64,1);
+        max-height:52vh; overflow:hidden;
       }
-      .wpt-float.open { opacity:1; transform:translateY(-50%) scale(1); }
+      .wpt-float.open { transform:translateY(0); }
+      .wpt-float.expanded { max-height:82vh; }
 
       /* Header */
       .wpt-float-top {
@@ -1684,9 +1698,9 @@ export class PlaceModal {
         background:rgba(52,199,89,0.08);
       }
       .wp-pm-tag-icon {
-        width:24px; height:24px; border-radius:6px; flex-shrink:0;
+        width:22px; height:22px; flex-shrink:0;
         display:flex; align-items:center; justify-content:center;
-        font-size:14px;
+        font-size:16px; background:none;
       }
       .wp-pm-tag-item-label {
         font-size:12.5px; font-weight:600; color:#1c1c1e; white-space:nowrap;
