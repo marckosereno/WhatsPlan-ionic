@@ -289,17 +289,26 @@ export class PlaceModal {
       tagEl.innerHTML = `
         <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
         <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
+          <!-- Header iOS -->
           <div class="wpt-float-top">
-            <span class="wpt-float-title">¿Cómo es este lugar?</span>
+            <div class="wpt-float-icon">
+              <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M216.08,192V335.85a40.08,40.08,0,0,0,80.15,0l.13-188.55a67.94,67.94,0,1,0-135.87,0V337.12a95.51,95.51,0,1,0,191,0V159.74" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></path></svg>
+            </div>
+            <div class="wpt-float-titles">
+              <span class="wpt-float-title">¿Cómo describes este lugar?</span>
+              <span class="wpt-float-sub">Elige hasta 3 etiquetas</span>
+            </div>
             <button class="wpt-x-btn" id="wp-pm-tag-close">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
+          <!-- Body scrollable -->
           <div class="wpt-tag-body-wrap">
             <div class="wpt-fade-top"></div>
             <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
             <div class="wpt-fade-bot"></div>
           </div>
+          <!-- CTA flotante dentro del modal, sin divider -->
           <div class="wpt-float-footer">
             <button class="wpt-cta-btn" id="wp-pm-tag-save">
               <span class="wpt-cta-label">Selecciona etiquetas</span>
@@ -1635,41 +1644,38 @@ export class PlaceModal {
       }
       .wpt-float.open { transform:translateY(0); }
 
-      /* Header iOS — sin divider, sombra vs body */
+      /* Header iOS */
       .wpt-float-top {
-        display:flex; align-items:center; gap:12px;
-        padding:16px 16px 14px; flex-shrink:0;
-        position:relative; z-index:2;
+        display:flex; align-items:center; gap:11px;
+        padding:16px 14px 14px; flex-shrink:0; z-index:2;
         background:rgba(255,255,255,0.97);
-        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+        box-shadow:0 6px 14px rgba(0,0,0,0.07);
       }
       .wpt-float-icon {
-        width:40px; height:40px; border-radius:10px; flex-shrink:0;
+        width:42px; height:42px; border-radius:11px; flex-shrink:0;
         background:linear-gradient(135deg,#dce8fe,#c0d4fe);
-        display:flex; align-items:center; justify-content:center;
-        color:#1a5cf5;
+        display:flex; align-items:center; justify-content:center; color:#1a5cf5;
         box-shadow:0 2px 8px rgba(26,92,245,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wpt-float-titles {
         flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
       }
       .wpt-float-title {
-        font-size:15px; font-weight:800; color:#0a0a0a;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        letter-spacing:-0.02em; line-height:1.2;
+        font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        font-family:'Inter Tight',system-ui,sans-serif; letter-spacing:-0.02em;
       }
       .wpt-float-sub {
-        font-size:12px; color:#8e8e93; font-weight:500;
+        font-size:12px; font-weight:500; color:#8e8e93;
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wpt-x-btn {
-        width:28px; height:28px; border-radius:50%; border:none;
-        background:rgba(0,0,0,0.07); color:#6b7280; flex-shrink:0;
+        width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
+        background:rgba(0,0,0,0.08); color:#6b7280;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
         transition:background 0.15s;
       }
-      .wpt-x-btn:active { background:rgba(0,0,0,0.14); }
+      .wpt-x-btn:active { background:rgba(0,0,0,0.16); }
 
       /* Body wrap con scroll + fades */
       .wpt-tag-body-wrap {
@@ -1678,7 +1684,7 @@ export class PlaceModal {
       .wpt-tag-body {
         position:absolute; inset:0;
         overflow-y:auto; overflow-x:hidden;
-        padding:8px 16px 12px;
+        padding:8px 16px 80px;
         scrollbar-width:none; box-sizing:border-box;
         -webkit-overflow-scrolling:touch;
       }
@@ -1696,11 +1702,12 @@ export class PlaceModal {
 
       /* Footer con CTA siempre visible */
       .wpt-float-footer {
-        flex-shrink:0; padding:10px 16px 14px;
-        position:relative; z-index:2;
-        background:rgba(255,255,255,0.97);
-        box-shadow:0 -4px 12px rgba(0,0,0,0.06);
+        position:absolute; bottom:0; left:0; right:0;
+        padding:12px 16px 16px;
+        background:linear-gradient(to top,rgba(255,255,255,1) 60%,rgba(255,255,255,0));
+        pointer-events:none;
       }
+      .wpt-float-footer .wpt-cta-btn { pointer-events:auto; }
       .wpt-cta-btn {
         width:100%; height:48px; border-radius:999px; border:none;
         background:rgba(0,0,0,0.06); color:#8e8e93;
