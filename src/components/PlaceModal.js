@@ -1112,7 +1112,7 @@ if (!menu) return;
     };
 
     renderBody();
-    updateFooter();
+    updateCTA(0);
 
     const closeSheet = () => {
       menu.classList.remove('open','expanded');
