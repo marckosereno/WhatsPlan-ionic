@@ -136,7 +136,11 @@ export class PlaceModal {
             <h3 class="wpt-float-title">¿Cómo es este lugar?</h3>
             <p class="wpt-float-sub">Elige hasta 3 etiquetas para describirlo.</p>
           </div>
-          <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
+          <div class="wpt-tag-body-wrap">
+            <div class="wpt-fade-top"></div>
+            <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
+            <div class="wpt-fade-bot"></div>
+          </div>
           <div class="wpt-float-footer">
             <span class="wpt-float-slots" id="wp-pm-tag-slots">0/3 seleccionadas</span>
             <button class="wpt-save-btn" id="wp-pm-tag-save">Continuar</button>
@@ -1027,9 +1031,7 @@ export class PlaceModal {
       'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
       'Servicio':'#fb923c','Precio':'#facc15','Destacado':'#f472b6',
     };
-    const MAX_VISIBLE = 12;
-    let session   = [];   // keys seleccionadas en esta sesión
-    let showAll   = false;
+    let session   = [];
 
     const updateFooter = () => {
       const n   = session.length;
@@ -1081,13 +1083,7 @@ export class PlaceModal {
 
       // Listener ver más → expandir panel
       const showMoreBtn = body.querySelector('#wpt-show-more');
-      if (showMoreBtn) {
-        showMoreBtn.onclick = () => {
-          showAll = true;
-          menu.classList.add('expanded');
-          renderBody();
-        };
-      }
+
 
       // Listeners de tags
       body.querySelectorAll('.wp-pm-tag-item').forEach(btn => {
@@ -1128,8 +1124,7 @@ export class PlaceModal {
       menu.classList.remove('open','expanded');
       overlay.classList.remove('open');
       setTimeout(() => {
-        menu.style.display='none'; overlay.style.display='none';
-        session=[]; showAll=false;
+        menu.style.display='none'; overlay.style.display='none'; session=[];
       }, 320);
     };
 
@@ -1659,30 +1654,45 @@ export class PlaceModal {
       .wpt-tag-body::-webkit-scrollbar { display:none; }
 
       /* Tags como chips en flujo */
+      /* Body con fades top/bot */
+      .wpt-tag-body-wrap {
+        flex:1; position:relative; overflow:hidden; min-height:0;
+      }
       .wpt-tag-body {
-        flex:1; overflow-y:auto; overflow-x:hidden;
-        padding:8px 16px 4px; scrollbar-width:none;
+        height:100%; overflow-y:auto; overflow-x:hidden;
+        padding:12px 16px 12px; scrollbar-width:none;
+        box-sizing:border-box;
       }
       .wpt-tag-body::-webkit-scrollbar { display:none; }
+      .wpt-fade-top {
+        position:absolute; top:0; left:0; right:0; height:36px;
+        background:linear-gradient(to bottom,rgba(255,255,255,0.96),rgba(255,255,255,0));
+        z-index:2; pointer-events:none;
+      }
+      .wpt-fade-bot {
+        position:absolute; bottom:0; left:0; right:0; height:36px;
+        background:linear-gradient(to top,rgba(255,255,255,0.96),rgba(255,255,255,0));
+        z-index:2; pointer-events:none;
+      }
 
       .wpt-cat-label {
-        font-size:11px; font-weight:700; color:#8e8e93;
-        text-transform:uppercase; letter-spacing:0.04em;
-        margin:10px 0 6px;
+        font-size:13px; font-weight:700; color:#0a0a0a;
+        margin:14px 0 8px; line-height:1.3;
         font-family:'Inter Tight',system-ui,sans-serif;
         display:block;
       }
+      .wpt-cat-label:first-child { margin-top:4px; }
       .wpt-chip-row {
-        display:flex; flex-wrap:wrap; gap:7px; margin-bottom:2px;
+        display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;
       }
 
       /* Chip individual */
       .wp-pm-tag-item {
-        display:inline-flex; align-items:center; gap:5px;
-        padding:5px 11px 5px 8px; border-radius:999px;
+        display:inline-flex; align-items:center; gap:6px;
+        padding:6px 13px 6px 10px; border-radius:999px;
         border:1.5px solid rgba(0,0,0,0.10);
         background:#f4f4f6; cursor:pointer;
-        font-size:12.5px; font-weight:600; color:#1c1c1e;
+        font-size:12.5px; font-weight:600; color:#1c1c1e; line-height:1.4;
         font-family:'Inter Tight',system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.14s ease; white-space:nowrap;
@@ -1701,17 +1711,7 @@ export class PlaceModal {
       }
       .wp-pm-tag-item-label { line-height:1.2; }
 
-      /* Ver más */
-      .wpt-show-more {
-        display:inline-flex; align-items:center; gap:4px;
-        padding:5px 11px; border-radius:999px; margin-top:6px;
-        border:1.5px dashed rgba(0,0,0,0.18); background:transparent;
-        font-size:12px; font-weight:600; color:#1a5cf5;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background 0.14s;
-      }
-      .wpt-show-more:active { background:rgba(26,92,245,0.06); }
+      .wpt-show-more { display:none; }
 
       /* Footer */
       .wpt-float-footer {
