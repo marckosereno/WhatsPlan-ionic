@@ -1609,7 +1609,7 @@ export class PlaceModal {
         box-shadow:0 8px 40px rgba(0,0,0,0.18);
         transform:translateY(110%);
         transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        max-height:60vh; display:flex; flex-direction:column;
+        max-height:60vh; min-height:240px; display:flex; flex-direction:column;
       }
       .wpt-float.open { transform:translateY(0); }
 
@@ -1631,12 +1631,12 @@ export class PlaceModal {
 
       /* Body wrap con scroll + fades */
       .wpt-tag-body-wrap {
-        flex:1; position:relative; min-height:0;
+        flex:1; position:relative; min-height:160px;
       }
       .wpt-tag-body {
         position:absolute; inset:0;
         overflow-y:auto; overflow-x:hidden;
-        padding:8px 16px 8px;
+        padding:4px 16px 8px;
         scrollbar-width:none; box-sizing:border-box;
         -webkit-overflow-scrolling:touch;
       }
