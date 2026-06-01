@@ -225,6 +225,7 @@ export class PlaceModal {
               <span>Cómo llegar</span>
             </button>
           </div>
+          <div class="wp-pm-divider"></div>
 
           <!-- Horarios — justo debajo de los botones -->
           <div class="wp-pm-hours-block" id="wp-pm-hours-block" style="display:none">
@@ -1594,10 +1595,18 @@ export class PlaceModal {
         color:#374151;
       }
 
-      /* ── Divider iOS style ── */
+      /* ── Divider con gradiente lateral ── */
       .wp-pm-divider {
-        height:0.5px; background:#c6c6c8;
-        margin:4px 20px 16px;
+        height:1px; margin:4px 20px 16px;
+        background:linear-gradient(
+          to right,
+          rgba(0,0,0,0)       0%,
+          rgba(0,0,0,0.12)   15%,
+          rgba(0,0,0,0.15)   50%,
+          rgba(0,0,0,0.12)   85%,
+          rgba(0,0,0,0)      100%
+        );
+        border:none;
       }
 
       /* ── Section title iOS style ── */
