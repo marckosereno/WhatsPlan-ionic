@@ -128,28 +128,6 @@ export class PlaceModal {
           </button>
         </div>
 
-        <!-- ── TAG MODAL ── -->
-        <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
-        <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
-          <div class="wpt-float-top">
-            <span class="wpt-float-title">¿Cómo es este lugar?</span>
-            <button class="wpt-x-btn" id="wp-pm-tag-close">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div class="wpt-tag-body-wrap">
-            <div class="wpt-fade-top"></div>
-            <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
-            <div class="wpt-fade-bot"></div>
-          </div>
-          <div class="wpt-float-footer">
-            <button class="wpt-cta-btn" id="wp-pm-tag-save">
-              <span class="wpt-cta-label">Selecciona etiquetas</span>
-              <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
-            </button>
-          </div>
-        </div>
-
         <!-- ── MORE MENU modal ── -->
         <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
         <div class="wp-pm-more-menu" id="wp-pm-more-menu" style="display:none">
@@ -299,6 +277,27 @@ export class PlaceModal {
           </button>
         </div>
 
+      <!-- ── TAG MODAL — fuera de wp-pm-card ── -->
+      <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
+      <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
+        <div class="wpt-float-top">
+          <span class="wpt-float-title">¿Cómo es este lugar?</span>
+          <button class="wpt-x-btn" id="wp-pm-tag-close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="wpt-tag-body-wrap">
+          <div class="wpt-fade-top"></div>
+          <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
+          <div class="wpt-fade-bot"></div>
+        </div>
+        <div class="wpt-float-footer">
+          <button class="wpt-cta-btn" id="wp-pm-tag-save">
+            <span class="wpt-cta-label">Selecciona etiquetas</span>
+            <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
+          </button>
+        </div>
+      </div>
       </div>`;
 
     document.body.appendChild(el);
