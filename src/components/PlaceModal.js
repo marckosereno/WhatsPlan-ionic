@@ -1592,14 +1592,12 @@ export class PlaceModal {
       }
       .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
-      /* ── Tag modal — mismo estilo que more menu ── */
+      /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
         position:absolute; inset:0; z-index:400;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
-        opacity:0; transition:opacity 0.24s ease;
       }
-      .wpt-overlay.open { opacity:1; }
       .wpt-float {
         position:absolute; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
@@ -1608,54 +1606,49 @@ export class PlaceModal {
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
         border-radius:24px;
-        overflow:hidden;
         box-shadow:0 8px 40px rgba(0,0,0,0.18);
         transform:translateY(110%);
-        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1),
-                   max-height 0.32s cubic-bezier(0.34,1.1,0.64,1);
-        max-height:55vh; display:flex; flex-direction:column;
-        padding-top:8px;
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+        max-height:60vh; display:flex; flex-direction:column;
       }
       .wpt-float.open { transform:translateY(0); }
-      .wpt-float.expanded { max-height:82vh; }
+
+      /* Handle — fuera del overflow ── */
+      .wpt-float .wp-pm-more-handle {
+        margin:12px auto 0; flex-shrink:0;
+      }
 
       /* Header */
       .wpt-float-top {
-        padding:4px 20px 10px; flex-shrink:0;
+        padding:8px 20px 10px; flex-shrink:0;
       }
       .wpt-float-title {
-        font-size:13px; font-weight:700; color:#8e8e93; margin:0 0 0;
+        font-size:13px; font-weight:700; color:#8e8e93;
         font-family:'Inter Tight',system-ui,sans-serif;
-        letter-spacing:0.01em; text-transform:uppercase;
+        letter-spacing:0.02em; text-transform:uppercase; margin:0;
       }
       .wpt-float-sub { display:none; }
 
-      /* Body scrollable */
-      .wpt-tag-body {
-        flex:1; overflow-y:auto; overflow-x:hidden;
-        scrollbar-width:none;
-      }
-      .wpt-tag-body::-webkit-scrollbar { display:none; }
-
-      /* Tags como chips en flujo */
-      /* Body con fades top/bot */
+      /* Body wrap con scroll + fades */
       .wpt-tag-body-wrap {
-        flex:1; position:relative; overflow:hidden; min-height:0;
+        flex:1; position:relative; min-height:0;
       }
       .wpt-tag-body {
-        height:100%; overflow-y:auto; overflow-x:hidden;
-        padding:12px 16px 12px; scrollbar-width:none;
-        box-sizing:border-box;
+        position:absolute; inset:0;
+        overflow-y:auto; overflow-x:hidden;
+        padding:8px 16px 8px;
+        scrollbar-width:none; box-sizing:border-box;
+        -webkit-overflow-scrolling:touch;
       }
       .wpt-tag-body::-webkit-scrollbar { display:none; }
       .wpt-fade-top {
-        position:absolute; top:0; left:0; right:0; height:36px;
-        background:linear-gradient(to bottom,rgba(255,255,255,0.96),rgba(255,255,255,0));
+        position:absolute; top:0; left:0; right:0; height:32px;
+        background:linear-gradient(to bottom,rgba(255,255,255,0.97),rgba(255,255,255,0));
         z-index:2; pointer-events:none;
       }
       .wpt-fade-bot {
-        position:absolute; bottom:0; left:0; right:0; height:36px;
-        background:linear-gradient(to top,rgba(255,255,255,0.96),rgba(255,255,255,0));
+        position:absolute; bottom:0; left:0; right:0; height:32px;
+        background:linear-gradient(to top,rgba(255,255,255,0.97),rgba(255,255,255,0));
         z-index:2; pointer-events:none;
       }
 
