@@ -225,27 +225,18 @@ export class PlaceModal {
             </button>
           </div>
 
-          <!-- Tags contribuidos por usuarios -->
-          <div class="wp-pm-place-tags" id="wp-pm-place-tags" style="display:none">
-            <div class="wp-pm-tags-row" id="wp-pm-place-tags-row"></div>
+          <!-- Etiquetas: servicios del lugar + tags de usuarios -->
+          <div class="wp-pm-services-block" id="wp-pm-services-block" style="display:none">
+            <div class="wp-pm-section-title">Etiquetas</div>
+            <div class="wp-pm-tags-row" id="wp-pm-services-tags"></div>
             <div class="wp-pm-divider"></div>
           </div>
-
-          <!-- Separador -->
-          <div class="wp-pm-divider"></div>
 
           <!-- Descripción -->
           <div class="wp-pm-desc-block" id="wp-pm-desc-block" style="display:none">
             <div class="wp-pm-section-title">Sobre el lugar</div>
             <div class="wp-pm-desc-text" id="wp-pm-desc-text"></div>
             <button class="wp-pm-read-more" id="wp-pm-read-more" style="display:none">Leer más</button>
-            <div class="wp-pm-divider"></div>
-          </div>
-
-          <!-- Servicios: dineIn · takeout · delivery -->
-          <div class="wp-pm-services-block" id="wp-pm-services-block" style="display:none">
-            <div class="wp-pm-section-title">Servicios</div>
-            <div class="wp-pm-tags-row" id="wp-pm-services-tags"></div>
             <div class="wp-pm-divider"></div>
           </div>
 
@@ -310,7 +301,6 @@ export class PlaceModal {
     this._populateTags(place);
     this._populateHours(place);
     this._populateReviews(place);
-    this._populatePlaceTags(place);
     // scroll body to top + reset topbar nombre/stats
     const body = this._el.querySelector('#wp-pm-body');
     if (body) body.scrollTop = 0;
@@ -614,24 +604,40 @@ export class PlaceModal {
     };
   }
 
-  _populateServices(place) {
+  async _populateServices(place) {
     const block = this._el.querySelector('#wp-pm-services-block');
     const tags  = this._el.querySelector('#wp-pm-services-tags');
-    const items = [];
 
-    if (place.dineIn   === true)  items.push({ icon: '🍽️', label: 'Comer aquí' });
-    if (place.takeout  === true)  items.push({ icon: '🥡', label: 'Para llevar' });
-    if (place.delivery === true)  items.push({ icon: '🛵', label: 'Delivery' });
+    // Tags por defecto del lugar (sin abierto/cerrado)
+    const defaultItems = [];
+    if (place.dineIn   === true) defaultItems.push({ icon:'🍽️', label:'Comer aquí' });
+    if (place.takeout  === true) defaultItems.push({ icon:'🥡',  label:'Para llevar' });
+    if (place.delivery === true) defaultItems.push({ icon:'🛵',  label:'Delivery' });
 
-    const isOpen = this._isOpenNow(place);
-    if (isOpen === true)  items.push({ icon: '🟢', label: 'Abierto ahora' });
-    if (isOpen === false) items.push({ icon: '🔴', label: 'Cerrado' });
+    // Tags de usuarios desde Supabase
+    const placeId  = place.place_id || place.id;
+    let userTags   = [];
+    if (placeId) {
+      try { userTags = await PlaceTagService.getTagsForPlace(place); } catch(_) {}
+    }
 
-    if (items.length === 0) { block.style.display = 'none'; return; }
+    if (!defaultItems.length && !userTags.length) {
+      block.style.display = 'none'; return;
+    }
     block.style.display = '';
-    tags.innerHTML = items.map(it =>
+
+    const defaultHtml = defaultItems.map(it =>
       `<span class="wp-pm-tag">${it.icon} ${it.label}</span>`
     ).join('');
+
+    const userHtml = userTags.map(t =>
+      `<span class="wp-pm-tag wp-pm-user-tag" title="${t.count} persona${t.count!==1?'s':''} lo etiquetó así">
+        ${t.emoji} ${t.label}
+        <span class="wp-pm-tag-count">×${t.count}</span>
+      </span>`
+    ).join('');
+
+    tags.innerHTML = defaultHtml + userHtml;
   }
 
   _populateTags(place) {
