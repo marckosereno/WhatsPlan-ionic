@@ -175,6 +175,7 @@ export class PlaceModal {
                 <span class="wp-pm-open-dot" id="wp-pm-open-dot"></span>
                 <span id="wp-pm-open-label"></span>
               </span>
+              <span class="wp-pm-nohours-badge" id="wp-pm-nohours-badge" style="display:none">Sin horario</span>
               <button class="wp-pm-tag-chip" id="wp-pm-tag-chip">+ Etiquetar lugar</button>
               <div class="wp-pm-badges-actions">
                 <button class="wp-pm-save-btn" id="wp-pm-save" title="Guardar">
@@ -225,6 +226,18 @@ export class PlaceModal {
             </button>
           </div>
 
+          <!-- Horarios — justo debajo de los botones -->
+          <div class="wp-pm-hours-block" id="wp-pm-hours-block" style="display:none">
+            <div class="wp-pm-hours-trigger" id="wp-pm-hours-trigger">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#6b7280"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 100-16 8 8 0 000 16zm1-8V7a1 1 0 00-2 0v5a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L13 11.586z"/></svg>
+              <span class="wp-pm-hours-today" id="wp-pm-hours-today"></span>
+              <span class="wp-pm-hours-status" id="wp-pm-hours-status"></span>
+              <svg class="wp-pm-chevron" id="wp-pm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="wp-pm-hours-list" id="wp-pm-hours-list"></div>
+            <div class="wp-pm-divider"></div>
+          </div>
+
           <!-- Etiquetas: servicios del lugar + tags de usuarios -->
           <div class="wp-pm-services-block" id="wp-pm-services-block" style="display:none">
             <div class="wp-pm-section-title">Etiquetas</div>
@@ -244,18 +257,6 @@ export class PlaceModal {
           <div class="wp-pm-tags-block" id="wp-pm-tags-block" style="display:none">
             <div class="wp-pm-section-title">Especialidades</div>
             <div class="wp-pm-tags-row" id="wp-pm-tags-row"></div>
-            <div class="wp-pm-divider"></div>
-          </div>
-
-          <!-- Horarios -->
-          <div class="wp-pm-hours-block" id="wp-pm-hours-block" style="display:none">
-            <div class="wp-pm-hours-trigger" id="wp-pm-hours-trigger">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="#6b7280"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 100-16 8 8 0 000 16zm1-8V7a1 1 0 00-2 0v5a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L13 11.586z"/></svg>
-              <span class="wp-pm-hours-today" id="wp-pm-hours-today"></span>
-              <span class="wp-pm-hours-status" id="wp-pm-hours-status"></span>
-              <svg class="wp-pm-chevron" id="wp-pm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-            <div class="wp-pm-hours-list" id="wp-pm-hours-list"></div>
             <div class="wp-pm-divider"></div>
           </div>
 
@@ -415,18 +416,22 @@ export class PlaceModal {
     }
 
     // Open / closed badge — calculado desde horarios reales
-    const openBadge = this._el.querySelector('#wp-pm-open-badge');
-    const openDot   = this._el.querySelector('#wp-pm-open-dot');
-    const openLabel = this._el.querySelector('#wp-pm-open-label');
+    const openBadge    = this._el.querySelector('#wp-pm-open-badge');
+    const openDot      = this._el.querySelector('#wp-pm-open-dot');
+    const openLabel    = this._el.querySelector('#wp-pm-open-label');
+    const noHoursBadge = this._el.querySelector('#wp-pm-nohours-badge');
+    const isOpen = this._isOpenNow(place);
+    const hasHours = !!(place.regularOpeningHours?.periods?.length || place.openingHoursText);
     if (openBadge) {
-      const isOpen = this._isOpenNow(place);
       if (isOpen !== null) {
         openBadge.style.display = '';
         openBadge.className     = `wp-pm-open-badge ${isOpen ? 'is-open' : 'is-closed'}`;
         if (openDot) openDot.className = 'wp-pm-open-dot';
         if (openLabel) openLabel.textContent = isOpen ? 'Abierto' : 'Cerrado';
+        if (noHoursBadge) noHoursBadge.style.display = 'none';
       } else {
         openBadge.style.display = 'none';
+        if (noHoursBadge) noHoursBadge.style.display = hasHours ? 'none' : '';
       }
     }
   }
@@ -1361,6 +1366,16 @@ export class PlaceModal {
         padding:3px 9px; border-radius:999px;
         font-family:'Inter Tight',system-ui,sans-serif;
         letter-spacing:0.01em;
+      }
+      .wp-pm-nohours-badge {
+        display:inline-flex; align-items:center;
+        font-size:11px; font-weight:600;
+        padding:3px 9px; border-radius:999px;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        background:rgba(118,118,128,0.12);
+        color:#8e8e93;
+        border:1px solid rgba(118,118,128,0.18);
+        box-shadow:0 1px 4px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.6);
       }
       .wp-pm-open-badge.is-open {
         background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));
