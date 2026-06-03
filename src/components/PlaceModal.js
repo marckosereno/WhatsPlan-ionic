@@ -29,6 +29,12 @@ export class PlaceModal {
     this._hideTopbar();
     this._hideMapUI();
     var self = this;
+    // Estado inicial: card flotante con padding
+    this._el.style.setProperty('--border-radius','24px');
+    this._el.style.setProperty('--width','calc(100% - 24px)');
+    this._el.style.setProperty('--margin-start','12px');
+    this._el.style.setProperty('--margin-end','12px');
+    this._el.style.setProperty('--margin-bottom','12px');
     this._el.present().then(function() {
       self._applyBreakpointStyle(0.55);
       self._bindScrollDrag();
@@ -74,24 +80,58 @@ export class PlaceModal {
   }
 
   _applyBreakpointStyle(bp) {
-    var modal = this._el;
-    if (!modal) return;
-    if (bp >= 0.90) {
-      // Full sheet — edge to edge, sin márgenes
-      modal.style.setProperty('--border-radius', '24px 24px 0 0');
-      modal.style.setProperty('--width',  '100%');
-      modal.style.setProperty('--height', '100%');
-      modal.style.removeProperty('--margin-start');
-      modal.style.removeProperty('--margin-end');
-      modal.style.removeProperty('--margin-bottom');
-    } else {
-      // Card flotante — márgenes laterales y abajo, esquinas redondeadas
-      modal.style.setProperty('--border-radius', '24px');
-      modal.style.setProperty('--width',  'calc(100% - 24px)');
-      modal.style.setProperty('--margin-start',  '12px');
-      modal.style.setProperty('--margin-end',    '12px');
-      modal.style.setProperty('--margin-bottom', '12px');
+    this._startDragWatch();
+  }
+
+  // Observa el transform del modal durante el drag y aplica estilos en tiempo real
+  _startDragWatch() {
+    if (this._watching) return;
+    this._watching = true;
+    var modal    = this._el;
+    var self     = this;
+    var vh       = window.innerHeight;
+    var MIN_BP   = 0.55;  // breakpoint parcial
+    var MAX_BP   = 0.92;  // breakpoint full
+
+    var raf;
+    function tick() {
+      if (!modal.isOpen) { self._watching = false; return; }
+
+      // Leer altura actual del modal via getBoundingClientRect
+      var rect = modal.getBoundingClientRect();
+      var ratio = rect.height / vh;  // 0 → 1
+
+      // Interpolar entre card (0.55) y sheet (0.92)
+      var t = Math.max(0, Math.min(1, (ratio - MIN_BP) / (MAX_BP - MIN_BP)));
+
+      // Padding lateral: 12px → 0px
+      var pad  = Math.round(12 * (1 - t));
+      // Border-radius bottom: 24px → 0px
+      var radB = Math.round(24 * (1 - t));
+      // Border-radius top siempre 24px
+      var radT = 24;
+
+      var wrapper = modal.querySelector('.wp-pm-card');
+      if (wrapper) {
+        wrapper.style.borderRadius = radT+'px '+radT+'px '+radB+'px '+radB+'px';
+      }
+
+      // Aplicar margin al part(content) via CSS vars
+      modal.style.setProperty('--margin-start',  pad+'px');
+      modal.style.setProperty('--margin-end',    pad+'px');
+      modal.style.setProperty('--margin-bottom', pad+'px');
+      modal.style.setProperty('--border-radius', radT+'px '+radT+'px '+radB+'px '+radB+'px');
+      modal.style.setProperty('--width', 'calc(100% - '+(pad*2)+'px)');
+
+      raf = requestAnimationFrame(tick);
     }
+    raf = requestAnimationFrame(tick);
+
+    // Detener cuando se cierre
+    modal.addEventListener('ionModalDidDismiss', function() {
+      cancelAnimationFrame(raf);
+      self._watching = false;
+    }, { once: true });
   }
 
   _bindScrollDrag() {
