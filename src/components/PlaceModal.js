@@ -25,7 +25,8 @@ export class PlaceModal {
   show(place) {
     this._place = place;
     this._populate(place);
-    document.body.classList.add('wp-pm-open');
+    /* no blur — evita layout shift en el mapa */
+    // document.body.classList.add('wp-pm-open');
     this._hideTopbar();
     this._hideMapUI();
     var self = this;
@@ -77,21 +78,55 @@ export class PlaceModal {
     this._startDragWatch();
   }
 
-  // Toggle clase CSS según breakpoint — CSS hace la transición
   _startDragWatch() {
+    if (this._watching) return;
+    this._watching = true;
     var modal = this._el;
     var self  = this;
-    // Escuchar cambio de breakpoint y toggle clase
-    modal.addEventListener('ionBreakpointDidChange', function(e) {
-      var bp = e.detail.breakpoint;
-      if (bp >= 0.90) {
-        modal.classList.add('wp-sheet-full');
-      } else {
-        modal.classList.remove('wp-sheet-full');
+    var vh    = window.innerHeight;
+    var PARTIAL = 0.55;
+    var FULL    = 0.92;
+
+    var card    = modal.querySelector('#wp-pm-card');
+    var topbar  = modal.querySelector('#wp-pm-topbar');
+
+    var raf;
+    function tick() {
+      if (!modal.isOpen) { self._watching = false; return; }
+
+      // Leer posición real del card durante el drag
+      var rect  = card ? card.getBoundingClientRect() : modal.getBoundingClientRect();
+      var ratio = rect.height / vh;
+
+      // t: 0 = parcial, 1 = full
+      var t = Math.max(0, Math.min(1, (ratio - PARTIAL) / (FULL - PARTIAL)));
+
+      var pad  = Math.round(12 * (1 - t));   // margen lateral: 12→0
+      var radB = +(24 * (1 - t)).toFixed(1); // radius bottom: 24→0
+      var w    = 'calc(100% - ' + (pad * 2) + 'px)';
+
+      if (card) {
+        card.style.margin       = '0 ' + pad + 'px ' + pad + 'px';
+        card.style.borderRadius = '24px 24px ' + radB + 'px ' + radB + 'px';
+        card.style.width        = w;
+        card.style.height       = 'calc(100% - ' + pad + 'px)';
+        card.style.boxShadow    = t > 0.98
+          ? '0 0 0 rgba(0,0,0,0)'
+          : '0 8px 40px rgba(0,0,0,' + (0.18 * (1 - t)).toFixed(2) + ')';
       }
-    });
+      // Padding topbar: 12→0 extra en lados
+      if (topbar) {
+        var tPad = 12 + pad;
+        topbar.style.paddingLeft  = tPad + 'px';
+        topbar.style.paddingRight = tPad + 'px';
+      }
+
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+
     modal.addEventListener('ionModalDidDismiss', function() {
-      modal.classList.remove('wp-sheet-full');
+      cancelAnimationFrame(raf); self._watching = false;
     }, { once: true });
   }
 
@@ -152,13 +187,13 @@ export class PlaceModal {
     el.id                 = 'wp-place-modal';
     el.breakpoints        = [0, 0.55, 0.92];
     el.initialBreakpoint  = 0.55;
-    el.handle             = true;
-    el.handleBehavior     = 'cycle';
+    el.handle             = false;  // handle propio dentro del card
     el.backdropBreakpoint = 0.01;
     el.backdropDismiss    = true;
     el.cssClass           = 'wp-pm-sheet';
     el.innerHTML = `
       <div class="wp-pm-card" id="wp-pm-card">
+        <div class="wp-pm-handle-bar" id="wp-pm-handle-bar"></div>
 
         <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
         <div class="wp-pm-topbar" id="wp-pm-topbar">
