@@ -25,69 +25,53 @@ export class PlaceModal {
   show(place) {
     this._place = place;
     this._populate(place);
-    const card = this._card;
-
-    // 1. Sombra azul cambia instantáneamente via clase CSS (transition:none en app.css)
     document.body.classList.add('wp-pm-open');
+    this._hideTopbar();
+    this._el.present();
+  }
 
-    // 2. Ocultar topbar del mapa
+  hide() { this._el.dismiss(); }
+  isVisible() { return this._el.isOpen; }
+
+  _hideTopbar() {
     var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
     var gsapG = window.gsap;
-    if (mapTopbar && gsapG) {
+    if (gsapG) {
       gsapG.killTweensOf(mapTopbar);
-      gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
-        onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
+      gsapG.to(mapTopbar, { scale:0.85, opacity:0, duration:0.22, ease:'power2.in',
+        onComplete: function() { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
       });
-    } else if (mapTopbar) {
-      mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+    } else {
+      mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none';
     }
-
-    // 3. Modal sube — sombra ya está lista
-    this._el.classList.remove('wp-pm-hidden');
-    this._el.classList.add('wp-pm-visible');
-    card.style.transition = 'none';
-    card.style.transform  = 'translateY(100%)';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
-      card.style.transform  = 'translateY(0)';
-    }));
   }
 
-  hide() {
-    this._card.style.transition = 'transform 0.32s cubic-bezier(0.32,0.72,0,1)';
-    this._card.style.transform  = 'translateY(100%)';
-    setTimeout(() => {
-      this._el.classList.add('wp-pm-hidden');
-      this._el.classList.remove('wp-pm-visible');
-      document.body.classList.remove('wp-pm-open');
-      // Restaurar topbar del mapa con pulse
-      var mapTopbar = document.getElementById('topbar');
-      if (mapTopbar) {
-        mapTopbar.style.visibility = '';
-        mapTopbar.style.pointerEvents = '';
-        var gsapG = window.gsap;
-        if (gsapG) {
-          gsapG.killTweensOf(mapTopbar);
-          gsapG.fromTo(mapTopbar,
-            { scale: 0.85, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
-          );
-        }
-      }
-      if (this.onClose) this.onClose();
-    }, 340);
+  _restoreTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    mapTopbar.style.visibility=''; mapTopbar.style.pointerEvents='';
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.fromTo(mapTopbar, {scale:0.85,opacity:0}, {scale:1,opacity:1,duration:0.32,ease:'back.out(2)'});
+    }
   }
-
-  isVisible() { return !this._el.classList.contains('wp-pm-hidden'); }
 
   // ── Build DOM ─────────────────────────────────────────────────────
 
   _build() {
-    const el = document.createElement('div');
-    el.id        = 'wp-place-modal';
-    el.className = 'wp-pm wp-pm-hidden';
+    // Crear ion-modal nativo con breakpoints y handle
+    const el = document.createElement('ion-modal');
+    el.id                 = 'wp-place-modal';
+    el.breakpoints        = [0, 0.55, 0.92];
+    el.initialBreakpoint  = 0.55;
+    el.handle             = true;
+    el.handleBehavior     = 'cycle';
+    el.backdropBreakpoint = 0.01;
+    el.backdropDismiss    = true;
+    el.cssClass           = 'wp-pm-sheet';
     el.innerHTML = `
-      <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
       <div class="wp-pm-card" id="wp-pm-card">
 
         <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
@@ -790,7 +774,7 @@ export class PlaceModal {
   // ── Events ────────────────────────────────────────────────────────
 
   _wireEvents() {
-    this._el.querySelector('#wp-pm-backdrop').addEventListener('click', () => this.hide());
+    // backdrop handled by ion-modal natively
     this._el.querySelector('#wp-pm-back').addEventListener('click',    () => this.hide());
 
     // ── More menu ──
@@ -1194,27 +1178,16 @@ export class PlaceModal {
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
-      /* ── Modal wrapper ── */
-      .wp-pm {
-        position:fixed; inset:0; z-index:9998;
-        display:flex; flex-direction:column;
-        pointer-events:none;
-      }
-      .wp-pm-hidden { display:none !important; }
-      .wp-pm.wp-pm-visible { pointer-events:all; }
-
-      .wp-pm-backdrop { display:none; }
+      /* ion-modal maneja el wrapper */
 
       /* Card ocupa toda la pantalla pero el top es transparente */
       .wp-pm-card {
-        position:absolute; inset:0;
+        width:100%; height:100%;
         display:flex; flex-direction:column;
         overflow:hidden;
-        transform:translateY(100%);
-        will-change:transform;
         font-family:'Inter Tight',system-ui,sans-serif;
-        /* Sin background en la card — el topbar y body tienen su propio bg */
-        background:transparent;
+        background:#fff;
+        border-radius:24px 24px 0 0;
       }
 
       /* Shadow handled in app.css */
