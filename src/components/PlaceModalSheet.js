@@ -26,18 +26,15 @@ export class PlaceModalSheet {
     modal.backdropDismiss   = true;
     modal.cssClass          = 'wp-pm-sheet';
 
-    // Inyectar el wp-pm-card en el ion-modal
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;background:#fff;';
-
-    const card = this._pm._card;
-    if (card) {
-      card.style.cssText = 'position:relative;width:100%;flex:1;overflow:hidden;display:flex;flex-direction:column;background:#fff;transform:none;';
-      // Quitar el transform que PlaceModal aplica al card
-      card.style.transform = 'none';
-      wrapper.appendChild(card);
+    // Mover el #wp-place-modal entero al ion-modal
+    // y actualizar _pm._el para que querySelector siga funcionando
+    var pmEl = this._pm._el;
+    if (pmEl) {
+      // Limpiar estilos que PlaceModal usa para su propio show/hide
+      pmEl.className = '';
+      pmEl.style.cssText = 'display:flex;flex-direction:column;width:100%;height:100%;position:relative;pointer-events:all;';
+      modal.appendChild(pmEl);
     }
-    modal.appendChild(wrapper);
     document.querySelector('ion-app').appendChild(modal);
     this._ionModal = modal;
 
@@ -60,9 +57,9 @@ export class PlaceModalSheet {
   show(place) {
     var self = this;
     self._build().then(function() {
-      // Poblar contenido
+      // Poblar contenido directamente (sin el show() original que anima el card)
       self._pm._place = place;
-      self._pm._populate(place);
+      try { self._pm._populate(place); } catch(e) { console.warn('populate:', e); }
 
       // Ocultar topbar
       var mapTopbar = document.getElementById('topbar');
