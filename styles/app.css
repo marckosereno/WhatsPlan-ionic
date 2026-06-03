@@ -502,18 +502,15 @@ ion-app {
 
 /* ── PlaceModal sheet — estilo iOS 26 ── */
 ion-modal.wp-pm-sheet {
-  --background: #fff;
-  --border-radius: 24px;
-  --width: calc(100% - 24px);
-  --margin-start: 12px;
-  --margin-end: 12px;
-  --margin-bottom: 12px;
-  /* Transición suave entre card y sheet */
-  transition: --width 0.3s ease, --border-radius 0.3s ease;
+  --background: transparent;  /* transparente — el card tiene su propio bg */
+  --box-shadow: none;
+  --border-radius: 0;
 }
 ion-modal.wp-pm-sheet::part(handle) {
   background: rgba(0,0,0,0.18);
   width: 36px; height: 4px; border-radius: 2px;
+  /* El handle debe estar sobre el card */
+  z-index: 10; position: relative;
 }
 ion-modal.wp-pm-sheet::part(backdrop) {
   background: rgba(0,0,0,0.28);
@@ -521,7 +518,27 @@ ion-modal.wp-pm-sheet::part(backdrop) {
   -webkit-backdrop-filter: blur(4px);
 }
 ion-modal.wp-pm-sheet::part(content) {
-  border-radius: var(--border-radius, 24px);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  background: transparent;
+  overflow: visible;   /* permite que el box-shadow del card sea visible */
+  box-shadow: none;
+}
+/* Card — el elemento visual real */
+ion-modal.wp-pm-sheet #wp-pm-card {
+  background: #fff;
+  border-radius: 24px;
+  margin: 0 12px 12px;
+  width: calc(100% - 24px);
+  height: calc(100% - 12px);
   overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  transition: margin 0.32s cubic-bezier(0.32,0.72,0,1),
+              border-radius 0.32s cubic-bezier(0.32,0.72,0,1),
+              width 0.32s cubic-bezier(0.32,0.72,0,1);
+}
+ion-modal.wp-pm-sheet.wp-sheet-full #wp-pm-card {
+  margin: 0;
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  height: 100%;
+  box-shadow: none;
 }
