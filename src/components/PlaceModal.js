@@ -34,18 +34,25 @@ export class PlaceModal {
   }
 
   _bindScrollDrag() {
-    // Cuando el body del modal está scrolleado, el handle puede seguir dragando
-    // pero el swipe desde el contenido está desactivado (backdropDismiss:false)
-    // Si el usuario llega al top del scroll, habilitamos dismiss por swipe
     var body = this._el.querySelector('#wp-pm-body');
     if (!body || this._scrollBound) return;
     this._scrollBound = true;
     var modal = this._el;
+
+    // canDismiss: solo permite cerrar con swipe cuando el body está en el top
+    // Esto evita que el scroll del contenido active el dismiss
+    modal.canDismiss = function() {
+      return Promise.resolve(body.scrollTop <= 2);
+    };
+
+    // Cuando el body llega al top, asegurar que el modal puede cerrarse
     body.addEventListener('scroll', function() {
-      // Al llegar al top → el handle puede cerrar el modal
-      // Al estar scrolleado → solo permite subir/bajar breakpoints via handle
-      var atTop = body.scrollTop <= 4;
-      modal.backdropDismiss = atTop;
+      // Forzar re-evaluación del gesto cuando cambia el scroll
+      if (body.scrollTop > 2) {
+        modal.style.setProperty('--overflow', 'hidden');
+      } else {
+        modal.style.removeProperty('--overflow');
+      }
     }, { passive: true });
   }
 
@@ -88,7 +95,7 @@ export class PlaceModal {
     el.handle             = true;
     el.handleBehavior     = 'cycle';
     el.backdropBreakpoint = 0.01;
-    el.backdropDismiss    = false;  // solo handle hace dismiss, no swipe en contenido
+    el.backdropDismiss    = true;
     el.cssClass           = 'wp-pm-sheet';
     el.innerHTML = `
       <div class="wp-pm-card" id="wp-pm-card">
