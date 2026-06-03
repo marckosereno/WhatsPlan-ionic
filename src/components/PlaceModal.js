@@ -30,15 +30,6 @@ export class PlaceModal {
     this._hideMapUI();
     var self = this;
     this._el.present().then(function() {
-      // Aplicar estado inicial al card
-      var card = self._el.querySelector('#wp-pm-card');
-      if (card) {
-        card.style.margin       = '0 12px 12px';
-        card.style.borderRadius = '24px';
-        card.style.width        = 'calc(100% - 24px)';
-        card.style.height       = 'calc(100% - 12px)';
-        card.style.overflow     = 'hidden';
-      }
       self._applyBreakpointStyle(0.55);
       self._bindScrollDrag();
     });
@@ -86,56 +77,21 @@ export class PlaceModal {
     this._startDragWatch();
   }
 
-  // rAF: lee la posición del wrapper interno del ion-modal y aplica
-  // margin+radius al .wp-pm-card directamente
+  // Toggle clase CSS según breakpoint — CSS hace la transición
   _startDragWatch() {
-    if (this._watching) return;
-    this._watching = true;
-    var modal  = this._el;
-    var self   = this;
-    var vh     = window.innerHeight;
-    var MIN_BP = 0.55;
-    var MAX_BP = 0.92;
-
-    // El wrapper interno del ion-modal (donde vive el contenido)
-    // Ionic Core lo genera como .modal-wrapper o ion-modal > div
-    var getWrapper = function() {
-      return modal.shadowRoot
-        ? modal.shadowRoot.querySelector('.modal-wrapper, .ion-page')
-        : modal.querySelector('.modal-wrapper');
-    };
-
-    var raf;
-    function tick() {
-      if (!modal.isOpen) { self._watching = false; return; }
-
-      var wrapper = getWrapper();
-      var rect    = wrapper ? wrapper.getBoundingClientRect() : modal.getBoundingClientRect();
-      var ratio   = rect.height / vh;
-      var t = Math.max(0, Math.min(1, (ratio - MIN_BP) / (MAX_BP - MIN_BP)));
-
-      var pad  = 12 * (1 - t);   // 12 → 0
-      var radB = 24 * (1 - t);   // 24 → 0
-
-      var card = modal.querySelector('#wp-pm-card');
-      if (card) {
-        card.style.margin       = '0 '+pad+'px '+pad+'px';
-        card.style.borderRadius = '24px 24px '+radB+'px '+radB+'px';
-        card.style.width        = 'calc(100% - '+(pad*2)+'px)';
-        card.style.height       = 'calc(100% - '+pad+'px)';
-        card.style.overflow     = 'hidden';
-        card.style.boxShadow    = t > 0.98
-          ? 'none'
-          : '0 '+(8*(1-t))+'px '+(40*(1-t))+'px rgba(0,0,0,'+(0.18*(1-t))+')';
+    var modal = this._el;
+    var self  = this;
+    // Escuchar cambio de breakpoint y toggle clase
+    modal.addEventListener('ionBreakpointDidChange', function(e) {
+      var bp = e.detail.breakpoint;
+      if (bp >= 0.90) {
+        modal.classList.add('wp-sheet-full');
+      } else {
+        modal.classList.remove('wp-sheet-full');
       }
-
-      raf = requestAnimationFrame(tick);
-    }
-    raf = requestAnimationFrame(tick);
-
+    });
     modal.addEventListener('ionModalDidDismiss', function() {
-      cancelAnimationFrame(raf);
-      self._watching = false;
+      modal.classList.remove('wp-sheet-full');
     }, { once: true });
   }
 
