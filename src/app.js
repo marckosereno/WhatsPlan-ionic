@@ -14,6 +14,7 @@ import { initLiquidGlass } from '/src/utils/liquid-glass.js';
 import { FooterMenu }      from '/src/components/FooterMenu.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal }       from '/src/components/PlaceModal.js';
+import { PlaceModalSheet }  from '/src/components/PlaceModalSheet.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 import { appState }         from '/src/state/AppState.js';
@@ -395,7 +396,6 @@ function setupActivitySubscription(mv) {
       });
 
       // Sheet nativa con ion-modal + breakpoints
-      const { PlaceModalSheet } = await import('/src/components/PlaceModalSheet.js');
       const sheet = new PlaceModalSheet(placeModal);
       window.wpApp.placeModal = sheet;
 
