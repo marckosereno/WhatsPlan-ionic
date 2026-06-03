@@ -531,14 +531,18 @@ ion-modal.wp-pm-sheet #wp-pm-card {
   height: calc(100% - 12px);
   overflow: hidden;
   box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-  transition: margin 0.32s cubic-bezier(0.32,0.72,0,1),
-              border-radius 0.32s cubic-bezier(0.32,0.72,0,1),
-              width 0.32s cubic-bezier(0.32,0.72,0,1);
+  /* Sin transition — rAF controla los valores en real-time */
 }
-ion-modal.wp-pm-sheet.wp-sheet-full #wp-pm-card {
-  margin: 0;
-  border-radius: 24px 24px 0 0;
-  width: 100%;
-  height: 100%;
-  box-shadow: none;
+/* Handle bar dentro del card */
+.wp-pm-handle-bar {
+  width: 36px; height: 4px;
+  background: rgba(0,0,0,0.18);
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+  cursor: pointer;
 }
+/* Blur del mapa al abrir — desactivado para evitar salto
+body.wp-pm-open .map-container {
+  filter: blur(6px) brightness(0.92);
+} */
