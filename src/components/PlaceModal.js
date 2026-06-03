@@ -1195,27 +1195,40 @@ export class PlaceModal {
     s.id = 'wp-pm-styles';
     s.textContent = `
       /* ── Modal wrapper ── */
-      /* En ion-modal: layout flex normal */
-      .wp-pm, .wp-pm-card {
+      .wp-pm {
+        position:fixed; inset:0; z-index:9998;
         display:flex; flex-direction:column;
-        width:100%; height:100%; overflow:hidden;
-        font-family:'Inter Tight',system-ui,sans-serif;
-        background:#fff;
+        pointer-events:none;
       }
       .wp-pm-hidden { display:none !important; }
+      .wp-pm.wp-pm-visible { pointer-events:all; }
+
       .wp-pm-backdrop { display:none; }
+
+      /* Card ocupa toda la pantalla pero el top es transparente */
+      .wp-pm-card {
+        position:absolute; inset:0;
+        display:flex; flex-direction:column;
+        overflow:hidden;
+        transform:translateY(100%);
+        will-change:transform;
+        font-family:'Inter Tight',system-ui,sans-serif;
+        /* Sin background en la card — el topbar y body tienen su propio bg */
+        background:transparent;
+      }
 
       /* Shadow handled in app.css */
 
-      /* ── Topbar sticky ── */
+      /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
       .wp-pm-topbar {
-        position:sticky; top:0;
-        padding-top:calc(10px + env(safe-area-inset-top, 0px));
-        padding-left:12px; padding-right:12px; padding-bottom:10px;
+        position:absolute;
+        top:0; left:0; right:0;
+        padding-top:calc(12px + env(safe-area-inset-top, 0px));
+        padding-left:12px; padding-right:12px; padding-bottom:0;
         display:flex; align-items:center; gap:8px;
-        pointer-events:auto; z-index:10;
-        flex-shrink:0;
-        background:linear-gradient(to bottom,rgba(255,255,255,0.98) 80%,rgba(255,255,255,0));
+        pointer-events:auto;
+        z-index:2;
+        background:transparent;
       }
       /* Sombra azul manejada por ion-app::before en app.css */
       /* Botones topbar: 44px como chips del sistema */
@@ -1248,7 +1261,20 @@ export class PlaceModal {
         pointer-events:none;
       }
 
-
+      /* Fondo blanco difuminado detrás del carousel —
+         sube desde el panel y se pierde hacia la sombra azul del top */
+      .wp-pm-hero::before {
+        content:'';
+        position:absolute; inset:0;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0)    0%,
+          rgba(255,255,255,0.5)  8%,
+          rgba(255,255,255,0.85) 22%,
+          rgba(255,255,255,0.97) 38%,
+          rgba(255,255,255,1)    52%);
+        z-index:0;
+        pointer-events:none;
+      }
 
       .wp-pm-carousel { position:relative; z-index:1; }
       .wp-pm-dots     { z-index:2; }
@@ -1356,18 +1382,31 @@ export class PlaceModal {
 
       /* ── Body ── */
       .wp-pm-body {
-        flex:1; overflow-y:auto; overflow-x:hidden;
+        position:absolute;
+        top:calc(env(safe-area-inset-top, 0px) + 308px);
+        left:0; right:0; bottom:0;
+        overflow-y:auto; overflow-x:hidden;
         -webkit-overflow-scrolling:touch;
         scrollbar-width:none;
         background:#fff;
-        padding-top:12px;
-        padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));
-        position:relative;
+        border-radius:0;
+        padding-top:20px;
+        padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
       /* Sombra fija encima del body — elemento hermano, no ::before */
-      .wp-pm-top-fade { display:none; }
+      .wp-pm-top-fade {
+        position:absolute;
+        top:calc(env(safe-area-inset-top, 0px) + 308px);
+        left:0; right:0;
+        height:36px;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,1)   0%,
+          rgba(255,255,255,0)   100%);
+        z-index:20;
+        pointer-events:none;
+      }
 
       /* ── AI Description block ── */
       .wp-pm-ai-block {
@@ -1995,13 +2034,12 @@ export class PlaceModal {
       }
 
       /* ── CTA bottom bar — fixed at bottom ── */
-      /* ── CTA sticky bottom ── */
+      /* ── CTA flotante sin container ── */
       .wp-pm-bottom {
-        position:sticky; bottom:0;
-        left:0; right:0;
-        padding:10px 20px calc(16px + env(safe-area-inset-bottom,0px));
-        background:linear-gradient(to top,rgba(255,255,255,1) 60%,rgba(255,255,255,0));
-        z-index:10; flex-shrink:0;
+        position:absolute; bottom:calc(16px + env(safe-area-inset-bottom,0px));
+        left:20px; right:20px;
+        background:transparent;
+        border:none; z-index:2;
         pointer-events:none;
       }
       .wp-pm-cta {
