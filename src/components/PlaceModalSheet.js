@@ -1,127 +1,112 @@
 // ====================================================================
 // WHATSPLAN — PlaceModalSheet.js
-// Wrapper ion-modal nativo con breakpoints + drag
+// Ion-modal sheet que envuelve PlaceModal sin modificarlo.
+// El ion-modal provee handle nativo + drag + breakpoints.
+// El PlaceModal original vive en body y se clipea al breakpoint.
 // ====================================================================
-
-import { PlaceModal } from '/src/components/PlaceModal.js';
 
 export class PlaceModalSheet {
   constructor(placeModal) {
-    this._pm       = placeModal;
-    this._ionModal = null;
-    this._built    = false;
+    this._pm      = placeModal;
+    this._modal   = null;
+    this._built   = false;
+
+    // Breakpoints en fracción de pantalla
+    // 0.00 → cerrado
+    // 0.50 → medio  — fotos + info básica
+    // 0.92 → full   — todo el contenido
+    this.BREAKPOINTS     = [0, 0.50, 0.92];
+    this.INIT_BREAKPOINT = 0.50;
+    this._currentBp      = 0;
   }
 
-  // ── Build — crea el ion-modal una sola vez ────────────────────────
+  // ── Build — una sola vez ─────────────────────────────────────────
   _build() {
-    if (this._built) return Promise.resolve();
+    if (this._built) return;
     this._built = true;
 
-    const modal = document.createElement('ion-modal');
-    modal.breakpoints       = [0, 0.50, 0.92];
-    modal.initialBreakpoint = 0.50;
-    modal.handle            = true;
-    modal.handleBehavior    = 'cycle';
-    modal.backdropBreakpoint= 0.01;
-    modal.backdropDismiss   = true;
-    modal.cssClass          = 'wp-pm-sheet';
+    var modal = document.createElement('ion-modal');
+    modal.breakpoints        = this.BREAKPOINTS;
+    modal.initialBreakpoint  = this.INIT_BREAKPOINT;
+    modal.handle             = true;
+    modal.handleBehavior     = 'cycle';
+    modal.backdropBreakpoint = 0.01;
+    modal.backdropDismiss    = true;
+    modal.cssClass           = 'wp-pm-sheet';
 
-    // Mover el #wp-place-modal entero al ion-modal
-    // y actualizar _pm._el para que querySelector siga funcionando
-    var pmEl = this._pm._el;
-    if (pmEl) {
-      // Limpiar estilos que PlaceModal usa para su propio show/hide
-      pmEl.className = '';
-      pmEl.style.cssText = 'display:flex;flex-direction:column;width:100%;height:100%;position:relative;pointer-events:all;';
-      modal.appendChild(pmEl);
-    }
+    // El contenido del ion-modal es solo un div vacío transparente
+    // El PlaceModal real vive en body — el sheet solo controla el clip
+    var inner = document.createElement('div');
+    inner.style.cssText = 'width:100%;height:100%;background:transparent;pointer-events:none;';
+    modal.appendChild(inner);
     document.querySelector('ion-app').appendChild(modal);
-    this._ionModal = modal;
+    this._modal = modal;
+
+    var self = this;
 
     // Cierre nativo (swipe down)
-    modal.addEventListener('ionModalDidDismiss', () => {
-      document.body.classList.remove('wp-pm-open');
-      this._restoreTopbar();
-      if (this._pm.onClose) this._pm.onClose();
+    modal.addEventListener('ionModalDidDismiss', function() {
+      self._pm.hide();
     });
 
-    // Cambio de breakpoint
-    modal.addEventListener('ionBreakpointDidChange', (e) => {
-      this._onBreakpoint(e.detail.breakpoint);
+    // Cambio de breakpoint → clipear el PlaceModal
+    modal.addEventListener('ionBreakpointDidChange', function(e) {
+      self._currentBp = e.detail.breakpoint;
+      self._syncClip(e.detail.breakpoint);
     });
+  }
 
-    return Promise.resolve();
+  // ── Sincronizar la altura visible del PlaceModal al breakpoint ──
+  _syncClip(bp) {
+    var card = this._pm._card;
+    if (!card) return;
+    var vh = window.innerHeight;
+
+    if (bp === 0) {
+      // Oculto — PlaceModal se cierra solo vía ionModalDidDismiss
+      return;
+    }
+
+    // La carta del PlaceModal ya está en translateY(0) — solo
+    // necesitamos que el body del modal tenga la altura correcta.
+    // El ion-modal maneja el clip via su propio height.
+    // Solo ajustar el padding-bottom del body scroll para que no
+    // quede contenido tapado por el CTA.
+    var body = this._pm._el && this._pm._el.querySelector('#wp-pm-body');
+    if (body) {
+      var ctaH = 80;
+      body.style.paddingBottom = (ctaH + 20) + 'px';
+    }
   }
 
   // ── Show ─────────────────────────────────────────────────────────
   show(place) {
     var self = this;
-    self._build().then(function() {
-      // Poblar contenido directamente (sin el show() original que anima el card)
-      self._pm._place = place;
-      try { self._pm._populate(place); } catch(e) { console.warn('populate:', e); }
+    this._build();
 
-      // Ocultar topbar
-      var mapTopbar = document.getElementById('topbar');
-      if (mapTopbar) {
-        if (window.gsap) {
-          window.gsap.to(mapTopbar, {
-            scale:0.85, opacity:0, duration:0.22, ease:'power2.in',
-            onComplete: function() {
-              mapTopbar.style.visibility = 'hidden';
-              mapTopbar.style.pointerEvents = 'none';
-            }
-          });
-        } else {
-          mapTopbar.style.visibility = 'hidden';
-          mapTopbar.style.pointerEvents = 'none';
-        }
-      }
+    // 1. Poblar el PlaceModal
+    this._pm._place = place;
+    this._pm._populate(place);
 
-      document.body.classList.add('wp-pm-open');
-      self._ionModal.present().then(function() {
-        self._onBreakpoint(0.50);
+    // 2. Mostrar el PlaceModal (animación propia, oculta el topbar)
+    this._pm.show(place);
+
+    // 3. Presentar el ion-modal encima (transparente, solo para el drag)
+    //    Pequeño delay para que PlaceModal termine su animación
+    setTimeout(function() {
+      self._modal.present().then(function() {
+        self._syncClip(self.INIT_BREAKPOINT);
       });
-    });
+    }, 380);
   }
 
   // ── Hide ─────────────────────────────────────────────────────────
   hide() {
-    if (this._ionModal) this._ionModal.dismiss();
+    if (this._modal) this._modal.dismiss();
+    this._pm.hide();
   }
 
   isVisible() {
-    return this._ionModal ? this._ionModal.isOpen : false;
-  }
-
-  // ── Restaurar topbar ─────────────────────────────────────────────
-  _restoreTopbar() {
-    var mapTopbar = document.getElementById('topbar');
-    if (!mapTopbar) return;
-    mapTopbar.style.visibility = '';
-    mapTopbar.style.pointerEvents = '';
-    if (window.gsap) {
-      window.gsap.killTweensOf(mapTopbar);
-      window.gsap.fromTo(mapTopbar,
-        { scale:0.85, opacity:0 },
-        { scale:1, opacity:1, duration:0.32, ease:'back.out(2)' }
-      );
-    }
-  }
-
-  // ── Adaptar al breakpoint ────────────────────────────────────────
-  _onBreakpoint(bp) {
-    var hero = this._pm._el && this._pm._el.querySelector('#wp-pm-hero');
-    var body = this._pm._el && this._pm._el.querySelector('#wp-pm-body');
-    var fade = this._pm._el && this._pm._el.querySelector('.wp-pm-top-fade');
-    if (bp <= 0.50) {
-      if (hero) hero.style.height = '210px';
-      if (body) body.style.top = 'calc(env(safe-area-inset-top,0px) + 278px)';
-      if (fade) fade.style.top = 'calc(env(safe-area-inset-top,0px) + 278px)';
-    } else {
-      if (hero) hero.style.height = '180px';
-      if (body) body.style.top = 'calc(env(safe-area-inset-top,0px) + 248px)';
-      if (fade) fade.style.top = 'calc(env(safe-area-inset-top,0px) + 248px)';
-    }
+    return this._modal ? this._modal.isOpen : false;
   }
 }
