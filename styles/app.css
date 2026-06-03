@@ -498,3 +498,20 @@ ion-app {
 .category-footer-chip:nth-child(6) { animation-delay: 200ms; }
 .category-footer-chip:nth-child(7) { animation-delay: 240ms; }
 .category-footer-chip:nth-child(8) { animation-delay: 280ms; }
+/* ── PlaceModal como ion-modal sheet nativo ── */
+ion-modal.wp-pm-sheet {
+  --border-radius: 24px 24px 0 0;
+  --background: #fff;
+  --box-shadow: 0 -4px 30px rgba(0,0,0,0.12);
+}
+/* Handle nativo de Ionic */
+ion-modal.wp-pm-sheet::part(handle) {
+  background: rgba(0,0,0,0.18);
+  width: 36px; height: 4px;
+  border-radius: 2px;
+}
+ion-modal.wp-pm-sheet::part(backdrop) {
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
