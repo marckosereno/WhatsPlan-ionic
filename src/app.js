@@ -1,4 +1,4 @@
-// ===================================================================
+// ====================================================================
 // WHATSPLAN — app.js
 // ====================================================================
 
@@ -388,13 +388,20 @@ function setupActivitySubscription(mv) {
         proxyPhoto: function(url) {
           return url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null;
         },
-        getCurrentUser: function() { return window.wpApp.currentUser; }
+        getCurrentUser: function() { return window.wpApp.currentUser; },
+        onClose: function() {
+          mv.onPlaceSelect = function(place) { sheet.show(place); };
+        }
       });
-      window.wpApp.placeModal = placeModal;
 
-      // Al tocar la minicard → abrir el modal de detalles
+      // Sheet nativa con ion-modal + breakpoints
+      const { PlaceModalSheet } = await import('/src/components/PlaceModalSheet.js');
+      const sheet = new PlaceModalSheet(placeModal);
+      window.wpApp.placeModal = sheet;
+
+      // Al tocar la minicard → abrir el sheet
       mv.onPlaceSelect = function(place) {
-        placeModal.show(place);
+        sheet.show(place);
       };
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
