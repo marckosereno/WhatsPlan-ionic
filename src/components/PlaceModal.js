@@ -27,10 +27,47 @@ export class PlaceModal {
     this._populate(place);
     document.body.classList.add('wp-pm-open');
     this._hideTopbar();
+    this._hideMapUI();
     var self = this;
     this._el.present().then(function() {
       self._bindScrollDrag();
     });
+  }
+
+  _hideMapUI() {
+    var t = 'transform 0.26s ease, opacity 0.26s ease';
+    var subcatFooter = document.getElementById('map-subcategories-footer');
+    if (subcatFooter) {
+      subcatFooter.style.transition   = t;
+      subcatFooter.style.transform    = 'translateY(120%)';
+      subcatFooter.style.opacity      = '0';
+      subcatFooter.style.pointerEvents= 'none';
+    }
+    var footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) {
+      footerMenu.style.transition   = t;
+      footerMenu.style.transform    = 'translateY(120%)';
+      footerMenu.style.opacity      = '0';
+      footerMenu.style.pointerEvents= 'none';
+    }
+  }
+
+  _showMapUI() {
+    var t = 'transform 0.28s ease, opacity 0.28s ease';
+    var subcatFooter = document.getElementById('map-subcategories-footer');
+    if (subcatFooter) {
+      subcatFooter.style.transition   = t;
+      subcatFooter.style.transform    = '';
+      subcatFooter.style.opacity      = '1';
+      subcatFooter.style.pointerEvents= '';
+    }
+    var footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) {
+      footerMenu.style.transition   = t;
+      footerMenu.style.transform    = '';
+      footerMenu.style.opacity      = '1';
+      footerMenu.style.pointerEvents= '';
+    }
   }
 
   _bindScrollDrag() {
@@ -39,21 +76,19 @@ export class PlaceModal {
     this._scrollBound = true;
     var modal = this._el;
 
-    // canDismiss: solo permite cerrar con swipe cuando el body está en el top
-    // Esto evita que el scroll del contenido active el dismiss
-    modal.canDismiss = function() {
-      return Promise.resolve(body.scrollTop <= 2);
-    };
-
-    // Cuando el body llega al top, asegurar que el modal puede cerrarse
-    body.addEventListener('scroll', function() {
-      // Forzar re-evaluación del gesto cuando cambia el scroll
-      if (body.scrollTop > 2) {
-        modal.style.setProperty('--overflow', 'hidden');
-      } else {
-        modal.style.removeProperty('--overflow');
+    // Interceptar touchstart en el contenido:
+    // si el body está scrolleado, detener propagación al gesture de Ionic
+    body.addEventListener('touchstart', function(e) {
+      if (body.scrollTop > 4) {
+        e.stopPropagation();
       }
-    }, { passive: true });
+    }, { passive: false, capture: true });
+
+    body.addEventListener('touchmove', function(e) {
+      if (body.scrollTop > 4) {
+        e.stopPropagation();
+      }
+    }, { passive: false, capture: true });
   }
 
   hide() { this._el.dismiss(); }
