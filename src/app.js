@@ -14,7 +14,6 @@ import { initLiquidGlass } from '/src/utils/liquid-glass.js';
 import { FooterMenu }      from '/src/components/FooterMenu.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal }       from '/src/components/PlaceModal.js';
-import { PlaceModalSheet }  from '/src/components/PlaceModalSheet.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 import { appState }         from '/src/state/AppState.js';
@@ -395,13 +394,9 @@ function setupActivitySubscription(mv) {
         }
       });
 
-      // Sheet nativa con ion-modal + breakpoints
-      const sheet = new PlaceModalSheet(placeModal);
-      window.wpApp.placeModal = sheet;
-
-      // Al tocar la minicard → abrir el sheet
+      window.wpApp.placeModal = placeModal;
       mv.onPlaceSelect = function(place) {
-        sheet.show(place);
+        placeModal.show(place);
       };
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
