@@ -47,12 +47,12 @@ ion-app::before {
 
 /* Misma sombra — nuevos valores cuando la ficha está abierta, sin transición */
 body.wp-pm-open ion-app::before {
-  height: 180px;
+  height: 160px;
   background: linear-gradient(to bottom,
-    rgba(26,92,245,0.82) 0%,
-    rgba(74,116,245,0.55) 40%,
-    rgba(96,165,250,0.2)  70%,
-    rgba(147,197,253,0)   100%
+    rgba(220,235,255,0.90) 0%,
+    rgba(220,235,255,0.50) 45%,
+    rgba(220,235,255,0.10) 75%,
+    rgba(220,235,255,0)   100%
   );
 }
 
