@@ -1,4 +1,4 @@
-// ====================================================================
+// ===================================================================
 // WHATSPLAN — app.js
 // ====================================================================
 
@@ -388,13 +388,11 @@ function setupActivitySubscription(mv) {
         proxyPhoto: function(url) {
           return url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null;
         },
-        getCurrentUser: function() { return window.wpApp.currentUser; },
-        onClose: function() {
-          mv.onPlaceSelect = function(place) { sheet.show(place); };
-        }
+        getCurrentUser: function() { return window.wpApp.currentUser; }
       });
-
       window.wpApp.placeModal = placeModal;
+
+      // Al tocar la minicard → abrir el modal de detalles
       mv.onPlaceSelect = function(place) {
         placeModal.show(place);
       };
