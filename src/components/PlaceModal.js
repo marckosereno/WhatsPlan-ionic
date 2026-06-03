@@ -30,19 +30,22 @@ export class PlaceModal {
     this._hideMapUI();
     var self = this;
     this._el.present().then(function() {
+      self._applyBreakpointStyle(0.55);
       self._bindScrollDrag();
     });
   }
 
   _hideMapUI() {
     var t = 'transform 0.26s ease, opacity 0.26s ease';
-    var subcatFooter = document.getElementById('map-subcategories-footer');
-    if (subcatFooter) {
-      subcatFooter.style.transition   = t;
-      subcatFooter.style.transform    = 'translateY(120%)';
-      subcatFooter.style.opacity      = '0';
-      subcatFooter.style.pointerEvents= 'none';
+    // Panel principal (contiene subcats + categorías)
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) {
+      panel.style.transition    = t;
+      panel.style.transform     = 'translateY(120%)';
+      panel.style.opacity       = '0';
+      panel.style.pointerEvents = 'none';
     }
+    // Footer menu
     var footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) {
       footerMenu.style.transition   = t;
@@ -53,13 +56,13 @@ export class PlaceModal {
   }
 
   _showMapUI() {
-    var t = 'transform 0.28s ease, opacity 0.28s ease';
-    var subcatFooter = document.getElementById('map-subcategories-footer');
-    if (subcatFooter) {
-      subcatFooter.style.transition   = t;
-      subcatFooter.style.transform    = '';
-      subcatFooter.style.opacity      = '1';
-      subcatFooter.style.pointerEvents= '';
+    var t = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) {
+      panel.style.transition    = t;
+      panel.style.transform     = '';
+      panel.style.opacity       = '1';
+      panel.style.pointerEvents = '';
     }
     var footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) {
@@ -67,6 +70,27 @@ export class PlaceModal {
       footerMenu.style.transform    = '';
       footerMenu.style.opacity      = '1';
       footerMenu.style.pointerEvents= '';
+    }
+  }
+
+  _applyBreakpointStyle(bp) {
+    var modal = this._el;
+    if (!modal) return;
+    if (bp >= 0.90) {
+      // Full sheet — edge to edge, sin márgenes
+      modal.style.setProperty('--border-radius', '24px 24px 0 0');
+      modal.style.setProperty('--width',  '100%');
+      modal.style.setProperty('--height', '100%');
+      modal.style.removeProperty('--margin-start');
+      modal.style.removeProperty('--margin-end');
+      modal.style.removeProperty('--margin-bottom');
+    } else {
+      // Card flotante — márgenes laterales y abajo, esquinas redondeadas
+      modal.style.setProperty('--border-radius', '24px');
+      modal.style.setProperty('--width',  'calc(100% - 24px)');
+      modal.style.setProperty('--margin-start',  '12px');
+      modal.style.setProperty('--margin-end',    '12px');
+      modal.style.setProperty('--margin-bottom', '12px');
     }
   }
 
