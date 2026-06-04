@@ -1429,10 +1429,33 @@ export class PlaceModal {
         letter-spacing:0.04em; text-transform:uppercase;
         color:#1540cc;
         background:linear-gradient(135deg,#dce8fe,#c0d4fe);
-        border:1px solid rgba(160,190,253,0.5);
+        border:1px solid rgba(160,190,253,0.4);
         padding:3px 9px; border-radius:999px;
         font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 2px 6px rgba(74,116,245,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+        box-shadow:0 2px 6px rgba(74,116,245,0.15);
+        position:relative;
+      }
+      /* Arco superior-izquierda */
+      .wp-pm-ai-badge::before {
+        content:''; position:absolute; top:-1px; left:-1px;
+        width:12px; height:12px;
+        border-top:2px solid transparent; border-left:2px solid transparent;
+        border-radius:10px 0 0 0;
+        background:
+          linear-gradient(#dce8fe,#dce8fe) padding-box,
+          linear-gradient(135deg, rgba(255,255,255,1) 0%, #1a5cf5 100%) border-box;
+        pointer-events:none;
+      }
+      /* Arco inferior-derecha */
+      .wp-pm-ai-badge::after {
+        content:''; position:absolute; bottom:-1px; right:-1px;
+        width:12px; height:12px;
+        border-bottom:2px solid transparent; border-right:2px solid transparent;
+        border-radius:0 0 10px 0;
+        background:
+          linear-gradient(#c0d4fe,#c0d4fe) padding-box,
+          linear-gradient(135deg, #1a5cf5 0%, rgba(255,255,255,1) 100%) border-box;
+        pointer-events:none;
       }
       @keyframes wp-ai-pulse {
         0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
@@ -1561,34 +1584,7 @@ export class PlaceModal {
         letter-spacing:0.01em;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        box-shadow:0 2px 6px rgba(74,116,245,0.18);
-        position:relative;
-      }
-      /* Arco esquina inferior-izquierda — gradiente blanco→azul */
-      .wp-pm-tag-chip::before {
-        content:'';
-        position:absolute; bottom:-1px; left:-1px;
-        width:12px; height:12px;
-        border-bottom:2px solid transparent;
-        border-left:2px solid transparent;
-        border-radius:0 0 0 10px;
-        background:
-          linear-gradient(#dce8fe,#dce8fe) padding-box,
-          linear-gradient(135deg, rgba(255,255,255,1) 0%, #1a5cf5 100%) border-box;
-        pointer-events:none;
-      }
-      /* Arco esquina superior-derecha — gradiente azul→blanco */
-      .wp-pm-tag-chip::after {
-        content:'';
-        position:absolute; top:-1px; right:-1px;
-        width:12px; height:12px;
-        border-top:2px solid transparent;
-        border-right:2px solid transparent;
-        border-radius:0 10px 0 0;
-        background:
-          linear-gradient(#c0d4fe,#c0d4fe) padding-box,
-          linear-gradient(135deg, #1a5cf5 0%, rgba(255,255,255,1) 100%) border-box;
-        pointer-events:none;
+        box-shadow:0 2px 6px rgba(74,116,245,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
       /* Save button */
