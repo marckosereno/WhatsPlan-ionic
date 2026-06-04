@@ -1564,24 +1564,30 @@ export class PlaceModal {
         box-shadow:0 2px 6px rgba(74,116,245,0.18);
         position:relative;
       }
-      /* Arco esquina inferior-izquierda */
+      /* Arco esquina inferior-izquierda — gradiente blanco→azul */
       .wp-pm-tag-chip::before {
         content:'';
         position:absolute; bottom:-1px; left:-1px;
-        width:10px; height:10px;
-        border-bottom:2px solid #1a5cf5;
-        border-left:2px solid #1a5cf5;
-        border-radius:0 0 0 8px;
+        width:12px; height:12px;
+        border-bottom:2px solid transparent;
+        border-left:2px solid transparent;
+        border-radius:0 0 0 10px;
+        background:
+          linear-gradient(#dce8fe,#dce8fe) padding-box,
+          linear-gradient(135deg, rgba(255,255,255,1) 0%, #1a5cf5 100%) border-box;
         pointer-events:none;
       }
-      /* Arco esquina superior-derecha */
+      /* Arco esquina superior-derecha — gradiente azul→blanco */
       .wp-pm-tag-chip::after {
         content:'';
         position:absolute; top:-1px; right:-1px;
-        width:10px; height:10px;
-        border-top:2px solid #1a5cf5;
-        border-right:2px solid #1a5cf5;
-        border-radius:0 8px 0 0;
+        width:12px; height:12px;
+        border-top:2px solid transparent;
+        border-right:2px solid transparent;
+        border-radius:0 10px 0 0;
+        background:
+          linear-gradient(#c0d4fe,#c0d4fe) padding-box,
+          linear-gradient(135deg, #1a5cf5 0%, rgba(255,255,255,1) 100%) border-box;
         pointer-events:none;
       }
       .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
