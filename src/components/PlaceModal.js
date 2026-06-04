@@ -1561,7 +1561,28 @@ export class PlaceModal {
         letter-spacing:0.01em;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        box-shadow:0 2px 6px rgba(74,116,245,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
+        box-shadow:0 2px 6px rgba(74,116,245,0.18);
+        position:relative;
+      }
+      /* Arco esquina inferior-izquierda */
+      .wp-pm-tag-chip::before {
+        content:'';
+        position:absolute; bottom:-1px; left:-1px;
+        width:10px; height:10px;
+        border-bottom:2px solid #1a5cf5;
+        border-left:2px solid #1a5cf5;
+        border-radius:0 0 0 8px;
+        pointer-events:none;
+      }
+      /* Arco esquina superior-derecha */
+      .wp-pm-tag-chip::after {
+        content:'';
+        position:absolute; top:-1px; right:-1px;
+        width:10px; height:10px;
+        border-top:2px solid #1a5cf5;
+        border-right:2px solid #1a5cf5;
+        border-radius:0 8px 0 0;
+        pointer-events:none;
       }
       .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
       /* Save button */
