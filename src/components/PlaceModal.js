@@ -1429,35 +1429,10 @@ export class PlaceModal {
         letter-spacing:0.04em; text-transform:uppercase;
         color:#1540cc;
         background:linear-gradient(135deg,#dce8fe,#c0d4fe);
-        border:1px solid rgba(160,190,253,0.4);
+        border:1px solid rgba(160,190,253,0.5);
         padding:3px 9px; border-radius:999px;
         font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 2px 6px rgba(74,116,245,0.15);
-        position:relative;
-      }
-      /* Highlight superior-izquierda — liquid glass */
-      .wp-pm-ai-badge::before {
-        content:''; position:absolute; top:-1px; left:-1px;
-        width:38%; height:80%;
-        border-top:1.5px solid rgba(255,255,255,0.95);
-        border-left:1.5px solid rgba(255,255,255,0.55);
-        border-right:none; border-bottom:none;
-        border-radius:999px 0 0 999px;
-        -webkit-mask-image:linear-gradient(135deg, white 20%, transparent 75%);
-        mask-image:linear-gradient(135deg, white 20%, transparent 75%);
-        pointer-events:none;
-      }
-      /* Highlight inferior-derecha — liquid glass */
-      .wp-pm-ai-badge::after {
-        content:''; position:absolute; bottom:-1px; right:-1px;
-        width:38%; height:80%;
-        border-bottom:1.5px solid rgba(255,255,255,0.95);
-        border-right:1.5px solid rgba(255,255,255,0.55);
-        border-top:none; border-left:none;
-        border-radius:0 999px 999px 0;
-        -webkit-mask-image:linear-gradient(315deg, white 20%, transparent 75%);
-        mask-image:linear-gradient(315deg, white 20%, transparent 75%);
-        pointer-events:none;
+        box-shadow:0 2px 6px rgba(74,116,245,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       @keyframes wp-ai-pulse {
         0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
