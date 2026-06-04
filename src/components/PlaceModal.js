@@ -1435,26 +1435,28 @@ export class PlaceModal {
         box-shadow:0 2px 6px rgba(74,116,245,0.15);
         position:relative;
       }
-      /* Arco superior-izquierda */
+      /* Highlight superior-izquierda — liquid glass */
       .wp-pm-ai-badge::before {
         content:''; position:absolute; top:-1px; left:-1px;
-        width:12px; height:12px;
-        border-top:2px solid transparent; border-left:2px solid transparent;
-        border-radius:10px 0 0 0;
-        background:
-          linear-gradient(#dce8fe,#dce8fe) padding-box,
-          linear-gradient(135deg, rgba(255,255,255,1) 0%, #1a5cf5 100%) border-box;
+        width:55%; height:88%;
+        border-top:1.5px solid rgba(255,255,255,0.95);
+        border-left:1.5px solid rgba(255,255,255,0.6);
+        border-right:none; border-bottom:none;
+        border-radius:999px 0 0 999px;
+        -webkit-mask-image:linear-gradient(135deg, white 30%, transparent 90%);
+        mask-image:linear-gradient(135deg, white 30%, transparent 90%);
         pointer-events:none;
       }
-      /* Arco inferior-derecha */
+      /* Highlight inferior-derecha — liquid glass */
       .wp-pm-ai-badge::after {
         content:''; position:absolute; bottom:-1px; right:-1px;
-        width:12px; height:12px;
-        border-bottom:2px solid transparent; border-right:2px solid transparent;
-        border-radius:0 0 10px 0;
-        background:
-          linear-gradient(#c0d4fe,#c0d4fe) padding-box,
-          linear-gradient(135deg, #1a5cf5 0%, rgba(255,255,255,1) 100%) border-box;
+        width:55%; height:88%;
+        border-bottom:1.5px solid rgba(255,255,255,0.95);
+        border-right:1.5px solid rgba(255,255,255,0.6);
+        border-top:none; border-left:none;
+        border-radius:0 999px 999px 0;
+        -webkit-mask-image:linear-gradient(315deg, white 30%, transparent 90%);
+        mask-image:linear-gradient(315deg, white 30%, transparent 90%);
         pointer-events:none;
       }
       @keyframes wp-ai-pulse {
