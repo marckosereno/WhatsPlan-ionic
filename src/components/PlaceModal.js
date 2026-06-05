@@ -188,7 +188,7 @@ export class PlaceModal {
             <div class="wp-pm-title-row">
               <h2 class="wp-pm-name" id="wp-pm-name"></h2>
               <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#06b6d4"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#f43f5e"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </span>
             </div>
           </div>
@@ -1378,7 +1378,7 @@ export class PlaceModal {
         background:#cbd5e1; cursor:pointer;
         transition:all 0.2s ease;
       }
-      .wp-pm-dot.active { background:#06b6d4; width:14px; }
+      .wp-pm-dot.active { background:#f43f5e; width:14px; }
 
       /* ── Body ── */
       .wp-pm-body {
@@ -1420,19 +1420,19 @@ export class PlaceModal {
         display:flex; align-items:center; gap:8px;
       }
       .wp-pm-ai-icon {
-        flex-shrink:0; color:#06b6d4;
+        flex-shrink:0; color:#f43f5e;
         transition:color 0.3s ease;
-        filter:drop-shadow(0 0 6px rgba(6,182,212,0.4));
+        filter:drop-shadow(0 0 6px rgba(244,63,94,0.4));
       }
       .wp-pm-ai-badge {
         font-size:10px; font-weight:700;
         letter-spacing:0.04em; text-transform:uppercase;
-        color:#0e7490;
-        background:linear-gradient(135deg,#cffafe,#a5f3fc);
-        border:1px solid rgba(103,232,249,0.5);
+        color:#be123c;
+        background:linear-gradient(135deg,#ffe4e6,#fecdd3);
+        border:1px solid rgba(253,164,175,0.5);
         padding:3px 9px; border-radius:999px;
         font-family:'Inter Tight',system-ui,sans-serif;
-        box-shadow:0 2px 6px rgba(6,182,212,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+        box-shadow:0 2px 6px rgba(244,63,94,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       @keyframes wp-ai-pulse {
         0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
@@ -1485,9 +1485,9 @@ export class PlaceModal {
         box-shadow:0 2px 6px rgba(251,191,36,0.25),inset 0 1px 0 rgba(255,255,255,0.7);
       }
       .wp-pm-badge-verified {
-        background:linear-gradient(135deg,#cffafe,#a5f3fc);
-        color:#155e75; border:1px solid rgba(103,232,249,0.6);
-        box-shadow:0 2px 6px rgba(6,182,212,0.20),inset 0 1px 0 rgba(255,255,255,0.7);
+        background:linear-gradient(135deg,#ffe4e6,#fecdd3);
+        color:#9f1239; border:1px solid rgba(253,164,175,0.6);
+        box-shadow:0 2px 6px rgba(244,63,94,0.20),inset 0 1px 0 rgba(255,255,255,0.7);
       }
       .wp-pm-badge-premium {
         background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
@@ -1553,15 +1553,15 @@ export class PlaceModal {
       /* Etiquetar chip */
       .wp-pm-tag-chip {
         display:inline-flex; align-items:center;
-        font-size:11px; font-weight:700; color:#0e7490;
-        background:linear-gradient(135deg,#cffafe,#a5f3fc);
-        border:1px solid rgba(103,232,249,0.5);
+        font-size:11px; font-weight:700; color:#be123c;
+        background:linear-gradient(135deg,#ffe4e6,#fecdd3);
+        border:1px solid rgba(253,164,175,0.5);
         padding:3px 10px; border-radius:999px; cursor:pointer;
         font-family:'Inter Tight',system-ui,sans-serif;
         letter-spacing:0.01em;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        box-shadow:0 2px 6px rgba(6,182,212,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
+        box-shadow:0 2px 6px rgba(244,63,94,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
       /* Save button */
@@ -1578,10 +1578,10 @@ export class PlaceModal {
       }
       .wp-pm-save-btn:active { transform:scale(0.92); }
       .wp-pm-save-btn.saved {
-        color:#0891b2;
-        background:linear-gradient(135deg,#cffafe,#a5f3fc);
-        border-color:rgba(103,232,249,0.5);
-        box-shadow:0 2px 8px rgba(6,182,212,0.22),inset 0 1px 0 rgba(255,255,255,0.8);
+        color:#e11d48;
+        background:linear-gradient(135deg,#ffe4e6,#fecdd3);
+        border-color:rgba(253,164,175,0.5);
+        box-shadow:0 2px 8px rgba(244,63,94,0.22),inset 0 1px 0 rgba(255,255,255,0.8);
       }
 
       /* ── More menu ── */
@@ -1653,9 +1653,9 @@ export class PlaceModal {
       }
       .wpt-float-icon {
         width:42px; height:42px; border-radius:11px; flex-shrink:0;
-        background:linear-gradient(135deg,#cffafe,#a5f3fc);
-        display:flex; align-items:center; justify-content:center; color:#0891b2;
-        box-shadow:0 2px 8px rgba(8,145,178,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
+        background:linear-gradient(135deg,#ffe4e6,#fecdd3);
+        display:flex; align-items:center; justify-content:center; color:#e11d48;
+        box-shadow:0 2px 8px rgba(225,29,72,0.18),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wpt-float-titles {
         flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
@@ -1718,8 +1718,8 @@ export class PlaceModal {
         transition:background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
       .wpt-cta-btn.active {
-        background:#0891b2; color:#fff;
-        box-shadow:0 6px 18px rgba(8,145,178,0.35);
+        background:#e11d48; color:#fff;
+        box-shadow:0 6px 18px rgba(225,29,72,0.35);
       }
       .wpt-cta-btn:active { filter:brightness(0.92); }
       .wpt-cta-label { transition:none; }
@@ -1763,8 +1763,8 @@ export class PlaceModal {
       }
       .wp-pm-tag-item:active { transform:scale(0.94); }
       .wp-pm-tag-item.selected {
-        background:#0891b2; border-color:#0891b2; color:#fff;
-        box-shadow:0 2px 8px rgba(8,145,178,0.28);
+        background:#e11d48; border-color:#e11d48; color:#fff;
+        box-shadow:0 2px 8px rgba(225,29,72,0.28);
       }
       .wp-pm-tag-item.already-done {
         background:rgba(52,199,89,0.10);
@@ -1835,7 +1835,7 @@ export class PlaceModal {
       }
       .wp-pm-stats-row.hl-featured::before { display:block; background:linear-gradient(135deg,#f59e0b,#f97316); }
       .wp-pm-stats-row.hl-premium::before  { display:block; background:linear-gradient(135deg,#a855f7,#ec4899,#f59e0b); }
-      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#06b6d4,#06b6d4); }
+      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#f43f5e,#06b6d4); }
       .wp-pm-stats-inner {
         display:flex; align-items:stretch;
         border-radius:999px;
@@ -1927,7 +1927,7 @@ export class PlaceModal {
         font-weight:400;
       }
       .wp-pm-read-more {
-        border:none; background:none; color:#0891b2;
+        border:none; background:none; color:#e11d48;
         font-size:15px; font-weight:400; cursor:pointer;
         padding:0 20px 12px;
         font-family:'Inter Tight',system-ui,sans-serif;
@@ -1948,9 +1948,9 @@ export class PlaceModal {
         box-shadow:0 2px 6px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.9);
       }
       .wp-pm-tag-accent {
-        background:linear-gradient(135deg,#cffafe,#a5f3fc);
-        border:1px solid rgba(103,232,249,0.5); color:#155e75;
-        box-shadow:0 2px 6px rgba(6,182,212,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+        background:linear-gradient(135deg,#ffe4e6,#fecdd3);
+        border:1px solid rgba(253,164,175,0.5); color:#9f1239;
+        box-shadow:0 2px 6px rgba(244,63,94,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .wp-pm-user-tag {
         background:linear-gradient(170deg,rgba(255,255,255,0.92),rgba(238,244,255,0.85));
@@ -2012,7 +2012,7 @@ export class PlaceModal {
       }
       .wp-pm-review-avatar {
         width:36px; height:36px; border-radius:9999px; flex-shrink:0;
-        background:linear-gradient(135deg,#0891b2,#5856d6);
+        background:linear-gradient(135deg,#e11d48,#5856d6);
         color:#fff; font-size:15px; font-weight:600;
         display:flex; align-items:center; justify-content:center;
         font-family:'Inter Tight',system-ui,sans-serif;
@@ -2045,12 +2045,12 @@ export class PlaceModal {
       .wp-pm-cta {
         width:100%; height:52px; border-radius:9999px; border:none;
         /* Liquid blue glass */
-        background:rgba(8,145,178,0.82);
+        background:rgba(225,29,72,0.82);
         backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
         -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
         box-shadow:
-          0 4px 14px rgba(8,145,178,0.22),
-          0 1px 4px rgba(8,145,178,0.14),
+          0 4px 14px rgba(225,29,72,0.22),
+          0 1px 4px rgba(225,29,72,0.14),
           inset 0 1px 0 rgba(255,255,255,0.35),
           inset 0 -1px 0 rgba(0,0,0,0.1);
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
