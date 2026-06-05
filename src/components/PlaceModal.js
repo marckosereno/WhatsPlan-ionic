@@ -841,8 +841,25 @@ export class PlaceModal {
       if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
     });
 
-    this._el.querySelector('#wp-pm-cta').addEventListener('click', () => {
+    const ctaBtn = this._el.querySelector('#wp-pm-cta');
+    ctaBtn.addEventListener('click', () => {
       console.log('Planear visita:', this._place);
+    });
+    // Liquid glass pulse
+    ctaBtn.addEventListener('pointerdown', function() {
+      ctaBtn.style.transform = 'scale(0.93)';
+      ctaBtn.style.transition = 'transform 0.15s ease';
+    });
+    ctaBtn.addEventListener('pointerup', function() {
+      ctaBtn.classList.remove('wp-lg-pulse');
+      void ctaBtn.offsetWidth; // reflow
+      ctaBtn.classList.add('wp-lg-pulse');
+      ctaBtn.style.transform = '';
+      ctaBtn.style.transition = 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1)';
+      setTimeout(function() { ctaBtn.classList.remove('wp-lg-pulse'); }, 450);
+    });
+    ctaBtn.addEventListener('pointerleave', function() {
+      ctaBtn.style.transform = '';
     });
     const saveBtn = this._el.querySelector('#wp-pm-save');
     if (saveBtn) saveBtn.addEventListener('click', function() {
@@ -2042,26 +2059,51 @@ export class PlaceModal {
         border:none; z-index:2;
         pointer-events:none;
       }
+      @keyframes wp-lg-ripple {
+        0%   { transform:scale(1); }
+        30%  { transform:scale(0.94); }
+        65%  { transform:scale(1.04); }
+        100% { transform:scale(1); }
+      }
       .wp-pm-cta {
         width:100%; height:52px; border-radius:9999px; border:none;
-        /* Liquid blue glass */
-        background:rgba(10,10,10,0.82);
-        backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
-        -webkit-backdrop-filter:blur(20px) saturate(2.5) brightness(1.15);
+        /* Liquid black glass */
+        background:rgba(10,10,10,0.88);
+        backdrop-filter:blur(24px) saturate(2.2) brightness(1.1);
+        -webkit-backdrop-filter:blur(24px) saturate(2.2) brightness(1.1);
         box-shadow:
-          0 4px 14px rgba(10,10,10,0.22),
-          0 1px 4px rgba(10,10,10,0.14),
-          inset 0 -1px 0 rgba(0,0,0,0.1);
+          0 10px 40px rgba(0,0,0,0.40),
+          0 2px 8px rgba(0,0,0,0.25),
+          inset 0 1.5px 0 rgba(255,255,255,0.18),
+          inset 0 -1px 0 rgba(0,0,0,0.3);
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), filter 0.15s;
+        transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
         font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:-0.01em;
         pointer-events:auto;
-        text-shadow:0 1px 3px rgba(0,0,0,0.15);
+        position:relative; overflow:hidden;
       }
-      .wp-pm-cta:active { transform:scale(0.97); filter:brightness(0.9); }
+      /* Specular highlight — franja de luz en la parte superior */
+      .wp-pm-cta::before {
+        content:''; position:absolute; top:0; left:10%; right:10%; height:45%;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.14) 0%,
+          rgba(255,255,255,0.04) 60%,
+          rgba(255,255,255,0)   100%);
+        border-radius:9999px 9999px 60% 60%;
+        pointer-events:none;
+      }
+      /* Rim light — borde brillante */
+      .wp-pm-cta::after {
+        content:''; position:absolute; inset:0; border-radius:9999px;
+        border:1px solid rgba(255,255,255,0.12);
+        pointer-events:none;
+      }
+      .wp-pm-cta.wp-lg-pulse {
+        animation:wp-lg-ripple 0.45s cubic-bezier(0.34,1.56,0.64,1);
+      }
     `;
     document.head.appendChild(s);
   }
