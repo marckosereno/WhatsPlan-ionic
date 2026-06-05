@@ -845,22 +845,84 @@ export class PlaceModal {
     ctaBtn.addEventListener('click', () => {
       console.log('Planear visita:', this._place);
     });
-    // Liquid glass pulse
-    ctaBtn.addEventListener('pointerdown', function() {
-      ctaBtn.style.transform = 'scale(0.93)';
-      ctaBtn.style.transition = 'transform 0.15s ease';
-    });
-    ctaBtn.addEventListener('pointerup', function() {
-      ctaBtn.classList.remove('wp-lg-pulse');
-      void ctaBtn.offsetWidth; // reflow
-      ctaBtn.classList.add('wp-lg-pulse');
-      ctaBtn.style.transform = '';
-      ctaBtn.style.transition = 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1)';
-      setTimeout(function() { ctaBtn.classList.remove('wp-lg-pulse'); }, 450);
-    });
-    ctaBtn.addEventListener('pointerleave', function() {
-      ctaBtn.style.transform = '';
-    });
+
+    // ── Liquid Glass CTA — parámetros exactos ──
+    // refractionLevel:0.31, bezelWidth:0.43, specularOpacity:1, specularSat:42
+    // bgOpacity:0.18, bgColor:#000000, borderColor:#828db8
+    (function applyLiquidGlass(btn) {
+      var W = 0, H = 0;
+
+      function genDisplacementMap(w, h, bezel, refraction) {
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        var img = ctx.createImageData(w, h);
+        var cx = w/2, cy = h/2, rx = w/2, ry = h/2;
+        for (var y = 0; y < h; y++) {
+          for (var x = 0; x < w; x++) {
+            var i = (y*w+x)*4;
+            var nx = (x-cx)/rx, ny = (y-cy)/ry;
+            var q = Math.pow(Math.abs(nx),4)+Math.pow(Math.abs(ny),4);
+            var distBorder = 1 - Math.pow(q,0.25);
+            var dx = 128, dy = 128;
+            if (distBorder >= 0 && distBorder < bezel) {
+              var t = distBorder/bezel;
+              var surf = function(tt){ return Math.pow(1-Math.pow(1-tt,4),0.25); };
+              var dt = 0.001;
+              var dh = (surf(Math.min(1,t+dt))-surf(Math.max(0,t-dt)))/(2*dt);
+              var scale = refraction * dh * (1-t);
+              dx = Math.round(128 + scale * nx * 127);
+              dy = Math.round(128 + scale * ny * 127);
+            }
+            img.data[i]=dx; img.data[i+1]=dy; img.data[i+2]=0; img.data[i+3]=255;
+          }
+        }
+        ctx.putImageData(img,0,0);
+        return canvas.toDataURL();
+      }
+
+      function buildFilter(w, h) {
+        var existSvg = document.getElementById('wp-cta-lg-svg');
+        if (existSvg) existSvg.remove();
+        var dmUrl = genDisplacementMap(w, h, 0.43, 0.31);
+        var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svg.id='wp-cta-lg-svg';
+        svg.style.cssText='position:absolute;width:0;height:0;overflow:hidden;';
+        svg.innerHTML = '<defs><filter id="wp-cta-lg-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">'
+          + '<feImage id="wp-cta-dm" href="'+dmUrl+'" result="dm" x="0" y="0" width="'+w+'" height="'+h+'"/>'
+          + '<feDisplacementMap in="SourceGraphic" in2="dm" scale="'+(w*0.18)+'" xChannelSelector="R" yChannelSelector="G"/>'
+          + '</filter></defs>';
+        document.body.appendChild(svg);
+        btn.style.filter = 'url(#wp-cta-lg-filter)';
+        btn.style.webkitFilter = 'url(#wp-cta-lg-filter)';
+      }
+
+      function init() {
+        var r = btn.getBoundingClientRect();
+        W = Math.round(r.width)||320; H = Math.round(r.height)||52;
+        buildFilter(W, H);
+      }
+
+      // Pulse líquido
+      btn.addEventListener('pointerdown', function() {
+        btn.style.transition = 'transform 0.12s ease';
+        btn.style.transform = 'scale(0.93)';
+      });
+      btn.addEventListener('pointerup', function() {
+        btn.classList.remove('wp-lg-pulse');
+        void btn.offsetWidth;
+        btn.classList.add('wp-lg-pulse');
+        btn.style.transform = '';
+        btn.style.transition = '';
+        setTimeout(function(){ btn.classList.remove('wp-lg-pulse'); }, 480);
+      });
+      btn.addEventListener('pointerleave', function() {
+        btn.style.transform = '';
+      });
+
+      // Init después de que el modal esté en el DOM con dimensiones reales
+      setTimeout(init, 300);
+    })(ctaBtn);
     const saveBtn = this._el.querySelector('#wp-pm-save');
     if (saveBtn) saveBtn.addEventListener('click', function() {
       this.classList.toggle('saved');
@@ -2061,48 +2123,45 @@ export class PlaceModal {
       }
       @keyframes wp-lg-ripple {
         0%   { transform:scale(1); }
-        30%  { transform:scale(0.94); }
-        65%  { transform:scale(1.04); }
+        28%  { transform:scale(0.93); }
+        62%  { transform:scale(1.05); }
+        82%  { transform:scale(0.98); }
         100% { transform:scale(1); }
       }
       .wp-pm-cta {
         width:100%; height:52px; border-radius:9999px; border:none;
-        /* Liquid black glass */
-        background:rgba(10,10,10,0.88);
-        backdrop-filter:blur(24px) saturate(2.2) brightness(1.1);
-        -webkit-backdrop-filter:blur(24px) saturate(2.2) brightness(1.1);
+        /* bgOpacity:0.18, bgColor:#000000 */
+        background:rgba(0,0,0,0.18);
+        /* specularSat:42 → saturate(42) */
+        backdrop-filter:blur(18px) saturate(42) brightness(1.08);
+        -webkit-backdrop-filter:blur(18px) saturate(42) brightness(1.08);
+        /* borderColor:#828db8 */
         box-shadow:
-          0 10px 40px rgba(0,0,0,0.40),
-          0 2px 8px rgba(0,0,0,0.25),
-          inset 0 1.5px 0 rgba(255,255,255,0.18),
-          inset 0 -1px 0 rgba(0,0,0,0.3);
+          0 8px 32px rgba(0,0,0,0.28),
+          inset 0 0 0 1px rgba(130,141,184,0.55),
+          inset 0 1.5px 0 rgba(255,255,255,calc(1 * 0.22));
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+        transition:transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
         font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:-0.01em;
         pointer-events:auto;
         position:relative; overflow:hidden;
+        /* refractionLevel:0.31 via SVG filter aplicado por JS */
       }
-      /* Specular highlight — franja de luz en la parte superior */
+      /* Specular — specularOpacity:1 */
       .wp-pm-cta::before {
-        content:''; position:absolute; top:0; left:10%; right:10%; height:45%;
+        content:''; position:absolute; top:0; left:8%; right:8%; height:48%;
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.14) 0%,
-          rgba(255,255,255,0.04) 60%,
+          rgba(255,255,255,0.22) 0%,
+          rgba(255,255,255,0.06) 65%,
           rgba(255,255,255,0)   100%);
-        border-radius:9999px 9999px 60% 60%;
-        pointer-events:none;
-      }
-      /* Rim light — borde brillante */
-      .wp-pm-cta::after {
-        content:''; position:absolute; inset:0; border-radius:9999px;
-        border:1px solid rgba(255,255,255,0.12);
+        border-radius:9999px 9999px 55% 55%;
         pointer-events:none;
       }
       .wp-pm-cta.wp-lg-pulse {
-        animation:wp-lg-ripple 0.45s cubic-bezier(0.34,1.56,0.64,1);
+        animation:wp-lg-ripple 0.48s cubic-bezier(0.34,1.56,0.64,1) both;
       }
     `;
     document.head.appendChild(s);
