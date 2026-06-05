@@ -1212,7 +1212,7 @@ export class PlaceModal {
         overflow:hidden;
         transform:translateY(100%);
         will-change:transform;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         /* Sin background en la card — el topbar y body tienen su propio bg */
         background:transparent;
       }
@@ -1250,7 +1250,7 @@ export class PlaceModal {
         position:absolute; inset:0;
         display:flex; align-items:center; justify-content:center;
         font-size:16px; font-weight:700; color:#111;
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
+        font-family:'Yahoo Sans Bold Regular','Roboto',system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         padding:0 8px;
         -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
@@ -1351,7 +1351,7 @@ export class PlaceModal {
       .wp-pm-slide-add:active { background:rgba(0,0,0,0.08); }
       .wp-pm-slide-add span {
         font-size:11px; font-weight:600;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:0.02em;
       }
       .wp-pm-slide-placeholder {
@@ -1431,7 +1431,7 @@ export class PlaceModal {
         background:linear-gradient(135deg,#d7efff,#b3e4ff);
         border:1px solid rgba(147,218,255,0.5);
         padding:3px 9px; border-radius:999px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         box-shadow:0 2px 6px rgba(61,181,230,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
       }
       @keyframes wp-ai-pulse {
@@ -1448,7 +1448,7 @@ export class PlaceModal {
       }
       .wp-pm-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         font-weight:400; font-style:normal;
         animation: wp-ai-fadein 0.4s ease both;
       }
@@ -1470,7 +1470,7 @@ export class PlaceModal {
       }
       .wp-pm-name {
         font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         line-height:1.05; letter-spacing:-0.03em;
       }
       .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
@@ -1510,14 +1510,14 @@ export class PlaceModal {
         display:inline-flex; align-items:center; gap:5px;
         font-size:11px; font-weight:600;
         padding:3px 9px; border-radius:999px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:0.01em;
       }
       .wp-pm-nohours-badge {
         display:inline-flex; align-items:center;
         font-size:11px; font-weight:600;
         padding:3px 9px; border-radius:999px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         background:rgba(118,118,128,0.12);
         color:#8e8e93;
         border:1px solid rgba(118,118,128,0.18);
@@ -1557,7 +1557,7 @@ export class PlaceModal {
         background:linear-gradient(135deg,#d7efff,#b3e4ff);
         border:1px solid rgba(147,218,255,0.5);
         padding:3px 10px; border-radius:999px; cursor:pointer;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:0.01em;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
@@ -1615,7 +1615,7 @@ export class PlaceModal {
         width:100%; display:flex; align-items:center; gap:14px;
         padding:14px 20px; border:none; background:transparent;
         font-size:15px; font-weight:500; color:#1c1c1e;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         cursor:pointer; text-align:left;
         -webkit-tap-highlight-color:transparent;
         transition:background 0.15s;
@@ -1662,11 +1662,11 @@ export class PlaceModal {
       }
       .wpt-float-title {
         font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
-        font-family:'Inter Tight',system-ui,sans-serif; letter-spacing:-0.02em;
+        font-family:'Roboto',system-ui,sans-serif; letter-spacing:-0.02em;
       }
       .wpt-float-sub {
         font-size:12px; font-weight:500; color:#8e8e93;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wpt-x-btn {
         width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
@@ -1712,7 +1712,7 @@ export class PlaceModal {
         width:100%; height:48px; border-radius:999px; border:none;
         background:rgba(0,0,0,0.06); color:#8e8e93;
         font-size:15px; font-weight:600; cursor:pointer;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         display:flex; align-items:center; justify-content:center; gap:10px;
         -webkit-tap-highlight-color:transparent;
         transition:background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
@@ -1742,7 +1742,7 @@ export class PlaceModal {
       .wpt-cat-label {
         font-size:13px; font-weight:700; color:#0a0a0a;
         margin:14px 0 8px; line-height:1.3;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         display:block;
       }
       .wpt-cat-label:first-child { margin-top:4px; }
@@ -1757,7 +1757,7 @@ export class PlaceModal {
         border:1.5px solid rgba(0,0,0,0.10);
         background:#f4f4f6; cursor:pointer;
         font-size:12.5px; font-weight:600; color:#1c1c1e; line-height:1.4;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.14s ease; white-space:nowrap;
       }
@@ -1788,7 +1788,7 @@ export class PlaceModal {
         display:block;
         padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
         line-height:1.15; font-weight:400;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         max-width:calc(100% - 40px);
       }
       #wp-pm-addr { display:inline; }
@@ -1856,13 +1856,13 @@ export class PlaceModal {
       .wp-pm-stat-val {
         font-size:14px; font-weight:800; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:-0.02em;
       }
       .wp-pm-stat-lbl {
         font-size:9px; color:#8e8e93; font-weight:500;
         text-transform:uppercase; letter-spacing:0.05em;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
         width:1px; background:rgba(0,0,0,0.15);
@@ -1881,7 +1881,7 @@ export class PlaceModal {
         font-size:12px; font-weight:600; color:#1c1c1e; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:-0.01em;
         box-shadow:0 3px 10px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04),inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 0 rgba(0,0,0,0.04);
         backdrop-filter:blur(12px) saturate(1.6);
@@ -1915,7 +1915,7 @@ export class PlaceModal {
         font-size:12px; font-weight:800; color:#0a0a0a;
         padding:0 20px 8px;
         letter-spacing:-0.01em;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
 
       /* ── Description ── */
@@ -1923,14 +1923,14 @@ export class PlaceModal {
       .wp-pm-desc-text {
         font-size:15px; line-height:1.6; color:#3a3a3c;
         padding:0 20px 4px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         font-weight:400;
       }
       .wp-pm-read-more {
         border:none; background:none; color:#2a9fd6;
         font-size:15px; font-weight:400; cursor:pointer;
         padding:0 20px 12px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
       }
 
@@ -1944,7 +1944,7 @@ export class PlaceModal {
         border:1px solid rgba(255,255,255,0.7);
         color:#3a3a3c; font-size:13px; font-weight:600;
         display:flex; align-items:center; gap:4px;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         box-shadow:0 2px 6px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.9);
       }
       .wp-pm-tag-accent {
@@ -1970,7 +1970,7 @@ export class PlaceModal {
       }
       .wp-pm-hours-today {
         font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-hours-status {
         font-size:12px; font-weight:600;
@@ -1989,7 +1989,7 @@ export class PlaceModal {
         display:flex; justify-content:space-between;
         padding:8px 0; font-size:14px; color:#8e8e93;
         border-bottom:0.5px solid #e5e5ea;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-hours-row:last-child { border-bottom:none; }
       .wp-pm-hours-day { min-width:90px; }
@@ -2015,21 +2015,21 @@ export class PlaceModal {
         background:linear-gradient(135deg,#2a9fd6,#5856d6);
         color:#fff; font-size:15px; font-weight:600;
         display:flex; align-items:center; justify-content:center;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
       .wp-pm-review-name {
         font-size:14px; font-weight:600; color:#0a0a0a;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-review-time {
         font-size:11px; color:#8e8e93;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
       .wp-pm-review-text {
         font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
-        font-family:'Inter Tight',system-ui,sans-serif; font-weight:400;
+        font-family:'Roboto',system-ui,sans-serif; font-weight:400;
         display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
       }
 
@@ -2057,7 +2057,7 @@ export class PlaceModal {
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), filter 0.15s;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:'Roboto',system-ui,sans-serif;
         letter-spacing:-0.01em;
         pointer-events:auto;
         text-shadow:0 1px 3px rgba(0,0,0,0.15);
