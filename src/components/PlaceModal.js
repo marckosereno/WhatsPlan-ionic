@@ -4,6 +4,7 @@
 // ====================================================================
 
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
+import { ReviewService } from '/src/services/ReviewService.js';
 
 export class PlaceModal {
   constructor(opts = {}) {
@@ -126,6 +127,34 @@ export class PlaceModal {
           <button class="wp-pm-tb-btn" id="wp-pm-more">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
           </button>
+        </div>
+
+        <!-- ── REVIEW MODAL ── -->
+        <div class="wp-pm-more-overlay" id="wp-pm-review-overlay" style="display:none"></div>
+        <div class="wp-pm-more-menu" id="wp-pm-review-menu" style="display:none">
+          <div class="wp-pm-more-handle"></div>
+          <div class="wpr-header">
+            <span class="wpr-title">Tu reseña</span>
+            <span class="wpr-sub">Comparte tu experiencia con la comunidad</span>
+          </div>
+          <!-- Estrellas -->
+          <div class="wpr-stars" id="wpr-stars">
+            <span class="wpr-star" data-v="1">★</span>
+            <span class="wpr-star" data-v="2">★</span>
+            <span class="wpr-star" data-v="3">★</span>
+            <span class="wpr-star" data-v="4">★</span>
+            <span class="wpr-star" data-v="5">★</span>
+          </div>
+          <div class="wpr-star-label" id="wpr-star-label">Toca para calificar</div>
+          <!-- Textarea -->
+          <div style="padding:0 16px">
+            <textarea class="wpr-textarea" id="wpr-textarea" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" maxlength="500"></textarea>
+            <div class="wpr-char" id="wpr-char">0 / 500</div>
+          </div>
+          <!-- Submit -->
+          <div style="padding:12px 16px 16px">
+            <button class="wpr-submit" id="wpr-submit">Publicar reseña</button>
+          </div>
         </div>
 
         <!-- ── MORE MENU modal ── -->
@@ -737,7 +766,7 @@ export class PlaceModal {
     };
   }
 
-  _populateReviews(place) {
+  async _populateReviews(place) {
     const block = this._el.querySelector('#wp-pm-reviews-block');
     const list  = this._el.querySelector('#wp-pm-reviews-list');
     const revs  = place.reviews || [];
@@ -836,6 +865,12 @@ export class PlaceModal {
     this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
     this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
     this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
+
+    // ── Modal añadir reseña ──
+    const addReviewBtn = this._el.querySelector('#wp-pm-add-review');
+    if (addReviewBtn) {
+      addReviewBtn.addEventListener('click', () => this._openReviewModal());
+    }
 
     // Etiquetar lugar — placeholder hasta recibir indicaciones
     const tagChip = this._el.querySelector('#wp-pm-tag-chip');
@@ -1073,6 +1108,78 @@ export class PlaceModal {
     try { userTags = await PlaceTagService.getUserTagsForPlace(place, user.id); } catch(_) {}
     const remaining = Math.max(0, 3 - userTags.length);
     this._openTagSheet(place, user, userTags, remaining);
+  }
+
+  async _openReviewModal() {
+    const place = this._place;
+    if (!place) return;
+    const user = this.getCurrentUser?.();
+    if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
+
+    const overlay  = document.getElementById('wp-pm-review-overlay');
+    const menu     = document.getElementById('wp-pm-review-menu');
+    const starsEl  = document.getElementById('wpr-stars');
+    const labelEl  = document.getElementById('wpr-star-label');
+    const textarea = document.getElementById('wpr-textarea');
+    const charEl   = document.getElementById('wpr-char');
+    const submit   = document.getElementById('wpr-submit');
+    if (!menu) return;
+
+    const LABELS = ['','Muy malo','Regular','Bueno','Muy bueno','Excelente'];
+    let rating = 0;
+
+    // Ver si ya tiene reseña
+    const placeId = place.place_id || place.id;
+    let existing = null;
+    try { existing = await ReviewService.getUserReview(placeId, user.id); } catch(_) {}
+    if (existing) { rating = existing.rating; textarea.value = existing.text; }
+    else { rating = 0; textarea.value = ''; }
+
+    const updateStars = (v) => {
+      rating = v;
+      starsEl.querySelectorAll('.wpr-star').forEach((s,i) => {
+        s.classList.toggle('active', i < v);
+      });
+      labelEl.textContent = LABELS[v] || 'Toca para calificar';
+      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+    };
+    updateStars(rating);
+
+    starsEl.querySelectorAll('.wpr-star').forEach(s => {
+      s.onclick = () => updateStars(parseInt(s.dataset.v));
+    });
+    textarea.oninput = () => {
+      charEl.textContent = textarea.value.length + ' / 500';
+      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+    };
+    charEl.textContent = textarea.value.length + ' / 500';
+    submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+
+    const closeModal = () => {
+      menu.classList.remove('open');
+      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; }, 300);
+    };
+    overlay.onclick = closeModal;
+
+    submit.onclick = async () => {
+      if (rating === 0 || textarea.value.trim().length < 10) return;
+      submit.disabled = true;
+      submit.textContent = 'Publicando...';
+      try {
+        await ReviewService.upsert(placeId, user.id, rating, textarea.value.trim());
+        closeModal();
+        this._showToast('✓ Reseña publicada');
+        this._populateReviews(place);
+      } catch(err) {
+        this._showToast(err.message || 'Error al publicar');
+        submit.disabled = false;
+        submit.textContent = 'Publicar reseña';
+      }
+    };
+
+    overlay.style.display = '';
+    menu.style.display    = '';
+    requestAnimationFrame(() => menu.classList.add('open'));
   }
 
   _openTagSheet(place, user, userTags, remaining) {
@@ -1842,6 +1949,105 @@ export class PlaceModal {
       .wpt-show-more { display:none; }
 
 
+      /* ── Review modal ── */
+      .wpr-header { padding:4px 20px 12px; }
+      .wpr-title {
+        display:block; font-size:16px; font-weight:700; color:#0a0a0a;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-sub {
+        display:block; font-size:12px; color:#8e8e93; margin-top:2px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-stars {
+        display:flex; justify-content:center; gap:8px;
+        padding:8px 0 4px;
+      }
+      .wpr-star {
+        font-size:36px; color:#d1d5db; cursor:pointer;
+        transition:color 0.15s, transform 0.15s;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wpr-star.active { color:#f59e0b; }
+      .wpr-star:active { transform:scale(0.88); }
+      .wpr-star-label {
+        text-align:center; font-size:12px; color:#8e8e93;
+        font-family:'Roboto',system-ui,sans-serif;
+        margin-bottom:12px;
+      }
+      .wpr-textarea {
+        width:100%; height:100px; border-radius:14px;
+        border:1px solid rgba(0,0,0,0.10);
+        background:#f9f9f9; padding:12px 14px;
+        font-size:14px; font-family:'Roboto',system-ui,sans-serif;
+        color:#0a0a0a; resize:none; box-sizing:border-box;
+        outline:none;
+      }
+      .wpr-textarea:focus { border-color:rgba(0,0,0,0.25); }
+      .wpr-char {
+        text-align:right; font-size:11px; color:#8e8e93; margin-top:4px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-submit {
+        width:100%; height:46px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff;
+        font-size:15px; font-weight:700; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s, filter 0.15s;
+      }
+      .wpr-submit:active { transform:scale(0.97); filter:brightness(0.88); }
+      .wpr-submit:disabled { background:#d1d5db; cursor:not-allowed; }
+      /* Badge Google en reseñas */
+      .wpr-google-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        font-size:10px; font-weight:600; color:#6b7280;
+        background:#f3f4f6; border:0.5px solid #e5e7eb;
+        padding:2px 7px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        margin-left:6px; vertical-align:middle;
+      }
+      /* Divider comunidad */
+      .wpr-community-header {
+        display:flex; align-items:center; gap:10px;
+        padding:16px 20px 8px;
+      }
+      .wpr-community-label {
+        font-size:11px; font-weight:700; color:#8e8e93;
+        text-transform:uppercase; letter-spacing:0.06em;
+        font-family:'Roboto',system-ui,sans-serif; white-space:nowrap;
+      }
+      .wpr-community-line {
+        flex:1; height:0.5px; background:#e5e7eb;
+      }
+      /* Reseña de comunidad */
+      .wpr-community-card {
+        margin:0 20px 12px;
+        background:#f9f9f9; border-radius:16px;
+        padding:14px;
+      }
+      .wpr-community-header-row {
+        display:flex; align-items:center; gap:10px; margin-bottom:6px;
+      }
+      .wpr-community-avatar {
+        width:32px; height:32px; border-radius:50%;
+        background:#0a0a0a; color:#fff;
+        display:flex; align-items:center; justify-content:center;
+        font-size:13px; font-weight:700; flex-shrink:0;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-community-name {
+        font-size:13px; font-weight:700; color:#0a0a0a;
+        font-family:'Roboto',system-ui,sans-serif; flex:1;
+      }
+      .wpr-community-date {
+        font-size:11px; color:#8e8e93;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-community-text {
+        font-size:13px; color:#374151; line-height:1.5;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
       .wp-pm-more-sep {
         height:0.5px; background:rgba(0,0,0,0.1);
         margin:2px 20px;
