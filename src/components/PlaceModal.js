@@ -1907,9 +1907,14 @@ export class PlaceModal {
       }
       .wp-pm-action-btn:active { transform:scale(0.96); filter:brightness(0.96); }
 
-      /* Colores solo en los círculos de iconos */
+      /* Colores círculos, iconos y border */
+      #wp-pm-btn-phone { border:0.5px solid rgba(22,163,74,0.35); }
       #wp-pm-btn-phone .wp-pm-action-icon { background:rgba(22,163,74,0.14); color:#16a34a; }
-      #wp-pm-btn-web   .wp-pm-action-icon { background:rgba(8,145,178,0.14); color:#0891b2; }
+
+      #wp-pm-btn-web   { border:0.5px solid rgba(6,182,212,0.35); }
+      #wp-pm-btn-web   .wp-pm-action-icon { background:rgba(6,182,212,0.14); color:#06b6d4; }
+
+      #wp-pm-btn-maps  { border:0.5px solid rgba(234,88,12,0.35); }
       #wp-pm-btn-maps  .wp-pm-action-icon { background:rgba(234,88,12,0.14); color:#ea580c; }
       .wp-pm-action-icon {
         width:28px; height:28px; border-radius:50%; flex-shrink:0;
