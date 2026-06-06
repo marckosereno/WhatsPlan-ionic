@@ -797,7 +797,7 @@ export class PlaceModal {
     if (!toast) {
       toast = document.createElement('div');
       toast.id = 'wp-global-toast';
-      toast.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(20px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;white-space:nowrap;padding:10px 20px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;pointer-events:none;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.24s ease,transform 0.28s cubic-bezier(0.34,1.2,0.64,1);';
+      toast.style.cssText = 'position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-20px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;white-space:nowrap;padding:10px 20px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;pointer-events:none;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.24s ease,transform 0.28s cubic-bezier(0.34,1.2,0.64,1);';
       document.body.appendChild(toast);
     }
     toast.textContent = msg;
@@ -808,7 +808,7 @@ export class PlaceModal {
     });
     this._toastTimer = setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateX(-50%) translateY(10px)';
+      toast.style.transform = 'translateX(-50%) translateY(-10px)';
     }, 2200);
   }
 
