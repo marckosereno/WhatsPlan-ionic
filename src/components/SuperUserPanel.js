@@ -1889,4 +1889,454 @@ export class SuperUserPanel {
           URL.revokeObjectURL(url);
           const MAX = 1280; // máx 1280px en el lado más largo
           let w = img.width, h = img.height;
-          if (w > MAX 
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else       { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(resolve, 'image/jpeg', 0.82);
+        };
+        img.src = url;
+      });
+
+      try {
+        const compressed = await compressImage(file);
+        label.childNodes[0].textContent = '⏳ Subiendo...';
+        const { getSupabase } = await import('/src/services/SupabaseService.js');
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Supabase no inicializado');
+
+        const path = 'places/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+
+        const { error } = await supabase.storage
+          .from('place-photos')
+          .upload(path, compressed, { contentType: 'image/jpeg', upsert: false });
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
+        photos.push(urlData.publicUrl);
+        document.getElementById('su-gal-add-panel').style.display = 'none';
+        _refreshGallery();
+      } catch(err) {
+        alert('Error al subir: ' + err.message);
+      } finally {
+        label.style.opacity = '';
+        if (label.childNodes[0]) label.childNodes[0].textContent = origText;
+        e.target.value = '';
+      }
+    });
+
+    // ── Tomar coordenadas del mapa ────────────────────────────
+    document.getElementById('su-pf-pick-coords').addEventListener('click', () => {
+      const tagsVal = document.getElementById('su-pf-tags-hidden').value;
+      const snap = {
+        name:               document.getElementById('su-pf-name').value,
+        category:           document.getElementById('su-pf-cat').value,
+        formatted_address:  document.getElementById('su-pf-address').value,
+        phone:              document.getElementById('su-pf-phone').value,
+        website:            document.getElementById('su-pf-website').value,
+        rating:             document.getElementById('su-pf-rating').value,
+        user_ratings_total: document.getElementById('su-pf-reviews-count').value,
+        description:        document.getElementById('su-pf-description').value,
+        place_id:           prefill?.place_id || '',
+        subcategory_tags:   tagsVal ? tagsVal.split(',').filter(Boolean) : [],
+        photos_urls:        photos,
+        photo_url:          photos[0] || '',
+        reviews:            prefill?.reviews || [],
+        opening_hours:      (() => {
+          const hrs = {};
+          document.querySelectorAll('.su-pf-hours-input').forEach(inp => { const v = inp.value.trim(); if (v) hrs[inp.getAttribute('data-day')] = v; });
+          return Object.keys(hrs).length ? hrs : null;
+        })(),
+        editorial_summary:  prefill?.editorial_summary || '',
+        types:              prefill?.types || '',
+      };
+      modal.remove();
+      this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
+    });
+
+    // ── Guardar en Airtable ───────────────────────────────────
+    document.getElementById('su-pf-save').addEventListener('click', async () => {
+      const name     = document.getElementById('su-pf-name').value.trim();
+      const category = document.getElementById('su-pf-cat').value;
+      const lat      = parseFloat(document.getElementById('su-pf-lat').value);
+      const lng      = parseFloat(document.getElementById('su-pf-lng').value);
+      const errEl    = document.getElementById('su-pf-error');
+
+      if (!name || !category || isNaN(lat) || isNaN(lng)) {
+        errEl.textContent = 'Nombre, categoría y coordenadas son obligatorios.';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+      const saveBtn = document.getElementById('su-pf-save');
+      saveBtn.textContent = 'Guardando...';
+      saveBtn.disabled = true;
+
+      const tagsVal = document.getElementById('su-pf-tags-hidden').value;
+      const subcategoryTags = tagsVal ? tagsVal.split(',').filter(Boolean) : [];
+
+      try {
+        const isEdit = !!editingPlaceId;
+        const payload = {
+          place_name:        name,
+          category,
+          lat, lng,
+          formatted_address: document.getElementById('su-pf-address').value.trim() || '',
+          phone:             document.getElementById('su-pf-phone').value.trim() || '',
+          website:           document.getElementById('su-pf-website').value.trim() || '',
+          photo_url:          photos[0] || '',
+          photos_urls:        photos,
+          subcategory_tags:   subcategoryTags,
+          rating:             document.getElementById('su-pf-rating').value || null,
+          user_ratings_total: document.getElementById('su-pf-reviews-count').value || null,
+          description:        document.getElementById('su-pf-description').value.trim() || null,
+          editorial_summary:  prefill?.editorial_summary || null,
+          reviews:            prefill?.reviews?.length ? prefill.reviews : null,
+          opening_hours:      (() => {
+            const hrs = {};
+            document.querySelectorAll('.su-pf-hours-input').forEach(inp => { const v = inp.value.trim(); if (v) hrs[inp.getAttribute('data-day')] = v; });
+            return Object.keys(hrs).length ? hrs : null;
+          })(),
+          types:              prefill?.types || '',
+          featured:           document.getElementById('su-pf-featured').value || null,
+          ...(isEdit
+            ? { place_id: editingPlaceId }
+            : { place_id: prefill?.place_id || null }),
+        };
+        console.log('📤 Payload enviado:', JSON.stringify(payload).slice(0, 500));
+        const res = await fetch(isEdit ? '/api/supabase-place-update' : '/api/supabase-place-save', {
+          method: isEdit ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        console.log('📥 Respuesta:', JSON.stringify(data).slice(0, 300));
+        if (!data.success) throw new Error(data.message || JSON.stringify(data));
+        modal.remove();
+
+        // Limpiar caché y recargar inmediatamente
+        const mapView = window.wpApp?.mapView;
+        if (mapView && mapView.currentCatId) {
+          const cat = mapView.currentCatId;
+          await fetch('/api/supabase-places?category=' + cat + '&_clear_cache=1');
+          await mapView.loadCategory(cat);
+        }
+
+        if (isEdit) {
+          this._showToast('✅ Cambios guardados');
+          setTimeout(() => this._openPlaces(), 1200);
+        } else {
+          this._showToast('✅ Lugar guardado — aparece en el mapa');
+        }
+      } catch(e) {
+        errEl.textContent = 'Error: ' + e.message;
+        errEl.style.display = 'block';
+        saveBtn.textContent = '💾 Guardar en Airtable';
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  // ── Tomar coordenadas tocando el mapa ──────────────────────
+  _pickCoordsFromMap(callback) {
+    document.getElementById('su-coords-banner')?.remove();
+    const banner = document.createElement('div');
+    banner.id = 'su-coords-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#0891b2,#2563eb);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14px;';
+    banner.innerHTML = '<span>Toca el mapa para obtener coordenadas</span><button id="su-coords-cancel" style="background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:#fff;padding:6px 12px;cursor:pointer;font-size:13px;">Cancelar</button>';
+    document.body.appendChild(banner);
+
+    const cancel = () => { banner.remove(); this._openPlaceForm(null); };
+    document.getElementById('su-coords-cancel').addEventListener('click', cancel);
+
+    const mapGL = this.mapView?.map;
+    if (!mapGL) { banner.remove(); callback(26.0607, -98.0635); return; }
+    mapGL.once('click', (e) => { banner.remove(); callback(e.lngLat.lat, e.lngLat.lng); });
+  }
+
+  _injectStyles() {
+    if (document.getElementById('su-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'su-styles';
+    style.textContent = `
+      /* ── FAB ── */
+      #su-fab {
+        position: fixed;
+        bottom: calc(26dvh + 80px);
+        right: 14px;
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #1e1e2e, #2d2d44);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.08);
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 99990;
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 0.2s;
+      }
+      #su-fab:active { transform: scale(0.92); }
+
+      /* ── Panel principal ── */
+      #su-panel {
+        position: fixed;
+        bottom: 70px;
+        right: 14px;
+        width: 260px;
+        max-height: calc(100dvh - 130px);
+        background: rgba(18,18,32,0.97);
+        backdrop-filter: blur(16px);
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        z-index: 99991;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.85) translateY(10px);
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+      }
+      #su-panel.visible {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+        pointer-events: all;
+      }
+      .su-panel-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        color: #e2e8f0; font-size: 13px; font-weight: 700;
+        flex-shrink: 0;
+      }
+      .su-panel-header button {
+        background: none; border: none; color: #9ca3af;
+        font-size: 16px; cursor: pointer; padding: 0 4px;
+      }
+      .su-panel-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overflow-x: hidden; flex: 1; -webkit-overflow-scrolling: touch; }
+
+      /* ── Botones ── */
+      .su-btn {
+        width: 100%; padding: 10px 14px;
+        border: none; border-radius: 12px;
+        font-size: 13px; font-weight: 700;
+        cursor: pointer; text-align: left;
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+        transition: opacity 0.15s, transform 0.1s;
+      }
+      .su-btn:active { transform: scale(0.97); opacity: 0.85; }
+      .su-btn-cyan   { background: linear-gradient(135deg,#00bcd4,#0097a7); color: white; }
+      .su-btn-purple { background: linear-gradient(135deg,#2563eb,#1a4dbf); color: white; }
+      .su-btn-gray   { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+      .su-divider    { height: 1px; background: rgba(255,255,255,0.06); }
+      .su-hint       { font-size: 11px; color: #6b7280; line-height: 1.4; }
+
+      /* ── Pick banner ── */
+      #su-pick-banner {
+        position: fixed;
+        top: 70px; left: 50%; transform: translateX(-50%) translateY(-120px);
+        background: rgba(0,188,212,0.95);
+        backdrop-filter: blur(8px);
+        color: white; border-radius: 30px;
+        padding: 10px 20px;
+        display: flex; align-items: center; gap: 12px;
+        z-index: 99995;
+        font-size: 13px; font-weight: 700;
+        box-shadow: 0 4px 20px rgba(0,188,212,0.4);
+        transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+        white-space: nowrap;
+      }
+      #su-pick-banner.visible { transform: translateX(-50%) translateY(0); }
+      #su-pick-cancel {
+        background: rgba(255,255,255,0.25); border: none;
+        color: white; border-radius: 20px;
+        padding: 4px 12px; font-size: 12px; font-weight: 700;
+        cursor: pointer;
+      }
+
+      /* ── Formulario modal ── */
+      #su-form-modal {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 99996;
+        display: flex; align-items: flex-end; justify-content: center;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.2s;
+      }
+      #su-form-modal.visible { opacity: 1; pointer-events: all; }
+      .su-form-card {
+        width: 100%; max-width: 460px;
+        max-height: 92dvh;
+        background: #1a1a2e;
+        border-radius: 24px 24px 0 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        transform: translateY(40px);
+        transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #su-form-modal.visible .su-form-card { transform: translateY(0); }
+      .su-form-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 20px 0; margin-bottom: 16px; color: #e2e8f0; font-size: 15px; font-weight: 800;
+        flex-shrink: 0;
+      }
+      .su-form-header button { background: none; border: none; color: #9ca3af; font-size: 18px; cursor: pointer; }
+      /* Nuevo wrapper interior scrolleable */
+      .su-form-scroll { padding: 0 20px 28px; overflow-y: auto; overflow-x: hidden; flex: 1; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 0; }
+      .su-input {
+        width: 100%; box-sizing: border-box;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px; padding: 10px 14px;
+        color: #e2e8f0; font-size: 14px; outline: none;
+        margin-bottom: 10px;
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+      }
+      .su-input::placeholder { color: #4b5563; }
+      .su-input:focus { border-color: #00bcd4; }
+      .su-label { font-size: 11px; color: #9ca3af; margin-bottom: 6px; }
+      .su-coord-display {
+        font-size: 11px; color: #6b7280;
+        margin: 8px 0; text-align: center;
+      }
+      .su-form-actions {
+        display: flex; gap: 10px; margin-top: 14px;
+      }
+      .su-form-actions .su-btn { flex: 1; text-align: center; }
+      .su-form-error { color: #f87171; font-size: 12px; margin-top: 8px; min-height: 16px; }
+
+      /* ── Emoji grid ── */
+      .su-sticker-grid {
+        display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+      }
+      .su-emoji-btn {
+        width: 38px; height: 38px; border-radius: 10px;
+        border: 2px solid transparent;
+        background: rgba(255,255,255,0.06);
+        font-size: 20px; cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .su-emoji-btn.active {
+        border-color: #00bcd4;
+        background: rgba(0,188,212,0.15);
+      }
+
+      /* ── Color row ── */
+      .su-color-row { display: flex; gap: 8px; margin-bottom: 12px; }
+      .su-color-btn {
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 3px solid transparent; cursor: pointer;
+        transition: border-color 0.15s, transform 0.1s;
+      }
+      .su-color-btn.active { border-color: white; transform: scale(1.2); }
+
+      /* ── Lista panel ── */
+      #su-list-panel {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        max-height: 60dvh;
+        background: #1a1a2e;
+        border-radius: 24px 24px 0 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        z-index: 99993;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+        overflow: hidden;
+      }
+      #su-list-panel.visible { transform: translateY(0); }
+      .su-list-body { overflow-y: auto; max-height: calc(60dvh - 50px); padding: 10px 14px; }
+      .su-list-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .su-list-emoji { font-size: 24px; flex-shrink: 0; }
+      .su-list-info { flex: 1; min-width: 0; }
+      .su-list-name { font-size: 13px; color: #e2e8f0; font-weight: 700; }
+      .su-list-meta { font-size: 10px; color: #6b7280; margin-top: 2px; }
+      .su-list-del {
+        background: none; border: none; font-size: 18px;
+        cursor: pointer; flex-shrink: 0; opacity: 0.6;
+      }
+      .su-btn-orange { background: linear-gradient(135deg,#f59e0b,#d97706); color: white; }
+      .su-btn-teal   { background: linear-gradient(135deg,#0891b2,#0e7490); color: white; }
+
+      /* ── Categories panels ── */
+      #su-cat-panel, #su-subcat-panel {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        max-height: 70dvh;
+        background: #1a1a2e;
+        border-radius: 24px 24px 0 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        z-index: 99993;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+        overflow: hidden;
+      }
+      #su-cat-panel.visible, #su-subcat-panel.visible { transform: translateY(0); }
+      #su-subcat-panel { z-index: 99994; }
+      .su-cat-toolbar { padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .su-btn-sm { padding: 7px 14px; font-size: 12px; width: auto; display: inline-block; }
+      .su-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+      .su-icon-btn {
+        background: rgba(255,255,255,0.06); border: none;
+        border-radius: 8px; padding: 5px 7px;
+        font-size: 15px; cursor: pointer;
+        transition: background 0.15s;
+      }
+      .su-icon-btn:active { background: rgba(255,255,255,0.15); }
+      .su-icon-btn.dim { opacity: 0.4; }
+      .su-icon-btn.danger:active { background: rgba(239,68,68,0.2); }
+      .su-cat-color-row { display: flex; gap: 8px; margin-bottom: 12px; }
+
+      /* ── Cat form modal ── */
+      #su-cat-form-modal {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 99997;
+        display: flex; align-items: flex-end; justify-content: center;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.2s;
+      }
+      #su-cat-form-modal.visible { opacity: 1; pointer-events: all; }
+
+      /* ── Size / Border ── */
+      .su-size-row { display:flex; gap:8px; margin:4px 0 10px; }
+      .su-size-btn {
+        flex:1; padding:8px 4px;
+        border-radius:10px;
+        border:2px solid rgba(255,255,255,0.15);
+        background:rgba(255,255,255,0.07);
+        color:#e2e8f0; font-size:13px; font-weight:700;
+        cursor:pointer; transition:all 0.15s;
+        font-family:'Uni Sans Bold Regular',sans-serif;
+      }
+      .su-size-btn.active { background:#2563eb; border-color:#2563eb; color:white; }
+      .su-border-row { display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 10px; }
+      .su-cat-chip {
+        padding:4px 10px; border-radius:20px; border:1.5px solid rgba(255,255,255,0.2);
+        background:rgba(255,255,255,0.06); color:#9ca3af; font-size:12px; cursor:pointer;
+        transition:all 0.2s; font-family:inherit;
+      }
+      .su-cat-chip.active { background:rgba(0,188,212,0.18); border-color:#00bcd4; color:#fff; }
+      .su-toggle-wrap { position:relative; display:inline-block; width:38px; height:21px; flex-shrink:0; }
+      .su-toggle-wrap input { opacity:0; width:0; height:0; }
+      .su-toggle-slider { position:absolute; inset:0; background:rgba(255,255,255,0.15); border-radius:21px; cursor:pointer; transition:0.3s; }
+      .su-toggle-slider:before { content:""; position:absolute; width:15px; height:15px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
+      .su-toggle-wrap input:checked + .su-toggle-slider { background:#00bcd4; }
+      .su-toggle-wrap input:checked + .su-toggle-slider:before { transform:translateX(17px); }
+    `;
+    document.head.appendChild(style);
+  }
+}
