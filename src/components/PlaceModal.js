@@ -2031,7 +2031,7 @@ export class PlaceModal {
       .wp-pm-reviews-block { padding-bottom:8px; }
       .wp-pm-reviews-header {
         display:flex; align-items:center; justify-content:space-between;
-        margin-bottom:2px;
+        margin-bottom:2px; padding-right:20px;
       }
       .wp-pm-add-review-badge {
         display:inline-flex; align-items:center;
