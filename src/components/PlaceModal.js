@@ -845,10 +845,7 @@ export class PlaceModal {
     });
 
     const ctaBtn = this._el.querySelector('#wp-pm-cta');
-    ctaBtn.addEventListener('click', () => {
-      console.log('Planear visita:', this._place);
-    });
-    // Pulse spring — mismo del topbar
+    ctaBtn.addEventListener('click', () => { console.log('Planear visita:', this._place); });
     ctaBtn.addEventListener('pointerdown', () => {
       ctaBtn.style.transition = 'transform 0.1s ease';
       ctaBtn.style.transform  = 'scale(0.92)';
@@ -1909,14 +1906,10 @@ export class PlaceModal {
         -webkit-backdrop-filter:blur(12px) saturate(1.6);
       }
       .wp-pm-action-btn:active { transform:scale(0.96); filter:brightness(0.96); }
-
-      /* Colores círculos, iconos y border */
       #wp-pm-btn-phone { border:0.5px solid rgba(22,163,74,0.35); }
       #wp-pm-btn-phone .wp-pm-action-icon { background:rgba(22,163,74,0.14); color:#16a34a; }
-
       #wp-pm-btn-web   { border:0.5px solid rgba(174,230,237,0.5); }
       #wp-pm-btn-web   .wp-pm-action-icon { background:rgba(174,230,237,0.20); color:#0e7490; }
-
       #wp-pm-btn-maps  { border:0.5px solid rgba(234,88,12,0.35); }
       #wp-pm-btn-maps  .wp-pm-action-icon { background:rgba(234,88,12,0.14); color:#ea580c; }
       .wp-pm-action-icon {
@@ -2033,19 +2026,18 @@ export class PlaceModal {
         display:flex; align-items:center; justify-content:space-between;
         padding:8px 20px 8px;
       }
-      /* Quitar padding doble del section-title dentro del header */
       .wp-pm-reviews-header .wp-pm-section-title { padding:0; }
       .wp-pm-add-review-badge {
         display:inline-flex; align-items:center;
         font-size:11px; font-weight:700;
-        color:#1a5cf5; background:rgba(26,92,245,0.08);
-        border:0.5px solid rgba(26,92,245,0.25);
+        color:#0a0a0a; background:rgba(0,0,0,0.06);
+        border:0.5px solid rgba(0,0,0,0.18);
         padding:4px 10px; border-radius:999px; cursor:pointer;
         font-family:'Roboto',system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease;
       }
-      .wp-pm-add-review-badge:active { transform:scale(0.94); filter:brightness(0.95); }
+      .wp-pm-add-review-badge:active { transform:scale(0.94); }
       .wp-pm-reviews-list {
         display:flex; flex-direction:column; gap:10px;
         padding:0 20px;
