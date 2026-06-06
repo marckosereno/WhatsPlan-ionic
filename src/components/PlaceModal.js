@@ -177,8 +177,9 @@ export class PlaceModal {
               <span class="wp-pm-nohours-badge" id="wp-pm-nohours-badge" style="display:none">Sin horario</span>
               <button class="wp-pm-tag-chip" id="wp-pm-tag-chip">+ Etiquetar lugar</button>
               <div class="wp-pm-badges-actions">
-                <button class="wp-pm-save-btn" id="wp-pm-save" title="Guardar">
-                  <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M400,480a16,16,0,0,1-10.63-4L256,357.41,122.63,476A16,16,0,0,1,96,464V96a64.07,64.07,0,0,1,64-64H352a64.07,64.07,0,0,1,64,64V464a16,16,0,0,1-16,16Z"/></svg>
+                <button class="wp-pm-save-btn" id="wp-pm-save">
+                  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="32"/></svg>
+                  <span class="wp-pm-save-tooltip">Guardado en favoritos</span>
                 </button>
                 <button class="wp-pm-save-btn" id="wp-pm-share-body" title="Compartir">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
@@ -1585,21 +1586,36 @@ export class PlaceModal {
       /* Save button */
       .wp-pm-save-btn {
         width:38px; height:38px; border-radius:9999px; flex-shrink:0;
-        border:1px solid rgba(255,255,255,0.7);
+        border:1px solid rgba(0,0,0,0.1);
         background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(238,244,255,0.88));
         display:flex; align-items:center; justify-content:center;
-        color:#6b7280; cursor:pointer;
+        color:#9ca3af; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s cubic-bezier(0.34,1.56,0.64,1);
-        box-shadow:0 2px 8px rgba(0,0,0,0.08),inset 0 -1px 0 rgba(0,0,0,0.04);
-        backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+        transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        box-shadow:0 2px 8px rgba(0,0,0,0.08);
+        position:relative;
       }
-      .wp-pm-save-btn:active { transform:scale(0.92); }
-      .wp-pm-save-btn.saved {
-        color:#0a0a0a;
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        border-color:rgba(180,180,180,0.5);
-        box-shadow:0 2px 8px rgba(28,28,30,0.22);
+      .wp-pm-save-btn:active { transform:scale(0.88); }
+      .wp-pm-save-btn svg path { transition:fill 0.2s ease, stroke 0.2s ease; }
+      .wp-pm-save-btn.saved { color:#ef4444; }
+      .wp-pm-save-btn.saved svg path { fill:#ef4444; stroke:#ef4444; }
+      .wp-pm-save-tooltip {
+        display:none; position:absolute;
+        bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+        background:#1c1c1e; color:#fff;
+        font-size:11px; font-weight:500; white-space:nowrap;
+        padding:5px 10px; border-radius:8px;
+        font-family:'Roboto',system-ui,sans-serif;
+        pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.2);
+      }
+      .wp-pm-save-tooltip::after {
+        content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+        border:5px solid transparent; border-top-color:#1c1c1e;
+      }
+      .wp-pm-save-btn.saved .wp-pm-save-tooltip { display:block; animation:wp-tooltip-in 0.2s ease both; }
+      @keyframes wp-tooltip-in {
+        from { opacity:0; transform:translateX(-50%) translateY(4px); }
+        to   { opacity:1; transform:translateX(-50%) translateY(0); }
       }
 
       /* ── More menu ── */
