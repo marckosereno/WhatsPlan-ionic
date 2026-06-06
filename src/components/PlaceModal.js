@@ -262,7 +262,10 @@ export class PlaceModal {
 
           <!-- Reviews -->
           <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
-            <div class="wp-pm-section-title">Reseñas</div>
+            <div class="wp-pm-reviews-header">
+              <span class="wp-pm-section-title">Reseñas</span>
+              <button class="wp-pm-add-review-badge" id="wp-pm-add-review">+ Añadir reseña</button>
+            </div>
             <div class="wp-pm-reviews-list" id="wp-pm-reviews-list"></div>
           </div>
 
@@ -2026,6 +2029,21 @@ export class PlaceModal {
 
       /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
+      .wp-pm-reviews-header {
+        display:flex; align-items:center; justify-content:space-between;
+        margin-bottom:2px;
+      }
+      .wp-pm-add-review-badge {
+        display:inline-flex; align-items:center;
+        font-size:11px; font-weight:700;
+        color:#1a5cf5; background:rgba(26,92,245,0.08);
+        border:0.5px solid rgba(26,92,245,0.25);
+        padding:4px 10px; border-radius:999px; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s ease;
+      }
+      .wp-pm-add-review-badge:active { transform:scale(0.94); filter:brightness(0.95); }
       .wp-pm-reviews-list {
         display:flex; flex-direction:column; gap:10px;
         padding:0 20px;
