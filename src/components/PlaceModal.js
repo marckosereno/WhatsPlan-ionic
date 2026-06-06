@@ -2031,8 +2031,7 @@ export class PlaceModal {
       .wp-pm-reviews-block { padding-bottom:8px; }
       .wp-pm-reviews-header {
         display:flex; align-items:center; justify-content:space-between;
-        margin-bottom:2px;
-        padding:0 20px 2px;
+        padding:8px 20px 8px;
       }
       /* Quitar padding doble del section-title dentro del header */
       .wp-pm-reviews-header .wp-pm-section-title { padding:0; }
