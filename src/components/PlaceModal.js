@@ -295,6 +295,13 @@ export class PlaceModal {
             <div class="wp-pm-reviews-list" id="wp-pm-reviews-list"></div>
           </div>
 
+          <!-- Lugares similares — última sección -->
+          <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
+            <div class="wp-pm-divider"></div>
+            <div class="wp-pm-section-title" style="padding:0 20px 10px">Lugares similares</div>
+            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
+          </div>
+
           <div style="height:16px"></div>
         </div>
 
