@@ -831,7 +831,7 @@ export class PlaceModal {
         <div class="wpr-header-tabs-row">
           <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
           <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
-          <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir</button>
+          <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir reseña</button>
         </div>
       `;
 
@@ -2101,7 +2101,7 @@ export class PlaceModal {
         line-height:1; margin:0; padding:0;
       }
       .wpr-header-tabs-row {
-        display:flex; gap:5px; align-items:center; flex:1; justify-content:flex-end;
+        display:flex; gap:5px; align-items:center; flex:1;
       }
       /* ── Review tabs ── */
       .wpr-tabs {
@@ -2404,7 +2404,7 @@ export class PlaceModal {
       /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
       #wpr-panel-google, #wpr-panel-community {
-        padding:0;
+        padding:12px 0 0;
       }
       /* Reviews con padding lateral del body y separación entre cards */
       #wpr-panel-google .wp-pm-review-card,
