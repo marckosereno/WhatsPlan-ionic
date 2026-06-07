@@ -291,10 +291,7 @@ export class PlaceModal {
 
           <!-- Reviews -->
           <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
-            <div class="wpr-header-row" id="wpr-header-row">
-              <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
-              <div class="wpr-tabs" id="wpr-tabs-placeholder"></div>
-            </div>
+            <div class="wpr-header-row" id="wpr-header-row"></div>
             <div class="wp-pm-reviews-list" id="wp-pm-reviews-list"></div>
           </div>
 
@@ -826,43 +823,34 @@ export class PlaceModal {
     const gCount = googleRevs.length;
     const cCount = communityRevs.length;
 
+    // ── Tabs en el header ──
+    const headerRow = this._el.querySelector('#wpr-header-row');
+    if (headerRow) {
+      headerRow.innerHTML = `
+        <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
+        <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
+        <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
+        <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir</button>
+      `;
+
+      // Tab switching — listeners en headerRow
+      headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
+        tab.onclick = () => {
+          headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+          tab.classList.add('wpr-tab-active');
+          list.querySelector('#wpr-panel-google').style.display    = tab.dataset.tab==='google'    ? '' : 'none';
+          list.querySelector('#wpr-panel-community').style.display = tab.dataset.tab==='community' ? '' : 'none';
+        };
+      });
+      const addBtn = headerRow.querySelector('#wpr-add-btn');
+      if (addBtn) addBtn.onclick = () => this._openReviewModal();
+    }
+
+    // ── Panels en list ──
     list.innerHTML = `
-      <div class="wpr-tabs" id="wpr-tabs">
-        <button class="wpr-tab wpr-tab-active" data-tab="google">
-          Google <span class="wpr-tab-count">${gCount}</span>
-        </button>
-        <button class="wpr-tab" data-tab="community">
-          WhatsPlan <span class="wpr-tab-count">${cCount}</span>
-        </button>
-        <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">
-          ✦ Añadir
-        </button>
-      </div>
       <div id="wpr-panel-google">${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}</div>
       <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
     `;
-
-    // Mover tabs al header junto a "Reseñas"
-    const headerRow = this._el.querySelector('#wpr-header-row');
-    const tabsEl    = list.querySelector('#wpr-tabs');
-    if (headerRow && tabsEl) {
-      const placeholder = headerRow.querySelector('#wpr-tabs-placeholder');
-      if (placeholder) placeholder.replaceWith(tabsEl);
-    }
-
-    // Tab switching
-    list.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
-      tab.onclick = () => {
-        list.querySelectorAll('.wpr-tab').forEach(t => t.classList.remove('wpr-tab-active'));
-        tab.classList.add('wpr-tab-active');
-        const target = tab.dataset.tab;
-        list.querySelector('#wpr-panel-google').style.display    = target==='google'    ? '' : 'none';
-        list.querySelector('#wpr-panel-community').style.display = target==='community' ? '' : 'none';
-      };
-    });
-    // Botón añadir reseña
-    const addBtn = list.querySelector('#wpr-add-btn');
-    if (addBtn) addBtn.onclick = () => this._openReviewModal();
   }
 
   // ── Place Tags ───────────────────────────────────────────────────
@@ -1253,11 +1241,14 @@ export class PlaceModal {
         setTimeout(() => {
           self._populateReviews(place).then(() => {
             // Activar tab WhatsPlan para ver la reseña publicada
-            const list = self._el.querySelector('#wp-pm-reviews-list');
-            if (list) {
-              list.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
-              const wpTab = list.querySelector('[data-tab="community"]');
-              if (wpTab) { wpTab.classList.add('wpr-tab-active'); wpTab.click(); }
+            const headerRow2 = self._el.querySelector('#wpr-header-row');
+            const list2 = self._el.querySelector('#wp-pm-reviews-list');
+            if (headerRow2 && list2) {
+              headerRow2.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+              const wpTab = headerRow2.querySelector('[data-tab="community"]');
+              if (wpTab) { wpTab.classList.add('wpr-tab-active'); }
+              list2.querySelector('#wpr-panel-google').style.display    = 'none';
+              list2.querySelector('#wpr-panel-community').style.display = '';
             }
           });
         }, 400);
