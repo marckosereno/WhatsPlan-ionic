@@ -370,7 +370,7 @@ export class PlaceModal {
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
-    this._populateReviews(place);
+    this._populateReviews(place);  // async, no bloqueante
     // scroll body to top + reset topbar nombre/stats
     const body = this._el.querySelector('#wp-pm-body');
     if (body) body.scrollTop = 0;
@@ -769,28 +769,69 @@ export class PlaceModal {
   async _populateReviews(place) {
     const block = this._el.querySelector('#wp-pm-reviews-block');
     const list  = this._el.querySelector('#wp-pm-reviews-list');
-    const revs  = place.reviews || [];
-    if (revs.length === 0) { block.style.display = 'none'; return; }
+    const googleRevs = place.reviews || [];
 
+    // Cargar reseñas de comunidad
+    const placeId = place.place_id || place.id;
+    let communityRevs = [];
+    if (placeId) {
+      try { communityRevs = await ReviewService.getForPlace(placeId); } catch(_) {}
+    }
+
+    if (!googleRevs.length && !communityRevs.length) { block.style.display = 'none'; return; }
     block.style.display = '';
-    list.innerHTML = revs.slice(0, 5).map(r => {
-      const name     = r.author_name || r.authorName || 'Anónimo';
-      const initial  = name.charAt(0).toUpperCase();
-      const stars    = parseFloat(r.rating) || 0;
-      const time     = r.relative_time_description || r.relativeTime || '';
-      const text     = r.text || r.comment || '';
-      return `<div class="wp-pm-review-card">
-        <div class="wp-pm-review-top">
-          <div class="wp-pm-review-avatar">${initial}</div>
-          <div class="wp-pm-review-info">
-            <span class="wp-pm-review-name">${name}</span>
-            ${time ? `<span class="wp-pm-review-time">${time}</span>` : ''}
+
+    // ── Reseñas Google con badge ──
+    const googleHtml = googleRevs.length ? `
+      <div style="display:flex;align-items:center;gap:6px;padding:0 20px 10px">
+        <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;font-family:Roboto,system-ui,sans-serif">Via Google</span>
+        <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/><path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/><path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/><path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"/></svg>
+      </div>
+      ${googleRevs.slice(0,5).map(r => {
+        const name  = r.author_name || r.authorName || 'Anónimo';
+        const init  = name.charAt(0).toUpperCase();
+        const stars = parseFloat(r.rating) || 0;
+        const time  = r.relative_time_description || r.relativeTime || '';
+        const text  = r.text || r.comment || '';
+        const short = text.length > 180 ? text.slice(0,180)+'…' : text;
+        return `<div class="wp-pm-review-card">
+          <div class="wp-pm-review-top">
+            <div class="wp-pm-review-avatar">${init}</div>
+            <div class="wp-pm-review-info">
+              <span class="wp-pm-review-name">${name}</span>
+              ${time ? `<span class="wp-pm-review-time">${time}</span>` : ''}
+            </div>
+            ${stars > 0 ? `<div class="wp-pm-review-stars">${'★'.repeat(Math.round(stars))}<span style="color:#e2e8f0">${'★'.repeat(5-Math.round(stars))}</span></div>` : ''}
           </div>
-          ${stars > 0 ? `<div class="wp-pm-review-stars">${'★'.repeat(Math.round(stars))}<span style="color:#e2e8f0">${'★'.repeat(5-Math.round(stars))}</span></div>` : ''}
-        </div>
-        ${text ? `<p class="wp-pm-review-text">${text}</p>` : ''}
-      </div>`;
-    }).join('');
+          ${short ? `<p class="wp-pm-review-text">${short}</p>` : ''}
+        </div>`;
+      }).join('')}
+    ` : '';
+
+    // ── Reseñas comunidad ──
+    const communityHtml = communityRevs.length ? `
+      <div class="wpr-community-header">
+        <span class="wpr-community-label">Comunidad WhatsPlan</span>
+        <div class="wpr-community-line"></div>
+      </div>
+      ${communityRevs.map(r => {
+        const name  = r.profiles?.display_name || 'Usuario WhatsPlan';
+        const init  = name.charAt(0).toUpperCase();
+        const stars = '★'.repeat(r.rating) + '<span style="color:#e2e8f0">' + '★'.repeat(5-r.rating) + '</span>';
+        const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
+        return `<div class="wpr-community-card">
+          <div class="wpr-community-header-row">
+            <div class="wpr-community-avatar">${init}</div>
+            <span class="wpr-community-name">${name}</span>
+            <span class="wpr-community-date">${date}</span>
+          </div>
+          <div style="color:#f59e0b;font-size:13px;margin-bottom:4px">${stars}</div>
+          <div class="wpr-community-text">${r.text}</div>
+        </div>`;
+      }).join('')}
+    ` : '';
+
+    list.innerHTML = googleHtml + communityHtml;
   }
 
   // ── Place Tags ───────────────────────────────────────────────────
@@ -1161,17 +1202,21 @@ export class PlaceModal {
     };
     overlay.onclick = closeModal;
 
+    const self = this;
     submit.onclick = async () => {
       if (rating === 0 || textarea.value.trim().length < 10) return;
       submit.disabled = true;
       submit.textContent = 'Publicando...';
       try {
-        await ReviewService.upsert(placeId, user.id, rating, textarea.value.trim());
+        const pid = place.place_id || place.id || place.placeId;
+        if (!pid) throw new Error('ID del lugar no encontrado');
+        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim());
         closeModal();
-        this._showToast('✓ Reseña publicada');
-        this._populateReviews(place);
+        self._showToast('✓ Reseña publicada');
+        setTimeout(() => self._populateReviews(place), 300);
       } catch(err) {
-        this._showToast(err.message || 'Error al publicar');
+        console.error('Review error:', err);
+        self._showToast(err.message || 'Error al publicar');
         submit.disabled = false;
         submit.textContent = 'Publicar reseña';
       }
