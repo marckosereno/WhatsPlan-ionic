@@ -776,9 +776,7 @@ export class PlaceModal {
     const scroll = this._el.querySelector('#wp-pm-similar-scroll');
     if (!block || !scroll) return;
 
-    const allPlaces = window.wpApp?.mapView?._allPlaces
-      || window.wpApp?.mapView?.places
-      || window.wpApp?.allPlaces
+    const allPlaces = window.wpApp?.mapView?.allPlaces || []
       || [];
 
     const currentId  = place.place_id || place.id;
