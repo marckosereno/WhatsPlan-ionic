@@ -770,68 +770,85 @@ export class PlaceModal {
     const block = this._el.querySelector('#wp-pm-reviews-block');
     const list  = this._el.querySelector('#wp-pm-reviews-list');
     const googleRevs = place.reviews || [];
-
-    // Cargar reseñas de comunidad
-    const placeId = place.place_id || place.id;
+    const placeId = String(place.place_id || place.id || '');
     let communityRevs = [];
     if (placeId) {
-      try { communityRevs = await ReviewService.getForPlace(placeId); } catch(_) {}
+      try { communityRevs = await ReviewService.getForPlace(placeId); } catch(e) { console.warn('reviews:', e); }
     }
-
-    if (!googleRevs.length && !communityRevs.length) { block.style.display = 'none'; return; }
+    if (!googleRevs.length && !communityRevs.length) { block.style.display='none'; return; }
     block.style.display = '';
 
-    // ── Reseñas Google con badge ──
-    const googleHtml = googleRevs.length ? `
-      <div style="display:flex;align-items:center;gap:6px;padding:0 20px 10px">
-        <span style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;font-family:Roboto,system-ui,sans-serif">Via Google</span>
-        <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/><path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/><path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/><path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"/></svg>
-      </div>
-      ${googleRevs.slice(0,5).map(r => {
-        const name  = r.author_name || r.authorName || 'Anónimo';
-        const init  = name.charAt(0).toUpperCase();
-        const stars = parseFloat(r.rating) || 0;
-        const time  = r.relative_time_description || r.relativeTime || '';
-        const text  = r.text || r.comment || '';
-        const short = text.length > 180 ? text.slice(0,180)+'…' : text;
-        return `<div class="wp-pm-review-card">
-          <div class="wp-pm-review-top">
-            <div class="wp-pm-review-avatar">${init}</div>
-            <div class="wp-pm-review-info">
-              <span class="wp-pm-review-name">${name}</span>
-              ${time ? `<span class="wp-pm-review-time">${time}</span>` : ''}
-            </div>
-            ${stars > 0 ? `<div class="wp-pm-review-stars">${'★'.repeat(Math.round(stars))}<span style="color:#e2e8f0">${'★'.repeat(5-Math.round(stars))}</span></div>` : ''}
+    // ── Tabs ──
+    const googleCard  = r => {
+      const name  = r.author_name || r.authorName || 'Anónimo';
+      const init  = name.charAt(0).toUpperCase();
+      const photo = r.profile_photo_url || r.authorPhotoUrl || '';
+      const stars = parseFloat(r.rating) || 0;
+      const time  = r.relative_time_description || r.relativeTime || '';
+      const text  = r.text || r.comment || '';
+      const short = text.length > 180 ? text.slice(0,180)+'…' : text;
+      return `<div class="wp-pm-review-card">
+        <div class="wp-pm-review-top">
+          <div class="wp-pm-review-avatar" style="${photo?'background:url('+photo+') center/cover no-repeat;color:transparent':''}">
+            ${photo?'':init}
           </div>
-          ${short ? `<p class="wp-pm-review-text">${short}</p>` : ''}
-        </div>`;
-      }).join('')}
-    ` : '';
-
-    // ── Reseñas comunidad ──
-    const communityHtml = communityRevs.length ? `
-      <div class="wpr-community-header">
-        <span class="wpr-community-label">Comunidad WhatsPlan</span>
-        <div class="wpr-community-line"></div>
-      </div>
-      ${communityRevs.map(r => {
-        const name  = r.profiles?.display_name || 'Usuario WhatsPlan';
-        const init  = name.charAt(0).toUpperCase();
-        const stars = '★'.repeat(r.rating) + '<span style="color:#e2e8f0">' + '★'.repeat(5-r.rating) + '</span>';
-        const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
-        return `<div class="wpr-community-card">
-          <div class="wpr-community-header-row">
-            <div class="wpr-community-avatar">${init}</div>
-            <span class="wpr-community-name">${name}</span>
-            <span class="wpr-community-date">${date}</span>
+          <div class="wp-pm-review-info">
+            <span class="wp-pm-review-name">${name}</span>
+            ${time?`<span class="wp-pm-review-time">${time}</span>`:''}
           </div>
-          <div style="color:#f59e0b;font-size:13px;margin-bottom:4px">${stars}</div>
-          <div class="wpr-community-text">${r.text}</div>
-        </div>`;
-      }).join('')}
-    ` : '';
+          ${stars>0?`<div class="wp-pm-review-stars">${'★'.repeat(Math.round(stars))}<span style="color:#e2e8f0">${'★'.repeat(5-Math.round(stars))}</span></div>`:''}
+        </div>
+        ${short?`<p class="wp-pm-review-text">${short}</p>`:''}
+      </div>`;
+    };
 
-    list.innerHTML = googleHtml + communityHtml;
+    const communityCard = r => {
+      const name  = r.profiles?.display_name || 'WhatsPlan User';
+      const photo = r.profiles?.avatar_url || '';
+      const init  = name.charAt(0).toUpperCase();
+      const stars = '★'.repeat(r.rating)+'<span style="color:#e2e8f0">'+'★'.repeat(5-r.rating)+'</span>';
+      const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
+      return `<div class="wpr-community-card">
+        <div class="wpr-community-header-row">
+          <div class="wpr-community-avatar" style="${photo?'background:url('+photo+') center/cover;color:transparent':''}">
+            ${photo?'':init}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="wpr-community-name">${name}</div>
+            <div class="wpr-community-date">${date}</div>
+          </div>
+          <div style="color:#f59e0b;font-size:13px">${stars}</div>
+        </div>
+        <div class="wpr-community-text">${r.text}</div>
+      </div>`;
+    };
+
+    const gCount = googleRevs.length;
+    const cCount = communityRevs.length;
+
+    list.innerHTML = `
+      <div class="wpr-tabs" id="wpr-tabs">
+        <button class="wpr-tab wpr-tab-active" data-tab="google">
+          Google <span class="wpr-tab-count">${gCount}</span>
+        </button>
+        <button class="wpr-tab" data-tab="community">
+          WhatsPlan <span class="wpr-tab-count">${cCount}</span>
+        </button>
+      </div>
+      <div id="wpr-panel-google">${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}</div>
+      <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
+    `;
+
+    // Tab switching
+    list.querySelectorAll('.wpr-tab').forEach(tab => {
+      tab.onclick = () => {
+        list.querySelectorAll('.wpr-tab').forEach(t => t.classList.remove('wpr-tab-active'));
+        tab.classList.add('wpr-tab-active');
+        const target = tab.dataset.tab;
+        list.querySelector('#wpr-panel-google').style.display    = target==='google'    ? '' : 'none';
+        list.querySelector('#wpr-panel-community').style.display = target==='community' ? '' : 'none';
+      };
+    });
   }
 
   // ── Place Tags ───────────────────────────────────────────────────
@@ -2053,6 +2070,33 @@ export class PlaceModal {
         margin-left:6px; vertical-align:middle;
       }
       /* Divider comunidad */
+      /* ── Review tabs ── */
+      .wpr-tabs {
+        display:flex; gap:8px; padding:4px 20px 12px;
+      }
+      .wpr-tab {
+        display:inline-flex; align-items:center; gap:6px;
+        padding:6px 14px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; font-size:12.5px; font-weight:600;
+        color:#6b7280; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s ease;
+      }
+      .wpr-tab-active {
+        background:#0a0a0a; color:#fff; border-color:#0a0a0a;
+      }
+      .wpr-tab-count {
+        background:rgba(255,255,255,0.2); color:inherit;
+        font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
+      }
+      .wpr-tab:not(.wpr-tab-active) .wpr-tab-count {
+        background:rgba(0,0,0,0.08); color:#6b7280;
+      }
+      .wpr-empty {
+        text-align:center; color:#9ca3af; font-size:13px;
+        padding:24px 20px; font-family:'Roboto',system-ui,sans-serif;
+      }
       .wpr-community-header {
         display:flex; align-items:center; gap:10px;
         padding:16px 20px 8px;
