@@ -2094,8 +2094,11 @@ export class PlaceModal {
       }
       /* Divider comunidad */
       .wpr-header-row {
-        display:flex; align-items:center; gap:8px;
+        display:flex; align-items:center; gap:10px;
         padding:0 20px 10px;
+      }
+      .wpr-header-row .wp-pm-section-title {
+        line-height:1; margin:0; padding:0;
       }
       .wpr-header-tabs-row {
         display:flex; gap:5px; align-items:center; flex:1; justify-content:flex-end;
