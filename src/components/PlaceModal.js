@@ -827,7 +827,7 @@ export class PlaceModal {
     const headerRow = this._el.querySelector('#wpr-header-row');
     if (headerRow) {
       headerRow.innerHTML = `
-        <div class="wp-pm-section-title">Reseñas</div>
+        <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
         <div class="wpr-header-tabs-row">
           <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
           <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
@@ -2094,22 +2094,20 @@ export class PlaceModal {
       }
       /* Divider comunidad */
       .wpr-header-row {
+        display:flex; align-items:center; gap:8px;
         padding:0 20px 10px;
       }
-      .wpr-header-row .wp-pm-section-title {
-        display:block; margin-bottom:8px;
-      }
       .wpr-header-tabs-row {
-        display:flex; gap:6px; align-items:center;
+        display:flex; gap:5px; align-items:center; flex:1; justify-content:flex-end;
       }
       /* ── Review tabs ── */
       .wpr-tabs {
         display:flex; gap:6px;
       }
       .wpr-tab {
-        flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px;
-        padding:7px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
-        background:#f4f4f6; font-size:12px; font-weight:600;
+        display:inline-flex; align-items:center; justify-content:center; gap:4px;
+        padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; font-size:11px; font-weight:600;
         color:#6b7280; cursor:pointer;
         font-family:'Roboto',system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
@@ -2403,7 +2401,12 @@ export class PlaceModal {
       /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
       #wpr-panel-google, #wpr-panel-community {
-        padding:0 20px;
+        padding:0;
+      }
+      /* Reviews con padding lateral del body y separación entre cards */
+      #wpr-panel-google .wp-pm-review-card,
+      #wpr-panel-community .wpr-community-card {
+        margin-bottom:12px;
       }
       /* reviews header fusionado en tabs */
       .wp-pm-reviews-list {
