@@ -9,18 +9,30 @@ export const ReviewService = {
   async getForPlace(placeId) {
     const { data, error } = await getSupabase()
       .from('place_reviews')
-      .select('id, rating, text, created_at, user_id, profiles(display_name, avatar_url)')
-      .eq('place_id', placeId)
+      .select('id, rating, text, created_at, user_id')
+      .eq('place_id', String(placeId))
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data || [];
+    // Enriquecer con nombre del perfil si existe
+    const rows = data || [];
+    for (const row of rows) {
+      try {
+        const { data: profile } = await getSupabase()
+          .from('profiles')
+          .select('display_name, avatar_url')
+          .eq('id', row.user_id)
+          .maybeSingle();
+        row.profiles = profile;
+      } catch(_) { row.profiles = null; }
+    }
+    return rows;
   },
 
   async getUserReview(placeId, userId) {
     const { data } = await getSupabase()
       .from('place_reviews')
       .select('*')
-      .eq('place_id', placeId)
+      .eq('place_id', String(placeId))
       .eq('user_id', userId)
       .maybeSingle();
     return data;
@@ -29,8 +41,10 @@ export const ReviewService = {
   async upsert(placeId, userId, rating, text) {
     const { error } = await getSupabase()
       .from('place_reviews')
-      .upsert({ place_id: placeId, user_id: userId, rating, text, updated_at: new Date().toISOString() },
-               { onConflict: 'place_id,user_id' });
+      .upsert(
+        { place_id: String(placeId), user_id: userId, rating, text, updated_at: new Date().toISOString() },
+        { onConflict: 'place_id,user_id' }
+      );
     if (error) throw error;
   },
 
@@ -38,7 +52,7 @@ export const ReviewService = {
     const { error } = await getSupabase()
       .from('place_reviews')
       .delete()
-      .eq('place_id', userId)
+      .eq('place_id', String(placeId))
       .eq('user_id', userId);
     if (error) throw error;
   }
