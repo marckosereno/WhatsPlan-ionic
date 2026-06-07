@@ -291,7 +291,10 @@ export class PlaceModal {
 
           <!-- Reviews -->
           <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
-            <div class="wp-pm-section-title">Reseñas</div>
+            <div class="wpr-header-row" id="wpr-header-row">
+              <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
+              <div class="wpr-tabs" id="wpr-tabs-placeholder"></div>
+            </div>
             <div class="wp-pm-reviews-list" id="wp-pm-reviews-list"></div>
           </div>
 
@@ -800,8 +803,8 @@ export class PlaceModal {
     };
 
     const communityCard = r => {
-      const name  = r.profiles?.display_name || 'WhatsPlan User';
-      const photo = r.profiles?.avatar_url || '';
+      const name  = r.display_name || 'WhatsPlan User';
+      const photo = r.avatar_url   || '';
       const init  = name.charAt(0).toUpperCase();
       const stars = '★'.repeat(r.rating)+'<span style="color:#e2e8f0">'+'★'.repeat(5-r.rating)+'</span>';
       const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
@@ -838,6 +841,14 @@ export class PlaceModal {
       <div id="wpr-panel-google">${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}</div>
       <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
     `;
+
+    // Mover tabs al header junto a "Reseñas"
+    const headerRow = this._el.querySelector('#wpr-header-row');
+    const tabsEl    = list.querySelector('#wpr-tabs');
+    if (headerRow && tabsEl) {
+      const placeholder = headerRow.querySelector('#wpr-tabs-placeholder');
+      if (placeholder) placeholder.replaceWith(tabsEl);
+    }
 
     // Tab switching
     list.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
@@ -1230,7 +1241,12 @@ export class PlaceModal {
       try {
         const pid = place.place_id || place.id || place.placeId;
         if (!pid) throw new Error('ID del lugar no encontrado');
-        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim());
+        const displayName = user.user_metadata?.display_name
+          || user.user_metadata?.full_name
+          || user.email?.split('@')[0]
+          || 'Usuario';
+        const avatarUrl = user.user_metadata?.avatar_url || null;
+        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim(), displayName, avatarUrl);
         closeModal();
         self._showToast('✓ Reseña publicada');
         // Refrescar tab comunidad
@@ -2084,9 +2100,13 @@ export class PlaceModal {
         margin-left:6px; vertical-align:middle;
       }
       /* Divider comunidad */
+      .wpr-header-row {
+        display:flex; align-items:center; gap:8px;
+        padding:0 20px 10px; flex-wrap:nowrap;
+      }
       /* ── Review tabs ── */
       .wpr-tabs {
-        display:flex; gap:6px; padding:4px 20px 12px;
+        display:flex; gap:6px; flex:1;
       }
       .wpr-tab {
         flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px;
@@ -2132,7 +2152,7 @@ export class PlaceModal {
       }
       /* Reseña de comunidad */
       .wpr-community-card {
-        margin:0 20px 12px;
+        margin:0 0 12px;
         background:#f9f9f9; border-radius:16px;
         padding:14px;
       }
@@ -2384,6 +2404,9 @@ export class PlaceModal {
 
       /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
+      #wpr-panel-google, #wpr-panel-community {
+        padding:0 20px;
+      }
       /* reviews header fusionado en tabs */
       .wp-pm-reviews-list {
         display:flex; flex-direction:column; gap:10px;
