@@ -827,14 +827,16 @@ export class PlaceModal {
     const headerRow = this._el.querySelector('#wpr-header-row');
     if (headerRow) {
       headerRow.innerHTML = `
-        <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
-        <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
-        <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
-        <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir</button>
+        <div class="wp-pm-section-title">Reseñas</div>
+        <div class="wpr-header-tabs-row">
+          <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
+          <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
+          <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir</button>
+        </div>
       `;
 
       // Tab switching — listeners en headerRow
-      headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
+      headerRow.querySelector('.wpr-header-tabs-row')?.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
         tab.onclick = () => {
           headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
           tab.classList.add('wpr-tab-active');
@@ -1244,7 +1246,7 @@ export class PlaceModal {
             const headerRow2 = self._el.querySelector('#wpr-header-row');
             const list2 = self._el.querySelector('#wp-pm-reviews-list');
             if (headerRow2 && list2) {
-              headerRow2.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+              headerRow2.querySelectorAll('.wpr-header-tabs-row .wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
               const wpTab = headerRow2.querySelector('[data-tab="community"]');
               if (wpTab) { wpTab.classList.add('wpr-tab-active'); }
               list2.querySelector('#wpr-panel-google').style.display    = 'none';
@@ -2092,12 +2094,17 @@ export class PlaceModal {
       }
       /* Divider comunidad */
       .wpr-header-row {
-        display:flex; align-items:center; gap:8px;
-        padding:0 20px 10px; flex-wrap:nowrap;
+        padding:0 20px 10px;
+      }
+      .wpr-header-row .wp-pm-section-title {
+        display:block; margin-bottom:8px;
+      }
+      .wpr-header-tabs-row {
+        display:flex; gap:6px; align-items:center;
       }
       /* ── Review tabs ── */
       .wpr-tabs {
-        display:flex; gap:6px; flex:1;
+        display:flex; gap:6px;
       }
       .wpr-tab {
         flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px;
