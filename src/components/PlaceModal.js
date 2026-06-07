@@ -289,6 +289,13 @@ export class PlaceModal {
             <div class="wp-pm-divider"></div>
           </div>
 
+          <!-- Lugares similares -->
+          <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
+            <div class="wp-pm-section-title">Lugares similares</div>
+            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
+            <div class="wp-pm-divider"></div>
+          </div>
+
           <!-- Reviews -->
           <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
             <div class="wpr-header-row" id="wpr-header-row"></div>
@@ -367,6 +374,7 @@ export class PlaceModal {
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
+    this._populateSimilar(place);
     this._populateReviews(place);  // async, no bloqueante
     // scroll body to top + reset topbar nombre/stats
     const body = this._el.querySelector('#wp-pm-body');
@@ -763,6 +771,73 @@ export class PlaceModal {
     };
   }
 
+  _populateSimilar(place) {
+    const block  = this._el.querySelector('#wp-pm-similar-block');
+    const scroll = this._el.querySelector('#wp-pm-similar-scroll');
+    if (!block || !scroll) return;
+
+    // Usar lugares ya cargados en el mapa — filtrar por categoría similar
+    const allPlaces = window.wpApp?.mapView?._allPlaces
+      || window.wpApp?.mapView?.places
+      || [];
+
+    const currentId   = place.place_id || place.id;
+    const currentCats = (place.types || place.categories || []).slice(0,3);
+
+    // Buscar lugares que compartan alguna categoría, excluir el actual
+    let similar = allPlaces.filter(p => {
+      if ((p.place_id || p.id) === currentId) return false;
+      const pCats = p.types || p.categories || [];
+      return currentCats.some(c => pCats.includes(c));
+    });
+
+    // Si no hay suficientes por categoría, tomar los más cercanos
+    if (similar.length < 3 && place.geometry?.location) {
+      const lat = place.geometry.location.lat;
+      const lng = place.geometry.location.lng;
+      similar = allPlaces
+        .filter(p => (p.place_id || p.id) !== currentId)
+        .sort((a,b) => {
+          const da = Math.hypot((a.geometry?.location?.lat||0)-lat, (a.geometry?.location?.lng||0)-lng);
+          const db = Math.hypot((b.geometry?.location?.lat||0)-lat, (b.geometry?.location?.lng||0)-lng);
+          return da - db;
+        });
+    }
+
+    similar = similar.slice(0, 8);
+    if (!similar.length) { block.style.display='none'; return; }
+    block.style.display = '';
+
+    scroll.innerHTML = similar.map(p => {
+      const name   = p.name || p.displayName || '';
+      const photo  = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
+      const rating = parseFloat(p.rating) || 0;
+      const cat    = (p.types?.[0] || p.category || '').replace(/_/g,' ');
+      const stars  = rating > 0 ? '★'.repeat(Math.round(rating)) + ' ' + rating.toFixed(1) : '';
+      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}">
+        ${photo
+          ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="wp-pm-similar-img" style="display:flex;align-items:center;justify-content:center;font-size:28px">${p.categoryIcon||'📍'}</div>`
+        }
+        <div class="wp-pm-similar-info">
+          <div class="wp-pm-similar-name">${name}</div>
+          ${cat ? `<div class="wp-pm-similar-cat">${cat}</div>` : ''}
+          ${stars ? `<div class="wp-pm-similar-stars">${stars}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    // Tap en mini-ficha → abrir esa ficha
+    scroll.querySelectorAll('.wp-pm-similar-card').forEach((card, i) => {
+      card.addEventListener('click', () => {
+        const p = similar[i];
+        if (p && window.wpApp?.placeModal) {
+          window.wpApp.placeModal.show(p);
+        }
+      });
+    });
+  }
+
   async _populateReviews(place) {
     const block = this._el.querySelector('#wp-pm-reviews-block');
     const list  = this._el.querySelector('#wp-pm-reviews-list');
@@ -850,7 +925,12 @@ export class PlaceModal {
 
     // ── Panels en list ──
     list.innerHTML = `
-      <div id="wpr-panel-google">${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}</div>
+      <div id="wpr-panel-google">
+        ${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}
+        ${gCount ? `<a class="wpr-see-more" href="https://www.google.com/maps/place/?q=place_id:${place.place_id || ''}" target="_blank" rel="noopener">
+          Ver todas las reseñas en Google Maps →
+        </a>` : ''}
+      </div>
       <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
     `;
   }
@@ -2403,6 +2483,52 @@ export class PlaceModal {
 
       /* ── Reviews ── */
       .wp-pm-reviews-block { padding-bottom:8px; }
+
+      /* ── Ver más Google ── */
+      .wpr-see-more {
+        display:block; text-align:center;
+        font-size:12px; font-weight:600; color:#4285F4;
+        padding:12px 0 4px;
+        font-family:'Roboto',system-ui,sans-serif;
+        text-decoration:none;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wpr-see-more:active { opacity:0.7; }
+
+      /* ── Lugares similares ── */
+      .wp-pm-similar-block { padding-bottom:4px; }
+      .wp-pm-similar-scroll {
+        display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
+        padding:10px 20px 12px; scroll-snap-type:x mandatory;
+        scrollbar-width:none; -webkit-overflow-scrolling:touch;
+      }
+      .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
+      .wp-pm-similar-card {
+        flex-shrink:0; width:130px; border-radius:14px;
+        background:#f4f4f6; overflow:hidden; cursor:pointer;
+        scroll-snap-align:start;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s ease;
+        border:1px solid rgba(0,0,0,0.06);
+      }
+      .wp-pm-similar-card:active { transform:scale(0.96); }
+      .wp-pm-similar-img {
+        width:100%; height:80px; object-fit:cover;
+        background:#e2e8f0;
+      }
+      .wp-pm-similar-info { padding:8px 8px 10px; }
+      .wp-pm-similar-name {
+        font-size:12px; font-weight:700; color:#0a0a0a; line-height:1.3;
+        font-family:'Roboto',system-ui,sans-serif;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+      }
+      .wp-pm-similar-cat {
+        font-size:10px; color:#8e8e93; margin-top:3px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-similar-stars {
+        font-size:10px; color:#f59e0b; margin-top:2px;
+      }
       #wpr-panel-google, #wpr-panel-community {
         padding:12px 0 0;
       }
