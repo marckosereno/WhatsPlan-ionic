@@ -289,13 +289,6 @@ export class PlaceModal {
             <div class="wp-pm-divider"></div>
           </div>
 
-          <!-- Lugares similares -->
-          <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
-            <div class="wp-pm-section-title">Lugares similares</div>
-            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
-            <div class="wp-pm-divider"></div>
-          </div>
-
           <!-- Reviews -->
           <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
             <div class="wpr-header-row" id="wpr-header-row"></div>
@@ -776,32 +769,50 @@ export class PlaceModal {
     const scroll = this._el.querySelector('#wp-pm-similar-scroll');
     if (!block || !scroll) return;
 
-    // Usar lugares ya cargados en el mapa — filtrar por categoría similar
     const allPlaces = window.wpApp?.mapView?._allPlaces
       || window.wpApp?.mapView?.places
+      || window.wpApp?.allPlaces
       || [];
 
-    const currentId   = place.place_id || place.id;
-    const currentCats = (place.types || place.categories || []).slice(0,3);
+    const currentId  = place.place_id || place.id;
+    const currentCat = place.subcategory || place.category
+      || place.types?.[0] || place.categories?.[0] || '';
 
-    // Buscar lugares que compartan alguna categoría, excluir el actual
+    // Prioridad 1: misma subcategoría
     let similar = allPlaces.filter(p => {
       if ((p.place_id || p.id) === currentId) return false;
-      const pCats = p.types || p.categories || [];
-      return currentCats.some(c => pCats.includes(c));
+      const pCat = p.subcategory || p.category || p.types?.[0] || p.categories?.[0] || '';
+      return pCat && pCat === currentCat;
     });
 
-    // Si no hay suficientes por categoría, tomar los más cercanos
-    if (similar.length < 3 && place.geometry?.location) {
-      const lat = place.geometry.location.lat;
-      const lng = place.geometry.location.lng;
-      similar = allPlaces
-        .filter(p => (p.place_id || p.id) !== currentId)
-        .sort((a,b) => {
-          const da = Math.hypot((a.geometry?.location?.lat||0)-lat, (a.geometry?.location?.lng||0)-lng);
-          const db = Math.hypot((b.geometry?.location?.lat||0)-lat, (b.geometry?.location?.lng||0)-lng);
-          return da - db;
-        });
+    // Prioridad 2: categoría padre similar
+    if (similar.length < 3) {
+      const currentTypes = place.types || place.categories || [];
+      const extra = allPlaces.filter(p => {
+        if ((p.place_id || p.id) === currentId) return false;
+        if (similar.find(s => (s.place_id||s.id) === (p.place_id||p.id))) return false;
+        const pTypes = p.types || p.categories || [];
+        return currentTypes.some(t => pTypes.includes(t));
+      });
+      similar = [...similar, ...extra];
+    }
+
+    // Prioridad 3: más cercanos
+    if (similar.length < 3) {
+      const lat = place.geometry?.location?.lat || place.lat;
+      const lng = place.geometry?.location?.lng || place.lng;
+      if (lat && lng) {
+        const extra = allPlaces
+          .filter(p => (p.place_id||p.id) !== currentId && !similar.find(s=>(s.place_id||s.id)===(p.place_id||p.id)))
+          .sort((a,b) => {
+            const aLat = a.geometry?.location?.lat || a.lat || 0;
+            const aLng = a.geometry?.location?.lng || a.lng || 0;
+            const bLat = b.geometry?.location?.lat || b.lat || 0;
+            const bLng = b.geometry?.location?.lng || b.lng || 0;
+            return Math.hypot(aLat-lat,aLng-lng) - Math.hypot(bLat-lat,bLng-lng);
+          });
+        similar = [...similar, ...extra];
+      }
     }
 
     similar = similar.slice(0, 8);
@@ -927,9 +938,9 @@ export class PlaceModal {
     list.innerHTML = `
       <div id="wpr-panel-google">
         ${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}
-        ${gCount ? `<a class="wpr-see-more" href="https://www.google.com/maps/place/?q=place_id:${place.place_id || ''}" target="_blank" rel="noopener">
-          Ver todas las reseñas en Google Maps →
-        </a>` : ''}
+        ${gCount && place.place_id ? `<a class="wpr-see-more"
+          href="https://search.google.com/local/reviews?placeid=${place.place_id}"
+          target="_blank" rel="noopener">Ver todas las reseñas en Google →</a>` : ''}
       </div>
       <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
     `;
