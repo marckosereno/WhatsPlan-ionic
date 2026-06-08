@@ -298,7 +298,10 @@ export class PlaceModal {
           <!-- Lugares similares — última sección -->
           <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
             <div class="wp-pm-divider"></div>
-            <div class="wp-pm-section-title" style="padding:0 20px 10px">Lugares similares</div>
+            <div style="padding:0 0 4px">
+              <div class="wp-pm-section-title">Más Lugares</div>
+              <div style="font-size:12px;color:#8e8e93;font-family:'Roboto',system-ui,sans-serif;margin-top:0px;line-height:1.2;padding:0 20px">Descubre más lugares</div>
+            </div>
             <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
           </div>
 
@@ -825,20 +828,44 @@ export class PlaceModal {
     block.style.display = '';
 
     scroll.innerHTML = similar.map(p => {
-      const name   = p.name || p.displayName || '';
-      const photo  = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
-      const rating = parseFloat(p.rating) || 0;
-      const cat    = (p.types?.[0] || p.category || '').replace(/_/g,' ');
-      const stars  = rating > 0 ? '★'.repeat(Math.round(rating)) + ' ' + rating.toFixed(1) : '';
+      const name    = p.name || p.displayName || '';
+      const photo   = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
+      const rating  = parseFloat(p.rating) || 0;
+      const rCount  = p.userRatingCount || p.user_ratings_total || 0;
+      const price   = '$'.repeat(Math.min(p.priceLevel || 1, 3));
+      const address = (p.formatted_address || p.address || p.vicinity || '').slice(0,35);
+      const icon    = p.categoryIcon || '📍';
+      // Badge horario
+      let badgeClass = 'no-hours', badgeText = 'Sin horario';
+      const oh = p.regularOpeningHours;
+      if (oh?.periods?.length) {
+        const now = new Date(), day = now.getDay(), mins = now.getHours()*60+now.getMinutes();
+        let isOpen=false, closingSoon=false, closeTime='';
+        oh.periods.filter(per => per.open?.day===day).forEach(per => {
+          const oM = per.open.hour*60+(per.open.minute||0);
+          const cM = per.close.hour*60+(per.close.minute||0);
+          if (mins>=oM && mins<cM) {
+            isOpen=true;
+            const left=cM-mins, h12=per.close.hour>12?per.close.hour-12:(per.close.hour||12);
+            closeTime=h12+':'+(per.close.minute||0).toString().padStart(2,'0')+(per.close.hour>=12?' PM':' AM');
+            if(left>0&&left<=60) closingSoon=true;
+          }
+        });
+        if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
+        else{badgeClass='closed';badgeText='Cerrado';}
+      }
       return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}">
         ${photo
-          ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy" onerror="this.style.display='none'">`
-          : `<div class="wp-pm-similar-img" style="display:flex;align-items:center;justify-content:center;font-size:28px">${p.categoryIcon||'📍'}</div>`
-        }
-        <div class="wp-pm-similar-info">
-          <div class="wp-pm-similar-name">${name}</div>
-          ${cat ? `<div class="wp-pm-similar-cat">${cat}</div>` : ''}
-          ${stars ? `<div class="wp-pm-similar-stars">${stars}</div>` : ''}
+          ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">`
+          : `<div class="wp-pm-similar-icon">${icon}</div>`}
+        <div class="wp-pm-similar-body">
+          <div class="wps-card-header">
+            <span class="wps-card-badge ${badgeClass}">${badgeText}</span>
+            <span class="wps-card-price">${price}</span>
+          </div>
+          <div class="wps-card-name">${name}</div>
+          ${address ? `<div class="wps-card-addr">${address}${address.length>=35?'...':''}</div>` : ''}
+          ${rating > 0 ? `<div class="wps-card-rating"><span>⭐</span><span class="wps-card-rval">${rating.toFixed(1)}</span>${rCount?`<span class="wps-card-rcnt">(${rCount})</span>`:''}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -1720,7 +1747,7 @@ export class PlaceModal {
         background:#fff;
         border-radius:0;
         padding-top:20px;
-        padding-bottom:calc(100px + env(safe-area-inset-bottom,0px));
+        padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
@@ -2511,40 +2538,35 @@ export class PlaceModal {
       }
       .wpr-see-more:active { opacity:0.7; }
 
-      /* ── Lugares similares ── */
+      /* ── Lugares similares — idéntico a wps-card ── */
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:10px 20px 12px; scroll-snap-type:x mandatory;
+        padding:6px 12px 8px 12px; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
       .wp-pm-similar-card {
-        flex-shrink:0; width:130px; border-radius:14px;
-        background:#f4f4f6; overflow:hidden; cursor:pointer;
-        scroll-snap-align:start;
+        display:flex; align-items:center; gap:10px; padding:10px 14px;
+        background:#fff; border:2px solid #e5e7eb; border-radius:16px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.08);
+        min-width:280px; max-width:300px; flex-shrink:0;
+        cursor:pointer; scroll-snap-align:start;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s ease;
-        border:1px solid rgba(0,0,0,0.06);
+        transition:transform 0.15s, box-shadow 0.15s;
       }
-      .wp-pm-similar-card:active { transform:scale(0.96); }
+      .wp-pm-similar-card:first-child { margin-left:8px; }
+      .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
       .wp-pm-similar-img {
-        width:100%; height:80px; object-fit:cover;
-        background:#e2e8f0;
+        width:70px; height:70px; object-fit:cover;
+        border-radius:12px; flex-shrink:0; background:#e2e8f0;
       }
-      .wp-pm-similar-info { padding:8px 8px 10px; }
-      .wp-pm-similar-name {
-        font-size:12px; font-weight:700; color:#0a0a0a; line-height:1.3;
-        font-family:'Roboto',system-ui,sans-serif;
-        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+      .wp-pm-similar-icon {
+        width:70px; height:70px; border-radius:12px; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(135deg,#0a0a0a,#374151); font-size:32px;
       }
-      .wp-pm-similar-cat {
-        font-size:10px; color:#8e8e93; margin-top:3px;
-        font-family:'Roboto',system-ui,sans-serif;
-      }
-      .wp-pm-similar-stars {
-        font-size:10px; color:#f59e0b; margin-top:2px;
-      }
+      .wp-pm-similar-body { flex:1; min-width:0; }
       #wpr-panel-google, #wpr-panel-community {
         padding:12px 0 0;
       }
