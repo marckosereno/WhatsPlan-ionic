@@ -298,10 +298,7 @@ export class PlaceModal {
           <!-- Lugares similares — última sección -->
           <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
             <div class="wp-pm-divider"></div>
-            <div style="padding:0 0 4px">
-              <div class="wp-pm-section-title">Más Lugares</div>
-              <div style="font-size:12px;color:#8e8e93;font-family:'Roboto',system-ui,sans-serif;margin-top:0px;line-height:1.2;padding:0 20px">Descubre más lugares</div>
-            </div>
+            <div class="wp-pm-section-title">Más Lugares</div>
             <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
           </div>
 
@@ -2542,7 +2539,7 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 12px 8px 12px; scroll-snap-type:x mandatory;
+        padding:6px 8px 8px 12px; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
@@ -2555,7 +2552,7 @@ export class PlaceModal {
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s, box-shadow 0.15s;
       }
-      .wp-pm-similar-card:first-child { margin-left:8px; }
+      .wp-pm-similar-card:first-child { margin-left:4px; }
       .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
       .wp-pm-similar-img {
         width:70px; height:70px; object-fit:cover;
