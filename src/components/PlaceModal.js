@@ -1739,7 +1739,7 @@ export class PlaceModal {
         position:absolute;
         top:calc(env(safe-area-inset-top, 0px) + 308px);
         left:0; right:0; bottom:0;
-        overflow-y:auto; overflow-x:hidden;
+        overflow-y:auto; overflow-x:clip;
         -webkit-overflow-scrolling:touch;
         scrollbar-width:none;
         background:#fff;
@@ -2060,7 +2060,7 @@ export class PlaceModal {
       }
       .wpt-tag-body {
         position:absolute; inset:0;
-        overflow-y:auto; overflow-x:hidden;
+        overflow-y:auto; overflow-x:clip;
         padding:8px 16px 80px;
         scrollbar-width:none; box-sizing:border-box;
         -webkit-overflow-scrolling:touch;
@@ -2540,7 +2540,7 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 20px 8px 20px; scroll-snap-type:x mandatory;
+        padding:8px 12px 0 20px; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
