@@ -299,7 +299,7 @@ export class PlaceModal {
           <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
             <div class="wp-pm-divider"></div>
             <div class="wp-pm-section-title">Más Lugares</div>
-            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
+            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll" style="margin-left:20px;padding-left:0"></div>
           </div>
 
           <div style="height:16px"></div>
@@ -823,7 +823,8 @@ export class PlaceModal {
     similar = similar.slice(0, 8);
     if (!similar.length) { block.style.display='none'; return; }
     block.style.display = '';
-    scroll.style.paddingLeft = '20px';
+    scroll.style.marginLeft = '20px';
+    scroll.style.paddingLeft = '0';
 
     scroll.innerHTML = similar.map((p, idx) => {
       const name    = p.name || p.displayName || '';
