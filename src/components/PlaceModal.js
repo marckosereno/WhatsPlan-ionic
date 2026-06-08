@@ -2539,14 +2539,8 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 0 8px 0; scroll-snap-type:x mandatory;
+        padding:6px 20px 8px 20px; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
-      }
-      .wp-pm-similar-scroll::before {
-        content:''; flex:0 0 20px; /* spacer inicial = separación del borde */
-      }
-      .wp-pm-similar-scroll::after {
-        content:''; flex:0 0 12px; /* spacer final */
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
       .wp-pm-similar-card {
