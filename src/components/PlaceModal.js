@@ -823,8 +823,9 @@ export class PlaceModal {
     similar = similar.slice(0, 8);
     if (!similar.length) { block.style.display='none'; return; }
     block.style.display = '';
+    scroll.style.paddingLeft = '20px';
 
-    scroll.innerHTML = similar.map(p => {
+    scroll.innerHTML = similar.map((p, idx) => {
       const name    = p.name || p.displayName || '';
       const photo   = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
       const rating  = parseFloat(p.rating) || 0;
@@ -851,7 +852,7 @@ export class PlaceModal {
         if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
         else{badgeClass='closed';badgeText='Cerrado';}
       }
-      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}">
+      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}" style="${idx===0?'margin-left:20px':''}">
         ${photo
           ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">`
           : `<div class="wp-pm-similar-icon">${icon}</div>`}
@@ -2539,7 +2540,7 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 8px 8px 20px; scroll-snap-type:x mandatory;
+        padding:6px 8px 8px 0; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
