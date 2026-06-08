@@ -824,7 +824,13 @@ export class PlaceModal {
     if (!similar.length) { block.style.display='none'; return; }
     block.style.display = '';
 
-    scroll.innerHTML = similar.map((p, idx) => {
+    // Spacer real como primer hijo — garantiza separación del borde
+    const spacer = document.createElement('div');
+    spacer.style.cssText = 'flex:0 0 20px;min-width:20px;height:1px;';
+    scroll.innerHTML = '';
+    scroll.appendChild(spacer);
+
+    const cards = similar.map(p => {
       const name    = p.name || p.displayName || '';
       const photo   = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
       const rating  = parseFloat(p.rating) || 0;
@@ -832,7 +838,6 @@ export class PlaceModal {
       const price   = '$'.repeat(Math.min(p.priceLevel || 1, 3));
       const address = (p.formatted_address || p.address || p.vicinity || '').slice(0,35);
       const icon    = p.categoryIcon || '📍';
-      // Badge horario
       let badgeClass = 'no-hours', badgeText = 'Sin horario';
       const oh = p.regularOpeningHours;
       if (oh?.periods?.length) {
@@ -851,10 +856,11 @@ export class PlaceModal {
         if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
         else{badgeClass='closed';badgeText='Cerrado';}
       }
-      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}">
-        ${photo
-          ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">`
-          : `<div class="wp-pm-similar-icon">${icon}</div>`}
+      const div = document.createElement('div');
+      div.className = 'wp-pm-similar-card';
+      div.dataset.pid = p.place_id||p.id||'';
+      div.innerHTML = `
+        ${photo ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">` : `<div class="wp-pm-similar-icon">${icon}</div>`}
         <div class="wp-pm-similar-body">
           <div class="wps-card-header">
             <span class="wps-card-badge ${badgeClass}">${badgeText}</span>
@@ -863,19 +869,14 @@ export class PlaceModal {
           <div class="wps-card-name">${name}</div>
           ${address ? `<div class="wps-card-addr">${address}${address.length>=35?'...':''}</div>` : ''}
           ${rating > 0 ? `<div class="wps-card-rating"><span>⭐</span><span class="wps-card-rval">${rating.toFixed(1)}</span>${rCount?`<span class="wps-card-rcnt">(${rCount})</span>`:''}</div>` : ''}
-        </div>
-      </div>`;
-    }).join('');
-
-    // Tap en mini-ficha → abrir esa ficha
-    scroll.querySelectorAll('.wp-pm-similar-card').forEach((card, i) => {
-      card.addEventListener('click', () => {
-        const p = similar[i];
-        if (p && window.wpApp?.placeModal) {
-          window.wpApp.placeModal.show(p);
-        }
+        </div>`;
+      div.addEventListener('click', () => {
+        if (p && window.wpApp?.placeModal) window.wpApp.placeModal.show(p);
       });
+      return div;
     });
+
+    cards.forEach(c => scroll.appendChild(c));
   }
 
   async _populateReviews(place) {
