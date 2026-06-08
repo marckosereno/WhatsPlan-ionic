@@ -299,7 +299,7 @@ export class PlaceModal {
           <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
             <div class="wp-pm-divider"></div>
             <div class="wp-pm-section-title">Más Lugares</div>
-            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll" style="margin-left:20px;padding-left:0"></div>
+            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
           </div>
 
           <div style="height:16px"></div>
@@ -823,8 +823,6 @@ export class PlaceModal {
     similar = similar.slice(0, 8);
     if (!similar.length) { block.style.display='none'; return; }
     block.style.display = '';
-    scroll.style.marginLeft = '20px';
-    scroll.style.paddingLeft = '0';
 
     scroll.innerHTML = similar.map((p, idx) => {
       const name    = p.name || p.displayName || '';
@@ -853,7 +851,7 @@ export class PlaceModal {
         if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
         else{badgeClass='closed';badgeText='Cerrado';}
       }
-      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}" style="${idx===0?'margin-left:20px':''}">
+      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}" style="${idx===0?'margin-left:20px':'margin-left:0'}">
         ${photo
           ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">`
           : `<div class="wp-pm-similar-icon">${icon}</div>`}
