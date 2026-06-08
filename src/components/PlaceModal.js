@@ -2539,8 +2539,10 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 8px 8px 12px; scroll-snap-type:x mandatory;
+        padding:6px 8px 8px 0; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
+        margin:0 -20px; /* cancelar padding del body */
+        padding-left:20px;
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
       .wp-pm-similar-card {
@@ -2552,7 +2554,7 @@ export class PlaceModal {
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s, box-shadow 0.15s;
       }
-      .wp-pm-similar-card:first-child { margin-left:4px; }
+      .wp-pm-similar-card:first-child { margin-left:0; }
       .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
       .wp-pm-similar-img {
         width:70px; height:70px; object-fit:cover;
