@@ -1,4 +1,4 @@
-// ===================================================================
+// ====================================================================
 // WHATSPLAN — src/components/PlaceModal.js
 // Ficha de lugar — diseño tipo Insightlancer/travel card
 // ====================================================================
@@ -851,7 +851,7 @@ export class PlaceModal {
         if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
         else{badgeClass='closed';badgeText='Cerrado';}
       }
-      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}" style="${idx===0?'margin-left:20px':'margin-left:0'}">
+      return `<div class="wp-pm-similar-card" data-pid="${p.place_id||p.id||''}">
         ${photo
           ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">`
           : `<div class="wp-pm-similar-icon">${icon}</div>`}
@@ -2539,8 +2539,14 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 8px 8px 0; scroll-snap-type:x mandatory;
+        padding:6px 0 8px 0; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
+      }
+      .wp-pm-similar-scroll::before {
+        content:''; flex:0 0 20px; /* spacer inicial = separación del borde */
+      }
+      .wp-pm-similar-scroll::after {
+        content:''; flex:0 0 12px; /* spacer final */
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
       .wp-pm-similar-card {
