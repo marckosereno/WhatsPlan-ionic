@@ -298,9 +298,9 @@ export class PlaceModal {
           <!-- Lugares similares — última sección -->
           <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
             <div class="wp-pm-divider"></div>
-            <div style="padding:0 20px 6px">
-              <div class="wp-pm-section-title">+Lugares</div>
-              <div style="font-size:12px;color:#8e8e93;font-family:'Roboto',system-ui,sans-serif;margin-top:2px">Otros lugares similares a este</div>
+            <div style="padding:0 20px 4px">
+              <div class="wp-pm-section-title">Más Lugares</div>
+              <div style="font-size:12px;color:#8e8e93;font-family:'Roboto',system-ui,sans-serif;margin-top:1px">Otros lugares similares a este</div>
             </div>
             <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
           </div>
@@ -1747,7 +1747,7 @@ export class PlaceModal {
         background:#fff;
         border-radius:0;
         padding-top:20px;
-        padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));
+        padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));
       }
       .wp-pm-body::-webkit-scrollbar { display:none; }
       .wp-pm-handle { display:none; }
@@ -2542,7 +2542,7 @@ export class PlaceModal {
       .wp-pm-similar-block { padding-bottom:4px; }
       .wp-pm-similar-scroll {
         display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:8px 20px 12px; scroll-snap-type:x mandatory;
+        padding:6px 12px 8px 20px; scroll-snap-type:x mandatory;
         scrollbar-width:none; -webkit-overflow-scrolling:touch;
       }
       .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
