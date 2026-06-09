@@ -92,51 +92,65 @@ export class PlaceModal {
     // ── Hero card: foto derecha, contenido izquierda ──
     var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
 
+    var photos3 = (place.photosUrls||place.photos_urls||(place.photo_url?[place.photo_url]:[])).slice(0,4);
+    var extraPhotos = Math.max(0,(place.photosUrls||place.photos_urls||[]).length - 3);
+
     ms.style.cssText = [
       'position:fixed',
       'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
       'left:12px','right:12px',
-      'height:170px',          /* misma altura que el panel */
-      'border-radius:32px',    /* mismo radius que el panel */
+      'background:#fff',
+      'border-radius:32px',
       'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
-      'border:2.5px solid rgba(255,255,255,0.85)',
       'overflow:hidden',
       'z-index:9990',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
       'cursor:pointer',
+      'padding:14px 16px 12px',
+      'box-sizing:border-box',
+      'display:flex',
+      'flex-direction:column',
+      'gap:10px',
     ].join(';');
 
     ms.innerHTML = `
-      <!-- Foto fullwidth -->
-      ${photo
-        ? `<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" src="${photo}">`
-        : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0f172a,#374151)"></div>`}
-      <!-- Gradiente de abajo hacia arriba -->
-      <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.82) 0%,rgba(0,0,0,0.4) 55%,rgba(0,0,0,0.08) 100%);pointer-events:none"></div>
-
-      <!-- Badge status — arriba izquierda -->
-      <div style="position:absolute;top:13px;left:14px">
-        <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);color:#fff">${statusTxt}</span>
+      <!-- Header: nombre + badge + corazon -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${name}</span>
+            <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:#f4f4f6;border:1px solid rgba(0,0,0,0.08);color:#4b5563">${statusTxt}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280">
+            ${rating>0?`<span style="color:#f59e0b;font-weight:700">★ ${rating.toFixed(1)}</span>${count?`<span style="color:#d1d5db">·</span><span style="color:#9ca3af">(${count})</span>`:''}${addr?'<span style="color:#d1d5db">·</span>':''}`:''}
+            ${addr?`<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${addr}</span>`:''}
+          </div>
+        </div>
+        <!-- Favoritos -->
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#f4f4f6;border:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
+          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#9ca3af" stroke-width="40"/></svg>
+        </button>
       </div>
 
-      <!-- Botón Favoritos — arriba derecha -->
-      <button id="wp-ms-fav-btn" style="position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
-        <svg viewBox="0 0 512 512" width="15" height="15"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#fff" stroke-width="40"/></svg>
-      </button>
+      <!-- Foto strip -->
+      <div style="display:flex;gap:6px;height:80px;border-radius:16px;overflow:hidden">
+        ${photos3.slice(0,2).map(u=>`<div style="flex:1;background:url('${u}') center/cover #e2e8f0;border-radius:12px;min-width:0"></div>`).join('')}
+        ${photos3[2]?`<div style="flex:1;position:relative;border-radius:12px;overflow:hidden;min-width:0">
+          <div style="position:absolute;inset:0;background:url('${photos3[2]}') center/cover #e2e8f0"></div>
+          ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
+        </div>`:''}
+        ${photos3.length===0?`<div style="flex:1;background:#f4f4f6;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px">📍</div>`:''}
+      </div>
 
-      <!-- Contenido — columna izquierda, centrada verticalmente -->
-      <div style="position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);max-width:58%">
-        <!-- Rating badge glass -->
-        ${rating>0?`<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);color:#fff;margin-bottom:5px">★ ${rating.toFixed(1)}${count?' ('+count+')':''}</span><br>`:''}
-        <!-- Nombre — 1 línea -->
-        <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,0.5);margin-bottom:3px;margin-top:${rating>0?'3':'0'}px">${name}</div>
-        <!-- Dirección sin ícono -->
-        ${addr?`<div style="font-size:10px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px">${addr}</div>`:'<div style="margin-bottom:8px"></div>'}
-        <!-- CTA Visitar — liquid glass sm -->
-        <button id="wp-ms-cta-btn" style="display:inline-flex;align-items:center;justify-content:center;height:30px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.15);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);color:#fff;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent">
-          Visitar
+      <!-- Botones abajo -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <button id="wp-ms-open-btn" style="height:34px;padding:0 16px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent">
+          ${statusTxt==='● Abierto'?'Abierto':'Ver horario'}
+        </button>
+        <button id="wp-ms-cta-btn" style="height:34px;padding:0 16px;border-radius:999px;border:1.5px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.04);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#0a0a0a;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent">
+          Más detalles
         </button>
       </div>`;
 
