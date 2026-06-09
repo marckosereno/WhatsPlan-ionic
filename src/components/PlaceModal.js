@@ -23,6 +23,45 @@ export class PlaceModal {
 
   // ── Public ────────────────────────────────────────────────────────
 
+  _hideMapUI() {
+    var t = 'transform 0.26s ease, opacity 0.26s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) { panel.style.transition=t; panel.style.transform='translateY(120%)'; panel.style.opacity='0'; panel.style.pointerEvents='none'; }
+    var footer = document.getElementById('wp-footer-menu');
+    if (footer) { footer.style.transition=t; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
+  }
+
+  _showMapUI() {
+    var t = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) { panel.style.transition=t; panel.style.transform=''; panel.style.opacity='1'; panel.style.pointerEvents=''; }
+    var footer = document.getElementById('wp-footer-menu');
+    if (footer) { footer.style.transition=t; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
+  }
+
+  _hideTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.to(mapTopbar, { scale:0.85, opacity:0, duration:0.22, ease:'power2.in',
+        onComplete: function() { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
+      });
+    } else { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
+  }
+
+  _restoreTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    mapTopbar.style.visibility=''; mapTopbar.style.pointerEvents='';
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.fromTo(mapTopbar, {scale:0.85,opacity:0}, {scale:1,opacity:1,duration:0.32,ease:'back.out(2)'});
+    }
+  }
+
   showMini(place) {
     if (!this._built) this._build();
     this._place = place;
