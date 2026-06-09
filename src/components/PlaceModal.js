@@ -90,14 +90,16 @@ export class PlaceModal {
     var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
 
     // ── Hero card: foto derecha, contenido izquierda ──
+    var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
+
     ms.style.cssText = [
       'position:fixed',
       'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
       'left:12px','right:12px',
-      'height:156px',
-      'border-radius:32px',
+      'height:170px',          /* misma altura que el panel */
+      'border-radius:32px',    /* mismo radius que el panel */
       'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
-      'border:2px solid rgba(255,255,255,0.9)',
+      'border:2.5px solid rgba(255,255,255,0.85)',
       'overflow:hidden',
       'z-index:9990',
       'transform:translateY(140%)',
@@ -107,31 +109,37 @@ export class PlaceModal {
     ].join(';');
 
     ms.innerHTML = `
-      <!-- Foto fullwidth como fondo -->
+      <!-- Foto fullwidth -->
       ${photo
         ? `<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" src="${photo}">`
-        : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,#1a1a2e,#374151)"></div>`
-      }
+        : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0f172a,#374151)"></div>`}
       <!-- Gradiente de abajo hacia arriba -->
-      <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.78) 0%,rgba(0,0,0,0.35) 50%,rgba(0,0,0,0.05) 100%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.82) 0%,rgba(0,0,0,0.4) 55%,rgba(0,0,0,0.08) 100%);pointer-events:none"></div>
+
       <!-- Badge status — arriba izquierda -->
-      <div style="position:absolute;top:12px;left:14px">
-        <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.35);color:#fff">${statusTxt}</span>
+      <div style="position:absolute;top:13px;left:14px">
+        <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);color:#fff">${statusTxt}</span>
       </div>
-      <!-- Rating — arriba derecha -->
-      ${rating>0?`<div style="position:absolute;top:12px;right:14px"><span style="font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);padding:4px 9px;border-radius:999px">★ ${rating.toFixed(1)}${count?' ('+count+')':''}</span></div>`:''}
+
+      <!-- Botón Favoritos — arriba derecha -->
+      <button id="wp-ms-fav-btn" style="position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+        <svg viewBox="0 0 512 512" width="15" height="15"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#fff" stroke-width="40"/></svg>
+      </button>
+
       <!-- Contenido abajo -->
-      <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px 12px">
-        <div style="font-size:17px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,0.4)">${name}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:11px;color:rgba(255,255,255,0.75);display:flex;align-items:center;gap:5px;overflow:hidden">
-            ${types?`<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${types}</span>`:''}
-            ${price?`<span style="color:rgba(255,255,255,0.5)">·</span><span>${price}</span>`:''}
-          </div>
-          <button id="wp-ms-cta-btn" style="flex-shrink:0;background:#fff;color:#0a0a0a;border:none;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap">
-            Ver lugar <span>→</span>
-          </button>
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px 13px;display:flex;align-items:flex-end;gap:10px">
+        <div style="flex:1;min-width:0;max-width:44%">
+          <!-- Rating sobre el título -->
+          ${rating>0?`<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:3px">★ ${rating.toFixed(1)}${count?' · ('+count+')':''}</div>`:''}
+          <!-- Nombre -->
+          <div style="font-size:16px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-shadow:0 1px 6px rgba(0,0,0,0.5)">${name}</div>
+          <!-- Dirección -->
+          ${addr?`<div style="font-size:10.5px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📍 ${addr}</div>`:''}
         </div>
+        <!-- CTA Visitar — liquid glass -->
+        <button id="wp-ms-cta-btn" style="flex-shrink:0;height:52px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 4px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.2);color:#fff;font-size:14px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,filter 0.15s">
+          Visitar
+        </button>
       </div>`;
 
     ms.className = 'wp-minisnap-panel';
@@ -140,7 +148,20 @@ export class PlaceModal {
       ms.style.transform = 'translateY(0)';
     }));
 
-    // Tap en CTA → ficha completa
+    // Favoritos
+    var favBtn = ms.querySelector('#wp-ms-fav-btn');
+    if (favBtn) {
+      favBtn.onclick = function(e) {
+        e.stopPropagation();
+        favBtn.classList.toggle('active');
+        var svg = favBtn.querySelector('path');
+        if (favBtn.classList.contains('active')) {
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+          self._showToast('❤️ Guardado en favoritos');
+        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#fff'); }
+      };
+    }
+    // CTA → ficha completa
     var cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
     // Tap en la card → ficha completa
