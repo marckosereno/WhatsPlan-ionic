@@ -91,6 +91,26 @@ export class PlaceModal {
       <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
       <div class="wp-pm-card" id="wp-pm-card">
 
+        <!-- ── MINI SNAP ── -->
+        <div class="wp-pm-minisnap" id="wp-pm-minisnap">
+          <div class="wp-pm-minisnap-handle"></div>
+          <div class="wp-pm-minisnap-row">
+            <div class="wp-pm-minisnap-info">
+              <div class="wp-pm-minisnap-name" id="wp-pm-ms-name"></div>
+              <div class="wp-pm-minisnap-meta" id="wp-pm-ms-meta"></div>
+            </div>
+            <button class="wp-pm-minisnap-save" id="wp-pm-ms-save">
+              <svg viewBox="0 0 512 512" width="18" height="18"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="48"/></svg>
+            </button>
+          </div>
+          <div class="wp-pm-minisnap-photos" id="wp-pm-ms-photos"></div>
+          <div class="wp-pm-minisnap-quickinfo" id="wp-pm-ms-quick"></div>
+          <div class="wp-pm-minisnap-desc" id="wp-pm-ms-desc"></div>
+          <div class="wp-pm-minisnap-footer">
+            <button class="wp-pm-minisnap-cta" id="wp-pm-ms-cta">→ Planear visita</button>
+          </div>
+        </div>
+
         <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
         <div class="wp-pm-topbar" id="wp-pm-topbar">
           <!-- Botón back -->
@@ -766,6 +786,71 @@ export class PlaceModal {
     };
   }
 
+  _populateMiniSnap(place) {
+    const name  = place.name || place.displayName || '';
+    const rating = parseFloat(place.rating) || 0;
+    const types  = (place.types || []).slice(0,2).map(t => t.replace(/_/g,' ')).join(' · ');
+    const photos = place.photosUrls || place.photos_urls || (place.photo_url ? [place.photo_url] : []);
+    const desc   = place.description || place.editorial_summary?.overview || '';
+
+    // Badge horario
+    let statusText = '', statusColor = '#6b7280';
+    const oh = place.regularOpeningHours || place.opening_hours;
+    if (oh) {
+      const isOpen = oh.open_now ?? oh.isOpen?.();
+      if (isOpen === true)  { statusText = 'Abierto ahora'; statusColor = '#16a34a'; }
+      if (isOpen === false) { statusText = 'Cerrado'; statusColor = '#ef4444'; }
+    }
+
+    this._el.querySelector('#wp-pm-ms-name').textContent = name;
+    this._el.querySelector('#wp-pm-ms-meta').innerHTML =
+      `${rating > 0 ? `<span style="color:#f59e0b">★ ${rating.toFixed(1)}</span> · ` : ''}${types}`;
+
+    // Fotos
+    const photosEl = this._el.querySelector('#wp-pm-ms-photos');
+    const show = photos.slice(0, 3);
+    const extra = photos.length - 3;
+    photosEl.innerHTML = show.map(u =>
+      `<img class="wp-pm-ms-photo" src="${u}" loading="lazy" onerror="this.style.background='#e2e8f0'">`
+    ).join('') + (extra > 0 ? `<div class="wp-pm-ms-photo-more">+${extra}</div>` : '');
+
+    // Quick info
+    this._el.querySelector('#wp-pm-ms-quick').innerHTML = [
+      statusText ? `<span class="wp-pm-ms-qi-item" style="color:${statusColor}">● ${statusText}</span>` : '',
+      types ? `<span class="wp-pm-ms-qi-item">🏷 ${types.split(' · ')[0]}</span>` : '',
+      place.priceLevel ? `<span class="wp-pm-ms-qi-item">${'$'.repeat(place.priceLevel)}</span>` : '',
+    ].filter(Boolean).join('');
+
+    // Desc
+    this._el.querySelector('#wp-pm-ms-desc').textContent = desc;
+    this._el.querySelector('#wp-pm-ms-desc').style.display = desc ? '' : 'none';
+
+    // CTA → expandir a ficha completa
+    const cta = this._el.querySelector('#wp-pm-ms-cta');
+    var self = this;
+    cta.onclick = () => self.expandToFull();
+
+    // Drag hacia arriba → expandir
+    const card = this._el.querySelector('#wp-pm-card');
+    let startY = 0;
+    card.addEventListener('touchstart', function(e) {
+      startY = e.touches[0].clientY;
+    }, { passive: true, once: true });
+    card.addEventListener('touchend', function(e) {
+      const dy = startY - e.changedTouches[0].clientY;
+      if (dy > 60) self.expandToFull();
+    }, { passive: true, once: true });
+
+    // Save btn en mini snap
+    const saveBtn = this._el.querySelector('#wp-pm-ms-save');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        saveBtn.classList.toggle('saved');
+        if (saveBtn.classList.contains('saved')) self._showToast('❤️ Guardado en favoritos');
+      };
+    }
+  }
+
   async _populateReviews(place) {
     const block = this._el.querySelector('#wp-pm-reviews-block');
     const list  = this._el.querySelector('#wp-pm-reviews-list');
@@ -1435,6 +1520,85 @@ export class PlaceModal {
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
+      /* ── Mini Snap ── */
+      .wp-pm-minisnap {
+        display:none; flex-direction:column;
+        padding:0 0 12px;
+        background:#fff; border-radius:24px 24px 0 0;
+        overflow:hidden;
+      }
+      .wp-pm-minisnap.active { display:flex; }
+      .wp-pm-minisnap-handle {
+        width:36px; height:4px; border-radius:2px;
+        background:rgba(0,0,0,0.18);
+        margin:10px auto 8px; flex-shrink:0;
+      }
+      .wp-pm-minisnap-row {
+        display:flex; align-items:center;
+        padding:0 16px 8px; gap:10px;
+      }
+      .wp-pm-minisnap-info { flex:1; min-width:0; }
+      .wp-pm-minisnap-name {
+        font-size:16px; font-weight:800; color:#0a0a0a;
+        font-family:'Roboto',system-ui,sans-serif;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
+      .wp-pm-minisnap-meta {
+        font-size:12px; color:#6b7280; margin-top:2px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-minisnap-save {
+        width:36px; height:36px; border-radius:50%; border:none;
+        background:#f4f4f6; display:flex; align-items:center; justify-content:center;
+        color:#9ca3af; flex-shrink:0; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.2s ease;
+      }
+      .wp-pm-minisnap-save.saved { color:#ef4444; background:#fff0f0; }
+      /* Photo strip */
+      .wp-pm-minisnap-photos {
+        display:flex; gap:6px; padding:0 16px 10px; overflow:hidden;
+      }
+      .wp-pm-ms-photo {
+        flex:1; height:72px; border-radius:10px;
+        object-fit:cover; background:#e2e8f0; max-width:calc(33% - 4px);
+      }
+      .wp-pm-ms-photo-more {
+        flex:1; height:72px; border-radius:10px;
+        background:#0a0a0a; display:flex; align-items:center; justify-content:center;
+        color:#fff; font-size:14px; font-weight:700; max-width:calc(33% - 4px);
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      /* Quick info */
+      .wp-pm-minisnap-quickinfo {
+        display:flex; gap:16px; padding:0 16px 8px;
+        font-size:12px; color:#4b5563;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-qi-item {
+        display:flex; align-items:center; gap:4px;
+      }
+      /* Desc */
+      .wp-pm-minisnap-desc {
+        font-size:12.5px; color:#6b7280; line-height:1.4;
+        padding:0 16px 10px;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      /* Footer CTA */
+      .wp-pm-minisnap-footer {
+        padding:0 16px 4px;
+      }
+      .wp-pm-minisnap-cta {
+        width:100%; height:46px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff;
+        font-size:15px; font-weight:700; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s ease;
+      }
+      .wp-pm-minisnap-cta:active { transform:scale(0.97); }
+
       /* ── Modal wrapper ── */
       .wp-pm {
         position:fixed; inset:0; z-index:9998;
