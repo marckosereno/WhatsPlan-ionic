@@ -94,41 +94,44 @@ export class PlaceModal {
       'position:fixed',
       'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
       'left:12px','right:12px',
-      'height:130px',
-      'background:#f0f4ff',
-      'border-radius:20px',
+      'height:156px',
+      'border-radius:32px',
       'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
+      'border:2px solid rgba(255,255,255,0.9)',
       'overflow:hidden',
       'z-index:9990',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
+      'cursor:pointer',
     ].join(';');
 
     ms.innerHTML = `
-      <!-- Foto — sangra a la derecha, full height -->
-      ${photo ? `<img style="position:absolute;right:0;top:0;bottom:0;height:100%;width:58%;object-fit:cover;border-radius:0 20px 20px 0" src="${photo}">` : ''}
-      <!-- Gradiente sobre la foto para legibilidad -->
-      <div style="position:absolute;inset:0;background:linear-gradient(to right,#f0f4ff 38%,rgba(240,244,255,0.7) 58%,rgba(240,244,255,0) 100%);pointer-events:none"></div>
-      <!-- Contenido izquierda -->
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-between;padding:12px 14px;height:100%;box-sizing:border-box;max-width:62%">
-        <!-- Badge status -->
-        <div>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.9);color:${statusColor}">${statusTxt}</span>
-        </div>
-        <!-- Nombre + meta -->
-        <div>
-          <div style="font-size:16px;font-weight:800;color:#0a0a0a;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
-          <div style="font-size:11px;color:#4b5563;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden">
-            ${rating>0?`<span style="color:#f59e0b;font-weight:700">★ ${rating.toFixed(1)}</span><span style="color:#d1d5db">·</span>`:''}
-            ${count>0?`<span style="color:#9ca3af">(${count})</span><span style="color:#d1d5db">·</span>`:''}
-            <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${types||'Lugar'}</span>
+      <!-- Foto fullwidth como fondo -->
+      ${photo
+        ? `<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" src="${photo}">`
+        : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,#1a1a2e,#374151)"></div>`
+      }
+      <!-- Gradiente de abajo hacia arriba -->
+      <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.78) 0%,rgba(0,0,0,0.35) 50%,rgba(0,0,0,0.05) 100%);pointer-events:none"></div>
+      <!-- Badge status — arriba izquierda -->
+      <div style="position:absolute;top:12px;left:14px">
+        <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.35);color:#fff">${statusTxt}</span>
+      </div>
+      <!-- Rating — arriba derecha -->
+      ${rating>0?`<div style="position:absolute;top:12px;right:14px"><span style="font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);padding:4px 9px;border-radius:999px">★ ${rating.toFixed(1)}${count?' ('+count+')':''}</span></div>`:''}
+      <!-- Contenido abajo -->
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px 12px">
+        <div style="font-size:17px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,0.4)">${name}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:11px;color:rgba(255,255,255,0.75);display:flex;align-items:center;gap:5px;overflow:hidden">
+            ${types?`<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${types}</span>`:''}
+            ${price?`<span style="color:rgba(255,255,255,0.5)">·</span><span>${price}</span>`:''}
           </div>
+          <button id="wp-ms-cta-btn" style="flex-shrink:0;background:#fff;color:#0a0a0a;border:none;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap">
+            Ver lugar <span>→</span>
+          </button>
         </div>
-        <!-- CTA pill -->
-        <button id="wp-ms-cta-btn" style="align-self:flex-start;background:#0a0a0a;color:#fff;border:none;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent">
-          Ver lugar <span style="font-size:13px">→</span>
-        </button>
       </div>`;
 
     ms.className = 'wp-minisnap-panel';
