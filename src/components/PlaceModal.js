@@ -126,18 +126,16 @@ export class PlaceModal {
         <svg viewBox="0 0 512 512" width="15" height="15"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#fff" stroke-width="40"/></svg>
       </button>
 
-      <!-- Contenido abajo -->
-      <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px 13px;display:flex;align-items:flex-end;gap:10px">
-        <div style="flex:1;min-width:0;max-width:44%">
-          <!-- Rating sobre el título -->
-          ${rating>0?`<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:3px">★ ${rating.toFixed(1)}${count?' · ('+count+')':''}</div>`:''}
-          <!-- Nombre -->
-          <div style="font-size:16px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-shadow:0 1px 6px rgba(0,0,0,0.5)">${name}</div>
-          <!-- Dirección -->
-          ${addr?`<div style="font-size:10.5px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📍 ${addr}</div>`:''}
-        </div>
-        <!-- CTA Visitar — liquid glass -->
-        <button id="wp-ms-cta-btn" style="flex-shrink:0;height:52px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 4px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.2);color:#fff;font-size:14px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,filter 0.15s">
+      <!-- Contenido — columna izquierda, centrada verticalmente -->
+      <div style="position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);max-width:58%">
+        <!-- Rating badge glass -->
+        ${rating>0?`<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.3);color:#fff;margin-bottom:5px">★ ${rating.toFixed(1)}${count?' ('+count+')':''}</span><br>`:''}
+        <!-- Nombre — 1 línea -->
+        <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,0.5);margin-bottom:3px;margin-top:${rating>0?'3':'0'}px">${name}</div>
+        <!-- Dirección sin ícono -->
+        ${addr?`<div style="font-size:10px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px">${addr}</div>`:'<div style="margin-bottom:8px"></div>'}
+        <!-- CTA Visitar — liquid glass sm -->
+        <button id="wp-ms-cta-btn" style="display:inline-flex;align-items:center;justify-content:center;height:30px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.15);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);color:#fff;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent">
           Visitar
         </button>
       </div>`;
