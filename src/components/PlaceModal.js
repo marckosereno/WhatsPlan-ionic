@@ -62,46 +62,91 @@ export class PlaceModal {
   showMini(place) {
     if (!this._built) this._build();
     this._place = place;
-    this._populateMiniSnap(place);
+    // Ocultar panel del mapa
     this._hideMapUI();
-    var minisnap = this._el.querySelector('#wp-pm-minisnap');
-    if (minisnap) minisnap.classList.add('active');
-    var topbar = this._el.querySelector('#wp-pm-topbar');
-    var hero   = this._el.querySelector('#wp-pm-hero');
-    var body   = this._el.querySelector('#wp-pm-body');
-    var bottom = this._el.querySelector('.wp-pm-bottom');
-    if (topbar) topbar.style.display = 'none';
-    if (hero)   hero.style.display   = 'none';
-    if (body)   body.style.display   = 'none';
-    if (bottom) bottom.style.display = 'none';
-    this._el.classList.remove('wp-pm-hidden');
-    this._el.classList.add('wp-pm-visible');
-    var card = this._card;
-    card.style.transition = 'none';
-    card.style.transform  = 'translateY(100%)';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
-      card.style.transform  = 'translateY(58%)';
+    // Construir/mostrar el mini snap fijo
+    this._showMiniSnap(place);
+  }
+
+  _showMiniSnap(place) {
+    var self = this;
+    // Reusar o crear el elemento fijo del mini snap
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) {
+      ms = document.createElement('div');
+      ms.id = 'wp-minisnap-panel';
+      document.body.appendChild(ms);
+    }
+
+    var name    = place.name || place.displayName || '';
+    var rating  = parseFloat(place.rating) || 0;
+    var count   = place.userRatingCount || place.user_ratings_total || 0;
+    var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
+    var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
+    var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
+    var oh      = place.regularOpeningHours || place.opening_hours;
+    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
+    var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
+    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
+
+    ms.innerHTML = `
+      <div class="wp-ms-photo-wrap">
+        ${photo ? `<img class="wp-ms-photo" src="${photo}">` : '<div class="wp-ms-photo-empty">📍</div>'}
+      </div>
+      <div class="wp-ms-body">
+        <div class="wp-ms-name">${name}</div>
+        <div class="wp-ms-meta">
+          <span style="color:${statusColor};font-weight:600;font-size:11px">${statusTxt}</span>
+          ${rating>0?`<span class="wp-ms-dot">·</span><span style="color:#f59e0b">★ ${rating.toFixed(1)}</span><span class="wp-ms-rc">(${count})</span>`:''}
+          ${types?`<span class="wp-ms-dot">·</span><span>${types}</span>`:''}
+        </div>
+      </div>
+      <button class="wp-ms-cta" id="wp-ms-cta-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`;
+
+    ms.className = 'wp-minisnap-panel';
+
+    // Estilos inline para que funcione sin CSS externo
+    ms.style.cssText = [
+      'position:fixed',
+      'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
+      'left:12px','right:12px',
+      'background:#fff',
+      'border-radius:20px',
+      'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
+      'display:flex','align-items:center','gap:0',
+      'overflow:hidden',
+      'z-index:9990',
+      'transform:translateY(120%)',
+      'transition:transform 0.34s cubic-bezier(0.32,0.72,0,1)',
+      'font-family:Roboto,system-ui,sans-serif',
+    ].join(';');
+
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ms.style.transform = 'translateY(0)';
     }));
+
+    // Tap en CTA → ficha completa
+    var cta = ms.querySelector('#wp-ms-cta-btn');
+    if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
+    // Tap en la card → ficha completa
+    ms.addEventListener('click', function(e){
+      if (!e.target.closest('#wp-ms-cta-btn')) { self._hideMiniSnap(); self.show(place); }
+    });
+  }
+
+  _hideMiniSnap() {
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) return;
+    ms.style.transform = 'translateY(140%)';
+    setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
+    this._showMapUI();
   }
 
   expandToFull() {
-    this._populate(this._place);
-    document.body.classList.add('wp-pm-open');
-    this._hideTopbar();
-    var minisnap = this._el.querySelector('#wp-pm-minisnap');
-    if (minisnap) minisnap.classList.remove('active');
-    var topbar = this._el.querySelector('#wp-pm-topbar');
-    var hero   = this._el.querySelector('#wp-pm-hero');
-    var body   = this._el.querySelector('#wp-pm-body');
-    var bottom = this._el.querySelector('.wp-pm-bottom');
-    if (topbar) topbar.style.display = '';
-    if (hero)   hero.style.display   = '';
-    if (body)   body.style.display   = '';
-    if (bottom) bottom.style.display = '';
-    var card = this._card;
-    card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
-    card.style.transform  = 'translateY(0)';
+    this._hideMiniSnap();
+    this.show(this._place);
   }
 
   show(place) {
@@ -172,39 +217,7 @@ export class PlaceModal {
       <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
       <div class="wp-pm-card" id="wp-pm-card">
 
-        <!-- ── MINI SNAP ── -->
-        <div class="wp-pm-minisnap" id="wp-pm-minisnap">
-          <div class="wp-pm-minisnap-hint">desliza para ver más</div>
-          <!-- Foto hero con status + rating encima -->
-          <div class="wp-pm-ms-hero" id="wp-pm-ms-hero">
-            <img class="wp-pm-ms-hero-img" id="wp-pm-ms-img" src="" alt="">
-            <div class="wp-pm-ms-hero-overlay"></div>
-            <div class="wp-pm-ms-hero-badges">
-              <span class="wp-pm-ms-status" id="wp-pm-ms-status"></span>
-              <span class="wp-pm-ms-rating-badge" id="wp-pm-ms-rating"></span>
-            </div>
-          </div>
-          <!-- Nombre + save -->
-          <div class="wp-pm-ms-inforow">
-            <div class="wp-pm-ms-texts">
-              <div class="wp-pm-minisnap-name" id="wp-pm-ms-name"></div>
-              <div class="wp-pm-minisnap-meta" id="wp-pm-ms-meta"></div>
-            </div>
-            <button class="wp-pm-minisnap-save" id="wp-pm-ms-save">
-              <svg viewBox="0 0 512 512" width="16" height="16"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="48"/></svg>
-            </button>
-          </div>
-          <!-- Tags rápidos -->
-          <div class="wp-pm-ms-tags" id="wp-pm-ms-tags"></div>
-          <!-- CTA -->
-          <button class="wp-pm-minisnap-cta" id="wp-pm-ms-cta">
-            <div>
-              <div class="wp-pm-ms-cta-label">Ver ficha completa</div>
-              <div class="wp-pm-ms-cta-sub">Fotos · Reseñas · Horarios</div>
-            </div>
-            <span class="wp-pm-ms-cta-arrow">→</span>
-          </button>
-        </div>
+
 
         <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
         <div class="wp-pm-topbar" id="wp-pm-topbar">
@@ -1617,6 +1630,41 @@ export class PlaceModal {
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
+      /* ── Mini Snap panel fijo ── */
+      .wp-ms-photo-wrap {
+        width:80px; height:80px; flex-shrink:0;
+        overflow:hidden;
+      }
+      .wp-ms-photo {
+        width:100%; height:100%; object-fit:cover;
+      }
+      .wp-ms-photo-empty {
+        width:100%; height:100%; background:#f4f4f6;
+        display:flex; align-items:center; justify-content:center; font-size:28px;
+      }
+      .wp-ms-body {
+        flex:1; min-width:0; padding:10px 10px 10px 12px;
+      }
+      .wp-ms-name {
+        font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        margin-bottom:5px;
+      }
+      .wp-ms-meta {
+        font-size:11.5px; color:#6b7280;
+        display:flex; flex-wrap:wrap; align-items:center; gap:3px;
+      }
+      .wp-ms-dot { color:#d1d5db; }
+      .wp-ms-rc  { color:#9ca3af; }
+      .wp-ms-cta {
+        width:48px; height:80px; flex-shrink:0;
+        background:#0a0a0a; border:none; cursor:pointer;
+        display:flex; align-items:center; justify-content:center;
+        color:#fff; -webkit-tap-highlight-color:transparent;
+        transition:filter 0.15s;
+      }
+      .wp-ms-cta:active { filter:brightness(0.8); }
+
       /* ── Mini Snap — estilo panel flotante del mapa ── */
       .wp-pm-minisnap {
         display:none; flex-direction:column; overflow:hidden;
