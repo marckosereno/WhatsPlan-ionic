@@ -23,6 +23,142 @@ export class PlaceModal {
 
   // ── Public ────────────────────────────────────────────────────────
 
+  _hideMapUI() {
+    // Solo ocultar el panel flotante — footer menu queda visible
+    var t = 'transform 0.26s ease, opacity 0.26s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) { panel.style.transition=t; panel.style.transform='translateY(120%)'; panel.style.opacity='0'; panel.style.pointerEvents='none'; }
+  }
+
+  _showMapUI() {
+    var t = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) { panel.style.transition=t; panel.style.transform=''; panel.style.opacity='1'; panel.style.pointerEvents=''; }
+  }
+
+  _hideTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.to(mapTopbar, { scale:0.85, opacity:0, duration:0.22, ease:'power2.in',
+        onComplete: function() { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
+      });
+    } else { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
+  }
+
+  _restoreTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    mapTopbar.style.visibility=''; mapTopbar.style.pointerEvents='';
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.fromTo(mapTopbar, {scale:0.85,opacity:0}, {scale:1,opacity:1,duration:0.32,ease:'back.out(2)'});
+    }
+  }
+
+  showMini(place) {
+    if (!this._built) this._build();
+    this._place = place;
+    // Ocultar panel del mapa
+    this._hideMapUI();
+    // Construir/mostrar el mini snap fijo
+    this._showMiniSnap(place);
+  }
+
+  _showMiniSnap(place) {
+    var self = this;
+    // Reusar o crear el elemento fijo del mini snap
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) {
+      ms = document.createElement('div');
+      ms.id = 'wp-minisnap-panel';
+      document.body.appendChild(ms);
+    }
+
+    var name    = place.name || place.displayName || '';
+    var rating  = parseFloat(place.rating) || 0;
+    var count   = place.userRatingCount || place.user_ratings_total || 0;
+    var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
+    var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
+    var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
+    var oh      = place.regularOpeningHours || place.opening_hours;
+    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
+    var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
+    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
+
+    // ── Hero card: foto derecha, contenido izquierda ──
+    ms.style.cssText = [
+      'position:fixed',
+      'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
+      'left:12px','right:12px',
+      'height:130px',
+      'background:#f0f4ff',
+      'border-radius:20px',
+      'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
+      'overflow:hidden',
+      'z-index:9990',
+      'transform:translateY(140%)',
+      'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
+      'font-family:Roboto,system-ui,sans-serif',
+    ].join(';');
+
+    ms.innerHTML = `
+      <!-- Foto — sangra a la derecha, full height -->
+      ${photo ? `<img style="position:absolute;right:0;top:0;bottom:0;height:100%;width:58%;object-fit:cover;border-radius:0 20px 20px 0" src="${photo}">` : ''}
+      <!-- Gradiente sobre la foto para legibilidad -->
+      <div style="position:absolute;inset:0;background:linear-gradient(to right,#f0f4ff 38%,rgba(240,244,255,0.7) 58%,rgba(240,244,255,0) 100%);pointer-events:none"></div>
+      <!-- Contenido izquierda -->
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-between;padding:12px 14px;height:100%;box-sizing:border-box;max-width:62%">
+        <!-- Badge status -->
+        <div>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.9);color:${statusColor}">${statusTxt}</span>
+        </div>
+        <!-- Nombre + meta -->
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#0a0a0a;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+          <div style="font-size:11px;color:#4b5563;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden">
+            ${rating>0?`<span style="color:#f59e0b;font-weight:700">★ ${rating.toFixed(1)}</span><span style="color:#d1d5db">·</span>`:''}
+            ${count>0?`<span style="color:#9ca3af">(${count})</span><span style="color:#d1d5db">·</span>`:''}
+            <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${types||'Lugar'}</span>
+          </div>
+        </div>
+        <!-- CTA pill -->
+        <button id="wp-ms-cta-btn" style="align-self:flex-start;background:#0a0a0a;color:#fff;border:none;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent">
+          Ver lugar <span style="font-size:13px">→</span>
+        </button>
+      </div>`;
+
+    ms.className = 'wp-minisnap-panel';
+
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ms.style.transform = 'translateY(0)';
+    }));
+
+    // Tap en CTA → ficha completa
+    var cta = ms.querySelector('#wp-ms-cta-btn');
+    if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
+    // Tap en la card → ficha completa
+    ms.addEventListener('click', function(e){
+      if (!e.target.closest('#wp-ms-cta-btn')) { self._hideMiniSnap(); self.show(place); }
+    });
+  }
+
+  _hideMiniSnap() {
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) return;
+    ms.style.transform = 'translateY(140%)';
+    setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
+    this._showMapUI();
+  }
+
+  expandToFull() {
+    this._hideMiniSnap();
+    this.show(this._place);
+  }
+
   show(place) {
     this._place = place;
     this._populate(place);
@@ -90,6 +226,8 @@ export class PlaceModal {
     el.innerHTML = `
       <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
       <div class="wp-pm-card" id="wp-pm-card">
+
+
 
         <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
         <div class="wp-pm-topbar" id="wp-pm-topbar">
@@ -296,11 +434,7 @@ export class PlaceModal {
           </div>
 
           <!-- Lugares similares — última sección -->
-          <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
-            <div class="wp-pm-divider"></div>
-            <div class="wp-pm-section-title">Más Lugares</div>
-            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
-          </div>
+
 
           <div style="height:16px"></div>
         </div>
@@ -374,7 +508,6 @@ export class PlaceModal {
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
-    this._populateSimilar(place);
     this._populateReviews(place);  // async, no bloqueante
     // scroll body to top + reset topbar nombre/stats
     const body = this._el.querySelector('#wp-pm-body');
@@ -771,112 +904,71 @@ export class PlaceModal {
     };
   }
 
-  _populateSimilar(place) {
-    const block  = this._el.querySelector('#wp-pm-similar-block');
-    const scroll = this._el.querySelector('#wp-pm-similar-scroll');
-    if (!block || !scroll) return;
+  _populateMiniSnap(place) {
+    var self = this;
+    const name   = place.name || place.displayName || '';
+    const rating = parseFloat(place.rating) || 0;
+    const count  = place.userRatingCount || place.user_ratings_total || 0;
+    const types  = (place.types || []).slice(0,3)
+                     .map(t => t.replace(/_/g,' '))
+                     .filter(t => !['point_of_interest','establishment','food'].includes(t));
+    const photos = place.photosUrls || place.photos_urls || (place.photo_url?[place.photo_url]:[]);
+    const price  = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
 
-    const allPlaces = window.wpApp?.mapView?.allPlaces || []
-      || [];
+    // Foto hero
+    const img = this._el.querySelector('#wp-pm-ms-img');
+    if (photos[0]) { img.src = photos[0]; img.style.display=''; }
+    else { img.style.display='none'; }
 
-    const currentId  = place.place_id || place.id;
-    const currentCat = place.subcategory || place.category
-      || place.types?.[0] || place.categories?.[0] || '';
+    // Status badge
+    const statusEl = this._el.querySelector('#wp-pm-ms-status');
+    const oh = place.regularOpeningHours || place.opening_hours;
+    if (oh) {
+      const isOpen = oh.open_now ?? oh.isOpen?.();
+      if (isOpen === true)  { statusEl.textContent='● Abierto'; statusEl.className='wp-pm-ms-status open'; }
+      else if (isOpen===false){ statusEl.textContent='● Cerrado'; statusEl.className='wp-pm-ms-status closed'; }
+      else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
+    } else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
 
-    // Prioridad 1: misma subcategoría
-    let similar = allPlaces.filter(p => {
-      if ((p.place_id || p.id) === currentId) return false;
-      const pCat = p.subcategory || p.category || p.types?.[0] || p.categories?.[0] || '';
-      return pCat && pCat === currentCat;
-    });
+    // Rating badge
+    const ratingEl = this._el.querySelector('#wp-pm-ms-rating');
+    if (rating > 0) {
+      ratingEl.textContent = '★ '+rating.toFixed(1)+(count?' ('+count+')':'');
+      ratingEl.style.display = '';
+    } else { ratingEl.style.display='none'; }
 
-    // Prioridad 2: categoría padre similar
-    if (similar.length < 3) {
-      const currentTypes = place.types || place.categories || [];
-      const extra = allPlaces.filter(p => {
-        if ((p.place_id || p.id) === currentId) return false;
-        if (similar.find(s => (s.place_id||s.id) === (p.place_id||p.id))) return false;
-        const pTypes = p.types || p.categories || [];
-        return currentTypes.some(t => pTypes.includes(t));
-      });
-      similar = [...similar, ...extra];
+    // Nombre + meta
+    this._el.querySelector('#wp-pm-ms-name').textContent = name;
+    this._el.querySelector('#wp-pm-ms-meta').textContent =
+      [price, ...types.slice(0,2)].filter(Boolean).join(' · ');
+
+    // Tags
+    const tagsEl = this._el.querySelector('#wp-pm-ms-tags');
+    const tagItems = [
+      ...types.slice(0,2).map(t => '🏷 '+t),
+      price ? price+' precio' : null,
+    ].filter(Boolean);
+    tagsEl.innerHTML = tagItems.map(t=>`<span class="wp-pm-ms-tag">${t}</span>`).join('');
+
+    // CTA
+    this._el.querySelector('#wp-pm-ms-cta').onclick = ()=>self.expandToFull();
+
+    // Swipe up → expandir
+    const card = this._el.querySelector('#wp-pm-card');
+    var startY=0;
+    function onStart(e){ startY=e.touches[0].clientY; }
+    function onEnd(e){ if(startY-e.changedTouches[0].clientY>50) self.expandToFull(); }
+    card.addEventListener('touchstart',onStart,{passive:true,once:true});
+    card.addEventListener('touchend',onEnd,{passive:true,once:true});
+
+    // Save
+    const saveBtn = this._el.querySelector('#wp-pm-ms-save');
+    if (saveBtn) {
+      saveBtn.onclick = ()=>{
+        saveBtn.classList.toggle('saved');
+        if(saveBtn.classList.contains('saved')) self._showToast('❤️ Guardado en favoritos');
+      };
     }
-
-    // Prioridad 3: más cercanos
-    if (similar.length < 3) {
-      const lat = place.geometry?.location?.lat || place.lat;
-      const lng = place.geometry?.location?.lng || place.lng;
-      if (lat && lng) {
-        const extra = allPlaces
-          .filter(p => (p.place_id||p.id) !== currentId && !similar.find(s=>(s.place_id||s.id)===(p.place_id||p.id)))
-          .sort((a,b) => {
-            const aLat = a.geometry?.location?.lat || a.lat || 0;
-            const aLng = a.geometry?.location?.lng || a.lng || 0;
-            const bLat = b.geometry?.location?.lat || b.lat || 0;
-            const bLng = b.geometry?.location?.lng || b.lng || 0;
-            return Math.hypot(aLat-lat,aLng-lng) - Math.hypot(bLat-lat,bLng-lng);
-          });
-        similar = [...similar, ...extra];
-      }
-    }
-
-    similar = similar.slice(0, 8);
-    if (!similar.length) { block.style.display='none'; return; }
-    block.style.display = '';
-
-    // Spacer real como primer hijo — garantiza separación del borde
-    const spacer = document.createElement('div');
-    spacer.style.cssText = 'flex:0 0 20px;min-width:20px;height:1px;';
-    scroll.innerHTML = '';
-    scroll.appendChild(spacer);
-
-    const cards = similar.map(p => {
-      const name    = p.name || p.displayName || '';
-      const photo   = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
-      const rating  = parseFloat(p.rating) || 0;
-      const rCount  = p.userRatingCount || p.user_ratings_total || 0;
-      const price   = '$'.repeat(Math.min(p.priceLevel || 1, 3));
-      const address = (p.formatted_address || p.address || p.vicinity || '').slice(0,35);
-      const icon    = p.categoryIcon || '📍';
-      let badgeClass = 'no-hours', badgeText = 'Sin horario';
-      const oh = p.regularOpeningHours;
-      if (oh?.periods?.length) {
-        const now = new Date(), day = now.getDay(), mins = now.getHours()*60+now.getMinutes();
-        let isOpen=false, closingSoon=false, closeTime='';
-        oh.periods.filter(per => per.open?.day===day).forEach(per => {
-          const oM = per.open.hour*60+(per.open.minute||0);
-          const cM = per.close.hour*60+(per.close.minute||0);
-          if (mins>=oM && mins<cM) {
-            isOpen=true;
-            const left=cM-mins, h12=per.close.hour>12?per.close.hour-12:(per.close.hour||12);
-            closeTime=h12+':'+(per.close.minute||0).toString().padStart(2,'0')+(per.close.hour>=12?' PM':' AM');
-            if(left>0&&left<=60) closingSoon=true;
-          }
-        });
-        if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
-        else{badgeClass='closed';badgeText='Cerrado';}
-      }
-      const div = document.createElement('div');
-      div.className = 'wp-pm-similar-card';
-      div.dataset.pid = p.place_id||p.id||'';
-      div.innerHTML = `
-        ${photo ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">` : `<div class="wp-pm-similar-icon">${icon}</div>`}
-        <div class="wp-pm-similar-body">
-          <div class="wps-card-header">
-            <span class="wps-card-badge ${badgeClass}">${badgeText}</span>
-            <span class="wps-card-price">${price}</span>
-          </div>
-          <div class="wps-card-name">${name}</div>
-          ${address ? `<div class="wps-card-addr">${address}${address.length>=35?'...':''}</div>` : ''}
-          ${rating > 0 ? `<div class="wps-card-rating"><span>⭐</span><span class="wps-card-rval">${rating.toFixed(1)}</span>${rCount?`<span class="wps-card-rcnt">(${rCount})</span>`:''}</div>` : ''}
-        </div>`;
-      div.addEventListener('click', () => {
-        if (p && window.wpApp?.placeModal) window.wpApp.placeModal.show(p);
-      });
-      return div;
-    });
-
-    cards.forEach(c => scroll.appendChild(c));
   }
 
   async _populateReviews(place) {
@@ -1548,6 +1640,115 @@ export class PlaceModal {
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
+      /* ── Mini Snap panel fijo ── */
+      .wp-minisnap-panel:active { filter:brightness(0.97); }
+      #wp-ms-cta-btn:active { filter:brightness(0.8) !important; transform:scale(0.96); }
+
+      /* ── Mini Snap — estilo panel flotante del mapa ── */
+      .wp-pm-minisnap {
+        display:none; flex-direction:column; overflow:hidden;
+      }
+      .wp-pm-minisnap.active { display:flex; }
+
+      /* Drag hint */
+      .wp-pm-minisnap-hint {
+        display:flex; align-items:center; justify-content:center;
+        gap:4px; padding:10px 0 4px;
+        font-size:10px; color:#9ca3af; letter-spacing:0.05em;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-minisnap-hint::before, .wp-pm-minisnap-hint::after {
+        content:''; flex:1; height:0.5px; background:#e5e7eb;
+      }
+
+      /* Foto hero con gradiente */
+      .wp-pm-ms-hero {
+        position:relative; height:120px; overflow:hidden;
+        border-radius:20px; margin:0 14px 12px; flex-shrink:0;
+      }
+      .wp-pm-ms-hero-img {
+        width:100%; height:100%; object-fit:cover;
+        border-radius:20px;
+      }
+      .wp-pm-ms-hero-overlay {
+        position:absolute; inset:0; border-radius:20px;
+        background:linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%);
+      }
+      .wp-pm-ms-hero-badges {
+        position:absolute; bottom:10px; left:12px; right:12px;
+        display:flex; align-items:center; gap:6px;
+      }
+      .wp-pm-ms-status {
+        font-size:11px; font-weight:700; padding:3px 8px;
+        border-radius:999px; backdrop-filter:blur(8px);
+        -webkit-backdrop-filter:blur(8px);
+      }
+      .wp-pm-ms-status.open   { background:rgba(22,163,74,0.85); color:#fff; }
+      .wp-pm-ms-status.closed { background:rgba(239,68,68,0.85);  color:#fff; }
+      .wp-pm-ms-status.nohours{ background:rgba(0,0,0,0.45);       color:#fff; }
+      .wp-pm-ms-rating-badge {
+        margin-left:auto;
+        font-size:11px; font-weight:800; color:#fff;
+        background:rgba(0,0,0,0.45); backdrop-filter:blur(8px);
+        padding:3px 8px; border-radius:999px;
+      }
+
+      /* Info row */
+      .wp-pm-ms-inforow {
+        display:flex; align-items:flex-start; gap:10px;
+        padding:0 16px 10px;
+      }
+      .wp-pm-ms-texts { flex:1; min-width:0; }
+      .wp-pm-minisnap-name {
+        font-size:16px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        font-family:'Roboto',system-ui,sans-serif;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
+      .wp-pm-minisnap-meta {
+        font-size:12px; color:#6b7280; margin-top:2px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-minisnap-save {
+        width:36px; height:36px; border-radius:50%; border:1px solid #e5e7eb;
+        background:#fff; display:flex; align-items:center; justify-content:center;
+        color:#9ca3af; flex-shrink:0; cursor:pointer;
+        -webkit-tap-highlight-color:transparent; transition:all 0.2s ease;
+        box-shadow:0 2px 8px rgba(0,0,0,0.06);
+      }
+      .wp-pm-minisnap-save.saved { color:#ef4444; border-color:#fecaca; background:#fff5f5; }
+
+      /* Tags rápidos */
+      .wp-pm-ms-tags {
+        display:flex; gap:6px; padding:0 16px 12px; flex-wrap:wrap;
+      }
+      .wp-pm-ms-tag {
+        font-size:11px; font-weight:600; color:#4b5563;
+        background:#f4f4f6; padding:4px 10px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        border:1px solid #e5e7eb;
+      }
+
+      /* CTA */
+      .wp-pm-minisnap-cta {
+        display:flex; align-items:center; justify-content:space-between;
+        margin:0 14px; padding:12px 16px; border-radius:16px;
+        background:#0a0a0a; color:#fff; border:none; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s ease, filter 0.15s;
+      }
+      .wp-pm-minisnap-cta:active { transform:scale(0.98); filter:brightness(0.88); }
+      .wp-pm-ms-cta-label {
+        font-size:14px; font-weight:700;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-cta-sub {
+        font-size:11px; opacity:0.7;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-cta-arrow {
+        font-size:18px; opacity:0.9;
+      }
+
       /* ── Modal wrapper ── */
       .wp-pm {
         position:fixed; inset:0; z-index:9998;
@@ -1739,7 +1940,7 @@ export class PlaceModal {
         position:absolute;
         top:calc(env(safe-area-inset-top, 0px) + 308px);
         left:0; right:0; bottom:0;
-        overflow-y:auto; overflow-x:hidden;
+        overflow-y:auto; overflow-x:clip;
         -webkit-overflow-scrolling:touch;
         scrollbar-width:none;
         background:#fff;
@@ -2060,7 +2261,7 @@ export class PlaceModal {
       }
       .wpt-tag-body {
         position:absolute; inset:0;
-        overflow-y:auto; overflow-x:hidden;
+        overflow-y:auto; overflow-x:clip;
         padding:8px 16px 80px;
         scrollbar-width:none; box-sizing:border-box;
         -webkit-overflow-scrolling:touch;
@@ -2535,25 +2736,6 @@ export class PlaceModal {
         -webkit-tap-highlight-color:transparent;
       }
       .wpr-see-more:active { opacity:0.7; }
-
-      /* ── Lugares similares — idéntico a wps-card ── */
-      .wp-pm-similar-block { padding-bottom:4px; }
-      .wp-pm-similar-scroll {
-        display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 20px 8px 20px; scroll-snap-type:x mandatory;
-        scrollbar-width:none; -webkit-overflow-scrolling:touch;
-      }
-      .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
-      .wp-pm-similar-card {
-        display:flex; align-items:center; gap:10px; padding:10px 14px;
-        background:#fff; border:2px solid #e5e7eb; border-radius:16px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.08);
-        min-width:280px; max-width:300px; flex-shrink:0;
-        cursor:pointer; scroll-snap-align:start;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s, box-shadow 0.15s;
-      }
-      .wp-pm-similar-card:first-child { margin-left:0; }
       .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
       .wp-pm-similar-img {
         width:70px; height:70px; object-fit:cover;
