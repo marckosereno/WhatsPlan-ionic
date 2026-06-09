@@ -24,19 +24,16 @@ export class PlaceModal {
   // ── Public ────────────────────────────────────────────────────────
 
   _hideMapUI() {
+    // Solo ocultar el panel flotante — footer menu queda visible
     var t = 'transform 0.26s ease, opacity 0.26s ease';
     var panel = document.querySelector('.map-results-panel-float');
     if (panel) { panel.style.transition=t; panel.style.transform='translateY(120%)'; panel.style.opacity='0'; panel.style.pointerEvents='none'; }
-    var footer = document.getElementById('wp-footer-menu');
-    if (footer) { footer.style.transition=t; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
   }
 
   _showMapUI() {
     var t = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
     var panel = document.querySelector('.map-results-panel-float');
     if (panel) { panel.style.transition=t; panel.style.transform=''; panel.style.opacity='1'; panel.style.pointerEvents=''; }
-    var footer = document.getElementById('wp-footer-menu');
-    if (footer) { footer.style.transition=t; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
   }
 
   _hideTopbar() {
@@ -177,22 +174,36 @@ export class PlaceModal {
 
         <!-- ── MINI SNAP ── -->
         <div class="wp-pm-minisnap" id="wp-pm-minisnap">
-          <div class="wp-pm-minisnap-handle"></div>
-          <div class="wp-pm-minisnap-row">
-            <div class="wp-pm-minisnap-info">
+          <div class="wp-pm-minisnap-hint">desliza para ver más</div>
+          <!-- Foto hero con status + rating encima -->
+          <div class="wp-pm-ms-hero" id="wp-pm-ms-hero">
+            <img class="wp-pm-ms-hero-img" id="wp-pm-ms-img" src="" alt="">
+            <div class="wp-pm-ms-hero-overlay"></div>
+            <div class="wp-pm-ms-hero-badges">
+              <span class="wp-pm-ms-status" id="wp-pm-ms-status"></span>
+              <span class="wp-pm-ms-rating-badge" id="wp-pm-ms-rating"></span>
+            </div>
+          </div>
+          <!-- Nombre + save -->
+          <div class="wp-pm-ms-inforow">
+            <div class="wp-pm-ms-texts">
               <div class="wp-pm-minisnap-name" id="wp-pm-ms-name"></div>
               <div class="wp-pm-minisnap-meta" id="wp-pm-ms-meta"></div>
             </div>
             <button class="wp-pm-minisnap-save" id="wp-pm-ms-save">
-              <svg viewBox="0 0 512 512" width="18" height="18"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="48"/></svg>
+              <svg viewBox="0 0 512 512" width="16" height="16"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="48"/></svg>
             </button>
           </div>
-          <div class="wp-pm-minisnap-photos" id="wp-pm-ms-photos"></div>
-          <div class="wp-pm-minisnap-quickinfo" id="wp-pm-ms-quick"></div>
-          <div class="wp-pm-minisnap-desc" id="wp-pm-ms-desc"></div>
-          <div class="wp-pm-minisnap-footer">
-            <button class="wp-pm-minisnap-cta" id="wp-pm-ms-cta">→ Planear visita</button>
-          </div>
+          <!-- Tags rápidos -->
+          <div class="wp-pm-ms-tags" id="wp-pm-ms-tags"></div>
+          <!-- CTA -->
+          <button class="wp-pm-minisnap-cta" id="wp-pm-ms-cta">
+            <div>
+              <div class="wp-pm-ms-cta-label">Ver ficha completa</div>
+              <div class="wp-pm-ms-cta-sub">Fotos · Reseñas · Horarios</div>
+            </div>
+            <span class="wp-pm-ms-cta-arrow">→</span>
+          </button>
         </div>
 
         <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
@@ -871,66 +882,68 @@ export class PlaceModal {
   }
 
   _populateMiniSnap(place) {
-    const name  = place.name || place.displayName || '';
+    var self = this;
+    const name   = place.name || place.displayName || '';
     const rating = parseFloat(place.rating) || 0;
-    const types  = (place.types || []).slice(0,2).map(t => t.replace(/_/g,' ')).join(' · ');
-    const photos = place.photosUrls || place.photos_urls || (place.photo_url ? [place.photo_url] : []);
-    const desc   = place.description || place.editorial_summary?.overview || '';
+    const count  = place.userRatingCount || place.user_ratings_total || 0;
+    const types  = (place.types || []).slice(0,3)
+                     .map(t => t.replace(/_/g,' '))
+                     .filter(t => !['point_of_interest','establishment','food'].includes(t));
+    const photos = place.photosUrls || place.photos_urls || (place.photo_url?[place.photo_url]:[]);
+    const price  = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
 
-    // Badge horario
-    let statusText = '', statusColor = '#6b7280';
+    // Foto hero
+    const img = this._el.querySelector('#wp-pm-ms-img');
+    if (photos[0]) { img.src = photos[0]; img.style.display=''; }
+    else { img.style.display='none'; }
+
+    // Status badge
+    const statusEl = this._el.querySelector('#wp-pm-ms-status');
     const oh = place.regularOpeningHours || place.opening_hours;
     if (oh) {
       const isOpen = oh.open_now ?? oh.isOpen?.();
-      if (isOpen === true)  { statusText = 'Abierto ahora'; statusColor = '#16a34a'; }
-      if (isOpen === false) { statusText = 'Cerrado'; statusColor = '#ef4444'; }
-    }
+      if (isOpen === true)  { statusEl.textContent='● Abierto'; statusEl.className='wp-pm-ms-status open'; }
+      else if (isOpen===false){ statusEl.textContent='● Cerrado'; statusEl.className='wp-pm-ms-status closed'; }
+      else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
+    } else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
 
+    // Rating badge
+    const ratingEl = this._el.querySelector('#wp-pm-ms-rating');
+    if (rating > 0) {
+      ratingEl.textContent = '★ '+rating.toFixed(1)+(count?' ('+count+')':'');
+      ratingEl.style.display = '';
+    } else { ratingEl.style.display='none'; }
+
+    // Nombre + meta
     this._el.querySelector('#wp-pm-ms-name').textContent = name;
-    this._el.querySelector('#wp-pm-ms-meta').innerHTML =
-      `${rating > 0 ? `<span style="color:#f59e0b">★ ${rating.toFixed(1)}</span> · ` : ''}${types}`;
+    this._el.querySelector('#wp-pm-ms-meta').textContent =
+      [price, ...types.slice(0,2)].filter(Boolean).join(' · ');
 
-    // Fotos
-    const photosEl = this._el.querySelector('#wp-pm-ms-photos');
-    const show = photos.slice(0, 3);
-    const extra = photos.length - 3;
-    photosEl.innerHTML = show.map(u =>
-      `<img class="wp-pm-ms-photo" src="${u}" loading="lazy" onerror="this.style.background='#e2e8f0'">`
-    ).join('') + (extra > 0 ? `<div class="wp-pm-ms-photo-more">+${extra}</div>` : '');
+    // Tags
+    const tagsEl = this._el.querySelector('#wp-pm-ms-tags');
+    const tagItems = [
+      ...types.slice(0,2).map(t => '🏷 '+t),
+      price ? price+' precio' : null,
+    ].filter(Boolean);
+    tagsEl.innerHTML = tagItems.map(t=>`<span class="wp-pm-ms-tag">${t}</span>`).join('');
 
-    // Quick info
-    this._el.querySelector('#wp-pm-ms-quick').innerHTML = [
-      statusText ? `<span class="wp-pm-ms-qi-item" style="color:${statusColor}">● ${statusText}</span>` : '',
-      types ? `<span class="wp-pm-ms-qi-item">🏷 ${types.split(' · ')[0]}</span>` : '',
-      place.priceLevel ? `<span class="wp-pm-ms-qi-item">${'$'.repeat(place.priceLevel)}</span>` : '',
-    ].filter(Boolean).join('');
+    // CTA
+    this._el.querySelector('#wp-pm-ms-cta').onclick = ()=>self.expandToFull();
 
-    // Desc
-    this._el.querySelector('#wp-pm-ms-desc').textContent = desc;
-    this._el.querySelector('#wp-pm-ms-desc').style.display = desc ? '' : 'none';
-
-    // CTA → expandir a ficha completa
-    const cta = this._el.querySelector('#wp-pm-ms-cta');
-    var self = this;
-    cta.onclick = () => self.expandToFull();
-
-    // Drag hacia arriba → expandir
+    // Swipe up → expandir
     const card = this._el.querySelector('#wp-pm-card');
-    let startY = 0;
-    card.addEventListener('touchstart', function(e) {
-      startY = e.touches[0].clientY;
-    }, { passive: true, once: true });
-    card.addEventListener('touchend', function(e) {
-      const dy = startY - e.changedTouches[0].clientY;
-      if (dy > 60) self.expandToFull();
-    }, { passive: true, once: true });
+    var startY=0;
+    function onStart(e){ startY=e.touches[0].clientY; }
+    function onEnd(e){ if(startY-e.changedTouches[0].clientY>50) self.expandToFull(); }
+    card.addEventListener('touchstart',onStart,{passive:true,once:true});
+    card.addEventListener('touchend',onEnd,{passive:true,once:true});
 
-    // Save btn en mini snap
+    // Save
     const saveBtn = this._el.querySelector('#wp-pm-ms-save');
     if (saveBtn) {
-      saveBtn.onclick = () => {
+      saveBtn.onclick = ()=>{
         saveBtn.classList.toggle('saved');
-        if (saveBtn.classList.contains('saved')) self._showToast('❤️ Guardado en favoritos');
+        if(saveBtn.classList.contains('saved')) self._showToast('❤️ Guardado en favoritos');
       };
     }
   }
@@ -1604,26 +1617,63 @@ export class PlaceModal {
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
-      /* ── Mini Snap ── */
+      /* ── Mini Snap — estilo panel flotante del mapa ── */
       .wp-pm-minisnap {
-        display:none; flex-direction:column;
-        padding:0 0 12px;
-        background:#fff; border-radius:24px 24px 0 0;
-        overflow:hidden;
+        display:none; flex-direction:column; overflow:hidden;
       }
       .wp-pm-minisnap.active { display:flex; }
-      .wp-pm-minisnap-handle {
-        width:36px; height:4px; border-radius:2px;
-        background:rgba(0,0,0,0.18);
-        margin:10px auto 8px; flex-shrink:0;
+
+      /* Drag hint */
+      .wp-pm-minisnap-hint {
+        display:flex; align-items:center; justify-content:center;
+        gap:4px; padding:10px 0 4px;
+        font-size:10px; color:#9ca3af; letter-spacing:0.05em;
+        font-family:'Roboto',system-ui,sans-serif;
       }
-      .wp-pm-minisnap-row {
-        display:flex; align-items:center;
-        padding:0 16px 8px; gap:10px;
+      .wp-pm-minisnap-hint::before, .wp-pm-minisnap-hint::after {
+        content:''; flex:1; height:0.5px; background:#e5e7eb;
       }
-      .wp-pm-minisnap-info { flex:1; min-width:0; }
+
+      /* Foto hero con gradiente */
+      .wp-pm-ms-hero {
+        position:relative; height:120px; overflow:hidden;
+        border-radius:20px; margin:0 14px 12px; flex-shrink:0;
+      }
+      .wp-pm-ms-hero-img {
+        width:100%; height:100%; object-fit:cover;
+        border-radius:20px;
+      }
+      .wp-pm-ms-hero-overlay {
+        position:absolute; inset:0; border-radius:20px;
+        background:linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%);
+      }
+      .wp-pm-ms-hero-badges {
+        position:absolute; bottom:10px; left:12px; right:12px;
+        display:flex; align-items:center; gap:6px;
+      }
+      .wp-pm-ms-status {
+        font-size:11px; font-weight:700; padding:3px 8px;
+        border-radius:999px; backdrop-filter:blur(8px);
+        -webkit-backdrop-filter:blur(8px);
+      }
+      .wp-pm-ms-status.open   { background:rgba(22,163,74,0.85); color:#fff; }
+      .wp-pm-ms-status.closed { background:rgba(239,68,68,0.85);  color:#fff; }
+      .wp-pm-ms-status.nohours{ background:rgba(0,0,0,0.45);       color:#fff; }
+      .wp-pm-ms-rating-badge {
+        margin-left:auto;
+        font-size:11px; font-weight:800; color:#fff;
+        background:rgba(0,0,0,0.45); backdrop-filter:blur(8px);
+        padding:3px 8px; border-radius:999px;
+      }
+
+      /* Info row */
+      .wp-pm-ms-inforow {
+        display:flex; align-items:flex-start; gap:10px;
+        padding:0 16px 10px;
+      }
+      .wp-pm-ms-texts { flex:1; min-width:0; }
       .wp-pm-minisnap-name {
-        font-size:16px; font-weight:800; color:#0a0a0a;
+        font-size:16px; font-weight:800; color:#0a0a0a; line-height:1.2;
         font-family:'Roboto',system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       }
@@ -1632,56 +1682,45 @@ export class PlaceModal {
         font-family:'Roboto',system-ui,sans-serif;
       }
       .wp-pm-minisnap-save {
-        width:36px; height:36px; border-radius:50%; border:none;
-        background:#f4f4f6; display:flex; align-items:center; justify-content:center;
+        width:36px; height:36px; border-radius:50%; border:1px solid #e5e7eb;
+        background:#fff; display:flex; align-items:center; justify-content:center;
         color:#9ca3af; flex-shrink:0; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.2s ease;
+        -webkit-tap-highlight-color:transparent; transition:all 0.2s ease;
+        box-shadow:0 2px 8px rgba(0,0,0,0.06);
       }
-      .wp-pm-minisnap-save.saved { color:#ef4444; background:#fff0f0; }
-      /* Photo strip */
-      .wp-pm-minisnap-photos {
-        display:flex; gap:6px; padding:0 16px 10px; overflow:hidden;
+      .wp-pm-minisnap-save.saved { color:#ef4444; border-color:#fecaca; background:#fff5f5; }
+
+      /* Tags rápidos */
+      .wp-pm-ms-tags {
+        display:flex; gap:6px; padding:0 16px 12px; flex-wrap:wrap;
       }
-      .wp-pm-ms-photo {
-        flex:1; height:72px; border-radius:10px;
-        object-fit:cover; background:#e2e8f0; max-width:calc(33% - 4px);
-      }
-      .wp-pm-ms-photo-more {
-        flex:1; height:72px; border-radius:10px;
-        background:#0a0a0a; display:flex; align-items:center; justify-content:center;
-        color:#fff; font-size:14px; font-weight:700; max-width:calc(33% - 4px);
+      .wp-pm-ms-tag {
+        font-size:11px; font-weight:600; color:#4b5563;
+        background:#f4f4f6; padding:4px 10px; border-radius:999px;
         font-family:'Roboto',system-ui,sans-serif;
+        border:1px solid #e5e7eb;
       }
-      /* Quick info */
-      .wp-pm-minisnap-quickinfo {
-        display:flex; gap:16px; padding:0 16px 8px;
-        font-size:12px; color:#4b5563;
-        font-family:'Roboto',system-ui,sans-serif;
-      }
-      .wp-pm-ms-qi-item {
-        display:flex; align-items:center; gap:4px;
-      }
-      /* Desc */
-      .wp-pm-minisnap-desc {
-        font-size:12.5px; color:#6b7280; line-height:1.4;
-        padding:0 16px 10px;
-        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-        font-family:'Roboto',system-ui,sans-serif;
-      }
-      /* Footer CTA */
-      .wp-pm-minisnap-footer {
-        padding:0 16px 4px;
-      }
+
+      /* CTA */
       .wp-pm-minisnap-cta {
-        width:100%; height:46px; border-radius:999px; border:none;
-        background:#0a0a0a; color:#fff;
-        font-size:15px; font-weight:700; cursor:pointer;
-        font-family:'Roboto',system-ui,sans-serif;
+        display:flex; align-items:center; justify-content:space-between;
+        margin:0 14px; padding:12px 16px; border-radius:16px;
+        background:#0a0a0a; color:#fff; border:none; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s ease;
+        transition:transform 0.15s ease, filter 0.15s;
       }
-      .wp-pm-minisnap-cta:active { transform:scale(0.97); }
+      .wp-pm-minisnap-cta:active { transform:scale(0.98); filter:brightness(0.88); }
+      .wp-pm-ms-cta-label {
+        font-size:14px; font-weight:700;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-cta-sub {
+        font-size:11px; opacity:0.7;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-cta-arrow {
+        font-size:18px; opacity:0.9;
+      }
 
       /* ── Modal wrapper ── */
       .wp-pm {
