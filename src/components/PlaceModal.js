@@ -23,6 +23,51 @@ export class PlaceModal {
 
   // ── Public ────────────────────────────────────────────────────────
 
+  showMini(place) {
+    if (!this._built) this._build();
+    this._place = place;
+    this._populateMiniSnap(place);
+    this._hideMapUI();
+    var minisnap = this._el.querySelector('#wp-pm-minisnap');
+    if (minisnap) minisnap.classList.add('active');
+    var topbar = this._el.querySelector('#wp-pm-topbar');
+    var hero   = this._el.querySelector('#wp-pm-hero');
+    var body   = this._el.querySelector('#wp-pm-body');
+    var bottom = this._el.querySelector('.wp-pm-bottom');
+    if (topbar) topbar.style.display = 'none';
+    if (hero)   hero.style.display   = 'none';
+    if (body)   body.style.display   = 'none';
+    if (bottom) bottom.style.display = 'none';
+    this._el.classList.remove('wp-pm-hidden');
+    this._el.classList.add('wp-pm-visible');
+    var card = this._card;
+    card.style.transition = 'none';
+    card.style.transform  = 'translateY(100%)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
+      card.style.transform  = 'translateY(58%)';
+    }));
+  }
+
+  expandToFull() {
+    this._populate(this._place);
+    document.body.classList.add('wp-pm-open');
+    this._hideTopbar();
+    var minisnap = this._el.querySelector('#wp-pm-minisnap');
+    if (minisnap) minisnap.classList.remove('active');
+    var topbar = this._el.querySelector('#wp-pm-topbar');
+    var hero   = this._el.querySelector('#wp-pm-hero');
+    var body   = this._el.querySelector('#wp-pm-body');
+    var bottom = this._el.querySelector('.wp-pm-bottom');
+    if (topbar) topbar.style.display = '';
+    if (hero)   hero.style.display   = '';
+    if (body)   body.style.display   = '';
+    if (bottom) bottom.style.display = '';
+    var card = this._card;
+    card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
+    card.style.transform  = 'translateY(0)';
+  }
+
   show(place) {
     this._place = place;
     this._populate(place);
