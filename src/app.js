@@ -394,6 +394,10 @@ function setupActivitySubscription(mv) {
 
       // Al tocar la minicard → abrir el modal de detalles
       mv.onPlaceSelect = function(place) {
+        // Mini snap al tocar un pin, ficha completa al tocar la minicard
+        placeModal.showMini(place);
+      };
+      mv.onMiniCardTap = function(place) {
         placeModal.show(place);
       };
       const subcatRow = new SubcategoryRow({
