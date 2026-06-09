@@ -296,11 +296,7 @@ export class PlaceModal {
           </div>
 
           <!-- Lugares similares — última sección -->
-          <div class="wp-pm-similar-block" id="wp-pm-similar-block" style="display:none">
-            <div class="wp-pm-divider"></div>
-            <div class="wp-pm-section-title">Más Lugares</div>
-            <div class="wp-pm-similar-scroll" id="wp-pm-similar-scroll"></div>
-          </div>
+
 
           <div style="height:16px"></div>
         </div>
@@ -374,7 +370,6 @@ export class PlaceModal {
     this._populateServices(place);
     this._populateTags(place);
     this._populateHours(place);
-    this._populateSimilar(place);
     this._populateReviews(place);  // async, no bloqueante
     // scroll body to top + reset topbar nombre/stats
     const body = this._el.querySelector('#wp-pm-body');
@@ -769,114 +764,6 @@ export class PlaceModal {
       list.classList.toggle('expanded', open);
       chevron.style.transform = open ? 'rotate(180deg)' : '';
     };
-  }
-
-  _populateSimilar(place) {
-    const block  = this._el.querySelector('#wp-pm-similar-block');
-    const scroll = this._el.querySelector('#wp-pm-similar-scroll');
-    if (!block || !scroll) return;
-
-    const allPlaces = window.wpApp?.mapView?.allPlaces || []
-      || [];
-
-    const currentId  = place.place_id || place.id;
-    const currentCat = place.subcategory || place.category
-      || place.types?.[0] || place.categories?.[0] || '';
-
-    // Prioridad 1: misma subcategoría
-    let similar = allPlaces.filter(p => {
-      if ((p.place_id || p.id) === currentId) return false;
-      const pCat = p.subcategory || p.category || p.types?.[0] || p.categories?.[0] || '';
-      return pCat && pCat === currentCat;
-    });
-
-    // Prioridad 2: categoría padre similar
-    if (similar.length < 3) {
-      const currentTypes = place.types || place.categories || [];
-      const extra = allPlaces.filter(p => {
-        if ((p.place_id || p.id) === currentId) return false;
-        if (similar.find(s => (s.place_id||s.id) === (p.place_id||p.id))) return false;
-        const pTypes = p.types || p.categories || [];
-        return currentTypes.some(t => pTypes.includes(t));
-      });
-      similar = [...similar, ...extra];
-    }
-
-    // Prioridad 3: más cercanos
-    if (similar.length < 3) {
-      const lat = place.geometry?.location?.lat || place.lat;
-      const lng = place.geometry?.location?.lng || place.lng;
-      if (lat && lng) {
-        const extra = allPlaces
-          .filter(p => (p.place_id||p.id) !== currentId && !similar.find(s=>(s.place_id||s.id)===(p.place_id||p.id)))
-          .sort((a,b) => {
-            const aLat = a.geometry?.location?.lat || a.lat || 0;
-            const aLng = a.geometry?.location?.lng || a.lng || 0;
-            const bLat = b.geometry?.location?.lat || b.lat || 0;
-            const bLng = b.geometry?.location?.lng || b.lng || 0;
-            return Math.hypot(aLat-lat,aLng-lng) - Math.hypot(bLat-lat,bLng-lng);
-          });
-        similar = [...similar, ...extra];
-      }
-    }
-
-    similar = similar.slice(0, 8);
-    if (!similar.length) { block.style.display='none'; return; }
-    block.style.display = '';
-
-    // Spacer real como primer hijo — garantiza separación del borde
-    const spacer = document.createElement('div');
-    spacer.style.cssText = 'flex:0 0 20px;min-width:20px;height:1px;';
-    scroll.innerHTML = '';
-    scroll.appendChild(spacer);
-
-    const cards = similar.map(p => {
-      const name    = p.name || p.displayName || '';
-      const photo   = p.photoUrl || p.photo_url || p.photosUrls?.[0] || '';
-      const rating  = parseFloat(p.rating) || 0;
-      const rCount  = p.userRatingCount || p.user_ratings_total || 0;
-      const price   = '$'.repeat(Math.min(p.priceLevel || 1, 3));
-      const address = (p.formatted_address || p.address || p.vicinity || '').slice(0,35);
-      const icon    = p.categoryIcon || '📍';
-      let badgeClass = 'no-hours', badgeText = 'Sin horario';
-      const oh = p.regularOpeningHours;
-      if (oh?.periods?.length) {
-        const now = new Date(), day = now.getDay(), mins = now.getHours()*60+now.getMinutes();
-        let isOpen=false, closingSoon=false, closeTime='';
-        oh.periods.filter(per => per.open?.day===day).forEach(per => {
-          const oM = per.open.hour*60+(per.open.minute||0);
-          const cM = per.close.hour*60+(per.close.minute||0);
-          if (mins>=oM && mins<cM) {
-            isOpen=true;
-            const left=cM-mins, h12=per.close.hour>12?per.close.hour-12:(per.close.hour||12);
-            closeTime=h12+':'+(per.close.minute||0).toString().padStart(2,'0')+(per.close.hour>=12?' PM':' AM');
-            if(left>0&&left<=60) closingSoon=true;
-          }
-        });
-        if(isOpen){badgeClass=closingSoon?'closing-soon':'open';badgeText=closingSoon&&closeTime?'Cierra '+closeTime:'Abierto';}
-        else{badgeClass='closed';badgeText='Cerrado';}
-      }
-      const div = document.createElement('div');
-      div.className = 'wp-pm-similar-card';
-      div.dataset.pid = p.place_id||p.id||'';
-      div.innerHTML = `
-        ${photo ? `<img class="wp-pm-similar-img" src="${photo}" loading="lazy">` : `<div class="wp-pm-similar-icon">${icon}</div>`}
-        <div class="wp-pm-similar-body">
-          <div class="wps-card-header">
-            <span class="wps-card-badge ${badgeClass}">${badgeText}</span>
-            <span class="wps-card-price">${price}</span>
-          </div>
-          <div class="wps-card-name">${name}</div>
-          ${address ? `<div class="wps-card-addr">${address}${address.length>=35?'...':''}</div>` : ''}
-          ${rating > 0 ? `<div class="wps-card-rating"><span>⭐</span><span class="wps-card-rval">${rating.toFixed(1)}</span>${rCount?`<span class="wps-card-rcnt">(${rCount})</span>`:''}</div>` : ''}
-        </div>`;
-      div.addEventListener('click', () => {
-        if (p && window.wpApp?.placeModal) window.wpApp.placeModal.show(p);
-      });
-      return div;
-    });
-
-    cards.forEach(c => scroll.appendChild(c));
   }
 
   async _populateReviews(place) {
@@ -1739,7 +1626,7 @@ export class PlaceModal {
         position:absolute;
         top:calc(env(safe-area-inset-top, 0px) + 308px);
         left:0; right:0; bottom:0;
-        overflow-y:auto; overflow-x:hidden;
+        overflow-y:auto; overflow-x:clip;
         -webkit-overflow-scrolling:touch;
         scrollbar-width:none;
         background:#fff;
@@ -2060,7 +1947,7 @@ export class PlaceModal {
       }
       .wpt-tag-body {
         position:absolute; inset:0;
-        overflow-y:auto; overflow-x:hidden;
+        overflow-y:auto; overflow-x:clip;
         padding:8px 16px 80px;
         scrollbar-width:none; box-sizing:border-box;
         -webkit-overflow-scrolling:touch;
@@ -2535,25 +2422,6 @@ export class PlaceModal {
         -webkit-tap-highlight-color:transparent;
       }
       .wpr-see-more:active { opacity:0.7; }
-
-      /* ── Lugares similares — idéntico a wps-card ── */
-      .wp-pm-similar-block { padding-bottom:4px; }
-      .wp-pm-similar-scroll {
-        display:flex; gap:10px; overflow-x:auto; overflow-y:hidden;
-        padding:6px 20px 8px 20px; scroll-snap-type:x mandatory;
-        scrollbar-width:none; -webkit-overflow-scrolling:touch;
-      }
-      .wp-pm-similar-scroll::-webkit-scrollbar { display:none; }
-      .wp-pm-similar-card {
-        display:flex; align-items:center; gap:10px; padding:10px 14px;
-        background:#fff; border:2px solid #e5e7eb; border-radius:16px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.08);
-        min-width:280px; max-width:300px; flex-shrink:0;
-        cursor:pointer; scroll-snap-align:start;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s, box-shadow 0.15s;
-      }
-      .wp-pm-similar-card:first-child { margin-left:0; }
       .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
       .wp-pm-similar-img {
         width:70px; height:70px; object-fit:cover;
