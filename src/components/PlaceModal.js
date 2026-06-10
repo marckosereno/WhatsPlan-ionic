@@ -115,41 +115,50 @@ export class PlaceModal {
       'gap:10px',
     ].join(';');
 
+    // Avatares de reseñas — colores por índice
+    var avatarColors = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#0891b2'];
+    var avatarCount  = Math.min(count||4, 5);
+    var avatarsHtml  = Array.from({length:avatarCount},(_,i)=>`<div style="width:24px;height:24px;border-radius:50%;background:${avatarColors[i%avatarColors.length]};border:2px solid #fff;margin-left:${i>0?'-7px':'0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;position:relative;z-index:${avatarCount-i}">${String.fromCharCode(65+i)}</div>`).join('');
+
+    var glassBtn = 'height:34px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 2px 8px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.6);color:#0a0a0a;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
+
+    var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
+
     ms.innerHTML = `
-      <!-- Header: nombre + badge + corazon -->
+      <!-- Header: nombre + dirección + corazon -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="min-width:0;flex:1">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${name}</span>
-            <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:#f4f4f6;border:1px solid rgba(0,0,0,0.08);color:#4b5563">${statusTxt}</span>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>
+            <span style="${glassBadge}">${statusTxt}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280">
-            ${rating>0?`<span style="color:#f59e0b;font-weight:700">★ ${rating.toFixed(1)}</span>${count?`<span style="color:#d1d5db">·</span><span style="color:#9ca3af">(${count})</span>`:''}${addr?'<span style="color:#d1d5db">·</span>':''}`:''}
-            ${addr?`<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${addr}</span>`:''}
-          </div>
+          <!-- Dirección debajo del título -->
+          ${addr?`<div style="font-size:10.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0">${addr}</div>`:''}
         </div>
-        <!-- Favoritos -->
-        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#f4f4f6;border:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
-          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#9ca3af" stroke-width="40"/></svg>
+        <!-- Favoritos glass -->
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
+          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
       </div>
 
       <!-- Foto strip -->
-      <div style="display:flex;gap:6px;height:80px;border-radius:16px;overflow:hidden">
-        ${photos3.slice(0,2).map(u=>`<div style="flex:1;background:url('${u}') center/cover #e2e8f0;border-radius:12px;min-width:0"></div>`).join('')}
-        ${photos3[2]?`<div style="flex:1;position:relative;border-radius:12px;overflow:hidden;min-width:0">
+      <div style="display:flex;gap:6px;height:78px;overflow:hidden">
+        ${photos3.slice(0,2).map(u=>`<div style="flex:1;background:url('${u}') center/cover #e2e8f0;border-radius:14px;min-width:0"></div>`).join('')}
+        ${photos3[2]?`<div style="flex:1;position:relative;border-radius:14px;overflow:hidden;min-width:0">
           <div style="position:absolute;inset:0;background:url('${photos3[2]}') center/cover #e2e8f0"></div>
-          ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
-        </div>`:''}
-        ${photos3.length===0?`<div style="flex:1;background:#f4f4f6;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px">📍</div>`:''}
+          ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
+        </div>`:`<div style="flex:1;background:#f4f4f6;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">📍</div>`}
       </div>
 
-      <!-- Botones abajo -->
+      <!-- Footer: avatares reseñas + CTA -->
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <button id="wp-ms-open-btn" style="height:34px;padding:0 16px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent">
-          ${statusTxt==='● Abierto'?'Abierto':'Ver horario'}
-        </button>
-        <button id="wp-ms-cta-btn" style="height:34px;padding:0 16px;border-radius:999px;border:1.5px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.04);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#0a0a0a;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <!-- Avatares apilados + conteo -->
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="display:flex;align-items:center">${avatarsHtml}</div>
+          ${count>0?`<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>`:'<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>'}
+        </div>
+        <!-- CTA glass -->
+        <button id="wp-ms-cta-btn" style="${glassBtn}">
           Más detalles
         </button>
       </div>`;
