@@ -1,7 +1,8 @@
 // ====================================================================
 // WHATSPLAN — ReviewService.js
 // ====================================================================
-import { getSupabase } from '/src/services/SupabaseService.js';
+import { getSupabase }       from '/src/services/SupabaseService.js';
+import { getOrGenerateAvatar } from '/src/services/AvatarService.js';
 
 export const ReviewService = {
 
@@ -25,7 +26,10 @@ export const ReviewService = {
     return data;
   },
 
-  async upsert(placeId, userId, rating, text, displayName, avatarUrl) {
+  async upsert(placeId, userId, rating, text, displayName, existingAvatarUrl) {
+    // Generar o mantener avatar
+    const { url: avatarUrl, isNew } = getOrGenerateAvatar(displayName, existingAvatarUrl);
+
     const { error } = await getSupabase()
       .from('place_reviews')
       .upsert({
@@ -37,7 +41,19 @@ export const ReviewService = {
         avatar_url:   avatarUrl   || null,
         updated_at:   new Date().toISOString()
       }, { onConflict: 'place_id,user_id' });
+
     if (error) throw error;
+
+    // Si es un avatar nuevo y el perfil existe, guardarlo también en profiles
+    if (isNew && avatarUrl) {
+      try {
+        await getSupabase()
+          .from('profiles')
+          .upsert({ id: userId, avatar_url: avatarUrl }, { onConflict: 'id' });
+      } catch(_) { /* profiles puede no existir, no es crítico */ }
+    }
+
+    return avatarUrl;
   },
 
   async delete(placeId, userId) {
