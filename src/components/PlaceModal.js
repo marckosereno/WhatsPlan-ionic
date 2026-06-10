@@ -5,6 +5,7 @@
 
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService } from '/src/services/ReviewService.js';
+import { getAvatarUrl }  from '/src/services/AvatarService.js';
 
 export class PlaceModal {
   constructor(opts = {}) {
@@ -115,10 +116,13 @@ export class PlaceModal {
       'gap:10px',
     ].join(';');
 
-    // Avatares de reseñas — colores por índice
-    var avatarColors = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#0891b2'];
-    var avatarCount  = Math.min(count||4, 5);
-    var avatarsHtml  = Array.from({length:avatarCount},(_,i)=>`<div style="width:24px;height:24px;border-radius:50%;background:${avatarColors[i%avatarColors.length]};border:2px solid #fff;margin-left:${i>0?'-7px':'0'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;position:relative;z-index:${avatarCount-i}">${String.fromCharCode(65+i)}</div>`).join('');
+    // Avatares con Tapback memojis — seeds genéricos por posición
+    var mSeeds = ['user_m_1','user_f_1','user_m_2','user_f_2','user_m_3'];
+    var avatarCount = Math.min(count||4, 5);
+    var avatarsHtml = Array.from({length:avatarCount},(_,i)=>{
+      var url = 'https://www.tapback.co/api/avatar/'+mSeeds[i]+'.webp';
+      return `<img src="${url}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i>0?'-7px':'0'};object-fit:cover;position:relative;z-index:${avatarCount-i};background:#e2e8f0" onerror="this.style.background='#e2e8f0'">`;
+    }).join('');
 
     var glassBtn = 'height:34px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 2px 8px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.6);color:#0a0a0a;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
@@ -1054,7 +1058,7 @@ export class PlaceModal {
 
     const communityCard = r => {
       const name  = r.display_name || 'WhatsPlan User';
-      const photo = r.avatar_url   || '';
+      const photo = r.avatar_url || getAvatarUrl(name); // Tapback si no hay foto
       const init  = name.charAt(0).toUpperCase();
       const stars = '★'.repeat(r.rating)+'<span style="color:#e2e8f0">'+'★'.repeat(5-r.rating)+'</span>';
       const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
@@ -1445,6 +1449,21 @@ export class PlaceModal {
     const submit   = document.getElementById('wpr-submit');
     if (!menu) return;
 
+    // Mostrar memoji del usuario en el modal
+    var userDisplayName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario';
+    var userAvatarUrl   = user.user_metadata?.avatar_url || getAvatarUrl(userDisplayName);
+    var reviewHeaderEl  = document.querySelector('.wpr-header');
+    if (reviewHeaderEl) {
+      var existingAvImg = reviewHeaderEl.querySelector('.wpr-user-avatar');
+      if (!existingAvImg) {
+        var avImg = document.createElement('img');
+        avImg.className = 'wpr-user-avatar';
+        avImg.style.cssText = 'width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f2f2f2;margin-bottom:6px';
+        avImg.src = userAvatarUrl;
+        reviewHeaderEl.insertBefore(avImg, reviewHeaderEl.firstChild);
+      }
+    }
+
     const LABELS = ['','Muy malo','Regular','Bueno','Muy bueno','Excelente'];
     let rating = 0;
 
@@ -1489,12 +1508,12 @@ export class PlaceModal {
       try {
         const pid = place.place_id || place.id || place.placeId;
         if (!pid) throw new Error('ID del lugar no encontrado');
-        const displayName = user.user_metadata?.display_name
+        const displayName   = user.user_metadata?.display_name
           || user.user_metadata?.full_name
           || user.email?.split('@')[0]
           || 'Usuario';
-        const avatarUrl = user.user_metadata?.avatar_url || null;
-        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim(), displayName, avatarUrl);
+        const existingAvatar = user.user_metadata?.avatar_url || null;
+        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim(), displayName, existingAvatar);
         closeModal();
         self._showToast('✓ Reseña publicada');
         // Refrescar tab comunidad
