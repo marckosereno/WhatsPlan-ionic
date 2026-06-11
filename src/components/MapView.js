@@ -597,17 +597,17 @@ export class MapView {
       // Bot edge: buscar el elemento visible más alto en la parte inferior
       const scats   = document.getElementById('wp-scats');
       const results = document.getElementById('wp-sresults');
-      const panel   = document.getElementById('map-results-panel');
+      const panel   = document.querySelector('.map-results-panel-float') || document.getElementById('map-results-panel');
 
-      // Bot edge: ignorar wp-sresults (minifichas que aparecen arriba del mapa)
-      // Solo usar scats (chips subcategorías) y panel principal
+      // Bot edge: panel principal, scats y mini snap
       let botEdge;
-      const panelTop = panel && panel.offsetParent !== null ? panel.getBoundingClientRect().top : 9999;
-      const scatsTop = scats && scats.offsetParent !== null ? scats.getBoundingClientRect().top : 9999;
+      const panelRect = panel ? panel.getBoundingClientRect() : null;
+      const panelTop  = panelRect && panelRect.top > 0 && panelRect.top < visibleH ? panelRect.top : 9999;
+      const scatsTop  = scats && scats.offsetParent !== null ? scats.getBoundingClientRect().top : 9999;
+      const msEl      = document.getElementById('wp-minisnap-panel');
+      const msRect    = msEl ? msEl.getBoundingClientRect() : null;
+      const msTop     = msRect && msRect.top > topEdge && msRect.top < visibleH ? msRect.top : 9999;
 
-      // Usar el más bajo entre panel y scats, ignorando wp-sresults
-      const msEl    = document.getElementById('wp-minisnap-panel');
-      const msTop   = msEl && msEl.style.transform === 'translateY(0)' ? msEl.getBoundingClientRect().top : 9999;
       const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
