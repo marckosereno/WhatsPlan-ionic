@@ -228,9 +228,6 @@ export class PlaceModal {
     var ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
     ms.style.transform = 'translateY(140%)';
-    // Restaurar padding del mapa
-    var map = window.wpApp?.mapView?.map;
-    if (map) map.setPadding({ top:0, bottom:84, left:0, right:0 });
     setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
     this._showMapUI();
   }
