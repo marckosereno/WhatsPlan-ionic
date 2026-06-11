@@ -73,6 +73,7 @@ export class PlaceModal {
     var self = this;
     // Reusar o crear el elemento fijo del mini snap
     var ms = document.getElementById('wp-minisnap-panel');
+    var isAlreadyVisible = ms && ms.style.transform === 'translateY(0)';
     if (!ms) {
       ms = document.createElement('div');
       ms.id = 'wp-minisnap-panel';
@@ -187,9 +188,19 @@ export class PlaceModal {
 
     ms.className = 'wp-minisnap-panel';
 
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      ms.style.transform = 'translateY(0)';
-    }));
+    if (isAlreadyVisible) {
+      // Ya visible — actualizar sin animación de entrada
+      ms.style.transition = 'none';
+      ms.style.transform  = 'translateY(0)';
+      // Pequeño flash para indicar cambio de lugar
+      ms.style.opacity = '0.7';
+      requestAnimationFrame(()=>{ ms.style.transition='opacity 0.18s ease'; ms.style.opacity='1'; });
+    } else {
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        ms.style.transition = 'transform 0.36s cubic-bezier(0.32,0.72,0,1)';
+        ms.style.transform  = 'translateY(0)';
+      }));
+    }
 
     // Favoritos
     var favBtn = ms.querySelector('#wp-ms-fav-btn');
