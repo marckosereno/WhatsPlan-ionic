@@ -394,16 +394,13 @@ function setupActivitySubscription(mv) {
 
       // Al tocar la minicard → abrir el modal de detalles
       mv.onPlaceSelect = function(place) {
-        // Calcular offset según el espacio ocupado por mini snap o panel
         var msEl      = document.getElementById('wp-minisnap-panel');
         var msVisible = msEl && msEl.style.transform === 'translateY(0)';
-        var bottomOccupied = 84 + (msVisible ? (msEl.offsetHeight || 156) : 0);
-        // Centrar el pin en el área visible sobre el panel/minisnap
-        var screenH  = window.innerHeight;
-        var topH     = 90; // topbar aprox
-        var visibleH = screenH - topH - bottomOccupied;
-        // offset Y positivo → el centro del mapa se mueve abajo → el pin sube en pantalla
-        var offsetY  = Math.round((bottomOccupied - topH) / 2);
+        var bottomPad = msVisible ? (msEl.offsetHeight || 156) + 84 : 84;
+
+        // setPadding le dice a MapLibre cuánto espacio está ocupado en el bottom
+        // así flyTo centra el pin en el área VISIBLE automáticamente
+        mv.map.setPadding({ top:90, bottom: bottomPad, left:0, right:0 });
 
         var coords = place.geometry?.location;
         if (coords) {
@@ -412,7 +409,6 @@ function setupActivitySubscription(mv) {
           if (lat && lng) {
             mv.map.easeTo({
               center:   [lng, lat],
-              offset:   [0, offsetY],
               duration: 380,
               easing:   function(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
             });
