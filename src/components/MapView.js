@@ -6,6 +6,8 @@ import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js'
 
 import { ActivityService } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
+import { WeatherService } from '/src/services/WeatherService.js';
+import { WeatherLayer   } from '/src/components/WeatherLayer.js';
 
 const CENTER_LNG = -97.9506;
 const CENTER_LAT =  25.9950;
@@ -152,6 +154,10 @@ export class MapView {
 
     this.map.on('load', () => {
       console.log('✅ Mapa listo');
+
+      // ── Weather Layer ──
+      this._weatherLayer = new WeatherLayer(this.map);
+      this._initWeather();
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
@@ -605,8 +611,12 @@ export class MapView {
       const panelTop = panel && panel.offsetParent !== null ? panel.getBoundingClientRect().top : 9999;
       const scatsTop = scats && scats.offsetParent !== null ? scats.getBoundingClientRect().top : 9999;
 
-      // Usar el más bajo entre panel y scats, ignorando wp-sresults
-      const candidates = [panelTop, scatsTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
+      // También detectar el mini snap si está visible
+      const msEl    = document.getElementById('wp-minisnap-panel');
+      const msTop   = msEl && msEl.style.transform === 'translateY(0)' ? msEl.getBoundingClientRect().top : 9999;
+
+      // Usar el más bajo entre panel, scats y minisnap
+      const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
       // La minicard tiene ~90px y aparece 45px ENCIMA del pin (marginTop:-45px)
@@ -936,4 +946,25 @@ export class MapView {
 
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
   getMap() { return this.map; }
+
+  // ── Weather ─────────────────────────────────────────────────────
+  async _initWeather() {
+    try {
+      // Obtener ubicación del usuario
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+      );
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const weather = await WeatherService.getCurrent(lat, lng);
+      if (weather) this._weatherLayer.setEffect(weather);
+
+      // Refrescar cada 10 minutos
+      setInterval(async () => {
+        const w = await WeatherService.getCurrent(lat, lng);
+        if (w) this._weatherLayer.setEffect(w);
+      }, 10 * 60 * 1000);
+    } catch(e) {
+      console.log('Weather init:', e.message);
+    }
+  }
 }
