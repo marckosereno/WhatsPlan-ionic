@@ -394,7 +394,21 @@ function setupActivitySubscription(mv) {
 
       // Al tocar la minicard → abrir el modal de detalles
       mv.onPlaceSelect = function(place) {
-        // Mini snap al tocar un pin, ficha completa al tocar la minicard
+        // Centrar mapa en el lugar seleccionado
+        var coords = place.geometry?.location;
+        if (coords) {
+          var lat = typeof coords.lat === 'function' ? coords.lat() : coords.lat;
+          var lng = typeof coords.lng === 'function' ? coords.lng() : coords.lng;
+          if (lat && lng) {
+            mv.map.easeTo({
+              center: [lng, lat],
+              offset: [0, -80],   // desplazar hacia arriba para que el pin quede sobre el mini snap
+              duration: 380,
+              easing: function(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
+            });
+          }
+        }
+        // Mostrar mini snap
         placeModal.showMini(place);
       };
       mv.onMiniCardTap = function(place) {
