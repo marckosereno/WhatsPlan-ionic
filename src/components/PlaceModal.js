@@ -106,7 +106,11 @@ export class PlaceModal {
       'left:12px','right:12px',
       'height:'+panelHeight+'px',
       'border-radius:32px',
-      'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
+      'background:rgba(255,255,255,0.82)',
+      'backdrop-filter:blur(24px) saturate(1.6)',
+      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
+      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
+      'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden',
       'z-index:9990',
       'transform:translateY(140%)',
@@ -128,9 +132,9 @@ export class PlaceModal {
       return `<img src="${url}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i>0?'-7px':'0'};object-fit:cover;position:relative;z-index:${avatarCount-i};background:#e2e8f0" onerror="this.style.background='#e2e8f0'">`;
     }).join('');
 
-    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 2px 8px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.6);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
-    var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
+    var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
     ms.innerHTML = `
       <!-- Header: nombre + dirección + corazon -->
@@ -149,16 +153,23 @@ export class PlaceModal {
         </button>
       </div>
 
-      <!-- Foto strip — 4 fotos square 60×60 como category-icon-circle -->
-      <div style="display:flex;gap:5px;overflow:hidden">
-        ${photos4.slice(0,3).map(u=>`<div style="width:60px;height:60px;flex-shrink:0;border-radius:18px;background:url('${u}') center/cover #e2e8f0"></div>`).join('')}
-        ${photos4[3]
-          ?`<div style="width:60px;height:60px;flex-shrink:0;border-radius:18px;overflow:hidden;position:relative">
-              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e2e8f0"></div>
-              ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
-            </div>`
-          :`<div style="width:60px;height:60px;flex-shrink:0;border-radius:18px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`
-        }
+      <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
+      <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
+        ${photos4.slice(0,3).map(u=>`
+          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
+        ).join('')}
+        <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
+        ${(()=>{
+          var total = (place.photosUrls||place.photos_urls||[]).length;
+          var remaining = total - 3;
+          if (photos4[3]) {
+            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e5e7eb"></div>
+              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
+            </div>`;
+          }
+          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`;
+        })()}
       </div>
 
       <!-- Footer: avatares reseñas + CTA -->
