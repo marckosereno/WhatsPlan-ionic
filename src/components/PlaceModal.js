@@ -145,13 +145,16 @@ export class PlaceModal {
         </button>
       </div>
 
-      <!-- Foto strip -->
-      <div style="display:flex;gap:6px;height:78px;overflow:hidden">
-        ${photos3.slice(0,2).map(u=>`<div style="flex:1;background:url('${u}') center/cover #e2e8f0;border-radius:14px;min-width:0"></div>`).join('')}
-        ${photos3[2]?`<div style="flex:1;position:relative;border-radius:14px;overflow:hidden;min-width:0">
-          <div style="position:absolute;inset:0;background:url('${photos3[2]}') center/cover #e2e8f0"></div>
-          ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
-        </div>`:`<div style="flex:1;background:#f4f4f6;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">📍</div>`}
+      <!-- Foto strip — square 68×68 como category-icon-circle -->
+      <div style="display:flex;gap:6px;overflow:hidden">
+        ${photos3.slice(0,2).map(u=>`<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e2e8f0"></div>`).join('')}
+        ${photos3[2]
+          ?`<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;background:url('${photos3[2]}') center/cover #e2e8f0"></div>
+              ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
+            </div>`
+          :`<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:24px">📍</div>`
+        }
       </div>
 
       <!-- Footer: avatares reseñas + CTA -->
