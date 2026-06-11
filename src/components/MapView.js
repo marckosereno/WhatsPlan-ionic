@@ -606,7 +606,9 @@ export class MapView {
       const scatsTop = scats && scats.offsetParent !== null ? scats.getBoundingClientRect().top : 9999;
 
       // Usar el más bajo entre panel y scats, ignorando wp-sresults
-      const candidates = [panelTop, scatsTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
+      const msEl    = document.getElementById('wp-minisnap-panel');
+      const msTop   = msEl && msEl.style.transform === 'translateY(0)' ? msEl.getBoundingClientRect().top : 9999;
+      const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
       // La minicard tiene ~90px y aparece 45px ENCIMA del pin (marginTop:-45px)
