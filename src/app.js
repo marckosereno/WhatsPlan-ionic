@@ -394,21 +394,30 @@ function setupActivitySubscription(mv) {
 
       // Al tocar la minicard → abrir el modal de detalles
       mv.onPlaceSelect = function(place) {
-        // Centrar mapa en el lugar seleccionado
+        // Calcular offset según el espacio ocupado por mini snap o panel
+        var msEl      = document.getElementById('wp-minisnap-panel');
+        var msVisible = msEl && msEl.style.transform === 'translateY(0)';
+        var bottomOccupied = 84 + (msVisible ? (msEl.offsetHeight || 156) : 0);
+        // Centrar el pin en el área visible sobre el panel/minisnap
+        var screenH  = window.innerHeight;
+        var topH     = 90; // topbar aprox
+        var visibleH = screenH - topH - bottomOccupied;
+        // offset Y positivo → el centro del mapa se mueve abajo → el pin sube en pantalla
+        var offsetY  = Math.round((bottomOccupied - topH) / 2);
+
         var coords = place.geometry?.location;
         if (coords) {
           var lat = typeof coords.lat === 'function' ? coords.lat() : coords.lat;
           var lng = typeof coords.lng === 'function' ? coords.lng() : coords.lng;
           if (lat && lng) {
             mv.map.easeTo({
-              center: [lng, lat],
-              offset: [0, -80],   // desplazar hacia arriba para que el pin quede sobre el mini snap
+              center:   [lng, lat],
+              offset:   [0, offsetY],
               duration: 380,
-              easing: function(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
+              easing:   function(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
             });
           }
         }
-        // Mostrar mini snap
         placeModal.showMini(place);
       };
       mv.onMiniCardTap = function(place) {
