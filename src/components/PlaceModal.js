@@ -93,14 +93,18 @@ export class PlaceModal {
     // ── Hero card: foto derecha, contenido izquierda ──
     var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
 
-    var photos3 = (place.photosUrls||place.photos_urls||(place.photo_url?[place.photo_url]:[])).slice(0,4);
-    var extraPhotos = Math.max(0,(place.photosUrls||place.photos_urls||[]).length - 3);
+    var photos4 = (place.photosUrls||place.photos_urls||(place.photo_url?[place.photo_url]:[])).slice(0,5);
+    var extraPhotos = Math.max(0,(place.photosUrls||place.photos_urls||[]).length - 4);
+
+    // Medir la altura real del panel para igualarla
+    var panelEl     = document.querySelector('.map-results-panel-float');
+    var panelHeight = panelEl ? panelEl.offsetHeight : 156;
 
     ms.style.cssText = [
       'position:fixed',
       'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
       'left:12px','right:12px',
-      'background:#fff',
+      'height:'+panelHeight+'px',
       'border-radius:32px',
       'box-shadow:0 12px 48px rgba(0,0,0,0.18)',
       'overflow:hidden',
@@ -109,11 +113,11 @@ export class PlaceModal {
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
       'cursor:pointer',
-      'padding:14px 16px 12px',
+      'padding:8px 14px 8px',
       'box-sizing:border-box',
       'display:flex',
       'flex-direction:column',
-      'gap:10px',
+      'gap:6px',
     ].join(';');
 
     // Avatares con Tapback memojis — seeds genéricos por posición
@@ -124,7 +128,7 @@ export class PlaceModal {
       return `<img src="${url}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i>0?'-7px':'0'};object-fit:cover;position:relative;z-index:${avatarCount-i};background:#e2e8f0" onerror="this.style.background='#e2e8f0'">`;
     }).join('');
 
-    var glassBtn = 'height:34px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 2px 8px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.6);color:#0a0a0a;font-size:12px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 2px 8px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.6);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
     var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
@@ -145,15 +149,15 @@ export class PlaceModal {
         </button>
       </div>
 
-      <!-- Foto strip — square 68×68 como category-icon-circle -->
-      <div style="display:flex;gap:6px;overflow:hidden">
-        ${photos3.slice(0,2).map(u=>`<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e2e8f0"></div>`).join('')}
-        ${photos3[2]
-          ?`<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
-              <div style="position:absolute;inset:0;background:url('${photos3[2]}') center/cover #e2e8f0"></div>
-              ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
+      <!-- Foto strip — 4 fotos square 60×60 como category-icon-circle -->
+      <div style="display:flex;gap:5px;overflow:hidden">
+        ${photos4.slice(0,3).map(u=>`<div style="width:60px;height:60px;flex-shrink:0;border-radius:18px;background:url('${u}') center/cover #e2e8f0"></div>`).join('')}
+        ${photos4[3]
+          ?`<div style="width:60px;height:60px;flex-shrink:0;border-radius:18px;overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e2e8f0"></div>
+              ${extraPhotos>0?`<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">+${extraPhotos}</div>`:''}
             </div>`
-          :`<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:24px">📍</div>`
+          :`<div style="width:60px;height:60px;flex-shrink:0;border-radius:18px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`
         }
       </div>
 
