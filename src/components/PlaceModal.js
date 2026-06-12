@@ -86,10 +86,9 @@ export class PlaceModal {
     var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
     var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
     var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    var oh      = place.regularOpeningHours || place.opening_hours;
-    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
-    var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
-    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
+    var isOpen  = this._isOpenNow ? this._isOpenNow(place) : null;
+    var statusTxt   = isOpen===true ? 'Abierto' : isOpen===false ? 'Cerrado' : 'Sin horario';
+    var statusColor = isOpen===true ? '#16a34a' : isOpen===false ? '#ef4444' : '#6b7280';
 
     // ── Hero card: foto derecha, contenido izquierda ──
     var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
@@ -151,7 +150,7 @@ export class PlaceModal {
         </button>
       </div>
 
-      <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
+      <!-- Foto strip — gap simétrico --> 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
       <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
         ${photos4.slice(0,3).map(u=>`
           <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
@@ -209,7 +208,7 @@ export class PlaceModal {
         if (favBtn.classList.contains('active')) {
           svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
           self._showToast('❤️ Guardado en favoritos');
-        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#fff'); }
+        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#6b7280'); }
       };
     }
     // CTA → ficha completa
