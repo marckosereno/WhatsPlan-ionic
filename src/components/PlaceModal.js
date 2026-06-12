@@ -165,7 +165,7 @@ export class PlaceModal {
 
     ms.innerHTML = `
       <!-- Fila 1: badge + handle centrado + favoritos (una línea) -->
-      <div style="display:flex;align-items:center;padding:10px 0 8px;flex-shrink:0">
+      <div style="display:flex;align-items:center;padding:6px 0 5px;flex-shrink:0">
         <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
         <div style="flex:1;display:flex;justify-content:center">
           <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
@@ -175,7 +175,7 @@ export class PlaceModal {
         </button>
       </div>
       <!-- Título + featured -->
-      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:8px;flex-shrink:0;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:6px;flex-shrink:0;overflow:hidden">
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
         ${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
       </div>
@@ -190,7 +190,7 @@ export class PlaceModal {
           var total = (place.photosUrls||place.photos_urls||[]).length;
           var remaining = total - 3;
           if (photos4[3]) {
-            return `<div style="width:68px;height:68px;min-height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+            return `<div style="width:68px;min-width:68px;border-radius:22px;overflow:hidden;position:relative;align-self:stretch">
               <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">
               ${remaining > 1 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.48);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">+${remaining-1}<span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
