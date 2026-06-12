@@ -112,7 +112,7 @@ export class PlaceModal {
       '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
-      'overflow:hidden','position:relative',
+      'overflow:hidden',
       'z-index:9990',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
