@@ -137,16 +137,23 @@ export class PlaceModal {
 
     var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
+    var isFeatured = place.featured && place.featured !== 'none';
+    var featuredLabel = isFeatured ? ({premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado'}[place.featured] || '✦ Destacado') : '';
+    var featuredColor = place.featured==='premium' ? '#d97706' : place.featured==='verified' ? '#0891b2' : '#d97706';
+
     ms.innerHTML = `
-      <!-- Header: nombre + dirección + corazon -->
+      <!-- Header: badge status arriba, nombre + featured + corazon -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="min-width:0;flex:1">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>
+          <!-- Badge abierto/cerrado ARRIBA del título -->
+          <div style="margin-bottom:4px">
             <span style="${glassBadge}">${statusTxt}</span>
           </div>
-          <!-- Dirección debajo del título -->
-          ${addr?`<div style="font-size:10.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0">${addr}</div>`:''}
+          <!-- Título + badge featured a la derecha -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
+            ${isFeatured?`<span style="flex-shrink:0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap">${featuredLabel}</span>`:''}
+          </div>
         </div>
         <!-- Favoritos glass -->
         <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
@@ -228,6 +235,9 @@ export class PlaceModal {
     var ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
     ms.style.transform = 'translateY(140%)';
+    // Restaurar padding del mapa
+    var map = window.wpApp?.mapView?.map;
+    if (map) map.setPadding({ top:0, bottom:84, left:0, right:0 });
     setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
     this._showMapUI();
   }
