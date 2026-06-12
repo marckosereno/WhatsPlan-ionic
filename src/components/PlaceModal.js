@@ -86,7 +86,8 @@ export class PlaceModal {
     var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
     var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
     var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    var isOpen  = self._isOpenNow ? self._isOpenNow(place) : null;
+    var oh      = place.regularOpeningHours || place.opening_hours;
+    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
     var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
     var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
 
@@ -111,7 +112,7 @@ export class PlaceModal {
       '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
-      'overflow:visible',
+      'overflow:hidden',
       'z-index:9990',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
@@ -137,36 +138,38 @@ export class PlaceModal {
     var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
     ms.innerHTML = `
-      <!-- Handle draggable absoluto — no ocupa espacio -->
-      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:22px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
-      </div>
-      <!-- Badge | Nombre centrado | Favoritos -->
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:4px;min-height:32px">
-        <span style="position:absolute;left:0;${glassBadge}">${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <button id="wp-ms-fav-btn" style="position:absolute;right:0;width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.18);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+      <!-- Header: nombre + dirección + corazon -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>
+            <span style="${glassBadge}">${statusTxt}</span>
+          </div>
+          <!-- Dirección debajo del título -->
+          ${addr?`<div style="font-size:10.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0">${addr}</div>`:''}
+        </div>
+        <!-- Favoritos glass -->
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
           <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
       </div>
 
-      <!-- Foto strip — centradas con skeleton -->
-      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
+      <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
+      <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
         ${photos4.slice(0,3).map(u=>`
-          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-ms-skeleton 1.4s ease-in-out infinite">
-            <img src="${u}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'">
-          </div>`
+          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
         ).join('')}
+        <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
         ${(()=>{
           var total = (place.photosUrls||place.photos_urls||[]).length;
           var remaining = total - 3;
           if (photos4[3]) {
-            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-ms-skeleton 1.4s ease-in-out infinite">
-              <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none'">
-              ${remaining > 1 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.48);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">+${remaining-1}<span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
+            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e5e7eb"></div>
+              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
           }
-          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`;
+          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:20px">📷</span><span style="font-size:8px;color:#9ca3af;font-family:Roboto,system-ui,sans-serif">Sin fotos</span></div>`;
         })()}
       </div>
 
@@ -179,7 +182,7 @@ export class PlaceModal {
         </div>
         <!-- CTA glass -->
         <button id="wp-ms-cta-btn" style="${glassBtn}">
-          Más detalles
+          + Detalles
         </button>
       </div>`;
 
@@ -209,19 +212,10 @@ export class PlaceModal {
         if (favBtn.classList.contains('active')) {
           svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
           self._showToast('❤️ Guardado en favoritos');
-        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#6b7280'); }
+        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#fff'); }
       };
     }
     // CTA → ficha completa
-    // Handle drag → ficha completa
-    var handle = ms.querySelector('#wp-ms-handle');
-    if (handle) {
-      var _hY = 0;
-      handle.addEventListener('touchstart', function(e){ _hY=e.touches[0].clientY; e.stopPropagation(); },{passive:true});
-      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._hideMiniSnap();self.show(place);} },{passive:true});
-      handle.addEventListener('click', function(e){ e.stopPropagation(); self._hideMiniSnap(); self.show(place); });
-    }
-
     var cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
     // Tap en la card → ficha completa
@@ -1736,11 +1730,6 @@ export class PlaceModal {
 
   _injectStyles() {
     if (document.getElementById('wp-pm-styles')) return;
-    if (!document.getElementById('wp-ms-skeleton-style')) {
-      var sk=document.createElement('style'); sk.id='wp-ms-skeleton-style';
-      sk.textContent='@keyframes wp-ms-skeleton{0%{background-position:100% 0}100%{background-position:-100% 0}}';
-      document.head.appendChild(sk);
-    }
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
