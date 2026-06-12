@@ -86,8 +86,7 @@ export class PlaceModal {
     var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
     var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
     var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    var oh      = place.regularOpeningHours || place.opening_hours;
-    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
+    var isOpen  = self._isOpenNow(place);
     var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
     var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
 
