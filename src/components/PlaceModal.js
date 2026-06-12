@@ -147,7 +147,12 @@ export class PlaceModal {
     var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
     var openClass = isOpen===true ? 'is-open' : isOpen===false ? 'is-closed' : 'is-nohours';
-    var badgeDot  = isOpen!==null ? `<span class="wp-pm-open-dot"></span>` : '';
+    var dotStyle  = isOpen===true
+      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#34c759;box-shadow:0 0 5px rgba(52,199,89,0.6);flex-shrink:0;animation:wp-dot-pulse 1.8s ease-in-out infinite'
+      : isOpen===false
+      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff3b30;box-shadow:0 0 4px rgba(255,59,48,0.5);flex-shrink:0'
+      : '';
+    var badgeDot  = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
     var glassBadge = openClass==='is-open'
       ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15);font-family:Roboto,system-ui,sans-serif'
       : openClass==='is-closed'
@@ -159,17 +164,19 @@ export class PlaceModal {
     var featuredColor = place.featured==='premium' ? '#d97706' : place.featured==='verified' ? '#0891b2' : '#d97706';
 
     ms.innerHTML = `
-      <!-- Handle azul — indica que se puede expandir -->
-      <div style="display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0">
-        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.7"></div>
+      <!-- Fila 1: badge + handle centrado + favoritos -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 0 6px;flex-shrink:0">
+        <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
+        <div style="flex:1;display:flex;justify-content:center">
+          <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.8"></div>
+        </div>
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s">
+          <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="13" height="13"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+        </button>
       </div>
-      <!-- Header: badge status arriba, nombre + featured + corazon -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <!-- Fila 2: nombre + featured -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding-bottom:6px">
         <div style="min-width:0;flex:1">
-          <!-- Badge abierto/cerrado ARRIBA del título -->
-          <div style="margin-bottom:4px">
-            <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
-          </div>
           <!-- Título + badge featured inline -->
           <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap">
             <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
