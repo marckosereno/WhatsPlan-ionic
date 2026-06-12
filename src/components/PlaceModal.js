@@ -99,7 +99,7 @@ export class PlaceModal {
       });
     };
     var isOpen  = _checkOpen(place);
-    var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
+    var statusTxt   = isOpen===true ? 'Abierto' : isOpen===false ? 'Cerrado' : 'Sin horario';
     var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#9ca3af';
 
     // ── Hero card: foto derecha, contenido izquierda ──
@@ -146,19 +146,29 @@ export class PlaceModal {
 
     var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
-    var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
+    var openClass = isOpen===true ? 'is-open' : isOpen===false ? 'is-closed' : 'is-nohours';
+    var badgeDot  = isOpen!==null ? `<span class="wp-pm-open-dot"></span>` : '';
+    var glassBadge = openClass==='is-open'
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15);font-family:Roboto,system-ui,sans-serif'
+      : openClass==='is-closed'
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12);font-family:Roboto,system-ui,sans-serif'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);font-family:Roboto,system-ui,sans-serif';
 
     var isFeatured = place.featured && place.featured !== 'none';
     var featuredLabel = isFeatured ? ({premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado'}[place.featured] || '✦ Destacado') : '';
     var featuredColor = place.featured==='premium' ? '#d97706' : place.featured==='verified' ? '#0891b2' : '#d97706';
 
     ms.innerHTML = `
+      <!-- Handle azul — indica que se puede expandir -->
+      <div style="display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.7"></div>
+      </div>
       <!-- Header: badge status arriba, nombre + featured + corazon -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="min-width:0;flex:1">
           <!-- Badge abierto/cerrado ARRIBA del título -->
           <div style="margin-bottom:4px">
-            <span style="${glassBadge}">${statusTxt}</span>
+            <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
           </div>
           <!-- Título + badge featured inline -->
           <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap">
@@ -166,7 +176,7 @@ export class PlaceModal {
           </div>
         </div>
         <!-- Favoritos glass -->
-        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s;margin-top:-2px">
           <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
       </div>
@@ -181,9 +191,9 @@ export class PlaceModal {
           var total = (place.photosUrls||place.photos_urls||[]).length;
           var remaining = total - 3;
           if (photos4[3]) {
-            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
-              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e5e7eb"></div>
-              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
+            return `<div style="width:68px;height:68px;min-height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+              <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">
+              ${remaining > 1 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.48);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">+${remaining-1}<span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
           }
           return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`;
@@ -222,6 +232,15 @@ export class PlaceModal {
     // Favoritos
     var favBtn = ms.querySelector('#wp-ms-fav-btn');
     if (favBtn) {
+      favBtn.addEventListener('pointerdown', function(e) {
+        e.stopPropagation();
+        favBtn.style.transform = 'scale(0.88)';
+      });
+      favBtn.addEventListener('pointerup', function(e) {
+        favBtn.style.transform = 'scale(1.12)';
+        setTimeout(function(){ favBtn.style.transform = 'scale(1)'; }, 150);
+      });
+      favBtn.addEventListener('pointercancel', function() { favBtn.style.transform = 'scale(1)'; });
       favBtn.onclick = function(e) {
         e.stopPropagation();
         favBtn.classList.toggle('active');
