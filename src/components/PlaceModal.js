@@ -129,7 +129,7 @@ export class PlaceModal {
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
       'cursor:pointer',
-      'padding:8px 14px 8px',
+      'padding:3px 14px 4px',
       'box-sizing:border-box',
       'display:flex',
       'flex-direction:column',
@@ -190,7 +190,7 @@ export class PlaceModal {
           var total = (place.photosUrls||place.photos_urls||[]).length;
           var remaining = total - 3;
           if (photos4[3]) {
-            return `<div style="width:68px;min-width:68px;border-radius:22px;overflow:hidden;position:relative;align-self:stretch">
+            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
               <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">
               ${remaining > 1 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.48);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">+${remaining-1}<span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
