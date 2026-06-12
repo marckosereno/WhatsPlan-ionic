@@ -1729,6 +1729,10 @@ export class PlaceModal {
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
+      @keyframes wp-skeleton {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
       /* ── Mini Snap panel fijo ── */
       .wp-minisnap-panel:active { filter:brightness(0.97); }
       #wp-ms-cta-btn:active { filter:brightness(0.8) !important; transform:scale(0.96); }
