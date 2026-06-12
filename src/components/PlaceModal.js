@@ -112,7 +112,7 @@ export class PlaceModal {
       '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
-      'overflow:hidden',
+      'overflow:hidden','position:relative',
       'z-index:9990',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
@@ -138,11 +138,14 @@ export class PlaceModal {
     var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
     ms.innerHTML = `
-      <!-- UNA sola línea: badge + nombre + handle + favoritos -->
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <!-- Handle absoluto — no consume espacio del layout -->
+      <div style="position:absolute;top:8px;left:0;right:0;display:flex;justify-content:center;pointer-events:none">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
+      </div>
+      <!-- Badge | Nombre | Favoritos — misma línea, mismo height que original -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
         <span style="${glassBadge}">${statusTxt}</span>
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
-        <div style="width:32px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;flex-shrink:0"></div>
         <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
           <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
