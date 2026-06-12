@@ -164,28 +164,20 @@ export class PlaceModal {
     var featuredColor = place.featured==='premium' ? '#d97706' : place.featured==='verified' ? '#0891b2' : '#d97706';
 
     ms.innerHTML = `
-      <!-- Fila 1: badge + handle centrado + favoritos -->
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 0 6px;flex-shrink:0">
+      <!-- Fila 1: badge + handle centrado + favoritos (una línea) -->
+      <div style="display:flex;align-items:center;padding:10px 0 8px;flex-shrink:0">
         <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
         <div style="flex:1;display:flex;justify-content:center">
-          <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.8"></div>
+          <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
         </div>
-        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s">
-          <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="13" height="13"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
-        </button>
-      </div>
-      <!-- Fila 2: nombre + featured -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding-bottom:6px">
-        <div style="min-width:0;flex:1">
-          <!-- Título + badge featured inline -->
-          <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap">
-            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
-          </div>
-        </div>
-        <!-- Favoritos glass -->
-        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s;margin-top:-2px">
+        <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s;flex-shrink:0">
           <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
+      </div>
+      <!-- Título + featured -->
+      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:8px;flex-shrink:0;overflow:hidden">
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
+        ${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
       </div>
 
       <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
