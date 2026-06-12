@@ -86,10 +86,21 @@ export class PlaceModal {
     var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
     var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
     var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    var oh      = place.regularOpeningHours || place.opening_hours;
-    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
+    // Usar _isOpenNow — misma lógica que el PlaceModal completo
+    var _checkOpen = function(p) {
+      var oh = p.regularOpeningHours;
+      if (!oh || !oh.periods || !oh.periods.length) return null;
+      var now = new Date(), day = now.getDay(), mins = now.getHours()*60+now.getMinutes();
+      return oh.periods.some(function(per) {
+        if (!per.open || !per.close || per.open.day !== day) return false;
+        var o = per.open.hour*60+(per.open.minute||0);
+        var c = per.close.hour*60+(per.close.minute||0);
+        return mins>=o && mins<c;
+      });
+    };
+    var isOpen  = _checkOpen(place);
     var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
-    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
+    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#9ca3af';
 
     // ── Hero card: foto derecha, contenido izquierda ──
     var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
@@ -149,22 +160,21 @@ export class PlaceModal {
           <div style="margin-bottom:4px">
             <span style="${glassBadge}">${statusTxt}</span>
           </div>
-          <!-- Título + badge featured a la derecha -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
-            ${isFeatured?`<span style="flex-shrink:0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap">${featuredLabel}</span>`:''}
+          <!-- Título + badge featured inline -->
+          <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
           </div>
         </div>
         <!-- Favoritos glass -->
-        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
-          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s;margin-top:-2px">
+          <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
       </div>
 
       <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
       <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
         ${photos4.slice(0,3).map(u=>`
-          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
+          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;background:#e5e7eb"><img src="${u}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
         ).join('')}
         <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
         ${(()=>{
@@ -215,11 +225,21 @@ export class PlaceModal {
       favBtn.onclick = function(e) {
         e.stopPropagation();
         favBtn.classList.toggle('active');
-        var svg = favBtn.querySelector('path');
+        var path = favBtn.querySelector('path');
         if (favBtn.classList.contains('active')) {
-          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+          // Guardado — relleno rojo, botón con tinte rojo
+          path.setAttribute('fill','#ef4444');
+          path.setAttribute('stroke','#ef4444');
+          favBtn.style.background = 'rgba(254,226,226,0.85)';
+          favBtn.style.borderColor = 'rgba(239,68,68,0.3)';
           self._showToast('❤️ Guardado en favoritos');
-        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#fff'); }
+        } else {
+          // Sin guardar — solo borde, fondo blanco
+          path.setAttribute('fill','none');
+          path.setAttribute('stroke','#6b7280');
+          favBtn.style.background = 'rgba(255,255,255,0.75)';
+          favBtn.style.borderColor = 'rgba(0,0,0,0.15)';
+        }
       };
     }
     // CTA → ficha completa
