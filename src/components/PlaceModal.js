@@ -86,21 +86,10 @@ export class PlaceModal {
     var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
     var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
     var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    // Usar _isOpenNow — misma lógica que el PlaceModal completo
-    var _checkOpen = function(p) {
-      var oh = p.regularOpeningHours;
-      if (!oh || !oh.periods || !oh.periods.length) return null;
-      var now = new Date(), day = now.getDay(), mins = now.getHours()*60+now.getMinutes();
-      return oh.periods.some(function(per) {
-        if (!per.open || !per.close || per.open.day !== day) return false;
-        var o = per.open.hour*60+(per.open.minute||0);
-        var c = per.close.hour*60+(per.close.minute||0);
-        return mins>=o && mins<c;
-      });
-    };
-    var isOpen  = _checkOpen(place);
-    var statusTxt   = isOpen===true ? 'Abierto' : isOpen===false ? 'Cerrado' : 'Sin horario';
-    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#9ca3af';
+    var oh      = place.regularOpeningHours || place.opening_hours;
+    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
+    var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
+    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
 
     // ── Hero card: foto derecha, contenido izquierda ──
     var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
@@ -129,7 +118,7 @@ export class PlaceModal {
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
       'cursor:pointer',
-      'padding:2px 14px 4px',
+      'padding:8px 14px 8px',
       'box-sizing:border-box',
       'display:flex',
       'flex-direction:column',
@@ -146,53 +135,35 @@ export class PlaceModal {
 
     var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
-    var openClass = isOpen===true ? 'is-open' : isOpen===false ? 'is-closed' : 'is-nohours';
-    var dotStyle  = isOpen===true
-      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#34c759;box-shadow:0 0 5px rgba(52,199,89,0.6);flex-shrink:0;animation:wp-dot-pulse 1.8s ease-in-out infinite'
-      : isOpen===false
-      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff3b30;box-shadow:0 0 4px rgba(255,59,48,0.5);flex-shrink:0'
-      : '';
-    var badgeDot  = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
-    var glassBadge = openClass==='is-open'
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15);font-family:Roboto,system-ui,sans-serif'
-      : openClass==='is-closed'
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12);font-family:Roboto,system-ui,sans-serif'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);font-family:Roboto,system-ui,sans-serif';
-
-    var isFeatured = place.featured && place.featured !== 'none';
-    var featuredLabel = isFeatured ? ({premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado'}[place.featured] || '✦ Destacado') : '';
-    var featuredColor = place.featured==='premium' ? '#d97706' : place.featured==='verified' ? '#0891b2' : '#d97706';
+    var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
     ms.innerHTML = `
-      <!-- Fila 1: badge + handle centrado + favoritos (una línea) -->
-      <div style="display:flex;align-items:center;padding:6px 0 5px;flex-shrink:0">
-        <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
+      <!-- Badge + handle centrado + favoritos en una línea -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:4px">
+        <span style="${glassBadge}">${statusTxt}</span>
         <div style="flex:1;display:flex;justify-content:center">
           <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
         </div>
-        <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s;flex-shrink:0">
-          <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+        <button id="wp-ms-fav-btn" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
       </div>
-      <!-- Título + featured -->
-      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:6px;flex-shrink:0;overflow:hidden">
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
-        ${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
-      </div>
+      <!-- Nombre -->
+      <div style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px">${name}</div>
 
       <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
       <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
         ${photos4.slice(0,3).map(u=>`
-          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;background:#e5e7eb"><img src="${u}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
+          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
         ).join('')}
         <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
         ${(()=>{
           var total = (place.photosUrls||place.photos_urls||[]).length;
           var remaining = total - 3;
           if (photos4[3]) {
-            return `<div style="width:64px;height:64px;flex-shrink:0;border-radius:20px;overflow:hidden;position:relative">
-              <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">
-              ${remaining > 1 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.48);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">+${remaining-1}<span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
+            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e5e7eb"></div>
+              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
           }
           return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`;
@@ -231,33 +202,14 @@ export class PlaceModal {
     // Favoritos
     var favBtn = ms.querySelector('#wp-ms-fav-btn');
     if (favBtn) {
-      favBtn.addEventListener('pointerdown', function(e) {
-        e.stopPropagation();
-        favBtn.style.transform = 'scale(0.88)';
-      });
-      favBtn.addEventListener('pointerup', function(e) {
-        favBtn.style.transform = 'scale(1.12)';
-        setTimeout(function(){ favBtn.style.transform = 'scale(1)'; }, 150);
-      });
-      favBtn.addEventListener('pointercancel', function() { favBtn.style.transform = 'scale(1)'; });
       favBtn.onclick = function(e) {
         e.stopPropagation();
         favBtn.classList.toggle('active');
-        var path = favBtn.querySelector('path');
+        var svg = favBtn.querySelector('path');
         if (favBtn.classList.contains('active')) {
-          // Guardado — relleno rojo, botón con tinte rojo
-          path.setAttribute('fill','#ef4444');
-          path.setAttribute('stroke','#ef4444');
-          favBtn.style.background = 'rgba(254,226,226,0.85)';
-          favBtn.style.borderColor = 'rgba(239,68,68,0.3)';
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
           self._showToast('❤️ Guardado en favoritos');
-        } else {
-          // Sin guardar — solo borde, fondo blanco
-          path.setAttribute('fill','none');
-          path.setAttribute('stroke','#6b7280');
-          favBtn.style.background = 'rgba(255,255,255,0.75)';
-          favBtn.style.borderColor = 'rgba(0,0,0,0.15)';
-        }
+        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#fff'); }
       };
     }
     // CTA → ficha completa
@@ -273,9 +225,6 @@ export class PlaceModal {
     var ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
     ms.style.transform = 'translateY(140%)';
-    // Restaurar padding del mapa
-    var map = window.wpApp?.mapView?.map;
-    if (map) map.setPadding({ top:0, bottom:84, left:0, right:0 });
     setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
     this._showMapUI();
   }
