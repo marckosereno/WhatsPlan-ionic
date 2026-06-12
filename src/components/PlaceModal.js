@@ -178,8 +178,8 @@ export class PlaceModal {
           ${count>0?`<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>`:'<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>'}
         </div>
         <!-- CTA glass -->
-        <button id="wp-ms-cta-btn" style="${glassBtn}">
-          Más detalles
+        <button id="wp-ms-cta-btn" style="width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.12);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,filter 0.15s;flex-shrink:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>`;
 
