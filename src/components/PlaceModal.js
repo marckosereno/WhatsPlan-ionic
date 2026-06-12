@@ -137,9 +137,9 @@ export class PlaceModal {
     var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
 
     ms.innerHTML = `
-      <!-- Handle absoluto — no consume espacio del layout -->
-      <div style="position:absolute;top:8px;left:0;right:0;display:flex;justify-content:center;pointer-events:none">
-        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
+      <!-- Handle draggable — swipe up abre ficha completa -->
+      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:22px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
       </div>
       <!-- Badge izq | Nombre centrado | Favoritos der -->
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
@@ -150,7 +150,7 @@ export class PlaceModal {
         </button>
       </div>
 
-      <!-- Foto strip — gap simétrico --> 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
+      <!-- Foto strip -->
       <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
         ${photos4.slice(0,3).map(u=>`
           <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
