@@ -55,6 +55,12 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
+    // Ocultar footer menu y mini snap
+    var footer = document.getElementById('wp-footer-menu');
+    if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (ms) { ms._searchHidden=true; ms.style.transition='transform 0.22s ease'; ms.style.transform='translateY(140%)'; }
+
     // Mapa NO se toca - pines completamente independientes
   }
 
@@ -84,6 +90,15 @@ export class SearchBar {
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
+    // Restaurar footer menu
+    var footer = document.getElementById('wp-footer-menu');
+    if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
+    // Restaurar mini snap si estaba visible
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (ms && ms._searchHidden) { ms._searchHidden=false; ms.style.transition='transform 0.34s cubic-bezier(0.32,0.72,0,1)'; ms.style.transform='translateY(0)'; }
+    // Resetear posición de chips
+    this._updateChipsPosition();
+
     // Pines independientes - NO se restauran al desactivar
   }
 
@@ -817,10 +832,31 @@ export class SearchBar {
     });
 
     document.body.appendChild(container);
+    var self2 = this;
     setTimeout(function() {
       var active = container.querySelector('.wps-cat-chip.active');
       if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 80);
+    // Escuchar mini snap visible para reposicionar chips
+    document.addEventListener('wp:minisnap:show', function onMsShow() {
+      self2._updateChipsPosition();
+    });
+    document.addEventListener('wp:minisnap:hide', function onMsHide() {
+      self2._updateChipsPosition();
+    });
+  }
+
+  _updateChipsPosition() {
+    var chips = document.getElementById('wp-scats');
+    if (!chips) return;
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (ms && ms.style.transform === 'translateY(0)') {
+      var msH = ms.offsetHeight || 156;
+      var footerH = 84; // footer menu height
+      chips.style.bottom = 'calc(' + (msH + footerH + 10) + 'px + env(safe-area-inset-bottom,0px))';
+    } else {
+      chips.style.bottom = 'calc(20px + env(safe-area-inset-bottom,0px))';
+    }
   }
 
   _hideCategoryChips() {
