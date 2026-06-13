@@ -136,9 +136,9 @@ export class PlaceModal {
 
     // Dot animado inline
     var dotStyle = isOpen===true
-      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 5px rgba(52,199,89,0.6);animation:wp-dot-pulse 1.8s ease-in-out infinite'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-dot-pulse 1.8s ease-in-out infinite'
       : isOpen===false
-      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 4px rgba(255,59,48,0.5)'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
       : '';
     var badgeDot = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
     // Estilos idénticos a .wp-pm-open-badge de la ficha, tamaño mini snap
