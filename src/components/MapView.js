@@ -14,7 +14,7 @@ const MAP_STYLE  = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.jso
 
 const BL_BG       = '#ededea';
 const BL_LAND     = '#ededea';
-const BL_WATER    = '#00bcd4';
+const BL_WATER    = '#1a5cf5';
 const BL_PARK     = '#b8d4b0';
 const BL_BUILDING = '#e0e0db';
 const BL_TEXT     = '#4a4a4a';
