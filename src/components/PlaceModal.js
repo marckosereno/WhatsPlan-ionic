@@ -198,6 +198,9 @@ export class PlaceModal {
 
     ms.className = 'wp-minisnap-panel';
 
+    // Notificar al SearchBar para reposicionar chips
+    document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
+
     if (isAlreadyVisible) {
       // Ya visible — actualizar sin animación de entrada
       ms.style.transition = 'none';
