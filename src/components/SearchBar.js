@@ -55,21 +55,11 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // Ocultar footer menu
+    // Ocultar footer menu y mini snap
     var footer = document.getElementById('wp-footer-menu');
-    if (footer) {
-      footer.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
-      footer.style.transform  = 'translateY(120%)';
-      footer.style.opacity    = '0';
-      footer.style.pointerEvents = 'none';
-    }
-    // Ocultar mini snap si existe
+    if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
     var ms = document.getElementById('wp-minisnap-panel');
-    if (ms) {
-      ms._searchHidden = true;
-      ms.style.transition = 'transform 0.22s ease';
-      ms.style.transform  = 'translateY(140%)';
-    }
+    if (ms) { ms._searchHidden=true; ms.style.transition='transform 0.22s ease'; ms.style.transform='translateY(140%)'; }
 
     // Mapa NO se toca - pines completamente independientes
   }
@@ -102,19 +92,11 @@ export class SearchBar {
     this._hideCategoryChips();
     // Restaurar footer menu
     var footer = document.getElementById('wp-footer-menu');
-    if (footer) {
-      footer.style.transition = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
-      footer.style.transform  = '';
-      footer.style.opacity    = '1';
-      footer.style.pointerEvents = '';
-    }
-    // Restaurar mini snap si estaba visible antes de buscar
+    if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
+    // Restaurar mini snap si estaba visible
     var ms = document.getElementById('wp-minisnap-panel');
-    if (ms && ms._searchHidden) {
-      ms._searchHidden = false;
-      ms.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1)';
-      ms.style.transform  = 'translateY(0)';
-    }
+    if (ms && ms._searchHidden) { ms._searchHidden=false; ms.style.transition='transform 0.34s cubic-bezier(0.32,0.72,0,1)'; ms.style.transform='translateY(0)'; }
+    // Resetear posición de chips
     this._updateChipsPosition();
 
     // Pines independientes - NO se restauran al desactivar
@@ -856,13 +838,12 @@ export class SearchBar {
       if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 80);
     // Escuchar mini snap visible para reposicionar chips
-    // Limpiar listeners previos y registrar nuevos
-    if (self2._onMsShow) document.removeEventListener('wp:minisnap:show', self2._onMsShow);
-    if (self2._onMsHide) document.removeEventListener('wp:minisnap:hide', self2._onMsHide);
-    self2._onMsShow = function() { setTimeout(function(){ self2._updateChipsPosition(); }, 60); };
-    self2._onMsHide = function() { self2._updateChipsPosition(); };
-    document.addEventListener('wp:minisnap:show', self2._onMsShow);
-    document.addEventListener('wp:minisnap:hide', self2._onMsHide);
+    document.addEventListener('wp:minisnap:show', function onMsShow() {
+      self2._updateChipsPosition();
+    });
+    document.addEventListener('wp:minisnap:hide', function onMsHide() {
+      self2._updateChipsPosition();
+    });
   }
 
   _updateChipsPosition() {
