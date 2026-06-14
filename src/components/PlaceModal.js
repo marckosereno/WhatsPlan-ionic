@@ -1564,7 +1564,7 @@ export class PlaceModal {
           <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
         </div>
         <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
-          ${[1,2,3,4,5].map(v=>`<span data-v="${v}" style="font-size:36px;color:#d1d5db;cursor:pointer;transition:color 0.15s;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
+          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;color:#d1d5db;cursor:pointer;transition:color 0.15s;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
         </div>
         <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:Roboto,system-ui,sans-serif">Toca para calificar</div>
         <div style="padding:0 16px">
@@ -1811,8 +1811,8 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
-    void menu.offsetHeight;
-    requestAnimationFrame(() => { menu.classList.add('open'); });
+    void menu.offsetHeight;  // forzar reflow
+    setTimeout(function() { menu.classList.add('open'); }, 20);
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2409,8 +2409,7 @@ export class PlaceModal {
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
         position:fixed; inset:0; z-index:10000;
-        background:rgba(0,0,0,0.3);
-        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+        background:rgba(0,0,0,0.35);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
