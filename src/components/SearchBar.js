@@ -227,7 +227,7 @@ export class SearchBar {
       chip.style.right       = chipRight + 'px';
       chip.style.left        = 'auto';
       chip.style.width       = chipInitW + 'px';
-      chip.style.zIndex      = '99999';
+      chip.style.zIndex      = '1999';
       chip.style.paddingLeft = '12px';
       chip.style.paddingRight= '2px';
       chip.style.height      = '44px';
@@ -975,7 +975,7 @@ export class SearchBar {
         position:fixed;
         top:calc(68px + env(safe-area-inset-top,0px));
         left:0; right:0; bottom:auto;
-        z-index:99998;
+        z-index:1998;
         background:transparent;
         width:100%; box-sizing:border-box;
         padding:4px 12px; min-height:42px;
@@ -987,7 +987,7 @@ export class SearchBar {
       #wp-sresults {
         position:fixed;
         left:0;right:0;
-        z-index:99996;
+        z-index:1996;
         display:flex; gap:12px;
         padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));
         overflow-x:auto;overflow-y:hidden;
@@ -1053,7 +1053,7 @@ export class SearchBar {
       #wp-scats{
         position:fixed;
         bottom:calc(20px + env(safe-area-inset-bottom,0px));
-        left:0;right:0;z-index:99999;
+        left:0;right:0;z-index:1999;
         display:flex;gap:8px;
         padding:0 16px 6px;
         overflow-x:auto;
