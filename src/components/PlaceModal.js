@@ -291,12 +291,12 @@ export class PlaceModal {
       blurOv.id = 'wp-search-blur-overlay';
       blurOv.style.cssText = [
         'position:fixed','inset:0',
-        'background:rgba(0,0,0,0.28)',
-        'backdrop-filter:blur(8px) brightness(0.85)',
-        '-webkit-backdrop-filter:blur(8px) brightness(0.85)',
+        'background:rgba(0,0,0,0)',
+        'backdrop-filter:blur(6px) brightness(0.92)',
+        '-webkit-backdrop-filter:blur(6px) brightness(0.92)',
         'z-index:999990',
         'opacity:0',
-        'transition:opacity 0.22s ease',
+        'transition:opacity 0.18s ease',
         'pointer-events:none',
       ].join(';');
       document.body.appendChild(blurOv);
