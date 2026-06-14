@@ -1,551 +1,2907 @@
-// ===================================================================
-// WHATSPLAN — app.js
+// ====================================================================
+// WHATSPLAN — src/components/PlaceModal.js
+// Ficha de lugar — diseño tipo Insightlancer/travel card
 // ====================================================================
 
-import { MapView }          from '/src/components/MapView.js';
-import { AuthModal }        from '/src/components/AuthModal.js';
-import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
-import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
-import { initSupabase, AuthService, ActivityService, ProfileService } from '/src/services/SupabaseService.js';
-import { isSuperUser }      from '/src/services/SuperUserService.js';
-import { getCategories }    from '/src/services/CategoryService.js';
-import { initIOSFixes }     from '/src/utils/ios-fixes.js';
-import { initLiquidGlass } from '/src/utils/liquid-glass.js';
-import { FooterMenu }      from '/src/components/FooterMenu.js';
-import { initWpTap }        from '/src/utils/wp-tap.js';
-import { PlaceModal }       from '/src/components/PlaceModal.js';
-import { SearchBar }        from '/src/components/SearchBar.js';
-import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
-import { appState }         from '/src/state/AppState.js';
+import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
+import { ReviewService } from '/src/services/ReviewService.js';
+import { getAvatarUrl }  from '/src/services/AvatarService.js';
 
-window.wpApp = {
-  mapView: null, currentUser: null,
-  activities: [], superPanel: null,
-  authModal: null, subcatRow: null,
-  _cachedAvatarUrl: '',
-};
+export class PlaceModal {
+  constructor(opts = {}) {
+    this.proxyPhoto     = opts.proxyPhoto     || (u => u);
+    this.getCurrentUser = opts.getCurrentUser || (() => null);
+    this.onClose        = opts.onClose        || null;
+    this._place         = null;
+    this._el            = null;
+    this._card          = null;
+    this._currentPhoto  = 0;
+    this._photos        = [];
+    this._injectStyles();
+    this._build();
+    this._tagPicker = null;
+  }
 
-// ── Helpers ──────────────────────────────────────────────────────────
-function waitForMapLibre() {
-  return new Promise(resolve => {
-    if (window.maplibregl) { resolve(); return; }
-    const t = setInterval(() => { if (window.maplibregl) { clearInterval(t); resolve(); } }, 50);
-  });
-}
+  // ── Public ────────────────────────────────────────────────────────
 
-async function loadConfig() {
-  try {
-    const r = await fetch('/api/config');
-    const c = await r.json();
-    window.__SUPABASE_URL__      = c.supabaseUrl      || '';
-    window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
-    console.log('✅ Config cargada');
-  } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
-}
+  _hideMapUI() {
+    // Solo ocultar el panel flotante — footer menu queda visible
+    var t = 'transform 0.26s ease, opacity 0.26s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) { panel.style.transition=t; panel.style.transform='translateY(120%)'; panel.style.opacity='0'; panel.style.pointerEvents='none'; }
+  }
 
-// ── Categorías desde Supabase ─────────────────────────────────────────
-async function renderMapCategories() {
-  try {
-    // Obtener categorías y conteos en paralelo — sin tocar el DOM hasta tenerlos
-    const [cats, counts] = await Promise.all([
-      getCategories(),
-      fetch('/api/airtable-places?summary=true')
-        .then(r => r.json())
-        .then(data => {
-          const map = {};
-          if (data.success) data.counts.forEach(c => map[c.category] = c.count);
-          return map;
-        })
-        .catch(() => ({})),
-    ]);
+  _showMapUI() {
+    var t = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
+    var panel = document.querySelector('.map-results-panel-float');
+    if (panel) { panel.style.transition=t; panel.style.transform=''; panel.style.opacity='1'; panel.style.pointerEvents=''; }
+  }
 
-    const container = document.getElementById('map-categories-footer');
-    if (!container || !cats.length) return;
+  _hideTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.to(mapTopbar, { scale:0.85, opacity:0, duration:0.22, ease:'power2.in',
+        onComplete: function() { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
+      });
+    } else { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
+  }
 
-    // Construir todos los chips antes de tocar el DOM
-    const fragment = document.createDocumentFragment();
-    cats.forEach(cat => {
-      const chip = document.createElement('button');
-      chip.className = 'category-footer-chip';
-      chip.dataset.menuKey = cat.key;
-      const icon3d = cat.icon3d_url || '';
-      const emoji  = cat.emoji || '';
-      const label  = cat.label_es || cat.key;
-      const count  = counts[cat.key] || 0;
+  _restoreTopbar() {
+    var mapTopbar = document.getElementById('topbar');
+    if (!mapTopbar) return;
+    mapTopbar.style.visibility=''; mapTopbar.style.pointerEvents='';
+    var gsapG = window.gsap;
+    if (gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.fromTo(mapTopbar, {scale:0.85,opacity:0}, {scale:1,opacity:1,duration:0.32,ease:'back.out(2)'});
+    }
+  }
 
-      chip.innerHTML = `
-        <div class="category-icon-circle loading">
-          ${count > 0 ? `<div class="category-count-badge">${count} lugares</div>` : ''}
-          ${icon3d
-            ? `<img src="${icon3d}" class="category-icon-3d"
-                onload="this.closest('.category-icon-circle').classList.remove('loading')"
-                onerror="this.style.display='none';this.closest('.category-icon-circle').classList.remove('loading')" alt="">`
-            : `<span class="category-icon">${emoji}</span>`}
+  showMini(place) {
+    if (!this._built) this._build();
+    this._place = place;
+    // Ocultar panel del mapa
+    this._hideMapUI();
+    // Construir/mostrar el mini snap fijo
+    this._showMiniSnap(place);
+  }
+
+  _showMiniSnap(place) {
+    var self = this;
+    // Reusar o crear el elemento fijo del mini snap
+    var ms = document.getElementById('wp-minisnap-panel');
+    var isAlreadyVisible = ms && ms.style.transform === 'translateY(0)';
+    if (!ms) {
+      ms = document.createElement('div');
+      ms.id = 'wp-minisnap-panel';
+      document.body.appendChild(ms);
+    }
+
+    var name    = place.name || place.displayName || '';
+    var rating  = parseFloat(place.rating) || 0;
+    var count   = place.userRatingCount || place.user_ratings_total || 0;
+    var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
+    var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
+    var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
+    var oh      = place.regularOpeningHours || place.opening_hours;
+    var isOpen  = oh ? (oh.open_now ?? oh.isOpen?.()) : null;
+    var statusTxt   = isOpen===true ? '● Abierto' : isOpen===false ? '● Cerrado' : 'Sin horario';
+    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
+
+    // ── Hero card: foto derecha, contenido izquierda ──
+    var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
+
+    var photos4 = (place.photosUrls||place.photos_urls||(place.photo_url?[place.photo_url]:[])).slice(0,5);
+    var extraPhotos = Math.max(0,(place.photosUrls||place.photos_urls||[]).length - 4);
+
+    // Medir la altura real del panel para igualarla
+    var panelEl     = document.querySelector('.map-results-panel-float');
+    var panelHeight = panelEl ? panelEl.offsetHeight : 156;
+
+    ms.style.cssText = [
+      'position:fixed',
+      'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
+      'left:12px','right:12px',
+      'height:'+panelHeight+'px',
+      'border-radius:32px',
+      'background:rgba(255,255,255,0.82)',
+      'backdrop-filter:blur(24px) saturate(1.6)',
+      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
+      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
+      'border:1px solid rgba(255,255,255,0.6)',
+      'overflow:hidden',
+      'z-index:9990',
+      'transform:translateY(140%)',
+      'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
+      'font-family:Roboto,system-ui,sans-serif',
+      'cursor:pointer',
+      'padding:8px 14px 8px',
+      'box-sizing:border-box',
+      'display:flex',
+      'flex-direction:column',
+      'gap:6px',
+    ].join(';');
+
+    // Avatares con Tapback memojis — seeds genéricos por posición
+    var mSeeds = ['user_m_1','user_f_1','user_m_2','user_f_2','user_m_3'];
+    var avatarCount = Math.min(count||4, 5);
+    var avatarsHtml = Array.from({length:avatarCount},(_,i)=>{
+      var url = 'https://www.tapback.co/api/avatar/'+mSeeds[i]+'.webp';
+      return `<img src="${url}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i>0?'-7px':'0'};object-fit:cover;position:relative;z-index:${avatarCount-i};background:#e2e8f0" onerror="this.style.background='#e2e8f0'">`;
+    }).join('');
+
+    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
+
+    var glassBadge = 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9);font-size:10px;font-weight:700;color:#4b5563;font-family:Roboto,system-ui,sans-serif';
+
+    ms.innerHTML = `
+      <!-- Handle absoluto — no consume espacio del layout -->
+      <div style="position:absolute;top:8px;left:0;right:0;display:flex;justify-content:center;pointer-events:none">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
+      </div>
+      <!-- Badge izq | Nombre centrado | Favoritos der -->
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
+        <span style="position:absolute;left:0;${glassBadge}">${statusTxt}</span>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <button id="wp-ms-fav-btn" style="position:absolute;right:0;width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.18);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+        </button>
+      </div>
+
+      <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
+      <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
+        ${photos4.slice(0,3).map(u=>`
+          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:url('${u}') center/cover #e5e7eb"></div>`
+        ).join('')}
+        <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
+        ${(()=>{
+          var total = (place.photosUrls||place.photos_urls||[]).length;
+          var remaining = total - 3;
+          if (photos4[3]) {
+            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;background:url('${photos4[3]}') center/cover #e5e7eb"></div>
+              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
+            </div>`;
+          }
+          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`;
+        })()}
+      </div>
+
+      <!-- Footer: avatares reseñas + CTA -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <!-- Avatares apilados + conteo -->
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="display:flex;align-items:center">${avatarsHtml}</div>
+          ${count>0?`<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>`:'<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>'}
         </div>
-        <span class="category-name">${label}</span>`;
-      fragment.appendChild(chip);
+        <!-- CTA glass -->
+        <button id="wp-ms-cta-btn" style="${glassBtn}">
+          Más detalles
+        </button>
+      </div>`;
+
+    ms.className = 'wp-minisnap-panel';
+
+    if (isAlreadyVisible) {
+      // Ya visible — actualizar sin animación de entrada
+      ms.style.transition = 'none';
+      ms.style.transform  = 'translateY(0)';
+      // Pequeño flash para indicar cambio de lugar
+      ms.style.opacity = '0.7';
+      requestAnimationFrame(()=>{ ms.style.transition='opacity 0.18s ease'; ms.style.opacity='1'; });
+    } else {
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        ms.style.transition = 'transform 0.36s cubic-bezier(0.32,0.72,0,1)';
+        ms.style.transform  = 'translateY(0)';
+      }));
+    }
+
+    // Favoritos
+    var favBtn = ms.querySelector('#wp-ms-fav-btn');
+    if (favBtn) {
+      favBtn.onclick = function(e) {
+        e.stopPropagation();
+        favBtn.classList.toggle('active');
+        var svg = favBtn.querySelector('path');
+        if (favBtn.classList.contains('active')) {
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+          self._showToast('❤️ Guardado en favoritos');
+        } else { svg.setAttribute('fill','none'); svg.setAttribute('stroke','#fff'); }
+      };
+    }
+    // CTA → ficha completa
+    var cta = ms.querySelector('#wp-ms-cta-btn');
+    if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
+    // Tap en la card → ficha completa
+    ms.addEventListener('click', function(e){
+      if (!e.target.closest('#wp-ms-cta-btn')) { self._hideMiniSnap(); self.show(place); }
+    });
+  }
+
+  _hideMiniSnap() {
+    var ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) return;
+    ms.style.transform = 'translateY(140%)';
+    setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
+    this._showMapUI();
+  }
+
+  expandToFull() {
+    this._hideMiniSnap();
+    this.show(this._place);
+  }
+
+  show(place) {
+    this._place = place;
+    this._populate(place);
+    const card = this._card;
+
+    // 1. Sombra azul cambia instantáneamente via clase CSS (transition:none en app.css)
+    document.body.classList.add('wp-pm-open');
+
+    // 2. Ocultar topbar del mapa
+    var mapTopbar = document.getElementById('topbar');
+    var gsapG = window.gsap;
+    if (mapTopbar && gsapG) {
+      gsapG.killTweensOf(mapTopbar);
+      gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
+        onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
+      });
+    } else if (mapTopbar) {
+      mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+    }
+
+    // 3. Modal sube — sombra ya está lista
+    this._el.classList.remove('wp-pm-hidden');
+    this._el.classList.add('wp-pm-visible');
+    card.style.transition = 'none';
+    card.style.transform  = 'translateY(100%)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
+      card.style.transform  = 'translateY(0)';
+    }));
+  }
+
+  hide() {
+    this._card.style.transition = 'transform 0.32s cubic-bezier(0.32,0.72,0,1)';
+    this._card.style.transform  = 'translateY(100%)';
+    setTimeout(() => {
+      this._el.classList.add('wp-pm-hidden');
+      this._el.classList.remove('wp-pm-visible');
+      document.body.classList.remove('wp-pm-open');
+      // Restaurar topbar del mapa con pulse
+      var mapTopbar = document.getElementById('topbar');
+      if (mapTopbar) {
+        mapTopbar.style.visibility = '';
+        mapTopbar.style.pointerEvents = '';
+        var gsapG = window.gsap;
+        if (gsapG) {
+          gsapG.killTweensOf(mapTopbar);
+          gsapG.fromTo(mapTopbar,
+            { scale: 0.85, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
+          );
+        }
+      }
+      if (this.onClose) this.onClose();
+    }, 340);
+  }
+
+  isVisible() { return !this._el.classList.contains('wp-pm-hidden'); }
+
+  // ── Build DOM ─────────────────────────────────────────────────────
+
+  _build() {
+    const el = document.createElement('div');
+    el.id        = 'wp-place-modal';
+    el.className = 'wp-pm wp-pm-hidden';
+    el.innerHTML = `
+      <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
+      <div class="wp-pm-card" id="wp-pm-card">
+
+
+
+        <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
+        <div class="wp-pm-topbar" id="wp-pm-topbar">
+          <!-- Botón back -->
+          <button class="wp-pm-tb-btn" id="wp-pm-back">
+            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
+          </button>
+          <!-- Centro: stats (default) / nombre (al scrollear) -->
+          <div class="wp-pm-tb-center">
+            <!-- Featured badge encima del pill -->
+            <span class="wp-pm-featured-badge" id="wp-pm-featured" style="display:none"></span>
+            <!-- Stats pill en topbar -->
+            <div class="wp-pm-stats-row" id="wp-pm-stats-row">
+              <div class="wp-pm-stats-inner">
+              <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
+                <span class="wp-pm-stat-val"><span style="color:#f59e0b">★</span> <span id="wp-pm-rating"></span></span>
+                <span class="wp-pm-stat-lbl">Rating</span>
+              </div>
+              <div class="wp-pm-stat-sep" id="wp-pm-sep1" style="display:none"></div>
+              <div class="wp-pm-stat" id="wp-pm-stat-reviews" style="display:none">
+                <span class="wp-pm-stat-val" id="wp-pm-reviews-count"></span>
+                <span class="wp-pm-stat-lbl">Reseñas</span>
+              </div>
+              <div class="wp-pm-stat-sep" id="wp-pm-sep2" style="display:none"></div>
+              <div class="wp-pm-stat" id="wp-pm-stat-price" style="display:none">
+                <span class="wp-pm-stat-val" id="wp-pm-price"></span>
+                <span class="wp-pm-stat-lbl">Precio</span>
+              </div>
+              </div>
+            </div>
+            <!-- Nombre (aparece al scrollear) -->
+            <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
+          </div>
+          <!-- Tres puntos -->
+          <button class="wp-pm-tb-btn" id="wp-pm-more">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          </button>
+        </div>
+
+        <!-- ── REVIEW MODAL ── -->
+        <div class="wp-pm-more-overlay" id="wp-pm-review-overlay" style="display:none"></div>
+        <div class="wp-pm-more-menu" id="wp-pm-review-menu" style="display:none">
+          <div class="wp-pm-more-handle"></div>
+          <div class="wpr-header">
+            <span class="wpr-title">Tu reseña</span>
+            <span class="wpr-sub">Comparte tu experiencia con la comunidad</span>
+          </div>
+          <!-- Estrellas -->
+          <div class="wpr-stars" id="wpr-stars">
+            <span class="wpr-star" data-v="1">★</span>
+            <span class="wpr-star" data-v="2">★</span>
+            <span class="wpr-star" data-v="3">★</span>
+            <span class="wpr-star" data-v="4">★</span>
+            <span class="wpr-star" data-v="5">★</span>
+          </div>
+          <div class="wpr-star-label" id="wpr-star-label">Toca para calificar</div>
+          <!-- Textarea -->
+          <div style="padding:0 16px">
+            <textarea class="wpr-textarea" id="wpr-textarea" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" maxlength="500"></textarea>
+            <div class="wpr-char" id="wpr-char">0 / 500</div>
+          </div>
+          <!-- Submit -->
+          <div style="padding:12px 16px 16px">
+            <button class="wpr-submit" id="wpr-submit">Publicar reseña</button>
+          </div>
+        </div>
+
+        <!-- ── MORE MENU modal ── -->
+        <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
+        <div class="wp-pm-more-menu" id="wp-pm-more-menu" style="display:none">
+          <div class="wp-pm-more-handle"></div>
+          <button class="wp-pm-more-item" id="wp-pm-more-share">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+            <span>Compartir lugar</span>
+          </button>
+          <div class="wp-pm-more-sep"></div>
+          <button class="wp-pm-more-item" id="wp-pm-more-report">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Reportar problema</span>
+          </button>
+          <button class="wp-pm-more-item" id="wp-pm-more-sources">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+            <span>Acerca de las fuentes</span>
+          </button>
+          <button class="wp-pm-more-item" id="wp-pm-more-suggest">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            <span>Sugerir edición</span>
+          </button>
+        </div>
+
+        <!-- ── HERO — peek carousel, no fullwidth ── -->
+        <div class="wp-pm-hero" id="wp-pm-hero">
+          <div class="wp-pm-carousel" id="wp-pm-carousel">
+            <!-- slides injected by JS -->
+          </div>
+          <!-- Dots carrusel -->
+          <div class="wp-pm-dots" id="wp-pm-dots"></div>
+        </div>
+
+        <!-- Sombra fija encima del body scrolleable -->
+        <div class="wp-pm-top-fade"></div>
+
+        <!-- ── BODY SCROLLABLE ── -->
+        <div class="wp-pm-body" id="wp-pm-body">
+          <div class="wp-pm-handle"></div>
+
+          <!-- Nombre + badges -->
+          <div class="wp-pm-header-row">
+            <div class="wp-pm-badges-top">
+              <span class="wp-pm-open-badge" id="wp-pm-open-badge" style="display:none">
+                <span class="wp-pm-open-dot" id="wp-pm-open-dot"></span>
+                <span id="wp-pm-open-label"></span>
+              </span>
+              <span class="wp-pm-nohours-badge" id="wp-pm-nohours-badge" style="display:none">Sin horario</span>
+              <button class="wp-pm-tag-chip" id="wp-pm-tag-chip">+ Etiquetar lugar</button>
+              <div class="wp-pm-badges-actions">
+                <button class="wp-pm-save-btn" id="wp-pm-save">
+                  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="48"/></svg>
+                </button>
+                <button class="wp-pm-save-btn" id="wp-pm-share-body" title="Compartir">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="wp-pm-title-row">
+              <h2 class="wp-pm-name" id="wp-pm-name"></h2>
+              <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1c1c1e"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Dirección — sin icono, line-height ajustado -->
+          <div class="wp-pm-addr-row" id="wp-pm-addr-row" style="display:none">
+            <span id="wp-pm-addr"></span>&#8202;<button class="wp-pm-addr-copy" id="wp-pm-addr-copy" title="Copiar dirección">
+              <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            </button>
+          </div>
+
+          <!-- AI Description — icono + badge arriba, luego texto -->
+          <div class="wp-pm-ai-block" id="wp-pm-ai-block" style="display:none">
+            <div class="wp-pm-ai-header">
+              <svg class="wp-pm-ai-icon" width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
+              <span class="wp-pm-ai-badge">Descripción generada con IA</span>
+            </div>
+            <div class="wp-pm-ai-text" id="wp-pm-ai-text"></div>
+          </div>
+
+          <!-- Botones acción: teléfono · web · maps -->
+          <div class="wp-pm-actions-row" id="wp-pm-actions-row">
+            <button class="wp-pm-action-btn" id="wp-pm-btn-phone" style="display:none">
+              <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M391,480c-19.52,0-46.94-7.06-88-30-49.93-28-88.55-53.85-138.21-103.38C116.91,298.77,93.61,267.79,61,208.45c-36.84-67-30.56-102.12-23.54-117.13C45.82,73.38,58.16,62.65,74.11,52A176.3,176.3,0,0,1,102.75,36.8c1-.43,1.93-.84,2.76-1.21,4.95-2.23,12.45-5.6,21.95-2,6.34,2.38,12,7.25,20.86,16,18.17,17.92,43,57.83,52.16,77.43,6.15,13.21,10.22,21.93,10.23,31.71,0,11.45-5.76,20.28-12.75,29.81-1.31,1.79-2.61,3.5-3.87,5.16-7.61,10-9.28,12.89-8.18,18.05,2.23,10.37,18.86,41.24,46.19,68.51s57.31,42.85,67.72,45.07c5.38,1.15,8.33-.59,18.65-8.47,1.48-1.13,3-2.3,4.59-3.47,10.66-7.93,19.08-13.54,30.26-13.54h.06c9.73,0,18.06,4.22,31.86,11.18,18,9.08,59.11,33.59,77.14,51.78,8.77,8.84,13.66,14.48,16.05,20.81,3.6,9.53.21,17-2,22-.37.83-.78,1.74-1.21,2.75a176.49,176.49,0,0,1-15.29,28.58c-10.63,15.9-21.4,28.21-39.38,36.58A67.42,67.42,0,0,1,391,480Z"/></svg></span>
+              <span>Llamar</span>
+            </button>
+            <button class="wp-pm-action-btn" id="wp-pm-btn-web" style="display:none">
+              <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M414.39,97.74A224,224,0,1,0,97.61,414.52,224,224,0,1,0,414.39,97.74ZM64,256.13a191.63,191.63,0,0,1,6.7-50.31c7.34,15.8,18,29.45,25.25,45.66,9.37,20.84,34.53,15.06,45.64,33.32,9.86,16.21-.67,36.71,6.71,53.67,5.36,12.31,18,15,26.72,24,8.91,9.08,8.72,21.52,10.08,33.36a305.36,305.36,0,0,0,7.45,41.27c0,.1,0,.21.08.31C117.8,411.13,64,339.8,64,256.13Zm192,192a193.12,193.12,0,0,1-32-2.68c.11-2.71.16-5.24.43-7,2.43-15.9,10.39-31.45,21.13-43.35,10.61-11.74,25.15-19.68,34.11-33,8.78-13,11.41-30.5,7.79-45.69-5.33-22.44-35.82-29.93-52.26-42.1-9.45-7-17.86-17.82-30.27-18.7-5.72-.4-10.51.83-16.18-.63-5.2-1.35-9.28-4.15-14.82-3.42-10.35,1.36-16.88,12.42-28,10.92-10.55-1.41-21.42-13.76-23.82-23.81-3.08-12.92,7.14-17.11,18.09-18.26,4.57-.48,9.7-1,14.09.68,5.78,2.14,8.51,7.8,13.7,10.66,9.73,5.34,11.7-3.19,10.21-11.83-2.23-12.94-4.83-18.21,6.71-27.12,8-6.14,14.84-10.58,13.56-21.61-.76-6.48-4.31-9.41-1-15.86,2.51-4.91,9.4-9.34,13.89-12.27,11.59-7.56,49.65-7,34.1-28.16-4.57-6.21-13-17.31-21-18.83-10-1.89-14.44,9.27-21.41,14.19-7.2,5.09-21.22,10.87-28.43,3-9.7-10.59,6.43-14.06,10-21.46,1.65-3.45,0-8.24-2.78-12.75q5.41-2.28,11-4.23a15.6,15.6,0,0,0,8,3c6.69.44,13-3.18,18.84,1.38,6.48,5,11.15,11.32,19.75,12.88,8.32,1.51,17.13-3.34,19.19-11.86,1.25-5.18,0-10.65-1.2-16a190.83,190.83,0,0,1,105,32.21c-2-.76-4.39-.67-7.34.7-6.07,2.82-14.67,10-15.38,17.12-.81,8.08,11.11,9.22,16.77,9.22,8.5,0,17.11-3.8,14.37-13.62-1.19-4.26-2.81-8.69-5.42-11.37a193.27,193.27,0,0,1,18,14.14c-.09.09-.18.17-.27.27-5.76,6-12.45,10.75-16.39,18.05-2.78,5.14-5.91,7.58-11.54,8.91-3.1.73-6.64,1-9.24,3.08-7.24,5.7-3.12,19.4,3.74,23.51,8.67,5.19,21.53,2.75,28.07-4.66,5.11-5.8,8.12-15.87,17.31-15.86a15.4,15.4,0,0,1,10.82,4.41c3.8,3.94,3.05,7.62,3.86,12.54,1.43,8.74,9.14,4,13.83-.41a192.12,192.12,0,0,1,9.24,18.77c-5.16,7.43-9.26,15.53-21.67,6.87-7.43-5.19-12-12.72-21.33-15.06-8.15-2-16.5.08-24.55,1.47-9.15,1.59-20,2.29-26.94,9.22-6.71,6.68-10.26,15.62-17.4,22.33-13.81,13-19.64,27.19-10.7,45.57,8.6,17.67,26.59,27.26,46,26,19.07-1.27,38.88-12.33,38.33,15.38-.2,9.81,1.85,16.6,4.86,25.71,2.79,8.4,2.6,16.54,3.24,25.21A158,158,0,0,0,407.43,374,191.75,191.75,0,0,1,256,448.13Z"/></svg></span>
+              <span>Web</span>
+            </button>
+            <button class="wp-pm-action-btn" id="wp-pm-btn-maps">
+              <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M272,464a16,16,0,0,1-16-16.42V264.13a8,8,0,0,0-8-8H64.41a16.31,16.31,0,0,1-15.49-10.65,16,16,0,0,1,8.41-19.87l384-176.15a16,16,0,0,1,21.22,21.19l-176,384A16,16,0,0,1,272,464Z"/></svg></span>
+              <span>Mapa</span>
+            </button>
+          </div>
+          <div class="wp-pm-divider"></div>
+
+          <!-- Horarios — justo debajo de los botones -->
+          <div class="wp-pm-hours-block" id="wp-pm-hours-block" style="display:none">
+            <div class="wp-pm-hours-trigger" id="wp-pm-hours-trigger">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#6b7280"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 100-16 8 8 0 000 16zm1-8V7a1 1 0 00-2 0v5a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L13 11.586z"/></svg>
+              <span class="wp-pm-hours-today" id="wp-pm-hours-today"></span>
+              <span class="wp-pm-hours-status" id="wp-pm-hours-status"></span>
+              <svg class="wp-pm-chevron" id="wp-pm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="wp-pm-hours-list" id="wp-pm-hours-list"></div>
+            <div class="wp-pm-divider"></div>
+          </div>
+
+          <!-- Etiquetas: servicios del lugar + tags de usuarios -->
+          <div class="wp-pm-services-block" id="wp-pm-services-block" style="display:none">
+            <div class="wp-pm-section-title">Etiquetas</div>
+            <div class="wp-pm-tags-row" id="wp-pm-services-tags"></div>
+            <div class="wp-pm-divider"></div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="wp-pm-desc-block" id="wp-pm-desc-block" style="display:none">
+            <div class="wp-pm-section-title">Sobre el lugar</div>
+            <div class="wp-pm-desc-text" id="wp-pm-desc-text"></div>
+            <button class="wp-pm-read-more" id="wp-pm-read-more" style="display:none">Leer más</button>
+            <div class="wp-pm-divider"></div>
+          </div>
+
+          <!-- Subcategory tags -->
+          <div class="wp-pm-tags-block" id="wp-pm-tags-block" style="display:none">
+            <div class="wp-pm-section-title">Especialidades</div>
+            <div class="wp-pm-tags-row" id="wp-pm-tags-row"></div>
+            <div class="wp-pm-divider"></div>
+          </div>
+
+          <!-- Reviews -->
+          <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
+            <div class="wpr-header-row" id="wpr-header-row"></div>
+            <div class="wp-pm-reviews-list" id="wp-pm-reviews-list"></div>
+          </div>
+
+          <!-- Lugares similares — última sección -->
+
+
+          <div style="height:16px"></div>
+        </div>
+
+        <!-- ── CTA BOTTOM ── -->
+        <div class="wp-pm-bottom">
+          <button class="wp-pm-cta" id="wp-pm-cta">
+            <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M464,256c0-114.87-93.13-208-208-208S48,141.13,48,256s93.13,208,208,208S464,370.87,464,256ZM251.35,347.36a16,16,0,0,1-.09-22.63L303.58,272H170a16,16,0,0,1,0-32H303.58l-52.32-52.73A16,16,0,1,1,274,164.73l79.39,80a16,16,0,0,1,0,22.54l-79.39,80A16,16,0,0,1,251.35,347.36Z"/></svg>
+            Planear visita
+          </button>
+        </div>
+
+      </div>`;
+
+    document.body.appendChild(el);
+    this._el   = el;
+    this._card = el.querySelector('#wp-pm-card');
+
+    // Tag modal — inyectado en body para evitar conflicto con transform del parent
+    if (!document.getElementById('wp-pm-tag-overlay')) {
+      const tagEl = document.createElement('div');
+      tagEl.innerHTML = `
+        <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
+        <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
+          <!-- Header iOS -->
+          <div class="wpt-float-top">
+            <div class="wpt-float-icon">
+              <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M216.08,192V335.85a40.08,40.08,0,0,0,80.15,0l.13-188.55a67.94,67.94,0,1,0-135.87,0V337.12a95.51,95.51,0,1,0,191,0V159.74" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></path></svg>
+            </div>
+            <div class="wpt-float-titles">
+              <span class="wpt-float-title">Describe este lugar</span>
+              <span class="wpt-float-sub">Elige hasta 3 etiquetas</span>
+            </div>
+            <button class="wpt-x-btn" id="wp-pm-tag-close">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <!-- Body scrollable -->
+          <div class="wpt-tag-body-wrap">
+            <div class="wpt-fade-top"></div>
+            <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
+            <div class="wpt-fade-bot"></div>
+          </div>
+          <!-- CTA flotante dentro del modal, sin divider -->
+          <div class="wpt-float-footer">
+            <button class="wpt-cta-btn" id="wp-pm-tag-save">
+              <span class="wpt-cta-label">Selecciona etiquetas</span>
+              <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
+            </button>
+          </div>
+        </div>`;
+      while (tagEl.firstChild) document.body.appendChild(tagEl.firstChild);
+    }
+
+    this._wireEvents();
+  }
+
+  // ── Populate ──────────────────────────────────────────────────────
+
+  _populate(place) {
+    this._populateHero(place);
+    // Set topbar search label to place name
+    const tbName = this._el.querySelector('#wp-pm-tb-name');
+    if (tbName) tbName.textContent = (place.name || 'Detalles').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    this._populateHeader(place);
+    this._populateAddress(place);
+    this._populateStats(place);
+    this._populateActions(place);
+    this._populateDescription(place);
+    this._populateAI(place);
+    this._populateServices(place);
+    this._populateTags(place);
+    this._populateHours(place);
+    this._populateReviews(place);  // async, no bloqueante
+    // scroll body to top + reset topbar nombre/stats
+    const body = this._el.querySelector('#wp-pm-body');
+    if (body) body.scrollTop = 0;
+    const statsRow = this._el.querySelector('#wp-pm-stats-row');
+    if (tbName)   { tbName.style.opacity   = '0'; tbName.style.transform   = 'translateY(6px)'; }
+    if (statsRow) { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
+  }
+
+  _populateHero(place) {
+    const carousel = this._el.querySelector('#wp-pm-carousel');
+    const dotsEl   = this._el.querySelector('#wp-pm-dots');
+
+    let photos = [];
+    if (place.photoUrl) photos.push(place.photoUrl);
+    if (place.photosUrls) place.photosUrls.forEach(u => { if (u && !photos.includes(u)) photos.push(u); });
+    this._photos = photos.map(u => this.proxyPhoto(u)).filter(Boolean);
+    this._currentPhoto = 0;
+
+    // Si no hay fotos, emoji placeholder
+    if (this._photos.length === 0) {
+      carousel.innerHTML = `<div class="wp-pm-slide wp-pm-slide-placeholder"><span>${place.emoji || '📍'}</span></div>`;
+      dotsEl.style.display = 'none';
+      return;
+    }
+
+    // Slides con skeleton + cuadro añadir foto al final
+    carousel.innerHTML = this._photos.map((u, i) =>
+      `<div class="wp-pm-slide wp-pm-slide-skeleton" data-i="${i}">
+         <img class="wp-pm-slide-img" src="${u}" alt="" loading="lazy"
+              onload="this.classList.add('loaded');this.parentElement.classList.remove('wp-pm-slide-skeleton')"
+              onerror="this.parentElement.classList.remove('wp-pm-slide-skeleton')">
+       </div>`
+    ).join('') +
+    `<div class="wp-pm-slide wp-pm-slide-add" id="wp-pm-slide-add" data-add="1">
+       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+       <span>Añadir foto</span>
+     </div>`;
+
+    // Foto unica: ampliar y centrar, sin dots
+    if (this._photos.length === 1) {
+      carousel.classList.add('single-photo');
+      dotsEl.style.display = 'none';
+      // Aun con foto unica se muestra el add al final
+      carousel.classList.remove('single-photo'); // resetear para que add se vea
+    } else {
+      carousel.classList.remove('single-photo');
+    }
+
+    // Dots — always rebuild, show for any count
+    dotsEl.innerHTML = '';
+    dotsEl.style.display = '';
+    this._photos.slice(0, 9).forEach((_, i) => {
+      const d = document.createElement('span');
+      d.className = 'wp-pm-dot' + (i === 0 ? ' active' : '');
+      d.dataset.i = i;
+      d.addEventListener('click', () => this._goToPhoto(i));
+      dotsEl.appendChild(d);
     });
 
-    // Swap atómico: un solo repaint, sin frame vacío
-    container.innerHTML = '';
-    container.appendChild(fragment);
-    // Cachear categorías para el SearchBar
-    window.wpApp._categories = cats.map(function(cat) {
-      return { key: cat.key, label_es: cat.label_es || cat.key, emoji: cat.emoji || '', icon3d_url: cat.icon3d_url || '' };
+    // Set initial position first so layout is stable
+    requestAnimationFrame(() => {
+      this._goToPhoto(0, false);
     });
-    console.log('✅ ' + cats.length + ' categorías desde Supabase');
-  } catch(err) {
-    console.warn('⚠️ renderMapCategories:', err.message);
-  }
-}
-
-// ── Avatar ────────────────────────────────────────────────────────────
-async function renderAuthButton(user) {
-  const btn = document.getElementById('topbar-auth-btn');
-  if (!btn) return;
-  // Si el botón está oculto por la búsqueda, no tocar nada
-  if (btn.dataset.wpHidden === '1') return;
-  btn.classList.remove('avatar-skeleton');
-
-  if (!user) {
-    btn.style.border = '2px solid rgba(255,255,255,0.6)';
-    btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bust+in+silhouette/3D/bust_in_silhouette_3d.png"
-      style="width:26px;height:26px;object-fit:contain;opacity:0.7;" onerror="this.outerHTML='👤'">`;
-    return;
+    // Wire swipe once
+    if (!this._swipeWired) {
+      this._wireHeroSwipe();
+      this._swipeWired = true;
+    }
   }
 
-  let avatarUrl = window.wpApp._cachedAvatarUrl || user?.user_metadata?.avatar_url || '';
-  if (!avatarUrl) {
+  _goToPhoto(i, animate = true) {
+    const n = this._photos.length;
+    if (n === 0) return;
+    // Clamp
+    i = Math.max(0, Math.min(n - 1, i));
+    this._currentPhoto = i;
+    const carousel = this._el.querySelector('#wp-pm-carousel');
+    if (!carousel) return;
+    // Leer ancho real del slide actual (puede estar expandido por scroll)
+    const firstSlide = carousel.querySelector('.wp-pm-slide:not(.wp-pm-slide-add)');
+    const slideW = firstSlide ? firstSlide.getBoundingClientRect().width + 8 : carousel.getBoundingClientRect().width * 0.44 + 8;
+    carousel.style.transition = animate ? 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' : 'none';
+    carousel.style.transform  = `translateX(${8 - i * slideW}px)`;
+    this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
+      d.classList.toggle('active', idx === i)
+    );
+  }
+
+  _populateHeader(place) {
+    const _cap = s => s ? s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) : '';
+    this._el.querySelector('#wp-pm-name').textContent = _cap(place.name);
+
+    const verified = this._el.querySelector('#wp-pm-verified');
+    if (verified) verified.style.display = (place.featured === 'verified' || place.featured === 'premium') ? '' : 'none';
+
+    // Featured badge en topbar + borde gradiente en pill
+    const featured  = this._el.querySelector('#wp-pm-featured');
+    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
+    if (place.featured) {
+      const labels = { premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado' };
+      featured.style.display = '';
+      featured.textContent   = labels[place.featured] || place.featured;
+      featured.className     = `wp-pm-featured-badge wp-pm-badge-${place.featured}`;
+      // Borde highlight via clase CSS
+      if (statsRow) {
+        statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
+        statsRow.classList.add(`hl-${place.featured}`);
+      }
+    } else {
+      if (featured) featured.style.display = 'none';
+      if (statsRow) statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
+    }
+
+    // Open / closed badge — calculado desde horarios reales
+    const openBadge    = this._el.querySelector('#wp-pm-open-badge');
+    const openDot      = this._el.querySelector('#wp-pm-open-dot');
+    const openLabel    = this._el.querySelector('#wp-pm-open-label');
+    const noHoursBadge = this._el.querySelector('#wp-pm-nohours-badge');
+    const isOpen = this._isOpenNow(place);
+    const hasHours = !!(place.regularOpeningHours?.periods?.length || place.openingHoursText);
+    if (openBadge) {
+      if (isOpen !== null) {
+        openBadge.style.display = '';
+        openBadge.className     = `wp-pm-open-badge ${isOpen ? 'is-open' : 'is-closed'}`;
+        if (openDot) openDot.className = 'wp-pm-open-dot';
+        if (openLabel) openLabel.textContent = isOpen ? 'Abierto' : 'Cerrado';
+        if (noHoursBadge) noHoursBadge.style.display = 'none';
+      } else {
+        openBadge.style.display = 'none';
+        if (noHoursBadge) noHoursBadge.style.display = hasHours ? 'none' : '';
+      }
+    }
+  }
+
+  _populateAddress(place) {
+    const row  = this._el.querySelector('#wp-pm-addr-row');
+    const addr = place.formattedAddress || place.vicinity || '';
+    if (addr) {
+      row.style.display = '';
+      this._el.querySelector('#wp-pm-addr').textContent = addr;
+    } else {
+      row.style.display = 'none';
+    }
+  }
+
+  _populateStats(place) {
+    const rating  = parseFloat(place.rating) || 0;
+    const reviews = parseInt(place.userRatingCount) || 0;
+    const price   = place.priceLevel;
+
+    // Reset todos los stats/seps antes de mostrar
+    ['#wp-pm-stat-rating','#wp-pm-stat-reviews','#wp-pm-stat-price',
+     '#wp-pm-sep1','#wp-pm-sep2'].forEach(id => {
+      const el = this._el.querySelector(id);
+      if (el) el.style.display = 'none';
+    });
+
+    const show = (id, val) => {
+      const el = this._el.querySelector(id);
+      if (el) el.style.display = val ? '' : 'none';
+    };
+
+    if (rating > 0) {
+      this._el.querySelector('#wp-pm-rating').textContent = rating.toFixed(1);
+      show('#wp-pm-stat-rating', true);
+      show('#wp-pm-sep1', reviews > 0 || price);
+    }
+    if (reviews > 0) {
+      this._el.querySelector('#wp-pm-reviews-count').textContent = reviews.toLocaleString();
+      show('#wp-pm-stat-reviews', true);
+      show('#wp-pm-sep2', !!price);
+    }
+    if (price) {
+      this._el.querySelector('#wp-pm-price').textContent = '$'.repeat(Math.min(price, 4));
+      show('#wp-pm-stat-price', true);
+    }
+
+    // Si no hay ningún stat, ocultar row
+    const statsRow = this._el.querySelector('#wp-pm-stats-row');
+    if (!rating && !reviews && !price) statsRow.style.display = 'none';
+    else statsRow.style.display = '';
+  }
+
+  _populateActions(place) {
+    const btnPhone = this._el.querySelector('#wp-pm-btn-phone');
+    const btnWeb   = this._el.querySelector('#wp-pm-btn-web');
+    const btnMaps  = this._el.querySelector('#wp-pm-btn-maps');
+
+    const phone = place.phone || place.internationalPhoneNumber || '';
+    if (phone) {
+      btnPhone.style.display = '';
+      btnPhone.onclick = () => window.open('tel:' + phone);
+    }
+
+    const website = place.website || '';
+    if (website) {
+      btnWeb.style.display = '';
+      btnWeb.onclick = () => window.open(website, '_blank', 'noopener');
+    }
+
+    if (place.lat && place.lng) {
+      btnMaps.onclick = () => window.open(
+        place.googleMapsUri || `https://maps.google.com/?q=${place.lat},${place.lng}`,
+        '_blank', 'noopener'
+      );
+    }
+  }
+
+  _populateDescription(place) {
+    const block = this._el.querySelector('#wp-pm-desc-block');
+    const text  = place.description || place.editorialSummary || '';
+    if (!text) { block.style.display = 'none'; return; }
+
+    block.style.display = '';
+    const descEl = this._el.querySelector('#wp-pm-desc-text');
+    const readMore = this._el.querySelector('#wp-pm-read-more');
+    const MAX = 160;
+
+    if (text.length > MAX) {
+      descEl.textContent = text.slice(0, MAX) + '...';
+      readMore.style.display = '';
+      let expanded = false;
+      readMore.onclick = () => {
+        expanded = !expanded;
+        descEl.textContent = expanded ? text : text.slice(0, MAX) + '...';
+        readMore.textContent = expanded ? 'Leer menos' : 'Leer más';
+      };
+    } else {
+      descEl.textContent = text;
+      readMore.style.display = 'none';
+    }
+  }
+
+  _populateAI(place) {
+    const block  = this._el.querySelector('#wp-pm-ai-block');
+    const textEl = this._el.querySelector('#wp-pm-ai-text');
+    const icon   = this._el.querySelector('.wp-pm-ai-icon');
+    if (!block || !textEl) return;
+
+    // Cancel any previous typewriter + fetch
+    if (this._aiAbort) this._aiAbort();
+    this._aiAbort = null;
+
+    block.style.display = 'none';
+    textEl.textContent  = '';
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) return;
+
+    // Check if place already has ai_descriptions
+    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
+    if (existing.length > 0) {
+      // Show a random one immediately
+      const desc = existing[Math.floor(Math.random() * existing.length)];
+      block.style.display = '';
+      this._typewrite(textEl, desc);
+      return;
+    }
+
+    let aborted = false;
+    let cancelTypewrite = null;
+    this._aiAbort = () => {
+      aborted = true;
+      if (cancelTypewrite) cancelTypewrite();
+      block.style.display = 'none';
+      textEl.textContent  = '';
+      if (icon) icon.classList.remove('wp-pm-ai-pulse');
+    };
+
+    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (aborted) return;
+      if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
+      block.style.display = '';
+      textEl.textContent  = '';
+      if (icon) icon.classList.add('wp-pm-ai-pulse');
+      cancelTypewrite = this._typewrite(textEl, data.description, null, () => {
+        if (icon) icon.classList.remove('wp-pm-ai-pulse');
+      });
+    })
+    .catch(() => { if (!aborted) block.style.display = 'none'; });
+  }
+
+  _typewrite(el, text, onStart, onDone) {
+    el.textContent = '';
+    let i = 0;
+    let cancelled = false;
+    let timer = null;
+    const step = () => {
+      if (cancelled) return;
+      if (i < text.length) {
+        el.textContent += text[i++];
+        timer = setTimeout(step, 16);
+      } else {
+        if (onDone) onDone();
+      }
+    };
+    if (onStart) onStart();
+    timer = setTimeout(step, 16);
+    // Return cancel fn
+    return function cancel() {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }
+
+  async _populateServices(place) {
+    const block = this._el.querySelector('#wp-pm-services-block');
+    const tags  = this._el.querySelector('#wp-pm-services-tags');
+
+    // Tags por defecto del lugar (sin abierto/cerrado)
+    const defaultItems = [];
+    if (place.dineIn   === true) defaultItems.push({ icon:'🍽️', label:'Comer aquí' });
+    if (place.takeout  === true) defaultItems.push({ icon:'🥡',  label:'Para llevar' });
+    if (place.delivery === true) defaultItems.push({ icon:'🛵',  label:'Delivery' });
+
+    // Tags de usuarios desde Supabase
+    const placeId  = place.place_id || place.id;
+    let userTags   = [];
+    if (placeId) {
+      try { userTags = await PlaceTagService.getTagsForPlace(place); } catch(_) {}
+    }
+
+    if (!defaultItems.length && !userTags.length) {
+      block.style.display = 'none'; return;
+    }
+    block.style.display = '';
+
+    const defaultHtml = defaultItems.map(it =>
+      `<span class="wp-pm-tag">${it.icon} ${it.label}</span>`
+    ).join('');
+
+    const userHtml = userTags.map(t =>
+      `<span class="wp-pm-tag wp-pm-user-tag" title="${t.count} persona${t.count!==1?'s':''} lo etiquetó así">
+        ${t.emoji} ${t.label}
+        <span class="wp-pm-tag-count">×${t.count}</span>
+      </span>`
+    ).join('');
+
+    tags.innerHTML = defaultHtml + userHtml;
+  }
+
+  _populateTags(place) {
+    const block   = this._el.querySelector('#wp-pm-tags-block');
+    const tagsRow = this._el.querySelector('#wp-pm-tags-row');
+    const tagArr  = place.subcategoryTags || [];
+    if (tagArr.length === 0) { block.style.display = 'none'; return; }
+    block.style.display = '';
+    tagsRow.innerHTML = tagArr.map(t =>
+      `<span class="wp-pm-tag wp-pm-tag-accent">${t}</span>`
+    ).join('');
+  }
+
+  _populateHours(place) {
+    const block   = this._el.querySelector('#wp-pm-hours-block');
+    const hrsRaw  = place.openingHoursText;
+    if (!hrsRaw || typeof hrsRaw !== 'object') { block.style.display = 'none'; return; }
+
+    block.style.display = '';
+    const DAY_ORDER  = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+    const DAY_LABELS = { monday:'Lunes', tuesday:'Martes', wednesday:'Miércoles', thursday:'Jueves', friday:'Viernes', saturday:'Sábado', sunday:'Domingo' };
+    const todayKey   = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
+
+    // Today row
+    const todayText = hrsRaw[todayKey] || 'Sin horario';
+    this._el.querySelector('#wp-pm-hours-today').textContent = `Hoy: ${todayText}`;
+
+    // Status
+    const isOpen = this._isOpenNow(place);
+    const statusEl = this._el.querySelector('#wp-pm-hours-status');
+    if (isOpen === true)  { statusEl.textContent = 'Abierto'; statusEl.className = 'wp-pm-hours-status wp-pm-open'; }
+    else if (isOpen === false) { statusEl.textContent = 'Cerrado'; statusEl.className = 'wp-pm-hours-status wp-pm-closed'; }
+    else statusEl.textContent = '';
+
+    // List
+    const list = this._el.querySelector('#wp-pm-hours-list');
+    list.innerHTML = DAY_ORDER.map(d =>
+      `<div class="wp-pm-hours-row${d === todayKey ? ' wp-pm-today' : ''}">
+        <span class="wp-pm-hours-day">${DAY_LABELS[d]}</span>
+        <span class="wp-pm-hours-time">${hrsRaw[d] || 'Cerrado'}</span>
+      </div>`
+    ).join('');
+
+    // Toggle
+    let open = false;
+    const trigger = this._el.querySelector('#wp-pm-hours-trigger');
+    const chevron = this._el.querySelector('#wp-pm-chevron');
+    trigger.onclick = () => {
+      open = !open;
+      list.classList.toggle('expanded', open);
+      chevron.style.transform = open ? 'rotate(180deg)' : '';
+    };
+  }
+
+  _populateMiniSnap(place) {
+    var self = this;
+    const name   = place.name || place.displayName || '';
+    const rating = parseFloat(place.rating) || 0;
+    const count  = place.userRatingCount || place.user_ratings_total || 0;
+    const types  = (place.types || []).slice(0,3)
+                     .map(t => t.replace(/_/g,' '))
+                     .filter(t => !['point_of_interest','establishment','food'].includes(t));
+    const photos = place.photosUrls || place.photos_urls || (place.photo_url?[place.photo_url]:[]);
+    const price  = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
+
+    // Foto hero
+    const img = this._el.querySelector('#wp-pm-ms-img');
+    if (photos[0]) { img.src = photos[0]; img.style.display=''; }
+    else { img.style.display='none'; }
+
+    // Status badge
+    const statusEl = this._el.querySelector('#wp-pm-ms-status');
+    const oh = place.regularOpeningHours || place.opening_hours;
+    if (oh) {
+      const isOpen = oh.open_now ?? oh.isOpen?.();
+      if (isOpen === true)  { statusEl.textContent='● Abierto'; statusEl.className='wp-pm-ms-status open'; }
+      else if (isOpen===false){ statusEl.textContent='● Cerrado'; statusEl.className='wp-pm-ms-status closed'; }
+      else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
+    } else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
+
+    // Rating badge
+    const ratingEl = this._el.querySelector('#wp-pm-ms-rating');
+    if (rating > 0) {
+      ratingEl.textContent = '★ '+rating.toFixed(1)+(count?' ('+count+')':'');
+      ratingEl.style.display = '';
+    } else { ratingEl.style.display='none'; }
+
+    // Nombre + meta
+    this._el.querySelector('#wp-pm-ms-name').textContent = name;
+    this._el.querySelector('#wp-pm-ms-meta').textContent =
+      [price, ...types.slice(0,2)].filter(Boolean).join(' · ');
+
+    // Tags
+    const tagsEl = this._el.querySelector('#wp-pm-ms-tags');
+    const tagItems = [
+      ...types.slice(0,2).map(t => '🏷 '+t),
+      price ? price+' precio' : null,
+    ].filter(Boolean);
+    tagsEl.innerHTML = tagItems.map(t=>`<span class="wp-pm-ms-tag">${t}</span>`).join('');
+
+    // CTA
+    this._el.querySelector('#wp-pm-ms-cta').onclick = ()=>self.expandToFull();
+
+    // Swipe up → expandir
+    const card = this._el.querySelector('#wp-pm-card');
+    var startY=0;
+    function onStart(e){ startY=e.touches[0].clientY; }
+    function onEnd(e){ if(startY-e.changedTouches[0].clientY>50) self.expandToFull(); }
+    card.addEventListener('touchstart',onStart,{passive:true,once:true});
+    card.addEventListener('touchend',onEnd,{passive:true,once:true});
+
+    // Save
+    const saveBtn = this._el.querySelector('#wp-pm-ms-save');
+    if (saveBtn) {
+      saveBtn.onclick = ()=>{
+        saveBtn.classList.toggle('saved');
+        if(saveBtn.classList.contains('saved')) self._showToast('❤️ Guardado en favoritos');
+      };
+    }
+  }
+
+  async _populateReviews(place) {
+    const block = this._el.querySelector('#wp-pm-reviews-block');
+    const list  = this._el.querySelector('#wp-pm-reviews-list');
+    const googleRevs = place.reviews || [];
+    const placeId = String(place.place_id || place.id || '');
+    let communityRevs = [];
+    if (placeId) {
+      try { communityRevs = await ReviewService.getForPlace(placeId); } catch(e) { console.warn('reviews:', e); }
+    }
+    if (!googleRevs.length && !communityRevs.length) { block.style.display='none'; return; }
+    block.style.display = '';
+
+    // ── Tabs ──
+    const googleCard  = r => {
+      const name  = r.author_name || r.authorName || 'Anónimo';
+      const init  = name.charAt(0).toUpperCase();
+      const photo = r.profile_photo_url || r.authorPhotoUrl || '';
+      const stars = parseFloat(r.rating) || 0;
+      const time  = r.relative_time_description || r.relativeTime || '';
+      const text  = r.text || r.comment || '';
+      const short = text.length > 180 ? text.slice(0,180)+'…' : text;
+      return `<div class="wp-pm-review-card">
+        <div class="wp-pm-review-top">
+          <div class="wp-pm-review-avatar" style="${photo?'background:url('+photo+') center/cover no-repeat;color:transparent':''}">
+            ${photo?'':init}
+          </div>
+          <div class="wp-pm-review-info">
+            <span class="wp-pm-review-name">${name}</span>
+            ${time?`<span class="wp-pm-review-time">${time}</span>`:''}
+          </div>
+          ${stars>0?`<div class="wp-pm-review-stars">${'★'.repeat(Math.round(stars))}<span style="color:#e2e8f0">${'★'.repeat(5-Math.round(stars))}</span></div>`:''}
+        </div>
+        ${short?`<p class="wp-pm-review-text">${short}</p>`:''}
+      </div>`;
+    };
+
+    const communityCard = r => {
+      const name  = r.display_name || 'WhatsPlan User';
+      const photo = r.avatar_url || getAvatarUrl(name); // Tapback si no hay foto
+      const init  = name.charAt(0).toUpperCase();
+      const stars = '★'.repeat(r.rating)+'<span style="color:#e2e8f0">'+'★'.repeat(5-r.rating)+'</span>';
+      const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
+      return `<div class="wpr-community-card">
+        <div class="wpr-community-header-row">
+          <div class="wpr-community-avatar" style="${photo?'background:url('+photo+') center/cover;color:transparent':''}">
+            ${photo?'':init}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="wpr-community-name">${name}</div>
+            <div class="wpr-community-date">${date}</div>
+          </div>
+          <div style="color:#f59e0b;font-size:13px">${stars}</div>
+        </div>
+        <div class="wpr-community-text">${r.text}</div>
+      </div>`;
+    };
+
+    const gCount = googleRevs.length;
+    const cCount = communityRevs.length;
+
+    // ── Tabs en el header ──
+    const headerRow = this._el.querySelector('#wpr-header-row');
+    if (headerRow) {
+      headerRow.innerHTML = `
+        <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
+        <div class="wpr-header-tabs-row">
+          <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
+          <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
+          <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir reseña</button>
+        </div>
+      `;
+
+      // Tab switching — listeners en headerRow
+      headerRow.querySelector('.wpr-header-tabs-row')?.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
+        tab.onclick = () => {
+          headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+          tab.classList.add('wpr-tab-active');
+          list.querySelector('#wpr-panel-google').style.display    = tab.dataset.tab==='google'    ? '' : 'none';
+          list.querySelector('#wpr-panel-community').style.display = tab.dataset.tab==='community' ? '' : 'none';
+        };
+      });
+      const addBtn = headerRow.querySelector('#wpr-add-btn');
+      if (addBtn) addBtn.onclick = () => this._openReviewModal();
+    }
+
+    // ── Panels en list ──
+    list.innerHTML = `
+      <div id="wpr-panel-google">
+        ${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}
+        ${gCount && place.place_id ? `<a class="wpr-see-more"
+          href="https://search.google.com/local/reviews?placeid=${place.place_id}"
+          target="_blank" rel="noopener">Ver todas las reseñas en Google →</a>` : ''}
+      </div>
+      <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
+    `;
+  }
+
+  // ── Place Tags ───────────────────────────────────────────────────
+
+  async _populatePlaceTags(place) {
+    const block  = this._el.querySelector('#wp-pm-place-tags');
+    const tagsRow= this._el.querySelector('#wp-pm-place-tags-row');
+    if (!block || !tagsRow) return;
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) { block.style.display = 'none'; return; }
+
     try {
-      const profile = await ProfileService.getProfile(user.id);
-      if (profile?.avatar_url) {
-        avatarUrl = profile.avatar_url;
-        window.wpApp._cachedAvatarUrl = avatarUrl;
-      }
-    } catch(_) {}
-  }
+      const tags = await PlaceTagService.getTagsForPlace(place);
+      if (!tags.length) { block.style.display = 'none'; return; }
 
-  if (avatarUrl) {
-    // Precargar imagen antes de mostrar — evita flash de icono
-    const img = new Image();
-    img.onload = function() {
-      btn.classList.remove('avatar-skeleton');
-      btn.style.border = '2px solid rgba(255,255,255,0.7)';
-      btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;"><img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
-    };
-    img.onerror = function() {
-      btn.classList.remove('avatar-skeleton');
-      btn.style.border = '2.5px dashed var(--wp-blue,#2563eb)';
-      btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'"><span style="position:absolute;bottom:-6px;right:-4px;background:var(--wp-blue,#2563eb);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;">+</span>`;
-    };
-    img.src = avatarUrl;
-    // Mantener skeleton mientras carga
-    return;
-  } else {
-    btn.classList.remove('avatar-skeleton');
-    btn.style.border = '2.5px dashed var(--wp-blue,#2563eb)';
-    btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'"><span style="position:absolute;bottom:-6px;right:-4px;background:var(--wp-blue,#2563eb);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;">+</span>`;
-  }
-}
-
-// ── Topbar ────────────────────────────────────────────────────────────
-function setupTopBar(authModal) {
-  const btn = document.getElementById('topbar-auth-btn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    if (window.wpApp.currentUser) _showProfileMenu();
-    else authModal.show();
-  });
-}
-
-function _showProfileMenu() {
-  document.getElementById('profile-menu')?.remove();
-  const menu = document.createElement('div');
-  menu.id = 'profile-menu';
-  menu.style.cssText = 'position:fixed;top:64px;right:12px;z-index:2000;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;font-family:"Inter Tight",system-ui,sans-serif;';
-  const user = window.wpApp.currentUser;
-  const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
-  menu.innerHTML = `
-    <div style="padding:14px 16px 10px;border-bottom:1px solid #f3f4f6;">
-      <div style="font-size:13px;font-weight:700;color:#111;">${name}</div>
-      <div style="font-size:11px;color:#9ca3af;">${user?.email || ''}</div>
-    </div>
-    <div id="pm-logout" style="padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;color:#ef4444;">🚪 Cerrar sesión</div>`;
-  menu.querySelector('#pm-logout').addEventListener('click', async () => {
-    await AuthService.logout();
-    window.wpApp._cachedAvatarUrl = '';
-    menu.remove();
-  });
-  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 100);
-  document.body.appendChild(menu);
-}
-
-// ── SuperUserPanel ────────────────────────────────────────────────────
-function mountSuperPanel(mv) {
-  if (window.wpApp.superPanel) return;
-  const sp = new SuperUserPanel(mv, {
-    onLandmarksUpdated:  (items) => mv._renderLandmarks(items),
-    onCategoriesUpdated: () => renderMapCategories().then(() => setupCategories(mv)),
-  });
-  sp.mount();
-  window.wpApp.superPanel = sp;
-  console.log('✅ SuperUserPanel montado');
-}
-
-// ── Filtro de subcategoría ────────────────────────────────────────────
-function filterBySubcat(mv, subcatValue) {
-  const counter = document.getElementById('map-results-count');
-
-  if (!subcatValue || subcatValue === 'all') {
-    mv.markerEls.forEach(el => el.style.display = '');
-    if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
-    return;
-  }
-
-  let visible = 0;
-  mv.allPlaces.forEach((place, i) => {
-    // Soportar tanto array como string "tag1,tag2" (formato Supabase)
-    let tags = place.subcategoryTags || place.subcategory_tags || '';
-    if (typeof tags === 'string') {
-      tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+      block.style.display = '';
+      tagsRow.innerHTML = tags.map(t =>
+        `<span class="wp-pm-tag wp-pm-user-tag" title="${t.count} persona${t.count !== 1 ? 's' : ''} lo etiquetó así">
+          ${t.emoji} ${t.label}
+          <span class="wp-pm-tag-count">×${t.count}</span>
+        </span>`
+      ).join('');
+    } catch(e) {
+      block.style.display = 'none';
     }
-    const match = tags.some(tag => tag.toLowerCase() === subcatValue.toLowerCase());
-    if (mv.markerEls[i]) mv.markerEls[i].style.display = match ? '' : 'none';
-    if (match) visible++;
-  });
+  }
 
-  if (counter) counter.textContent = `${visible} lugares`;
-  console.log(`🔍 Subcat "${subcatValue}": ${visible} lugares`);
-}
+  // ── Events ────────────────────────────────────────────────────────
 
-// ── Categorías + SubcategoryRow ───────────────────────────────────────
-function setupCategories(mv) {
-  const container = document.getElementById('map-categories-footer');
-  if (!container) return;
+  _showToast(msg) {
+    var toast = document.getElementById('wp-global-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'wp-global-toast';
+      toast.style.cssText = 'position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-20px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;white-space:nowrap;padding:10px 20px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;pointer-events:none;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.24s ease,transform 0.28s cubic-bezier(0.34,1.2,0.64,1);';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    clearTimeout(this._toastTimer);
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    this._toastTimer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(-10px)';
+    }, 2200);
+  }
 
-  // Limpiar cualquier estilo inline que GSAP haya dejado antes de clonar
-  container.querySelectorAll('.category-footer-chip').forEach(function(c) {
-    c.style.opacity = '';
-    c.style.transform = '';
-  });
+  _wireEvents() {
+    this._el.querySelector('#wp-pm-backdrop').addEventListener('click', () => this.hide());
+    this._el.querySelector('#wp-pm-back').addEventListener('click',    () => this.hide());
 
-  container.querySelectorAll('.category-footer-chip').forEach(chip => {
-    const newChip = chip.cloneNode(true);
-    chip.parentNode.replaceChild(newChip, chip);
-    newChip.querySelectorAll('*').forEach(el => el.style.pointerEvents = 'none');
+    // ── More menu ──
+    const moreBtn     = this._el.querySelector('#wp-pm-more');
+    const moreMenu    = this._el.querySelector('#wp-pm-more-menu');
+    const moreOverlay = this._el.querySelector('#wp-pm-more-overlay');
+    const closeMore   = () => {
+      moreMenu.classList.remove('open');
+      setTimeout(() => { moreMenu.style.display = 'none'; moreOverlay.style.display = 'none'; }, 320);
+    };
+    moreBtn.addEventListener('click', () => {
+      moreMenu.style.display = ''; moreOverlay.style.display = '';
+      requestAnimationFrame(() => moreMenu.classList.add('open'));
+    });
+    moreOverlay.addEventListener('click', closeMore);
+    this._el.querySelector('#wp-pm-more-share').addEventListener('click', () => {
+      closeMore();
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
+    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
+    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
 
-    newChip.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      animateChipTap(newChip);
-      const menuKey  = newChip.dataset.menuKey;
-      const isActive = newChip.classList.contains('active');
+    // ── Modal añadir reseña ──
+    const addReviewBtn = this._el.querySelector('#wp-pm-add-review');
+    if (addReviewBtn) {
+      addReviewBtn.addEventListener('click', () => this._openReviewModal());
+    }
 
-      container.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
+    // Etiquetar lugar — placeholder hasta recibir indicaciones
+    const tagChip = this._el.querySelector('#wp-pm-tag-chip');
+    if (tagChip) tagChip.addEventListener('click', () => this._onTagPlace());
 
-      if (isActive) {
-        mv._clearPlaceMarkers();
-        mv.currentCatId = null;
-        window.wpApp.subcatRow?.hide();
-        const counter = document.getElementById('map-results-count');
-        if (counter) counter.textContent = '';
-        return;
+    // Añadir foto — por ahora placeholder hasta recibir indicaciones
+    this._el.addEventListener('click', (e) => {
+      const addSlide = e.target.closest('#wp-pm-slide-add');
+      if (addSlide) this._onAddPhoto();
+    });
+    const copyBtn = this._el.querySelector('#wp-pm-addr-copy');
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+      const addr = this._el.querySelector('#wp-pm-addr').textContent;
+      if (!addr) return;
+      navigator.clipboard.writeText(addr).then(() => {
+        copyBtn.classList.add('copied');
+        copyBtn.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyBtn.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+        }, 2000);
+      });
+    });
+    const shareBody = this._el.querySelector('#wp-pm-share-body');
+    if (shareBody) shareBody.addEventListener('click', () => {
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+
+    const ctaBtn = this._el.querySelector('#wp-pm-cta');
+    ctaBtn.addEventListener('click', () => { console.log('Planear visita:', this._place); });
+    ctaBtn.addEventListener('pointerdown', () => {
+      ctaBtn.style.transition = 'transform 0.1s ease';
+      ctaBtn.style.transform  = 'scale(0.92)';
+    });
+    ctaBtn.addEventListener('pointerup', () => {
+      ctaBtn.style.transition = 'transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      ctaBtn.style.transform  = 'scale(1.05)';
+      setTimeout(() => {
+        ctaBtn.style.transition = 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        ctaBtn.style.transform  = 'scale(1)';
+      }, 200);
+    });
+    ctaBtn.addEventListener('pointercancel', () => {
+      ctaBtn.style.transition = 'transform 0.2s ease';
+      ctaBtn.style.transform  = 'scale(1)';
+    });
+    const saveBtn = this._el.querySelector('#wp-pm-save');
+    const self = this;
+    if (saveBtn) saveBtn.addEventListener('click', function() {
+      const wasSaved = saveBtn.classList.contains('saved');
+      saveBtn.classList.toggle('saved');
+      if (!wasSaved) self._showToast('❤️ Guardado en favoritos');
+    });
+
+    // Scroll: stats se desvanecen → nombre aparece en topbar
+    const body      = this._el.querySelector('#wp-pm-body');
+    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
+    const tbName    = this._el.querySelector('#wp-pm-tb-name');
+    const carousel  = this._el.querySelector('#wp-pm-carousel');
+    let   _scrolled = false;
+    if (body && statsRow && tbName) {
+      body.addEventListener('scroll', () => {
+        const sy = body.scrollTop;
+
+        // ── Expansión progresiva de slides ──
+        // de 44% (sy=0) a 88% (sy>=120px), proporcional
+        if (carousel) {
+          const progress  = Math.min(sy / 120, 1);           // 0→1
+          const pct       = 44 + (88 - 44) * progress;       // 44%→88%
+          const slides    = carousel.querySelectorAll('.wp-pm-slide');
+          slides.forEach(s => {
+            s.style.minWidth = pct + '%';
+            s.style.transition = 'min-width 0.12s linear';
+          });
+          // Recalcular posición del carrusel para que siga centrado en el slide activo
+          if (this._photos.length > 0) {
+            const slideW = carousel.getBoundingClientRect().width * (pct / 100) + 8;
+            const targetX = 8 - this._currentPhoto * slideW;
+            carousel.style.transition = 'none';
+            carousel.style.transform  = `translateX(${targetX}px)`;
+          }
+        }
+
+        // ── Stats → nombre ──
+        const nameEl    = body.querySelector('#wp-pm-name');
+        const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
+        const past      = sy > threshold;
+        if (past !== _scrolled) {
+          _scrolled = past;
+          statsRow.style.opacity       = past ? '0' : '1';
+          statsRow.style.transform     = past ? 'scale(0.9)' : 'scale(1)';
+          statsRow.style.pointerEvents = past ? 'none' : '';
+          tbName.style.opacity         = past ? '1' : '0';
+          tbName.style.transform       = past ? 'translateY(0)' : 'translateY(6px)';
+        }
+      }, { passive: true });
+    }
+  }
+
+  _wireHeroSwipe() {
+    const self = this;
+    const hero = this._el.querySelector('#wp-pm-hero');
+    let startX = 0, startT = 0, lastX = 0, lastT = 0;
+    let tracking = false, baseX = 0, velX = 0;
+    let rafId = null;
+
+    const getCarousel = () => self._el.querySelector('#wp-pm-carousel');
+    const getSlideW   = () => {
+      const c = getCarousel();
+      if (!c) return 180;
+      // Leer el ancho real del primer slide (puede haber cambiado por expansión)
+      const firstSlide = c.querySelector('.wp-pm-slide:not(.wp-pm-slide-add)');
+      return firstSlide ? firstSlide.getBoundingClientRect().width + 8 : c.getBoundingClientRect().width * 0.44 + 8;
+    };
+    const snapX = i => 8 - i * getSlideW();
+
+    // Animated spring snap
+    const springTo = (targetX, fromX, fromV) => {
+      if (rafId) cancelAnimationFrame(rafId);
+      const stiffness = 280, damping = 28, mass = 1;
+      let x = fromX, v = fromV;
+      const step = () => {
+        const f = -stiffness * (x - targetX) - damping * v;
+        v += (f / mass) * (1/60);
+        x += v * (1/60);
+        const c = getCarousel();
+        if (c) { c.style.transition = 'none'; c.style.transform = `translateX(${x}px)`; }
+        if (Math.abs(x - targetX) < 0.5 && Math.abs(v) < 0.5) {
+          if (c) c.style.transform = `translateX(${targetX}px)`;
+          return;
+        }
+        rafId = requestAnimationFrame(step);
+      };
+      rafId = requestAnimationFrame(step);
+    };
+
+    hero.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      startX = lastX = e.touches[0].clientX;
+      startT = lastT = Date.now();
+      tracking = true;
+      velX = 0;
+      const c = getCarousel();
+      // Read current actual translateX to start from
+      if (c) {
+        c.style.transition = 'none';
+        const mat = new DOMMatrix(getComputedStyle(c).transform);
+        baseX = mat.m41;
+      } else {
+        baseX = snapX(self._currentPhoto);
+      }
+    }, { passive: true });
+
+    hero.addEventListener('touchmove', e => {
+      if (!tracking || e.touches.length !== 1) return;
+      const x  = e.touches[0].clientX;
+      const dx = x - startX;
+      const now = Date.now();
+      // Velocity tracking
+      velX = (x - lastX) / Math.max(1, now - lastT) * 16;
+      lastX = x; lastT = now;
+
+      const n = self._photos.length;
+      const slideW = getSlideW();
+      // Rubber band at edges
+      let tx = baseX + dx;
+      const minX = snapX(n - 1);
+      const maxX = snapX(0);
+      if (tx > maxX)      tx = maxX + (tx - maxX) * 0.18;
+      else if (tx < minX) tx = minX + (tx - minX) * 0.18;
+
+      const c = getCarousel();
+      if (c) c.style.transform = `translateX(${tx}px)`;
+    }, { passive: true });
+
+    const onEnd = e => {
+      if (!tracking) return;
+      tracking = false;
+      const endX = e.changedTouches ? e.changedTouches[0].clientX : lastX;
+      const dx   = endX - startX;
+      const dt   = Date.now() - startT;
+      const n    = self._photos.length;
+      const slideW = getSlideW();
+
+      // How many slides to advance based on drag distance + velocity
+      const totalDx  = baseX + dx - snapX(self._currentPhoto);
+      const momentum = velX * 8; // project velocity forward
+      const total    = dx + momentum;
+      let advance    = Math.round(-total / slideW);
+      // Cap at max slides per gesture based on speed
+      const maxAdv   = Math.max(1, Math.min(n, Math.abs(Math.round(momentum / slideW)) + 1));
+      advance        = Math.max(-maxAdv, Math.min(maxAdv, advance));
+
+      let next = Math.max(0, Math.min(n - 1, self._currentPhoto + advance));
+      // Read current carousel X for smooth spring from current position
+      const c = getCarousel();
+      let curX = snapX(self._currentPhoto);
+      if (c) {
+        const mat = new DOMMatrix(getComputedStyle(c).transform);
+        curX = mat.m41;
+      }
+      self._currentPhoto = next;
+      self._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
+        d.classList.toggle('active', idx === next)
+      );
+      springTo(snapX(next), curX, velX * 60);
+    };
+
+    hero.addEventListener('touchend',   onEnd, { passive: true });
+    hero.addEventListener('touchcancel', () => {
+      tracking = false;
+      const c = getCarousel();
+      let curX = snapX(self._currentPhoto);
+      if (c) { const m = new DOMMatrix(getComputedStyle(c).transform); curX = m.m41; }
+      springTo(snapX(self._currentPhoto), curX, 0);
+    }, { passive: true });
+  }
+
+  async _onTagPlace() {
+    const place = this._place;
+    if (!place) return;
+    const placeId = place.place_id || place.id;
+    if (!placeId) return;
+
+    // Verificar sesión
+    const user = this.getCurrentUser?.();
+    if (!user) {
+      window.wpApp?.showMapToast?.('Inicia sesión para etiquetar lugares', '#ff9f0a');
+      return;
+    }
+
+    // Cargar estado actual del usuario — si falla red, abrir igual con vacío
+    let userTags = [];
+    try { userTags = await PlaceTagService.getUserTagsForPlace(place, user.id); } catch(_) {}
+    const remaining = Math.max(0, 3 - userTags.length);
+    this._openTagSheet(place, user, userTags, remaining);
+  }
+
+  async _openReviewModal() {
+    const place = this._place;
+    if (!place) return;
+    const user = this.getCurrentUser?.();
+    if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
+
+    const overlay  = document.getElementById('wp-pm-review-overlay');
+    const menu     = document.getElementById('wp-pm-review-menu');
+    const starsEl  = document.getElementById('wpr-stars');
+    const labelEl  = document.getElementById('wpr-star-label');
+    const textarea = document.getElementById('wpr-textarea');
+    const charEl   = document.getElementById('wpr-char');
+    const submit   = document.getElementById('wpr-submit');
+    if (!menu) return;
+
+    // Mostrar memoji del usuario en el modal
+    var userDisplayName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario';
+    var userAvatarUrl   = user.user_metadata?.avatar_url || getAvatarUrl(userDisplayName);
+    var reviewHeaderEl  = document.querySelector('.wpr-header');
+    if (reviewHeaderEl) {
+      var existingAvImg = reviewHeaderEl.querySelector('.wpr-user-avatar');
+      if (!existingAvImg) {
+        var avImg = document.createElement('img');
+        avImg.className = 'wpr-user-avatar';
+        avImg.style.cssText = 'width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f2f2f2;margin-bottom:6px';
+        avImg.src = userAvatarUrl;
+        reviewHeaderEl.insertBefore(avImg, reviewHeaderEl.firstChild);
+      }
+    }
+
+    const LABELS = ['','Muy malo','Regular','Bueno','Muy bueno','Excelente'];
+    let rating = 0;
+
+    // Ver si ya tiene reseña
+    const placeId = place.place_id || place.id;
+    let existing = null;
+    try { existing = await ReviewService.getUserReview(placeId, user.id); } catch(_) {}
+    if (existing) { rating = existing.rating; textarea.value = existing.text; }
+    else { rating = 0; textarea.value = ''; }
+
+    const updateStars = (v) => {
+      rating = v;
+      starsEl.querySelectorAll('.wpr-star').forEach((s,i) => {
+        s.classList.toggle('active', i < v);
+      });
+      labelEl.textContent = LABELS[v] || 'Toca para calificar';
+      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+    };
+    updateStars(rating);
+
+    starsEl.querySelectorAll('.wpr-star').forEach(s => {
+      s.onclick = () => updateStars(parseInt(s.dataset.v));
+    });
+    textarea.oninput = () => {
+      charEl.textContent = textarea.value.length + ' / 500';
+      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+    };
+    charEl.textContent = textarea.value.length + ' / 500';
+    submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+
+    const closeModal = () => {
+      menu.classList.remove('open');
+      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; }, 300);
+    };
+    overlay.onclick = closeModal;
+
+    const self = this;
+    submit.onclick = async () => {
+      if (rating === 0 || textarea.value.trim().length < 10) return;
+      submit.disabled = true;
+      submit.textContent = 'Publicando...';
+      try {
+        const pid = place.place_id || place.id || place.placeId;
+        if (!pid) throw new Error('ID del lugar no encontrado');
+        const displayName   = user.user_metadata?.display_name
+          || user.user_metadata?.full_name
+          || user.email?.split('@')[0]
+          || 'Usuario';
+        const existingAvatar = user.user_metadata?.avatar_url || null;
+        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim(), displayName, existingAvatar);
+        closeModal();
+        self._showToast('✓ Reseña publicada');
+        // Refrescar tab comunidad
+        setTimeout(() => {
+          self._populateReviews(place).then(() => {
+            // Activar tab WhatsPlan para ver la reseña publicada
+            const headerRow2 = self._el.querySelector('#wpr-header-row');
+            const list2 = self._el.querySelector('#wp-pm-reviews-list');
+            if (headerRow2 && list2) {
+              headerRow2.querySelectorAll('.wpr-header-tabs-row .wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+              const wpTab = headerRow2.querySelector('[data-tab="community"]');
+              if (wpTab) { wpTab.classList.add('wpr-tab-active'); }
+              list2.querySelector('#wpr-panel-google').style.display    = 'none';
+              list2.querySelector('#wpr-panel-community').style.display = '';
+            }
+          });
+        }, 400);
+      } catch(err) {
+        console.error('Review error:', err);
+        self._showToast(err.message || 'Error al publicar');
+        submit.disabled = false;
+        submit.textContent = 'Publicar reseña';
+      }
+    };
+
+    overlay.style.display = '';
+    menu.style.display    = '';
+    requestAnimationFrame(() => menu.classList.add('open'));
+  }
+
+  _openTagSheet(place, user, userTags, remaining) {
+    const overlay  = document.getElementById('wp-pm-tag-overlay');
+    const menu     = document.getElementById('wp-pm-tag-menu');
+    const body     = document.getElementById('wp-pm-tag-items');
+    const saveBtn  = document.getElementById('wp-pm-tag-save');
+    if (!menu) return;
+
+    const CAT_COLORS = {
+      'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
+      'Servicio':'#fb923c','Precio':'#facc15','Destacado':'#f472b6',
+    };
+    let session   = [];
+
+    const updateCTA = () => {
+      const n     = session.filter(k => !k.startsWith('__remove__')).length;
+      const label = saveBtn.querySelector('.wpt-cta-label');
+      const badge = saveBtn.querySelector('.wpt-cta-badge');
+      if (n > 0) {
+        saveBtn.classList.add('active');
+        if (label) label.textContent = 'Etiquetar lugar';
+        if (badge) {
+          badge.style.display = '';
+          badge.textContent   = n;
+          badge.classList.remove('pop');
+          void badge.offsetWidth;
+          badge.classList.add('pop');
+          setTimeout(() => badge.classList.remove('pop'), 250);
+        }
+      } else {
+        saveBtn.classList.remove('active');
+        if (label) label.textContent = 'Selecciona etiquetas';
+        if (badge) badge.style.display = 'none';
+      }
+    };
+
+    const renderBody = () => {
+      // Agrupar por categoría — todos los tags sin límite
+      const cats = {};
+      PLACE_TAGS.forEach(tag => {
+        if (!cats[tag.cat]) cats[tag.cat] = [];
+        cats[tag.cat].push(tag);
+      });
+
+      let html = '';
+      for (const [cat, tags] of Object.entries(cats)) {
+        let catHtml = '';
+        for (const tag of tags) {
+          const already  = userTags.includes(tag.key);
+          const selected = session.includes(tag.key);
+          const cls = already ? 'already-done' : selected ? 'selected' : '';
+          catHtml += `<button class="wp-pm-tag-item ${cls}" data-key="${tag.key}" data-already="${already}">
+            <span class="wp-pm-tag-icon">${tag.emoji}</span>
+            <span class="wp-pm-tag-item-label">${tag.label}</span>
+          </button>`;
+        }
+        if (catHtml) {
+          html += `<span class="wpt-cat-label">${cat}</span><div class="wpt-chip-row">${catHtml}</div>`;
+        }
       }
 
-      newChip.classList.add('active');
-      window.wpApp.subcatRow?.showLoading(menuKey);
-      await mv.loadCategory(menuKey);
-      window.wpApp.subcatRow?.showSubcats(menuKey);
-    });
-  });
+      body.innerHTML = html;
 
-  // Chips ya visibles — solo asegurar opacity:1 sin animación de posición
-  Array.from(container.querySelectorAll('.category-footer-chip')).forEach(function(c) {
-    c.style.opacity = '1';
-  });
-}
 
-// ── Actividades ───────────────────────────────────────────────────────
-function setupActivitySubscription(mv) {
-  try {
-    ActivityService.subscribeToActivities(async () => {
-      try {
-        const acts = await ActivityService.getActiveActivities();
-        window.wpApp.activities = acts;
-        mv.updateActivities(acts);
-      } catch(_) {}
-    });
-  } catch(_) {}
-}
-
-// ════════════════════════════════════════════════════════════════════
-// MAIN
-// ════════════════════════════════════════════════════════════════════
-(async () => {
-  try {
-    console.log('🚀 WhatsPlan iniciando...');
-
-    // iOS / Capacitor fixes — lo primero, antes de montar nada
-    initIOSFixes();
-
-    // Liquid Glass topbar
-    setTimeout(initLiquidGlass, 200);
-
-    // Footer menu
-    const footerMenu = new FooterMenu({
-      onActividades: () => console.log('Actividades'),
-      onHome:        () => console.log('Home'),
-      onSocial:      () => console.log('Social'),
-    });
-    footerMenu.animateIn();
-
-    // Pulse spring universal
-    setTimeout(initWpTap, 400);
-
-    // Forzar status bar icons oscuros (negros)
-    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-      // Esperar a que Capacitor inicialice completamente antes de setear el style
-      // Capacitor 7 — usar SystemBars si está disponible, sino StatusBar
-      const setDarkIcons = () => {
-        try {
-          if (window.Capacitor.Plugins.SystemBars) {
-            window.Capacitor.Plugins.SystemBars.setStyle({ style: 'LIGHT' });
+      // Listeners de tags
+      body.querySelectorAll('.wp-pm-tag-item').forEach(btn => {
+        btn.onclick = () => {
+          const key     = btn.dataset.key;
+          const already = btn.dataset.already === 'true';
+          if (already) {
+            // Toggle remove
+            if (session.includes('__remove__' + key)) {
+              session = session.filter(k => k !== '__remove__' + key);
+              btn.className = 'wp-pm-tag-item already-done';
+            } else {
+              session.push('__remove__' + key);
+              btn.className = 'wp-pm-tag-item';
+            }
           } else {
-            window.Capacitor.Plugins.StatusBar.setStyle({ style: 'LIGHT' });
+            if (session.includes(key)) {
+              session = session.filter(k => k !== key);
+              btn.className = 'wp-pm-tag-item';
+            } else {
+              if (session.filter(k => !k.startsWith('__remove__')).length >= remaining) {
+                window.wpApp?.showMapToast?.('Máximo ' + remaining + ' etiquetas', '#ff9f0a');
+                return;
+              }
+              session.push(key);
+              btn.className = 'wp-pm-tag-item selected';
+            }
           }
-        } catch(e) {}
-      };
-      // Aplicar inmediatamente y con delay para asegurar que Capacitor esté listo
-      setDarkIcons();
-      setTimeout(setDarkIcons, 300);
-      setTimeout(setDarkIcons, 800);
-      // Reforzar cada vez que la app vuelve al frente
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') setDarkIcons();
+          updateCTA();
+        };
       });
-      // Listener nativo de Capacitor
-      try {
-        window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
-          if (state.isActive) setDarkIcons();
-        });
-      } catch(e) {}
-    }
-
-    await waitForMapLibre();
-    console.log('✅ MapLibre listo');
-
-    await loadConfig();
-    initSupabase();
-
-    AuthService.onAuthChange(async (event, user) => {
-      console.log('🔐 Auth:', event, user?.email || 'sin sesión');
-      window.wpApp.currentUser = user;
-      appState.setUser(user);
-      // No tocar el avatar si la búsqueda está activa
-      var sb = window.wpApp && window.wpApp.searchBar;
-      if (!sb || !sb.isActive()) {
-        await renderAuthButton(user);
-        animateAvatarSwap(document.getElementById('topbar-auth-btn'));
-      }
-      if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
-      if (!user && window.wpApp.superPanel) {
-        window.wpApp.superPanel.unmount();
-        window.wpApp.superPanel = null;
-        window.wpApp._cachedAvatarUrl = '';
-        appState.clearUser();
-      }
-    });
-
-    console.log('🗺️ Creando MapView...');
-    const mv = new MapView();
-    window.wpApp.mapView = mv;
-    // onPlaceSelect se asigna en Promise.all cuando PlaceModal está listo
-    console.log('✅ MapView creado');
-
-    const authModal = new AuthModal({
-      onAuthSuccess: async (user) => {
-        window.wpApp.currentUser = user;
-        await renderAuthButton(user);
-        if (isSuperUser(user?.id)) mountSuperPanel(mv);
-      },
-    });
-    window.wpApp.authModal = authModal;
-
-    setupTopBar(authModal);
-    setupActivitySubscription(mv);
-    // No renderizar null — dejar skeleton hasta que auth resuelva
-
-    // Esperar mapa + categorías juntos antes de crear SubcategoryRow.
-    // Así los skeletons de ambas filas desaparecen al mismo tiempo, sin colapso.
-    const mapReady  = new Promise(resolve => mv.getMap().on('load', resolve));
-    const catsReady = renderMapCategories();
-
-    Promise.all([mapReady, catsReady]).then(() => {
-      // Panel ya visible desde el HTML — solo hacer setup de categorías
-      setupCategories(mv);
-
-      // PlaceModal — bottom sheet de detalles
-      const placeModal = new PlaceModal({
-        proxyPhoto: function(url) {
-          return url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null;
-        },
-        getCurrentUser: function() { return window.wpApp.currentUser; }
-      });
-      window.wpApp.placeModal = placeModal;
-
-      // Al tocar la minicard → abrir el modal de detalles
-      mv.onPlaceSelect = function(place) {
-        // Calcular offset según el espacio ocupado por mini snap o panel
-        var msEl      = document.getElementById('wp-minisnap-panel');
-        var msVisible = msEl && msEl.style.transform === 'translateY(0)';
-        var bottomOccupied = 84 + (msVisible ? (msEl.offsetHeight || 156) : 0);
-        // Centrar el pin en el área visible sobre el panel/minisnap
-        var screenH  = window.innerHeight;
-        var topH     = 90; // topbar aprox
-        var visibleH = screenH - topH - bottomOccupied;
-        // offset Y positivo → el centro del mapa se mueve abajo → el pin sube en pantalla
-        var offsetY  = Math.round((bottomOccupied - topH) / 2);
-
-        var coords = place.geometry?.location;
-        if (coords) {
-          var lat = typeof coords.lat === 'function' ? coords.lat() : coords.lat;
-          var lng = typeof coords.lng === 'function' ? coords.lng() : coords.lng;
-          if (lat && lng) {
-            mv.map.easeTo({
-              center:   [lng, lat],
-              offset:   [0, offsetY],
-              duration: 380,
-              easing:   function(t){ return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2); }
-            });
-          }
-        }
-        placeModal.showMini(place);
-      };
-      mv.onMiniCardTap = function(place) {
-        placeModal.show(place);
-      };
-      const subcatRow = new SubcategoryRow({
-        map: mv.getMap(),
-        onSubcatSelect: (value) => filterBySubcat(mv, value),
-      });
-      window.wpApp.subcatRow = subcatRow;
-
-      // SearchBar — se crea aquí para tener acceso a mv y categories
-      const searchBar = new SearchBar({
-        mapView: mv,
-        getCategories: function() { return window.wpApp._categories || []; },
-        onCategorySelect: function(catKey) {
-          // Simular tap en el chip de categoría correspondiente
-          const container = document.getElementById('map-categories-footer');
-          if (!container) return;
-          const chip = container.querySelector('[data-menu-key="' + catKey + '"]');
-          if (chip) chip.click();
-        }
-      });
-      window.wpApp.searchBar = searchBar;
-
-      // Pill buscar — ahora el topbar-right-chip activa la searchbar
-      const searchBtn = document.getElementById('topbar-right-chip');
-      if (searchBtn) {
-        searchBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          if (!searchBar.isActive()) searchBar.activate();
-        });
-      }
-
-      // +Actividad — función próximamente
-      const actBtn = document.getElementById('topbar-activity-btn');
-      if (actBtn) {
-        actBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          console.log('+ Actividad — próximamente');
-        });
-      }
-
-      // Mensajes — función próximamente
-      const msgBtn = document.getElementById('topbar-messages-btn');
-      if (msgBtn) {
-        msgBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          console.log('Mensajes — próximamente');
-        });
-      }
-    });
-
-    // Trackear altura del teclado globalmente — antes de que Capacitor lo cierre
-    window._wpLastKbH = 0;
-    window._wpVvHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', function() {
-        var vvH = window.visualViewport.height;
-        var kbH = Math.max(0, window.innerHeight - vvH);
-        window._wpVvHeight = vvH;
-        window._wpLastKbH  = kbH;
-      });
-    }
-    // También trackear con focusin/focusout
-    document.addEventListener('focusin', function(e) {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-        // Teclado va a abrirse — marcar flag
-        window._wpKeyboardWasOpen = true;
-      }
-    }, true);
-    document.addEventListener('focusout', function(e) {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-        // Teclado va a cerrarse
-        setTimeout(function() { window._wpKeyboardWasOpen = false; }, 500);
-      }
-    }, true);
-
-    // ── Cerrar minicard al abrir teclado — múltiples métodos ──────────
-    var _forceCloseMiniCard = function() {
-      var mv = window.wpApp && window.wpApp.mapView;
-      if (!mv) return;
-      if (typeof mv._closeMiniCard === 'function') {
-        mv._closeMiniCard();
-      } else if (mv.miniCardMarker) {
-        var w = mv.miniCardMarker.getElement();
-        if (w && w._savedPinHTML !== undefined) {
-          w.style.width = '44px'; w.style.height = '44px';
-          w.style.overflow = 'visible'; w.style.zIndex = '';
-          w.style.marginTop = ''; w.innerHTML = w._savedPinHTML;
-          delete w._savedPinHTML;
-        }
-        mv.miniCardMarker    = null; mv.miniCardIndex     = -1;
-        mv.miniCardPlace     = null; mv._miniCardPinRoot  = null;
-        mv._miniCardMarkerEl = null;
-      }
     };
 
-    // Método 1: visualViewport resize (Chrome)
-    if (window.visualViewport) {
-      var _lastKbH = 0;
-      window.visualViewport.addEventListener('resize', function() {
-        var kbH = window.innerHeight - window.visualViewport.height;
-        if (kbH > 100 && _lastKbH <= 100) _forceCloseMiniCard();
-        _lastKbH = kbH;
-      });
-    }
+    renderBody();
+    updateCTA();
 
-    // Método 2: focus en cualquier input (WebView y Chrome)
-    document.addEventListener('focusin', function(e) {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-        // Pequeño delay para que el teclado empiece a subir
-        setTimeout(_forceCloseMiniCard, 50);
-        setTimeout(_forceCloseMiniCard, 200); // doble seguridad
+    const closeSheet = () => {
+      menu.classList.remove('open','expanded');
+      overlay.classList.remove('open');
+      setTimeout(() => {
+        menu.style.display='none'; overlay.style.display='none'; session=[];
+      }, 320);
+    };
+
+    const closeBtn = document.getElementById('wp-pm-tag-close');
+    if (closeBtn) closeBtn.onclick = closeSheet;
+    overlay.onclick = closeSheet;
+
+    saveBtn.onclick = async () => {
+      if (!session.length) return;
+      for (const key of session) {
+        try {
+          if (key.startsWith('__remove__')) {
+            await PlaceTagService.removeTag(place, key.replace('__remove__',''), user.id);
+          } else {
+            await PlaceTagService.addTag(place, key, user.id);
+          }
+        } catch(err) { window.wpApp?.showMapToast?.(err.message||'Error','#ff3b30'); }
       }
-    }, true);
+      const added = session.filter(k => !k.startsWith('__remove__')).length;
+      if (added > 0) window.wpApp?.showMapToast?.('✓ Etiquetas guardadas','#34c759');
+      closeSheet();
+      this._populateServices(place);
+    };
 
-    // Método 3: polling activo cuando hay minicard abierta (WebView fallback)
-    setInterval(function() {
-      var mv = window.wpApp && window.wpApp.mapView;
-      if (!mv || !mv.miniCardMarker) return;
-      var vv  = window.visualViewport;
-      var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
-      if (kbH > 100) _forceCloseMiniCard();
-    }, 100);
-
-    console.log('✅ WhatsPlan listo');
-  } catch(err) {
-    console.error('❌ Error crítico:', err.message, err.stack);
+    overlay.style.display = '';
+    menu.style.display    = '';
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+      menu.classList.add('open');
+    });
   }
-})();
+  _onAddPhoto() {
+    console.log('Añadir foto:', this._place?.name);
+    // TODO: implementar flujo de subida de foto
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────
+
+  _isOpenNow(place) {
+    const oh = place.regularOpeningHours;
+    if (!oh || !oh.periods || !oh.periods.length) return null;
+    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+    return oh.periods.some(p => {
+      if (!p.open || !p.close || p.open.day !== day) return false;
+      const o = p.open.hour * 60 + (p.open.minute || 0);
+      const c = p.close.hour * 60 + (p.close.minute || 0);
+      return mins >= o && mins < c;
+    });
+  }
+
+  // ── Styles ────────────────────────────────────────────────────────
+
+  _injectStyles() {
+    if (document.getElementById('wp-pm-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'wp-pm-styles';
+    s.textContent = `
+      /* ── Mini Snap panel fijo ── */
+      .wp-minisnap-panel:active { filter:brightness(0.97); }
+      #wp-ms-cta-btn:active { filter:brightness(0.8) !important; transform:scale(0.96); }
+
+      /* ── Mini Snap — estilo panel flotante del mapa ── */
+      .wp-pm-minisnap {
+        display:none; flex-direction:column; overflow:hidden;
+      }
+      .wp-pm-minisnap.active { display:flex; }
+
+      /* Drag hint */
+      .wp-pm-minisnap-hint {
+        display:flex; align-items:center; justify-content:center;
+        gap:4px; padding:10px 0 4px;
+        font-size:10px; color:#9ca3af; letter-spacing:0.05em;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-minisnap-hint::before, .wp-pm-minisnap-hint::after {
+        content:''; flex:1; height:0.5px; background:#e5e7eb;
+      }
+
+      /* Foto hero con gradiente */
+      .wp-pm-ms-hero {
+        position:relative; height:120px; overflow:hidden;
+        border-radius:20px; margin:0 14px 12px; flex-shrink:0;
+      }
+      .wp-pm-ms-hero-img {
+        width:100%; height:100%; object-fit:cover;
+        border-radius:20px;
+      }
+      .wp-pm-ms-hero-overlay {
+        position:absolute; inset:0; border-radius:20px;
+        background:linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%);
+      }
+      .wp-pm-ms-hero-badges {
+        position:absolute; bottom:10px; left:12px; right:12px;
+        display:flex; align-items:center; gap:6px;
+      }
+      .wp-pm-ms-status {
+        font-size:11px; font-weight:700; padding:3px 8px;
+        border-radius:999px; backdrop-filter:blur(8px);
+        -webkit-backdrop-filter:blur(8px);
+      }
+      .wp-pm-ms-status.open   { background:rgba(22,163,74,0.85); color:#fff; }
+      .wp-pm-ms-status.closed { background:rgba(239,68,68,0.85);  color:#fff; }
+      .wp-pm-ms-status.nohours{ background:rgba(0,0,0,0.45);       color:#fff; }
+      .wp-pm-ms-rating-badge {
+        margin-left:auto;
+        font-size:11px; font-weight:800; color:#fff;
+        background:rgba(0,0,0,0.45); backdrop-filter:blur(8px);
+        padding:3px 8px; border-radius:999px;
+      }
+
+      /* Info row */
+      .wp-pm-ms-inforow {
+        display:flex; align-items:flex-start; gap:10px;
+        padding:0 16px 10px;
+      }
+      .wp-pm-ms-texts { flex:1; min-width:0; }
+      .wp-pm-minisnap-name {
+        font-size:16px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        font-family:'Roboto',system-ui,sans-serif;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
+      .wp-pm-minisnap-meta {
+        font-size:12px; color:#6b7280; margin-top:2px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-minisnap-save {
+        width:36px; height:36px; border-radius:50%; border:1px solid #e5e7eb;
+        background:#fff; display:flex; align-items:center; justify-content:center;
+        color:#9ca3af; flex-shrink:0; cursor:pointer;
+        -webkit-tap-highlight-color:transparent; transition:all 0.2s ease;
+        box-shadow:0 2px 8px rgba(0,0,0,0.06);
+      }
+      .wp-pm-minisnap-save.saved { color:#ef4444; border-color:#fecaca; background:#fff5f5; }
+
+      /* Tags rápidos */
+      .wp-pm-ms-tags {
+        display:flex; gap:6px; padding:0 16px 12px; flex-wrap:wrap;
+      }
+      .wp-pm-ms-tag {
+        font-size:11px; font-weight:600; color:#4b5563;
+        background:#f4f4f6; padding:4px 10px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        border:1px solid #e5e7eb;
+      }
+
+      /* CTA */
+      .wp-pm-minisnap-cta {
+        display:flex; align-items:center; justify-content:space-between;
+        margin:0 14px; padding:12px 16px; border-radius:16px;
+        background:#0a0a0a; color:#fff; border:none; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s ease, filter 0.15s;
+      }
+      .wp-pm-minisnap-cta:active { transform:scale(0.98); filter:brightness(0.88); }
+      .wp-pm-ms-cta-label {
+        font-size:14px; font-weight:700;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-cta-sub {
+        font-size:11px; opacity:0.7;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-ms-cta-arrow {
+        font-size:18px; opacity:0.9;
+      }
+
+      /* ── Modal wrapper ── */
+      .wp-pm {
+        position:fixed; inset:0; z-index:9998;
+        display:flex; flex-direction:column;
+        pointer-events:none;
+      }
+      .wp-pm-hidden { display:none !important; }
+      .wp-pm.wp-pm-visible { pointer-events:all; }
+
+      .wp-pm-backdrop { display:none; }
+
+      /* Card ocupa toda la pantalla pero el top es transparente */
+      .wp-pm-card {
+        position:absolute; inset:0;
+        display:flex; flex-direction:column;
+        overflow:hidden;
+        transform:translateY(100%);
+        will-change:transform;
+        font-family:'Roboto',system-ui,sans-serif;
+        /* Sin background en la card — el topbar y body tienen su propio bg */
+        background:transparent;
+      }
+
+      /* Shadow handled in app.css */
+
+      /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
+      .wp-pm-topbar {
+        position:absolute;
+        top:0; left:0; right:0;
+        padding-top:calc(12px + env(safe-area-inset-top, 0px));
+        padding-left:12px; padding-right:12px; padding-bottom:0;
+        display:flex; align-items:center; gap:8px;
+        pointer-events:auto;
+        z-index:2;
+        background:transparent;
+      }
+      /* Sombra azul manejada por ion-app::before en app.css */
+      /* Botones topbar: 44px como chips del sistema */
+      .wp-pm-tb-btn {
+        width:44px; height:44px; border-radius:9999px; flex-shrink:0;
+        border:none;
+        background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(238,244,255,0.90) 100%);
+        backdrop-filter:blur(20px) saturate(2);
+        -webkit-backdrop-filter:blur(20px) saturate(2);
+        box-shadow:0 4px 14px rgba(0,0,0,0.09),0 1px 3px rgba(0,0,0,0.05),inset 0 -1px 0 rgba(0,0,0,0.04);
+        display:flex; align-items:center; justify-content:center;
+        color:#374151; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm-tb-btn:active { transform:scale(0.92); }
+      /* Nombre centrado en topbar — superpuesto, aparece al scrollear */
+      .wp-pm-tb-title {
+        position:absolute; inset:0;
+        display:flex; align-items:center; justify-content:center;
+        font-size:16px; font-weight:700; color:#111;
+        font-family:'Yahoo Sans Bold Regular','Roboto',system-ui,sans-serif;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        padding:0 8px;
+        -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
+        paint-order: stroke fill;
+        letter-spacing:-0.01em;
+        opacity:0; transform:translateY(6px);
+        transition:opacity 0.22s ease, transform 0.22s ease;
+        pointer-events:none;
+      }
+
+      /* Fondo blanco difuminado detrás del carousel —
+         sube desde el panel y se pierde hacia la sombra azul del top */
+      .wp-pm-hero::before {
+        content:'';
+        position:absolute; inset:0;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0)    0%,
+          rgba(255,255,255,0.5)  8%,
+          rgba(255,255,255,0.85) 22%,
+          rgba(255,255,255,0.97) 38%,
+          rgba(255,255,255,1)    52%);
+        z-index:0;
+        pointer-events:none;
+      }
+
+      .wp-pm-carousel { position:relative; z-index:1; }
+      .wp-pm-dots     { z-index:2; }
+
+
+      /* ── Hero peek carousel — portrait, 2 slides + peek 3a ── */
+      .wp-pm-hero {
+        position:absolute;
+        top:calc(env(safe-area-inset-top, 0px) + 68px);
+        left:0; right:0;
+        height:240px;
+        overflow:hidden; background:transparent;
+        z-index:1;
+        /* padding top separa del topbar, padding bottom separa del panel */
+        padding:14px 0 18px;
+      }
+      /* Carousel track */
+      .wp-pm-carousel {
+        display:flex; align-items:center;
+        height:100%;
+        will-change:transform;
+      }
+      /* Slide portrait */
+      .wp-pm-slide {
+        min-width:44%; height:100%;
+        border-radius:22px;
+        background:center/cover no-repeat #e2e8f0;
+        flex-shrink:0; margin:0 4px;
+        overflow:hidden; position:relative;
+        /* Sombra interior que une foto con borde */
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.18),
+          inset 0 -40px 40px -20px rgba(0,0,0,0.18);
+      }
+      /* Vignette + saturación sobre cada slide */
+      .wp-pm-slide::after {
+        content:'';
+        position:absolute; inset:0; border-radius:22px;
+        background:radial-gradient(
+          ellipse at center,
+          rgba(0,0,0,0)    45%,
+          rgba(0,0,0,0.22) 100%
+        );
+        pointer-events:none; z-index:1;
+      }
+      /* Boost de color en la imagen */
+      .wp-pm-slide-img {
+        width:100%; height:100%; object-fit:cover;
+        opacity:0; transition:opacity 0.3s ease;
+        position:absolute; inset:0;
+        filter:contrast(1.05) saturate(1.12);
+      }
+      .wp-pm-slide-img.loaded { opacity:1; }
+      @keyframes wp-skeleton-shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position:  200% 0; }
+      }
+      .wp-pm-slide-skeleton {
+        background: linear-gradient(90deg,
+          #e8eaed 25%, #f3f4f6 50%, #e8eaed 75%);
+        background-size: 200% 100%;
+        animation: wp-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      /* Cuadro añadir foto */
+      .wp-pm-slide-add {
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center; gap:8px;
+        background:rgba(0,0,0,0.04);
+        border:1.5px dashed rgba(0,0,0,0.18);
+        color:#8e8e93; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s, border-color 0.15s;
+      }
+      .wp-pm-slide-add:active { background:rgba(0,0,0,0.08); }
+      .wp-pm-slide-add span {
+        font-size:11px; font-weight:600;
+        font-family:'Roboto',system-ui,sans-serif;
+        letter-spacing:0.02em;
+      }
+      .wp-pm-slide-placeholder {
+        display:flex; align-items:center; justify-content:center;
+        font-size:64px; background:#f1f5f9;
+        transform:scale(1) !important; opacity:1 !important;
+      }
+      /* Foto única: ocupa ancho de 2 slides, centrada */
+      .wp-pm-carousel.single-photo {
+        justify-content:center;
+      }
+      .wp-pm-carousel.single-photo .wp-pm-slide {
+        min-width:88%;
+        margin:0 4px;
+      }
+
+      /* Dots */
+      .wp-pm-dots {
+        position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+        display:flex; gap:5px; align-items:center;
+      }
+      .wp-pm-dot {
+        width:5px; height:5px; border-radius:9999px;
+        background:#cbd5e1; cursor:pointer;
+        transition:all 0.2s ease;
+      }
+      .wp-pm-dot.active { background:#1c1c1e; width:14px; }
+
+      /* ── Body ── */
+      .wp-pm-body {
+        position:absolute;
+        top:calc(env(safe-area-inset-top, 0px) + 308px);
+        left:0; right:0; bottom:0;
+        overflow-y:auto; overflow-x:clip;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+        background:#fff;
+        border-radius:0;
+        padding-top:20px;
+        padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));
+      }
+      .wp-pm-body::-webkit-scrollbar { display:none; }
+      .wp-pm-handle { display:none; }
+      /* Sombra fija encima del body — elemento hermano, no ::before */
+      .wp-pm-top-fade {
+        position:absolute;
+        top:calc(env(safe-area-inset-top, 0px) + 308px);
+        left:0; right:0;
+        height:36px;
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,1)   0%,
+          rgba(255,255,255,0)   100%);
+        z-index:20;
+        pointer-events:none;
+      }
+
+      /* ── AI Description block ── */
+      .wp-pm-ai-block {
+        margin:0 20px 16px;
+        padding:0;
+        background:transparent;
+        border:none;
+        display:flex; flex-direction:column; gap:8px;
+      }
+      .wp-pm-ai-header {
+        display:flex; align-items:center; gap:8px;
+      }
+      .wp-pm-ai-icon {
+        flex-shrink:0; color:#1c1c1e;
+        transition:color 0.3s ease;
+        filter:drop-shadow(0 0 6px rgba(28,28,30,0.4));
+      }
+      .wp-pm-ai-badge {
+        font-size:10px; font-weight:700;
+        letter-spacing:0.04em; text-transform:uppercase;
+        color:#000000;
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        border:1px solid rgba(180,180,180,0.5);
+        padding:3px 9px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        box-shadow:0 2px 6px rgba(28,28,30,0.15);
+      }
+      @keyframes wp-ai-pulse {
+        0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+        50%  { color:#818cf8; filter:drop-shadow(0 0 10px rgba(129,140,248,0.7)); }
+        100% { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+      }
+      .wp-pm-ai-pulse {
+        animation: wp-ai-pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes wp-ai-fadein {
+        from { opacity:0; transform:translateY(4px); }
+        to   { opacity:1; transform:translateY(0); }
+      }
+      .wp-pm-ai-text {
+        font-size:14px; line-height:1.6; color:#3a3a3c;
+        font-family:'Roboto',system-ui,sans-serif;
+        font-weight:400; font-style:normal;
+        animation: wp-ai-fadein 0.4s ease both;
+      }
+
+      /* ── Nombre + badges ── */
+      .wp-pm-header-row {
+        display:flex; flex-direction:column; gap:2px;
+        padding:0 20px 2px;
+      }
+      .wp-pm-badges-top {
+        display:flex; align-items:center; gap:6px; min-height:0;
+        justify-content:space-between;
+      }
+      .wp-pm-badges-actions {
+        display:flex; align-items:center; gap:4px; margin-left:auto;
+      }
+      .wp-pm-title-row {
+        display:flex; align-items:center; gap:8px;
+      }
+      .wp-pm-name {
+        font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
+        font-family:'Roboto',system-ui,sans-serif;
+        line-height:1.05; letter-spacing:-0.03em;
+      }
+      .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
+      .wp-pm-featured-badge {
+        font-size:10px; font-weight:700; padding:3px 8px;
+        border-radius:9999px; white-space:nowrap;
+        letter-spacing:0.01em;
+      }
+      .wp-pm-badge-featured {
+        background:linear-gradient(135deg,#fef3c7,#fde68a);
+        color:#92400e; border:1px solid rgba(253,230,138,0.6);
+        box-shadow:0 2px 6px rgba(251,191,36,0.25);
+      }
+      .wp-pm-badge-verified {
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        color:#111111; border:1px solid rgba(180,180,180,0.6);
+        box-shadow:0 2px 6px rgba(28,28,30,0.20);
+      }
+      .wp-pm-badge-premium {
+        background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
+        color:#6b21a8; border:1px solid rgba(216,180,254,0.6);
+        box-shadow:0 2px 6px rgba(168,85,247,0.22);
+      }
+
+      /* Featured encima del pill — posición absoluta */
+      .wp-pm-tb-center .wp-pm-featured-badge {
+        position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+        z-index:10; white-space:nowrap; pointer-events:none;
+        box-shadow:0 2px 8px rgba(0,0,0,0.10);
+      }
+
+      /* Open / closed */
+      .wp-pm-badges-top {
+        display:flex; align-items:center; gap:6px; min-height:0;
+      }
+      .wp-pm-open-badge {
+        display:inline-flex; align-items:center; gap:5px;
+        font-size:11px; font-weight:600;
+        padding:3px 9px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        letter-spacing:0.01em;
+      }
+      .wp-pm-nohours-badge {
+        display:inline-flex; align-items:center;
+        font-size:11px; font-weight:600;
+        padding:3px 9px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        background:rgba(118,118,128,0.12);
+        color:#8e8e93;
+        border:1px solid rgba(118,118,128,0.18);
+        box-shadow:0 1px 4px rgba(0,0,0,0.06);
+      }
+      .wp-pm-open-badge.is-open {
+        background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));
+        color:#15803d; border:1px solid rgba(52,199,89,0.25);
+        box-shadow:0 1px 4px rgba(52,199,89,0.15);
+      }
+      .wp-pm-open-badge.is-closed {
+        background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));
+        color:#c0392b; border:1px solid rgba(255,59,48,0.20);
+        box-shadow:0 1px 4px rgba(255,59,48,0.12);
+      }
+      .wp-pm-open-dot {
+        width:6px; height:6px; border-radius:50%; flex-shrink:0;
+      }
+      @keyframes wp-dot-pulse {
+        0%,100% { transform:scale(1);   opacity:1; }
+        50%      { transform:scale(1.5); opacity:0.6; }
+      }
+      .is-open  .wp-pm-open-dot {
+        background:#34c759;
+        box-shadow:0 0 5px rgba(52,199,89,0.6);
+        animation:wp-dot-pulse 1.8s ease-in-out infinite;
+      }
+      .is-closed .wp-pm-open-dot {
+        background:#ff3b30;
+        box-shadow:0 0 5px rgba(255,59,48,0.5);
+      }
+
+      /* Etiquetar chip */
+      .wp-pm-tag-chip {
+        display:inline-flex; align-items:center;
+        font-size:11px; font-weight:700; color:#000000;
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        border:1px solid rgba(180,180,180,0.5);
+        padding:3px 10px; border-radius:999px; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        letter-spacing:0.01em;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
+        box-shadow:0 2px 6px rgba(28,28,30,0.18);
+      }
+      .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
+      /* Save button */
+      .wp-pm-save-btn {
+        width:38px; height:38px; border-radius:9999px; flex-shrink:0;
+        border:1px solid rgba(0,0,0,0.1);
+        background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(238,244,255,0.88));
+        display:flex; align-items:center; justify-content:center;
+        color:#9ca3af; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        box-shadow:0 2px 8px rgba(0,0,0,0.08);
+        position:relative;
+      }
+      .wp-pm-save-btn:active { transform:scale(0.88); }
+      .wp-pm-save-btn svg path { transition:fill 0.2s ease, stroke 0.2s ease; }
+      .wp-pm-save-btn.saved { color:#ef4444; }
+      .wp-pm-save-btn.saved svg path { fill:#ef4444; stroke:#ef4444; }
+      .wp-pm-save-tooltip {
+        display:none; position:fixed;
+        bottom:calc(24px + env(safe-area-inset-bottom,0px));
+        left:50%; transform:translateX(-50%);
+        background:#1c1c1e; color:#fff;
+        font-size:13px; font-weight:500; white-space:nowrap;
+        padding:10px 18px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        pointer-events:none; z-index:99999;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25);
+      }
+      .wp-pm-save-tooltip.show {
+        display:block;
+        animation:wp-toast-in 0.28s cubic-bezier(0.34,1.2,0.64,1) both;
+      }
+      .wp-pm-save-tooltip.hide {
+        animation:wp-toast-out 0.22s ease forwards;
+      }
+      @keyframes wp-toast-in {
+        from { opacity:0; transform:translateX(-50%) translateY(12px); }
+        to   { opacity:1; transform:translateX(-50%) translateY(0); }
+      }
+      @keyframes wp-toast-out {
+        from { opacity:1; transform:translateX(-50%) translateY(0); }
+        to   { opacity:0; transform:translateX(-50%) translateY(8px); }
+      }
+
+      /* ── More menu ── */
+      .wp-pm-more-overlay {
+        position:absolute; inset:0; z-index:300;
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(2px);
+        -webkit-backdrop-filter:blur(2px);
+      }
+      .wp-pm-more-menu {
+        position:absolute; left:12px; right:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        z-index:301;
+        background:rgba(255,255,255,0.96);
+        backdrop-filter:blur(24px) saturate(1.8);
+        -webkit-backdrop-filter:blur(24px) saturate(1.8);
+        border-radius:24px;
+        padding:8px 0 4px;
+        box-shadow:0 8px 40px rgba(0,0,0,0.18);
+        transform:translateY(110%);
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+      }
+      .wp-pm-more-menu.open {
+        transform:translateY(0);
+      }
+      .wp-pm-more-handle {
+        width:36px; height:4px; border-radius:2px;
+        background:rgba(0,0,0,0.15); margin:0 auto 8px;
+      }
+      .wp-pm-more-item {
+        width:100%; display:flex; align-items:center; gap:14px;
+        padding:14px 20px; border:none; background:transparent;
+        font-size:15px; font-weight:500; color:#1c1c1e;
+        font-family:'Roboto',system-ui,sans-serif;
+        cursor:pointer; text-align:left;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s;
+      }
+      .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
+      .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
+      /* ── Tag modal — idéntico al more-menu ── */
+      .wpt-overlay {
+        position:fixed; inset:0; z-index:9998;
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+      }
+      .wpt-float {
+        position:fixed; left:12px; right:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        z-index:9999;
+        background:rgba(255,255,255,0.97);
+        backdrop-filter:blur(24px) saturate(1.8);
+        -webkit-backdrop-filter:blur(24px) saturate(1.8);
+        border-radius:24px;
+        box-shadow:0 8px 40px rgba(0,0,0,0.18);
+        transform:translateY(110%);
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+        max-height:65vh; min-height:360px; display:flex; flex-direction:column;
+        overflow:hidden;
+      }
+      .wpt-float.open { transform:translateY(0); }
+
+      /* Header iOS */
+      .wpt-float-top {
+        display:flex; align-items:center; gap:11px;
+        padding:16px 14px 14px; flex-shrink:0; z-index:2;
+        background:rgba(255,255,255,0.97);
+        box-shadow:0 6px 14px rgba(0,0,0,0.07);
+      }
+      .wpt-float-icon {
+        width:42px; height:42px; border-radius:11px; flex-shrink:0;
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        display:flex; align-items:center; justify-content:center; color:#0a0a0a;
+        box-shadow:0 2px 8px rgba(10,10,10,0.18);
+      }
+      .wpt-float-titles {
+        flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
+      }
+      .wpt-float-title {
+        font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        font-family:'Roboto',system-ui,sans-serif; letter-spacing:-0.02em;
+      }
+      .wpt-float-sub {
+        font-size:12px; font-weight:500; color:#8e8e93;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpt-x-btn {
+        width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
+        background:rgba(0,0,0,0.08); color:#6b7280;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s;
+      }
+      .wpt-x-btn:active { background:rgba(0,0,0,0.16); }
+
+      /* Body wrap ocupa todo el espacio restante incluyendo el área del footer */
+      .wpt-tag-body-wrap {
+        flex:1; position:relative; min-height:0; overflow:hidden;
+      }
+      .wpt-tag-body {
+        position:absolute; inset:0;
+        overflow-y:auto; overflow-x:clip;
+        padding:8px 16px 80px;
+        scrollbar-width:none; box-sizing:border-box;
+        -webkit-overflow-scrolling:touch;
+      }
+      .wpt-tag-body::-webkit-scrollbar { display:none; }
+      .wpt-fade-top {
+        position:absolute; top:0; left:0; right:0; height:28px;
+        background:linear-gradient(to bottom,rgba(255,255,255,0.97),rgba(255,255,255,0));
+        z-index:2; pointer-events:none;
+      }
+      .wpt-fade-bot {
+        position:absolute; bottom:0; left:0; right:0; height:88px;
+        background:linear-gradient(to top,rgba(255,255,255,1) 55%,rgba(255,255,255,0));
+        z-index:2; pointer-events:none;
+      }
+
+      /* Footer con CTA siempre visible */
+      .wpt-float-footer {
+        position:absolute; bottom:0; left:0; right:0;
+        padding:16px 16px 18px;
+        background:transparent;
+        pointer-events:none; z-index:3;
+      }
+      .wpt-float-footer .wpt-cta-btn { pointer-events:auto; }
+      .wpt-cta-btn {
+        width:100%; height:48px; border-radius:999px; border:none;
+        background:rgba(0,0,0,0.06); color:#8e8e93;
+        font-size:15px; font-weight:600; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        display:flex; align-items:center; justify-content:center; gap:10px;
+        -webkit-tap-highlight-color:transparent;
+        transition:background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .wpt-cta-btn.active {
+        background:#0a0a0a; color:#fff;
+        box-shadow:0 6px 18px rgba(10,10,10,0.35);
+      }
+      .wpt-cta-btn:active { filter:brightness(0.92); }
+      .wpt-cta-label { transition:none; }
+
+      /* Badge contador */
+      @keyframes wpt-pop {
+        0%   { transform:scale(1); }
+        50%  { transform:scale(1.5); }
+        100% { transform:scale(1); }
+      }
+      .wpt-cta-badge {
+        min-width:22px; height:22px; border-radius:999px;
+        background:rgba(255,255,255,0.28);
+        font-size:12px; font-weight:800;
+        display:inline-flex; align-items:center; justify-content:center;
+        padding:0 6px; line-height:1;
+      }
+      .wpt-cta-badge.pop { animation:wpt-pop 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+
+      .wpt-cat-label {
+        font-size:13px; font-weight:700; color:#0a0a0a;
+        margin:14px 0 8px; line-height:1.3;
+        font-family:'Roboto',system-ui,sans-serif;
+        display:block;
+      }
+      .wpt-cat-label:first-child { margin-top:4px; }
+      .wpt-chip-row {
+        display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;
+      }
+
+      /* Chip individual */
+      .wp-pm-tag-item {
+        display:inline-flex; align-items:center; gap:6px;
+        padding:6px 13px 6px 10px; border-radius:999px;
+        border:1.5px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; cursor:pointer;
+        font-size:12.5px; font-weight:600; color:#1c1c1e; line-height:1.4;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.14s ease; white-space:nowrap;
+      }
+      .wp-pm-tag-item:active { transform:scale(0.94); }
+      .wp-pm-tag-item.selected {
+        background:#0a0a0a; border-color:#0a0a0a; color:#fff;
+        box-shadow:0 2px 8px rgba(10,10,10,0.28);
+      }
+      .wp-pm-tag-item.already-done {
+        background:rgba(52,199,89,0.10);
+        border-color:rgba(52,199,89,0.35); color:#15803d;
+      }
+      .wp-pm-tag-icon {
+        font-size:14px; line-height:1; flex-shrink:0;
+      }
+      .wp-pm-tag-item-label { line-height:1.2; }
+
+      .wpt-show-more { display:none; }
+
+
+      /* ── Review modal ── */
+      .wpr-header { padding:4px 20px 12px; }
+      .wpr-title {
+        display:block; font-size:16px; font-weight:700; color:#0a0a0a;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-sub {
+        display:block; font-size:12px; color:#8e8e93; margin-top:2px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-stars {
+        display:flex; justify-content:center; gap:8px;
+        padding:8px 0 4px;
+      }
+      .wpr-star {
+        font-size:36px; color:#d1d5db; cursor:pointer;
+        transition:color 0.15s, transform 0.15s;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wpr-star.active { color:#f59e0b; }
+      .wpr-star:active { transform:scale(0.88); }
+      .wpr-star-label {
+        text-align:center; font-size:12px; color:#8e8e93;
+        font-family:'Roboto',system-ui,sans-serif;
+        margin-bottom:12px;
+      }
+      .wpr-textarea {
+        width:100%; height:100px; border-radius:14px;
+        border:1px solid rgba(0,0,0,0.10);
+        background:#f9f9f9; padding:12px 14px;
+        font-size:14px; font-family:'Roboto',system-ui,sans-serif;
+        color:#0a0a0a; resize:none; box-sizing:border-box;
+        outline:none;
+      }
+      .wpr-textarea:focus { border-color:rgba(0,0,0,0.25); }
+      .wpr-char {
+        text-align:right; font-size:11px; color:#8e8e93; margin-top:4px;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-submit {
+        width:100%; height:46px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff;
+        font-size:15px; font-weight:700; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s, filter 0.15s;
+      }
+      .wpr-submit:active { transform:scale(0.97); filter:brightness(0.88); }
+      .wpr-submit:disabled { background:#d1d5db; cursor:not-allowed; }
+      /* Badge Google en reseñas */
+      .wpr-google-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        font-size:10px; font-weight:600; color:#6b7280;
+        background:#f3f4f6; border:0.5px solid #e5e7eb;
+        padding:2px 7px; border-radius:999px;
+        font-family:'Roboto',system-ui,sans-serif;
+        margin-left:6px; vertical-align:middle;
+      }
+      /* Divider comunidad */
+      .wpr-header-row {
+        display:flex; align-items:center; gap:10px;
+        padding:0 20px 10px;
+      }
+      .wpr-header-row .wp-pm-section-title {
+        line-height:1; margin:0; padding:0;
+      }
+      .wpr-header-tabs-row {
+        display:flex; gap:5px; align-items:center; flex:1;
+      }
+      /* ── Review tabs ── */
+      .wpr-tabs {
+        display:flex; gap:6px;
+      }
+      .wpr-tab {
+        display:inline-flex; align-items:center; justify-content:center; gap:4px;
+        padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; font-size:11px; font-weight:600;
+        color:#6b7280; cursor:pointer;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s ease; white-space:nowrap;
+      }
+      .wpr-tab-active {
+        background:#0a0a0a; color:#fff; border-color:#0a0a0a;
+      }
+      .wpr-tab-count {
+        font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
+        background:rgba(255,255,255,0.2);
+      }
+      .wpr-tab:not(.wpr-tab-active) .wpr-tab-count {
+        background:rgba(0,0,0,0.08); color:#6b7280;
+      }
+      /* Añadir reseña — naranja motivador */
+      .wpr-tab-add {
+        background:linear-gradient(135deg,#f59e0b,#f97316);
+        border-color:transparent; color:#fff !important;
+        box-shadow:0 2px 8px rgba(249,115,22,0.30);
+      }
+      .wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
+      .wpr-empty {
+        text-align:center; color:#9ca3af; font-size:13px;
+        padding:24px 20px; font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-community-header {
+        display:flex; align-items:center; gap:10px;
+        padding:16px 20px 8px;
+      }
+      .wpr-community-label {
+        font-size:11px; font-weight:700; color:#8e8e93;
+        text-transform:uppercase; letter-spacing:0.06em;
+        font-family:'Roboto',system-ui,sans-serif; white-space:nowrap;
+      }
+      .wpr-community-line {
+        flex:1; height:0.5px; background:#e5e7eb;
+      }
+      /* Reseña de comunidad */
+      .wpr-community-card {
+        margin:0 0 12px;
+        background:#f9f9f9; border-radius:16px;
+        padding:14px;
+      }
+      .wpr-community-header-row {
+        display:flex; align-items:center; gap:10px; margin-bottom:6px;
+      }
+      .wpr-community-avatar {
+        width:32px; height:32px; border-radius:50%;
+        background:#0a0a0a; color:#fff;
+        display:flex; align-items:center; justify-content:center;
+        font-size:13px; font-weight:700; flex-shrink:0;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-community-name {
+        font-size:13px; font-weight:700; color:#0a0a0a;
+        font-family:'Roboto',system-ui,sans-serif; flex:1;
+      }
+      .wpr-community-date {
+        font-size:11px; color:#8e8e93;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wpr-community-text {
+        font-size:13px; color:#374151; line-height:1.5;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-more-sep {
+        height:0.5px; background:rgba(0,0,0,0.1);
+        margin:2px 20px;
+      }
+
+      /* ── Dirección ── */
+      .wp-pm-addr-row {
+        display:block;
+        padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
+        line-height:1.15; font-weight:400;
+        font-family:'Roboto',system-ui,sans-serif;
+        max-width:calc(100% - 40px);
+      }
+      #wp-pm-addr { display:inline; }
+      .wp-pm-addr-copy {
+        flex-shrink:0; border:none; background:transparent;
+        color:#8e8e93; cursor:pointer; padding:0; margin-top:1px;
+        display:inline-flex; align-items:center;
+        -webkit-tap-highlight-color:transparent;
+        transition:color 0.2s, transform 0.15s;
+        font-size:12.5px;
+      }
+      .wp-pm-addr-copy:active { transform:scale(0.85); }
+      .wp-pm-addr-copy.copied { color:#34c759; }
+
+      /* ── Stats — pill compacto en topbar ── */
+      .wp-pm-tb-center {
+        flex:1; position:relative;
+        display:flex; align-items:center; justify-content:center;
+        height:44px;
+      }
+      .wp-pm-stats-row {
+        display:flex; align-items:stretch;
+        border-radius:999px; height:44px; position:relative;
+        transition:opacity 0.22s ease, transform 0.22s ease;
+        /* glass solo cuando NO hay highlight */
+        background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(238,244,255,0.90) 100%);
+        -webkit-backdrop-filter:blur(20px) saturate(2);
+        backdrop-filter:blur(20px) saturate(2);
+        box-shadow:0 4px 14px rgba(0,0,0,0.09),0 1px 3px rgba(0,0,0,0.05),inset 0 -1px 0 rgba(0,0,0,0.04);
+      }
+      /* highlight: solo borde gradiente, sin glass */
+      .wp-pm-stats-row.hl-featured,
+      .wp-pm-stats-row.hl-premium,
+      .wp-pm-stats-row.hl-verified {
+        background:transparent;
+        -webkit-backdrop-filter:none;
+        backdrop-filter:none;
+        box-shadow:none;
+      }
+      /* borde gradiente via ::before */
+      .wp-pm-stats-row::before {
+        content:''; display:none; pointer-events:none;
+        position:absolute; inset:-2px; border-radius:999px; z-index:-1;
+      }
+      .wp-pm-stats-row.hl-featured::before { display:block; background:linear-gradient(135deg,#f59e0b,#f97316); }
+      .wp-pm-stats-row.hl-premium::before  { display:block; background:linear-gradient(135deg,#a855f7,#ec4899,#f59e0b); }
+      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#1c1c1e,#06b6d4); }
+      .wp-pm-stats-inner {
+        display:flex; align-items:stretch;
+        border-radius:999px;
+        /* sin overflow:hidden — mata backdrop-filter en WebView */
+        flex:1; height:100%;
+        /* inner blanco para el highlight (actúa como relleno del borde) */
+        background:rgba(255,255,255,0.95);
+      }
+      /* sin highlight: inner transparente para que el glass del row se vea */
+      .wp-pm-stats-row:not(.hl-featured):not(.hl-premium):not(.hl-verified) .wp-pm-stats-inner {
+        background:transparent;
+      }
+      .wp-pm-stat {
+        flex:1; display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        padding:6px 18px; gap:1px;
+      }
+      .wp-pm-stat-val {
+        font-size:14px; font-weight:800; color:#0a0a0a;
+        display:flex; align-items:center; gap:3px;
+        font-family:'Roboto',system-ui,sans-serif;
+        letter-spacing:-0.02em;
+      }
+      .wp-pm-stat-lbl {
+        font-size:9px; color:#8e8e93; font-weight:500;
+        text-transform:uppercase; letter-spacing:0.05em;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-stat-sep {
+        width:1px; background:rgba(0,0,0,0.15);
+        align-self:stretch; margin:8px 0; flex-shrink:0;
+      }
+
+      /* ── Botones acción — frosted glass como topbar chips ── */
+      .wp-pm-actions-row {
+        display:flex; gap:8px; padding:0 20px 16px;
+      }
+      .wp-pm-action-btn {
+        flex:1; height:44px; border-radius:9999px;
+        border:1px solid rgba(255,255,255,0.7);
+        background:linear-gradient(170deg,rgba(255,255,255,0.95) 0%,rgba(238,244,255,0.88) 100%);
+        display:flex; align-items:center; justify-content:center; gap:6px;
+        font-size:12px; font-weight:600; color:#1c1c1e; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        font-family:'Roboto',system-ui,sans-serif;
+        letter-spacing:-0.01em;
+        box-shadow:0 3px 10px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04),inset 0 -1px 0 rgba(0,0,0,0.04);
+        backdrop-filter:blur(12px) saturate(1.6);
+        -webkit-backdrop-filter:blur(12px) saturate(1.6);
+      }
+      .wp-pm-action-btn:active { transform:scale(0.96); filter:brightness(0.96); }
+      #wp-pm-btn-phone { border:0.5px solid rgba(22,163,74,0.35); }
+      #wp-pm-btn-phone .wp-pm-action-icon { background:rgba(22,163,74,0.14); color:#16a34a; }
+      #wp-pm-btn-web   { border:0.5px solid rgba(174,230,237,0.5); }
+      #wp-pm-btn-web   .wp-pm-action-icon { background:rgba(174,230,237,0.20); color:#0e7490; }
+      #wp-pm-btn-maps  { border:0.5px solid rgba(234,88,12,0.35); }
+      #wp-pm-btn-maps  .wp-pm-action-icon { background:rgba(234,88,12,0.14); color:#ea580c; }
+      .wp-pm-action-icon {
+        width:28px; height:28px; border-radius:50%; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(220,230,255,0.80));
+        box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 -1px 0 rgba(0,0,0,0.06);
+        color:#374151;
+      }
+
+      /* ── Divider con gradiente lateral ── */
+      .wp-pm-divider {
+        height:1px; margin:4px 20px 16px;
+        background:linear-gradient(
+          to right,
+          rgba(0,0,0,0)       0%,
+          rgba(0,0,0,0.12)   15%,
+          rgba(0,0,0,0.15)   50%,
+          rgba(0,0,0,0.12)   85%,
+          rgba(0,0,0,0)      100%
+        );
+        border:none;
+      }
+
+      /* ── Section title iOS style ── */
+      .wp-pm-section-title {
+        font-size:12px; font-weight:800; color:#0a0a0a;
+        padding:0 20px 8px;
+        letter-spacing:-0.01em;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+
+      /* ── Description ── */
+      .wp-pm-desc-block { padding-bottom:4px; }
+      .wp-pm-desc-text {
+        font-size:15px; line-height:1.6; color:#3a3a3c;
+        padding:0 20px 4px;
+        font-family:'Roboto',system-ui,sans-serif;
+        font-weight:400;
+      }
+      .wp-pm-read-more {
+        border:none; background:none; color:#0a0a0a;
+        font-size:15px; font-weight:400; cursor:pointer;
+        padding:0 20px 12px;
+        font-family:'Roboto',system-ui,sans-serif;
+        -webkit-tap-highlight-color:transparent;
+      }
+
+      /* ── Tags iOS pills ── */
+      .wp-pm-tags-row {
+        display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 12px;
+      }
+      .wp-pm-tag {
+        height:32px; padding:0 14px; border-radius:9999px;
+        background:linear-gradient(170deg,rgba(255,255,255,0.92),rgba(238,244,255,0.85));
+        border:1px solid rgba(255,255,255,0.7);
+        color:#3a3a3c; font-size:13px; font-weight:600;
+        display:flex; align-items:center; gap:4px;
+        font-family:'Roboto',system-ui,sans-serif;
+        box-shadow:0 2px 6px rgba(0,0,0,0.07);
+      }
+      .wp-pm-tag-accent {
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        border:1px solid rgba(180,180,180,0.5); color:#111111;
+        box-shadow:0 2px 6px rgba(28,28,30,0.15);
+      }
+      .wp-pm-user-tag {
+        background:linear-gradient(170deg,rgba(255,255,255,0.92),rgba(238,244,255,0.85));
+        border:1px solid rgba(255,255,255,0.7); color:#3a3a3c; font-weight:600;
+        box-shadow:0 2px 6px rgba(0,0,0,0.07);
+      }
+      .wp-pm-tag-count {
+        font-size:11px; font-weight:700;
+        color:#8e8e93; margin-left:2px;
+      }
+
+      /* ── Horarios ── */
+      .wp-pm-hours-trigger {
+        display:flex; align-items:center; gap:8px;
+        padding:0 20px 8px; cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm-hours-today {
+        font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-hours-status {
+        font-size:12px; font-weight:600;
+        padding:2px 8px; border-radius:9999px;
+      }
+      .wp-pm-open   { background:#e8fdf0; color:#34c759; }
+      .wp-pm-closed { background:#fff1f0; color:#ff3b30; }
+      .wp-pm-chevron { transition:transform 0.25s ease; flex-shrink:0; }
+      .wp-pm-hours-list {
+        max-height:0; overflow:hidden;
+        transition:max-height 0.3s ease;
+        padding:0 20px;
+      }
+      .wp-pm-hours-list.expanded { max-height:300px; }
+      .wp-pm-hours-row {
+        display:flex; justify-content:space-between;
+        padding:8px 0; font-size:14px; color:#8e8e93;
+        border-bottom:0.5px solid #e5e5ea;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-hours-row:last-child { border-bottom:none; }
+      .wp-pm-hours-day { min-width:90px; }
+      .wp-pm-today .wp-pm-hours-day,
+      .wp-pm-today .wp-pm-hours-time { color:#0a0a0a; font-weight:600; }
+
+      /* ── Reviews ── */
+      .wp-pm-reviews-block { padding-bottom:8px; }
+
+      /* ── Ver más Google ── */
+      .wpr-see-more {
+        display:block; text-align:center;
+        font-size:12px; font-weight:600; color:#4285F4;
+        padding:12px 0 4px;
+        font-family:'Roboto',system-ui,sans-serif;
+        text-decoration:none;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wpr-see-more:active { opacity:0.7; }
+      .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+      .wp-pm-similar-img {
+        width:70px; height:70px; object-fit:cover;
+        border-radius:12px; flex-shrink:0; background:#e2e8f0;
+      }
+      .wp-pm-similar-icon {
+        width:70px; height:70px; border-radius:12px; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(135deg,#0a0a0a,#374151); font-size:32px;
+      }
+      .wp-pm-similar-body { flex:1; min-width:0; }
+      #wpr-panel-google, #wpr-panel-community {
+        padding:12px 0 0;
+      }
+      /* Reviews con padding lateral del body y separación entre cards */
+      #wpr-panel-google .wp-pm-review-card,
+      #wpr-panel-community .wpr-community-card {
+        margin-bottom:12px;
+      }
+      /* reviews header fusionado en tabs */
+      .wp-pm-reviews-list {
+        display:flex; flex-direction:column; gap:10px;
+        padding:0 20px;
+      }
+      .wp-pm-review-card {
+        background:#f2f2f7;
+        border-radius:22px;
+        padding:14px 16px;
+      }
+      .wp-pm-review-top {
+        display:flex; align-items:center; gap:10px; margin-bottom:8px;
+      }
+      .wp-pm-review-avatar {
+        width:36px; height:36px; border-radius:9999px; flex-shrink:0;
+        background:linear-gradient(135deg,#0a0a0a,#5856d6);
+        color:#fff; font-size:15px; font-weight:600;
+        display:flex; align-items:center; justify-content:center;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
+      .wp-pm-review-name {
+        font-size:14px; font-weight:600; color:#0a0a0a;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-review-time {
+        font-size:11px; color:#8e8e93;
+        font-family:'Roboto',system-ui,sans-serif;
+      }
+      .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
+      .wp-pm-review-text {
+        font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
+        font-family:'Roboto',system-ui,sans-serif; font-weight:400;
+        display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
+      }
+
+      /* ── CTA bottom bar — fixed at bottom ── */
+      /* ── CTA flotante sin container ── */
+      .wp-pm-bottom {
+        position:absolute; bottom:calc(16px + env(safe-area-inset-bottom,0px));
+        left:20px; right:20px;
+        background:transparent;
+        border:none; z-index:2;
+        pointer-events:none;
+      }
+      .wp-pm-cta {
+        width:100%; height:52px; border-radius:9999px; border:none;
+        background:#0a0a0a;
+        box-shadow:0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
+        color:#fff; font-size:17px; font-weight:600; cursor:pointer;
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        -webkit-tap-highlight-color:transparent;
+        font-family:'Roboto',system-ui,sans-serif;
+        letter-spacing:-0.01em;
+        pointer-events:auto;
+      }
+    `;
+    document.head.appendChild(s);
+  }
+}
