@@ -294,6 +294,9 @@ export class PlaceModal {
       if (overlay) overlay.style.zIndex = '100';
       var results = document.getElementById('wp-sresults');
       if (results) results.style.zIndex = '100';
+      // Aplicar blur al mapa igual que en mapview
+      var mapCont = document.querySelector('.map-container');
+      if (mapCont) { mapCont.style.transition='filter 0.18s ease'; mapCont.style.filter='blur(6px) brightness(0.92)'; }
     }
 
     this._el.classList.remove('wp-pm-hidden');
@@ -341,6 +344,9 @@ export class PlaceModal {
         if (overlay) overlay.style.zIndex = '';
         var results = document.getElementById('wp-sresults');
         if (results) results.style.zIndex = '';
+        // Quitar blur del mapa
+        var mapCont = document.querySelector('.map-container');
+        if (mapCont) { mapCont.style.transition='filter 0.12s ease'; mapCont.style.filter=''; }
         // Asegurar mini snap NO aparece
         var ms = document.getElementById('wp-minisnap-panel');
         if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
