@@ -396,9 +396,8 @@ function setupActivitySubscription(mv) {
       mv.onPlaceSelect = function(place) {
         var sb = window.wpApp && window.wpApp.searchBar;
         if (sb && sb.isActive()) {
-          // Marcar que se abrió desde búsqueda para restaurarla al cerrar
+          // Abrir ficha ENCIMA del search — sin cerrar ni tocar el search
           placeModal._fromSearch = true;
-          sb.deactivate();
           placeModal.show(place);
           return;
         }
