@@ -58,8 +58,15 @@ export class SearchBar {
     // Ocultar footer menu y mini snap
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
+    // Ocultar mini snap completamente — nunca visible en search
     var ms = document.getElementById('wp-minisnap-panel');
-    if (ms) { ms._searchHidden=true; ms.style.transition='transform 0.22s ease'; ms.style.transform='translateY(140%)'; }
+    if (ms) {
+      ms._searchHidden = true;
+      ms.style.transition = 'none';
+      ms.style.transform  = 'translateY(140%)';
+      ms.style.opacity    = '0';
+      ms.style.display    = 'none';
+    }
 
     // Mapa NO se toca - pines completamente independientes
   }
@@ -94,8 +101,17 @@ export class SearchBar {
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
     // Restaurar mini snap si estaba visible
+    // Restaurar mini snap si estaba visible antes del search
     var ms = document.getElementById('wp-minisnap-panel');
-    if (ms && ms._searchHidden) { ms._searchHidden=false; ms.style.transition='transform 0.34s cubic-bezier(0.32,0.72,0,1)'; ms.style.transform='translateY(0)'; }
+    if (ms && ms._searchHidden) {
+      ms._searchHidden = false;
+      ms.style.display  = '';
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){
+        ms.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease';
+        ms.style.transform  = 'translateY(0)';
+        ms.style.opacity    = '1';
+      }); });
+    }
     // Resetear posición de chips
     this._updateChipsPosition();
 
