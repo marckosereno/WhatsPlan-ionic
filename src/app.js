@@ -396,12 +396,13 @@ function setupActivitySubscription(mv) {
       mv.onPlaceSelect = function(place) {
         var sb = window.wpApp && window.wpApp.searchBar;
         if (sb && sb.isActive()) {
-          // En búsqueda → cerrar search y abrir ficha completa
+          // Marcar que se abrió desde búsqueda para restaurarla al cerrar
+          placeModal._fromSearch = true;
           sb.deactivate();
           placeModal.show(place);
           return;
         }
-        // Fuera de búsqueda → mini snap
+        placeModal._fromSearch = false;
         placeModal.showMini(place);
       };
       mv.onMiniCardTap = function(place) {
