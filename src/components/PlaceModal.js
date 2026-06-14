@@ -111,7 +111,7 @@ export class PlaceModal {
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden',
-      'z-index:9890',
+      'z-index:100',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
@@ -285,7 +285,7 @@ export class PlaceModal {
       }
     } else {
       // Modal sobre el blur
-      this._el.style.zIndex = '999999';
+      this._el.style.zIndex = '2100';
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
       blurOv.style.cssText = [
@@ -293,7 +293,7 @@ export class PlaceModal {
         'background:rgba(0,0,0,0)',
         'backdrop-filter:blur(6px) brightness(0.92)',
         '-webkit-backdrop-filter:blur(6px) brightness(0.92)',
-        'z-index:999990',
+        'z-index:2000',
         'opacity:0',
         'transition:opacity 0.18s ease',
         'pointer-events:none',
@@ -1555,8 +1555,8 @@ export class PlaceModal {
     var frag = document.createElement('div');
     frag.id = 'wp-review-modal-body';
     frag.innerHTML = `
-      <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
-      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:10001;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:Roboto,system-ui,sans-serif">
+      <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:2200;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
+      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2300;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:Roboto,system-ui,sans-serif">
         <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
         <div style="padding:4px 20px 12px">
           <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
@@ -1955,7 +1955,7 @@ export class PlaceModal {
 
       /* ── Modal wrapper ── */
       .wp-pm {
-        position:fixed; inset:0; z-index:9998;
+        position:fixed; inset:0; z-index:2100;
         display:flex; flex-direction:column;
         pointer-events:none;
       }
@@ -2369,15 +2369,15 @@ export class PlaceModal {
 
       /* ── More menu ── */
       .wp-pm-more-overlay {
-        position:absolute; inset:0; z-index:300;
+        position:absolute; inset:0; z-index:200;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px);
         -webkit-backdrop-filter:blur(2px);
       }
       .wp-pm-more-menu {
-        position:fixed; left:12px; right:12px;
+        position:absolute; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9999;
+        z-index:201;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2407,14 +2407,14 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:9998;
+        position:fixed; inset:0; z-index:2200;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9001;
+        z-index:2300;
         background:rgba(255,255,255,0.97);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
