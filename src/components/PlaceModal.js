@@ -271,6 +271,15 @@ export class PlaceModal {
 
     document.body.classList.add('wp-pm-open');
 
+    // Ocultar footer menu
+    var footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) {
+      footerMenu.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+      footerMenu.style.transform  = 'translateY(120%)';
+      footerMenu.style.opacity    = '0';
+      footerMenu.style.pointerEvents = 'none';
+    }
+
     if (!fromSearch) {
       // Solo ocultar topbar si NO venimos de búsqueda
       var mapTopbar = document.getElementById('topbar');
@@ -321,6 +330,14 @@ export class PlaceModal {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
+      // Restaurar footer menu
+      var footerMenu = document.getElementById('wp-footer-menu');
+      if (footerMenu) {
+        footerMenu.style.transition    = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), opacity 0.28s ease';
+        footerMenu.style.transform     = '';
+        footerMenu.style.opacity       = '1';
+        footerMenu.style.pointerEvents = '';
+      }
       // Restaurar topbar
       if (!fromSearch) {
         // Solo restaurar topbar si NO venimos de búsqueda (con animación)
