@@ -285,25 +285,22 @@ export class PlaceModal {
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
     } else {
-      // Desde búsqueda: ocultar topbar igual que en mapview
-      var mapTopbar = document.getElementById('topbar');
-      if (mapTopbar) {
-        mapTopbar.style.transition = 'opacity 0.18s ease';
-        mapTopbar.style.opacity    = '0';
-        mapTopbar.style.pointerEvents = 'none';
-        setTimeout(function(){ mapTopbar.style.visibility = 'hidden'; }, 200);
-      }
-      // Subir z-index del modal sobre chips/overlay de search
+      // Desde búsqueda: mostrar blur overlay encima del search y debajo del modal
       this._el.style.zIndex = '999999';
-      var scats = document.getElementById('wp-scats');
-      if (scats) { scats.style.transition='opacity 0.18s ease'; scats.style.opacity='0'; scats.style.pointerEvents='none'; setTimeout(function(){ scats.style.visibility='hidden'; },200); }
-      var overlay = document.getElementById('wps-overlay');
-      if (overlay) overlay.style.zIndex = '100';
-      var results = document.getElementById('wp-sresults');
-      if (results) { results.style.transition='opacity 0.18s ease'; results.style.opacity='0'; results.style.pointerEvents='none'; setTimeout(function(){ results.style.visibility='hidden'; },200); }
-      // Aplicar blur al mapa igual que en mapview
-      var mapCont = document.querySelector('.map-container');
-      if (mapCont) { mapCont.style.transition='filter 0.18s ease'; mapCont.style.filter='blur(6px) brightness(0.92)'; }
+      var blurOv = document.createElement('div');
+      blurOv.id = 'wp-search-blur-overlay';
+      blurOv.style.cssText = [
+        'position:fixed','inset:0',
+        'background:rgba(0,0,0,0.28)',
+        'backdrop-filter:blur(8px) brightness(0.85)',
+        '-webkit-backdrop-filter:blur(8px) brightness(0.85)',
+        'z-index:999990',
+        'opacity:0',
+        'transition:opacity 0.22s ease',
+        'pointer-events:none',
+      ].join(';');
+      document.body.appendChild(blurOv);
+      requestAnimationFrame(function(){ blurOv.style.opacity = '1'; });
     }
 
     this._el.classList.remove('wp-pm-hidden');
@@ -341,28 +338,16 @@ export class PlaceModal {
             );
           }
         }
-      } else {
-        // Desde búsqueda: restaurar topbar instantáneo sin animación
-        var mapTopbar = document.getElementById('topbar');
-        if (mapTopbar) {
-          mapTopbar.style.visibility    = '';
-          mapTopbar.style.pointerEvents = '';
-          mapTopbar.style.opacity       = '1';
-          mapTopbar.style.transition    = 'none';
-        }
       }
+      // Desde búsqueda el topbar nunca se ocultó — no hay nada que restaurar
       if (fromSearch) {
-        // Restaurar z-indices del search UI instantáneo
+        // Quitar blur overlay y restaurar z-index del modal
         this._el.style.zIndex = '';
-        var scats = document.getElementById('wp-scats');
-        if (scats) { scats.style.transition='none'; scats.style.visibility=''; scats.style.opacity='1'; scats.style.pointerEvents=''; scats.style.zIndex='99999'; }
-        var overlay = document.getElementById('wps-overlay');
-        if (overlay) overlay.style.zIndex = '';
-        var results = document.getElementById('wp-sresults');
-        if (results) { results.style.transition='none'; results.style.visibility=''; results.style.opacity='1'; results.style.pointerEvents=''; results.style.zIndex=''; }
-        // Quitar blur del mapa
-        var mapCont = document.querySelector('.map-container');
-        if (mapCont) { mapCont.style.transition='filter 0.12s ease'; mapCont.style.filter=''; }
+        var blurOv = document.getElementById('wp-search-blur-overlay');
+        if (blurOv) {
+          blurOv.style.opacity = '0';
+          setTimeout(function(){ if (blurOv.parentNode) blurOv.parentNode.removeChild(blurOv); }, 240);
+        }
         // Asegurar mini snap NO aparece
         var ms = document.getElementById('wp-minisnap-panel');
         if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
