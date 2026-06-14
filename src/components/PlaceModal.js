@@ -285,8 +285,15 @@ export class PlaceModal {
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
     } else {
-      // Desde búsqueda: subir z-index del modal sobre chips/overlay de search
-      // y bajar chips para que queden debajo de la ficha
+      // Desde búsqueda: ocultar topbar igual que en mapview
+      var mapTopbar = document.getElementById('topbar');
+      if (mapTopbar) {
+        mapTopbar.style.transition = 'opacity 0.18s ease';
+        mapTopbar.style.opacity    = '0';
+        mapTopbar.style.pointerEvents = 'none';
+        setTimeout(function(){ mapTopbar.style.visibility = 'hidden'; }, 200);
+      }
+      // Subir z-index del modal sobre chips/overlay de search
       this._el.style.zIndex = '999999';
       var scats = document.getElementById('wp-scats');
       if (scats) scats.style.zIndex = '100';
@@ -320,7 +327,7 @@ export class PlaceModal {
       document.body.classList.remove('wp-pm-open');
       // Restaurar topbar
       if (!fromSearch) {
-        // Solo restaurar topbar si NO venimos de búsqueda (en search nunca se ocultó)
+        // Solo restaurar topbar si NO venimos de búsqueda (con animación)
         var mapTopbar = document.getElementById('topbar');
         if (mapTopbar) {
           mapTopbar.style.visibility = '';
@@ -333,6 +340,15 @@ export class PlaceModal {
               { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
             );
           }
+        }
+      } else {
+        // Desde búsqueda: restaurar topbar instantáneo sin animación
+        var mapTopbar = document.getElementById('topbar');
+        if (mapTopbar) {
+          mapTopbar.style.visibility    = '';
+          mapTopbar.style.pointerEvents = '';
+          mapTopbar.style.opacity       = '1';
+          mapTopbar.style.transition    = 'none';
         }
       }
       if (fromSearch) {
