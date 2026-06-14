@@ -268,23 +268,34 @@ export class PlaceModal {
     this._place = place;
     this._populate(place);
     const card = this._card;
+    const fromSearch = this._fromSearch;
 
-    // 1. Sombra azul cambia instantáneamente via clase CSS (transition:none en app.css)
     document.body.classList.add('wp-pm-open');
 
-    // 2. Ocultar topbar del mapa
-    var mapTopbar = document.getElementById('topbar');
-    var gsapG = window.gsap;
-    if (mapTopbar && gsapG) {
-      gsapG.killTweensOf(mapTopbar);
-      gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
-        onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
-      });
-    } else if (mapTopbar) {
-      mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+    if (!fromSearch) {
+      // Solo ocultar topbar si NO venimos de búsqueda
+      var mapTopbar = document.getElementById('topbar');
+      var gsapG = window.gsap;
+      if (mapTopbar && gsapG) {
+        gsapG.killTweensOf(mapTopbar);
+        gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
+          onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
+        });
+      } else if (mapTopbar) {
+        mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+      }
+    } else {
+      // Desde búsqueda: subir z-index del modal sobre chips/overlay de search
+      // y bajar chips para que queden debajo de la ficha
+      this._el.style.zIndex = '999999';
+      var scats = document.getElementById('wp-scats');
+      if (scats) scats.style.zIndex = '100';
+      var overlay = document.getElementById('wps-overlay');
+      if (overlay) overlay.style.zIndex = '100';
+      var results = document.getElementById('wp-sresults');
+      if (results) results.style.zIndex = '100';
     }
 
-    // 3. Modal sube — sombra ya está lista
     this._el.classList.remove('wp-pm-hidden');
     this._el.classList.add('wp-pm-visible');
     card.style.transition = 'none';
@@ -305,22 +316,32 @@ export class PlaceModal {
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
       // Restaurar topbar
-      var mapTopbar = document.getElementById('topbar');
-      if (mapTopbar) {
-        mapTopbar.style.visibility = '';
-        mapTopbar.style.pointerEvents = '';
-        var gsapG = window.gsap;
-        if (gsapG) {
-          gsapG.killTweensOf(mapTopbar);
-          gsapG.fromTo(mapTopbar,
-            { scale: 0.85, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
-          );
+      if (!fromSearch) {
+        // Solo restaurar topbar si NO venimos de búsqueda (en search nunca se ocultó)
+        var mapTopbar = document.getElementById('topbar');
+        if (mapTopbar) {
+          mapTopbar.style.visibility = '';
+          mapTopbar.style.pointerEvents = '';
+          var gsapG = window.gsap;
+          if (gsapG) {
+            gsapG.killTweensOf(mapTopbar);
+            gsapG.fromTo(mapTopbar,
+              { scale: 0.85, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
+            );
+          }
         }
       }
       if (fromSearch) {
-        // Volver al search tal como estaba — no tocar nada del search UI
-        // Solo asegurar que minisnap NO aparezca
+        // Restaurar z-indices del search UI
+        this._el.style.zIndex = '';
+        var scats = document.getElementById('wp-scats');
+        if (scats) scats.style.zIndex = '99999';
+        var overlay = document.getElementById('wps-overlay');
+        if (overlay) overlay.style.zIndex = '';
+        var results = document.getElementById('wp-sresults');
+        if (results) results.style.zIndex = '';
+        // Asegurar mini snap NO aparece
         var ms = document.getElementById('wp-minisnap-panel');
         if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
       } else {
