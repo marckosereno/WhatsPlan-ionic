@@ -304,7 +304,7 @@ export class PlaceModal {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
-      // Restaurar topbar del mapa con pulse
+      // Restaurar topbar
       var mapTopbar = document.getElementById('topbar');
       if (mapTopbar) {
         mapTopbar.style.visibility = '';
@@ -318,10 +318,11 @@ export class PlaceModal {
           );
         }
       }
-      // Si se abrió desde búsqueda → reactivar search
       if (fromSearch) {
-        var sb = window.wpApp && window.wpApp.searchBar;
-        if (sb) sb.activate();
+        // Volver al search tal como estaba — no tocar nada del search UI
+        // Solo asegurar que minisnap NO aparezca
+        var ms = document.getElementById('wp-minisnap-panel');
+        if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
       } else {
         this._showMapUI();
       }
