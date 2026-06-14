@@ -86,21 +86,9 @@ export class PlaceModal {
     var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
     var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
     var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    // Usar _isOpenNow — misma lógica que el PlaceModal completo
-    var _checkOpen = function(p) {
-      var oh = p.regularOpeningHours;
-      if (!oh || !oh.periods || !oh.periods.length) return null;
-      var now = new Date(), day = now.getDay(), mins = now.getHours()*60+now.getMinutes();
-      return oh.periods.some(function(per) {
-        if (!per.open || !per.close || per.open.day !== day) return false;
-        var o = per.open.hour*60+(per.open.minute||0);
-        var c = per.close.hour*60+(per.close.minute||0);
-        return mins>=o && mins<c;
-      });
-    };
-    var isOpen  = _checkOpen(place);
+    var isOpen  = self._isOpenNow(place);
     var statusTxt   = isOpen===true ? 'Abierto' : isOpen===false ? 'Cerrado' : 'Sin horario';
-    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#9ca3af';
+    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
 
     // ── Hero card: foto derecha, contenido izquierda ──
     var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
@@ -124,12 +112,12 @@ export class PlaceModal {
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden',
-      'z-index:9990',
+      'z-index:9890',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
       'cursor:pointer',
-      'padding:3px 14px 4px',
+      'padding:8px 14px 8px',
       'box-sizing:border-box',
       'display:flex',
       'flex-direction:column',
@@ -146,56 +134,52 @@ export class PlaceModal {
 
     var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
 
-    var openClass = isOpen===true ? 'is-open' : isOpen===false ? 'is-closed' : 'is-nohours';
-    var dotStyle  = isOpen===true
-      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#34c759;box-shadow:0 0 5px rgba(52,199,89,0.6);flex-shrink:0;animation:wp-dot-pulse 1.8s ease-in-out infinite'
+    // Dot animado inline
+    var dotStyle = isOpen===true
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-dot-pulse 1.8s ease-in-out infinite'
       : isOpen===false
-      ? 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff3b30;box-shadow:0 0 4px rgba(255,59,48,0.5);flex-shrink:0'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
       : '';
-    var badgeDot  = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
-    var glassBadge = openClass==='is-open'
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15);font-family:Roboto,system-ui,sans-serif'
-      : openClass==='is-closed'
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12);font-family:Roboto,system-ui,sans-serif'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);font-family:Roboto,system-ui,sans-serif';
-
-    var isFeatured = place.featured && place.featured !== 'none';
-    var featuredLabel = isFeatured ? ({premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado'}[place.featured] || '✦ Destacado') : '';
-    var featuredColor = place.featured==='premium' ? '#d97706' : place.featured==='verified' ? '#0891b2' : '#d97706';
+    var badgeDot = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
+    // Estilos idénticos a .wp-pm-open-badge de la ficha, tamaño mini snap
+    var glassBadge = isOpen===true
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15)'
+      : isOpen===false
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12)'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);box-shadow:0 1px 4px rgba(0,0,0,0.06)';
 
     ms.innerHTML = `
-      <!-- Fila 1: badge + handle centrado + favoritos (una línea) -->
-      <div style="display:flex;align-items:center;padding:6px 0 5px;flex-shrink:0">
-        <span style="${glassBadge}">${badgeDot}${statusTxt}</span>
-        <div style="flex:1;display:flex;justify-content:center">
-          <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75"></div>
-        </div>
-        <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s,border-color 0.2s;flex-shrink:0">
-          <svg id="wp-ms-fav-icon" viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+      <!-- Handle azul absoluto — no ocupa altura -->
+      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:20px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
+      </div>
+      <!-- Badge horario | Nombre centrado | Favoritos -->
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
+        <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <button id="wp-ms-fav-btn" style="position:absolute;right:0;width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+          <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
         </button>
       </div>
-      <!-- Título + featured -->
-      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:6px;flex-shrink:0;overflow:hidden">
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${name}</span>
-        ${isFeatured?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid ${featuredColor};color:${featuredColor};background:${featuredColor}18;white-space:nowrap;flex-shrink:0">${featuredLabel}</span>`:''}
-      </div>
 
-      <!-- Foto strip — 4 fotos 68×68 border-radius:22px igual a category-icon-circle -->
-      <div style="display:flex;gap:6px;overflow:hidden;flex:1;align-items:center">
+      <!-- Foto strip — centradas con skeleton -->
+      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
         ${photos4.slice(0,3).map(u=>`
-          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;background:#e5e7eb"><img src="${u}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
+          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-ms-skeleton 1.4s ease-in-out infinite">
+            <img src="${u}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'">
+          </div>`
         ).join('')}
         <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
         ${(()=>{
           var total = (place.photosUrls||place.photos_urls||[]).length;
           var remaining = total - 3;
           if (photos4[3]) {
-            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative">
-              <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">
-              ${remaining > 1 ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.48);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">+${remaining-1}<span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
+            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-ms-skeleton 1.4s ease-in-out infinite">
+              <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none'">
+              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
           }
-          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`;
+          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:20px">📷</span><span style="font-size:8px;color:#9ca3af;font-family:Roboto,system-ui,sans-serif">Sin fotos</span></div>`;
         })()}
       </div>
 
@@ -208,11 +192,14 @@ export class PlaceModal {
         </div>
         <!-- CTA glass -->
         <button id="wp-ms-cta-btn" style="${glassBtn}">
-          Más detalles
+          + Detalles
         </button>
       </div>`;
 
     ms.className = 'wp-minisnap-panel';
+
+    // Notificar al SearchBar para reposicionar chips
+    document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
 
     if (isAlreadyVisible) {
       // Ya visible — actualizar sin animación de entrada
@@ -231,35 +218,30 @@ export class PlaceModal {
     // Favoritos
     var favBtn = ms.querySelector('#wp-ms-fav-btn');
     if (favBtn) {
-      favBtn.addEventListener('pointerdown', function(e) {
-        e.stopPropagation();
-        favBtn.style.transform = 'scale(0.88)';
-      });
-      favBtn.addEventListener('pointerup', function(e) {
-        favBtn.style.transform = 'scale(1.12)';
-        setTimeout(function(){ favBtn.style.transform = 'scale(1)'; }, 150);
-      });
-      favBtn.addEventListener('pointercancel', function() { favBtn.style.transform = 'scale(1)'; });
       favBtn.onclick = function(e) {
         e.stopPropagation();
         favBtn.classList.toggle('active');
-        var path = favBtn.querySelector('path');
+        var svg = favBtn.querySelector('path');
         if (favBtn.classList.contains('active')) {
-          // Guardado — relleno rojo, botón con tinte rojo
-          path.setAttribute('fill','#ef4444');
-          path.setAttribute('stroke','#ef4444');
-          favBtn.style.background = 'rgba(254,226,226,0.85)';
-          favBtn.style.borderColor = 'rgba(239,68,68,0.3)';
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
           self._showToast('❤️ Guardado en favoritos');
         } else {
-          // Sin guardar — solo borde, fondo blanco
-          path.setAttribute('fill','none');
-          path.setAttribute('stroke','#6b7280');
-          favBtn.style.background = 'rgba(255,255,255,0.75)';
+          svg.setAttribute('fill','none');
+          svg.setAttribute('stroke','#6b7280');
+          favBtn.style.background = 'rgba(240,240,245,0.9)';
           favBtn.style.borderColor = 'rgba(0,0,0,0.15)';
         }
       };
     }
+    // Handle drag → ficha completa
+    var handle = ms.querySelector('#wp-ms-handle');
+    if (handle) {
+      var _hY = 0;
+      handle.addEventListener('touchstart', function(e){ _hY=e.touches[0].clientY; e.stopPropagation(); },{passive:true});
+      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._hideMiniSnap();self.show(place);} },{passive:true});
+      handle.addEventListener('click', function(e){ e.stopPropagation(); self._hideMiniSnap(); self.show(place); });
+    }
+
     // CTA → ficha completa
     var cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
@@ -273,9 +255,6 @@ export class PlaceModal {
     var ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
     ms.style.transform = 'translateY(140%)';
-    // Restaurar padding del mapa
-    var map = window.wpApp?.mapView?.map;
-    if (map) map.setPadding({ top:0, bottom:84, left:0, right:0 });
     setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
     this._showMapUI();
   }
@@ -289,23 +268,41 @@ export class PlaceModal {
     this._place = place;
     this._populate(place);
     const card = this._card;
+    const fromSearch = this._fromSearch;
 
-    // 1. Sombra azul cambia instantáneamente via clase CSS (transition:none en app.css)
     document.body.classList.add('wp-pm-open');
 
-    // 2. Ocultar topbar del mapa
-    var mapTopbar = document.getElementById('topbar');
-    var gsapG = window.gsap;
-    if (mapTopbar && gsapG) {
-      gsapG.killTweensOf(mapTopbar);
-      gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
-        onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
-      });
-    } else if (mapTopbar) {
-      mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+    if (!fromSearch) {
+      // Solo ocultar topbar si NO venimos de búsqueda
+      var mapTopbar = document.getElementById('topbar');
+      var gsapG = window.gsap;
+      if (mapTopbar && gsapG) {
+        gsapG.killTweensOf(mapTopbar);
+        gsapG.to(mapTopbar, { scale: 0.85, opacity: 0, duration: 0.22, ease: 'power2.in',
+          onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
+        });
+      } else if (mapTopbar) {
+        mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
+      }
+    } else {
+      // Desde búsqueda: mostrar blur overlay encima del search y debajo del modal
+      this._el.style.zIndex = '9900';
+      var blurOv = document.createElement('div');
+      blurOv.id = 'wp-search-blur-overlay';
+      blurOv.style.cssText = [
+        'position:fixed','inset:0',
+        'background:rgba(0,0,0,0)',
+        'backdrop-filter:blur(6px) brightness(0.92)',
+        '-webkit-backdrop-filter:blur(6px) brightness(0.92)',
+        'z-index:9890',
+        'opacity:0',
+        'transition:opacity 0.18s ease',
+        'pointer-events:none',
+      ].join(';');
+      document.body.appendChild(blurOv);
+      requestAnimationFrame(function(){ blurOv.style.opacity = '1'; });
     }
 
-    // 3. Modal sube — sombra ya está lista
     this._el.classList.remove('wp-pm-hidden');
     this._el.classList.add('wp-pm-visible');
     card.style.transition = 'none';
@@ -319,23 +316,43 @@ export class PlaceModal {
   hide() {
     this._card.style.transition = 'transform 0.32s cubic-bezier(0.32,0.72,0,1)';
     this._card.style.transform  = 'translateY(100%)';
+    var fromSearch = this._fromSearch;
+    this._fromSearch = false;
     setTimeout(() => {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
-      // Restaurar topbar del mapa con pulse
-      var mapTopbar = document.getElementById('topbar');
-      if (mapTopbar) {
-        mapTopbar.style.visibility = '';
-        mapTopbar.style.pointerEvents = '';
-        var gsapG = window.gsap;
-        if (gsapG) {
-          gsapG.killTweensOf(mapTopbar);
-          gsapG.fromTo(mapTopbar,
-            { scale: 0.85, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
-          );
+      // Restaurar topbar
+      if (!fromSearch) {
+        // Solo restaurar topbar si NO venimos de búsqueda (con animación)
+        var mapTopbar = document.getElementById('topbar');
+        if (mapTopbar) {
+          mapTopbar.style.visibility = '';
+          mapTopbar.style.pointerEvents = '';
+          var gsapG = window.gsap;
+          if (gsapG) {
+            gsapG.killTweensOf(mapTopbar);
+            gsapG.fromTo(mapTopbar,
+              { scale: 0.85, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
+            );
+          }
         }
+      }
+      // Desde búsqueda el topbar nunca se ocultó — no hay nada que restaurar
+      if (fromSearch) {
+        // Quitar blur overlay y restaurar z-index del modal
+        this._el.style.zIndex = '';
+        var blurOv = document.getElementById('wp-search-blur-overlay');
+        if (blurOv) {
+          blurOv.style.opacity = '0';
+          setTimeout(function(){ if (blurOv.parentNode) blurOv.parentNode.removeChild(blurOv); }, 240);
+        }
+        // Asegurar mini snap NO aparece
+        var ms = document.getElementById('wp-minisnap-panel');
+        if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
+      } else {
+        this._showMapUI();
       }
       if (this.onClose) this.onClose();
     }, 340);
@@ -699,10 +716,9 @@ export class PlaceModal {
       this._goToPhoto(0, false);
     });
     // Wire swipe once
-    if (!this._swipeWired) {
-      this._wireHeroSwipe();
-      this._swipeWired = true;
-    }
+    // Cancelar spring anterior y re-enganchar swipe siempre
+    if (this._heroRafId) { cancelAnimationFrame(this._heroRafId); this._heroRafId = null; }
+    this._wireHeroSwipe();
   }
 
   _goToPhoto(i, animate = true) {
@@ -1376,7 +1392,7 @@ export class PlaceModal {
     const hero = this._el.querySelector('#wp-pm-hero');
     let startX = 0, startT = 0, lastX = 0, lastT = 0;
     let tracking = false, baseX = 0, velX = 0;
-    let rafId = null;
+    self._heroRafId = null;
 
     const getCarousel = () => self._el.querySelector('#wp-pm-carousel');
     const getSlideW   = () => {
@@ -1388,9 +1404,8 @@ export class PlaceModal {
     };
     const snapX = i => 8 - i * getSlideW();
 
-    // Animated spring snap
     const springTo = (targetX, fromX, fromV) => {
-      if (rafId) cancelAnimationFrame(rafId);
+      if (self._heroRafId) cancelAnimationFrame(self._heroRafId);
       const stiffness = 280, damping = 28, mass = 1;
       let x = fromX, v = fromV;
       const step = () => {
@@ -1401,16 +1416,25 @@ export class PlaceModal {
         if (c) { c.style.transition = 'none'; c.style.transform = `translateX(${x}px)`; }
         if (Math.abs(x - targetX) < 0.5 && Math.abs(v) < 0.5) {
           if (c) c.style.transform = `translateX(${targetX}px)`;
-          return;
+          self._heroRafId = null; return;
         }
-        rafId = requestAnimationFrame(step);
+        self._heroRafId = requestAnimationFrame(step);
       };
-      rafId = requestAnimationFrame(step);
+      self._heroRafId = requestAnimationFrame(step);
     };
 
-    hero.addEventListener('touchstart', e => {
+    // Remover listeners anteriores para evitar acumulación
+    var oldHero = self._el.querySelector('#wp-pm-hero');
+    if (oldHero && self._heroTouchStart) {
+      oldHero.removeEventListener('touchstart',  self._heroTouchStart);
+      oldHero.removeEventListener('touchmove',   self._heroTouchMove);
+      oldHero.removeEventListener('touchend',    self._heroTouchEnd);
+      oldHero.removeEventListener('touchcancel', self._heroTouchCancel);
+    }
+
+    self._heroTouchStart = e => {
       if (e.touches.length !== 1) return;
-      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      if (self._heroRafId) { cancelAnimationFrame(self._heroRafId); self._heroRafId = null; }
       startX = lastX = e.touches[0].clientX;
       startT = lastT = Date.now();
       tracking = true;
@@ -1424,9 +1448,9 @@ export class PlaceModal {
       } else {
         baseX = snapX(self._currentPhoto);
       }
-    }, { passive: true });
+    };
 
-    hero.addEventListener('touchmove', e => {
+    self._heroTouchMove = e => {
       if (!tracking || e.touches.length !== 1) return;
       const x  = e.touches[0].clientX;
       const dx = x - startX;
@@ -1446,7 +1470,10 @@ export class PlaceModal {
 
       const c = getCarousel();
       if (c) c.style.transform = `translateX(${tx}px)`;
-    }, { passive: true });
+    };
+
+    self._heroTouchEnd = null; // se asigna abajo
+    self._heroTouchCancel = null;
 
     const onEnd = e => {
       if (!tracking) return;
@@ -1481,14 +1508,19 @@ export class PlaceModal {
       springTo(snapX(next), curX, velX * 60);
     };
 
-    hero.addEventListener('touchend',   onEnd, { passive: true });
-    hero.addEventListener('touchcancel', () => {
+    self._heroTouchEnd    = onEnd;
+    self._heroTouchCancel = () => {
       tracking = false;
       const c = getCarousel();
       let curX = snapX(self._currentPhoto);
       if (c) { const m = new DOMMatrix(getComputedStyle(c).transform); curX = m.m41; }
       springTo(snapX(self._currentPhoto), curX, 0);
-    }, { passive: true });
+    };
+
+    hero.addEventListener('touchstart',  self._heroTouchStart,  { passive: true });
+    hero.addEventListener('touchmove',   self._heroTouchMove,   { passive: true });
+    hero.addEventListener('touchend',    self._heroTouchEnd,    { passive: true });
+    hero.addEventListener('touchcancel', self._heroTouchCancel, { passive: true });
   }
 
   async _onTagPlace() {
@@ -1517,13 +1549,41 @@ export class PlaceModal {
     const user = this.getCurrentUser?.();
     if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
 
-    const overlay  = document.getElementById('wp-pm-review-overlay');
-    const menu     = document.getElementById('wp-pm-review-menu');
-    const starsEl  = document.getElementById('wpr-stars');
-    const labelEl  = document.getElementById('wpr-star-label');
-    const textarea = document.getElementById('wpr-textarea');
-    const charEl   = document.getElementById('wpr-char');
-    const submit   = document.getElementById('wpr-submit');
+    // Crear el modal en body para escapar overflow:hidden del card
+    var prevModal = document.getElementById('wp-review-modal-body');
+    if (prevModal) prevModal.remove();
+
+    var frag = document.createElement('div');
+    frag.id = 'wp-review-modal-body';
+    frag.innerHTML = `
+      <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
+      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:10001;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:Roboto,system-ui,sans-serif">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
+        <div style="padding:4px 20px 12px">
+          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
+          <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
+        </div>
+        <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
+          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;cursor:pointer;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
+        </div>
+        <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:Roboto,system-ui,sans-serif">Toca para calificar</div>
+        <div style="padding:0 16px">
+          <textarea id="wp-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:Roboto,system-ui,sans-serif;color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+          <div id="wp-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px;font-family:Roboto,system-ui,sans-serif">0 / 500</div>
+        </div>
+        <div style="padding:12px 16px 16px">
+          <button id="wp-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:Roboto,system-ui,sans-serif;transition:filter 0.15s;opacity:0.4">Publicar reseña</button>
+        </div>
+      </div>`;
+    document.body.appendChild(frag);
+
+    const overlay  = document.getElementById('wp-rm-overlay');
+    const menu     = document.getElementById('wp-rm-menu');
+    const starsEl  = document.getElementById('wp-rm-stars');
+    const labelEl  = document.getElementById('wp-rm-label');
+    const textarea = document.getElementById('wp-rm-textarea');
+    const charEl   = document.getElementById('wp-rm-char');
+    const submit   = document.getElementById('wp-rm-submit');
     if (!menu) return;
 
     // Mostrar memoji del usuario en el modal
@@ -1554,10 +1614,11 @@ export class PlaceModal {
     const updateStars = (v) => {
       rating = v;
       starsEl.querySelectorAll('.wpr-star').forEach((s,i) => {
-        s.classList.toggle('active', i < v);
+        s.style.color  = i < v ? '#f59e0b' : '#d1d5db';
+        s.style.transform = i < v ? 'scale(1.1)' : 'scale(1)';
       });
       labelEl.textContent = LABELS[v] || 'Toca para calificar';
-      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+      submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
     };
     updateStars(rating);
 
@@ -1566,14 +1627,15 @@ export class PlaceModal {
     });
     textarea.oninput = () => {
       charEl.textContent = textarea.value.length + ' / 500';
-      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+      submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
     };
     charEl.textContent = textarea.value.length + ' / 500';
-    submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+    submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
 
     const closeModal = () => {
-      menu.classList.remove('open');
-      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; }, 300);
+      menu.style.transform = 'translateY(110%)';
+      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
+      setTimeout(() => { var f=document.getElementById('wp-review-modal-body'); if(f) f.remove(); }, 320);
     };
     overlay.onclick = closeModal;
 
@@ -1616,9 +1678,9 @@ export class PlaceModal {
       }
     };
 
-    overlay.style.display = '';
-    menu.style.display    = '';
-    requestAnimationFrame(() => menu.classList.add('open'));
+    // Abrir con reflow forzado para que la transición dispare
+    void menu.offsetHeight;
+    requestAnimationFrame(() => { menu.style.transform = 'translateY(0)'; });
   }
 
   _openTagSheet(place, user, userTags, remaining) {
@@ -1720,10 +1782,14 @@ export class PlaceModal {
     updateCTA();
 
     const closeSheet = () => {
-      menu.classList.remove('open','expanded');
-      overlay.classList.remove('open');
+      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
+      menu.style.transform  = 'translateY(110%)';
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.22s ease';
       setTimeout(() => {
-        menu.style.display='none'; overlay.style.display='none'; session=[];
+        menu.style.display='none'; overlay.style.display='none';
+        overlay.style.opacity=''; overlay.style.transition='';
+        session=[];
       }, 320);
     };
 
@@ -1749,11 +1815,13 @@ export class PlaceModal {
     };
 
     overlay.style.display = '';
-    menu.style.display    = '';
-    requestAnimationFrame(() => {
-      overlay.classList.add('open');
-      menu.classList.add('open');
-    });
+    menu.style.display    = 'flex';
+    menu.style.transform  = 'translateY(110%)';
+    void menu.offsetHeight;
+    setTimeout(function() {
+      menu.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
+      menu.style.transform  = 'translateY(0)';
+    }, 20);
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -1778,6 +1846,11 @@ export class PlaceModal {
 
   _injectStyles() {
     if (document.getElementById('wp-pm-styles')) return;
+    if (!document.getElementById('wp-ms-skeleton-style')) {
+      var sk=document.createElement('style'); sk.id='wp-ms-skeleton-style';
+      sk.textContent='@keyframes wp-ms-skeleton{0%{background-position:200% 0}100%{background-position:-200% 0}}';
+      document.head.appendChild(sk);
+    }
     const s = document.createElement('style');
     s.id = 'wp-pm-styles';
     s.textContent = `
@@ -1984,6 +2057,7 @@ export class PlaceModal {
         height:240px;
         overflow:hidden; background:transparent;
         z-index:1;
+        touch-action:none;
         /* padding top separa del topbar, padding bottom separa del panel */
         padding:14px 0 18px;
       }
@@ -2305,15 +2379,15 @@ export class PlaceModal {
 
       /* ── More menu ── */
       .wp-pm-more-overlay {
-        position:absolute; inset:0; z-index:300;
+        position:fixed; inset:0; z-index:10000;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px);
         -webkit-backdrop-filter:blur(2px);
       }
       .wp-pm-more-menu {
-        position:absolute; left:12px; right:12px;
+        position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:301;
+        z-index:10001;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2343,14 +2417,13 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:9998;
-        background:rgba(0,0,0,0.3);
-        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+        position:fixed; inset:0; z-index:10000;
+        background:rgba(0,0,0,0.35);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9999;
+        z-index:9001;
         background:rgba(255,255,255,0.97);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
