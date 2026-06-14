@@ -1549,13 +1549,41 @@ export class PlaceModal {
     const user = this.getCurrentUser?.();
     if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
 
-    const overlay  = document.getElementById('wp-pm-review-overlay');
-    const menu     = document.getElementById('wp-pm-review-menu');
-    const starsEl  = document.getElementById('wpr-stars');
-    const labelEl  = document.getElementById('wpr-star-label');
-    const textarea = document.getElementById('wpr-textarea');
-    const charEl   = document.getElementById('wpr-char');
-    const submit   = document.getElementById('wpr-submit');
+    // Crear el modal en body para escapar overflow:hidden del card
+    var existing = document.getElementById('wp-review-modal-body');
+    if (existing) existing.remove();
+
+    var frag = document.createElement('div');
+    frag.id = 'wp-review-modal-body';
+    frag.innerHTML = `
+      <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
+      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:10001;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:Roboto,system-ui,sans-serif">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
+        <div style="padding:4px 20px 12px">
+          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
+          <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
+        </div>
+        <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
+          ${[1,2,3,4,5].map(v=>`<span data-v="${v}" style="font-size:36px;color:#d1d5db;cursor:pointer;transition:color 0.15s;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
+        </div>
+        <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:Roboto,system-ui,sans-serif">Toca para calificar</div>
+        <div style="padding:0 16px">
+          <textarea id="wp-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:Roboto,system-ui,sans-serif;color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+          <div id="wp-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px;font-family:Roboto,system-ui,sans-serif">0 / 500</div>
+        </div>
+        <div style="padding:12px 16px 16px">
+          <button id="wp-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:Roboto,system-ui,sans-serif;transition:filter 0.15s;opacity:0.4">Publicar reseña</button>
+        </div>
+      </div>`;
+    document.body.appendChild(frag);
+
+    const overlay  = document.getElementById('wp-rm-overlay');
+    const menu     = document.getElementById('wp-rm-menu');
+    const starsEl  = document.getElementById('wp-rm-stars');
+    const labelEl  = document.getElementById('wp-rm-label');
+    const textarea = document.getElementById('wp-rm-textarea');
+    const charEl   = document.getElementById('wp-rm-char');
+    const submit   = document.getElementById('wp-rm-submit');
     if (!menu) return;
 
     // Mostrar memoji del usuario en el modal
@@ -1589,7 +1617,7 @@ export class PlaceModal {
         s.classList.toggle('active', i < v);
       });
       labelEl.textContent = LABELS[v] || 'Toca para calificar';
-      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+      submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
     };
     updateStars(rating);
 
@@ -1598,14 +1626,15 @@ export class PlaceModal {
     });
     textarea.oninput = () => {
       charEl.textContent = textarea.value.length + ' / 500';
-      submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+      submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
     };
     charEl.textContent = textarea.value.length + ' / 500';
-    submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
+    submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
 
     const closeModal = () => {
-      menu.classList.remove('open');
-      setTimeout(() => { menu.style.display='none'; overlay.style.display='none'; }, 300);
+      menu.style.transform = 'translateY(110%)';
+      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
+      setTimeout(() => { var f=document.getElementById('wp-review-modal-body'); if(f) f.remove(); }, 320);
     };
     overlay.onclick = closeModal;
 
@@ -1648,11 +1677,9 @@ export class PlaceModal {
       }
     };
 
-    overlay.style.zIndex  = '10000';
-    menu.style.zIndex     = '10001';
-    overlay.style.display = '';
-    menu.style.display    = '';
-    requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('open')));
+    // Abrir con reflow forzado para que la transición dispare
+    void menu.offsetHeight;
+    requestAnimationFrame(() => { menu.style.transform = 'translateY(0)'; });
   }
 
   _openTagSheet(place, user, userTags, remaining) {
@@ -1784,10 +1811,8 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      overlay.classList.add('open');
-      menu.classList.add('open');
-    }));
+    void menu.offsetHeight;
+    requestAnimationFrame(() => { menu.classList.add('open'); });
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
