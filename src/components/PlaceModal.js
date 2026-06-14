@@ -285,12 +285,7 @@ export class PlaceModal {
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
     } else {
-      // Bajar elementos search DEBAJO del blur overlay
-      var scatsEl = document.getElementById('wp-scats');
-      if (scatsEl) { scatsEl._prevZ = scatsEl.style.zIndex; scatsEl.style.zIndex = '100'; }
-      var topbarEl2 = document.getElementById('topbar');
-      if (topbarEl2) { topbarEl2.style.zIndex = '100'; }
-      // Subir modal sobre el blur
+      // Desde búsqueda: mostrar blur overlay encima del search y debajo del modal
       this._el.style.zIndex = '9900';
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
@@ -346,11 +341,6 @@ export class PlaceModal {
       }
       // Desde búsqueda el topbar nunca se ocultó — no hay nada que restaurar
       if (fromSearch) {
-        // Restaurar z-index de elementos search
-        var scatsEl = document.getElementById('wp-scats');
-        if (scatsEl) { scatsEl.style.zIndex = scatsEl._prevZ || '99999'; }
-        var topbarEl2 = document.getElementById('topbar');
-        if (topbarEl2) { topbarEl2.style.zIndex = ''; }
         // Quitar blur overlay y restaurar z-index del modal
         this._el.style.zIndex = '';
         var blurOv = document.getElementById('wp-search-blur-overlay');
@@ -1574,7 +1564,7 @@ export class PlaceModal {
           <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
         </div>
         <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
-          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;cursor:pointer;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
+          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;color:#d1d5db;cursor:pointer;transition:color 0.15s;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
         </div>
         <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:Roboto,system-ui,sans-serif">Toca para calificar</div>
         <div style="padding:0 16px">
@@ -1624,8 +1614,7 @@ export class PlaceModal {
     const updateStars = (v) => {
       rating = v;
       starsEl.querySelectorAll('.wpr-star').forEach((s,i) => {
-        s.style.color  = i < v ? '#f59e0b' : '#d1d5db';
-        s.style.transform = i < v ? 'scale(1.1)' : 'scale(1)';
+        s.classList.toggle('active', i < v);
       });
       labelEl.textContent = LABELS[v] || 'Toca para calificar';
       submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
@@ -1822,7 +1811,8 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
-    requestAnimationFrame(() => menu.classList.add('open'));
+    void menu.offsetHeight;  // forzar reflow
+    setTimeout(function() { menu.classList.add('open'); }, 20);
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2388,7 +2378,7 @@ export class PlaceModal {
       .wp-pm-more-menu {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9999;
+        z-index:10001;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2418,9 +2408,8 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:9998;
-        background:rgba(0,0,0,0.3);
-        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+        position:fixed; inset:0; z-index:10000;
+        background:rgba(0,0,0,0.35);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
