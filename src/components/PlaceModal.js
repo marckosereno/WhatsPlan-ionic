@@ -716,10 +716,9 @@ export class PlaceModal {
       this._goToPhoto(0, false);
     });
     // Wire swipe once
-    if (!this._swipeWired) {
-      this._wireHeroSwipe();
-      this._swipeWired = true;
-    }
+    // Cancelar spring anterior y re-enganchar swipe siempre
+    if (this._heroRafId) { cancelAnimationFrame(this._heroRafId); this._heroRafId = null; }
+    this._wireHeroSwipe();
   }
 
   _goToPhoto(i, animate = true) {
@@ -1393,7 +1392,7 @@ export class PlaceModal {
     const hero = this._el.querySelector('#wp-pm-hero');
     let startX = 0, startT = 0, lastX = 0, lastT = 0;
     let tracking = false, baseX = 0, velX = 0;
-    let rafId = null;
+    self._heroRafId = null;
 
     const getCarousel = () => self._el.querySelector('#wp-pm-carousel');
     const getSlideW   = () => {
@@ -1405,9 +1404,8 @@ export class PlaceModal {
     };
     const snapX = i => 8 - i * getSlideW();
 
-    // Animated spring snap
     const springTo = (targetX, fromX, fromV) => {
-      if (rafId) cancelAnimationFrame(rafId);
+      if (self._heroRafId) cancelAnimationFrame(self._heroRafId);
       const stiffness = 280, damping = 28, mass = 1;
       let x = fromX, v = fromV;
       const step = () => {
@@ -1418,16 +1416,25 @@ export class PlaceModal {
         if (c) { c.style.transition = 'none'; c.style.transform = `translateX(${x}px)`; }
         if (Math.abs(x - targetX) < 0.5 && Math.abs(v) < 0.5) {
           if (c) c.style.transform = `translateX(${targetX}px)`;
-          return;
+          self._heroRafId = null; return;
         }
-        rafId = requestAnimationFrame(step);
+        self._heroRafId = requestAnimationFrame(step);
       };
-      rafId = requestAnimationFrame(step);
+      self._heroRafId = requestAnimationFrame(step);
     };
 
-    hero.addEventListener('touchstart', e => {
+    // Remover listeners anteriores para evitar acumulación
+    var oldHero = self._el.querySelector('#wp-pm-hero');
+    if (oldHero && self._heroTouchStart) {
+      oldHero.removeEventListener('touchstart',  self._heroTouchStart);
+      oldHero.removeEventListener('touchmove',   self._heroTouchMove);
+      oldHero.removeEventListener('touchend',    self._heroTouchEnd);
+      oldHero.removeEventListener('touchcancel', self._heroTouchCancel);
+    }
+
+    self._heroTouchStart = e => {
       if (e.touches.length !== 1) return;
-      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      if (self._heroRafId) { cancelAnimationFrame(self._heroRafId); self._heroRafId = null; }
       startX = lastX = e.touches[0].clientX;
       startT = lastT = Date.now();
       tracking = true;
@@ -1441,9 +1448,9 @@ export class PlaceModal {
       } else {
         baseX = snapX(self._currentPhoto);
       }
-    }, { passive: true });
+    };
 
-    hero.addEventListener('touchmove', e => {
+    self._heroTouchMove = e => {
       if (!tracking || e.touches.length !== 1) return;
       const x  = e.touches[0].clientX;
       const dx = x - startX;
@@ -1463,7 +1470,10 @@ export class PlaceModal {
 
       const c = getCarousel();
       if (c) c.style.transform = `translateX(${tx}px)`;
-    }, { passive: true });
+    };
+
+    self._heroTouchEnd = null; // se asigna abajo
+    self._heroTouchCancel = null;
 
     const onEnd = e => {
       if (!tracking) return;
@@ -1498,14 +1508,19 @@ export class PlaceModal {
       springTo(snapX(next), curX, velX * 60);
     };
 
-    hero.addEventListener('touchend',   onEnd, { passive: true });
-    hero.addEventListener('touchcancel', () => {
+    self._heroTouchEnd    = onEnd;
+    self._heroTouchCancel = () => {
       tracking = false;
       const c = getCarousel();
       let curX = snapX(self._currentPhoto);
       if (c) { const m = new DOMMatrix(getComputedStyle(c).transform); curX = m.m41; }
       springTo(snapX(self._currentPhoto), curX, 0);
-    }, { passive: true });
+    };
+
+    hero.addEventListener('touchstart',  self._heroTouchStart,  { passive: true });
+    hero.addEventListener('touchmove',   self._heroTouchMove,   { passive: true });
+    hero.addEventListener('touchend',    self._heroTouchEnd,    { passive: true });
+    hero.addEventListener('touchcancel', self._heroTouchCancel, { passive: true });
   }
 
   async _onTagPlace() {
@@ -1633,6 +1648,8 @@ export class PlaceModal {
       }
     };
 
+    overlay.style.zIndex  = '9000';
+    menu.style.zIndex     = '9001';
     overlay.style.display = '';
     menu.style.display    = '';
     requestAnimationFrame(() => menu.classList.add('open'));
@@ -2328,7 +2345,7 @@ export class PlaceModal {
 
       /* ── More menu ── */
       .wp-pm-more-overlay {
-        position:fixed; inset:0; z-index:9999990;
+        position:absolute; inset:0; z-index:9000;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px);
         -webkit-backdrop-filter:blur(2px);
@@ -2336,7 +2353,7 @@ export class PlaceModal {
       .wp-pm-more-menu {
         position:absolute; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9999991;
+        z-index:9001;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2373,7 +2390,7 @@ export class PlaceModal {
       .wpt-float {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9999991;
+        z-index:9001;
         background:rgba(255,255,255,0.97);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
