@@ -2006,6 +2006,7 @@ export class PlaceModal {
         height:240px;
         overflow:hidden; background:transparent;
         z-index:1;
+        touch-action:none;
         /* padding top separa del topbar, padding bottom separa del panel */
         padding:14px 0 18px;
       }
@@ -2327,7 +2328,7 @@ export class PlaceModal {
 
       /* ── More menu ── */
       .wp-pm-more-overlay {
-        position:absolute; inset:0; z-index:300;
+        position:fixed; inset:0; z-index:9999990;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px);
         -webkit-backdrop-filter:blur(2px);
@@ -2335,7 +2336,7 @@ export class PlaceModal {
       .wp-pm-more-menu {
         position:absolute; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:301;
+        z-index:9999991;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2365,14 +2366,14 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:9998;
+        position:fixed; inset:0; z-index:9999990;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9999;
+        z-index:9999991;
         background:rgba(255,255,255,0.97);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
