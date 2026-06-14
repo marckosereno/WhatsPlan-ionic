@@ -296,11 +296,11 @@ export class PlaceModal {
       // Subir z-index del modal sobre chips/overlay de search
       this._el.style.zIndex = '999999';
       var scats = document.getElementById('wp-scats');
-      if (scats) scats.style.zIndex = '100';
+      if (scats) { scats.style.transition='opacity 0.18s ease'; scats.style.opacity='0'; scats.style.pointerEvents='none'; setTimeout(function(){ scats.style.visibility='hidden'; },200); }
       var overlay = document.getElementById('wps-overlay');
       if (overlay) overlay.style.zIndex = '100';
       var results = document.getElementById('wp-sresults');
-      if (results) results.style.zIndex = '100';
+      if (results) { results.style.transition='opacity 0.18s ease'; results.style.opacity='0'; results.style.pointerEvents='none'; setTimeout(function(){ results.style.visibility='hidden'; },200); }
       // Aplicar blur al mapa igual que en mapview
       var mapCont = document.querySelector('.map-container');
       if (mapCont) { mapCont.style.transition='filter 0.18s ease'; mapCont.style.filter='blur(6px) brightness(0.92)'; }
@@ -352,14 +352,14 @@ export class PlaceModal {
         }
       }
       if (fromSearch) {
-        // Restaurar z-indices del search UI
+        // Restaurar z-indices del search UI instantáneo
         this._el.style.zIndex = '';
         var scats = document.getElementById('wp-scats');
-        if (scats) scats.style.zIndex = '99999';
+        if (scats) { scats.style.transition='none'; scats.style.visibility=''; scats.style.opacity='1'; scats.style.pointerEvents=''; scats.style.zIndex='99999'; }
         var overlay = document.getElementById('wps-overlay');
         if (overlay) overlay.style.zIndex = '';
         var results = document.getElementById('wp-sresults');
-        if (results) results.style.zIndex = '';
+        if (results) { results.style.transition='none'; results.style.visibility=''; results.style.opacity='1'; results.style.pointerEvents=''; results.style.zIndex=''; }
         // Quitar blur del mapa
         var mapCont = document.querySelector('.map-container');
         if (mapCont) { mapCont.style.transition='filter 0.12s ease'; mapCont.style.filter=''; }
