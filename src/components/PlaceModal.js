@@ -298,6 +298,8 @@ export class PlaceModal {
   hide() {
     this._card.style.transition = 'transform 0.32s cubic-bezier(0.32,0.72,0,1)';
     this._card.style.transform  = 'translateY(100%)';
+    var fromSearch = this._fromSearch;
+    this._fromSearch = false;
     setTimeout(() => {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
@@ -315,6 +317,13 @@ export class PlaceModal {
             { scale: 1, opacity: 1, duration: 0.32, ease: 'back.out(2)' }
           );
         }
+      }
+      // Si se abrió desde búsqueda → reactivar search
+      if (fromSearch) {
+        var sb = window.wpApp && window.wpApp.searchBar;
+        if (sb) sb.activate();
+      } else {
+        this._showMapUI();
       }
       if (this.onClose) this.onClose();
     }, 340);
