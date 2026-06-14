@@ -285,7 +285,12 @@ export class PlaceModal {
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
     } else {
-      // Desde búsqueda: mostrar blur overlay encima del search y debajo del modal
+      // Bajar elementos search DEBAJO del blur overlay
+      var scatsEl = document.getElementById('wp-scats');
+      if (scatsEl) { scatsEl._prevZ = scatsEl.style.zIndex; scatsEl.style.zIndex = '100'; }
+      var topbarEl2 = document.getElementById('topbar');
+      if (topbarEl2) { topbarEl2.style.zIndex = '100'; }
+      // Subir modal sobre el blur
       this._el.style.zIndex = '9900';
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
@@ -341,6 +346,11 @@ export class PlaceModal {
       }
       // Desde búsqueda el topbar nunca se ocultó — no hay nada que restaurar
       if (fromSearch) {
+        // Restaurar z-index de elementos search
+        var scatsEl = document.getElementById('wp-scats');
+        if (scatsEl) { scatsEl.style.zIndex = scatsEl._prevZ || '99999'; }
+        var topbarEl2 = document.getElementById('topbar');
+        if (topbarEl2) { topbarEl2.style.zIndex = ''; }
         // Quitar blur overlay y restaurar z-index del modal
         this._el.style.zIndex = '';
         var blurOv = document.getElementById('wp-search-blur-overlay');
@@ -1782,14 +1792,10 @@ export class PlaceModal {
     updateCTA();
 
     const closeSheet = () => {
-      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
-      menu.style.transform  = 'translateY(110%)';
-      overlay.style.opacity = '0';
-      overlay.style.transition = 'opacity 0.22s ease';
+      menu.classList.remove('open','expanded');
+      overlay.classList.remove('open');
       setTimeout(() => {
-        menu.style.display='none'; overlay.style.display='none';
-        overlay.style.opacity=''; overlay.style.transition='';
-        session=[];
+        menu.style.display='none'; overlay.style.display='none'; session=[];
       }, 320);
     };
 
@@ -1815,13 +1821,8 @@ export class PlaceModal {
     };
 
     overlay.style.display = '';
-    menu.style.display    = 'flex';
-    menu.style.transform  = 'translateY(110%)';
-    void menu.offsetHeight;
-    setTimeout(function() {
-      menu.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
-      menu.style.transform  = 'translateY(0)';
-    }, 20);
+    menu.style.display    = '';
+    requestAnimationFrame(() => menu.classList.add('open'));
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2387,7 +2388,7 @@ export class PlaceModal {
       .wp-pm-more-menu {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:10001;
+        z-index:9999;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2417,8 +2418,9 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:10000;
-        background:rgba(0,0,0,0.35);
+        position:fixed; inset:0; z-index:9998;
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
