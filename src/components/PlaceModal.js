@@ -112,7 +112,7 @@ export class PlaceModal {
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden',
-      'z-index:9990',
+      'z-index:9890',
       'transform:translateY(140%)',
       'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
       'font-family:Roboto,system-ui,sans-serif',
@@ -286,7 +286,7 @@ export class PlaceModal {
       }
     } else {
       // Desde búsqueda: mostrar blur overlay encima del search y debajo del modal
-      this._el.style.zIndex = '999999';
+      this._el.style.zIndex = '9900';
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
       blurOv.style.cssText = [
@@ -294,7 +294,7 @@ export class PlaceModal {
         'background:rgba(0,0,0,0)',
         'backdrop-filter:blur(6px) brightness(0.92)',
         '-webkit-backdrop-filter:blur(6px) brightness(0.92)',
-        'z-index:999990',
+        'z-index:9890',
         'opacity:0',
         'transition:opacity 0.18s ease',
         'pointer-events:none',
@@ -1648,11 +1648,11 @@ export class PlaceModal {
       }
     };
 
-    overlay.style.zIndex  = '9000';
-    menu.style.zIndex     = '9001';
+    overlay.style.zIndex  = '10000';
+    menu.style.zIndex     = '10001';
     overlay.style.display = '';
     menu.style.display    = '';
-    requestAnimationFrame(() => menu.classList.add('open'));
+    requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('open')));
   }
 
   _openTagSheet(place, user, userTags, remaining) {
@@ -1784,10 +1784,10 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
-    requestAnimationFrame(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       overlay.classList.add('open');
       menu.classList.add('open');
-    });
+    }));
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2345,15 +2345,15 @@ export class PlaceModal {
 
       /* ── More menu ── */
       .wp-pm-more-overlay {
-        position:absolute; inset:0; z-index:9000;
+        position:fixed; inset:0; z-index:10000;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px);
         -webkit-backdrop-filter:blur(2px);
       }
       .wp-pm-more-menu {
-        position:absolute; left:12px; right:12px;
+        position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:9001;
+        z-index:10001;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2383,7 +2383,7 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:9999990;
+        position:fixed; inset:0; z-index:10000;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
