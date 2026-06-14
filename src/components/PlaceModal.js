@@ -61,7 +61,6 @@ export class PlaceModal {
   }
 
   showMini(place) {
-    if (!this._built) this._build();
     this._place = place;
     // Ocultar panel del mapa
     this._hideMapUI();
@@ -285,8 +284,8 @@ export class PlaceModal {
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
     } else {
-      // Desde búsqueda: mostrar blur overlay encima del search y debajo del modal
-      this._el.style.zIndex = '9900';
+      // Modal sobre el blur
+      this._el.style.zIndex = '999999';
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
       blurOv.style.cssText = [
@@ -294,7 +293,7 @@ export class PlaceModal {
         'background:rgba(0,0,0,0)',
         'backdrop-filter:blur(6px) brightness(0.92)',
         '-webkit-backdrop-filter:blur(6px) brightness(0.92)',
-        'z-index:9890',
+        'z-index:999990',
         'opacity:0',
         'transition:opacity 0.18s ease',
         'pointer-events:none',
@@ -1564,7 +1563,7 @@ export class PlaceModal {
           <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
         </div>
         <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
-          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;color:#d1d5db;cursor:pointer;transition:color 0.15s;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
+          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;cursor:pointer;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
         </div>
         <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:Roboto,system-ui,sans-serif">Toca para calificar</div>
         <div style="padding:0 16px">
@@ -1614,7 +1613,8 @@ export class PlaceModal {
     const updateStars = (v) => {
       rating = v;
       starsEl.querySelectorAll('.wpr-star').forEach((s,i) => {
-        s.classList.toggle('active', i < v);
+        s.style.color  = i < v ? '#f59e0b' : '#d1d5db';
+        s.style.transform = i < v ? 'scale(1.1)' : 'scale(1)';
       });
       labelEl.textContent = LABELS[v] || 'Toca para calificar';
       submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
@@ -1811,8 +1811,7 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
-    void menu.offsetHeight;  // forzar reflow
-    setTimeout(function() { menu.classList.add('open'); }, 20);
+    requestAnimationFrame(() => menu.classList.add('open'));
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2370,7 +2369,7 @@ export class PlaceModal {
 
       /* ── More menu ── */
       .wp-pm-more-overlay {
-        position:fixed; inset:0; z-index:10000;
+        position:absolute; inset:0; z-index:300;
         background:rgba(0,0,0,0.3);
         backdrop-filter:blur(2px);
         -webkit-backdrop-filter:blur(2px);
@@ -2378,7 +2377,7 @@ export class PlaceModal {
       .wp-pm-more-menu {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:10001;
+        z-index:9999;
         background:rgba(255,255,255,0.96);
         backdrop-filter:blur(24px) saturate(1.8);
         -webkit-backdrop-filter:blur(24px) saturate(1.8);
@@ -2408,8 +2407,9 @@ export class PlaceModal {
       .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
       /* ── Tag modal — idéntico al more-menu ── */
       .wpt-overlay {
-        position:fixed; inset:0; z-index:10000;
-        background:rgba(0,0,0,0.35);
+        position:fixed; inset:0; z-index:9998;
+        background:rgba(0,0,0,0.3);
+        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
       .wpt-float {
         position:fixed; left:12px; right:12px;
