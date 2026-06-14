@@ -1550,8 +1550,8 @@ export class PlaceModal {
     if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
 
     // Crear el modal en body para escapar overflow:hidden del card
-    var existing = document.getElementById('wp-review-modal-body');
-    if (existing) existing.remove();
+    var prevModal = document.getElementById('wp-review-modal-body');
+    if (prevModal) prevModal.remove();
 
     var frag = document.createElement('div');
     frag.id = 'wp-review-modal-body';
