@@ -210,13 +210,15 @@ export class PlaceModal {
     // Notificar al SearchBar para reposicionar chips
     document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
 
-    ms.style.transition = 'none';
-    ms.style.opacity    = '0';
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      ms.style.transition = 'opacity 0.22s ease';
-      ms.style.opacity    = '1';
-    }));
-
+    if (!isAlreadyVisible) {
+      ms.style.transition = 'none';
+      ms.style.opacity    = '0';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        ms.style.transition = 'opacity 0.22s ease';
+        ms.style.opacity    = '1';
+      }));
+    }
+    // Si ya está visible: contenido actualizado, sin ninguna animación
     // Favoritos
     var favBtn = ms.querySelector('#wp-ms-fav-btn');
     if (favBtn) {
@@ -265,8 +267,13 @@ export class PlaceModal {
   _hideMiniSnap() {
     var ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
-    ms.style.transform = 'translateY(140%)';
-    setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 350);
+    ms.style.pointerEvents = 'none';
+    ms.style.transition    = 'opacity 0.2s ease';
+    ms.style.opacity       = '0';
+    document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
+    var map = window.wpApp?.mapView?.map;
+    if (map) map.setPadding({ top:0, bottom:84, left:0, right:0 });
+    setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
     this._showMapUI();
   }
 
