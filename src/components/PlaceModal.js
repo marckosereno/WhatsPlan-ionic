@@ -284,16 +284,16 @@ export class PlaceModal {
     if (handle) {
       var _hY = 0;
       handle.addEventListener('touchstart', function(e){ _hY=e.touches[0].clientY; e.stopPropagation(); },{passive:true});
-      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._fromMiniSnap=true;self._hideMiniSnap();self.show(place);} },{passive:true});
-      handle.addEventListener('click', function(e){ e.stopPropagation(); self._fromMiniSnap=true; self._hideMiniSnap(); self.show(place); });
+      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._fromMiniSnap=true;self.show(self._place);} },{passive:true});
+      handle.addEventListener('click', function(e){ e.stopPropagation(); self._fromMiniSnap=true; self.show(self._place); });
     }
 
     // CTA → ficha completa
     var cta = ms.querySelector('#wp-ms-cta-btn');
-    if (cta) cta.onclick = function(){ self._fromMiniSnap=true; self._hideMiniSnap(); self.show(place); };
+    if (cta) cta.onclick = function(){ self._fromMiniSnap=true; self.show(self._place); };
     // Tap en la card → ficha completa
     ms.addEventListener('click', function(e){
-      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) { self._fromMiniSnap=true; self._hideMiniSnap(); self.show(place); }
+      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) { self._fromMiniSnap=true; self.show(self._place); }
     });
   }
 
@@ -310,8 +310,7 @@ export class PlaceModal {
 
   expandToFull() {
     this._fromMiniSnap = true;
-    this._hideMiniSnap();
-    this.show(this._place);
+    this.show(this._place);  // minisnap queda intacto, el overlay lo cubre
   }
 
   show(place) {
@@ -326,8 +325,8 @@ export class PlaceModal {
     var footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.zIndex = '50';
 
-    if (!fromSearch) {
-      // Solo ocultar topbar si NO venimos de búsqueda
+    if (!fromSearch && !this._fromMiniSnap) {
+      // Mapview normal: ocultar topbar
       var mapTopbar = document.getElementById('topbar');
       var gsapG = window.gsap;
       if (mapTopbar && gsapG) {
@@ -339,7 +338,7 @@ export class PlaceModal {
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
     } else {
-      // Modal sobre el blur
+      // Search o minisnap: blur overlay encima de todo lo que queda intacto
       this._el.style.zIndex = '2100';
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
@@ -398,22 +397,20 @@ export class PlaceModal {
           }
         }
       }
-      // Desde búsqueda el topbar nunca se ocultó — no hay nada que restaurar
-      if (fromSearch) {
-        // Quitar blur overlay y restaurar z-index del modal
+      // Quitar blur overlay (search o minisnap) y restaurar z-index
+      if (fromSearch || this._fromMiniSnap) {
+        this._fromMiniSnap = false;
         this._el.style.zIndex = '';
         var blurOv = document.getElementById('wp-search-blur-overlay');
         if (blurOv) {
           blurOv.style.opacity = '0';
           setTimeout(function(){ if (blurOv.parentNode) blurOv.parentNode.removeChild(blurOv); }, 240);
         }
-        // Asegurar mini snap NO aparece
-        var ms = document.getElementById('wp-minisnap-panel');
-        if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
-      } else if (this._fromMiniSnap) {
-        this._fromMiniSnap = false;
-        var self = this;
-        setTimeout(function(){ self.showMini(self._place); }, 50);
+        // En search: ocultar minisnap. En minisnap: ya está intacto, no tocar.
+        if (fromSearch) {
+          var ms = document.getElementById('wp-minisnap-panel');
+          if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
+        }
       } else {
         this._showMapUI();
       }
