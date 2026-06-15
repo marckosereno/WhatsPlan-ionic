@@ -77,7 +77,7 @@ export class PlaceModal {
     var self = this;
     // Reusar o crear el elemento fijo del mini snap
     var ms = document.getElementById('wp-minisnap-panel');
-    var isAlreadyVisible = ms && ms.style.transform === 'translateY(0)';
+    var isAlreadyVisible = ms && ms.style.opacity === '1';
     if (!ms) {
       ms = document.createElement('div');
       ms.id = 'wp-minisnap-panel';
@@ -210,15 +210,11 @@ export class PlaceModal {
     // Notificar al SearchBar para reposicionar chips
     document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
 
-    ms.style.opacity = '0';
     ms.style.transition = 'none';
+    ms.style.opacity    = '0';
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       ms.style.transition = 'opacity 0.22s ease';
-      ms.style.opacity    = isAlreadyVisible ? '0.7' : '0';
-      requestAnimationFrame(()=>{
-        ms.style.transition = 'opacity 0.22s ease';
-        ms.style.opacity    = '1';
-      });
+      ms.style.opacity    = '1';
     }));
 
     // Favoritos
