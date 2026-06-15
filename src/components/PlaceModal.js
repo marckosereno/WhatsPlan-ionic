@@ -217,6 +217,10 @@ export class PlaceModal {
         ms.style.transition = 'opacity 0.22s ease';
         ms.style.opacity    = '1';
       }));
+    } else {
+      // Ya visible: mostrar inmediatamente sin animación
+      ms.style.transition = 'none';
+      ms.style.opacity    = '1';
     }
     // Si ya está visible: contenido actualizado, sin ninguna animación
     // Favoritos
