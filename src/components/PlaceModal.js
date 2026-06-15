@@ -340,6 +340,9 @@ export class PlaceModal {
     } else {
       // Search o minisnap: blur overlay encima de todo lo que queda intacto
       this._el.style.zIndex = '2100';
+      // Eliminar overlay anterior si existe (evita acumulación)
+      var prevOv = document.getElementById('wp-search-blur-overlay');
+      if (prevOv && prevOv.parentNode) prevOv.parentNode.removeChild(prevOv);
       var blurOv = document.createElement('div');
       blurOv.id = 'wp-search-blur-overlay';
       blurOv.style.cssText = [
