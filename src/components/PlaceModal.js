@@ -27,8 +27,9 @@ export class PlaceModal {
   _hideMapUI() {
     var panel = document.querySelector('.map-results-panel-float');
     if (panel) {
-      panel.style.transition  = 'opacity 0.2s ease';
+      panel.style.transition  = 'opacity 0.2s ease, transform 0.2s ease';
       panel.style.opacity     = '0';
+      panel.style.transform   = 'scale(0.96)';
       panel.style.pointerEvents = 'none';
     }
   }
@@ -36,8 +37,9 @@ export class PlaceModal {
   _showMapUI() {
     var panel = document.querySelector('.map-results-panel-float');
     if (panel) {
-      panel.style.transition  = 'opacity 0.25s ease';
+      panel.style.transition  = 'opacity 0.25s ease, transform 0.35s cubic-bezier(0.34,1.2,0.64,1)';
       panel.style.opacity     = '1';
+      panel.style.transform   = 'scale(1)';
       panel.style.pointerEvents = '';
     }
   }
@@ -162,10 +164,10 @@ export class PlaceModal {
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
         <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
-          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s">
             <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
           </button>
-          <button id="wp-ms-close-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
+          <button id="wp-ms-close-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,background 0.2s">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -241,7 +243,34 @@ export class PlaceModal {
         }
       };
     }
-    // Botón X → cerrar mini snap y restaurar panel
+    // Pulse en mini snap completo al tocar
+    var addPulse = function(el, scale) {
+      el.addEventListener('pointerdown', function(){ el.style.transform='scale('+scale+')'; el.style.transition='transform 0.1s ease'; },{passive:true});
+      el.addEventListener('pointerup',   function(){ el.style.transform='scale(1)'; el.style.transition='transform 0.25s cubic-bezier(0.34,1.56,0.64,1)'; },{passive:true});
+      el.addEventListener('pointercancel', function(){ el.style.transform='scale(1)'; },{passive:true});
+    };
+
+    // Pulse en botones individuales
+    var favBtn2 = ms.querySelector('#wp-ms-fav-btn');
+    var closeB  = ms.querySelector('#wp-ms-close-btn');
+    if (favBtn2) addPulse(favBtn2, 0.88);
+    if (closeB)  addPulse(closeB, 0.88);
+
+    // Pulse en el minisnap al tap (solo cuando hace tap para abrir)
+    ms.addEventListener('pointerdown', function(e){
+      if (e.target.closest('#wp-ms-fav-btn') || e.target.closest('#wp-ms-close-btn') || e.target.closest('#wp-ms-handle')) return;
+      ms.style.transform = 'scale(0.985)';
+      ms.style.transition = 'transform 0.1s ease';
+    },{passive:true});
+    ms.addEventListener('pointerup', function(){
+      ms.style.transform = 'scale(1)';
+      ms.style.transition = 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)';
+    },{passive:true});
+    ms.addEventListener('pointercancel', function(){
+      ms.style.transform = 'scale(1)';
+    },{passive:true});
+
+    // Botón X → cerrar mini snap
     var closeBtn = ms.querySelector('#wp-ms-close-btn');
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
@@ -255,16 +284,16 @@ export class PlaceModal {
     if (handle) {
       var _hY = 0;
       handle.addEventListener('touchstart', function(e){ _hY=e.touches[0].clientY; e.stopPropagation(); },{passive:true});
-      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._hideMiniSnap();self.show(place);} },{passive:true});
-      handle.addEventListener('click', function(e){ e.stopPropagation(); self._hideMiniSnap(); self.show(place); });
+      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._fromMiniSnap=true;self._hideMiniSnap();self.show(place);} },{passive:true});
+      handle.addEventListener('click', function(e){ e.stopPropagation(); self._fromMiniSnap=true; self._hideMiniSnap(); self.show(place); });
     }
 
     // CTA → ficha completa
     var cta = ms.querySelector('#wp-ms-cta-btn');
-    if (cta) cta.onclick = function(){ self._hideMiniSnap(); self.show(place); };
+    if (cta) cta.onclick = function(){ self._fromMiniSnap=true; self._hideMiniSnap(); self.show(place); };
     // Tap en la card → ficha completa
     ms.addEventListener('click', function(e){
-      if (!e.target.closest('#wp-ms-cta-btn')) { self._hideMiniSnap(); self.show(place); }
+      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) { self._fromMiniSnap=true; self._hideMiniSnap(); self.show(place); }
     });
   }
 
@@ -280,6 +309,7 @@ export class PlaceModal {
   }
 
   expandToFull() {
+    this._fromMiniSnap = true;
     this._hideMiniSnap();
     this.show(this._place);
   }
@@ -380,6 +410,10 @@ export class PlaceModal {
         // Asegurar mini snap NO aparece
         var ms = document.getElementById('wp-minisnap-panel');
         if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
+      } else if (this._fromMiniSnap) {
+        this._fromMiniSnap = false;
+        var self = this;
+        setTimeout(function(){ self.showMini(self._place); }, 50);
       } else {
         this._showMapUI();
       }
