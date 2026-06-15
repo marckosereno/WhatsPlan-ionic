@@ -275,8 +275,6 @@ export class PlaceModal {
     ms.style.transition    = 'opacity 0.2s ease';
     ms.style.opacity       = '0';
     document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
-    var map = window.wpApp?.mapView?.map;
-    if (map) map.setPadding({ top:0, bottom:84, left:0, right:0 });
     setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
     this._showMapUI();
   }
