@@ -611,11 +611,16 @@ export class MapView {
       const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
-      // La minicard tiene ~90px y aparece 45px ENCIMA del pin (marginTop:-45px)
-      // Para que el CENTRO de la minicard quede en areaCenter:
-      // pin debe estar en areaCenter + 45
+      // Minicard: ~90px altura, aparece encima del pin
+      // Para centrar la minicard (no el pin) en areaCenter:
+      // - el centro de la minicard = pinTarget - 90/2 = areaCenter
+      // - pinTarget = areaCenter + 45   ← centro del pin
+      // Para que el centro VISUAL del conjunto (pin + minicard) quede centrado:
+      // - conjunto total ≈ 130px (minicard 90 + pin 40)
+      // - centro del conjunto = pinTarget - 90 + 65 = pinTarget - 25
+      // - pinTarget = areaCenter + 25
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
-      const pinTarget  = areaCenter + 45;
+      const pinTarget  = areaCenter + 25;   // baja la minicard para centrar el conjunto
       const offsetY    = Math.round(pinTarget - canvasH / 2);
 
       // DEBUG disabled
