@@ -12,13 +12,13 @@ const CENTER_LAT =  25.9950;
 const ZOOM       = 16;
 const MAP_STYLE  = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
-const BL_BG       = '#ededea';
-const BL_LAND     = '#ededea';
-const BL_WATER    = '#1a5cf5';
-const BL_PARK     = '#b8d4b0';
-const BL_BUILDING = '#e0e0db';
-const BL_TEXT     = '#4a4a4a';
-const BL_HALO     = 'rgba(237,237,234,0.95)';
+const BL_BG       = '#f0ede6';  // tierra cálida
+const BL_LAND     = '#f0ede6';
+const BL_WATER    = '#1a5cf5';  // azul WhatsPlan
+const BL_PARK     = '#8bc48a';  // verde más saturado
+const BL_BUILDING = '#ddd8cc';  // edificios más visibles
+const BL_TEXT     = '#2d2d2d';
+const BL_HALO     = 'rgba(240,237,230,0.98)';
 const BENITO_LINE = '#7c6ef7';
 const BENITO_TEXT = '#5a4fcf';
 
@@ -141,10 +141,17 @@ export class MapView {
       style:                 MAP_STYLE,
       center:                [CENTER_LNG, CENTER_LAT],
       zoom:                  ZOOM,
+      minZoom:               12,      // no alejarse demasiado
+      maxZoom:               19,
+      maxBounds:             [        // restricción a Nuevo Progreso ±18km
+        [-98.1310, 25.8328],          // SW
+        [-97.7702, 26.1572]           // NE
+      ],
       attributionControl:    false,
       keyboard:              false,
       dragRotate:            false,
       pitchWithRotate:       false,
+      renderWorldCopies:     false,   // sin copias del mundo
       maxTileCacheSize:      20,
       fadeDuration:          0,
       preserveDrawingBuffer: false,
@@ -152,6 +159,9 @@ export class MapView {
 
     this.map.on('load', () => {
       console.log('✅ Mapa listo');
+      // Gamificación: saturación y contraste ligeramente elevados
+      var canvas = document.getElementById('map-container');
+      if (canvas) canvas.style.filter = 'saturate(1.25) contrast(1.05)';
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
