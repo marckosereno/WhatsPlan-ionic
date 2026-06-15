@@ -620,7 +620,7 @@ export class MapView {
       // - centro del conjunto = pinTarget - 90 + 65 = pinTarget - 25
       // - pinTarget = areaCenter + 25
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
-      const pinTarget  = areaCenter + 25;   // baja la minicard para centrar el conjunto
+      const pinTarget  = areaCenter + 35;   // baja la minicard para centrar el conjunto
       const offsetY    = Math.round(pinTarget - canvasH / 2);
 
       // DEBUG disabled
