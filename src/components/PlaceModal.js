@@ -117,8 +117,8 @@ export class PlaceModal {
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden',
       'z-index:100',
-      'transform:translateY(140%)',
-      'transition:transform 0.36s cubic-bezier(0.32,0.72,0,1)',
+      'opacity:0',
+      'transition:opacity 0.22s ease',
       'font-family:Roboto,system-ui,sans-serif',
       'cursor:pointer',
       'padding:8px 14px 8px',
@@ -160,7 +160,7 @@ export class PlaceModal {
       <!-- Badge horario | Nombre centrado | Favoritos -->
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px 0 76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
         <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
           <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.15);background:rgba(240,240,245,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all 0.2s">
             <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
@@ -210,19 +210,16 @@ export class PlaceModal {
     // Notificar al SearchBar para reposicionar chips
     document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
 
-    if (isAlreadyVisible) {
-      // Ya visible — actualizar sin animación de entrada
-      ms.style.transition = 'none';
-      ms.style.transform  = 'translateY(0)';
-      // Pequeño flash para indicar cambio de lugar
-      ms.style.opacity = '0.7';
-      requestAnimationFrame(()=>{ ms.style.transition='opacity 0.18s ease'; ms.style.opacity='1'; });
-    } else {
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        ms.style.transition = 'transform 0.36s cubic-bezier(0.32,0.72,0,1)';
-        ms.style.transform  = 'translateY(0)';
-      }));
-    }
+    ms.style.opacity = '0';
+    ms.style.transition = 'none';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ms.style.transition = 'opacity 0.22s ease';
+      ms.style.opacity    = isAlreadyVisible ? '0.7' : '0';
+      requestAnimationFrame(()=>{
+        ms.style.transition = 'opacity 0.22s ease';
+        ms.style.opacity    = '1';
+      });
+    }));
 
     // Favoritos
     var favBtn = ms.querySelector('#wp-ms-fav-btn');
