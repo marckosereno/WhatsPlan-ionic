@@ -149,10 +149,9 @@ export class MapView {
       ],
       attributionControl:    false,
       keyboard:              false,
-      dragRotate:            true,
-      pitchWithRotate:       true,
-      pitch:                 45,
-      bearing:               -10,
+      dragRotate:            false,
+      pitchWithRotate:       false,
+      pitch:                 0,
       renderWorldCopies:     false,   // sin copias del mundo
       maxTileCacheSize:      20,
       fadeDuration:          0,
@@ -304,57 +303,63 @@ export class MapView {
         if (layer.type === 'line' && (idL.startsWith('water') || idL.includes('waterway') || idL.includes('river')))
           { try { map.setPaintProperty(id,'line-color','#5bb8f5'); } catch(_){} return; }
 
-        // ── Parques / vegetación ────────────────────────────────
+        // ── Parques / vegetación — tono suave ──────────────────
         if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
-          { try { map.setPaintProperty(id,'fill-color','#5dbb63'); map.setPaintProperty(id,'fill-opacity',0.8); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#a8d5a2'); map.setPaintProperty(id,'fill-opacity',0.65); } catch(_){} return; }
 
-        // ── Landuse residencial ─────────────────────────────────
+        // ── Landuse: quitar líneas de manzanas ──────────────────
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
-          { try { map.setPaintProperty(id,'fill-color','#edeadf'); map.setPaintProperty(id,'fill-opacity',0.5); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#f2efe8'); map.setPaintProperty(id,'fill-opacity',0); } catch(_){} return; }
+        // Ocultar outlines de landuse (líneas de manzanas)
+        if (layer.type === 'line' && (idL.includes('landuse') || idL.includes('residential') || idL.includes('boundary')))
+          { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
 
-        // ── Edificios ───────────────────────────────────────────
+        // ── Edificios — flat, sin outline visible ───────────────
         if (layer.type === 'fill' && idL.includes('building'))
-          { try { map.setPaintProperty(id,'fill-color','#ddd8cd'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#e0dbd0'); map.setPaintProperty(id,'fill-opacity',0.9); } catch(_){} return; }
         if (layer.type === 'line' && idL.includes('building'))
-          { try { map.setPaintProperty(id,'line-color','#c8c3b8'); map.setPaintProperty(id,'line-width',0.6); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
 
-        // ── Calles: casing ─────────────────────────────────────
-        if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border') || idL.includes('tunnel')))
+        // ── Calles: casing (borde redondeado) ──────────────────
+        if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
           { try {
-              const isMoto = idL.includes('motor') || idL.includes('trunk');
-              const isPrim = idL.includes('primary');
-              map.setPaintProperty(id,'line-color', isMoto ? '#d4881a' : isPrim ? '#e8c050' : '#d4cfc4');
+              const isPrim = idL.includes('primary') || idL.includes('trunk') || idL.includes('motor');
+              map.setPaintProperty(id,'line-color', isPrim ? '#d4c070' : '#ddd8cc');
+              map.setPaintProperty(id,'line-opacity',1);
               map.setLayoutProperty(id,'line-cap','round');
               map.setLayoutProperty(id,'line-join','round');
             } catch(_){} return; }
 
-        // ── Calles: fill ────────────────────────────────────────
-        if (layer.type === 'line' && (idL.includes('road') || idL.includes('highway') || idL.includes('street') || idL.includes('transport'))) {
+        // ── Calles: fill — cartoon gruesas y redondeadas ────────
+        if (layer.type === 'line' && (idL.includes('road') || idL.includes('highway') || idL.includes('street') || idL.includes('transport') || idL.includes('tunnel'))) {
           try {
             const isMoto = idL.includes('motor') || idL.includes('motorway');
             const isPrim = idL.includes('primary') || idL.includes('trunk');
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      map.setPaintProperty(id,'line-color','#f9a825');
-            else if (isPrim) map.setPaintProperty(id,'line-color','#fcd858');
-            else if (isSec)  map.setPaintProperty(id,'line-color','#ffffff');
-            else             map.setPaintProperty(id,'line-color','#ffffff');
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,4,16,14]); }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,3,16,12]); }
+            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,2,16,8]); }
+            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,1.5,16,6]); }
           } catch(_){} return;
         }
 
-        // ── Texto: sin uppercase, colores limpios ───────────────
+        // ── Texto ───────────────────────────────────────────────
         if (layer.type === 'symbol') {
           try {
             const tt = map.getLayoutProperty(id,'text-transform');
             if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
-            if (idL.includes('water')) {
+            // Reducir tamaño de fuente en calles
+            if (idL.includes('road') || idL.includes('street') || idL.includes('transport')) {
+              map.setLayoutProperty(id,'text-size',9);
+              map.setPaintProperty(id,'text-color','#9a9080');
+              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
+              map.setPaintProperty(id,'text-halo-width',1.2);
+            } else if (idL.includes('water')) {
+              map.setLayoutProperty(id,'text-size',10);
               map.setPaintProperty(id,'text-color','#2a6db5');
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
-            } else if (idL.includes('road') || idL.includes('street')) {
-              map.setPaintProperty(id,'text-color','#888070');
-              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.9)');
-              map.setPaintProperty(id,'text-halo-width',1.5);
             } else {
               map.setPaintProperty(id,'text-color','#33302a');
               map.setPaintProperty(id,'text-halo-color','rgba(242,239,232,0.95)');
@@ -363,25 +368,6 @@ export class MapView {
           } catch(_){}
         }
       });
-
-      // ── Edificios 3D ────────────────────────────────────────
-      if (!map.getLayer('wp-3d-buildings')) {
-        const src = Object.keys(style.sources || {}).find(s => s.includes('openmaptiles') || s.includes('omf')) || Object.keys(style.sources||{})[0];
-        if (src) try {
-          map.addLayer({
-            id:'wp-3d-buildings', source:src, 'source-layer':'building',
-            type:'fill-extrusion', minzoom:14,
-            paint:{
-              'fill-extrusion-color':['interpolate',['linear'],['zoom'],14,'#ddd8cd',17,'#cec9be'],
-              'fill-extrusion-height':['interpolate',['linear'],['zoom'],
-                14, 0, 14.5, ['coalesce',['get','render_height'],['get','height'],4]],
-              'fill-extrusion-base':['interpolate',['linear'],['zoom'],
-                14, 0, 14.5, ['coalesce',['get','render_min_height'],['get','min_height'],0]],
-              'fill-extrusion-opacity':0.85
-            }
-          });
-        } catch(e){ console.warn('3D:',e.message); }
-      }
 
       console.log('✅ WhatsPlan gamified style aplicado');
     } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
