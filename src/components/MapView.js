@@ -10,7 +10,141 @@ import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserServ
 const CENTER_LNG = -97.9506;
 const CENTER_LAT =  25.9950;
 const ZOOM       = 16;
-const MAP_STYLE  = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const MAP_STYLE = {
+  version: 8,
+  name: 'WhatsPlan Gamified',
+  glyphs: 'https://tiles.openfreemap.org/glyphs/{fontstack}/{range}.pbf',
+  sprite: 'https://tiles.openfreemap.org/sprite/bright',
+  sources: {
+    omf: {
+      type: 'vector',
+      url: 'https://tiles.openfreemap.org/planet'
+    }
+  },
+  layers: [
+    // ── Fondo ──────────────────────────────────────────────────
+    { id:'bg', type:'background', paint:{ 'background-color':'#f5f0e6' }},
+
+    // ── Cobertura natural ───────────────────────────────────────
+    { id:'landcover-grass', type:'fill', source:'omf', 'source-layer':'landcover',
+      filter:['in','class','grass','meadow','sand'],
+      paint:{ 'fill-color':'#e8f5d0', 'fill-opacity':0.7 }},
+    { id:'landcover-wood', type:'fill', source:'omf', 'source-layer':'landcover',
+      filter:['in','class','wood','forest'],
+      paint:{ 'fill-color':'#7bc47b', 'fill-opacity':0.6 }},
+
+    // ── Parques ──────────────────────────────────────────────────
+    { id:'park', type:'fill', source:'omf', 'source-layer':'park',
+      paint:{ 'fill-color':'#8fd08f', 'fill-opacity':0.65 }},
+    { id:'park-outline', type:'line', source:'omf', 'source-layer':'park',
+      paint:{ 'line-color':'#6ab86a', 'line-width':1, 'line-opacity':0.4 }},
+
+    // ── Uso de suelo ─────────────────────────────────────────────
+    { id:'landuse-residential', type:'fill', source:'omf', 'source-layer':'landuse',
+      filter:['in','class','residential','suburb'],
+      paint:{ 'fill-color':'#ede8dc', 'fill-opacity':0.5 }},
+    { id:'landuse-commercial', type:'fill', source:'omf', 'source-layer':'landuse',
+      filter:['in','class','commercial','retail'],
+      paint:{ 'fill-color':'#f5e6c8', 'fill-opacity':0.5 }},
+    { id:'landuse-industrial', type:'fill', source:'omf', 'source-layer':'landuse',
+      filter:['in','class','industrial'],
+      paint:{ 'fill-color':'#ddd4c0', 'fill-opacity':0.5 }},
+
+    // ── Agua ─────────────────────────────────────────────────────
+    { id:'water', type:'fill', source:'omf', 'source-layer':'water',
+      paint:{ 'fill-color':'#1a5cf5', 'fill-opacity':0.92 }},
+    { id:'waterway', type:'line', source:'omf', 'source-layer':'waterway',
+      paint:{ 'line-color':'#1a5cf5', 'line-width':['interpolate',['linear'],['zoom'],12,1.5,17,5], 'line-opacity':0.85 }},
+
+    // ── Edificios ────────────────────────────────────────────────
+    { id:'building', type:'fill', source:'omf', 'source-layer':'building',
+      minzoom: 14,
+      paint:{ 'fill-color':'#d8d1c5', 'fill-opacity':0.8 }},
+    { id:'building-outline', type:'line', source:'omf', 'source-layer':'building',
+      minzoom: 14,
+      paint:{ 'line-color':'#c0b8ab', 'line-width':0.75 }},
+
+    // ── Caminos menores ──────────────────────────────────────────
+    { id:'road-path', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','path','footway','steps','cycleway'],
+      paint:{ 'line-color':'#c8bfb0', 'line-width':1.2, 'line-dasharray':[2.5,2] }},
+    { id:'road-service-casing', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','service','track'],
+      paint:{ 'line-color':'#d4cfc4', 'line-width':['interpolate',['linear'],['zoom'],13,2.5,17,7], 'line-cap':'round', 'line-join':'round' }},
+    { id:'road-service', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','service','track'],
+      paint:{ 'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],13,1.5,17,5], 'line-cap':'round', 'line-join':'round' }},
+
+    // ── Calles secundarias ───────────────────────────────────────
+    { id:'road-minor-casing', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','minor'],
+      paint:{ 'line-color':'#d4cfc4', 'line-width':['interpolate',['linear'],['zoom'],13,3,17,9], 'line-cap':'round', 'line-join':'round' }},
+    { id:'road-minor', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','minor'],
+      paint:{ 'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],13,2,17,7], 'line-cap':'round', 'line-join':'round' }},
+
+    // ── Secundarias/Terciarias ───────────────────────────────────
+    { id:'road-secondary-casing', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','secondary','tertiary'],
+      paint:{ 'line-color':'#e8c050', 'line-width':['interpolate',['linear'],['zoom'],12,4,17,13], 'line-cap':'round', 'line-join':'round' }},
+    { id:'road-secondary', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','secondary','tertiary'],
+      paint:{ 'line-color':'#fce080', 'line-width':['interpolate',['linear'],['zoom'],12,2.5,17,10], 'line-cap':'round', 'line-join':'round' }},
+
+    // ── Primarias ────────────────────────────────────────────────
+    { id:'road-primary-casing', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','primary','trunk'],
+      paint:{ 'line-color':'#d4881a', 'line-width':['interpolate',['linear'],['zoom'],11,5,17,16], 'line-cap':'round', 'line-join':'round' }},
+    { id:'road-primary', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['in','class','primary','trunk'],
+      paint:{ 'line-color':'#f9c840', 'line-width':['interpolate',['linear'],['zoom'],11,3.5,17,13], 'line-cap':'round', 'line-join':'round' }},
+
+    // ── Autopistas ───────────────────────────────────────────────
+    { id:'road-motorway-casing', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['==','class','motorway'],
+      paint:{ 'line-color':'#c44820', 'line-width':['interpolate',['linear'],['zoom'],10,6,17,18], 'line-cap':'round', 'line-join':'round' }},
+    { id:'road-motorway', type:'line', source:'omf', 'source-layer':'transportation',
+      filter:['==','class','motorway'],
+      paint:{ 'line-color':'#f07030', 'line-width':['interpolate',['linear'],['zoom'],10,4,17,15], 'line-cap':'round', 'line-join':'round' }},
+
+    // ── Límites admin ────────────────────────────────────────────
+    { id:'boundary', type:'line', source:'omf', 'source-layer':'boundary',
+      filter:['==','admin_level',4],
+      paint:{ 'line-color':'#b8a898', 'line-width':1.5, 'line-dasharray':[4,3], 'line-opacity':0.6 }},
+
+    // ── Etiquetas agua ───────────────────────────────────────────
+    { id:'water-label', type:'symbol', source:'omf', 'source-layer':'water_name',
+      layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Italic'], 'text-size':11 },
+      paint:{ 'text-color':'#3a6fd4', 'text-halo-color':'rgba(245,240,230,0.9)', 'text-halo-width':1.5 }},
+
+    // ── Etiquetas calles ─────────────────────────────────────────
+    { id:'road-label', type:'symbol', source:'omf', 'source-layer':'transportation_name',
+      layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Regular'],
+        'text-size':10, 'symbol-placement':'line', 'text-max-angle':30,
+        'text-padding':8 },
+      paint:{ 'text-color':'#5c4e38', 'text-halo-color':'rgba(255,255,255,0.9)', 'text-halo-width':1.5 }},
+
+    // ── POI ──────────────────────────────────────────────────────
+    { id:'poi-label', type:'symbol', source:'omf', 'source-layer':'poi',
+      minzoom: 15,
+      layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Regular'],
+        'text-size':10, 'text-max-width':8, 'text-offset':[0,1.2] },
+      paint:{ 'text-color':'#5c4e38', 'text-halo-color':'rgba(245,240,230,0.9)', 'text-halo-width':1.5 }},
+
+    // ── Lugares ──────────────────────────────────────────────────
+    { id:'place-village', type:'symbol', source:'omf', 'source-layer':'place',
+      filter:['in','class','village','hamlet','suburb','neighbourhood'],
+      layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Regular'],
+        'text-size':11, 'text-max-width':8 },
+      paint:{ 'text-color':'#4a3c2a', 'text-halo-color':'rgba(245,240,230,0.95)', 'text-halo-width':2 }},
+    { id:'place-town', type:'symbol', source:'omf', 'source-layer':'place',
+      filter:['in','class','town','city'],
+      layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Bold'],
+        'text-size':['interpolate',['linear'],['zoom'],10,13,16,20],
+        'text-max-width':8 },
+      paint:{ 'text-color':'#2d2010', 'text-halo-color':'rgba(245,240,230,0.98)', 'text-halo-width':2.5 }},
+  ]
+};
 
 const BL_BG       = '#f0ede6';  // tierra cálida
 const BL_LAND     = '#f0ede6';
