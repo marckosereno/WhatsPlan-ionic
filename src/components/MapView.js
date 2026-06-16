@@ -10,133 +10,7 @@ import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserServ
 const CENTER_LNG = -97.9506;
 const CENTER_LAT =  25.9950;
 const ZOOM       = 16;
-const MAP_STYLE = {
-  version: 8,
-  glyphs: 'https://tiles.openfreemap.org/glyphs/{fontstack}/{range}.pbf',
-  sources: {
-    omf: { type:'vector', url:'https://tiles.openfreemap.org/planet' }
-  },
-  layers: [
-    // Fondo blanco-cálido
-    { id:'bg', type:'background',
-      paint:{ 'background-color':'#f2efe8' }},
-
-    // Agua azul cielo vibrante
-    { id:'water', type:'fill', source:'omf', 'source-layer':'water',
-      paint:{ 'fill-color':'#5bb8f5', 'fill-opacity':1 }},
-    { id:'waterway', type:'line', source:'omf', 'source-layer':'waterway',
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#5bb8f5',
-        'line-width':['interpolate',['linear'],['zoom'],12,1,16,4] }},
-
-    // Tierra natural/grass
-    { id:'landcover', type:'fill', source:'omf', 'source-layer':'landcover',
-      paint:{ 'fill-color':'#e8f5d0', 'fill-opacity':0.6 }},
-
-    // Parques — verde saturado
-    { id:'park', type:'fill', source:'omf', 'source-layer':'park',
-      paint:{ 'fill-color':'#5dbb63', 'fill-opacity':0.85 }},
-    { id:'landuse-green', type:'fill', source:'omf', 'source-layer':'landuse',
-      filter:['in','class','park','pitch','playground','recreation_ground','grass','cemetery'],
-      paint:{ 'fill-color':'#5dbb63', 'fill-opacity':0.75 }},
-
-    // Zona residencial — levemente diferente al fondo
-    { id:'landuse-residential', type:'fill', source:'omf', 'source-layer':'landuse',
-      filter:['==','class','residential'],
-      paint:{ 'fill-color':'#edeadf', 'fill-opacity':0.5 }},
-
-    // Edificios flat (base)
-    { id:'building', type:'fill', source:'omf', 'source-layer':'building',
-      minzoom:14,
-      paint:{ 'fill-color':'#ddd8cd', 'fill-opacity':1 }},
-    { id:'building-outline', type:'line', source:'omf', 'source-layer':'building',
-      minzoom:14,
-      paint:{ 'line-color':'#c8c3b8', 'line-width':0.6 }},
-
-    // ── Calles — casing (borde/sombra) ──────────────────────────
-    { id:'road-path', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','path','footway','steps'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#d4cfc4', 'line-width':1, 'line-dasharray':[2,2] }},
-
-    { id:'road-minor-case', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','minor','service','track'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#ddd8cc',
-        'line-width':['interpolate',['linear'],['zoom'],13,3,17,10] }},
-    { id:'road-minor', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','minor','service','track'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#ffffff',
-        'line-width':['interpolate',['linear'],['zoom'],13,2,17,8] }},
-
-    { id:'road-sec-case', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','secondary','tertiary'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#d4d0c4',
-        'line-width':['interpolate',['linear'],['zoom'],11,4,17,16] }},
-    { id:'road-sec', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','secondary','tertiary'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#ffffff',
-        'line-width':['interpolate',['linear'],['zoom'],11,2.5,17,12] }},
-
-    { id:'road-primary-case', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','primary','trunk'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#e8c050',
-        'line-width':['interpolate',['linear'],['zoom'],10,5,17,20] }},
-    { id:'road-primary', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['in','class','primary','trunk'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#fcd858',
-        'line-width':['interpolate',['linear'],['zoom'],10,3.5,17,16] }},
-
-    { id:'road-motorway-case', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['==','class','motorway'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#d4881a',
-        'line-width':['interpolate',['linear'],['zoom'],9,6,17,22] }},
-    { id:'road-motorway', type:'line', source:'omf', 'source-layer':'transportation',
-      filter:['==','class','motorway'],
-      layout:{ 'line-cap':'round', 'line-join':'round' },
-      paint:{ 'line-color':'#f9a825',
-        'line-width':['interpolate',['linear'],['zoom'],9,4,17,18] }},
-
-    // ── Edificios 3D ──────────────────────────────────────────────
-    { id:'building-3d', type:'fill-extrusion', source:'omf', 'source-layer':'building',
-      minzoom:14,
-      paint:{
-        'fill-extrusion-color': ['interpolate',['linear'],['zoom'],14,'#ddd8cd',17,'#d0cbc0'],
-        'fill-extrusion-height': ['interpolate',['linear'],['zoom'],
-          14, 0, 14.5, ['coalesce',['get','render_height'],['get','height'],4]],
-        'fill-extrusion-base': ['interpolate',['linear'],['zoom'],
-          14, 0, 14.5, ['coalesce',['get','render_min_height'],['get','min_height'],0]],
-        'fill-extrusion-opacity': 0.8
-      }},
-
-    // ── Labels mínimos (solo texto, sin iconos) ──────────────────
-    { id:'road-label', type:'symbol', source:'omf', 'source-layer':'transportation_name',
-      layout:{ 'text-field':['get','name:es',['get','name']],
-        'text-font':['Noto Sans Regular'], 'text-size':10,
-        'symbol-placement':'line', 'text-max-angle':30 },
-      paint:{ 'text-color':'#888070',
-        'text-halo-color':'rgba(255,255,255,0.9)', 'text-halo-width':1.5 }},
-
-    { id:'water-label', type:'symbol', source:'omf', 'source-layer':'water_name',
-      layout:{ 'text-field':['get','name'], 'text-font':['Noto Sans Italic'], 'text-size':11 },
-      paint:{ 'text-color':'#3a7ec8',
-        'text-halo-color':'rgba(255,255,255,0.8)', 'text-halo-width':1.5 }},
-
-    { id:'place-label', type:'symbol', source:'omf', 'source-layer':'place',
-      filter:['in','class','city','town','village','suburb'],
-      layout:{ 'text-field':['get','name'],
-        'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],10,11,16,18],
-        'text-max-width':8, 'text-anchor':'center' },
-      paint:{ 'text-color':'#333028',
-        'text-halo-color':'rgba(242,239,232,0.95)', 'text-halo-width':2.5 }},
-  ]
-};
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
 const BL_BG       = '#f0ece0';
 const BL_LAND     = '#f0ece0';
@@ -411,8 +285,106 @@ export class MapView {
 
   // ── Blink Light ───────────────────────────────────────────────────
   _applyBlinkLight() {
-    // El style custom inline ya define todo — nada que overridear
-    console.log('✅ Estilo WhatsPlan custom cargado');
+    try {
+      const style = this.map.getStyle();
+      if (!style?.layers) return;
+      const map = this.map;
+
+      style.layers.forEach(layer => {
+        const id  = layer.id;
+        const idL = id.toLowerCase();
+
+        // ── Fondo ──────────────────────────────────────────────
+        if (layer.type === 'background')
+          { try { map.setPaintProperty(id,'background-color','#f2efe8'); } catch(_){} return; }
+
+        // ── Agua ────────────────────────────────────────────────
+        if (layer.type === 'fill' && (idL.includes('water') || idL.includes('ocean') || idL.includes('lake')))
+          { try { map.setPaintProperty(id,'fill-color','#5bb8f5'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
+        if (layer.type === 'line' && (idL.startsWith('water') || idL.includes('waterway') || idL.includes('river')))
+          { try { map.setPaintProperty(id,'line-color','#5bb8f5'); } catch(_){} return; }
+
+        // ── Parques / vegetación ────────────────────────────────
+        if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
+          { try { map.setPaintProperty(id,'fill-color','#5dbb63'); map.setPaintProperty(id,'fill-opacity',0.8); } catch(_){} return; }
+
+        // ── Landuse residencial ─────────────────────────────────
+        if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
+          { try { map.setPaintProperty(id,'fill-color','#edeadf'); map.setPaintProperty(id,'fill-opacity',0.5); } catch(_){} return; }
+
+        // ── Edificios ───────────────────────────────────────────
+        if (layer.type === 'fill' && idL.includes('building'))
+          { try { map.setPaintProperty(id,'fill-color','#ddd8cd'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
+        if (layer.type === 'line' && idL.includes('building'))
+          { try { map.setPaintProperty(id,'line-color','#c8c3b8'); map.setPaintProperty(id,'line-width',0.6); } catch(_){} return; }
+
+        // ── Calles: casing ─────────────────────────────────────
+        if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border') || idL.includes('tunnel')))
+          { try {
+              const isMoto = idL.includes('motor') || idL.includes('trunk');
+              const isPrim = idL.includes('primary');
+              map.setPaintProperty(id,'line-color', isMoto ? '#d4881a' : isPrim ? '#e8c050' : '#d4cfc4');
+              map.setLayoutProperty(id,'line-cap','round');
+              map.setLayoutProperty(id,'line-join','round');
+            } catch(_){} return; }
+
+        // ── Calles: fill ────────────────────────────────────────
+        if (layer.type === 'line' && (idL.includes('road') || idL.includes('highway') || idL.includes('street') || idL.includes('transport'))) {
+          try {
+            const isMoto = idL.includes('motor') || idL.includes('motorway');
+            const isPrim = idL.includes('primary') || idL.includes('trunk');
+            const isSec  = idL.includes('secondary') || idL.includes('tertiary');
+            map.setLayoutProperty(id,'line-cap','round');
+            map.setLayoutProperty(id,'line-join','round');
+            if (isMoto)      map.setPaintProperty(id,'line-color','#f9a825');
+            else if (isPrim) map.setPaintProperty(id,'line-color','#fcd858');
+            else if (isSec)  map.setPaintProperty(id,'line-color','#ffffff');
+            else             map.setPaintProperty(id,'line-color','#ffffff');
+          } catch(_){} return;
+        }
+
+        // ── Texto: sin uppercase, colores limpios ───────────────
+        if (layer.type === 'symbol') {
+          try {
+            const tt = map.getLayoutProperty(id,'text-transform');
+            if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
+            if (idL.includes('water')) {
+              map.setPaintProperty(id,'text-color','#2a6db5');
+              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
+            } else if (idL.includes('road') || idL.includes('street')) {
+              map.setPaintProperty(id,'text-color','#888070');
+              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.9)');
+              map.setPaintProperty(id,'text-halo-width',1.5);
+            } else {
+              map.setPaintProperty(id,'text-color','#33302a');
+              map.setPaintProperty(id,'text-halo-color','rgba(242,239,232,0.95)');
+              map.setPaintProperty(id,'text-halo-width',2);
+            }
+          } catch(_){}
+        }
+      });
+
+      // ── Edificios 3D ────────────────────────────────────────
+      if (!map.getLayer('wp-3d-buildings')) {
+        const src = Object.keys(style.sources || {}).find(s => s.includes('openmaptiles') || s.includes('omf')) || Object.keys(style.sources||{})[0];
+        if (src) try {
+          map.addLayer({
+            id:'wp-3d-buildings', source:src, 'source-layer':'building',
+            type:'fill-extrusion', minzoom:14,
+            paint:{
+              'fill-extrusion-color':['interpolate',['linear'],['zoom'],14,'#ddd8cd',17,'#cec9be'],
+              'fill-extrusion-height':['interpolate',['linear'],['zoom'],
+                14, 0, 14.5, ['coalesce',['get','render_height'],['get','height'],4]],
+              'fill-extrusion-base':['interpolate',['linear'],['zoom'],
+                14, 0, 14.5, ['coalesce',['get','render_min_height'],['get','min_height'],0]],
+              'fill-extrusion-opacity':0.85
+            }
+          });
+        } catch(e){ console.warn('3D:',e.message); }
+      }
+
+      console.log('✅ WhatsPlan gamified style aplicado');
+    } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
   }
 
   // ── Datos ─────────────────────────────────────────────────────────
