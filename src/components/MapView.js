@@ -159,6 +159,12 @@ export class MapView {
 
     this.map.on('load', () => {
       console.log('✅ Mapa listo');
+
+      // Placeholder transparente para iconos del sprite no disponibles
+      this.map.on('styleimagemissing', (e) => {
+        try { this.map.addImage(e.id, { width:1, height:1, data:new Uint8Array(4) }); } catch(_) {}
+      });
+
       // Gamificación: saturación y contraste ligeramente elevados
       var canvas = document.getElementById('map-container');
       if (canvas) canvas.style.filter = 'saturate(1.25) contrast(1.05)';
