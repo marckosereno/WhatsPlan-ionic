@@ -167,7 +167,7 @@ export class MapView {
 
       // Gamificación: saturación y contraste ligeramente elevados
       var canvas = document.getElementById('map-container');
-      if (canvas) canvas.style.filter = 'saturate(1.25) contrast(1.05)';
+      if (canvas) canvas.style.filter = 'saturate(1.35) contrast(1.08) brightness(1.02)';
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
@@ -286,53 +286,28 @@ export class MapView {
     try {
       const style = this.map.getStyle();
       if (!style?.layers) return;
+
+      // Solo overrides específicos — el estilo liberty se encarga del resto
       style.layers.forEach(layer => {
         const id = layer.id.toLowerCase();
+
+        // ── Agua: color WhatsPlan ──────────────────────────────
+        if (layer.type === 'fill' && (id === 'water' || id.includes('water-') || id.includes('-water'))) {
+          try { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.92); } catch(_) {}
+        }
+        if (layer.type === 'line' && (id === 'waterway' || id.startsWith('waterway-'))) {
+          try { this.map.setPaintProperty(layer.id, 'line-color', BL_WATER); } catch(_) {}
+        }
+
+        // ── Texto: sin uppercase, fuente más legible ───────────
         if (layer.type === 'symbol') {
           try {
             const tt = this.map.getLayoutProperty(layer.id, 'text-transform');
             if (tt === 'uppercase') this.map.setLayoutProperty(layer.id, 'text-transform', 'none');
-            const isPrimary   = id.includes('road-primary') || id.includes('highway') || id.includes('motorway') || id.includes('trunk');
-            const isTextLayer = id.includes('road') || id.includes('place') || id.includes('poi') || id.includes('label') || id.includes('name');
-            if (isTextLayer) {
-              try { this.map.setLayoutProperty(layer.id, 'text-font', ['Open Sans Italic','Montserrat Regular Italic','Noto Sans Regular','HanWangHeiLight Regular','NanumBarunGothic Regular']); } catch(_) {}
-            }
-            this.map.setPaintProperty(layer.id, 'text-color',      isPrimary ? BENITO_TEXT : BL_TEXT);
-            this.map.setPaintProperty(layer.id, 'text-halo-color', BL_HALO);
-            this.map.setPaintProperty(layer.id, 'text-halo-width', isPrimary ? 2.5 : 2);
-            this.map.setPaintProperty(layer.id, 'text-halo-blur',  0.3);
-          } catch(_) {}
-        }
-        if (layer.type === 'line') {
-          try {
-            const isMajor  = id.includes('primary') || id.includes('trunk') || id.includes('motorway');
-            const isSecond = id.includes('secondary') || id.includes('tertiary');
-            const isStreet = id.includes('street') || id.includes('road') || id.includes('residential') || id.includes('service') || id.includes('transportation');
-            const isWater  = id.includes('water') || id.includes('river') || id.includes('canal');
-            // Round caps para look cartoon
-            try { this.map.setLayoutProperty(layer.id, 'line-cap',  'round'); } catch(_) {}
-            try { this.map.setLayoutProperty(layer.id, 'line-join', 'round'); } catch(_) {}
-            if (isWater)       { this.map.setPaintProperty(layer.id, 'line-color', BL_WATER);  this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],10,2,16,8]); }
-            else if (isMajor)  { this.map.setPaintProperty(layer.id, 'line-color', '#f9a825'); this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],10,2,12,3,14,6,16,10,18,14]); }
-            else if (isSecond) { this.map.setPaintProperty(layer.id, 'line-color', '#fcd858'); this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],11,1,13,2.5,14,4,16,7,18,10]); }
-            else if (isStreet) { this.map.setPaintProperty(layer.id, 'line-color', '#ffffff'); this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],12,0.5,13,1.2,14,2.5,16,4,18,6]); }
-            try { this.map.setPaintProperty(layer.id, 'line-opacity', 1); } catch(_) {}
-          } catch(_) {}
-        }
-        if (layer.type === 'fill') {
-          try {
-            if (id.includes('water') || id.includes('ocean') || id.includes('lake') || id.includes('river') || id.includes('reservoir'))
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 1); }
-            else if (id.includes('park') || id.includes('grass') || id.includes('forest') || id.includes('wood') || id.includes('green') || id.includes('landcover'))
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_PARK); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.7); }
-            else if (id.includes('building'))
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_BUILDING); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.5); }
-            else if (id === 'background' || id.includes('landuse') || id.includes('land-') || id === 'land')
-              { this.map.setPaintProperty(layer.id, 'fill-color', BL_LAND); }
           } catch(_) {}
         }
       });
-      try { this.map.setPaintProperty('background', 'background-color', BL_BG); } catch(_) {}
+
       console.log('✅ Blink Light aplicado');
     } catch(e) { console.warn('⚠️ Estilo:', e.message); }
   }
