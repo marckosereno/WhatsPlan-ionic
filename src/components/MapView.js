@@ -70,42 +70,42 @@ const MAP_STYLE = {
       paint:{ 'line-color':'#c8bfb0', 'line-width':1.2, 'line-dasharray':[2.5,2] }},
     { id:'road-service-casing', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','service','track'],
-      paint:{ 'line-color':'#d4cfc4', 'line-width':['interpolate',['linear'],['zoom'],13,2.5,17,7], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#d4cfc4', 'line-width':['interpolate',['linear'],['zoom'],13,2.5,17,7] }},
     { id:'road-service', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','service','track'],
-      paint:{ 'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],13,1.5,17,5], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],13,1.5,17,5] }},
 
     // ── Calles secundarias ───────────────────────────────────────
     { id:'road-minor-casing', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','minor'],
-      paint:{ 'line-color':'#d4cfc4', 'line-width':['interpolate',['linear'],['zoom'],13,3,17,9], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#d4cfc4', 'line-width':['interpolate',['linear'],['zoom'],13,3,17,9] }},
     { id:'road-minor', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','minor'],
-      paint:{ 'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],13,2,17,7], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],13,2,17,7] }},
 
     // ── Secundarias/Terciarias ───────────────────────────────────
     { id:'road-secondary-casing', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','secondary','tertiary'],
-      paint:{ 'line-color':'#e8c050', 'line-width':['interpolate',['linear'],['zoom'],12,4,17,13], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#e8c050', 'line-width':['interpolate',['linear'],['zoom'],12,4,17,13] }},
     { id:'road-secondary', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','secondary','tertiary'],
-      paint:{ 'line-color':'#fce080', 'line-width':['interpolate',['linear'],['zoom'],12,2.5,17,10], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#fce080', 'line-width':['interpolate',['linear'],['zoom'],12,2.5,17,10] }},
 
     // ── Primarias ────────────────────────────────────────────────
     { id:'road-primary-casing', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','primary','trunk'],
-      paint:{ 'line-color':'#d4881a', 'line-width':['interpolate',['linear'],['zoom'],11,5,17,16], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#d4881a', 'line-width':['interpolate',['linear'],['zoom'],11,5,17,16] }},
     { id:'road-primary', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['in','class','primary','trunk'],
-      paint:{ 'line-color':'#f9c840', 'line-width':['interpolate',['linear'],['zoom'],11,3.5,17,13], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#f9c840', 'line-width':['interpolate',['linear'],['zoom'],11,3.5,17,13] }},
 
     // ── Autopistas ───────────────────────────────────────────────
     { id:'road-motorway-casing', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['==','class','motorway'],
-      paint:{ 'line-color':'#c44820', 'line-width':['interpolate',['linear'],['zoom'],10,6,17,18], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#c44820', 'line-width':['interpolate',['linear'],['zoom'],10,6,17,18] }},
     { id:'road-motorway', type:'line', source:'omf', 'source-layer':'transportation',
       filter:['==','class','motorway'],
-      paint:{ 'line-color':'#f07030', 'line-width':['interpolate',['linear'],['zoom'],10,4,17,15], 'line-cap':'round', 'line-join':'round' }},
+      layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#f07030', 'line-width':['interpolate',['linear'],['zoom'],10,4,17,15] }},
 
     // ── Límites admin ────────────────────────────────────────────
     { id:'boundary', type:'line', source:'omf', 'source-layer':'boundary',
