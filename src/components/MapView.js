@@ -12,10 +12,10 @@ const CENTER_LAT =  25.9950;
 const ZOOM       = 16;
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
-const BL_BG       = '#f5f0e6';  // tierra cálida
-const BL_LAND     = '#f5f0e6';
-const BL_WATER    = '#1a5cf5';  // azul WhatsPlan
-const BL_PARK     = '#8bc48a';  // verde saturado
+const BL_BG       = '#f0ece0';
+const BL_LAND     = '#f0ece0';
+const BL_WATER    = '#3b82f6';  // azul cielo vibrante
+const BL_PARK     = '#5cb85c';  // verde juego saturado
 const BL_BUILDING = '#ddd8cc';  // edificios más visibles
 const BL_TEXT     = '#2d2d2d';
 const BL_HALO     = 'rgba(240,237,230,0.98)';
@@ -149,8 +149,10 @@ export class MapView {
       ],
       attributionControl:    false,
       keyboard:              false,
-      dragRotate:            false,
-      pitchWithRotate:       false,
+      dragRotate:            true,
+      pitchWithRotate:       true,
+      pitch:                 45,
+      bearing:               -10,
       renderWorldCopies:     false,   // sin copias del mundo
       maxTileCacheSize:      20,
       fadeDuration:          0,
@@ -167,7 +169,7 @@ export class MapView {
 
       // Gamificación: saturación y contraste ligeramente elevados
       var canvas = document.getElementById('map-container');
-      if (canvas) canvas.style.filter = 'saturate(1.35) contrast(1.08) brightness(1.02)';
+      if (canvas) canvas.style.filter = 'saturate(1.5) contrast(1.1) brightness(1.03)';
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
@@ -287,19 +289,23 @@ export class MapView {
       const style = this.map.getStyle();
       if (!style?.layers) return;
 
-      // Solo overrides específicos — el estilo liberty se encarga del resto
       style.layers.forEach(layer => {
         const id = layer.id.toLowerCase();
 
-        // ── Agua: color WhatsPlan ──────────────────────────────
+        // ── Agua azul vibrante ─────────────────────────────────
         if (layer.type === 'fill' && (id === 'water' || id.includes('water-') || id.includes('-water'))) {
-          try { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.92); } catch(_) {}
+          try { this.map.setPaintProperty(layer.id, 'fill-color', BL_WATER); this.map.setPaintProperty(layer.id, 'fill-opacity', 1); } catch(_) {}
         }
         if (layer.type === 'line' && (id === 'waterway' || id.startsWith('waterway-'))) {
-          try { this.map.setPaintProperty(layer.id, 'line-color', BL_WATER); } catch(_) {}
+          try { this.map.setPaintProperty(layer.id, 'line-color', BL_WATER); this.map.setPaintProperty(layer.id, 'line-width', ['interpolate',['linear'],['zoom'],12,2,16,6]); } catch(_) {}
         }
 
-        // ── Texto: sin uppercase, fuente más legible ───────────
+        // ── Parques verdes saturados ───────────────────────────
+        if (layer.type === 'fill' && (id.includes('park') || id.includes('grass') || id.includes('forest') || id.includes('wood') || id.includes('landuse-res') || id.includes('scrub') || id.includes('nature'))) {
+          try { this.map.setPaintProperty(layer.id, 'fill-color', BL_PARK); this.map.setPaintProperty(layer.id, 'fill-opacity', 0.75); } catch(_) {}
+        }
+
+        // ── Texto: sin uppercase ───────────────────────────────
         if (layer.type === 'symbol') {
           try {
             const tt = this.map.getLayoutProperty(layer.id, 'text-transform');
@@ -308,7 +314,43 @@ export class MapView {
         }
       });
 
-      console.log('✅ Blink Light aplicado');
+      // ── Edificios 3D isométricos ──────────────────────────────
+      if (!this.map.getLayer('wp-3d-buildings')) {
+        // Detectar el source name del estilo cargado
+        const sources = Object.keys(style.sources || {});
+        const src = sources.find(s => s.includes('openmaptiles') || s.includes('omf') || s.includes('openfreemap')) || sources[0];
+        if (src) {
+          try {
+            this.map.addLayer({
+              id: 'wp-3d-buildings',
+              source: src,
+              'source-layer': 'building',
+              type: 'fill-extrusion',
+              minzoom: 14,
+              paint: {
+                'fill-extrusion-color': [
+                  'interpolate', ['linear'], ['zoom'],
+                  14, '#ddd8cc',
+                  17, '#ccc5b8'
+                ],
+                'fill-extrusion-height': [
+                  'interpolate', ['linear'], ['zoom'],
+                  14, 0,
+                  14.05, ['coalesce', ['get','render_height'], ['get','height'], 6]
+                ],
+                'fill-extrusion-base': [
+                  'interpolate', ['linear'], ['zoom'],
+                  14, 0,
+                  14.05, ['coalesce', ['get','render_min_height'], ['get','min_height'], 0]
+                ],
+                'fill-extrusion-opacity': 0.85
+              }
+            });
+          } catch(e) { console.warn('3D buildings:', e.message); }
+        }
+      }
+
+      console.log('✅ Blink Light + 3D aplicado');
     } catch(e) { console.warn('⚠️ Estilo:', e.message); }
   }
 
