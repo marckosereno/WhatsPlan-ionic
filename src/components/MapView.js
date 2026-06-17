@@ -541,24 +541,47 @@ export class MapView {
     </div>`;
   }
 
-  // ── Pines dinámicos por zoom (tipo Apple Maps / Google Maps) ──────────
+  // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
-    const zoom    = this.map.getZoom();
-    const maxTier = zoom >= 15.5 ? 3 : zoom >= 14.5 ? 2 : zoom >= 13.5 ? 1 : 0;
-    this.markerEls.forEach((el) => {
+    const zoom = this.map.getZoom();
+
+    // Tamaño de celda en grados según zoom
+    // Zoom 13 → ~1.5km por celda | Zoom 16 → ~180m | Zoom 17+ → todo visible
+    const cellDeg  = 0.014 / Math.pow(2, Math.max(0, zoom - 13));
+    // Pines por celda según zoom
+    const perCell  = zoom >= 17 ? 999
+                   : zoom >= 16 ? 4
+                   : zoom >= 15 ? 2
+                   : 1;
+
+    // Agrupar markers por celda, ordenados por prioridad
+    const cells = new Map();
+    this.markerEls.forEach((el, i) => {
+      const marker = this.markers[i];
+      if (!marker || !el) return;
+      const ll   = marker.getLngLat();
+      const cX   = Math.floor(ll.lng / cellDeg);
+      const cY   = Math.floor(ll.lat / cellDeg);
+      const key  = `${cX},${cY}`;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push({ el, prio: el._zoomTier ?? 3 });
+    });
+
+    // En cada celda, mostrar solo los N mejores por prioridad
+    const shown = new Set();
+    cells.forEach(pins => {
+      pins.sort((a, b) => a.prio - b.prio);
+      pins.slice(0, perCell).forEach(({ el }) => shown.add(el));
+    });
+
+    this.markerEls.forEach(el => {
       if (!el) return;
-      const tier = el._zoomTier ?? 3;
-      const show = tier <= maxTier;
-      // Solo opacity — NO tocar transform (MapLibre lo usa para posicionar el marker)
-      el.style.transition    = 'opacity 0.2s ease';
+      const show = shown.has(el);
+      el.style.transition    = 'opacity 0.22s ease';
       el.style.opacity       = show ? '1' : '0';
       el.style.pointerEvents = show ? '' : 'none';
-      // Animar el contenido interno (no el elemento raíz)
       const inner = el.querySelector('.place-pin-root');
-      if (inner) {
-        inner.style.transition = 'transform 0.2s ease';
-        inner.style.transform  = show ? 'scale(1)' : 'scale(0.5)';
-      }
+      if (inner) inner.style.transform = show ? 'scale(1)' : 'scale(0.5)';
     });
   }
 
