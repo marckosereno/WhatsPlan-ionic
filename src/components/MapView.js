@@ -236,8 +236,13 @@ export class MapView {
 
       // Labels visibles en zoom ≥ 18 — aparecen/desaparecen con el viewport
       const _updateOrHideLabels = () => {
+        this._updatePinsByZoom();
         this._updateLabelsProgressive();
       };
+      this.map.on('zoomstart', () => {
+        // Ocultar labels durante el zoom para mejor perf
+        if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+      });
       this.map.on('zoomend', _updateOrHideLabels);
       // Al mover el mapa: ocultar los que salen, mostrar los nuevos
       this.map.on('moveend', _updateOrHideLabels);
@@ -427,6 +432,11 @@ export class MapView {
       el.className = 'place-marker-el';
       el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
       el._place    = place;
+      // Tier para zoom dinámico: 0=featured, 1=top rated, 2=rated, 3=all
+      el._zoomTier = place.featured ? 0
+        : (parseFloat(place.rating) >= 4.2) ? 1
+        : (parseFloat(place.rating) >= 3.5) ? 2
+        : 3;
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -492,6 +502,8 @@ export class MapView {
       });
     }
     this._refreshActivityBadges();
+    // Aplicar visibilidad según zoom actual
+    setTimeout(() => this._updatePinsByZoom(), 100);
   }
 
   // ── HTML del pin — con label igual que PWA original ───────────────
@@ -506,7 +518,13 @@ export class MapView {
     // Label — igual que PWA original (solo si NO es featured)
     const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
     const labelColor = hasAct ? '#d97706' : '#1f2937';
-    const labelHtml  = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:700;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:nowrap;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:2px 7px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.12);pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease,font-size 0.22s ease,transform 0.22s ease;">${shortName}</div>`;
+    // Nombre en 2 líneas: partir por palabras
+    const words    = (place.name || '').split(' ');
+    const mid      = Math.ceil(words.length / 2);
+    const line1    = words.slice(0, mid).join(' ');
+    const line2    = words.slice(mid).join(' ');
+    const twoLines = line2 ? `${line1}<br>${line2}` : line1;
+    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.2;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:normal;max-width:90px;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${twoLines}</div>`;
 
     if (photoUrl) {
       return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
@@ -525,6 +543,23 @@ export class MapView {
       </div>
       ${labelHtml}
     </div>`;
+  }
+
+  // ── Pines dinámicos por zoom (tipo Apple Maps / Google Maps) ──────────
+  _updatePinsByZoom() {
+    const zoom = this.map.getZoom();
+    // Umbrales: featured siempre, tier1 desde 13.5, tier2 desde 14.5, tier3 desde 15.5
+    const maxTier = zoom >= 15.5 ? 3 : zoom >= 14.5 ? 2 : zoom >= 13.5 ? 1 : 0;
+
+    this.markerEls.forEach((el) => {
+      if (!el) return;
+      const tier = el._zoomTier ?? 3;
+      const show = tier <= maxTier;
+      el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+      el.style.opacity    = show ? '1' : '0';
+      el.style.pointerEvents = show ? '' : 'none';
+      el.style.transform  = show ? 'scale(1)' : 'scale(0.6)';
+    });
   }
 
   // ── Labels dinámicos por zoom + posición izquierda/derecha ──────────
