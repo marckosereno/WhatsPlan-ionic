@@ -236,16 +236,7 @@ export class MapView {
 
       // Labels visibles en zoom ≥ 18 — aparecen/desaparecen con el viewport
       const _updateOrHideLabels = () => {
-        if (this.map.getZoom() >= 18) {
-          this._updateLabelsProgressive();
-        } else {
-          if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
-          this._labelTimers = [];
-          document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-            l.style.opacity = '0';
-            l.style.display = 'none';
-          });
-        }
+        this._updateLabelsProgressive();
       };
       this.map.on('zoomend', _updateOrHideLabels);
       // Al mover el mapa: ocultar los que salen, mostrar los nuevos
@@ -515,8 +506,7 @@ export class MapView {
     // Label — igual que PWA original (solo si NO es featured)
     const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
     const labelColor = hasAct ? '#d97706' : '#1f2937';
-    const labelLeft  = photoUrl ? 31 : 22;
-    const labelHtml  = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:${labelLeft}px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:800;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:nowrap;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px rgba(255,255,255,0.9);pointer-events:none;letter-spacing:-0.2px;transition:opacity 0.25s ease;">${shortName}</div>`;
+    const labelHtml  = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:700;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:nowrap;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:2px 7px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.12);pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease,font-size 0.22s ease,transform 0.22s ease;">${shortName}</div>`;
 
     if (photoUrl) {
       return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
@@ -537,14 +527,29 @@ export class MapView {
     </div>`;
   }
 
-  // ── Labels progresivos en zoom ≥ 18 — igual que PWA original ──────
+  // ── Labels dinámicos por zoom + posición izquierda/derecha ──────────
   _updateLabelsProgressive() {
     if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
     this._labelTimers = [];
 
-    const center = this.map.getCenter();
+    const zoom    = this.map.getZoom();
     const bounds  = this.map.getBounds();
+    const screenW = this.map.getContainer().offsetWidth;
 
+    // Ocultar todo si zoom muy bajo
+    if (zoom < 14) {
+      document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
+        l.style.opacity = '0'; l.style.display = 'none';
+      });
+      return;
+    }
+
+    // Nivel visual según zoom
+    const lvl = zoom >= 17 ? 'full' : zoom >= 15.5 ? 'mid' : 'small';
+    const fontSize  = lvl === 'full' ? '11px' : lvl === 'mid' ? '10px' : '9px';
+    const opacity   = lvl === 'full' ? '1'    : lvl === 'mid' ? '0.88'  : '0.72';
+
+    const center = this.map.getCenter();
     const els = Array.from(document.querySelectorAll('.place-marker-el'));
     const visible = els.map(el => {
       const idx = this.markerEls.indexOf(el);
@@ -557,19 +562,37 @@ export class MapView {
         if (lbl) { lbl.style.opacity = '0'; lbl.style.display = 'none'; }
         return null;
       }
+      // Posición en pantalla para decidir izquierda/derecha
+      const pt = this.map.project(ll);
+      const side = pt.x > screenW / 2 ? 'left' : 'right';
       const dx = ll.lng - center.lng, dy = ll.lat - center.lat;
-      return { el, dist: Math.sqrt(dx*dx + dy*dy) };
+      return { el, dist: Math.sqrt(dx*dx + dy*dy), side, pt };
     }).filter(Boolean).sort((a, b) => a.dist - b.dist);
 
-    visible.forEach(({ el }, i) => {
+    visible.forEach(({ el, side }, i) => {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
-      if (label.style.opacity === '1') return;
-      label.style.display = 'block';
-      label.style.opacity = '0';
+
+      // Posición dinámica: derecha del pin o izquierda
+      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 28;
+      if (side === 'right') {
+        // label a la derecha del pin
+        label.style.left      = (pinW + 4) + 'px';
+        label.style.right     = 'auto';
+        label.style.transform = 'translateY(-50%)';
+      } else {
+        // label a la izquierda del pin
+        label.style.left      = 'auto';
+        label.style.right     = (pinW + 4) + 'px';
+        label.style.transform = 'translateY(-50%)';
+      }
+
+      label.style.fontSize = fontSize;
+      label.style.display  = 'block';
+
       const t = setTimeout(() => {
-        if (this.map.getZoom() >= 18) label.style.opacity = '1';
-      }, i * 30);
+        label.style.opacity = opacity;
+      }, i * 25);
       this._labelTimers.push(t);
     });
   }
