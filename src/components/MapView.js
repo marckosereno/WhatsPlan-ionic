@@ -239,6 +239,8 @@ export class MapView {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
       };
+      // También en zoom (no solo zoomend) para efecto fluido
+      this.map.on('zoom', () => { this._updatePinsByZoom(); });
       this.map.on('zoomstart', () => {
         // Ocultar labels durante el zoom para mejor perf
         if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
@@ -518,13 +520,7 @@ export class MapView {
     // Label — igual que PWA original (solo si NO es featured)
     const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
     const labelColor = hasAct ? '#d97706' : '#1f2937';
-    // Nombre en 2 líneas: partir por palabras
-    const words    = (place.name || '').split(' ');
-    const mid      = Math.ceil(words.length / 2);
-    const line1    = words.slice(0, mid).join(' ');
-    const line2    = words.slice(mid).join(' ');
-    const twoLines = line2 ? `${line1}<br>${line2}` : line1;
-    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.2;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};white-space:normal;max-width:90px;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${twoLines}</div>`;
+    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
 
     if (photoUrl) {
       return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
@@ -547,18 +543,22 @@ export class MapView {
 
   // ── Pines dinámicos por zoom (tipo Apple Maps / Google Maps) ──────────
   _updatePinsByZoom() {
-    const zoom = this.map.getZoom();
-    // Umbrales: featured siempre, tier1 desde 13.5, tier2 desde 14.5, tier3 desde 15.5
+    const zoom    = this.map.getZoom();
     const maxTier = zoom >= 15.5 ? 3 : zoom >= 14.5 ? 2 : zoom >= 13.5 ? 1 : 0;
-
     this.markerEls.forEach((el) => {
       if (!el) return;
       const tier = el._zoomTier ?? 3;
       const show = tier <= maxTier;
-      el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-      el.style.opacity    = show ? '1' : '0';
+      // Solo opacity — NO tocar transform (MapLibre lo usa para posicionar el marker)
+      el.style.transition    = 'opacity 0.2s ease';
+      el.style.opacity       = show ? '1' : '0';
       el.style.pointerEvents = show ? '' : 'none';
-      el.style.transform  = show ? 'scale(1)' : 'scale(0.6)';
+      // Animar el contenido interno (no el elemento raíz)
+      const inner = el.querySelector('.place-pin-root');
+      if (inner) {
+        inner.style.transition = 'transform 0.2s ease';
+        inner.style.transform  = show ? 'scale(1)' : 'scale(0.5)';
+      }
     });
   }
 
@@ -608,22 +608,22 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      // Posición dinámica: derecha del pin o izquierda
       const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 28;
       if (side === 'right') {
-        // label a la derecha del pin
-        label.style.left      = (pinW + 4) + 'px';
+        label.style.left      = (pinW + 6) + 'px';
         label.style.right     = 'auto';
         label.style.transform = 'translateY(-50%)';
+        label.style.textAlign = 'left';
       } else {
-        // label a la izquierda del pin
         label.style.left      = 'auto';
-        label.style.right     = (pinW + 4) + 'px';
+        label.style.right     = (pinW + 6) + 'px';
         label.style.transform = 'translateY(-50%)';
+        label.style.textAlign = 'right';
       }
 
       label.style.fontSize = fontSize;
-      label.style.display  = 'block';
+      // Resetear display para que -webkit-line-clamp funcione
+      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
 
       const t = setTimeout(() => {
         label.style.opacity = opacity;
