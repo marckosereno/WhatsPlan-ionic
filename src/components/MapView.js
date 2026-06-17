@@ -504,8 +504,13 @@ export class MapView {
       });
     }
     this._refreshActivityBadges();
-    // Aplicar visibilidad según zoom actual
-    setTimeout(() => this._updatePinsByZoom(), 100);
+    // Aplicar visibilidad según zoom actual al cargar
+    this._updatePinsByZoom();
+    // Re-aplicar tras fitBounds (el zoom puede cambiar)
+    this.map.once('moveend', () => {
+      this._updatePinsByZoom();
+      this._updateLabelsProgressive();
+    });
   }
 
   // ── HTML del pin — con label igual que PWA original ───────────────
@@ -577,11 +582,15 @@ export class MapView {
     this.markerEls.forEach(el => {
       if (!el) return;
       const show = shown.has(el);
-      el.style.transition    = 'opacity 0.22s ease';
-      el.style.opacity       = show ? '1' : '0';
-      el.style.pointerEvents = show ? '' : 'none';
-      const inner = el.querySelector('.place-pin-root');
-      if (inner) inner.style.transform = show ? 'scale(1)' : 'scale(0.5)';
+      if (show) {
+        el.style.visibility   = 'visible';
+        el.style.opacity      = '1';
+        el.style.pointerEvents = '';
+      } else {
+        el.style.visibility   = 'hidden';
+        el.style.opacity      = '0';
+        el.style.pointerEvents = 'none';
+      }
     });
   }
 
@@ -614,10 +623,16 @@ export class MapView {
       if (idx === -1) return null;
       const marker = this.markers[idx];
       if (!marker) return null;
+      // No mostrar label si el pin está oculto por zoom
+      if (el.style.visibility === 'hidden') {
+        const lbl = el.querySelector('.place-pin-label');
+        if (lbl) { lbl.style.opacity = '0'; }
+        return null;
+      }
       const ll = marker.getLngLat();
       if (!bounds.contains(ll)) {
         const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; lbl.style.display = 'none'; }
+        if (lbl) { lbl.style.opacity = '0'; }
         return null;
       }
       // Posición en pantalla para decidir izquierda/derecha
