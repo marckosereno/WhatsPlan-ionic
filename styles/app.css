@@ -458,23 +458,6 @@ ion-app {
   transform: scale(0.85) !important;
 }
 
-
-/* ── Map Pins — tamaños ───────────────────────────────────────────── */
-.place-marker-el .place-pin-wrapper {
-  width: 32px;
-  height: 32px;
-}
-
-.place-marker-el .pin-inner {
-  width: 32px;
-  height: 32px;
-}
-
-.place-marker-el .pin-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
 /* Pines — pop más suave */
 .place-marker-el.wp-tap:active {
   transform: scale(1.15) !important;
