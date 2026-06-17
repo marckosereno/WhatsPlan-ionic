@@ -7,8 +7,8 @@ import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js'
 import { ActivityService } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
 
-const CENTER_LNG = -97.9506;
-const CENTER_LAT =  25.9950;
+const CENTER_LNG = -97.9504;
+const CENTER_LAT =  26.0600;
 const ZOOM       = 15;
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
@@ -144,8 +144,8 @@ export class MapView {
       minZoom:               12,      // no alejarse demasiado
       maxZoom:               19,
       maxBounds:             [        // restricción a Nuevo Progreso ±18km
-        [-98.1310, 25.8328],          // SW
-        [-97.7702, 26.1572]           // NE
+        [-98.1310, 25.9300],          // SW
+        [-97.7702, 26.1900]           // NE
       ],
       attributionControl:    false,
       keyboard:              false,
@@ -502,11 +502,12 @@ export class MapView {
     if (hasCoords) {
       this.map.fitBounds(bounds, {
         padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: 17
+        maxZoom: 15
       });
     }
     this._refreshActivityBadges();
-    // Aplicar visibilidad según zoom actual al cargar
+    // Asignar zoom threshold fijo por pin (una vez) y aplicar
+    this._assignZoomThresholds();
     this._updatePinsByZoom();
     // Re-aplicar tras fitBounds (el zoom puede cambiar)
     this.map.once('moveend', () => {
@@ -546,6 +547,42 @@ export class MapView {
       </div>
       ${labelHtml}
     </div>`;
+  }
+
+  // ── Pre-calcular zoom threshold fijo por pin (evita parpadeo) ──────
+  _assignZoomThresholds() {
+    const levels = [
+      { zoom: 13, cellDeg: 0.014 },
+      { zoom: 14, cellDeg: 0.007 },
+      { zoom: 15, cellDeg: 0.0035 },
+      { zoom: 16, cellDeg: 0.00175 },
+    ];
+    const assigned = new Set();
+
+    levels.forEach(({ zoom, cellDeg }) => {
+      const cells = new Map();
+      this.markerEls.forEach(el => {
+        if (assigned.has(el)) return;
+        const m = el._marker;
+        if (!m) return;
+        const ll = m.getLngLat();
+        const key = `${Math.floor(ll.lng / cellDeg)},${Math.floor(ll.lat / cellDeg)}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(el);
+      });
+      cells.forEach(els => {
+        // Ordenar por prioridad — el mejor de la celda aparece primero
+        els.sort((a, b) => (a._zoomTier ?? 3) - (b._zoomTier ?? 3));
+        if (!assigned.has(els[0])) {
+          els[0]._showAtZoom = zoom;
+          assigned.add(els[0]);
+        }
+      });
+    });
+    // Pines sin asignar → aparecen en zoom 17
+    this.markerEls.forEach(el => {
+      if (!assigned.has(el)) el._showAtZoom = 17;
+    });
   }
 
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
