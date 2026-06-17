@@ -9,7 +9,7 @@ import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserServ
 
 const CENTER_LNG = -97.9506;
 const CENTER_LAT =  25.9950;
-const ZOOM       = 16;
+const ZOOM       = 15;
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
 const BL_BG       = '#f0ece0';
@@ -410,6 +410,8 @@ export class MapView {
     this._labelTimers = [];
     this.markers.forEach(m => m?.remove());
     this.markers = []; this.markerEls = [];
+    // Reset visibility state
+    document.querySelectorAll('.place-marker-el').forEach(e => { e._wpVisible = undefined; });
     this._closeMiniCard();
   }
 
@@ -581,15 +583,25 @@ export class MapView {
 
     this.markerEls.forEach(el => {
       if (!el) return;
-      const show = shown.has(el);
+      const show     = shown.has(el);
+      const currShow = el._wpVisible;
+      if (show === currShow) return; // sin cambio — evitar repaint innecesario
+      el._wpVisible = show;
       if (show) {
-        el.style.visibility   = 'visible';
-        el.style.opacity      = '1';
         el.style.pointerEvents = '';
+        el.style.transition    = 'opacity 0.28s ease';
+        el.style.opacity       = '1';
+        el.style.visibility    = 'visible';
       } else {
-        el.style.visibility   = 'hidden';
-        el.style.opacity      = '0';
         el.style.pointerEvents = 'none';
+        el.style.transition    = 'opacity 0.18s ease';
+        el.style.opacity       = '0';
+        // Ocultar visibility solo después del fade para que sea suave
+        const elRef = el;
+        clearTimeout(elRef._wpHideTimer);
+        elRef._wpHideTimer = setTimeout(() => {
+          if (elRef._wpVisible === false) elRef.style.visibility = 'hidden';
+        }, 200);
       }
     });
   }
