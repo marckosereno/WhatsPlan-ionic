@@ -8,7 +8,7 @@ import { ActivityService } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
 
 const CENTER_LNG = -97.9504;
-const CENTER_LAT =  26.0600;
+const CENTER_LAT =  26.0520;
 const ZOOM       = 15;
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
@@ -234,19 +234,28 @@ export class MapView {
         }, 80);
       });
 
-      // Labels visibles en zoom ≥ 18 — aparecen/desaparecen con el viewport
+      // Labels y pines — solo en zoomend/moveend (nunca durante animación)
       const _updateOrHideLabels = () => {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
       };
-      // También en zoom (no solo zoomend) para efecto fluido
-      this.map.on('zoom', () => { this._updatePinsByZoom(); });
+      // Durante zoom: mostrar SOLO pines de zoom 13 (estables)
       this.map.on('zoomstart', () => {
-        // Ocultar labels durante el zoom para mejor perf
         if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+        this.markerEls.forEach(el => {
+          if (!el) return;
+          const stable = (el._showAtZoom ?? 99) <= 13;
+          if (!stable && el._wpVisible !== false) {
+            el._wpVisible = false;
+            el.style.transition = 'none';
+            el.style.opacity    = '0';
+            el.style.visibility = 'hidden';
+            el.style.pointerEvents = 'none';
+          }
+        });
       });
+      // Al terminar zoom: actualizar con zoom entero estricto
       this.map.on('zoomend', _updateOrHideLabels);
-      // Al mover el mapa: ocultar los que salen, mostrar los nuevos
       this.map.on('moveend', _updateOrHideLabels);
 
       // Ghost-pan fix
@@ -502,7 +511,8 @@ export class MapView {
     if (hasCoords) {
       this.map.fitBounds(bounds, {
         padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: 15
+        maxZoom: 15,
+        minZoom: 15
       });
     }
     this._refreshActivityBadges();
@@ -587,58 +597,22 @@ export class MapView {
 
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
-    const zoom = this.map.getZoom();
-
-    // Tamaño de celda en grados según zoom
-    // Zoom 13 → ~1.5km por celda | Zoom 16 → ~180m | Zoom 17+ → todo visible
-    const cellDeg  = 0.014 / Math.pow(2, Math.max(0, zoom - 13));
-    // Pines por celda según zoom
-    const perCell  = zoom >= 17 ? 999
-                   : zoom >= 16 ? 4
-                   : zoom >= 15 ? 2
-                   : 1;
-
-    // Agrupar markers por celda, ordenados por prioridad
-    const cells = new Map();
-    this.markerEls.forEach((el, i) => {
-      const marker = this.markers[i];
-      if (!marker || !el) return;
-      const ll   = marker.getLngLat();
-      const cX   = Math.floor(ll.lng / cellDeg);
-      const cY   = Math.floor(ll.lat / cellDeg);
-      const key  = `${cX},${cY}`;
-      if (!cells.has(key)) cells.set(key, []);
-      cells.get(key).push({ el, prio: el._zoomTier ?? 3 });
-    });
-
-    // En cada celda, mostrar solo los N mejores por prioridad
-    const shown = new Set();
-    cells.forEach(pins => {
-      pins.sort((a, b) => a.prio - b.prio);
-      pins.slice(0, perCell).forEach(({ el }) => shown.add(el));
-    });
-
+    const zoom = Math.floor(this.map.getZoom()); // entero estricto — sin decimales
     this.markerEls.forEach(el => {
       if (!el) return;
-      const show     = shown.has(el);
+      const show     = zoom >= (el._showAtZoom ?? 13);
       const currShow = el._wpVisible;
-      if (show === currShow) return; // sin cambio — evitar repaint innecesario
+      if (show === currShow) return;
       el._wpVisible = show;
       if (show) {
-        el.style.pointerEvents = '';
-        el.style.transition    = 'opacity 0.28s ease';
-        el.style.opacity       = '1';
         el.style.visibility    = 'visible';
+        el.style.pointerEvents = '';
+        el.style.transition    = 'opacity 0.3s ease';
+        el.style.opacity       = '1';
       } else {
         el.style.pointerEvents = 'none';
-        el.style.transition    = 'opacity 0.18s ease';
         el.style.opacity       = '0';
-        // Ocultar visibility solo después del fade para que sea suave
-        const elRef = el;
-        clearTimeout(elRef._wpHideTimer);
-        elRef._wpHideTimer = setTimeout(() => {
-          if (elRef._wpVisible === false) elRef.style.visibility = 'hidden';
-        }, 200);
+        el.style.visibility    = 'hidden';
       }
     });
   }
