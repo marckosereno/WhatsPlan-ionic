@@ -331,10 +331,10 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,16,22]); }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,16,18]); }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,16,14]); }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,16,10]); }
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]); }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]); }
+            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]); }
+            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]); }
           } catch(_){} return;
         }
 
@@ -545,39 +545,55 @@ export class MapView {
     </div>`;
   }
 
-  // ── Pre-calcular zoom threshold fijo por pin (evita parpadeo) ──────
+  // ── Pre-calcular zoom threshold por distancia mínima entre pines ──────
   _assignZoomThresholds() {
+    // Distancia mínima en grados entre pines visibles por nivel
+    // ~200m, ~100m, ~50m, ~25m, ~12m
     const levels = [
-      { zoom: 13, cellDeg: 0.014 },
-      { zoom: 14, cellDeg: 0.007 },
-      { zoom: 15, cellDeg: 0.0035 },
-      { zoom: 16, cellDeg: 0.00175 },
+      { zoom: 13, minDist: 0.0025 },
+      { zoom: 14, minDist: 0.0012 },
+      { zoom: 15, minDist: 0.0006 },
+      { zoom: 16, minDist: 0.0003 },
+      { zoom: 17, minDist: 0.00015 },
     ];
+
+    // Ordenar todos los markers por prioridad (featured primero, luego rating)
+    const all = this.markerEls.map((el, i) => ({
+      el, m: this.markers[i],
+      prio: el._zoomTier ?? 3
+    })).filter(x => x.m);
+    all.sort((a, b) => a.prio - b.prio);
+
     const assigned = new Set();
 
-    levels.forEach(({ zoom, cellDeg }) => {
-      const cells = new Map();
-      this.markerEls.forEach(el => {
-        if (assigned.has(el)) return;
-        const m = el._marker;
-        if (!m) return;
-        const ll = m.getLngLat();
-        const key = `${Math.floor(ll.lng / cellDeg)},${Math.floor(ll.lat / cellDeg)}`;
-        if (!cells.has(key)) cells.set(key, []);
-        cells.get(key).push(el);
+    levels.forEach(({ zoom, minDist }) => {
+      const placed = []; // pines ya asignados en este nivel y anteriores
+      // Incluir los ya asignados en niveles anteriores
+      assigned.forEach(el => {
+        const m = el._m;
+        if (m) placed.push(m.getLngLat());
       });
-      cells.forEach(els => {
-        // Ordenar por prioridad — el mejor de la celda aparece primero
-        els.sort((a, b) => (a._zoomTier ?? 3) - (b._zoomTier ?? 3));
-        if (!assigned.has(els[0])) {
-          els[0]._showAtZoom = zoom;
-          assigned.add(els[0]);
+
+      all.forEach(({ el, m }) => {
+        if (assigned.has(el)) return;
+        const ll = m.getLngLat();
+        // Verificar distancia mínima con pines ya colocados
+        const tooClose = placed.some(p => {
+          const dx = p.lng - ll.lng, dy = p.lat - ll.lat;
+          return Math.sqrt(dx*dx + dy*dy) < minDist;
+        });
+        if (!tooClose) {
+          el._showAtZoom = zoom;
+          el._m = m;
+          assigned.add(el);
+          placed.push(ll);
         }
       });
     });
-    // Pines sin asignar → aparecen en zoom 17
+
+    // Pines demasiado juntos incluso en zoom 17 → no mostrar
     this.markerEls.forEach(el => {
-      if (!assigned.has(el)) el._showAtZoom = 17;
+      if (!assigned.has(el)) el._showAtZoom = 99; // nunca visible
     });
   }
 
