@@ -169,6 +169,11 @@ export class MapView {
       // Gamificación: saturación y contraste ligeramente elevados
       var canvas = document.getElementById('map-container');
       if (canvas) canvas.style.filter = 'saturate(1.15) contrast(1.05)';
+      if (!document.getElementById('wp-pin-size')) {
+        var ps = document.createElement('style'); ps.id = 'wp-pin-size';
+        ps.textContent = '.place-pin-wrapper{width:33px!important;height:33px!important}.pin-inner{width:33px!important;height:33px!important}.pin-dot{width:10px!important;height:10px!important}';
+        document.head.appendChild(ps);
+      }
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
@@ -239,22 +244,7 @@ export class MapView {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
       };
-      // Durante zoom: mostrar SOLO pines de zoom 13 (estables)
-      this.map.on('zoomstart', () => {
-        if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
-        this.markerEls.forEach(el => {
-          if (!el) return;
-          const stable = (el._showAtZoom ?? 99) <= 13;
-          if (!stable && el._wpVisible !== false) {
-            el._wpVisible = false;
-            el.style.transition = 'none';
-            el.style.opacity    = '0';
-            el.style.visibility = 'hidden';
-            el.style.pointerEvents = 'none';
-          }
-        });
-      });
-      // Al terminar zoom: actualizar con zoom entero estricto
+      // Solo actualizar al TERMINAR zoom — nunca durante animación
       this.map.on('zoomend', _updateOrHideLabels);
       this.map.on('moveend', _updateOrHideLabels);
 
@@ -345,10 +335,10 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,4,16,14]); }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,3,16,12]); }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,2,16,8]); }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,1.5,16,6]); }
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,16,22]); }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,16,18]); }
+            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,16,14]); }
+            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,16,10]); }
           } catch(_){} return;
         }
 
@@ -538,7 +528,7 @@ export class MapView {
     // Label — igual que PWA original (solo si NO es featured)
     const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
     const labelColor = hasAct ? '#d97706' : '#1f2937';
-    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
+    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;max-height:2.8em;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
 
     if (photoUrl) {
       return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
@@ -597,22 +587,22 @@ export class MapView {
 
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
-    const zoom = Math.floor(this.map.getZoom()); // entero estricto — sin decimales
+    const zoom = Math.floor(this.map.getZoom());
     this.markerEls.forEach(el => {
       if (!el) return;
-      const show     = zoom >= (el._showAtZoom ?? 13);
-      const currShow = el._wpVisible;
-      if (show === currShow) return;
+      const show = zoom >= (el._showAtZoom ?? 13);
+      if (show === el._wpVisible) return;
       el._wpVisible = show;
       if (show) {
         el.style.visibility    = 'visible';
         el.style.pointerEvents = '';
-        el.style.transition    = 'opacity 0.3s ease';
+        el.style.transition    = 'opacity 0.35s ease';
         el.style.opacity       = '1';
       } else {
-        el.style.pointerEvents = 'none';
+        el.style.transition    = 'none';
         el.style.opacity       = '0';
         el.style.visibility    = 'hidden';
+        el.style.pointerEvents = 'none';
       }
     });
   }
