@@ -537,7 +537,7 @@ export class MapView {
       </div>`;
     }
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div style="position:relative;width:14px;height:14px;overflow:visible;">
+      <div style="position:relative;width:20px;height:20px;overflow:visible;">
         ${badgeHtml}${pulseHtml}
         <div class="pin-dot"></div>
       </div>
