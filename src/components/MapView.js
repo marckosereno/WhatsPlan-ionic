@@ -169,11 +169,7 @@ export class MapView {
       // Gamificación: saturación y contraste ligeramente elevados
       var canvas = document.getElementById('map-container');
       if (canvas) canvas.style.filter = 'saturate(1.15) contrast(1.05)';
-      if (!document.getElementById('wp-pin-size')) {
-        var ps = document.createElement('style'); ps.id = 'wp-pin-size';
-        ps.textContent = '.place-pin-wrapper{width:33px!important;height:33px!important}.pin-inner{width:33px!important;height:33px!important}.pin-dot{width:10px!important;height:10px!important}';
-        document.head.appendChild(ps);
-      }
+
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
@@ -528,22 +524,22 @@ export class MapView {
     // Label — igual que PWA original (solo si NO es featured)
     const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
     const labelColor = hasAct ? '#d97706' : '#1f2937';
-    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;max-height:2.8em;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
+    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:34px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;max-height:2.8em;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
 
     if (photoUrl) {
       return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
         <div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}
-          <div class="place-pin-wrapper" style="background:${borderGrad}">
-            <div class="pin-inner loading" data-photo="${photoUrl}">${catIcon}</div>
+          <div class="place-pin-wrapper" style="background:${borderGrad};width:30px;height:30px;">
+            <div class="pin-inner loading" style="width:30px;height:30px;" data-photo="${photoUrl}">${catIcon}</div>
           </div>
         </div>
         ${labelHtml}
       </div>`;
     }
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div style="position:relative;width:20px;height:20px;overflow:visible;">
+      <div style="position:relative;width:14px;height:14px;overflow:visible;">
         ${badgeHtml}${pulseHtml}
-        <div class="pin-dot"></div>
+        <div class="pin-dot" style="width:14px;height:14px;"></div>
       </div>
       ${labelHtml}
     </div>`;
@@ -659,7 +655,7 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 28;
+      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 30;
       if (side === 'right') {
         label.style.left      = (pinW + 6) + 'px';
         label.style.right     = 'auto';
