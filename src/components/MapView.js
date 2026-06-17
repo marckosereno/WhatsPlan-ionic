@@ -529,8 +529,8 @@ export class MapView {
     if (photoUrl) {
       return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
         <div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}
-          <div class="place-pin-wrapper" style="background:${borderGrad};width:30px;height:30px;">
-            <div class="pin-inner loading" style="width:30px;height:30px;" data-photo="${photoUrl}">${catIcon}</div>
+          <div class="place-pin-wrapper" style="background:${borderGrad}">
+            <div class="pin-inner loading" data-photo="${photoUrl}">${catIcon}</div>
           </div>
         </div>
         ${labelHtml}
@@ -539,7 +539,7 @@ export class MapView {
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div style="position:relative;width:14px;height:14px;overflow:visible;">
         ${badgeHtml}${pulseHtml}
-        <div class="pin-dot" style="width:14px;height:14px;"></div>
+        <div class="pin-dot"></div>
       </div>
       ${labelHtml}
     </div>`;
