@@ -213,7 +213,7 @@ export class MapView {
         fs.id = 'featured-highlight-styles';
         fs.textContent = `
           .marker-highlighted .place-pin-wrapper {
-            box-shadow: 0 0 0 2px #a5b4fc, 0 0 0 4px rgba(99,102,241,0.3), 0 4px 16px rgba(99,102,241,0.4) !important;
+            box-shadow: 0 0 0 2.5px #FF6D00, 0 0 0 5px rgba(255,109,0,0.25), 0 4px 18px rgba(255,109,0,0.35) !important;
             transition: box-shadow 0.2s ease;
           }
           @keyframes featuredNameIn {
@@ -1004,7 +1004,10 @@ export class MapView {
       const nameEl  = el.querySelector('.pin-featured-name');
       const shadow  = el.querySelector('.pin-featured-shadow');
       const badge   = el.querySelector('.pin-featured-badge');
-      if (wrapper) { wrapper.style.transform = ''; wrapper.style.boxShadow = ''; }
+      if (wrapper) {
+        wrapper.style.transform = '';
+        wrapper.style.boxShadow = wrapper.dataset.liquidShadow || wrapper._liquidShadow || '';
+      }
       if (nameEl)  nameEl.remove();
       if (shadow)  shadow.remove();
       if (badge) {
@@ -1017,7 +1020,7 @@ export class MapView {
         }
       }
       const lbl = el.querySelector('.place-pin-label');
-      if (lbl) lbl.style.opacity = '';
+      if (lbl) { lbl.style.opacity = ''; lbl.style.pointerEvents = ''; }
     });
     this._featuredHighlightEl = null;
   }
@@ -1052,7 +1055,7 @@ export class MapView {
     const fb  = closest.el.querySelector('.pin-featured-badge');
     const lbl = closest.el.querySelector('.place-pin-label');
     if (fb)  fb.style.display  = 'none';
-    if (lbl) lbl.style.opacity = '0';
+    if (lbl) { lbl.style.opacity = '0'; lbl.style.pointerEvents = 'none'; }
     if (navigator.vibrate) navigator.vibrate(40);
     const wrapper = closest.el.querySelector('.place-pin-wrapper');
     if (wrapper) {
@@ -1095,16 +1098,19 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     : '';
   const pulseHtml = isFeat ? '<div class="pin-pulse"></div>' : '';
 
-  const liquidBg  = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
+  const liquidBg     = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
   const liquidShadow = '0 0 0 1.5px rgba(160,205,255,0.5),0 3px 10px rgba(100,170,255,0.22),0 1px 3px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9)';
-  const featShadow   = '0 0 0 2.5px #FFD600,0 3px 10px rgba(255,214,0,0.3),0 1px 3px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.9)';
+  const featShadow   = '0 0 0 2.5px #FF6D00,0 0 0 4.5px rgba(255,109,0,0.2),0 3px 10px rgba(255,109,0,0.3),inset 0 1px 0 rgba(255,255,255,0.9)';
+  const activeShadow = isFeat ? featShadow : liquidShadow;
 
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:36px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;max-height:2.8em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  // Label: más grande, más ancho
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:32px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:12px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:110px;max-height:2.8em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
+    // data-liquid-shadow: para restaurar después del highlight
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div class="place-pin-rel">${featHtml}${pulseHtml}
-        <div class="place-pin-wrapper" style="background:${liquidBg};box-shadow:${isFeat?featShadow:liquidShadow};border-radius:50%;padding:2.5px;display:flex;align-items:center;justify-content:center;">
+        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:2px;display:flex;align-items:center;justify-content:center;">
           <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
         </div>
       </div>
@@ -1113,7 +1119,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   }
 
   return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-    <div style="position:relative;width:20px;height:20px;overflow:visible;">${pulseHtml}
+    <div style="position:relative;width:18px;height:18px;overflow:visible;">${pulseHtml}
       <div class="pin-dot" style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;"></div>
     </div>
     ${labelHtml}
