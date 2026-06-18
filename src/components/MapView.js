@@ -513,33 +513,125 @@ export class MapView {
   }
 
   // ── HTML del pin — con label igual que PWA original ───────────────
+
+  // ── Config por categoría/subcategoría: color + fluent 3D icon ──────────
+  _getPinConfig(place) {
+    const CDN = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@latest/assets';
+    const fl  = (name, file) => `${CDN}/${name}/3D/${file}_3d.png`;
+
+    const sub = (place.subcategory || place.subCategory || '').toLowerCase();
+    const cat = (place.category    || '').toLowerCase();
+    const types = (place.types || []).join(' ').toLowerCase();
+    const all = `${sub} ${cat} ${types}`;
+
+    // ── Restaurantes — naranja/rojo ────────────────────────────────────
+    if (all.match(/taco|lonche|antojito|gordita/))
+      return { bg:'#F4511E', fg:'#fff', icon: fl('Taco','taco') };
+    if (all.match(/burger|hamburgu/))
+      return { bg:'#E64A19', fg:'#fff', icon: fl('Hamburger','hamburger') };
+    if (all.match(/pizza/))
+      return { bg:'#D84315', fg:'#fff', icon: fl('Pizza','pizza') };
+    if (all.match(/mariscos?|seafood|shrimp|pescado/))
+      return { bg:'#FF7043', fg:'#fff', icon: fl('Shrimp','shrimp') };
+    if (all.match(/café|coffee|cafeteria/))
+      return { bg:'#795548', fg:'#fff', icon: fl('Hot Beverage','hot_beverage') };
+    if (all.match(/sushi|japan/))
+      return { bg:'#E53935', fg:'#fff', icon: fl('Sushi','sushi') };
+    if (all.match(/restaur|comida|food|meal|mexic|cocina/))
+      return { bg:'#FF5722', fg:'#fff', icon: fl('Fork and Knife','fork_and_knife') };
+
+    // ── Salud ──────────────────────────────────────────────────────────
+    if (all.match(/dentis?t|dental|ortod|braces|orthodon/))
+      return { bg:'#0288D1', fg:'#fff', icon: fl('Tooth','tooth') };
+    if (all.match(/farmac|pharmacy|drug/))
+      return { bg:'#0277BD', fg:'#fff', icon: fl('Pill','pill') };
+    if (all.match(/doctor|médic|clinic|hospital|health|salud|consultorio/))
+      return { bg:'#01579B', fg:'#fff', icon: fl('Stethoscope','stethoscope') };
+    if (all.match(/optic|optometr|vision|lentes/))
+      return { bg:'#039BE5', fg:'#fff', icon: fl('Glasses','glasses') };
+
+    // ── Estética ───────────────────────────────────────────────────────
+    if (all.match(/barber|barbería/))
+      return { bg:'#8E24AA', fg:'#fff', icon: fl('Barber Pole','barber_pole') };
+    if (all.match(/nail|uñas|manicure|pedicure/))
+      return { bg:'#E91E63', fg:'#fff', icon: fl('Nail Polish','nail_polish') };
+    if (all.match(/spa|massage|masaj/))
+      return { bg:'#AB47BC', fg:'#fff', icon: fl('Lotus','lotus') };
+    if (all.match(/salon|salón|hair|pelo|estétic|beauty/))
+      return { bg:'#CE93D8', fg:'#fff', icon: fl('Scissors','scissors') };
+
+    // ── Compras ────────────────────────────────────────────────────────
+    if (all.match(/ropa|cloth|fashion|boutique|tienda/))
+      return { bg:'#1565C0', fg:'#fff', icon: fl('T-Shirt','t-shirt') };
+    if (all.match(/zapateria|shoe|zapato/))
+      return { bg:'#1976D2', fg:'#fff', icon: fl('Running Shoe','running_shoe') };
+    if (all.match(/joyeria|jewelry|jewel|ring/))
+      return { bg:'#1E88E5', fg:'#fff', icon: fl('Ring','ring') };
+    if (all.match(/supermer|market|tienda|store|shop|compra/))
+      return { bg:'#2196F3', fg:'#fff', icon: fl('Shopping Bags','shopping_bags') };
+
+    // ── Entretenimiento ────────────────────────────────────────────────
+    if (all.match(/bar|cantina|liquor|alcohol|club/))
+      return { bg:'#6A1B9A', fg:'#fff', icon: fl('Cocktail Glass','cocktail_glass') };
+    if (all.match(/gym|gimnasio|sport|deport|fitnes/))
+      return { bg:'#4527A0', fg:'#fff', icon: fl('Person Lifting Weights','person_lifting_weights') };
+    if (all.match(/música|music|karaoke/))
+      return { bg:'#7B1FA2', fg:'#fff', icon: fl('Musical Notes','musical_notes') };
+    if (all.match(/park|parque|recreat/))
+      return { bg:'#2E7D32', fg:'#fff', icon: fl('Park','park') };
+
+    // ── Servicios ──────────────────────────────────────────────────────
+    if (all.match(/bank|banco|atm|dinero/))
+      return { bg:'#1B5E20', fg:'#fff', icon: fl('Dollar Banknote','dollar_banknote') };
+    if (all.match(/hotel|hostal|motel/))
+      return { bg:'#F57F17', fg:'#fff', icon: fl('Hotel','hotel') };
+    if (all.match(/gas|gasolinera|petrol/))
+      return { bg:'#E65100', fg:'#fff', icon: fl('Fuel Pump','fuel_pump') };
+    if (all.match(/escuela|school|colegio|educacion/))
+      return { bg:'#1A237E', fg:'#fff', icon: fl('School','school') };
+    if (all.match(/iglesia|church|templo/))
+      return { bg:'#37474F', fg:'#fff', icon: fl('Church','church') };
+
+    // Default
+    return { bg:'#607D8B', fg:'#fff', icon: fl('Round Pushpin','round_pushpin') };
+  }
+
   _buildPinHtml(place, photoUrl, catIcon) {
-    const actCount   = this._activityCount(place);
-    const hasAct     = actCount > 0;
-    const borderGrad = hasAct ? 'linear-gradient(145deg,#fde68a 0%,#f59e0b 40%,#f97316 100%)' : '#ffffff';
-    const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map?.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
-    const pulseHtml  = hasAct ? `<div class="pin-pulse-ring" style="display:block"></div><div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>` : '';
-    const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#2563eb':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
+    const cfg       = this._getPinConfig(place);
+    const shortName = place.name || '';
+    const isFeat    = !!place.featured;
 
-    // Label — igual que PWA original (solo si NO es featured)
-    const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
-    const labelColor = hasAct ? '#d97706' : '#1f2937';
-    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:34px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;max-height:2.8em;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
+    // ── Badge featured ────────────────────────────────────────────────
+    const featHtml = isFeat ? `<div style="position:absolute;top:-5px;left:-5px;width:14px;height:14px;background:#FFD600;border-radius:50%;border:1.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;z-index:2;">⭐</div>` : '';
 
-    if (photoUrl) {
-      return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-        <div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}
-          <div class="place-pin-wrapper" style="background:${borderGrad}">
-            <div class="pin-inner loading" data-photo="${photoUrl}">${catIcon}</div>
-          </div>
-        </div>
-        ${labelHtml}
-      </div>`;
-    }
+    // ── Label 2 líneas con stroke ──────────────────────────────────────
+    const labelHtml = `<div class="place-pin-label" style="
+      position:absolute;left:32px;top:50%;transform:translateY(-50%);
+      display:none;opacity:0;
+      font-size:11px;font-weight:700;line-height:1.25;
+      font-family:'Roboto',system-ui,sans-serif;
+      color:${cfg.bg};
+      overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+      max-width:90px;max-height:2.8em;
+      white-space:normal;
+      pointer-events:none;
+      text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;
+      transition:opacity 0.22s ease;
+    ">${shortName}</div>`;
+
+    // ── Pin circular estilo Apple Maps ─────────────────────────────────
+    const border = isFeat ? 'box-shadow:0 0 0 2.5px #FFD600,0 3px 8px rgba(0,0,0,0.28)' : 'box-shadow:0 2px 6px rgba(0,0,0,0.25)';
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div style="position:relative;width:20px;height:20px;overflow:visible;">
-        ${badgeHtml}${pulseHtml}
-        <div class="pin-dot"></div>
+      <div class="place-pin-wrapper" style="
+        position:relative;width:28px;height:28px;border-radius:50%;
+        background:${cfg.bg};display:flex;align-items:center;justify-content:center;
+        ${border};flex-shrink:0;overflow:visible;
+      ">
+        ${featHtml}
+        <img src="${cfg.icon}" width="16" height="16"
+          style="object-fit:contain;display:block;"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <span class="pin-inner" style="display:none;width:16px;height:16px;align-items:center;justify-content:center;font-size:13px;">${catIcon}</span>
       </div>
       ${labelHtml}
     </div>`;
