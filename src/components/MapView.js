@@ -317,7 +317,7 @@ export class MapView {
         if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
           { try {
               const isPrim = idL.includes('primary') || idL.includes('trunk') || idL.includes('motor');
-              map.setPaintProperty(id,'line-color', isPrim ? '#d4c070' : '#ddd8cc');
+              map.setPaintProperty(id,'line-color', isPrim ? '#bab4ac' : '#cdc8c0');
               map.setPaintProperty(id,'line-opacity',1);
               map.setLayoutProperty(id,'line-cap','round');
               map.setLayoutProperty(id,'line-join','round');
@@ -331,32 +331,35 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]); }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]); }
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#c8bfb0'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]); }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#d4cdc4'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]); }
             else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]); }
             else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]); }
           } catch(_){} return;
         }
 
-        // ── Texto ───────────────────────────────────────────────
+        // ── Texto — ocultar place/poi, solo calles y agua ───────
         if (layer.type === 'symbol') {
           try {
             const tt = map.getLayoutProperty(id,'text-transform');
             if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
-            // Reducir tamaño de fuente en calles
-            if (idL.includes('road') || idL.includes('street') || idL.includes('transport')) {
-              map.setLayoutProperty(id,'text-size',9);
+
+            const isRoad  = idL.includes('road') || idL.includes('street') || idL.includes('transport') || idL.includes('highway');
+            const isWaterL = idL.includes('water');
+
+            if (isRoad) {
+              map.setLayoutProperty(id,'text-size',8);
               map.setPaintProperty(id,'text-color','#9a9080');
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
               map.setPaintProperty(id,'text-halo-width',1.2);
-            } else if (idL.includes('water')) {
-              map.setLayoutProperty(id,'text-size',10);
+            } else if (isWaterL) {
+              map.setLayoutProperty(id,'text-size',9);
               map.setPaintProperty(id,'text-color','#2a6db5');
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
             } else {
-              map.setPaintProperty(id,'text-color','#33302a');
-              map.setPaintProperty(id,'text-halo-color','rgba(242,239,232,0.95)');
-              map.setPaintProperty(id,'text-halo-width',2);
+              // Ocultar todo lo demás (place, poi, park, city, etc.)
+              try { map.setLayoutProperty(id,'text-opacity',0); } catch(_){}
+              try { map.setLayoutProperty(id,'icon-opacity',0); } catch(_){}
             }
           } catch(_){}
         }
@@ -1131,7 +1134,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:120px;max-height:3em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13.5px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:125px;max-height:3em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
