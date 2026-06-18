@@ -653,6 +653,9 @@ export class MapView {
       label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
 
       const t = setTimeout(() => {
+        // No mostrar label si el pin está en highlight
+        const pinRoot = el.closest('.place-marker-el');
+        if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
         label.style.opacity = opacity;
       }, i * 25);
       this._labelTimers.push(t);
@@ -1093,9 +1096,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const isFeat    = !!place.featured;
   const featType  = typeof place.featured === 'string' ? place.featured : '';
 
-  const featHtml  = isFeat
-    ? `<div class="pin-featured-badge" style="background:${featType==='verified'?'#059669':featType==='premium'?'#2563eb':'rgba(0,0,0,0.65)'};">${featType==='verified'?'✓':'⭐'}</div>`
-    : '';
+  const featHtml  = '';  // Sin badge en el pin
   const pulseHtml = isFeat ? '<div class="pin-pulse"></div>' : '';
 
   const liquidBg     = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
@@ -1104,13 +1105,13 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:32px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:12px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:110px;max-height:2.8em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:120px;max-height:3em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div class="place-pin-rel">${featHtml}${pulseHtml}
-        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:2px;display:flex;align-items:center;justify-content:center;">
+        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
           <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
         </div>
       </div>
@@ -1119,7 +1120,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   }
 
   return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-    <div style="position:relative;width:18px;height:18px;overflow:visible;">${pulseHtml}
+    <div style="position:relative;width:16px;height:16px;overflow:visible;">${pulseHtml}
       <div class="pin-dot" style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;"></div>
     </div>
     ${labelHtml}
