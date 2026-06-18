@@ -880,21 +880,47 @@ export class MapView {
           imgEl.crossOrigin = 'anonymous';
           imgEl.onload = () => {
             const dpr  = Math.min(window.devicePixelRatio || 1, 2);
+            const strokeW = Math.round(Math.max(4, fontSize * 0.16));
+
+            // ── Respetar aspect ratio de la imagen ──────────────────
+            const natW = imgEl.naturalWidth  || 1;
+            const natH = imgEl.naturalHeight || 1;
+            const ratio = natW / natH;
+            // Ajustar dimensiones manteniendo el área visual ≈ totalSize²
+            let drawW, drawH;
+            if (ratio >= 1) {
+              drawW = totalSize;
+              drawH = Math.round(totalSize / ratio);
+            } else {
+              drawH = totalSize;
+              drawW = Math.round(totalSize * ratio);
+            }
+
             const pad2 = Math.ceil(strokeW * dpr * 2);
-            const cs   = totalSize * dpr + pad2 * 2;
+            const cvW  = drawW * dpr + pad2 * 2;
+            const cvH  = drawH * dpr + pad2 * 2;
             const cvs  = document.createElement('canvas');
-            cvs.width = cs; cvs.height = cs;
+            cvs.width  = cvW; cvs.height = cvH;
             const ctx  = cvs.getContext('2d');
-            const cx = pad2, cy = pad2, sz = totalSize * dpr;
-            const bsz = sz + strokeW * dpr * 2, bx = cx - strokeW * dpr, by = cy - strokeW * dpr;
-            ctx.drawImage(imgEl, bx, by, bsz, bsz);
+
+            const cx = pad2, cy = pad2;
+            const sz = { w: drawW * dpr, h: drawH * dpr };
+            const bsz = { w: sz.w + strokeW * dpr * 2, h: sz.h + strokeW * dpr * 2 };
+            const bx = cx - strokeW * dpr, by = cy - strokeW * dpr;
+
+            // Stroke / borde
+            ctx.drawImage(imgEl, bx, by, bsz.w, bsz.h);
             ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cs, cs);
+            ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cvW, cvH);
             ctx.globalCompositeOperation = 'source-over';
-            ctx.drawImage(imgEl, cx, cy, sz, sz);
+            // Imagen original
+            ctx.drawImage(imgEl, cx, cy, sz.w, sz.h);
+
             const out = document.createElement('img');
             out.src = cvs.toDataURL('image/png');
-            out.style.cssText = `width:${totalSize + strokeW * 2}px;height:${totalSize + strokeW * 2}px;display:block;`;
+            out.style.cssText = `width:${drawW + strokeW * 2}px;height:${drawH + strokeW * 2}px;display:block;`;
+            stickerWrap.style.width  = `${drawW + strokeW * 2}px`;
+            stickerWrap.style.height = `${drawH + strokeW * 2}px`;
             stickerWrap.appendChild(out);
           };
           imgEl.onerror = () => {
