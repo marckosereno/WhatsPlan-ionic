@@ -547,8 +547,6 @@ export class MapView {
 
   // ── Pre-calcular zoom threshold por distancia mínima entre pines ──────
   _assignZoomThresholds() {
-    // Distancia mínima en grados entre pines visibles por nivel
-    // ~200m, ~100m, ~50m, ~25m, ~12m
     const levels = [
       { zoom: 13, minDist: 0.0025 },
       { zoom: 14, minDist: 0.0012 },
@@ -557,7 +555,6 @@ export class MapView {
       { zoom: 17, minDist: 0.00015 },
     ];
 
-    // Ordenar todos los markers por prioridad (featured primero, luego rating)
     const all = this.markerEls.map((el, i) => ({
       el, m: this.markers[i],
       prio: el._zoomTier ?? 3
@@ -567,17 +564,12 @@ export class MapView {
     const assigned = new Set();
 
     levels.forEach(({ zoom, minDist }) => {
-      const placed = []; // pines ya asignados en este nivel y anteriores
-      // Incluir los ya asignados en niveles anteriores
-      assigned.forEach(el => {
-        const m = el._m;
-        if (m) placed.push(m.getLngLat());
-      });
+      const placed = [];
+      assigned.forEach(el => { if (el._m) placed.push(el._m.getLngLat()); });
 
       all.forEach(({ el, m }) => {
         if (assigned.has(el)) return;
         const ll = m.getLngLat();
-        // Verificar distancia mínima con pines ya colocados
         const tooClose = placed.some(p => {
           const dx = p.lng - ll.lng, dy = p.lat - ll.lat;
           return Math.sqrt(dx*dx + dy*dy) < minDist;
@@ -591,9 +583,10 @@ export class MapView {
       });
     });
 
-    // Pines demasiado juntos incluso en zoom 17 → no mostrar
+    // Pines que no cupieron en ningún nivel → visibles en zoom 18
+    // TODOS los pines deben aparecer — ninguno se oculta permanentemente
     this.markerEls.forEach(el => {
-      if (!assigned.has(el)) el._showAtZoom = 99; // nunca visible
+      if (!assigned.has(el)) el._showAtZoom = 18;
     });
   }
 
