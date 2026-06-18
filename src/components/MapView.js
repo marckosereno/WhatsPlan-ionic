@@ -170,7 +170,6 @@ export class MapView {
       var canvas = document.getElementById('map-container');
       if (canvas) canvas.style.filter = 'saturate(1.15) contrast(1.05)';
 
-
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
@@ -213,7 +212,7 @@ export class MapView {
         fs.id = 'featured-highlight-styles';
         fs.textContent = `
           .marker-highlighted .place-pin-wrapper {
-            box-shadow: 0 0 0 2.5px #FF6D00, 0 0 0 5px rgba(255,109,0,0.25), 0 4px 18px rgba(255,109,0,0.35) !important;
+            box-shadow: 0 0 0 2px #a5b4fc, 0 0 0 4px rgba(99,102,241,0.3), 0 4px 16px rgba(99,102,241,0.4) !important;
             transition: box-shadow 0.2s ease;
           }
           @keyframes featuredNameIn {
@@ -240,7 +239,22 @@ export class MapView {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
       };
-      // Solo actualizar al TERMINAR zoom — nunca durante animación
+      // Durante zoom: mostrar SOLO pines de zoom 13 (estables)
+      this.map.on('zoomstart', () => {
+        if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
+        this.markerEls.forEach(el => {
+          if (!el) return;
+          const stable = (el._showAtZoom ?? 99) <= 13;
+          if (!stable && el._wpVisible !== false) {
+            el._wpVisible = false;
+            el.style.transition = 'none';
+            el.style.opacity    = '0';
+            el.style.visibility = 'hidden';
+            el.style.pointerEvents = 'none';
+          }
+        });
+      });
+      // Al terminar zoom: actualizar con zoom entero estricto
       this.map.on('zoomend', _updateOrHideLabels);
       this.map.on('moveend', _updateOrHideLabels);
 
@@ -331,10 +345,10 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]); }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]); }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]); }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]); }
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,4,16,14]); }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,3,16,12]); }
+            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,2,16,8]); }
+            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,1.5,16,6]); }
           } catch(_){} return;
         }
 
@@ -354,9 +368,8 @@ export class MapView {
               map.setPaintProperty(id,'text-color','#2a6db5');
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
             } else {
-              map.setPaintProperty(id,'text-color','#33302a');
-              map.setPaintProperty(id,'text-halo-color','rgba(242,239,232,0.95)');
-              map.setPaintProperty(id,'text-halo-width',2);
+              try { map.setLayoutProperty(id,'text-opacity',0); } catch(_){}
+              try { map.setLayoutProperty(id,'icon-opacity',0); } catch(_){}
             }
           } catch(_){}
         }
@@ -513,72 +526,92 @@ export class MapView {
   }
 
   // ── HTML del pin — con label igual que PWA original ───────────────
+  _buildPinHtml(place, photoUrl, catIcon) {
+    const actCount   = this._activityCount(place);
+    const hasAct     = actCount > 0;
+    const borderGrad = hasAct ? 'linear-gradient(145deg,#fde68a 0%,#f59e0b 40%,#f97316 100%)' : '#ffffff';
+    const badgeHtml  = hasAct ? `<div class="place-act-badge" style="opacity:${this.map?.getZoom()>=15?'1':'0'}">${actCount}</div>` : '';
+    const pulseHtml  = hasAct ? `<div class="pin-pulse-ring" style="display:block"></div><div class="pin-pulse-ring" style="display:block;animation-delay:0.6s"></div>` : '';
+    const featHtml   = place.featured ? `<div class="pin-featured-badge" style="background:${place.featured==='verified'?'#059669':place.featured==='premium'?'#2563eb':'rgba(0,0,0,0.65)'}">${place.featured==='verified'?'✓':'⭐'}</div>` : '';
 
+    // Label — igual que PWA original (solo si NO es featured)
+    const shortName  = (place.name || '').length > 18 ? (place.name || '').slice(0, 17) + '…' : (place.name || '');
+    const labelColor = hasAct ? '#d97706' : '#1f2937';
+    const labelHtml = place.featured ? '' : `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:10px;font-weight:800;line-height:1.25;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;color:${labelColor};display:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;pointer-events:none;letter-spacing:-0.1px;transition:opacity 0.22s ease;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);">${place.name || ''}</div>`;
 
+    if (photoUrl) {
+      return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+        <div class="place-pin-rel">${featHtml}${badgeHtml}${pulseHtml}
+          <div class="place-pin-wrapper" style="background:${borderGrad};width:28px;height:28px;">
+            <div class="pin-inner loading" data-photo="${photoUrl}" style="width:28px;height:28px;">${catIcon}</div>
+          </div>
+        </div>
+        ${labelHtml}
+      </div>`;
+    }
+    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+      <div style="position:relative;width:20px;height:20px;overflow:visible;">
+        ${badgeHtml}${pulseHtml}
+        <div class="pin-dot"></div>
+      </div>
+      ${labelHtml}
+    </div>`;
+  }
 
-  // ── Pre-calcular zoom threshold por distancia mínima entre pines ──────
+  // ── Pre-calcular zoom threshold fijo por pin (evita parpadeo) ──────
   _assignZoomThresholds() {
     const levels = [
-      { zoom: 13, minDist: 0.0025 },
-      { zoom: 14, minDist: 0.0012 },
-      { zoom: 15, minDist: 0.0006 },
-      { zoom: 16, minDist: 0.0003 },
-      { zoom: 17, minDist: 0.00015 },
+      { zoom: 13, cellDeg: 0.014 },
+      { zoom: 14, cellDeg: 0.007 },
+      { zoom: 15, cellDeg: 0.0035 },
+      { zoom: 16, cellDeg: 0.00175 },
     ];
-
-    const all = this.markerEls.map((el, i) => ({
-      el, m: this.markers[i],
-      prio: el._zoomTier ?? 3
-    })).filter(x => x.m);
-    all.sort((a, b) => a.prio - b.prio);
-
     const assigned = new Set();
 
-    levels.forEach(({ zoom, minDist }) => {
-      const placed = [];
-      assigned.forEach(el => { if (el._m) placed.push(el._m.getLngLat()); });
-
-      all.forEach(({ el, m }) => {
+    levels.forEach(({ zoom, cellDeg }) => {
+      const cells = new Map();
+      this.markerEls.forEach(el => {
         if (assigned.has(el)) return;
+        const m = el._marker;
+        if (!m) return;
         const ll = m.getLngLat();
-        const tooClose = placed.some(p => {
-          const dx = p.lng - ll.lng, dy = p.lat - ll.lat;
-          return Math.sqrt(dx*dx + dy*dy) < minDist;
-        });
-        if (!tooClose) {
-          el._showAtZoom = zoom;
-          el._m = m;
-          assigned.add(el);
-          placed.push(ll);
+        const key = `${Math.floor(ll.lng / cellDeg)},${Math.floor(ll.lat / cellDeg)}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(el);
+      });
+      cells.forEach(els => {
+        // Ordenar por prioridad — el mejor de la celda aparece primero
+        els.sort((a, b) => (a._zoomTier ?? 3) - (b._zoomTier ?? 3));
+        if (!assigned.has(els[0])) {
+          els[0]._showAtZoom = zoom;
+          assigned.add(els[0]);
         }
       });
     });
-
-    // Pines que no cupieron en ningún nivel → visibles en zoom 18
-    // TODOS los pines deben aparecer — ninguno se oculta permanentemente
+    // Pines sin asignar → aparecen en zoom 17
     this.markerEls.forEach(el => {
-      if (!assigned.has(el)) el._showAtZoom = 18;
+      if (!assigned.has(el)) el._showAtZoom = 17;
     });
   }
 
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
-    const zoom = Math.floor(this.map.getZoom());
+    const zoom = Math.floor(this.map.getZoom()); // entero estricto — sin decimales
     this.markerEls.forEach(el => {
       if (!el) return;
-      const show = zoom >= (el._showAtZoom ?? 13);
-      if (show === el._wpVisible) return;
+      const show     = zoom >= (el._showAtZoom ?? 13);
+      const currShow = el._wpVisible;
+      if (show === currShow) return;
       el._wpVisible = show;
       if (show) {
         el.style.visibility    = 'visible';
         el.style.pointerEvents = '';
-        el.style.transition    = 'opacity 0.35s ease';
+        el.style.transition    = 'opacity 0.3s ease';
         el.style.opacity       = '1';
       } else {
-        el.style.transition    = 'none';
+        el.style.pointerEvents = 'none';
         el.style.opacity       = '0';
         el.style.visibility    = 'hidden';
-        el.style.pointerEvents = 'none';
       }
     });
   }
@@ -635,7 +668,7 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 30;
+      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 28;
       if (side === 'right') {
         label.style.left      = (pinW + 6) + 'px';
         label.style.right     = 'auto';
@@ -653,9 +686,6 @@ export class MapView {
       label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
 
       const t = setTimeout(() => {
-        // No mostrar label si el pin está en highlight
-        const pinRoot = el.closest('.place-marker-el');
-        if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
         label.style.opacity = opacity;
       }, i * 25);
       this._labelTimers.push(t);
@@ -880,47 +910,21 @@ export class MapView {
           imgEl.crossOrigin = 'anonymous';
           imgEl.onload = () => {
             const dpr  = Math.min(window.devicePixelRatio || 1, 2);
-            const strokeW = Math.round(Math.max(4, fontSize * 0.16));
-
-            // ── Respetar aspect ratio de la imagen ──────────────────
-            const natW = imgEl.naturalWidth  || 1;
-            const natH = imgEl.naturalHeight || 1;
-            const ratio = natW / natH;
-            // Ajustar dimensiones manteniendo el área visual ≈ totalSize²
-            let drawW, drawH;
-            if (ratio >= 1) {
-              drawW = totalSize;
-              drawH = Math.round(totalSize / ratio);
-            } else {
-              drawH = totalSize;
-              drawW = Math.round(totalSize * ratio);
-            }
-
             const pad2 = Math.ceil(strokeW * dpr * 2);
-            const cvW  = drawW * dpr + pad2 * 2;
-            const cvH  = drawH * dpr + pad2 * 2;
+            const cs   = totalSize * dpr + pad2 * 2;
             const cvs  = document.createElement('canvas');
-            cvs.width  = cvW; cvs.height = cvH;
+            cvs.width = cs; cvs.height = cs;
             const ctx  = cvs.getContext('2d');
-
-            const cx = pad2, cy = pad2;
-            const sz = { w: drawW * dpr, h: drawH * dpr };
-            const bsz = { w: sz.w + strokeW * dpr * 2, h: sz.h + strokeW * dpr * 2 };
-            const bx = cx - strokeW * dpr, by = cy - strokeW * dpr;
-
-            // Stroke / borde
-            ctx.drawImage(imgEl, bx, by, bsz.w, bsz.h);
+            const cx = pad2, cy = pad2, sz = totalSize * dpr;
+            const bsz = sz + strokeW * dpr * 2, bx = cx - strokeW * dpr, by = cy - strokeW * dpr;
+            ctx.drawImage(imgEl, bx, by, bsz, bsz);
             ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cvW, cvH);
+            ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cs, cs);
             ctx.globalCompositeOperation = 'source-over';
-            // Imagen original
-            ctx.drawImage(imgEl, cx, cy, sz.w, sz.h);
-
+            ctx.drawImage(imgEl, cx, cy, sz, sz);
             const out = document.createElement('img');
             out.src = cvs.toDataURL('image/png');
-            out.style.cssText = `width:${drawW + strokeW * 2}px;height:${drawH + strokeW * 2}px;display:block;`;
-            stickerWrap.style.width  = `${drawW + strokeW * 2}px`;
-            stickerWrap.style.height = `${drawH + strokeW * 2}px`;
+            out.style.cssText = `width:${totalSize + strokeW * 2}px;height:${totalSize + strokeW * 2}px;display:block;`;
             stickerWrap.appendChild(out);
           };
           imgEl.onerror = () => {
@@ -1033,10 +1037,7 @@ export class MapView {
       const nameEl  = el.querySelector('.pin-featured-name');
       const shadow  = el.querySelector('.pin-featured-shadow');
       const badge   = el.querySelector('.pin-featured-badge');
-      if (wrapper) {
-        wrapper.style.transform = '';
-        wrapper.style.boxShadow = wrapper.dataset.liquidShadow || wrapper._liquidShadow || '';
-      }
+      if (wrapper) { wrapper.style.transform = ''; wrapper.style.boxShadow = ''; }
       if (nameEl)  nameEl.remove();
       if (shadow)  shadow.remove();
       if (badge) {
@@ -1049,7 +1050,7 @@ export class MapView {
         }
       }
       const lbl = el.querySelector('.place-pin-label');
-      if (lbl) { lbl.style.opacity = ''; lbl.style.pointerEvents = ''; }
+      if (lbl) lbl.style.opacity = '';
     });
     this._featuredHighlightEl = null;
   }
@@ -1084,7 +1085,7 @@ export class MapView {
     const fb  = closest.el.querySelector('.pin-featured-badge');
     const lbl = closest.el.querySelector('.place-pin-label');
     if (fb)  fb.style.display  = 'none';
-    if (lbl) { lbl.style.opacity = '0'; lbl.style.pointerEvents = 'none'; }
+    if (lbl) lbl.style.opacity = '0';
     if (navigator.vibrate) navigator.vibrate(40);
     const wrapper = closest.el.querySelector('.place-pin-wrapper');
     if (wrapper) {
@@ -1116,39 +1117,3 @@ export class MapView {
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
   getMap() { return this.map; }
 }
-// PATCH: _buildPinHtml — foto con borde liquid celestial 3D + Roboto
-MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
-  const shortName = place.name || '';
-  const isFeat    = !!place.featured;
-  const featType  = typeof place.featured === 'string' ? place.featured : '';
-
-  const featHtml  = '';  // Sin badge en el pin
-  const pulseHtml = isFeat ? '<div class="pin-pulse"></div>' : '';
-
-  const liquidBg     = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
-  const liquidShadow = '0 0 0 1.5px rgba(160,205,255,0.5),0 3px 10px rgba(100,170,255,0.22),0 1px 3px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9)';
-  const featShadow   = '0 0 0 2.5px #FF6D00,0 0 0 4.5px rgba(255,109,0,0.2),0 3px 10px rgba(255,109,0,0.3),inset 0 1px 0 rgba(255,255,255,0.9)';
-  const activeShadow = isFeat ? featShadow : liquidShadow;
-
-  // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:30px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:120px;max-height:3em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
-
-  if (photoUrl) {
-    // data-liquid-shadow: para restaurar después del highlight
-    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div class="place-pin-rel">${featHtml}${pulseHtml}
-        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
-          <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
-        </div>
-      </div>
-      ${labelHtml}
-    </div>`;
-  }
-
-  return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-    <div style="position:relative;width:16px;height:16px;overflow:visible;">${pulseHtml}
-      <div class="pin-dot" style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;"></div>
-    </div>
-    ${labelHtml}
-  </div>`;
-};
