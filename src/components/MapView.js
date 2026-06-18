@@ -514,62 +514,7 @@ export class MapView {
 
   // ── HTML del pin — con label igual que PWA original ───────────────
 
-  _buildPinHtml(place, photoUrl, catIcon) {
-    const shortName  = place.name || '';
-    const labelColor = '#1a1a2e';
-    const isFeat     = !!place.featured;
 
-    // Badge featured
-    const featType = typeof place.featured === 'string' ? place.featured : '';
-    const featHtml = isFeat ? `<div class="pin-featured-badge" style="background:${featType==='verified'?'#059669':featType==='premium'?'#2563eb':'rgba(0,0,0,0.65)'};">${featType==='verified'?'✓':'⭐'}</div>` : '';
-
-    // Pulse ring
-    const pulseHtml = isFeat ? '<div class="pin-pulse"></div>' : '';
-
-    // Label 2 líneas con stroke, Roboto
-    const labelHtml = `<div class="place-pin-label" style="
-      position:absolute;left:36px;top:50%;transform:translateY(-50%);
-      display:none;opacity:0;
-      font-size:11px;font-weight:700;line-height:1.25;
-      font-family:'Roboto',system-ui,sans-serif;
-      color:${labelColor};
-      overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-      max-width:88px;max-height:2.8em;white-space:normal;
-      pointer-events:none;letter-spacing:-0.1px;
-      text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 6px rgba(255,255,255,0.95);
-      transition:opacity 0.22s ease;
-    ">${shortName}</div>`;
-
-    if (photoUrl) {
-      // ── Borde liquid celestial 3D ─────────────────────────────────
-      const liquidBg = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
-      const liquidShadow = [
-        '0 0 0 1px rgba(160,205,255,0.45)',
-        '0 1px 0 0 rgba(255,255,255,0.9) inset',
-        '0 3px 10px rgba(100,170,255,0.22)',
-        '0 1px 3px rgba(0,0,0,0.18)'
-      ].join(',');
-
-      return \`<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-        <div class="place-pin-rel">\${featHtml}\${pulseHtml}
-          <div class="place-pin-wrapper" style="background:\${liquidBg};box-shadow:\${liquidShadow};border-radius:50%;padding:2.5px;">
-            <div class="pin-inner loading" data-photo="\${photoUrl}" style="border-radius:50%;overflow:hidden;">\${catIcon}</div>
-          </div>
-        </div>
-        \${labelHtml}
-      </div>\`;
-    }
-
-    // Pin dot sin foto — borde liquid también
-    const dotShadow = '0 0 0 1px rgba(160,205,255,0.5),0 2px 6px rgba(100,170,255,0.2),0 1px 2px rgba(0,0,0,0.15)';
-    return \`<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div style="position:relative;width:20px;height:20px;overflow:visible;">
-        \${pulseHtml}
-        <div class="pin-dot" style="box-shadow:\${dotShadow};background:linear-gradient(145deg,#fff 0%,#d8eeff 50%,#fff 100%);border-radius:50%;"></div>
-      </div>
-      \${labelHtml}
-    </div>\`;
-  }
 
   // ── Pre-calcular zoom threshold por distancia mínima entre pines ──────
   _assignZoomThresholds() {
@@ -1139,3 +1084,38 @@ export class MapView {
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
   getMap() { return this.map; }
 }
+// PATCH: _buildPinHtml — foto con borde liquid celestial 3D + Roboto
+MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
+  const shortName = place.name || '';
+  const isFeat    = !!place.featured;
+  const featType  = typeof place.featured === 'string' ? place.featured : '';
+
+  const featHtml  = isFeat
+    ? `<div class="pin-featured-badge" style="background:${featType==='verified'?'#059669':featType==='premium'?'#2563eb':'rgba(0,0,0,0.65)'};">${featType==='verified'?'✓':'⭐'}</div>`
+    : '';
+  const pulseHtml = isFeat ? '<div class="pin-pulse"></div>' : '';
+
+  const liquidBg  = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
+  const liquidShadow = '0 0 0 1.5px rgba(160,205,255,0.5),0 3px 10px rgba(100,170,255,0.22),0 1px 3px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9)';
+  const featShadow   = '0 0 0 2.5px #FFD600,0 3px 10px rgba(255,214,0,0.3),0 1px 3px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.9)';
+
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:36px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:88px;max-height:2.8em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+
+  if (photoUrl) {
+    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+      <div class="place-pin-rel">${featHtml}${pulseHtml}
+        <div class="place-pin-wrapper" style="background:${liquidBg};box-shadow:${isFeat?featShadow:liquidShadow};border-radius:50%;padding:2.5px;display:flex;align-items:center;justify-content:center;">
+          <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
+        </div>
+      </div>
+      ${labelHtml}
+    </div>`;
+  }
+
+  return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+    <div style="position:relative;width:20px;height:20px;overflow:visible;">${pulseHtml}
+      <div class="pin-dot" style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;"></div>
+    </div>
+    ${labelHtml}
+  </div>`;
+};
