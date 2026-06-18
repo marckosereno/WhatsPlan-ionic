@@ -256,6 +256,21 @@ ion-app::after {
 .category-chip-skeleton:nth-child(6) .cat-sk-label { animation-delay: 400ms; }
 .maplibregl-marker { background: transparent !important; border: none !important; }
 
+/* ── Pin sizes — .maplibregl-marker da especificidad suficiente ── */
+.maplibregl-marker .place-pin-wrapper {
+  width: 30px;
+  height: 30px;
+}
+.maplibregl-marker .pin-inner {
+  width: 30px;
+  height: 30px;
+}
+.maplibregl-marker .pin-dot {
+  width: 12px;
+  height: 12px;
+}
+
+
 .maplibregl-ctrl-attrib {
   font-size: 9px; background: rgba(255,255,255,0.7);
   padding: 1px 4px; border-radius: 4px 0 0 0;
