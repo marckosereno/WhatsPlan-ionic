@@ -430,6 +430,12 @@ export class MapView {
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
+        // ── Reposicionar lugares (SuperUserPanel) ──────────────
+        if (this._dragModeActive) {
+          this.haptic('select');
+          this._selectPlaceForReposition(place, el, index);
+          return;
+        }
         this.haptic('tap');
         if (this.miniCardMarker === this.markers[index]) {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
@@ -1100,6 +1106,97 @@ export class MapView {
         (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)') +
         ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
       root.appendChild(nameEl);
+    }
+  }
+
+  // ── Reposicionar lugares (SuperUserPanel) ───────────────────────────
+  enableDragMode(onMoved) {
+    this._dragModeActive = true;
+    this._dragModeCallback = onMoved || null;
+    this._dragSelectedPlace = null;
+    this._dragSelectedEl = null;
+
+    // Banner visual
+    let banner = document.getElementById('wp-reposition-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'wp-reposition-banner';
+      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
+      banner.innerHTML = `<span id="wp-reposition-text">🎯 Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
+      document.body.appendChild(banner);
+      document.getElementById('wp-reposition-cancel').addEventListener('click', () => this.disableDragMode());
+    }
+    banner.style.display = 'flex';
+
+    this.map.getCanvas().style.cursor = 'crosshair';
+  }
+
+  disableDragMode() {
+    this._dragModeActive = false;
+    this._dragModeCallback = null;
+    this._dragSelectedPlace = null;
+    if (this._dragSelectedEl) {
+      this._dragSelectedEl.style.outline = '';
+      this._dragSelectedEl.style.filter  = '';
+      this._dragSelectedEl = null;
+    }
+    const banner = document.getElementById('wp-reposition-banner');
+    if (banner) banner.style.display = 'none';
+    this.map.getCanvas().style.cursor = '';
+    if (this._dragMapClickHandler) {
+      this.map.off('click', this._dragMapClickHandler);
+      this._dragMapClickHandler = null;
+    }
+  }
+
+  _selectPlaceForReposition(place, el, index) {
+    // Deseleccionar anterior
+    if (this._dragSelectedEl) {
+      this._dragSelectedEl.style.outline = '';
+      this._dragSelectedEl.style.filter  = '';
+    }
+    this._dragSelectedPlace = place;
+    this._dragSelectedEl    = el;
+    this._dragSelectedIndex = index;
+
+    // Resaltar visualmente el pin seleccionado
+    el.style.outline = '3px solid #f59e0b';
+    el.style.outlineOffset = '2px';
+    el.style.filter = 'drop-shadow(0 0 8px rgba(245,158,11,0.7))';
+
+    const txt = document.getElementById('wp-reposition-text');
+    if (txt) txt.textContent = `📍 "${place.name}" — toca el mapa para moverlo`;
+
+    // Listener en el mapa: el próximo click mueve el lugar
+    if (this._dragMapClickHandler) this.map.off('click', this._dragMapClickHandler);
+    this._dragMapClickHandler = (e) => {
+      this._moveSelectedPlace(e.lngLat.lat, e.lngLat.lng);
+    };
+    this.map.once('click', this._dragMapClickHandler);
+  }
+
+  _moveSelectedPlace(lat, lng) {
+    const place = this._dragSelectedPlace;
+    const el    = this._dragSelectedEl;
+    if (!place || !el) return;
+
+    // Actualizar visualmente el marker de inmediato
+    const marker = el._marker;
+    if (marker) marker.setLngLat([lng, lat]);
+    place.lat = lat; place.lng = lng;
+    if (place.location) { place.location.lat = lat; place.location.lng = lng; }
+
+    this.haptic('snap');
+    el.style.outline = '';
+    el.style.filter  = '';
+    this._dragSelectedEl = null;
+    this._dragSelectedPlace = null;
+
+    const txt = document.getElementById('wp-reposition-text');
+    if (txt) txt.textContent = '🎯 Toca un lugar para moverlo';
+
+    if (this._dragModeCallback) {
+      this._dragModeCallback(place, lat, lng);
     }
   }
 
