@@ -260,14 +260,22 @@ ion-app::after {
 .maplibregl-marker .place-pin-wrapper {
   width: 26px;
   height: 26px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 .maplibregl-marker .pin-inner {
-  width: 26px;
-  height: 26px;
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 .maplibregl-marker .pin-dot {
   width: 12px;
   height: 12px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
 }
 
 
