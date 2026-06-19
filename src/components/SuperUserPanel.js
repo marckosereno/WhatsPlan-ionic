@@ -116,7 +116,27 @@ export class SuperUserPanel {
     document.getElementById('su-btn-reposition').addEventListener('click', () => {
       this.mapView?.haptic('tap');
       this._togglePanel(false);
-      this.mapView?.enableDragMode?.();
+      this.mapView?.enableDragMode?.(async (place, lat, lng) => {
+        const pid = place.place_id || place.placeId;
+        if (!pid) { this._showToast('⚠️ Lugar sin place_id — no se puede guardar'); return; }
+        try {
+          const res = await fetch('/api/supabase-place-update', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ place_id: pid, lat, lng }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          // Sincronizar en allPlaces para que persista al cambiar categoría
+          const inAll = (this.mapView.allPlaces || []).find(pp => (pp.place_id || pp.placeId) === pid);
+          if (inAll) {
+            inAll.lat = lat; inAll.lng = lng;
+            if (inAll.location) { inAll.location.lat = lat; inAll.location.lng = lng; }
+          }
+          this._showToast(`✅ "${place.name}" reposicionado`);
+        } catch (err) {
+          this._showToast('❌ ' + err.message);
+        }
+      });
     });
   }
 
