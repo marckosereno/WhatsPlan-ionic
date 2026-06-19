@@ -277,6 +277,13 @@ ion-app::after {
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
 }
+.maplibregl-marker .place-pin-rel {
+  display: inline-flex;
+  align-items: center;
+}
+.maplibregl-marker .place-pin-root {
+  display: inline-block;
+}
 
 
 .maplibregl-ctrl-attrib {
