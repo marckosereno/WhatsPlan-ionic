@@ -627,8 +627,8 @@ export class MapView {
     const bounds  = this.map.getBounds();
     const screenW = this.map.getContainer().offsetWidth;
 
-    // Ocultar todo si zoom muy bajo
-    if (zoom < 14) {
+    // Ocultar todo si zoom < 15 — labels solo aparecen desde zoom 15
+    if (zoom < 15) {
       document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
         l.style.opacity = '0'; l.style.display = 'none';
       });
