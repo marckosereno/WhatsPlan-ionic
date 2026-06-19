@@ -69,9 +69,9 @@ body.wp-pm-open .map-container {
 ion-app::after {
   content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 160px;
   background: linear-gradient(to top,
-    rgba(96,165,250,0.5) 0%,
-    rgba(96,165,250,0.18) 55%,
-    rgba(96,165,250,0) 100%
+    rgba(255,255,255,0.65) 0%,
+    rgba(255,255,255,0.25) 55%,
+    rgba(255,255,255,0) 100%
   );
   backdrop-filter: blur(0.5px);
   -webkit-backdrop-filter: blur(0.5px);
@@ -258,32 +258,16 @@ ion-app::after {
 
 /* ── Pin sizes — .maplibregl-marker da especificidad suficiente ── */
 .maplibregl-marker .place-pin-wrapper {
-  width: 20px;
-  height: 20px;
-  aspect-ratio: 1 / 1;
-  flex-shrink: 0;
-  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
 }
 .maplibregl-marker .pin-inner {
-  width: 100% !important;
-  height: 100% !important;
-  aspect-ratio: 1 / 1;
-  flex-shrink: 0;
-  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
 }
 .maplibregl-marker .pin-dot {
   width: 12px;
   height: 12px;
-  aspect-ratio: 1 / 1;
-  flex-shrink: 0;
-}
-.maplibregl-marker .place-pin-rel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.maplibregl-marker .place-pin-root {
-  display: inline-block;
 }
 
 
