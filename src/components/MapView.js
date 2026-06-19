@@ -286,16 +286,34 @@ export class MapView {
         const id  = layer.id;
         const idL = id.toLowerCase();
 
-        // ── Eliminar 3D nativo del estilo liberty (fill-extrusion) ──
+        // ── Edificios 3D (building-3d, fill-extrusion) → aplanar, NO eliminar ──
         if (layer.type === 'fill-extrusion') {
+          if (idL.includes('building')) {
+            try {
+              map.setPaintProperty(id,'fill-extrusion-height',0);
+              map.setPaintProperty(id,'fill-extrusion-base',0);
+              map.setPaintProperty(id,'fill-extrusion-color','#d8d2c4');
+              map.setPaintProperty(id,'fill-extrusion-opacity',0.85);
+            } catch(_){}
+            // Outline manual — fill-extrusion no soporta line-color nativo
+            const outlineId = id + '-wp-outline';
+            if (!map.getLayer(outlineId)) {
+              try {
+                map.addLayer({
+                  id: outlineId, type: 'line',
+                  source: layer.source, 'source-layer': layer['source-layer'],
+                  minzoom: layer.minzoom || 0,
+                  paint: { 'line-color':'#c4bdaf', 'line-opacity':0.6, 'line-width':0.5 }
+                });
+              } catch(_){}
+            }
+            return;
+          }
+          // Otras extrusiones (terrain, etc.) que no sean building → eliminar
           try { map.removeLayer(id); } catch(_){}
           return;
         }
-        // Hillshade / terrain 3D (si existiera) — quitar también
-        if (layer.type === 'hillshade') {
-          try { map.removeLayer(id); } catch(_){}
-          return;
-        }
+        if (layer.type === 'hillshade') { try { map.removeLayer(id); } catch(_){} return; }
 
         // ── Fondo ──────────────────────────────────────────────
         if (layer.type === 'background')
@@ -313,16 +331,22 @@ export class MapView {
 
         // ── Landuse / manzanas — relleno sutil tipo Apple Maps ──
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
-          { try { map.setPaintProperty(id,'fill-color','#e6e1d6'); map.setPaintProperty(id,'fill-opacity',0.5); } catch(_){} return; }
+          { try {
+              map.setPaintProperty(id,'fill-color','#e6e1d6');
+              map.setPaintProperty(id,'fill-opacity',0.5);
+              map.setLayerZoomRange(id, layer.minzoom || 0, 24); // quitar maxzoom:12 del estilo original
+            } catch(_){} return; }
         // Boundaries administrativos — ocultar (no son manzanas)
         if (layer.type === 'line' && idL.includes('boundary'))
           { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
 
-        // ── Edificios — definidos, tipo Apple Maps ───────────────
+        // ── Edificios fill (zoom bajo) — color + outline nativo ──
         if (layer.type === 'fill' && idL.includes('building'))
-          { try { map.setPaintProperty(id,'fill-color','#d8d2c4'); map.setPaintProperty(id,'fill-opacity',0.85); } catch(_){} return; }
-        if (layer.type === 'line' && idL.includes('building'))
-          { try { map.setPaintProperty(id,'line-color','#c4bdaf'); map.setPaintProperty(id,'line-opacity',0.6); map.setPaintProperty(id,'line-width',0.5); } catch(_){} return; }
+          { try {
+              map.setPaintProperty(id,'fill-color','#d8d2c4');
+              map.setPaintProperty(id,'fill-opacity',0.85);
+              map.setPaintProperty(id,'fill-outline-color','#c4bdaf');
+            } catch(_){} return; }
 
         // ── Calles: casing — ocultar para look plano (sin doble sombra 3D) ──
         if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
