@@ -332,8 +332,8 @@ export class PlaceModal {
     var footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.zIndex = '50';
 
-    if (!fromSearch && !this._fromMiniSnap) {
-      // Mapview normal: ocultar topbar — solo fade, sin scale
+    if (!fromSearch) {
+      // Mapview normal (directo o vía minisnap): ocultar topbar — solo fade
       var mapTopbar = document.getElementById('topbar');
       var gsapG = window.gsap;
       if (mapTopbar && gsapG) {
@@ -342,9 +342,13 @@ export class PlaceModal {
           onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
         });
       } else if (mapTopbar) {
+        mapTopbar.style.transition = 'opacity 0.2s ease';
+        mapTopbar.style.opacity = '0';
         mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
       }
-    } else {
+    }
+
+    if (fromSearch || this._fromMiniSnap) {
       // Search o minisnap: blur overlay encima de todo lo que queda intacto
       this._el.style.zIndex = '2100';
       // Eliminar overlay anterior si existe (evita acumulación)
