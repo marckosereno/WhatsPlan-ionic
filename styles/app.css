@@ -280,6 +280,7 @@ ion-app::after {
 .maplibregl-marker .place-pin-rel {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 .maplibregl-marker .place-pin-root {
   display: inline-block;
