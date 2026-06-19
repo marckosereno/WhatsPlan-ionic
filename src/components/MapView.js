@@ -600,10 +600,9 @@ export class MapView {
       return;
     }
 
-    // Nivel visual según zoom
+    // Nivel visual según zoom — fontSize SIEMPRE 16px, solo cambia opacidad
     const lvl = zoom >= 17 ? 'full' : zoom >= 15.5 ? 'mid' : 'small';
-    const fontSize  = lvl === 'full' ? '11px' : lvl === 'mid' ? '10px' : '9px';
-    const opacity   = lvl === 'full' ? '1'    : lvl === 'mid' ? '0.88'  : '0.72';
+    const opacity = lvl === 'full' ? '1' : lvl === 'mid' ? '0.88' : '0.72';
 
     const center = this.map.getCenter();
     const els = Array.from(document.querySelectorAll('.place-marker-el'));
@@ -648,9 +647,9 @@ export class MapView {
         label.style.textAlign = 'right';
       }
 
-      label.style.fontSize = fontSize;
+      // font-size fijo en 16px — NO se sobreescribe aquí
       // Resetear display para que -webkit-line-clamp funcione
-      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
+      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:16px;';
 
       const t = setTimeout(() => {
         // No mostrar label si el pin está en highlight
