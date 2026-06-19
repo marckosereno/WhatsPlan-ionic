@@ -279,9 +279,23 @@ export class MapView {
       if (!style?.layers) return;
       const map = this.map;
 
+      // Quitar terrain 3D si el estilo lo trae configurado
+      try { map.setTerrain(null); } catch(_){}
+
       style.layers.forEach(layer => {
         const id  = layer.id;
         const idL = id.toLowerCase();
+
+        // ── Eliminar 3D nativo del estilo liberty (fill-extrusion) ──
+        if (layer.type === 'fill-extrusion') {
+          try { map.removeLayer(id); } catch(_){}
+          return;
+        }
+        // Hillshade / terrain 3D (si existiera) — quitar también
+        if (layer.type === 'hillshade') {
+          try { map.removeLayer(id); } catch(_){}
+          return;
+        }
 
         // ── Fondo ──────────────────────────────────────────────
         if (layer.type === 'background')
