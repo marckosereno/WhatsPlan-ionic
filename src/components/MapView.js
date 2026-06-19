@@ -166,9 +166,6 @@ export class MapView {
         try { this.map.addImage(e.id, { width:1, height:1, data:new Uint8Array(4) }); } catch(_) {}
       });
 
-      // Gamificación: saturación y contraste ligeramente elevados
-      var canvas = document.getElementById('map-container');
-      if (canvas) canvas.style.filter = 'saturate(1.15) contrast(1.05)';
 
 
       // Restaurar mapa al volver a la app (evita pantalla en blanco)
@@ -300,28 +297,22 @@ export class MapView {
         if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
           { try { map.setPaintProperty(id,'fill-color','#a8d5a2'); map.setPaintProperty(id,'fill-opacity',0.65); } catch(_){} return; }
 
-        // ── Landuse: quitar líneas de manzanas ──────────────────
+        // ── Landuse / manzanas — relleno sutil tipo Apple Maps ──
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
-          { try { map.setPaintProperty(id,'fill-color','#f2efe8'); map.setPaintProperty(id,'fill-opacity',0); } catch(_){} return; }
-        // Ocultar outlines de landuse (líneas de manzanas)
-        if (layer.type === 'line' && (idL.includes('landuse') || idL.includes('residential') || idL.includes('boundary')))
+          { try { map.setPaintProperty(id,'fill-color','#e6e1d6'); map.setPaintProperty(id,'fill-opacity',0.5); } catch(_){} return; }
+        // Boundaries administrativos — ocultar (no son manzanas)
+        if (layer.type === 'line' && idL.includes('boundary'))
           { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
 
-        // ── Edificios — flat, sin outline visible ───────────────
+        // ── Edificios — definidos, tipo Apple Maps ───────────────
         if (layer.type === 'fill' && idL.includes('building'))
-          { try { map.setPaintProperty(id,'fill-color','#e0dbd0'); map.setPaintProperty(id,'fill-opacity',0.9); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#d8d2c4'); map.setPaintProperty(id,'fill-opacity',0.85); } catch(_){} return; }
         if (layer.type === 'line' && idL.includes('building'))
-          { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'line-color','#c4bdaf'); map.setPaintProperty(id,'line-opacity',0.6); map.setPaintProperty(id,'line-width',0.5); } catch(_){} return; }
 
-        // ── Calles: casing (borde redondeado) ──────────────────
+        // ── Calles: casing — ocultar para look plano (sin doble sombra 3D) ──
         if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
-          { try {
-              const isPrim = idL.includes('primary') || idL.includes('trunk') || idL.includes('motor');
-              map.setPaintProperty(id,'line-color', isPrim ? '#d4c070' : '#ddd8cc');
-              map.setPaintProperty(id,'line-opacity',1);
-              map.setLayoutProperty(id,'line-cap','round');
-              map.setLayoutProperty(id,'line-join','round');
-            } catch(_){} return; }
+          { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
 
         // ── Calles: fill — cartoon gruesas y redondeadas ────────
         if (layer.type === 'line' && (idL.includes('road') || idL.includes('highway') || idL.includes('street') || idL.includes('transport') || idL.includes('tunnel'))) {
@@ -1130,7 +1121,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:120px;max-height:3em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:150px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
