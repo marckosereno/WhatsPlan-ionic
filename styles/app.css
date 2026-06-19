@@ -258,8 +258,8 @@ ion-app::after {
 
 /* ── Pin sizes — .maplibregl-marker da especificidad suficiente ── */
 .maplibregl-marker .place-pin-wrapper {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
   box-sizing: border-box;
