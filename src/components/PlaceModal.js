@@ -423,7 +423,7 @@ export class PlaceModal {
         // En search: ocultar minisnap. En minisnap: ya está intacto, no tocar.
         if (fromSearch) {
           var ms = document.getElementById('wp-minisnap-panel');
-          if (ms) { ms.style.display = 'none'; ms.style.opacity = '0'; }
+          if (ms) { ms.style.visibility = 'hidden'; ms.style.opacity = '0'; ms.style.pointerEvents = 'none'; }
         }
       } else {
         this._showMapUI();
