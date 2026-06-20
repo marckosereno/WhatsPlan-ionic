@@ -62,10 +62,10 @@ export class SearchBar {
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms) {
       ms._searchHidden = true;
-      ms.style.transition = 'none';
-      ms.style.transform  = 'translateY(140%)';
-      ms.style.opacity    = '0';
-      ms.style.display    = 'none';
+      ms.style.transition    = 'none';
+      ms.style.opacity       = '0';
+      ms.style.visibility    = 'hidden';
+      ms.style.pointerEvents = 'none';
     }
 
     // Mapa NO se toca - pines completamente independientes
@@ -100,15 +100,14 @@ export class SearchBar {
     // Restaurar footer menu
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
-    // Restaurar mini snap si estaba visible
     // Restaurar mini snap si estaba visible antes del search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms && ms._searchHidden) {
       ms._searchHidden = false;
-      ms.style.display  = '';
+      ms.style.visibility    = 'visible';
+      ms.style.pointerEvents = '';
       requestAnimationFrame(function(){ requestAnimationFrame(function(){
-        ms.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease';
-        ms.style.transform  = 'translateY(0)';
+        ms.style.transition = 'opacity 0.28s ease';
         ms.style.opacity    = '1';
       }); });
     }
