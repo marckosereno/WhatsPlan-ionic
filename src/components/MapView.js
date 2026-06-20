@@ -372,20 +372,23 @@ export class MapView {
           try {
             const tt = map.getLayoutProperty(id,'text-transform');
             if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
-            // Reducir tamaño de fuente en calles
-            if (idL.includes('road') || idL.includes('street') || idL.includes('transport')) {
+
+            const isRoad   = idL.includes('road') || idL.includes('street') || idL.includes('transport') || idL.includes('highway');
+            const isWaterL = idL.includes('water');
+
+            if (isRoad) {
               map.setLayoutProperty(id,'text-size',9);
               map.setPaintProperty(id,'text-color','#9a9080');
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
               map.setPaintProperty(id,'text-halo-width',1.2);
-            } else if (idL.includes('water')) {
+            } else if (isWaterL) {
               map.setLayoutProperty(id,'text-size',10);
               map.setPaintProperty(id,'text-color','#2a6db5');
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
             } else {
-              map.setPaintProperty(id,'text-color','#33302a');
-              map.setPaintProperty(id,'text-halo-color','rgba(242,239,232,0.95)');
-              map.setPaintProperty(id,'text-halo-width',2);
+              // Ocultar TODO lo demás: parques, ciudades (Nuevo Progreso), POIs, etc.
+              map.setPaintProperty(id,'text-opacity',0);
+              map.setPaintProperty(id,'icon-opacity',0);
             }
           } catch(_){}
         }
@@ -627,8 +630,8 @@ export class MapView {
     const bounds  = this.map.getBounds();
     const screenW = this.map.getContainer().offsetWidth;
 
-    // Ocultar todo si zoom < 15 — labels solo aparecen desde zoom 15
-    if (zoom < 15) {
+    // Ocultar todo si zoom < 16 — labels solo aparecen desde zoom 16
+    if (zoom < 16) {
       document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
         l.style.opacity = '0'; l.style.display = 'none';
       });
@@ -636,7 +639,7 @@ export class MapView {
     }
 
     // Nivel visual según zoom — fontSize SIEMPRE 16px, solo cambia opacidad
-    const lvl = zoom >= 17 ? 'full' : zoom >= 15.5 ? 'mid' : 'small';
+    const lvl = zoom >= 17 ? 'full' : zoom >= 16.5 ? 'mid' : 'small';
     const opacity = lvl === 'full' ? '1' : lvl === 'mid' ? '0.88' : '0.72';
 
     const center = this.map.getCenter();
