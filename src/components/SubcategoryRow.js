@@ -6,7 +6,7 @@ import { animateSubcatsIn, animateSubcatsOut } from '/src/utils/animations.js';
 
 const R = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
 
-const SUBCATEGORIES_MAP = {
+export const SUBCATEGORIES_MAP = {
   RESTAURANTS: [
     { label: 'Comida Mexicana', value: 'mexican',  emoji: '🫔', icon3d: R+'Tamale/3D/tamale_3d.png' },
     { label: 'Tacos y Lonches', value: 'taco',     emoji: '🌮', icon3d: R+'Taco/3D/taco_3d.png' },
