@@ -6,6 +6,7 @@ import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js'
 
 import { ActivityService } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
+import { SUBCATEGORIES_MAP } from '/src/components/SubcategoryRow.js';
 
 const CENTER_LNG = -97.9504;
 const CENTER_LAT =  26.0520;
@@ -33,6 +34,27 @@ const CATEGORIES = {
   WORKSHOPS:     { icon: '🔧',  icon3d: null },
 };
 
+// ── Buscar icon3d de la SUBCATEGORÍA del place (fallback si no hay foto) ──
+function getSubcatIcon3d(place, catId) {
+  const list = SUBCATEGORIES_MAP[catId];
+  if (!list || !place) return null;
+  let tags = place.subcategoryTags || place.subcategory_tags || '';
+  if (typeof tags === 'string') tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+  if (!Array.isArray(tags) || !tags.length) return null;
+  for (const tag of tags) {
+    const found = list.find(s => s.value.toLowerCase() === String(tag).toLowerCase());
+    if (found && found.icon3d) return found.icon3d;
+  }
+  return null;
+}
+
+function buildIconHtml(icon3dUrl, fallbackEmoji, size = 20) {
+  if (icon3dUrl) {
+    return `<img src="${icon3dUrl}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='<span style=&quot;font-size:${Math.round(size*0.9)}px&quot;>${fallbackEmoji}</span>'">`;
+  }
+  return fallbackEmoji || '💎';
+}
+
 // ── Supabase resize ──────────────────────────────────────────────────
 function supabaseResize(url, width = 80, quality = 75, mode = 'contain') {
   if (!url || !url.includes('supabase.co')) return url;
@@ -52,7 +74,7 @@ function proxyPhoto(url) {
 function proxyPhotoCard(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 160, 85, 'contain');
+  if (url.includes('supabase.co')) return supabaseResize(url, 120, 85, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -88,6 +110,10 @@ function injectLandmarkStyles() {
     @keyframes lmPulse {
       0%,100% { transform: scaleX(1);    opacity: 0.3; }
       50%      { transform: scaleX(0.75); opacity: 0.15; }
+    }
+    @keyframes wp-mc-skeleton {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
     .lm-wrap        { display:flex;flex-direction:column;align-items:center;cursor:pointer;overflow:visible; }
     .lm-inner       { animation:lmFloat 3s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
@@ -451,10 +477,9 @@ export class MapView {
   }
 
   _renderPlaceMarkers(places) {
-    const cat     = this.currentCatData;
-    const catIcon = cat?.icon3d
-      ? `<img src="${cat.icon3d}" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'">`
-      : (cat?.icon || '💎');
+    const cat        = this.currentCatData;
+    const catIcon3d  = cat?.icon3d || null;
+    const catEmoji   = cat?.icon || '💎';
 
     const bounds = new maplibregl.LngLatBounds();
     let hasCoords = false;
@@ -466,6 +491,10 @@ export class MapView {
 
       const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
       const photoUrl = proxyPhoto(rawPhoto);
+
+      // Icono solo se usa si NO hay foto — prioridad: subcategoría > categoría > emoji
+      const subIcon3d = photoUrl ? null : getSubcatIcon3d(place, this.currentCatId);
+      const catIcon    = buildIconHtml(subIcon3d || catIcon3d, catEmoji, 20);
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
@@ -742,8 +771,17 @@ export class MapView {
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
       ${photoUrl
-        ? `<img src="${photoUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0;" onerror="this.style.display='none'">`
-        : `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${cat?.icon||'💎'}</div>`}
+        ? `<div style="width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
+            <img src="${photoUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="this.parentNode.style.display='none'">
+          </div>`
+        : (() => {
+            const subIcon3d = getSubcatIcon3d(place, this.currentCatId);
+            const icon3d    = subIcon3d || cat?.icon3d || null;
+            const inner     = icon3d
+              ? `<img src="${icon3d}" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='${cat?.icon||'💎'}'">`
+              : (cat?.icon || '💎');
+            return `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${inner}</div>`;
+          })()}
       <div style="flex:1;min-width:0;overflow:hidden;">
         <div style="font-size:14px;font-weight:900;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.2px;">${place.name}</div>
         ${rating  ? `<div style="font-size:11px;font-weight:600;color:#92400e;">${rating}</div>` : ''}
