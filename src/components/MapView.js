@@ -104,6 +104,32 @@ function applyErrorToPin(el) {
   pi.style.background = 'transparent';
 }
 
+// ── Minicard: si la foto falla, reemplazar con ícono (subcategoría > emoji) ──
+// Usa DOM APIs reales — evita anidar comillas/backticks en strings HTML.
+window._wpMcImgError = function(imgEl) {
+  const wrap = imgEl.parentNode;
+  if (!wrap) return;
+  const icon3d = imgEl.getAttribute('data-fb-icon') || '';
+  const emoji  = imgEl.getAttribute('data-fb-emoji') || '💎';
+  const bg     = imgEl.getAttribute('data-fb-bg') || 'rgba(0,0,0,0.05)';
+  wrap.style.animation = 'none';
+  wrap.style.background = bg;
+  wrap.innerHTML = '';
+  wrap.style.display = 'flex';
+  wrap.style.alignItems = 'center';
+  wrap.style.justifyContent = 'center';
+  if (icon3d) {
+    const img = document.createElement('img');
+    img.src = icon3d;
+    img.style.width = '26px'; img.style.height = '26px'; img.style.objectFit = 'contain';
+    img.onerror = function() { wrap.textContent = emoji; wrap.style.fontSize = '22px'; };
+    wrap.appendChild(img);
+  } else {
+    wrap.textContent = emoji;
+    wrap.style.fontSize = '22px';
+  }
+};
+
 // ── Estilos de animación landmarks ──────────────────────────────────
 function injectLandmarkStyles() {
   if (document.getElementById('lm-styles')) return;
@@ -776,20 +802,22 @@ export class MapView {
 
     wrapper.style.marginTop = '-45px';
 
+    // Icono de fallback — se calcula SIEMPRE (sirve si no hay foto o si la foto falla)
+    const mcSubIcon3d = getSubcatIcon3d(place, this.currentCatId);
+    const mcIcon3d    = mcSubIcon3d || cat?.icon3d || '';
+    const mcEmoji     = cat?.icon || '💎';
+    const mcIconInner = mcIcon3d
+      ? `<img src="${mcIcon3d}" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='${mcEmoji}'">`
+      : mcEmoji;
+    const mcFallbackHtml = `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${mcIconInner}</div>`;
+
     // Minicard con mismo estilo exacto del original PWA
     wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
       ${photoUrl
-        ? `<div style="width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
-            <img src="${photoUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="this.parentNode.style.display='none'">
+        ? `<div class="wp-mc-photo-wrap" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
+            <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
           </div>`
-        : (() => {
-            const subIcon3d = getSubcatIcon3d(place, this.currentCatId);
-            const icon3d    = subIcon3d || cat?.icon3d || null;
-            const inner     = icon3d
-              ? `<img src="${icon3d}" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='${cat?.icon||'💎'}'">`
-              : (cat?.icon || '💎');
-            return `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${inner}</div>`;
-          })()}
+        : mcFallbackHtml}
       <div style="flex:1;min-width:0;overflow:hidden;">
         <div style="font-size:14px;font-weight:900;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.2px;">${place.name}</div>
         ${rating  ? `<div style="font-size:11px;font-weight:600;color:#92400e;">${rating}</div>` : ''}
