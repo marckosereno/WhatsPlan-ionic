@@ -1319,9 +1319,12 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     </div>`;
   }
 
+  // ── Sin foto: mostrar el icono (subcategoría > categoría > emoji) dentro del pin ──
   return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-    <div style="position:relative;width:16px;height:16px;overflow:visible;">${pulseHtml}
-      <div class="pin-dot" style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;"></div>
+    <div class="place-pin-rel">${featHtml}${pulseHtml}
+      <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
+        <div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">${catIcon}</div>
+      </div>
     </div>
     ${labelHtml}
   </div>`;
