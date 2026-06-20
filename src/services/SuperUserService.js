@@ -176,6 +176,8 @@ function _transformCustomPlace(row) {
     photosUrls:       row.photo_url ? [row.photo_url] : [],
     priceLevel:       row.price_level || null,
     types:            row.types ? row.types.split(',') : [],
+    subcategoryTags:  row.subcategory_tags || row.subcategoryTags || null,
+    subcategory_tags: row.subcategory_tags || row.subcategoryTags || null,
     _fromCustom:      true,
     _customId:        row.id,
   };
