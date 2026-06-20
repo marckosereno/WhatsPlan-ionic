@@ -499,8 +499,9 @@ export class MapView {
       const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
       const photoUrl = proxyPhoto(rawPhoto);
 
-      // Icono solo se usa si NO hay foto — prioridad: subcategoría > categoría > emoji
-      const subIcon3d = photoUrl ? null : getSubcatIcon3d(place, this.currentCatId);
+      // Icono de fallback (subcategoría > categoría > emoji) — se calcula SIEMPRE,
+      // así sirve de respaldo si la foto existe pero falla al cargar (ej: Google sin API key)
+      const subIcon3d = getSubcatIcon3d(place, this.currentCatId);
       const catIcon    = buildIconHtml(subIcon3d || catIcon3d, catEmoji, 20);
 
       const el = document.createElement('div');
