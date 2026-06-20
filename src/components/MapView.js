@@ -37,14 +37,21 @@ const CATEGORIES = {
 // ── Buscar icon3d de la SUBCATEGORÍA del place (fallback si no hay foto) ──
 function getSubcatIcon3d(place, catId) {
   const list = SUBCATEGORIES_MAP[catId];
-  if (!list || !place) return null;
+  if (!list || !place) { console.log('🔍 sin lista —', place?.name, '| catId:', catId); return null; }
   let tags = place.subcategoryTags || place.subcategory_tags || '';
   if (typeof tags === 'string') tags = tags.split(',').map(t => t.trim()).filter(Boolean);
-  if (!Array.isArray(tags) || !tags.length) return null;
+  if (!Array.isArray(tags) || !tags.length) {
+    console.log('🔍 SIN TAGS —', place.name, '| catId:', catId, '| raw subcategoryTags:', JSON.stringify(place.subcategoryTags), '| raw subcategory_tags:', JSON.stringify(place.subcategory_tags));
+    return null;
+  }
   for (const tag of tags) {
     const found = list.find(s => s.value.toLowerCase() === String(tag).toLowerCase());
-    if (found && found.icon3d) return found.icon3d;
+    if (found && found.icon3d) {
+      console.log('✅ MATCH —', place.name, '| tag:', tag, '| icon3d:', found.icon3d);
+      return found.icon3d;
+    }
   }
+  console.log('❌ SIN MATCH —', place.name, '| catId:', catId, '| tags reales:', JSON.stringify(tags), '| valores esperados:', list.map(s=>s.value));
   return null;
 }
 
