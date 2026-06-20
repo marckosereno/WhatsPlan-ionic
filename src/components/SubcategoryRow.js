@@ -12,7 +12,7 @@ export const SUBCATEGORIES_MAP = {
     { label: 'Tacos y Lonches', value: 'taco',     emoji: '🌮', icon3d: R+'Taco/3D/taco_3d.png' },
     { label: 'Mariscos',        value: 'seafood',  emoji: '🦐', icon3d: R+'Shrimp/3D/shrimp_3d.png' },
     { label: 'Bares',           value: 'bar',      emoji: '🍶', icon3d: R+'Sake/3D/sake_3d.png' },
-    { label: 'Cafeterías',      value: 'cafe',     emoji: '🧋', icon3d: R+'Hot Beverage/3D/hot_beverage_3d.png' },
+    { label: 'Cafeterías',      value: 'cafe',     emoji: '🧋', icon3d: R+'Hot beverage/3D/hot_beverage_3d.png' },
     { label: 'Hamburguesas',    value: 'burger',   emoji: '🍔', icon3d: R+'Hamburger/3D/hamburger_3d.png' },
   ],
   HEALTH: [
