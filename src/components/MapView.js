@@ -40,15 +40,11 @@ function getSubcatIcon3d(place, catId) {
   if (!list || !place) return null;
   let tags = place.subcategoryTags || place.subcategory_tags || '';
   if (typeof tags === 'string') tags = tags.split(',').map(t => t.trim()).filter(Boolean);
-  if (!Array.isArray(tags) || !tags.length) {
-    console.log('🔍 [icon3d] sin tags —', place.name, '| catId:', catId, '| raw:', place.subcategoryTags, place.subcategory_tags);
-    return null;
-  }
+  if (!Array.isArray(tags) || !tags.length) return null;
   for (const tag of tags) {
     const found = list.find(s => s.value.toLowerCase() === String(tag).toLowerCase());
     if (found && found.icon3d) return found.icon3d;
   }
-  console.log('🔍 [icon3d] sin match —', place.name, '| catId:', catId, '| tags:', tags, '| valores esperados:', list.map(s=>s.value));
   return null;
 }
 
