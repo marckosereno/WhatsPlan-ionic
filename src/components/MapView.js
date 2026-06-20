@@ -206,16 +206,20 @@ export class MapView {
     this.map = new maplibregl.Map({
       container:             'map-container',
       style:                 MAP_STYLE,
-      center:                [0, 15],         // intro: vista del planeta
-      zoom:                  0.4,
-      // minZoom/maxBounds se aplican DESPUÉS de la animación de llegada (ver _flyIntoTown)
+      center:                [CENTER_LNG, CENTER_LAT],
+      zoom:                  ZOOM,
+      minZoom:               12,      // no alejarse demasiado
       maxZoom:               19,
+      maxBounds:             [        // restricción a Nuevo Progreso ±18km
+        [-98.1310, 25.9300],          // SW
+        [-97.7702, 26.1900]           // NE
+      ],
       attributionControl:    false,
       keyboard:              false,
       dragRotate:            false,
       pitchWithRotate:       false,
       pitch:                 0,
-      renderWorldCopies:     false,
+      renderWorldCopies:     false,   // sin copias del mundo
       maxTileCacheSize:      20,
       fadeDuration:          0,
       preserveDrawingBuffer: false,
@@ -228,10 +232,6 @@ export class MapView {
       this.map.on('styleimagemissing', (e) => {
         try { this.map.addImage(e.id, { width:1, height:1, data:new Uint8Array(4) }); } catch(_) {}
       });
-
-      // ── Intro: globo del planeta → vuelo hasta Nuevo Progreso ──────────
-      try { this.map.setProjection({ type: 'globe' }); } catch(_) {}
-      this._flyIntoTown();
 
 
 
@@ -336,33 +336,6 @@ export class MapView {
         return;
       }
       this._closeMiniCard();
-    });
-  }
-
-  // ── Intro: globo del planeta → vuelo animado hasta Nuevo Progreso ──────
-  _flyIntoTown() {
-    const map = this.map;
-    // Pequeña pausa para que el globo se vea antes de empezar a volar
-    setTimeout(() => {
-      map.flyTo({
-        center:   [CENTER_LNG, CENTER_LAT],
-        zoom:     ZOOM,
-        duration: 3800,
-        curve:    1.42,
-        speed:    0.85,
-        essential: true,
-      });
-    }, 600);
-
-    map.once('moveend', () => {
-      // Llegamos — aplicar restricciones normales de navegación
-      try {
-        map.setMinZoom(12);
-        map.setMaxBounds([
-          [-98.1310, 25.9300],   // SW
-          [-97.7702, 26.1900]    // NE
-        ]);
-      } catch(_) {}
     });
   }
 
