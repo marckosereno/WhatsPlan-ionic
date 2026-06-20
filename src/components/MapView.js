@@ -48,6 +48,14 @@ function proxyPhoto(url) {
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
+// ── Proxy de mayor resolución para el minicard (44px CSS → necesita más detalle) ──
+function proxyPhotoCard(url) {
+  if (!url) return null;
+  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.includes('supabase.co')) return supabaseResize(url, 160, 85, 'contain');
+  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
+}
+
 // ── Fade-in de foto en pin ───────────────────────────────────────────
 function applyPhotoToPin(photoUrl, el) {
   const pi = el.querySelector('.pin-inner');
@@ -712,7 +720,7 @@ export class MapView {
     const wrapper = marker.getElement();
     if (!wrapper) return;
 
-    const photoUrl  = proxyPhoto(rawPhoto);
+    const photoUrl  = proxyPhotoCard(rawPhoto);
     const rating    = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
     const address   = (place.formattedAddress || place.formatted_address || place.vicinity || '').substring(0, 32);
     const hasAct    = this._activityCount(place) > 0;
