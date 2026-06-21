@@ -6,54 +6,18 @@ import { animateSubcatsIn, animateSubcatsOut } from '/src/utils/animations.js';
 
 const R = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
 
-export const SUBCATEGORIES_MAP = {
-  RESTAURANTS: [
-    { label: 'Comida Mexicana', value: 'mexican',  emoji: '🫔', icon3d: R+'Tamale/3D/tamale_3d.png' },
-    { label: 'Tacos y Lonches', value: 'taco',     emoji: '🌮', icon3d: R+'Taco/3D/taco_3d.png' },
-    { label: 'Mariscos',        value: 'seafood',  emoji: '🦐', icon3d: R+'Shrimp/3D/shrimp_3d.png' },
-    { label: 'Bares',           value: 'bar',      emoji: '🍶', icon3d: R+'Sake/3D/sake_3d.png' },
-    { label: 'Cafeterías',      value: 'cafe',     emoji: '🧋', icon3d: R+'Hot beverage/3D/hot_beverage_3d.png' },
-    { label: 'Hamburguesas',    value: 'burger',   emoji: '🍔', icon3d: R+'Hamburger/3D/hamburger_3d.png' },
-    { label: 'Snacks y Tiendas', value: 'snack',   emoji: '🏪', icon3d: R+'Convenience store/3D/convenience_store_3d.png' },
-    { label: 'Pizza',           value: 'pizza',   emoji: '🍕', icon3d: R+'Pizza/3D/pizza_3d.png' },
-  ],
-  HEALTH: [
-    { label: 'Dentistas',    value: 'dental',   emoji: '🦷', icon3d: R+'Tooth/3D/tooth_3d.png' },
-    { label: 'Farmacias',    value: 'farmacia', emoji: '💊', icon3d: R+'Pill/3D/pill_3d.png' },
-    { label: 'Salones',      value: 'salon',    emoji: '💈', icon3d: R+'Scissors/3D/scissors_3d.png' },
-    { label: 'Médicos',      value: 'medico',   emoji: '🩺', icon3d: R+'Stethoscope/3D/stethoscope_3d.png' },
-    { label: 'Ópticas',      value: 'optica',   emoji: '👓', icon3d: R+'Glasses/3D/glasses_3d.png' },
-    { label: 'Spa & Masaje', value: 'spa',      emoji: '🧼', icon3d: R+'Soap/3D/soap_3d.png' },
-  ],
-  SHOPPING: [
-    { label: 'Ropa y Moda',     value: 'ropa',     emoji: '🎒', icon3d: R+'Backpack/3D/backpack_3d.png' },
-    { label: 'Artesanías',      value: 'souvenir', emoji: '🎈', icon3d: R+'Balloon/3D/balloon_3d.png' },
-    { label: 'Joyería',         value: 'joyeria',  emoji: '💍', icon3d: R+'Ring/3D/ring_3d.png' },
-    { label: 'Vinos y Licores', value: 'vinos',    emoji: '🍇', icon3d: R+'Grapes/3D/grapes_3d.png' },
-    { label: 'Lentes',          value: 'lentes',   emoji: '👓', icon3d: R+'Glasses/3D/glasses_3d.png' },
-    { label: 'Electrónica',     value: 'electronica', emoji: '📱', icon3d: R+'Mobile phone/3D/mobile_phone_3d.png' },
-  ],
-  ENTERTAINMENT: [
-    { label: 'Atracciones', value: 'atraccion', emoji: '🎟️', icon3d: R+'Ticket/3D/ticket_3d.png' },
-    { label: 'Bares',       value: 'bar',       emoji: '🎤',  icon3d: R+'Microphone/3D/microphone_3d.png' },
-    { label: 'Hoteles',     value: 'hotel',     emoji: '🏨',  icon3d: R+'Hotel/3D/hotel_3d.png' },
-    { label: 'Eventos',     value: 'evento',    emoji: '🎈',  icon3d: R+'Balloon/3D/balloon_3d.png' },
-    { label: 'Casinos',     value: 'casino',    emoji: '🎰',  icon3d: R+'Slot machine/3D/slot_machine_3d.png' },
-  ],
-  PARKS: [
-    { label: 'Plazas',  value: 'plaza',  emoji: '🌵', icon3d: R+'Cactus/3D/cactus_3d.png' },
-    { label: 'Parques', value: 'parque', emoji: '🌱', icon3d: R+'Seedling/3D/seedling_3d.png' },
-  ],
-  WORKSHOPS: [
-    { label: 'Mecánicos', value: 'mecanico', emoji: '🔧', icon3d: R+'Wrench/3D/wrench_3d.png' },
-    { label: 'Servicios', value: 'servicio', emoji: '🧰', icon3d: R+'Toolbox/3D/toolbox_3d.png' },
-  ],
-};
+// SUBCATEGORIES_MAP ya NO es estático — se carga dinámicamente desde Supabase
+// vía CategoryService.getSubcategoriesMap() (ver constructor/_loadSubcatsMap).
+// Esto permite editar/agregar subcategorías desde SuperUserPanel sin tocar código.
 
 export class SubcategoryRow {
   constructor({ map, onSubcatSelect }) {
     this.map            = map;
     this.onSubcatSelect = onSubcatSelect;
+
+    // Caché local de subcategorías — se llena desde Supabase (CategoryService)
+    this._subcatsMap   = {};
+    this._subcatsReady = this._loadSubcatsMap();
 
     this._gpsActive       = false;
     this._gpsStarting     = false;
@@ -341,9 +305,31 @@ export class SubcategoryRow {
     this._footerEl.classList.add('visible');
   }
 
-  showSubcats(menuKey) {
+  // ── Carga dinámica de subcategorías desde Supabase (CategoryService) ──
+  async _loadSubcatsMap() {
+    try {
+      const mod = await import('/src/services/CategoryService.js');
+      this._subcatsMap = await mod.getSubcategoriesMap();
+    } catch (e) {
+      console.warn('⚠️ SubcategoryRow: no se pudieron cargar subcategorías —', e.message);
+      this._subcatsMap = {};
+    }
+  }
+
+  // Llamar después de crear/editar/eliminar subcategorías en SuperUserPanel
+  async refreshSubcats() {
+    this._subcatsReady = this._loadSubcatsMap();
+    await this._subcatsReady;
+    // Si hay una fila visible en este momento, re-renderizarla con datos frescos
+    if (this.currentMenuKey && this._footerEl.classList.contains('visible')) {
+      this.showSubcats(this.currentMenuKey);
+    }
+  }
+
+  async showSubcats(menuKey) {
+    await this._subcatsReady; // espera la carga inicial si aún no resolvió
     this.currentMenuKey = menuKey;
-    const items = SUBCATEGORIES_MAP[menuKey] || [];
+    const items = this._subcatsMap[menuKey] || [];
     if (!items.length) { this.hide(); return; }
 
     this._clearSubcatChips();
