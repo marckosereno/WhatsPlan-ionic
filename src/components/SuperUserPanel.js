@@ -835,6 +835,7 @@ export class SuperUserPanel {
               if (!confirm('¿Eliminar categoría "' + btn.dataset.key + '" y todas sus subcategorías?')) return;
               await deleteCategory(btn.dataset.key);
               await this._loadCatList();
+              this.callbacks.onCategoriesUpdated?.();
             }
           });
         });
@@ -911,6 +912,7 @@ export class SuperUserPanel {
               if (!confirm('¿Eliminar subcategoría "' + sub.label_es + '"?')) return;
               await deleteSubcategory(btn.dataset.id);
               await this._loadSubcatList(catKey);
+              this.callbacks.onCategoriesUpdated?.();
             }
           });
         });
@@ -1786,7 +1788,7 @@ export class SuperUserPanel {
           '</select>' +
         '</div>' +
         '<div id="su-pf-error" style="color:#fca5a5;font-size:12px;display:none;padding:4px 0;"></div>' +
-        '<button id="su-pf-save" class="su-btn su-btn-purple" style="padding:12px;font-size:14px;margin-top:4px;">' + (editingPlaceId ? '💾 Guardar cambios' : '💾 Guardar en Airtable') + '</button>' +
+        '<button id="su-pf-save" class="su-btn su-btn-purple" style="padding:12px;font-size:14px;margin-top:4px;">' + (editingPlaceId ? '💾 Guardar cambios' : '💾 Guardar lugar') + '</button>' +
       '</div>';
 
     document.body.appendChild(modal);
@@ -2054,7 +2056,7 @@ export class SuperUserPanel {
       } catch(e) {
         errEl.textContent = 'Error: ' + e.message;
         errEl.style.display = 'block';
-        saveBtn.textContent = '💾 Guardar en Airtable';
+        saveBtn.textContent = '💾 Guardar lugar';
         saveBtn.disabled = false;
       }
     });
