@@ -14,6 +14,8 @@ export const SUBCATEGORIES_MAP = {
     { label: 'Bares',           value: 'bar',      emoji: '🍶', icon3d: R+'Sake/3D/sake_3d.png' },
     { label: 'Cafeterías',      value: 'cafe',     emoji: '🧋', icon3d: R+'Hot beverage/3D/hot_beverage_3d.png' },
     { label: 'Hamburguesas',    value: 'burger',   emoji: '🍔', icon3d: R+'Hamburger/3D/hamburger_3d.png' },
+    { label: 'Snacks y Tiendas', value: 'snack',   emoji: '🏪', icon3d: R+'Convenience store/3D/convenience_store_3d.png' },
+    { label: 'Pizza',           value: 'pizza',   emoji: '🍕', icon3d: R+'Pizza/3D/pizza_3d.png' },
   ],
   HEALTH: [
     { label: 'Dentistas',    value: 'dental',   emoji: '🦷', icon3d: R+'Tooth/3D/tooth_3d.png' },
@@ -29,12 +31,14 @@ export const SUBCATEGORIES_MAP = {
     { label: 'Joyería',         value: 'joyeria',  emoji: '💍', icon3d: R+'Ring/3D/ring_3d.png' },
     { label: 'Vinos y Licores', value: 'vinos',    emoji: '🍇', icon3d: R+'Grapes/3D/grapes_3d.png' },
     { label: 'Lentes',          value: 'lentes',   emoji: '👓', icon3d: R+'Glasses/3D/glasses_3d.png' },
+    { label: 'Electrónica',     value: 'electronica', emoji: '📱', icon3d: R+'Mobile phone/3D/mobile_phone_3d.png' },
   ],
   ENTERTAINMENT: [
     { label: 'Atracciones', value: 'atraccion', emoji: '🎟️', icon3d: R+'Ticket/3D/ticket_3d.png' },
     { label: 'Bares',       value: 'bar',       emoji: '🎤',  icon3d: R+'Microphone/3D/microphone_3d.png' },
     { label: 'Hoteles',     value: 'hotel',     emoji: '🏨',  icon3d: R+'Hotel/3D/hotel_3d.png' },
     { label: 'Eventos',     value: 'evento',    emoji: '🎈',  icon3d: R+'Balloon/3D/balloon_3d.png' },
+    { label: 'Casinos',     value: 'casino',    emoji: '🎰',  icon3d: R+'Slot machine/3D/slot_machine_3d.png' },
   ],
   PARKS: [
     { label: 'Plazas',  value: 'plaza',  emoji: '🌵', icon3d: R+'Cactus/3D/cactus_3d.png' },
