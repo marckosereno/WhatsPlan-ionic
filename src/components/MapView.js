@@ -42,10 +42,17 @@ function _ensureSubcatsLoaded() {
   if (_subcatsMapPromise) return _subcatsMapPromise;
   _subcatsMapPromise = getSubcategoriesMap()
     .then(map => { _subcatsMapCache = map; return map; })
-    .catch(e => { console.warn('⚠️ subcategorías:', e.message); _subcatsMapCache = {}; return {}; });
+    .catch(e => {
+      console.warn('⚠️ subcategorías:', e.message);
+      _subcatsMapCache   = {};
+      _subcatsMapPromise = null; // permitir reintento (ej: Supabase aún no inicializado)
+      return {};
+    });
   return _subcatsMapPromise;
 }
-_ensureSubcatsLoaded(); // disparar carga al importar el módulo
+// NOTA: no se dispara aquí — se dispara desde loadCategory(), cuando Supabase
+// ya está garantizado inicializado. Disparar al importar el módulo fallaría
+// porque MapView.js se importa antes de que app.js llame initSupabase().
 
 // Llamar después de crear/editar/eliminar subcategorías en SuperUserPanel
 export function refreshSubcatsCache() {
