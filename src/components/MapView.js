@@ -6,7 +6,7 @@ import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js'
 
 import { ActivityService } from '/src/services/SupabaseService.js';
 import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
-import { SUBCATEGORIES_MAP } from '/src/components/SubcategoryRow.js';
+import { getSubcategoriesMap } from '/src/services/CategoryService.js';
 
 const CENTER_LNG = -97.9504;
 const CENTER_LAT =  26.0520;
@@ -35,8 +35,24 @@ const CATEGORIES = {
 };
 
 // ── Buscar icon3d de la SUBCATEGORÍA del place (fallback si no hay foto) ──
+// ── Caché de subcategorías (dinámico desde Supabase) ────────────────
+let _subcatsMapCache = null;
+function _ensureSubcatsLoaded() {
+  if (_subcatsMapCache !== null) return;
+  getSubcategoriesMap()
+    .then(map => { _subcatsMapCache = map; })
+    .catch(e => { console.warn('⚠️ subcategorías:', e.message); _subcatsMapCache = {}; });
+}
+_ensureSubcatsLoaded(); // disparar carga al importar el módulo
+
+// Llamar después de crear/editar/eliminar subcategorías en SuperUserPanel
+export function refreshSubcatsCache() {
+  _subcatsMapCache = null;
+  _ensureSubcatsLoaded();
+}
+
 function getSubcatIcon3d(place, catId) {
-  const list = SUBCATEGORIES_MAP[catId];
+  const list = (_subcatsMapCache || {})[catId];
   if (!list || !place) { console.log('🔍 sin lista —', place?.name, '| catId:', catId); return null; }
   let tags = place.subcategoryTags || place.subcategory_tags || '';
   if (typeof tags === 'string') tags = tags.split(',').map(t => t.trim()).filter(Boolean);
