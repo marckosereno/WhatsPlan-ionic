@@ -36,38 +36,34 @@ const CATEGORIES = {
 
 // ── Buscar icon3d de la SUBCATEGORÍA del place (fallback si no hay foto) ──
 // ── Caché de subcategorías (dinámico desde Supabase) ────────────────
-let _subcatsMapCache = null;
+let _subcatsMapCache   = null;
+let _subcatsMapPromise = null;
 function _ensureSubcatsLoaded() {
-  if (_subcatsMapCache !== null) return;
-  getSubcategoriesMap()
-    .then(map => { _subcatsMapCache = map; })
-    .catch(e => { console.warn('⚠️ subcategorías:', e.message); _subcatsMapCache = {}; });
+  if (_subcatsMapPromise) return _subcatsMapPromise;
+  _subcatsMapPromise = getSubcategoriesMap()
+    .then(map => { _subcatsMapCache = map; return map; })
+    .catch(e => { console.warn('⚠️ subcategorías:', e.message); _subcatsMapCache = {}; return {}; });
+  return _subcatsMapPromise;
 }
 _ensureSubcatsLoaded(); // disparar carga al importar el módulo
 
 // Llamar después de crear/editar/eliminar subcategorías en SuperUserPanel
 export function refreshSubcatsCache() {
-  _subcatsMapCache = null;
-  _ensureSubcatsLoaded();
+  _subcatsMapCache   = null;
+  _subcatsMapPromise = null;
+  return _ensureSubcatsLoaded();
 }
 
 function getSubcatIcon3d(place, catId) {
   const list = (_subcatsMapCache || {})[catId];
-  if (!list || !place) { console.log('🔍 sin lista —', place?.name, '| catId:', catId); return null; }
+  if (!list || !place) return null;
   let tags = place.subcategoryTags || place.subcategory_tags || '';
   if (typeof tags === 'string') tags = tags.split(',').map(t => t.trim()).filter(Boolean);
-  if (!Array.isArray(tags) || !tags.length) {
-    console.log('🔍 SIN TAGS —', place.name, '| catId:', catId, '| raw subcategoryTags:', JSON.stringify(place.subcategoryTags), '| raw subcategory_tags:', JSON.stringify(place.subcategory_tags));
-    return null;
-  }
+  if (!Array.isArray(tags) || !tags.length) return null;
   for (const tag of tags) {
     const found = list.find(s => s.value.toLowerCase() === String(tag).toLowerCase());
-    if (found && found.icon3d) {
-      console.log('✅ MATCH —', place.name, '| tag:', tag, '| icon3d:', found.icon3d);
-      return found.icon3d;
-    }
+    if (found && found.icon3d) return found.icon3d;
   }
-  console.log('❌ SIN MATCH —', place.name, '| catId:', catId, '| tags reales:', JSON.stringify(tags), '| valores esperados:', list.map(s=>s.value));
   return null;
 }
 
@@ -500,7 +496,10 @@ export class MapView {
     this._clearPlaceMarkers();
     try {
       const _t  = Date.now();
-      const res  = await fetch(`/api/supabase-places?category=${menuKey}`);
+      const [res] = await Promise.all([
+        fetch(`/api/supabase-places?category=${menuKey}`),
+        _ensureSubcatsLoaded(), // garantizar caché de íconos listo antes de renderizar pines
+      ]);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       let custom = [];
