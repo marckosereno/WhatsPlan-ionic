@@ -2,7 +2,7 @@
 // WHATSPLAN — app.js
 // ====================================================================
 
-import { MapView }          from '/src/components/MapView.js';
+import { MapView, refreshSubcatsCache } from '/src/components/MapView.js';
 import { AuthModal }        from '/src/components/AuthModal.js';
 import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
 import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
@@ -185,7 +185,11 @@ function mountSuperPanel(mv) {
   if (window.wpApp.superPanel) return;
   const sp = new SuperUserPanel(mv, {
     onLandmarksUpdated:  (items) => mv._renderLandmarks(items),
-    onCategoriesUpdated: () => renderMapCategories().then(() => setupCategories(mv)),
+    onCategoriesUpdated: () => {
+      refreshSubcatsCache();                        // íconos de pines/minicard
+      window.wpApp.subcatRow?.refreshSubcats();      // chips del footer
+      return renderMapCategories().then(() => setupCategories(mv));
+    },
   });
   sp.mount();
   window.wpApp.superPanel = sp;
