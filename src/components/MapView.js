@@ -488,8 +488,96 @@ export class MapView {
     try {
       const acts = await ActivityService.getActiveActivities();
       this.activities = acts || [];
-      this._refreshActivityBadges();
+      this.renderActivities(this.activities, window.wpApp?.currentUser?.id);
     } catch(e) { console.warn('⚠️ Actividades:', e.message); }
+
+    // Realtime: cualquier cambio en activities → recargar y re-renderizar
+    if (!this._activitiesSub) {
+      this._activitiesSub = ActivityService.subscribeToActivities(async () => {
+        try {
+          const acts = await ActivityService.getActiveActivities();
+          this.activities = acts || [];
+          this.renderActivities(this.activities, window.wpApp?.currentUser?.id);
+        } catch(e) { console.warn('⚠️ Realtime actividades:', e.message); }
+      });
+    }
+  }
+
+  // ── Pines de actividad: custom points → pin propio; lugar real → badge ──
+  renderActivities(activities, currentUserId) {
+    if (this.activityMarkers) this.activityMarkers.forEach(m => m.remove());
+    this.activityMarkers = [];
+    this._refreshActivityBadges(); // badges sobre pines de lugares reales (ya existente)
+
+    if (!activities || !activities.length) return;
+
+    // Agrupar por punto custom (mismas coords ≈ misma actividad/grupo)
+    const groups = new Map();
+    activities.forEach(a => {
+      if (!a.lat || !a.lng) return;
+      const isCustom = a.customPoint === true || !a.place_id;
+      if (!isCustom) return; // ya cubierto por el badge sobre el pin real
+      const key = `${parseFloat(a.lat).toFixed(4)},${parseFloat(a.lng).toFixed(4)}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(a);
+    });
+    if (!groups.size) return;
+
+    const R3D = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
+    const TYPE_ICONS = {
+      food: R3D+'Hamburger/3D/hamburger_3d.png', drinks: R3D+'Hot beverage/3D/hot_beverage_3d.png',
+      explore: R3D+'Rocket/3D/rocket_3d.png', hangout: R3D+'Balloon/3D/balloon_3d.png',
+      shop: R3D+'Shopping bags/3D/shopping_bags_3d.png', music: R3D+'Musical note/3D/musical_note_3d.png',
+      spa: R3D+'Person getting massage/3D/person_getting_massage_3d.png',
+      sport: R3D+'Person running/3D/person_running_3d.png', photo: R3D+'Camera with flash/3D/camera_with_flash_3d.png',
+    };
+    const TYPE_FALLBACK = { food:'🍔', drinks:'🧋', explore:'🚀', hangout:'🎈', shop:'🛍️', music:'🎵', spa:'💆', sport:'🏃', photo:'📸' };
+
+    if (!document.getElementById('wp-act-float-keyframes')) {
+      const s = document.createElement('style');
+      s.id = 'wp-act-float-keyframes';
+      s.textContent = `
+        @keyframes wpActFloat   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+        @keyframes wpActShadow  { 0%,100% { transform: scaleX(1); opacity: 0.35; } 50% { transform: scaleX(0.55); opacity: 0.15; } }
+        .wp-act-pin    { animation: wpActFloat 2.4s ease-in-out infinite; }
+        .wp-act-shadow { animation: wpActShadow 2.4s ease-in-out infinite; }
+        body.map-dragging .wp-act-pin, body.map-dragging .wp-act-shadow { animation-play-state: paused; }
+      `;
+      document.head.appendChild(s);
+    }
+
+    groups.forEach(groupActs => {
+      const activity = groupActs[0];
+      const count    = groupActs.length;
+      const hasMine  = groupActs.some(a => a.creator_id === currentUserId);
+      const badgeBg  = hasMine ? '#1a5cf5' : '#7c5cf5';
+      const badgeTxt = count > 1 ? `${count}` : `${activity.participants?.length || 0}/${activity.max_participants || '∞'}`;
+      const fallback = TYPE_FALLBACK[activity.type] || '💎';
+      const iconUrl  = activity.icon_url || TYPE_ICONS[activity.type] || (R3D+'Balloon/3D/balloon_3d.png');
+
+      const el = document.createElement('div');
+      el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
+      el.innerHTML = `
+        <div class="wp-act-pin" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
+          <img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">
+          <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
+        </div>
+        <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
+      `;
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([activity.lng, activity.lat])
+        .addTo(this.map);
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.dispatchEvent(new CustomEvent('wp:activity-tap', { detail: { activity, group: groupActs } }));
+      });
+
+      this.activityMarkers.push(marker);
+    });
+
+    console.log(`✅ ${this.activityMarkers.length} pines de actividad en el mapa`);
   }
 
   async _loadLandmarks() {
