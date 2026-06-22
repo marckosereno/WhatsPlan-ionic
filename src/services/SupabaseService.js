@@ -217,7 +217,7 @@ export const ActivityService = {
   },
 
   // Crear actividad (requiere login)
-  async createActivity({ title, type, place_name, lat, lng, scheduled_at, max_participants, creator_id, icon_url, is_spontaneous }) {
+  async createActivity({ title, type, place_name, place_id, lat, lng, scheduled_at, max_participants, creator_id, icon_url, is_spontaneous }) {
     const sb = getSupabase();
 
     // Verificar sesión activa — el JWT puede haber expirado en otros dispositivos
@@ -262,6 +262,7 @@ export const ActivityService = {
         title,
         type: type || 'hangout',
         place_name,
+        place_id: place_id || null,
         lat,
         lng,
         scheduled_at,
