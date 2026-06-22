@@ -1344,9 +1344,96 @@ export class MapView {
     }
   }
 
+  // ── Pick mode: elegir lugar para una actividad (tap en mapa) ────────
+  enablePickMode(onPickCallback) {
+    document.getElementById('activity-popup')?.remove();
+    this.pickModeActive   = true;
+    this.pickModeCallback = onPickCallback;
+    document.body.classList.add('pick-mode');
+    this.map.getCanvas().style.cursor = 'crosshair';
+
+    // Ocultar UI: panel resultados, chips de subcategoría, topbar
+    const panel = document.querySelector('.map-results-panel-float');
+    if (panel) panel.style.transform = 'translateY(100%)';
+    const scats = document.getElementById('wp-scats');
+    if (scats) { scats.style.opacity = '0'; scats.style.pointerEvents = 'none'; }
+    ['topbar-auth-btn', 'topbar-notif-btn', 'topbar-right-chip'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
+    });
+
+    // Mostrar labels de los pines para identificar lugares mientras se elige
+    this._updateLabelsProgressive();
+
+    // Click en el mapa (fuera de un pin) → punto personalizado
+    this._pickHandled = false;
+    this._pickMapClickHandler = (e) => {
+      if (this._pickHandled) return;
+      const { lat, lng } = e.lngLat;
+      if (onPickCallback) onPickCallback({ name: null, lat, lng, customPoint: true });
+    };
+    this.map.on('click', this._pickMapClickHandler);
+
+    // Click en un pin existente → ese lugar real
+    this._pickMarkerHandlers = [];
+    this.markerEls.forEach((el, index) => {
+      const place = this.allPlaces[index];
+      if (!place || !el) return;
+      const handler = (e) => {
+        e.stopPropagation();
+        this._pickHandled = true;
+        setTimeout(() => { this._pickHandled = false; }, 300);
+        const lat = place.location?.lat ?? place.lat;
+        const lng = place.location?.lng ?? place.lng;
+        if (onPickCallback) onPickCallback({
+          name: place.name, lat, lng,
+          place_id: place.place_id || place.placeId
+        });
+      };
+      el.addEventListener('click', handler, { capture: true });
+      this._pickMarkerHandlers.push({ el, handler });
+    });
+
+    console.log('🎯 Pick mode activado');
+  }
+
+  disablePickMode() {
+    this.pickModeActive   = false;
+    this.pickModeCallback = null;
+    document.body.classList.remove('pick-mode');
+    this.map.getCanvas().style.cursor = '';
+
+    const panel = document.querySelector('.map-results-panel-float');
+    if (panel) panel.style.transform = '';
+    const scats = document.getElementById('wp-scats');
+    if (scats) { scats.style.opacity = ''; scats.style.pointerEvents = ''; }
+    ['topbar-auth-btn', 'topbar-notif-btn', 'topbar-right-chip'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
+    });
+
+    // Ocultar labels de pines (vuelven a su comportamiento normal por zoom)
+    document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
+      l.style.opacity = '0'; l.style.display = 'none';
+    });
+
+    if (this._pickMapClickHandler) {
+      this.map.off('click', this._pickMapClickHandler);
+      this._pickMapClickHandler = null;
+    }
+    if (this._pickMarkerHandlers) {
+      this._pickMarkerHandlers.forEach(({ el, handler }) => {
+        el.removeEventListener('click', handler, { capture: true });
+      });
+      this._pickMarkerHandlers = [];
+    }
+    console.log('🎯 Pick mode desactivado');
+  }
+
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
   getMap() { return this.map; }
 }
+
 // PATCH: _buildPinHtml — foto con borde liquid celestial 3D + Roboto
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const shortName = place.name || '';
