@@ -304,7 +304,8 @@ function setupActivitySubscription(mv) {
             currentUser: window.wpApp.currentUser,
             onActivityCreated: (activity) => {
               console.log('✅ Actividad creada:', activity);
-              // TODO: refrescar pines del mapa si la actividad quedó en el área visible
+              // Refresh inmediato local — no esperar el round-trip de Realtime
+              window.wpApp?.mapView?._loadActivities?.();
             },
             onActivityJoined: (activity) => {
               console.log('✅ Te uniste a:', activity);
