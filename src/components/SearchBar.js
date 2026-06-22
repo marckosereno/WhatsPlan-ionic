@@ -917,6 +917,10 @@ export class SearchBar {
         font-family:'Inter Tight',system-ui,sans-serif;
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
+      .wps-input::-webkit-search-cancel-button {
+        -webkit-appearance: searchfield-cancel-button;
+        opacity: 1;
+      }
 
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;max-width:68px;overflow:hidden;text-overflow:ellipsis;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
