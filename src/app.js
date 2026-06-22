@@ -319,6 +319,18 @@ function setupActivitySubscription(mv) {
     });
     footerMenu.animateIn();
 
+    // Tap en un pin de actividad (custom point) en el mapa
+    document.addEventListener('wp:activity-tap', (e) => {
+      const { activity, group } = e.detail;
+      if (group.length > 1) {
+        console.log('📍 Grupo de actividades:', group);
+        // TODO: carrusel si hay varias actividades en el mismo punto
+      } else {
+        console.log('📍 Actividad:', activity);
+        // TODO: popup de detalles + botón unirse (ActivityService.joinActivity)
+      }
+    });
+
     // Pulse spring universal
     setTimeout(initWpTap, 400);
 
