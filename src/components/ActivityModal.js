@@ -2425,6 +2425,7 @@ export class ActivityModal {
         title: finalTitle,
         type: this.selectedType,
         place_name: this.selectedPlace.name,
+        place_id: this.selectedPlace.place_id || null,
         lat: this.selectedPlace.lat,
         lng: this.selectedPlace.lng,
         scheduled_at: this._isSpontaneous
