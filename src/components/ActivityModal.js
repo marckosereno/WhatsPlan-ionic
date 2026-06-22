@@ -99,10 +99,10 @@ function showEmojiPicker(onSelect) {
   sheet.id = 'emoji-picker-sheet';
   sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999999;background:#fff;border-radius:24px 24px 0 0;padding:0 0 32px;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.28s cubic-bezier(.34,1.3,.64,1);max-height:72vh;display:flex;flex-direction:column;';
   // Ocultar subcategorías para que no queden por encima del picker
-  const _subcatsEl = document.getElementById('map-subcategories-footer');
+  const _subcatsEl = document.getElementById('wp-scats');
   if (_subcatsEl) { _subcatsEl.style.zIndex = '-1'; _subcatsEl.style.pointerEvents = 'none'; }
   const _restoreSubcats = () => {
-    const el = document.getElementById('map-subcategories-footer');
+    const el = document.getElementById('wp-scats');
     if (el) { el.style.zIndex = ''; el.style.pointerEvents = ''; }
   };
   sheet.innerHTML = `
@@ -1659,44 +1659,39 @@ export class ActivityModal {
     // Cerrar ficha de lugar y minisnap si están abiertos
     const mapView = window.wpApp?.mapView;
     document.getElementById('activity-popup')?.remove();
-    if (mapView?.closeDetailsModal) mapView.closeDetailsModal();
-    // Ocultar place-card-overlay (minisnap)
-    const minisnap = document.getElementById('place-card-overlay');
+    window.wpApp?.placeModal?.hide?.();
+    // Ocultar minisnap si está abierto
+    const minisnap = document.getElementById('wp-minisnap-panel');
     if (minisnap) minisnap.style.display = 'none';
 
-    // Guardar catData para usarlo al final (después de que _doEnablePickMode esté definido)
-    let _pendingCatData = null;
+    // Guardar estado para usarlo al final (después de que _doEnablePickMode esté definido)
     let _alreadyLoaded = false;
     if (mapView && typeObj.cat) {
-      const catData = (mapView.categories||[]).find(c => c.menuKey === typeObj.cat);
-      if (catData) {
-        _pendingCatData = catData;
-        _alreadyLoaded = mapView.currentCategory === catData.menuKey && mapView.markers?.length > 0;
-        if (!_alreadyLoaded) {
-          // Agregar pick-mode ANTES de cargar para que showLoading y renderCategoriesRow lo respeten
-          document.body.classList.add('pick-mode');
-          // Ocultar header inmediatamente
-          ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
-          });
-          // Flag para bloquear chip "Buscando lugares"
-          mapView._pickModePending = true;
-          // Cargar categoria — _doEnablePickMode se llama en el finally
-          this._skipPickModeSetup = true;
-          mapView.loadPlacesByCategory(catData).catch(()=>{}).finally(() => {
-            mapView._pickModePending = false;
-            this._skipPickModeSetup = false;
-            if (mapView.enablePickMode && !mapView.pickModeActive) {
-              this._doEnablePickMode(mapView);
-            }
-          });
-        }
+      _alreadyLoaded = mapView.currentCatId === typeObj.cat && mapView.markers?.length > 0;
+      if (!_alreadyLoaded) {
+        // Agregar pick-mode ANTES de cargar para que showLoading y renderCategoriesRow lo respeten
+        document.body.classList.add('pick-mode');
+        // Ocultar header inmediatamente
+        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
+        });
+        // Flag para bloquear chip "Buscando lugares"
+        mapView._pickModePending = true;
+        // Cargar categoría — _doEnablePickMode se llama en el finally
+        this._skipPickModeSetup = true;
+        mapView.loadCategory(typeObj.cat).catch(()=>{}).finally(() => {
+          mapView._pickModePending = false;
+          this._skipPickModeSetup = false;
+          if (mapView.enablePickMode && !mapView.pickModeActive) {
+            this._doEnablePickMode(mapView);
+          }
+        });
       }
     }
 
     // Ocultar subcategorías COMPLETAMENTE
-    const _subcats = document.getElementById('map-subcategories-footer');
+    const _subcats = document.getElementById('wp-scats');
     if (_subcats) {
       _subcats.style.transition = 'none';
       _subcats.style.opacity = '0';
@@ -1714,7 +1709,7 @@ export class ActivityModal {
     }
 
     // Ocultar el panel de resultados (draggable bottom panel)
-    const _resultsPanel = window.wpApp?.mapView?.elements?.resultsPanel;
+    const _resultsPanel = document.querySelector('.map-results-panel-float');
     if (_resultsPanel) {
       _resultsPanel.style.transform = 'translateY(100%)';
       _resultsPanel.style.transition = 'none';
@@ -1723,27 +1718,10 @@ export class ActivityModal {
     // Ocultar header via clase CSS
     document.body.classList.add('pick-mode');
 
-    // Si búsqueda global activa: ocultar barra de búsqueda y todos sus elementos
-    const _searchBar = document.getElementById('search-overlay-bar');
-    const _wasSearchActive = !!_searchBar;
-    if (_searchBar) {
-      _searchBar.style.opacity = '0';
-      _searchBar.style.pointerEvents = 'none';
-      _searchBar.style.visibility = 'hidden';
-    }
-    // Ocultar chips de categorías de búsqueda global
-    const _searchChips = document.getElementById('search-mode-category-chips');
-    if (_searchChips) {
-      _searchChips.style.opacity = '0';
-      _searchChips.style.pointerEvents = 'none';
-      _searchChips.style.visibility = 'hidden';
-    }
-    // Ocultar panel de resultados de búsqueda global
-    const _globalResults = document.getElementById('map-search-global-results');
-    if (_globalResults) {
-      _globalResults.style.opacity = '0';
-      _globalResults.style.pointerEvents = 'none';
-      _globalResults.style.visibility = 'hidden';
+    // Si búsqueda global activa: cerrarla (más simple que ocultar elementos individuales)
+    const _wasSearchActive = !!(window.wpApp?.searchBar?.isActive?.());
+    if (_wasSearchActive) {
+      window.wpApp.searchBar.deactivate();
     }
     // Ocultar botón GPS
     const _gpsBtn = document.getElementById('map-gps-btn');
@@ -1939,7 +1917,7 @@ export class ActivityModal {
       document.getElementById('pick-cancel-btn')?.remove();
       document.getElementById('pick-mode-footer')?.remove();
       // Restaurar subcategorías
-      const _subcats = document.getElementById('map-subcategories-footer');
+      const _subcats = document.getElementById('wp-scats');
       if (_subcats) {
         _subcats.style.transition = '';
         _subcats.style.opacity = '';
@@ -1959,7 +1937,7 @@ export class ActivityModal {
         _catPanel.style.pointerEvents = '';
       }
       // Restaurar panel de resultados
-      const _resultsPanel = window.wpApp?.mapView?.elements?.resultsPanel;
+      const _resultsPanel = document.querySelector('.map-results-panel-float');
       if (_resultsPanel) {
         _resultsPanel.style.transform = '';
         _resultsPanel.style.transition = '';
@@ -1967,42 +1945,17 @@ export class ActivityModal {
       // Restaurar header
       document.body.classList.remove('pick-mode');
       // Restaurar barra de búsqueda si estaba activa
-      const _sBar = document.getElementById('search-overlay-bar');
-      if (_sBar) {
-        _sBar.style.opacity = '';
-        _sBar.style.pointerEvents = '';
-        _sBar.style.visibility = '';
-      }
-      // Restaurar chips de categorías de búsqueda global
-      const _sChips = document.getElementById('search-mode-category-chips');
-      if (_sChips) {
-        _sChips.style.opacity = '';
-        _sChips.style.pointerEvents = '';
-        _sChips.style.visibility = '';
-      }
-      // Restaurar panel de resultados global
-      const _gResults = document.getElementById('map-search-global-results');
-      if (_gResults) {
-        _gResults.style.opacity = '';
-        _gResults.style.pointerEvents = '';
-        _gResults.style.visibility = '';
-      }
       // Restaurar botón GPS siempre
       const _gBtn = document.getElementById('map-gps-btn');
       if (_gBtn) { _gBtn.style.opacity = ''; _gBtn.style.pointerEvents = ''; }
 
-      if (!_wasSearchActive) {
-        // Fuera de búsqueda global: restaurar header completo de mapview
-        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
-        });
-      }
-      // Si venimos de búsqueda global: NO tocar nada del header de mapview
-      // La búsqueda global ya restaura su propio estado
-      window.wpApp?.mapView?.disablePickMode(_wasSearchActive);
-      // Reposicionar subcats encima del panel
-      requestAnimationFrame(() => window.wpApp?.mapView?._positionSubcats?.());
+      // Restaurar header completo de mapview (la búsqueda, si estaba activa, se cerró
+      // por completo al entrar a pickMode — no queda nada parcial que restaurar)
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
+      });
+      window.wpApp?.mapView?.disablePickMode();
     };
 
     cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); cleanup(); this._resumeAtStep2?.(); });
@@ -2179,11 +2132,11 @@ export class ActivityModal {
 
     // ── Ocultar UI del mapa ───────────────────────────────────────────
     const _forceHide = () => {
-      const s = document.getElementById('map-subcategories-footer');
+      const s = document.getElementById('wp-scats');
       if (s) { s.style.visibility = 'hidden'; s.style.opacity = '0'; s.style.pointerEvents = 'none'; }
       const c = document.getElementById('map-categories-footer');
       if (c) { c.style.visibility = 'hidden'; c.style.opacity = '0'; c.style.pointerEvents = 'none'; }
-      const r = window.wpApp?.mapView?.elements?.resultsPanel;
+      const r = document.querySelector('.map-results-panel-float');
       if (r) { r.style.transform = 'translateY(100%)'; r.style.transition = 'none'; }
       const gps = document.getElementById('map-gps-btn');
       if (gps) { gps.style.opacity = '0'; gps.style.pointerEvents = 'none'; }
@@ -2723,21 +2676,13 @@ export class ActivityModal {
       catPanel.style.pointerEvents = '';
       catPanel.style.transition = '';
     }
-    // Subcategorías — limpiar todos los estilos inline y reposicionar
-    const subcats = document.getElementById('map-subcategories-footer');
+    // Subcategorías — limpiar todos los estilos inline
+    const subcats = document.getElementById('wp-scats');
     if (subcats) {
       subcats.style.visibility = '';
       subcats.style.opacity = '';
       subcats.style.pointerEvents = '';
       subcats.style.transition = '';
-      subcats.style.zIndex = '';
-      subcats.style.position = '';
-      subcats.style.bottom = '';
-      subcats.style.top = '';
-    }
-    // Reposicionar subcats encima del panel (no en el footer)
-    if (mapView?._positionSubcats) {
-      requestAnimationFrame(() => mapView._positionSubcats());
     }
   }
 
