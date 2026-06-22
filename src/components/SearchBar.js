@@ -259,10 +259,6 @@ export class SearchBar {
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="..." ' +
       'autocomplete="new-password" autocorrect="off" autocapitalize="words" spellcheck="false" readonly>' +
-      '<button id="wps-clear" class="wps-clear" aria-label="Limpiar">' +
-        '<svg viewBox="0 0 14 14" width="10" height="10" fill="white">' +
-          '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
-        '</svg></button>' +
       '<span id="wps-count" class="wps-count">' + count + '</span>';
 
     var filterBtn = document.createElement('button');
@@ -305,26 +301,17 @@ export class SearchBar {
     // ── PASO 5: Eventos ──
     setTimeout(function() {
       var input      = document.getElementById('wps-input');
-      var clearBtnEl = document.getElementById('wps-clear');
       var filterEl   = document.getElementById('wps-filter-chip');
       var closeEl    = document.getElementById('wps-close-chip');
       if (!input) return;
 
       input.addEventListener('input', function(ev) {
-        if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
         self._onInput(ev.target.value);
       });
       input.addEventListener('search', function() {
-        if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
         self._onInput(input.value);
       });
       input.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') self.deactivate(); });
-      if (clearBtnEl) {
-        clearBtnEl.addEventListener('click', function(ev) {
-          ev.stopPropagation(); input.value = ''; clearBtnEl.classList.remove('visible');
-          input.focus(); self._onInput('');
-        });
-      }
       if (closeEl)  closeEl.addEventListener('click',  function(ev){ ev.stopPropagation(); self.deactivate(); });
       if (filterEl) filterEl.addEventListener('click', function(ev){ ev.stopPropagation(); console.log('Filtros próximamente'); });
 
@@ -931,25 +918,6 @@ export class SearchBar {
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
 
-      .wps-clear {
-        display:none;
-        width:18px; height:18px;
-        border-radius:50%;
-        border:none;
-        background:#adb5bd;
-        color:white;
-        font-size:10px;
-        font-weight:900;
-        cursor:pointer;
-        align-items:center;
-        justify-content:center;
-        flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;
-        padding:0;
-        line-height:1;
-        font-family:system-ui,sans-serif;
-      }
-      .wps-clear.visible { display:flex; }
       .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;max-width:68px;overflow:hidden;text-overflow:ellipsis;}
       .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
         width:36px;min-width:36px;height:36px;border-radius:50%;
