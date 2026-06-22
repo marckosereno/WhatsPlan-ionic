@@ -1731,7 +1731,7 @@ export class ActivityModal {
     const hint = document.createElement('div');
     hint.id = 'pick-place-hint';
     hint.style.cssText = `
-      position: fixed; top: 12px; left: 16px; right: 68px;
+      position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 16px; right: 68px;
       z-index: 99999;
       display: flex; align-items: center; gap: 10px;
       animation: fadeIn 0.2s ease;
@@ -1762,7 +1762,7 @@ export class ActivityModal {
     const cancelBtn = document.createElement('button');
     cancelBtn.id = 'pick-cancel-btn';
     cancelBtn.style.cssText = `
-      position: fixed; top: 12px; right: 12px;
+      position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px;
       width: 44px; height: 44px; flex-shrink: 0;
       background: #111; color: white; border: none;
       border-radius: 50%; cursor: pointer;
@@ -1829,84 +1829,36 @@ export class ActivityModal {
     `;
     document.body.appendChild(pickFooter);
 
-    // Botón de ubicación — centra mapa y selecciona punto actual
+    // Botón de ubicación — centra mapa y selecciona punto actual (geolocalización nativa)
     document.getElementById('pick-location-btn')?.addEventListener('click', () => {
       const mapView = window.wpApp?.mapView;
       const btn = document.getElementById('pick-location-btn');
-
-      // Si ya tenemos el punto azul en el mapa, usarlo directamente
-      if (mapView?._locationMarker) {
-        const latlng = mapView._locationMarker.getLatLng();
-        if (mapView?.map) mapView.map.setView([latlng.lat, latlng.lng], 17);
-        const customPlace = {
-          customPoint: true,
-          lat: latlng.lat, lng: latlng.lng,
-          place_name: 'Mi ubicación',
-          formatted_address: `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`
-        };
-        const cb = this._currentPickCallback || mapView?.pickModeCallback;
-        console.log('[AM] pick-location-btn (marker ya existe), cb:', !!cb);
-        if (cb) cb(customPlace);
-        return;
-      }
+      const _pinIcon = '<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display=\'none\'">';
 
       if (!navigator.geolocation) {
         window.wpApp?.showMapToast?.('GPS no disponible en este dispositivo', '#ef4444');
         return;
       }
 
-      // Mostrar spinner en el botón
-      if (btn) {
-        btn.style.opacity = '0.75';
-        btn.innerHTML = `<div class="pick-spinner"></div><span>Obteniendo ubicación...</span>`;
-      }
+      if (btn) { btn.style.opacity = '0.75'; btn.innerHTML = `<div class="pick-spinner"></div><span>Obteniendo ubicación...</span>`; }
 
-      // Activar watchPosition ahora que hay gesto del usuario (necesario en mobile)
-      if (mapView && !mapView._locationMarker) {
-        mapView._startLiveLocation();
-      }
-
-      // Timeout de espera para la primera posición del watchPosition
-      let _resolved = false;
-      const _waitTimeout = setTimeout(() => {
-        if (_resolved) return;
-        _resolved = true;
-        if (btn) { btn.style.opacity = ''; btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'"> Usar mi ubicación actual`; }
-        window.wpApp?.showMapToast?.('GPS tardó demasiado — activa la ubicación en tu navegador', '#f59e0b', 5000);
-      }, 12000);
-
-      // Esperar a que _startLiveLocation obtenga la primera posición
-      const _checkInterval = setInterval(() => {
-        if (_resolved) { clearInterval(_checkInterval); return; }
-
-        // Detectar permiso denegado rápidamente
-        if (mapView?._locationError === 1) {
-          clearInterval(_checkInterval);
-          clearTimeout(_waitTimeout);
-          _resolved = true;
-          if (btn) { btn.style.opacity = ''; btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'"> Usar mi ubicación actual`; }
-          window.wpApp?.showMapToast?.('Activa el GPS: toca el candado 🔒 en la barra del navegador → Permisos → Ubicación', '#f59e0b', 6000);
-          return;
-        }
-
-        if (mapView?._locationMarker) {
-          clearInterval(_checkInterval);
-          clearTimeout(_waitTimeout);
-          _resolved = true;
-          if (btn) { btn.style.opacity = ''; btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'"> Usar mi ubicación actual`; }
-          const latlng = mapView._locationMarker.getLatLng();
-          if (mapView?.map) mapView.map.setView([latlng.lat, latlng.lng], 17);
-          const customPlace = {
-            customPoint: true,
-            lat: latlng.lat, lng: latlng.lng,
-            place_name: 'Mi ubicación',
-            formatted_address: `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`
-          };
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          if (btn) { btn.style.opacity = ''; btn.innerHTML = `${_pinIcon} Usar mi ubicación actual`; }
+          if (mapView?.map) mapView.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
           const cb = this._currentPickCallback || mapView?.pickModeCallback;
-          console.log('[AM] pick-location-btn (GPS resuelto), cb:', !!cb);
-          if (cb) cb(customPlace);
-        }
-      }, 500);
+          if (cb) cb({ customPoint: true, lat, lng });
+        },
+        (err) => {
+          if (btn) { btn.style.opacity = ''; btn.innerHTML = `${_pinIcon} Usar mi ubicación actual`; }
+          const msg = err.code === 1
+            ? 'Activa el GPS: toca el candado 🔒 en la barra del navegador → Permisos → Ubicación'
+            : 'No se pudo obtener tu ubicación — intenta de nuevo';
+          window.wpApp?.showMapToast?.(msg, '#f59e0b', 5500);
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+      );
     });
 
     let _cleaned = false;
@@ -2209,7 +2161,7 @@ export class ActivityModal {
       // Hint visual que desaparece solo
       const repoHint = document.createElement('div');
       repoHint.id = 'cps-repo-hint';
-      repoHint.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);' +
+      repoHint.style.cssText = 'position:fixed;top:calc(64px + env(safe-area-inset-top, 0px));left:50%;transform:translateX(-50%);' +
         'font-size:11px;font-weight:600;color:white;white-space:nowrap;pointer-events:none;z-index:99999;' +
         'background:rgba(0,0,0,0.55);padding:4px 10px;border-radius:20px;';
       repoHint.textContent = '✦ Arrastra el mapa para reposicionar';
@@ -2224,7 +2176,9 @@ export class ActivityModal {
     // ── Centrar el marker entre header (68px) y footer (~100px) ──────
     // El punto visible del mapa es: top=68px, bottom=viewport.height-100px
     // Centro visual = top + (visible_height / 2)
-    const HEADER_H = 68;
+    const _topbarEl = document.getElementById('topbar');
+    const _safeTop  = _topbarEl ? _topbarEl.getBoundingClientRect().top : 12;
+    const HEADER_H = 56 + Math.max(0, _safeTop); // 56px de chip + safe-area real del dispositivo
     const FOOTER_H = 104;
     const _centerMarker = (animated = true) => {
       if (!mapView?.map) return;
@@ -2249,7 +2203,7 @@ export class ActivityModal {
     // ── Header: input pill negro ──────────────────────────────────────
     const header = document.createElement('div');
     header.id = 'custom-point-header';
-    header.style.cssText = 'position:fixed;top:12px;left:0;right:0;z-index:9999999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
+    header.style.cssText = 'position:fixed;top:calc(12px + env(safe-area-inset-top, 0px));left:0;right:0;z-index:9999999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
     header.innerHTML =
       '<input id="custom-place-name" type="search" placeholder="Nombre del lugar (ej: Mi casa, Oxxo.)" maxlength="50"' +
       ' autocomplete="new-password" autocorrect="off" autocapitalize="sentences" spellcheck="false"' +
