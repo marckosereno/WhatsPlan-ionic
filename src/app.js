@@ -2,7 +2,7 @@
 // WHATSPLAN — app.js
 // ====================================================================
 
-import { MapView, refreshSubcatsCache } from '/src/components/MapView.js';
+import { MapView }          from '/src/components/MapView.js';
 import { AuthModal }        from '/src/components/AuthModal.js';
 import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
 import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
@@ -14,6 +14,7 @@ import { initLiquidGlass } from '/src/utils/liquid-glass.js';
 import { FooterMenu }      from '/src/components/FooterMenu.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal }       from '/src/components/PlaceModal.js';
+import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 import { appState }         from '/src/state/AppState.js';
@@ -185,11 +186,7 @@ function mountSuperPanel(mv) {
   if (window.wpApp.superPanel) return;
   const sp = new SuperUserPanel(mv, {
     onLandmarksUpdated:  (items) => mv._renderLandmarks(items),
-    onCategoriesUpdated: () => {
-      refreshSubcatsCache();                        // íconos de pines/minicard
-      window.wpApp.subcatRow?.refreshSubcats();      // chips del footer
-      return renderMapCategories().then(() => setupCategories(mv));
-    },
+    onCategoriesUpdated: () => renderMapCategories().then(() => setupCategories(mv)),
   });
   sp.mount();
   window.wpApp.superPanel = sp;
@@ -295,8 +292,28 @@ function setupActivitySubscription(mv) {
     setTimeout(initLiquidGlass, 200);
 
     // Footer menu
+    let activityModal = null;
     const footerMenu = new FooterMenu({
-      onActividades: () => console.log('Actividades'),
+      onActividades: () => {
+        if (!window.wpApp.currentUser) {
+          window.wpApp.authModal?.show();
+          return;
+        }
+        if (!activityModal) {
+          activityModal = new ActivityModal({
+            currentUser: window.wpApp.currentUser,
+            onActivityCreated: (activity) => {
+              console.log('✅ Actividad creada:', activity);
+              // TODO: refrescar pines del mapa si la actividad quedó en el área visible
+            },
+            onActivityJoined: (activity) => {
+              console.log('✅ Te uniste a:', activity);
+            },
+          });
+        }
+        activityModal.setUser(window.wpApp.currentUser);
+        activityModal.show();
+      },
       onHome:        () => console.log('Home'),
       onSocial:      () => console.log('Social'),
     });
