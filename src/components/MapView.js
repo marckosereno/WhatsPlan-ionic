@@ -493,13 +493,16 @@ export class MapView {
 
     // Realtime: cualquier cambio en activities → recargar y re-renderizar
     if (!this._activitiesSub) {
-      this._activitiesSub = ActivityService.subscribeToActivities(async () => {
+      console.log('🔌 Suscribiendo a Realtime de activities...');
+      this._activitiesSub = ActivityService.subscribeToActivities(async (payload) => {
+        console.log('🔔 Realtime activities — evento recibido:', payload?.eventType, payload);
         try {
           const acts = await ActivityService.getActiveActivities();
           this.activities = acts || [];
           this.renderActivities(this.activities, window.wpApp?.currentUser?.id);
         } catch(e) { console.warn('⚠️ Realtime actividades:', e.message); }
       });
+      console.log('🔌 Suscripción registrada:', this._activitiesSub?.state || this._activitiesSub);
     }
   }
 
@@ -515,8 +518,7 @@ export class MapView {
     const groups = new Map();
     activities.forEach(a => {
       if (!a.lat || !a.lng) return;
-      const isCustom = a.customPoint === true || !a.place_id;
-      if (!isCustom) return; // ya cubierto por el badge sobre el pin real
+      if (a.place_id) return; // lugar real → ya cubierto por el badge, no crear pin custom
       const key = `${parseFloat(a.lat).toFixed(4)},${parseFloat(a.lng).toFixed(4)}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(a);
