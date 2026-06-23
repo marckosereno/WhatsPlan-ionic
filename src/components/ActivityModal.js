@@ -2590,14 +2590,15 @@ export class ActivityModal {
 
   _closeForPickMode() {
     // Cerrar modal y limpiar TODAS las entradas amModal del historial
-    // antes de activar pickMode, para que no haya popstate colgados
+    // antes de activar pickMode, para que no haya popstate colgados.
+    // NO restauramos el chrome del mapa (topbar/footer/panel) — seguimos
+    // dentro del flujo de selección, debe permanecer oculto.
     window.removeEventListener('popstate', this._popstateHandler);
     this._popstateHandler = null;
     this._modalOpen = false;
     this.modal.style.display = 'none';
     this._fromCategory = null;
     this._fromSubcats  = [];
-    this._restoreMapUI();
     // Neutralizar la entrada actual del historial
     if (history.state?.amModal) {
       history.replaceState(null, '');
@@ -2711,6 +2712,7 @@ export class ActivityModal {
 
   async _showPostCreateSheet(activity) {
     this.modal.style.display = 'none';
+    if (this._chromeWatcher) { clearInterval(this._chromeWatcher); this._chromeWatcher = null; }
     this._restoreMapUI();
     if (history.state?.amModal) history.replaceState(null, '');
 
