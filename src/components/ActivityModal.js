@@ -1664,6 +1664,20 @@ export class ActivityModal {
     const minisnap = document.getElementById('wp-minisnap-panel');
     if (minisnap) minisnap.style.display = 'none';
 
+    // placeModal.hide() restaura topbar/footer/panel ~340ms después (su propia animación
+    // de cierre), asumiendo vuelta a mapview normal. Forzamos el ocultamiento de nuevo
+    // tras ese delay, ya que seguimos dentro del flujo de ActivityModal.
+    const _forceHideMapChrome = () => {
+      const t = document.getElementById('topbar');
+      if (t) { t.style.transition = 'none'; t.style.opacity = '0'; t.style.pointerEvents = 'none'; }
+      const f = document.getElementById('wp-footer-menu');
+      if (f) { f.style.transition = 'none'; f.style.opacity = '0'; f.style.pointerEvents = 'none'; }
+      const p = document.querySelector('.map-results-panel-float');
+      if (p) { p.style.transition = 'none'; p.style.transform = 'translateY(100%)'; }
+    };
+    _forceHideMapChrome();
+    setTimeout(_forceHideMapChrome, 400); // después de la animación interna de placeModal.hide()
+
     // Guardar estado para usarlo al final (después de que _doEnablePickMode esté definido)
     let _alreadyLoaded = false;
     if (mapView && typeObj.cat) {
