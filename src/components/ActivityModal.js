@@ -2463,6 +2463,18 @@ export class ActivityModal {
       const el = document.getElementById(id);
       if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; el.style.transition = 'none'; }
     });
+
+    // Watcher: algo externo (fuera de nuestro control) re-muestra el panel de
+    // resultados de forma asíncrona tras cargar una categoría. En vez de cazar
+    // esa causa exacta, forzamos el ocultamiento mientras el modal esté abierto.
+    if (this._chromeWatcher) clearInterval(this._chromeWatcher);
+    this._chromeWatcher = setInterval(() => {
+      const p = document.querySelector('.map-results-panel-float');
+      if (p && p.style.transform !== 'translateY(100%)') {
+        p.style.transition = 'none';
+        p.style.transform = 'translateY(100%)';
+      }
+    }, 150);
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
     this._in1B = false;
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
@@ -2581,6 +2593,7 @@ export class ActivityModal {
   }
 
   hide() {
+    if (this._chromeWatcher) { clearInterval(this._chromeWatcher); this._chromeWatcher = null; }
     if (this._popstateHandler) {
       window.removeEventListener('popstate', this._popstateHandler);
       this._popstateHandler = null;
