@@ -1460,6 +1460,8 @@ export class MapView {
     this._pickMapClickHandler = (e) => {
       if (this._pickHandled) return;
       const { lat, lng } = e.lngLat;
+      this._placePickPin(lng, lat);
+      this.map.flyTo({ center: [lng, lat], duration: 350 });
       if (onPickCallback) onPickCallback({ name: null, lat, lng, customPoint: true });
     };
     this.map.on('click', this._pickMapClickHandler);
@@ -1475,6 +1477,8 @@ export class MapView {
         setTimeout(() => { this._pickHandled = false; }, 300);
         const lat = place.location?.lat ?? place.lat;
         const lng = place.location?.lng ?? place.lng;
+        this._placePickPin(lng, lat);
+        this.map.flyTo({ center: [lng, lat], duration: 350 });
         if (onPickCallback) onPickCallback({
           name: place.name, lat, lng,
           place_id: place.place_id || place.placeId
@@ -1485,6 +1489,28 @@ export class MapView {
     });
 
     console.log('🎯 Pick mode activado');
+  }
+
+  // ── Pin visual fijo en el punto exacto donde se hizo tap ────────────
+  _placePickPin(lng, lat) {
+    if (this._pickPinMarker) {
+      this._pickPinMarker.setLngLat([lng, lat]);
+      return;
+    }
+    const el = document.createElement('div');
+    el.style.cssText = 'width:36px;height:48px;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;';
+    el.innerHTML = `
+      <svg width="36" height="48" viewBox="0 0 36 48" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.3));">
+        <path d="M18 0C8 0 0 8 0 18c0 13 18 30 18 30s18-17 18-30C36 8 28 0 18 0z" fill="#1a5cf5"/>
+        <circle cx="18" cy="18" r="7" fill="white"/>
+      </svg>`;
+    this._pickPinMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([lng, lat])
+      .addTo(this.map);
+  }
+
+  _removePickPin() {
+    if (this._pickPinMarker) { this._pickPinMarker.remove(); this._pickPinMarker = null; }
   }
 
   disablePickMode() {
@@ -1517,6 +1543,7 @@ export class MapView {
       });
       this._pickMarkerHandlers = [];
     }
+    this._removePickPin();
     console.log('🎯 Pick mode desactivado');
   }
 
