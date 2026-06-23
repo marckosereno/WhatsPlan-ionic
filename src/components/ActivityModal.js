@@ -2465,14 +2465,29 @@ export class ActivityModal {
     });
 
     // Watcher: algo externo (fuera de nuestro control) re-muestra el panel de
-    // resultados de forma asíncrona tras cargar una categoría. En vez de cazar
-    // esa causa exacta, forzamos el ocultamiento mientras el modal esté abierto.
+    // resultados y los chips de categoría de forma asíncrona tras cargar una
+    // categoría. En vez de cazar esa causa exacta, forzamos el ocultamiento
+    // mientras el modal esté abierto.
     if (this._chromeWatcher) clearInterval(this._chromeWatcher);
     this._chromeWatcher = setInterval(() => {
       const p = document.querySelector('.map-results-panel-float');
       if (p && p.style.transform !== 'translateY(100%)') {
         p.style.transition = 'none';
         p.style.transform = 'translateY(100%)';
+      }
+      const s = document.getElementById('wp-scats');
+      if (s && s.style.opacity !== '0') {
+        s.style.transition = 'none';
+        s.style.opacity = '0';
+        s.style.pointerEvents = 'none';
+        s.style.visibility = 'hidden';
+      }
+      const c = document.getElementById('map-categories-footer');
+      if (c && c.style.opacity !== '0') {
+        c.style.transition = 'none';
+        c.style.opacity = '0';
+        c.style.pointerEvents = 'none';
+        c.style.visibility = 'hidden';
       }
     }, 150);
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
