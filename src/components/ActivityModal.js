@@ -2439,6 +2439,12 @@ export class ActivityModal {
       document.activeElement.blur();
     }
     // Ocultar header del mapa inmediatamente al abrir el modal
+    const _topbar = document.getElementById('topbar');
+    if (_topbar) { _topbar.style.opacity = '0'; _topbar.style.pointerEvents = 'none'; _topbar.style.transition = 'none'; }
+    const _footerMenu = document.getElementById('wp-footer-menu');
+    if (_footerMenu) { _footerMenu.style.opacity = '0'; _footerMenu.style.pointerEvents = 'none'; _footerMenu.style.transition = 'none'; }
+    const _resultsPanel = document.querySelector('.map-results-panel-float');
+    if (_resultsPanel) { _resultsPanel.style.transform = 'translateY(100%)'; _resultsPanel.style.transition = 'none'; }
     ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; el.style.transition = 'none'; }
@@ -2611,16 +2617,22 @@ export class ActivityModal {
 
   _restoreMapUI() {
     const mapView = window.wpApp?.mapView;
+    // Topbar completo
+    const topbar = document.getElementById('topbar');
+    if (topbar) { topbar.style.opacity = ''; topbar.style.pointerEvents = ''; topbar.style.transition = ''; }
+    // Footer menu completo
+    const footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) { footerMenu.style.opacity = ''; footerMenu.style.pointerEvents = ''; footerMenu.style.transition = ''; }
     // Panel de resultados
     const resultsPanel = document.querySelector('.map-results-panel-float');
     if (resultsPanel) {
       resultsPanel.style.transform = '';
       resultsPanel.style.transition = '';
     }
-    // Header buttons (avatar, bell, +Actividad)
+    // Header buttons (avatar, bell, +Actividad) — por si quedó algo suelto
     ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
+      if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; el.style.transition = ''; }
     });
     document.body.classList.remove('pick-mode');
     // Chips de categorías
