@@ -2470,24 +2470,21 @@ export class ActivityModal {
     // mientras el modal esté abierto.
     if (this._chromeWatcher) clearInterval(this._chromeWatcher);
     this._chromeWatcher = setInterval(() => {
-      const p = document.querySelector('.map-results-panel-float');
-      if (p && p.style.transform !== 'translateY(100%)') {
-        p.style.transition = 'none';
-        p.style.transform = 'translateY(100%)';
-      }
+      document.querySelectorAll('.map-results-panel-float').forEach(p => {
+        if (p.style.display !== 'none') {
+          p.style.transition = 'none';
+          p.style.display = 'none';
+        }
+      });
       const s = document.getElementById('wp-scats');
-      if (s && s.style.opacity !== '0') {
+      if (s && s.style.display !== 'none') {
         s.style.transition = 'none';
-        s.style.opacity = '0';
-        s.style.pointerEvents = 'none';
-        s.style.visibility = 'hidden';
+        s.style.display = 'none';
       }
       const c = document.getElementById('map-categories-footer');
-      if (c && c.style.opacity !== '0') {
+      if (c && c.style.display !== 'none') {
         c.style.transition = 'none';
-        c.style.opacity = '0';
-        c.style.pointerEvents = 'none';
-        c.style.visibility = 'hidden';
+        c.style.display = 'none';
       }
     }, 150);
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
@@ -2666,11 +2663,11 @@ export class ActivityModal {
     const footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) { footerMenu.style.opacity = ''; footerMenu.style.pointerEvents = ''; footerMenu.style.transition = ''; }
     // Panel de resultados
-    const resultsPanel = document.querySelector('.map-results-panel-float');
-    if (resultsPanel) {
-      resultsPanel.style.transform = '';
-      resultsPanel.style.transition = '';
-    }
+    document.querySelectorAll('.map-results-panel-float').forEach(p => {
+      p.style.transform = '';
+      p.style.transition = '';
+      p.style.display = '';
+    });
     // Header buttons (avatar, bell, +Actividad) — por si quedó algo suelto
     ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
       const el = document.getElementById(id);
@@ -2684,6 +2681,7 @@ export class ActivityModal {
       catPanel.style.opacity = '';
       catPanel.style.pointerEvents = '';
       catPanel.style.transition = '';
+      catPanel.style.display = '';
     }
     // Subcategorías — limpiar todos los estilos inline
     const subcats = document.getElementById('wp-scats');
@@ -2692,6 +2690,7 @@ export class ActivityModal {
       subcats.style.opacity = '';
       subcats.style.pointerEvents = '';
       subcats.style.transition = '';
+      subcats.style.display = '';
     }
   }
 
