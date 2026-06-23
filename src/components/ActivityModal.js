@@ -1123,6 +1123,7 @@ export class ActivityModal {
 
       return '<div class="am-place-row" data-name="' + (p.name||'').replace(/"/g,'&quot;') +
         '" data-lat="' + (p.location?.lat||p.lat||'') + '" data-lng="' + (p.location?.lng||p.lng||'') +
+        '" data-place-id="' + ((p.place_id||p.placeId||'')+'').replace(/"/g,'&quot;') +
         '" style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:2px solid ' + (isSelected?'#1a5cf5':'#f0f0f0') + ';cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color 0.15s;">' +
         (photo
           ? '<img src="' + photo + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
@@ -1142,7 +1143,12 @@ export class ActivityModal {
     // Clicks
     container.querySelectorAll('.am-place-row').forEach(row => {
       row.addEventListener('click', () => {
-        this.setPlace({ name: row.dataset.name, lat: parseFloat(row.dataset.lat), lng: parseFloat(row.dataset.lng) });
+        this.setPlace({
+          name: row.dataset.name,
+          lat: parseFloat(row.dataset.lat),
+          lng: parseFloat(row.dataset.lng),
+          place_id: row.dataset.placeId || null
+        });
         // Resetear todos los iconos
         container.querySelectorAll('.am-place-row').forEach(r => {
           r.style.borderColor = '#f0f0f0';
