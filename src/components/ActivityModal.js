@@ -1723,6 +1723,8 @@ export class ActivityModal {
       if (f) { f.style.transition = 'none'; f.style.opacity = '0'; f.style.pointerEvents = 'none'; }
       const p = document.querySelector('.map-results-panel-float');
       if (p) { p.style.transition = 'none'; p.style.transform = 'translateY(100%)'; }
+      const sp = document.getElementById('wp-side-panel');
+      if (sp) { sp.style.transition = 'none'; sp.style.opacity = '0'; sp.style.pointerEvents = 'none'; }
     };
     _forceHideMapChrome();
     setTimeout(_forceHideMapChrome, 400); // después de la animación interna de placeModal.hide()
@@ -1735,7 +1737,7 @@ export class ActivityModal {
         // Agregar pick-mode ANTES de cargar para que showLoading y renderCategoriesRow lo respeten
         document.body.classList.add('pick-mode');
         // Ocultar header inmediatamente
-        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
         });
@@ -1966,7 +1968,7 @@ export class ActivityModal {
 
       // Restaurar header completo de mapview (la búsqueda, si estaba activa, se cerró
       // por completo al entrar a pickMode — no queda nada parcial que restaurar)
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
       });
@@ -2144,7 +2146,7 @@ export class ActivityModal {
       // Deshabilitar subcatsRow — intercepta touches durante drag
       const sr = document.getElementById('map-subcats-row');
       if (sr) { sr.style.pointerEvents = 'none'; sr.style.opacity = '0'; }
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
       });
@@ -2153,7 +2155,7 @@ export class ActivityModal {
     _forceHide();
     // Re-ocultar en el siguiente frame por si disablePickMode los restauró
     requestAnimationFrame(() => {
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
       });
@@ -2356,7 +2358,7 @@ export class ActivityModal {
       // Solo restaurar header buttons si se confirma (no al cancelar, porque
       // _resumeAtStep2 vuelve al paso 2 donde el header sigue oculto)
       if (restoreHeader) {
-        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
         });
@@ -2687,8 +2689,8 @@ export class ActivityModal {
       p.style.transition = '';
       p.style.display = '';
     });
-    // Header buttons (avatar, bell, +Actividad) — por si quedó algo suelto
-    ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+    // Header buttons (avatar, bell, panel lateral +Plan) — por si quedó algo suelto
+    ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; el.style.transition = ''; }
     });
