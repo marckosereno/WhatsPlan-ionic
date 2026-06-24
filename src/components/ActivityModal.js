@@ -773,31 +773,27 @@ export class ActivityModal {
             <!-- 1A: Categorías -->
             <div id="am-step-1a" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(0%);">
               <div style="padding:20px 24px 16px;flex-shrink:0;">
-                <h2 style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;">¿Qué quieres<br>hacer hoy?</h2>
+                <h2 style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">¿Qué quieres hacer hoy?</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Elige una categoría para empezar</p>
               </div>
-              <div style="flex:1;position:relative;overflow:hidden;">
-                <div style="position:absolute;inset:0;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-cat-list"></div>
-                <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-                <button id="am-next-1a" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
-                  Continuar →
-                </button>
-              </div>
+              <div style="flex:1;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-cat-list"></div>
+              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+              <button id="am-next-1a" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
+                Continuar →
+              </button>
             </div>
 
             <!-- 1B: Acciones -->
             <div id="am-step-1b" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
               <div style="padding:20px 24px 16px;flex-shrink:0;">
-                <h2 id="am-1b-title" style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;"></h2>
+                <h2 id="am-1b-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h2>
                 <p id="am-1b-count" style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;"></p>
               </div>
-              <div style="flex:1;position:relative;overflow:hidden;">
-                <div style="position:absolute;inset:0;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-action-list"></div>
-                <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-                <button id="am-next-1b" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
-                  Continuar →
-                </button>
-              </div>
+              <div style="flex:1;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-action-list"></div>
+              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+              <button id="am-next-1b" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
+                Continuar →
+              </button>
             </div>
 
           </div>
@@ -805,7 +801,7 @@ export class ActivityModal {
           <!-- STEP 2: Seleccionar lugar -->
           <div id="am-step-2" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
             <div style="padding:20px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
-              <h2 id="am-step2-title" style="font-size:32px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.1;letter-spacing:-1px;">¿Dónde?</h2>
+              <h2 id="am-step2-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.15;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">¿Dónde?</h2>
               <p id="am-place-subtitle" style="font-size:14px;color:#9ca3af;margin:0 0 12px;font-weight:500;">Elige un lugar para la actividad</p>
               <div style="position:relative;margin:0 -24px;">
                 <!-- Gradiente izquierdo + botón prev -->
@@ -839,8 +835,7 @@ export class ActivityModal {
               </div>
             </div>
 
-            <div style="flex:1;position:relative;overflow:hidden;">
-              <div style="position:absolute;inset:0;overflow-y:auto;padding:12px 20px calc(100px + env(safe-area-inset-bottom));">
+            <div style="flex:1;overflow-y:auto;padding:12px 20px calc(100px + env(safe-area-inset-bottom));">
               <!-- Pills C: mapa + ubicación en columna -->
               <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
                 <div id="activity-no-place" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 12px;border-radius:50px;background:white;border:2px dashed #1a5cf5;cursor:pointer;-webkit-tap-highlight-color:transparent;">
@@ -858,12 +853,11 @@ export class ActivityModal {
                 <div style="flex:1;height:1px;background:#f0f0f0;"></div>
               </div>
               <div id="am-suggested-places" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px;"></div>
-              </div>
-              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-              <button id="am-next-2" style="position:absolute;left:20px;right:20px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 10px 28px rgba(26,92,245,0.35);">
-                Continuar →
-              </button>
             </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+            <button id="am-next-2" style="position:absolute;left:20px;right:20px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 10px 28px rgba(26,92,245,0.35);">
+              Continuar →
+            </button>
           </div>
 
           <!-- STEP 3: Detalles -->
@@ -871,7 +865,7 @@ export class ActivityModal {
             <!-- Contenido scrollable -->
             <div style="flex:1;overflow-y:auto;padding:20px 24px 16px;">
               <div style="margin-bottom:24px;">
-                <h2 style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;">Detalles de<br>la actividad</h2>
+                <h2 style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Detalles de la actividad</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Cuéntanos un poco más sobre lo que quieres hacer.</p>
               </div>
 
@@ -972,7 +966,7 @@ export class ActivityModal {
     if (back) {
       back.innerHTML = idx === 1
         ? '<svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>'
-        : '<svg width="18" height="18" fill="currentColor"><use href="#icon-back"/></svg>';
+        : '<svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>';
     }
   }
 
@@ -1319,17 +1313,19 @@ export class ActivityModal {
     const firstType = ACTIVITY_TYPES.find(t => t.cat === group.cat);
     if (firstType) this.selectedType = firstType.key;
 
-    // Renderizar acciones — emoji + label centrados
+    // Renderizar acciones — emoji + nombre + traducción en paréntesis, todo en una línea
     const types = ACTIVITY_TYPES.filter(t => t.cat === group.cat);
     actionList.innerHTML = types.map(t =>
       '<button class="am-action-row" data-type="' + t.key + '" style="' +
-        'width:100%;display:flex;align-items:center;justify-content:center;gap:10px;' +
+        'width:100%;display:flex;align-items:center;justify-content:center;' +
         'padding:18px 20px;border-radius:20px;border:none;' +
         'background:#f5f5f5;cursor:pointer;margin-bottom:10px;text-align:center;' +
         'transition:background 0.15s;' +
         '-webkit-tap-highlight-color:transparent;">' +
-        '<span style="font-size:28px;flex-shrink:0;line-height:1;">' + t.emoji + '</span>' +
-        '<span class="am-action-row-label" style="font-size:15px;font-weight:700;color:#111;transition:color 0.15s;">' + t.label + '</span>' +
+        '<span class="am-action-row-label" style="font-size:15px;font-weight:700;color:#111;transition:color 0.15s;">' +
+          t.emoji + ' ' + t.label +
+          (t.label_en ? ' <span style="font-weight:500;opacity:0.55;">(' + t.label_en + ')</span>' : '') +
+        '</span>' +
       '</button>'
     ).join('');
 
