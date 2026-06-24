@@ -420,7 +420,7 @@ ion-app {
 /* ── Grupo izquierdo fijo — avatar + chip +Actividad juntos ── */
 #topbar-left {
   display: flex; align-items: center;
-  gap: 8px; flex-shrink: 0;
+  gap: 0; flex-shrink: 0;
 }
 
 /* ── Grupo derecho fijo — siempre a la derecha ── */
@@ -466,29 +466,22 @@ ion-app {
 /* Ocultar elementos no usados */
 #topbar-messages-btn { display: none !important; }
 
-/* ── Pill +Actividad — mismo glass que #topbar-right-chip, acento azul de marca ── */
+/* ── Pill +Plan — mismo glass que .wp-pill del footer menu (icon+label fusionados con el avatar) ── */
 #topbar-activity-btn {
   display: flex; align-items: center;
-  gap: 4px;
-  padding: 0 18px;
+  padding: 0 16px;
   height: 44px;
   border-radius: 9999px;
   border: none;
-  background: linear-gradient(170deg,
-    rgba(255,255,255,0.96) 0%,
-    rgba(240,244,255,0.90) 100%);
-  backdrop-filter: blur(20px) saturate(2);
-  -webkit-backdrop-filter: blur(20px) saturate(2);
-  box-shadow:
-    0 6px 20px rgba(0,0,0,0.10),
-    0 1px 4px rgba(0,0,0,0.06),
-    inset 0 1.5px 0 rgba(255,255,255,1),
-    inset 0 -1px 0 rgba(0,0,0,0.04);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 500; color: #1a5cf5;
+  font-size: 15px; font-weight: 300; color: #374151;
   font-family: 'Inter Tight', system-ui, sans-serif;
   white-space: nowrap;
 }
