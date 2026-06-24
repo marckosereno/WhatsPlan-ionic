@@ -1124,19 +1124,19 @@ export class ActivityModal {
       return '<div class="am-place-row" data-name="' + (p.name||'').replace(/"/g,'&quot;') +
         '" data-lat="' + (p.location?.lat||p.lat||'') + '" data-lng="' + (p.location?.lng||p.lng||'') +
         '" data-place-id="' + ((p.place_id||p.placeId||'')+'').replace(/"/g,'&quot;') +
-        '" style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:2px solid ' + (isSelected?'#1a5cf5':'#f0f0f0') + ';cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color 0.15s;">' +
+        '" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:' + (isSelected?'#1a5cf5':'#f5f5f5') + ';border-radius:18px;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.15s;">' +
         (photo
           ? '<img src="' + photo + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
-          : '<div style="width:52px;height:52px;border-radius:10px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🏠</div>') +
+          : '<div style="width:52px;height:52px;border-radius:10px;background:' + (isSelected?'rgba(255,255,255,0.25)':'#e5e7eb') + ';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🏠</div>') +
         '<div style="flex:1;min-width:0;overflow:hidden;">' +
           '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'') + '</div>' +
+          '<div class="am-place-row-name" style="font-size:14px;font-weight:700;color:' + (isSelected?'#fff':'#111') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 0.15s;">' + (p.name||'') + '</div>' +
           (p.featured ? '<span style="font-size:9px;font-weight:700;background:' + (p.featured==='verified'?'#10b981':p.featured==='premium'?'#8b5cf6':'#f59e0b') + ';color:white;padding:1px 5px;border-radius:20px;white-space:nowrap;flex-shrink:0;">' + (p.featured==='verified'?'Verificado':p.featured==='premium'?'💎 Premium':'⭐ Destacado') + '</span>' : '') +
           '</div>' +
-          (rating ? '<div style="font-size:12px;color:#f59e0b;margin-top:2px;">' + rating + '</div>' : '') +
-          (p.formattedAddress ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + p.formattedAddress.substring(0,40) + '</div>' : '') +
+          (rating ? '<div class="am-place-row-rating" style="font-size:12px;color:' + (isSelected?'rgba(255,255,255,0.85)':'#f59e0b') + ';margin-top:2px;transition:color 0.15s;">' + rating + '</div>' : '') +
+          (p.formattedAddress ? '<div class="am-place-row-address" style="font-size:11px;color:' + (isSelected?'rgba(255,255,255,0.7)':'#9ca3af') + ';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 0.15s;">' + p.formattedAddress.substring(0,40) + '</div>' : '') +
         '</div>' +
-        '<div class="am-row-icon" style="width:28px;height:28px;border-radius:50%;background:' + (isSelected?'#1a5cf5':'#f5f5f5') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + (isSelected?'white':'#9ca3af') + ';">' + (isSelected ? _checkSvg : _arrowSvg) + '</div>' +
+        '<div class="am-row-icon" style="width:28px;height:28px;border-radius:50%;background:' + (isSelected?'#fff':'#e5e7eb') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + (isSelected?'#1a5cf5':'#9ca3af') + ';">' + (isSelected ? _checkSvg : _arrowSvg) + '</div>' +
         '</div>';
     }).join('');
 
@@ -1149,16 +1149,28 @@ export class ActivityModal {
           lng: parseFloat(row.dataset.lng),
           place_id: row.dataset.placeId || null
         });
-        // Resetear todos los iconos
+        // Resetear todos los rows
         container.querySelectorAll('.am-place-row').forEach(r => {
-          r.style.borderColor = '#f0f0f0';
+          r.style.background = '#f5f5f5';
+          const name = r.querySelector('.am-place-row-name');
+          const ratingEl = r.querySelector('.am-place-row-rating');
+          const addrEl = r.querySelector('.am-place-row-address');
+          if (name) name.style.color = '#111';
+          if (ratingEl) ratingEl.style.color = '#f59e0b';
+          if (addrEl) addrEl.style.color = '#9ca3af';
           const icon = r.querySelector('.am-row-icon');
-          if (icon) { icon.style.background = '#f5f5f5'; icon.style.color = '#9ca3af'; icon.innerHTML = _arrowSvg; }
+          if (icon) { icon.style.background = '#e5e7eb'; icon.style.color = '#9ca3af'; icon.innerHTML = _arrowSvg; }
         });
         // Marcar solo el row clickeado
-        row.style.borderColor = '#1a5cf5';
+        row.style.background = '#1a5cf5';
+        const name = row.querySelector('.am-place-row-name');
+        const ratingEl = row.querySelector('.am-place-row-rating');
+        const addrEl = row.querySelector('.am-place-row-address');
+        if (name) name.style.color = '#fff';
+        if (ratingEl) ratingEl.style.color = 'rgba(255,255,255,0.85)';
+        if (addrEl) addrEl.style.color = 'rgba(255,255,255,0.7)';
         const icon = row.querySelector('.am-row-icon');
-        if (icon) { icon.style.background = '#1a5cf5'; icon.style.color = 'white'; icon.innerHTML = _checkSvg; }
+        if (icon) { icon.style.background = '#fff'; icon.style.color = '#1a5cf5'; icon.innerHTML = _checkSvg; }
       });
     });
   }
@@ -1228,32 +1240,29 @@ export class ActivityModal {
     catList.innerHTML = GROUPS.map(g =>
       '<button class="am-cat-row" data-cat="' + g.cat + '" style="' +
         'width:100%;display:flex;align-items:center;gap:14px;' +
-        'padding:18px 20px;border-radius:20px;border:1.5px solid #f0f0f0;' +
-        'background:white;cursor:pointer;margin-bottom:10px;text-align:left;' +
-        'transition:background 0.15s,border-color 0.15s;' +
+        'padding:18px 20px;border-radius:20px;border:none;' +
+        'background:#f5f5f5;cursor:pointer;margin-bottom:10px;text-align:left;' +
+        'transition:background 0.15s;' +
         '-webkit-tap-highlight-color:transparent;">' +
-        '<div style="width:48px;height:48px;border-radius:14px;background:#f3f4f6;' +
-          'display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">' +
-          g.emoji +
-        '</div>' +
+        '<span style="font-size:26px;line-height:1;flex-shrink:0;">' + g.emoji + '</span>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:15px;font-weight:700;color:#111;">' + g.name + '</div>' +
-          '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">' + g.desc + '</div>' +
+          '<div class="am-cat-row-title" style="font-size:15px;font-weight:700;color:#111;transition:color 0.15s;">' + g.name + '</div>' +
+          '<div class="am-cat-row-desc" style="font-size:12px;color:#9ca3af;margin-top:2px;transition:color 0.15s;">' + g.desc + '</div>' +
         '</div>' +
-        '<span style="color:#d1d5db;font-size:18px;flex-shrink:0;">›</span>' +
       '</button>'
     ).join('');
 
     catList.querySelectorAll('.am-cat-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        btn.style.background = '#f5f5f5';
-        btn.style.borderColor = '#1a5cf5';
+        btn.style.background = '#1a5cf5';
+        const title = btn.querySelector('.am-cat-row-title');
+        const desc = btn.querySelector('.am-cat-row-desc');
+        if (title) title.style.color = '#fff';
+        if (desc) desc.style.color = 'rgba(255,255,255,0.75)';
         setTimeout(() => {
-          btn.style.background = '';
-          btn.style.borderColor = '';
           const g = GROUPS.find(g => g.cat === btn.dataset.cat);
           if (g) this._showStep1B(g, GROUPS);
-        }, 120);
+        }, 150);
       });
     });
   }
@@ -1283,11 +1292,11 @@ export class ActivityModal {
     actionList.innerHTML = types.map(t =>
       '<button class="am-action-row" data-type="' + t.key + '" style="' +
         'width:100%;display:flex;align-items:center;justify-content:space-between;' +
-        'padding:18px 20px;border-radius:20px;border:1.5px solid #f0f0f0;' +
-        'background:white;cursor:pointer;margin-bottom:10px;text-align:left;' +
-        'transition:background 0.15s,border-color 0.15s;' +
+        'padding:18px 20px;border-radius:20px;border:none;' +
+        'background:#f5f5f5;cursor:pointer;margin-bottom:10px;text-align:left;' +
+        'transition:background 0.15s;' +
         '-webkit-tap-highlight-color:transparent;">' +
-        '<span style="font-size:15px;font-weight:700;color:#111;flex:1;">' + t.label + '</span>' +
+        '<span class="am-action-row-label" style="font-size:15px;font-weight:700;color:#111;flex:1;transition:color 0.15s;">' + t.label + '</span>' +
         '<span style="font-size:32px;flex-shrink:0;line-height:1;">' + t.emoji + '</span>' +
       '</button>'
     ).join('');
@@ -1296,12 +1305,13 @@ export class ActivityModal {
     actionList.querySelectorAll('.am-action-row').forEach(btn => {
       btn.addEventListener('click', () => {
         // Flash de selección
-        btn.style.background = '#f5f5f5';
-        btn.style.borderColor = '#1a5cf5';
+        btn.style.background = '#1a5cf5';
+        const label = btn.querySelector('.am-action-row-label');
+        if (label) label.style.color = '#fff';
         setTimeout(() => {
           this.selectedType = btn.dataset.type;
           this._goToStep(2);
-        }, 120);
+        }, 150);
       });
     });
 
