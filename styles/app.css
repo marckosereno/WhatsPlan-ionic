@@ -417,6 +417,12 @@ ion-app {
   border: none;
 }
 
+/* ── Grupo izquierdo fijo — avatar + chip +Actividad juntos ── */
+#topbar-left {
+  display: flex; align-items: center;
+  gap: 8px; flex-shrink: 0;
+}
+
 /* ── Grupo derecho fijo — siempre a la derecha ── */
 #topbar-right {
   display: flex; align-items: center;
@@ -458,9 +464,36 @@ ion-app {
 }
 
 /* Ocultar elementos no usados */
-#topbar-activity-btn { display: none !important; }
 #topbar-messages-btn { display: none !important; }
-.act-plus { display: none; }
+
+/* ── Pill +Actividad — mismo glass que #topbar-right-chip, acento azul de marca ── */
+#topbar-activity-btn {
+  display: flex; align-items: center;
+  gap: 4px;
+  padding: 0 18px;
+  height: 44px;
+  border-radius: 9999px;
+  border: none;
+  background: linear-gradient(170deg,
+    rgba(255,255,255,0.96) 0%,
+    rgba(240,244,255,0.90) 100%);
+  backdrop-filter: blur(20px) saturate(2);
+  -webkit-backdrop-filter: blur(20px) saturate(2);
+  box-shadow:
+    0 6px 20px rgba(0,0,0,0.10),
+    0 1px 4px rgba(0,0,0,0.06),
+    inset 0 1.5px 0 rgba(255,255,255,1),
+    inset 0 -1px 0 rgba(0,0,0,0.04);
+  cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+  font-size: 15px; font-weight: 500; color: #1a5cf5;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  white-space: nowrap;
+}
+#topbar-activity-btn:active { transform: scale(0.92); }
+.act-plus { font-weight: 700; }
 
 /* ════════════════════════════════════════════════════════════
    WP-TAP — Pulse spring universal para elementos táctiles
