@@ -471,14 +471,24 @@ function setupActivitySubscription(mv) {
         });
       }
 
-      // +Actividad — chip junto al avatar, misma función que el footer
-      const actBtn = document.getElementById('topbar-activity-btn');
-      if (actBtn) {
-        actBtn.addEventListener('click', function(e) {
+      // +Plan — panel flotante lateral izquierdo, abre directo el ActivityModal
+      const planBtn = document.getElementById('wp-side-plan-btn');
+      if (planBtn) {
+        planBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           openActivityModal();
         });
       }
+      // Slots 2 y 3 del panel lateral — función próximamente
+      ['wp-side-slot-2', 'wp-side-slot-3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log(id + ' — próximamente');
+          });
+        }
+      });
 
       // Mensajes — función próximamente
       const msgBtn = document.getElementById('topbar-messages-btn');
