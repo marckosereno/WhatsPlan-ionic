@@ -74,8 +74,11 @@
   <div id="map-container" class="map-container"></div>
 
   <div id="topbar">
-    <!-- Izquierda: Avatar -->
-    <button id="topbar-auth-btn" title="Mi perfil / Login" class="avatar-skeleton"></button>
+    <!-- Izquierda: Avatar + chip +Actividad agrupados -->
+    <div id="topbar-left">
+      <button id="topbar-auth-btn" title="Mi perfil / Login" class="avatar-skeleton"></button>
+      <button id="topbar-activity-btn"><span class="act-plus">+</span>Actividad</button>
+    </div>
 
     <!-- Derecha: grupo buscar + notif -->
     <div id="topbar-right">
@@ -89,7 +92,6 @@
     </div>
 
     <!-- Ocultos para JS -->
-    <button id="topbar-activity-btn" style="display:none"><span class="act-plus">+</span>Actividad</button>
     <button id="topbar-messages-btn" style="display:none"></button>
     <button id="topbar-search-btn" style="display:none"></button>
   </div>
