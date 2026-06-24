@@ -5,7 +5,9 @@
 
 export function initLiquidGlass() {
   const chips = [
-    document.getElementById('topbar-activity-btn'),
+    document.getElementById('wp-side-plan-btn'),
+    document.getElementById('wp-side-slot-2'),
+    document.getElementById('wp-side-slot-3'),
     document.getElementById('topbar-right-chip'),
   ].filter(Boolean);
 
