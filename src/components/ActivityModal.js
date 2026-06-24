@@ -753,15 +753,15 @@ export class ActivityModal {
         <!-- Edge guard: bloquea el gesto de back del browser en Android/iOS -->
         <div style="position:absolute;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;"></div>
 
-        <!-- Header: back/cerrar + barra de progreso + contador -->
-        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px 12px;flex-shrink:0;">
-          <button id="am-back" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;">
+        <!-- Header: back/cerrar (estilo avatar) + barra de progreso + contador (estilo chip notif) -->
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 14px;flex-shrink:0;">
+          <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);padding:0;">
             <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
           </button>
           <div style="flex:1;height:4px;border-radius:4px;background:#e5e5e5;overflow:hidden;">
             <div id="am-progress-fill" style="height:100%;width:25%;border-radius:4px;background:#1a5cf5;transition:width 0.35s ease;"></div>
           </div>
-          <span id="am-step-count" style="font-size:13px;font-weight:700;color:#9ca3af;flex-shrink:0;min-width:30px;text-align:right;">1/4</span>
+          <div id="am-step-count" style="width:44px;height:44px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 6px 20px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06),inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 0 rgba(0,0,0,0.04);font-size:13px;font-weight:700;color:#374151;flex-shrink:0;font-family:'Inter Tight',system-ui,sans-serif;">1/4</div>
         </div>
 
         <!-- Steps container -->
@@ -772,13 +772,14 @@ export class ActivityModal {
 
             <!-- 1A: Categorías -->
             <div id="am-step-1a" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(0%);">
-              <div style="padding:4px 24px 16px;flex-shrink:0;">
+              <div style="padding:20px 24px 16px;flex-shrink:0;">
                 <h2 style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;">¿Qué quieres<br>hacer hoy?</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Elige una categoría para empezar</p>
               </div>
-              <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-cat-list"></div>
-              <div style="padding:14px 24px calc(14px + env(safe-area-inset-bottom));flex-shrink:0;background:white;border-top:1px solid #f5f5f5;">
-                <button id="am-next-1a" disabled style="width:100%;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;">
+              <div style="flex:1;position:relative;overflow:hidden;">
+                <div style="position:absolute;inset:0;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-cat-list"></div>
+                <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+                <button id="am-next-1a" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
                   Continuar →
                 </button>
               </div>
@@ -786,13 +787,14 @@ export class ActivityModal {
 
             <!-- 1B: Acciones -->
             <div id="am-step-1b" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
-              <div style="padding:4px 24px 16px;flex-shrink:0;">
+              <div style="padding:20px 24px 16px;flex-shrink:0;">
                 <h2 id="am-1b-title" style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;"></h2>
                 <p id="am-1b-count" style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;"></p>
               </div>
-              <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-action-list"></div>
-              <div style="padding:12px 24px calc(12px + env(safe-area-inset-bottom));flex-shrink:0;background:white;border-top:1px solid #f5f5f5;">
-                <button id="am-next-1b" disabled style="width:100%;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;">
+              <div style="flex:1;position:relative;overflow:hidden;">
+                <div style="position:absolute;inset:0;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-action-list"></div>
+                <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+                <button id="am-next-1b" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
                   Continuar →
                 </button>
               </div>
@@ -802,7 +804,7 @@ export class ActivityModal {
 
           <!-- STEP 2: Seleccionar lugar -->
           <div id="am-step-2" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
-            <div style="padding:4px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
+            <div style="padding:20px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
               <h2 id="am-step2-title" style="font-size:32px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.1;letter-spacing:-1px;">¿Dónde?</h2>
               <p id="am-place-subtitle" style="font-size:14px;color:#9ca3af;margin:0 0 12px;font-weight:500;">Elige un lugar para la actividad</p>
               <div style="position:relative;margin:0 -24px;">
@@ -837,7 +839,8 @@ export class ActivityModal {
               </div>
             </div>
 
-            <div style="flex:1;overflow-y:auto;padding:12px 20px 0;">
+            <div style="flex:1;position:relative;overflow:hidden;">
+              <div style="position:absolute;inset:0;overflow-y:auto;padding:12px 20px calc(100px + env(safe-area-inset-bottom));">
               <!-- Pills C: mapa + ubicación en columna -->
               <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
                 <div id="activity-no-place" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 12px;border-radius:50px;background:white;border:2px dashed #1a5cf5;cursor:pointer;-webkit-tap-highlight-color:transparent;">
@@ -855,11 +858,9 @@ export class ActivityModal {
                 <div style="flex:1;height:1px;background:#f0f0f0;"></div>
               </div>
               <div id="am-suggested-places" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px;"></div>
-            </div>
-
-            <!-- Footer sticky -->
-            <div style="flex-shrink:0;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:white;border-top:1px solid #f5f5f5;">
-              <button id="am-next-2" style="width:100%;padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;">
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+              <button id="am-next-2" style="position:absolute;left:20px;right:20px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 10px 28px rgba(26,92,245,0.35);">
                 Continuar →
               </button>
             </div>
@@ -868,7 +869,7 @@ export class ActivityModal {
           <!-- STEP 3: Detalles -->
           <div id="am-step-3" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
             <!-- Contenido scrollable -->
-            <div style="flex:1;overflow-y:auto;padding:4px 24px 16px;">
+            <div style="flex:1;overflow-y:auto;padding:20px 24px 16px;">
               <div style="margin-bottom:24px;">
                 <h2 style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;">Detalles de<br>la actividad</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Cuéntanos un poco más sobre lo que quieres hacer.</p>
