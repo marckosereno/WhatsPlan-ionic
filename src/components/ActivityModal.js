@@ -753,8 +753,8 @@ export class ActivityModal {
         <!-- Edge guard: bloquea el gesto de back del browser en Android/iOS -->
         <div style="position:absolute;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;"></div>
 
-        <!-- Header: back/cerrar (estilo avatar) + barra de progreso + contador (estilo chip notif) -->
-        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 14px;flex-shrink:0;">
+        <!-- Header: misma posición/altura que #topbar del mapa (top: 12px + safe-area, left/right: 12px) -->
+        <div style="display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top, 0px)) 12px 14px;flex-shrink:0;">
           <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);padding:0;">
             <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
           </button>
