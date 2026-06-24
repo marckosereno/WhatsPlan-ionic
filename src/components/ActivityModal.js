@@ -746,11 +746,14 @@ export class ActivityModal {
 
     const overlay = document.createElement('div');
     overlay.id = 'activity-modal-overlay';
-    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:500;background:transparent;overscroll-behavior:none;touch-action:pan-y;pointer-events:none;';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:10000;background:transparent;overscroll-behavior:none;touch-action:pan-y;pointer-events:none;';
 
     overlay.innerHTML = `
       <!-- Edge guard: bloquea el gesto de back del browser en Android/iOS (al borde real de pantalla) -->
       <div style="position:fixed;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;pointer-events:auto;"></div>
+
+      <!-- Blur de fondo — topbar, footer, panel lateral y mapa quedan visibles pero desenfocados detrás -->
+      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:auto;"></div>
 
       <!-- Card flotante — mismas medidas que #wp-minisnap-panel (left/right:12px, bottom:84px+safearea, radio 32px, glass blur 24px) -->
       <div id="activity-modal" style="pointer-events:auto;position:fixed;left:12px;right:12px;top:calc(70px + env(safe-area-inset-top, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));border-radius:32px;background:rgba(255,255,255,0.94);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.6);overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
@@ -774,37 +777,29 @@ export class ActivityModal {
 
             <!-- 1A: Categorías -->
             <div id="am-step-1a" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(0%);">
-              <div style="padding:20px 24px 16px;flex-shrink:0;">
+              <div style="padding:6px 24px 16px;flex-shrink:0;text-align:center;">
                 <h2 style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">¿Qué quieres hacer hoy?</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Elige una categoría para empezar</p>
               </div>
-              <div style="flex:1;overflow-y:auto;padding:0 16px 100px;scrollbar-width:none;" id="am-cat-list"></div>
-              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-              <button id="am-next-1a" disabled style="position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
-                Continuar →
-              </button>
+              <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-cat-list"></div>
             </div>
 
             <!-- 1B: Acciones -->
             <div id="am-step-1b" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
-              <div style="padding:20px 24px 16px;flex-shrink:0;">
+              <div style="padding:6px 24px 16px;flex-shrink:0;text-align:center;">
                 <h2 id="am-1b-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h2>
                 <p id="am-1b-count" style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;"></p>
               </div>
-              <div style="flex:1;overflow-y:auto;padding:0 16px 100px;scrollbar-width:none;" id="am-action-list"></div>
-              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-              <button id="am-next-1b" disabled style="position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
-                Continuar →
-              </button>
+              <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-action-list"></div>
             </div>
 
           </div>
 
           <!-- STEP 2: Seleccionar lugar -->
           <div id="am-step-2" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
-            <div style="padding:20px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
-              <h2 id="am-step2-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.15;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">¿Dónde?</h2>
-              <p id="am-place-subtitle" style="font-size:14px;color:#9ca3af;margin:0 0 12px;font-weight:500;">Elige un lugar para la actividad</p>
+            <div style="padding:6px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
+              <h2 id="am-step2-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.15;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;">¿Dónde?</h2>
+              <p id="am-place-subtitle" style="font-size:14px;color:#9ca3af;margin:0 0 12px;font-weight:500;text-align:center;">Elige un lugar para la actividad</p>
               <div style="position:relative;margin:0 -24px;">
                 <!-- Gradiente izquierdo + botón prev -->
                 <div id="am-chips-prev-wrap" style="display:none;position:absolute;left:0;top:0;bottom:0;z-index:2;align-items:center;">
@@ -837,7 +832,7 @@ export class ActivityModal {
               </div>
             </div>
 
-            <div style="flex:1;overflow-y:auto;padding:12px 20px 100px;">
+            <div style="flex:1;overflow-y:auto;padding:12px 20px;">
               <!-- Pills C: mapa + ubicación en columna -->
               <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
                 <div id="activity-no-place" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 12px;border-radius:50px;background:white;border:2px dashed #1a5cf5;cursor:pointer;-webkit-tap-highlight-color:transparent;">
@@ -856,17 +851,13 @@ export class ActivityModal {
               </div>
               <div id="am-suggested-places" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px;"></div>
             </div>
-            <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-            <button id="am-next-2" style="position:absolute;left:20px;right:20px;bottom:14px;padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 10px 28px rgba(26,92,245,0.35);">
-              Continuar →
-            </button>
           </div>
 
           <!-- STEP 3: Detalles -->
           <div id="am-step-3" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
             <!-- Contenido scrollable -->
-            <div style="flex:1;overflow-y:auto;padding:20px 24px 16px;">
-              <div style="margin-bottom:24px;">
+            <div style="flex:1;overflow-y:auto;padding:6px 24px 16px;">
+              <div style="margin-bottom:24px;text-align:center;">
                 <h2 style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Detalles de la actividad</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Cuéntanos un poco más sobre lo que quieres hacer.</p>
               </div>
@@ -939,6 +930,18 @@ export class ActivityModal {
           </div>
 
         </div>
+
+        <!-- CTA fijo — fuera de #am-steps, no se desliza con la animación entre pasos -->
+        <div id="am-cta-gradient" style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+        <button id="am-next-1a" disabled style="position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
+          Continuar →
+        </button>
+        <button id="am-next-1b" disabled style="display:none;position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
+          Continuar →
+        </button>
+        <button id="am-next-2" style="display:none;position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 10px 28px rgba(26,92,245,0.35);">
+          Continuar →
+        </button>
       </div>
     `;
 
@@ -970,6 +973,13 @@ export class ActivityModal {
         ? '<svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>';
     }
+    // CTA fijo compartido — solo uno visible a la vez; paso 4 (detalles) usa su propio footer "Publicar"
+    const gradient = document.getElementById('am-cta-gradient');
+    if (gradient) gradient.style.display = idx === 4 ? 'none' : 'block';
+    [['am-next-1a', 1], ['am-next-1b', 2], ['am-next-2', 3]].forEach(([id, stepIdx]) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.style.display = idx === stepIdx ? 'block' : 'none';
+    });
   }
 
   async _goToStep(step) {
@@ -1217,9 +1227,9 @@ export class ActivityModal {
     const GROUPS = [
       { cat: 'RESTAURANTS',   emoji: '🌮', name: 'Comer y beber',        desc: 'Tacos, mariscos, café y más' },
       { cat: 'ENTERTAINMENT', emoji: '🎉', name: 'Salir y divertirse',    desc: 'Bares, eventos, música' },
-      { cat: 'SHOPPING',      emoji: '🏷️', name: 'Compras',               desc: 'Ropa, joyería, artesanías' },
+      { cat: 'SHOPPING',      emoji: '🏷️', name: 'Ir de Compras',         desc: 'Ropa, joyería, artesanías' },
       { cat: 'HEALTH',        emoji: '💆', name: 'Salud & Estética',      desc: 'Dental, spa, salón, óptica' },
-      { cat: 'PARKS',         emoji: '🌳', name: 'Explorar',              desc: 'Parques, plazas, paseos' },
+      { cat: 'PARKS',         emoji: '🌳', name: 'Salir a Explorar',      desc: 'Parques, plazas, paseos' },
       { cat: 'WORKSHOPS',     emoji: '🔧', name: 'Talleres & Servicios',  desc: 'Mecánicos, reparaciones' },
     ];
 
@@ -1315,7 +1325,7 @@ export class ActivityModal {
     const firstType = ACTIVITY_TYPES.find(t => t.cat === group.cat);
     if (firstType) this.selectedType = firstType.key;
 
-    // Renderizar acciones — emoji + nombre + traducción en paréntesis, todo en una línea
+    // Renderizar acciones — emoji + nombre, todo en una línea
     const types = ACTIVITY_TYPES.filter(t => t.cat === group.cat);
     actionList.innerHTML = types.map(t =>
       '<button class="am-action-row" data-type="' + t.key + '" style="' +
@@ -1326,7 +1336,6 @@ export class ActivityModal {
         '-webkit-tap-highlight-color:transparent;">' +
         '<span class="am-action-row-label" style="font-size:15px;font-weight:700;color:#111;transition:color 0.15s;">' +
           t.emoji + ' ' + t.label +
-          (t.label_en ? ' <span style="font-weight:500;opacity:0.55;">(' + t.label_en + ')</span>' : '') +
         '</span>' +
       '</button>'
     ).join('');
