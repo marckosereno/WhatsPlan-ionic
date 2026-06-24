@@ -99,10 +99,10 @@ function showEmojiPicker(onSelect) {
   sheet.id = 'emoji-picker-sheet';
   sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999999;background:#fff;border-radius:24px 24px 0 0;padding:0 0 32px;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.28s cubic-bezier(.34,1.3,.64,1);max-height:72vh;display:flex;flex-direction:column;';
   // Ocultar subcategorías para que no queden por encima del picker
-  const _subcatsEl = document.getElementById('wp-scats');
+  const _subcatsEl = document.getElementById('map-subcategories-footer');
   if (_subcatsEl) { _subcatsEl.style.zIndex = '-1'; _subcatsEl.style.pointerEvents = 'none'; }
   const _restoreSubcats = () => {
-    const el = document.getElementById('wp-scats');
+    const el = document.getElementById('map-subcategories-footer');
     if (el) { el.style.zIndex = ''; el.style.pointerEvents = ''; }
   };
   sheet.innerHTML = `
@@ -753,15 +753,23 @@ export class ActivityModal {
         <!-- Edge guard: bloquea el gesto de back del browser en Android/iOS -->
         <div style="position:absolute;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;"></div>
 
-        <!-- Header: misma posición/altura que #topbar del mapa (top: 12px + safe-area, left/right: 12px) -->
-        <div style="display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top, 0px)) 12px 14px;flex-shrink:0;">
-          <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);padding:0;">
-            <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
-          </button>
-          <div style="flex:1;height:4px;border-radius:4px;background:#e5e5e5;overflow:hidden;">
-            <div id="am-progress-fill" style="height:100%;width:25%;border-radius:4px;background:#1a5cf5;transition:width 0.35s ease;"></div>
+        <!-- Header: pills izquierda, botones derecha -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;flex-shrink:0;">
+          <!-- Píldoras de progreso a la izquierda -->
+          <div style="display:flex;gap:5px;align-items:center;">
+            <div id="am-pill-1" style="height:4px;width:48px;border-radius:4px;background:#1a5cf5;transition:all 0.35s ease;"></div>
+            <div id="am-pill-2" style="height:4px;width:32px;border-radius:4px;background:#e0e0e0;transition:all 0.35s ease;"></div>
+            <div id="am-pill-3" style="height:4px;width:32px;border-radius:4px;background:#e0e0e0;transition:all 0.35s ease;"></div>
           </div>
-          <div id="am-step-count" style="width:44px;height:44px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 6px 20px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06),inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 0 rgba(0,0,0,0.04);font-size:13px;font-weight:700;color:#374151;flex-shrink:0;font-family:'Inter Tight',system-ui,sans-serif;">1/4</div>
+          <!-- Back + Close a la derecha -->
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="am-back" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;opacity:0;pointer-events:none;flex-shrink:0;transition:opacity 0.2s;">
+              <svg width="18" height="18" fill="currentColor"><use href="#icon-back"/></svg>
+            </button>
+            <button id="activity-modal-close" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;">
+              <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- Steps container -->
@@ -772,36 +780,37 @@ export class ActivityModal {
 
             <!-- 1A: Categorías -->
             <div id="am-step-1a" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(0%);">
-              <div style="padding:20px 24px 16px;flex-shrink:0;">
-                <h2 style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">¿Qué quieres hacer hoy?</h2>
+              <div style="padding:4px 24px 16px;flex-shrink:0;">
+                <h2 style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;">¿Qué quieres<br>hacer hoy?</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Elige una categoría para empezar</p>
               </div>
-              <div style="flex:1;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-cat-list"></div>
-              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-              <button id="am-next-1a" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
-                Continuar →
-              </button>
+              <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-cat-list"></div>
+              <div style="padding:14px 24px calc(14px + env(safe-area-inset-bottom));flex-shrink:0;background:white;border-top:1px solid #f5f5f5;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <span style="font-size:15px;">🗺️</span>
+                <p style="font-size:12px;color:#b0b0b0;margin:0;text-align:center;line-height:1.4;">
+                  Elige tu próxima actividad y conoce los lugares<br>más emblemáticos en <strong style="color:#6366f1;">Nuevo Progreso</strong>
+                </p>
+              </div>
             </div>
 
             <!-- 1B: Acciones -->
             <div id="am-step-1b" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
-              <div style="padding:20px 24px 16px;flex-shrink:0;">
-                <h2 id="am-1b-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h2>
+              <div style="padding:4px 24px 16px;flex-shrink:0;">
+                <h2 id="am-1b-title" style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;"></h2>
                 <p id="am-1b-count" style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;"></p>
               </div>
-              <div style="flex:1;overflow-y:auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));scrollbar-width:none;" id="am-action-list"></div>
-              <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-              <button id="am-next-1b" disabled style="position:absolute;left:24px;right:24px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">
-                Continuar →
-              </button>
+              <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-action-list"></div>
+              <div style="padding:12px 24px calc(12px + env(safe-area-inset-bottom));flex-shrink:0;background:white;border-top:1px solid #f5f5f5;text-align:center;">
+                <p style="font-size:12px;color:#d1d5db;margin:0;">Toca cualquier opción para continuar</p>
+              </div>
             </div>
 
           </div>
 
           <!-- STEP 2: Seleccionar lugar -->
           <div id="am-step-2" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
-            <div style="padding:20px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
-              <h2 id="am-step2-title" style="font-size:24px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.15;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">¿Dónde?</h2>
+            <div style="padding:4px 24px 12px;flex-shrink:0;border-bottom:1px solid #f5f5f5;">
+              <h2 id="am-step2-title" style="font-size:32px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.1;letter-spacing:-1px;">¿Dónde?</h2>
               <p id="am-place-subtitle" style="font-size:14px;color:#9ca3af;margin:0 0 12px;font-weight:500;">Elige un lugar para la actividad</p>
               <div style="position:relative;margin:0 -24px;">
                 <!-- Gradiente izquierdo + botón prev -->
@@ -835,7 +844,7 @@ export class ActivityModal {
               </div>
             </div>
 
-            <div style="flex:1;overflow-y:auto;padding:12px 20px calc(100px + env(safe-area-inset-bottom));">
+            <div style="flex:1;overflow-y:auto;padding:12px 20px 0;">
               <!-- Pills C: mapa + ubicación en columna -->
               <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
                 <div id="activity-no-place" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 12px;border-radius:50px;background:white;border:2px dashed #1a5cf5;cursor:pointer;-webkit-tap-highlight-color:transparent;">
@@ -854,18 +863,21 @@ export class ActivityModal {
               </div>
               <div id="am-suggested-places" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px;"></div>
             </div>
-            <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-            <button id="am-next-2" style="position:absolute;left:20px;right:20px;bottom:calc(14px + env(safe-area-inset-bottom));padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;box-shadow:0 10px 28px rgba(26,92,245,0.35);">
-              Continuar →
-            </button>
+
+            <!-- Footer sticky -->
+            <div style="flex-shrink:0;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:white;border-top:1px solid #f5f5f5;">
+              <button id="am-next-2" style="width:100%;padding:17px;background:#1a5cf5;color:white;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-0.2px;font-family:Roboto,system-ui,sans-serif;">
+                Continuar →
+              </button>
+            </div>
           </div>
 
           <!-- STEP 3: Detalles -->
           <div id="am-step-3" style="position:absolute;inset:0;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);">
             <!-- Contenido scrollable -->
-            <div style="flex:1;overflow-y:auto;padding:20px 24px 16px;">
+            <div style="flex:1;overflow-y:auto;padding:4px 24px 16px;">
               <div style="margin-bottom:24px;">
-                <h2 style="font-size:24px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.15;letter-spacing:-0.5px;font-family:Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Detalles de la actividad</h2>
+                <h2 style="font-size:32px;font-weight:900;color:#111;margin:0 0 8px;line-height:1.1;letter-spacing:-1px;font-family:Roboto,system-ui,sans-serif;">Detalles de<br>la actividad</h2>
                 <p style="font-size:14px;color:#9ca3af;margin:0;font-weight:500;">Cuéntanos un poco más sobre lo que quieres hacer.</p>
               </div>
 
@@ -955,28 +967,23 @@ export class ActivityModal {
     timeInput.value = now.toISOString().slice(0, 16);
   }
 
-  // ── Barra de progreso única (1A=1, 1B=2, lugar=3, detalles=4) ────
-  _setProgress(idx) {
-    const TOTAL = 4;
-    const fill = document.getElementById('am-progress-fill');
-    if (fill) fill.style.width = (idx / TOTAL * 100) + '%';
-    const count = document.getElementById('am-step-count');
-    if (count) count.textContent = idx + '/' + TOTAL;
-    const back = document.getElementById('am-back');
-    if (back) {
-      back.innerHTML = idx === 1
-        ? '<svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>'
-        : '<svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>';
-    }
-  }
-
   async _goToStep(step) {
     const prev = this._currentStep;
     this._currentStep = step;
 
-    // Barra de progreso (paso 1/1A se actualiza desde _renderStep1Types/_showStep1B)
-    if (step === 2) this._setProgress(3);
-    if (step === 3) this._setProgress(4);
+    // Actualizar píldoras de progreso
+    const back = document.getElementById('am-back');
+    [1,2,3].forEach(n => {
+      const pill = document.getElementById('am-pill-' + n);
+      if (pill) {
+        pill.style.background = n <= step ? '#1a5cf5' : '#e5e5e5';
+        pill.style.width = n === step ? '48px' : '32px';
+      }
+    });
+    if (back) {
+      back.style.opacity = step > 1 ? '1' : '0';
+      back.style.pointerEvents = step > 1 ? 'auto' : 'none';
+    }
 
     // Animar steps
     const dir = step > prev ? 1 : -1;
@@ -1116,54 +1123,36 @@ export class ActivityModal {
 
       return '<div class="am-place-row" data-name="' + (p.name||'').replace(/"/g,'&quot;') +
         '" data-lat="' + (p.location?.lat||p.lat||'') + '" data-lng="' + (p.location?.lng||p.lng||'') +
-        '" data-place-id="' + ((p.place_id||p.placeId||'')+'').replace(/"/g,'&quot;') +
-        '" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:' + (isSelected?'#1a5cf5':'#f5f5f5') + ';border-radius:18px;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.15s;">' +
+        '" style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:2px solid ' + (isSelected?'#1a5cf5':'#f0f0f0') + ';cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color 0.15s;">' +
         (photo
           ? '<img src="' + photo + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
-          : '<div style="width:52px;height:52px;border-radius:10px;background:' + (isSelected?'rgba(255,255,255,0.25)':'#e5e7eb') + ';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🏠</div>') +
-        '<div style="flex:1;min-width:0;overflow:hidden;text-align:center;">' +
-          '<div style="display:flex;align-items:center;justify-content:center;gap:6px;">' +
-          '<div class="am-place-row-name" style="font-size:14px;font-weight:700;color:' + (isSelected?'#fff':'#111') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 0.15s;">' + (p.name||'') + '</div>' +
+          : '<div style="width:52px;height:52px;border-radius:10px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🏠</div>') +
+        '<div style="flex:1;min-width:0;overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'') + '</div>' +
           (p.featured ? '<span style="font-size:9px;font-weight:700;background:' + (p.featured==='verified'?'#10b981':p.featured==='premium'?'#8b5cf6':'#f59e0b') + ';color:white;padding:1px 5px;border-radius:20px;white-space:nowrap;flex-shrink:0;">' + (p.featured==='verified'?'Verificado':p.featured==='premium'?'💎 Premium':'⭐ Destacado') + '</span>' : '') +
           '</div>' +
-          (rating ? '<div class="am-place-row-rating" style="font-size:12px;color:' + (isSelected?'rgba(255,255,255,0.85)':'#f59e0b') + ';margin-top:2px;transition:color 0.15s;">' + rating + '</div>' : '') +
-          (p.formattedAddress ? '<div class="am-place-row-address" style="font-size:11px;color:' + (isSelected?'rgba(255,255,255,0.7)':'#9ca3af') + ';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 0.15s;">' + p.formattedAddress.substring(0,40) + '</div>' : '') +
+          (rating ? '<div style="font-size:12px;color:#f59e0b;margin-top:2px;">' + rating + '</div>' : '') +
+          (p.formattedAddress ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + p.formattedAddress.substring(0,40) + '</div>' : '') +
         '</div>' +
-        '<div class="am-row-icon" style="width:28px;height:28px;border-radius:50%;background:' + (isSelected?'#fff':'#e5e7eb') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + (isSelected?'#1a5cf5':'#9ca3af') + ';">' + (isSelected ? _checkSvg : _arrowSvg) + '</div>' +
+        '<div class="am-row-icon" style="width:28px;height:28px;border-radius:50%;background:' + (isSelected?'#1a5cf5':'#f5f5f5') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + (isSelected?'white':'#9ca3af') + ';">' + (isSelected ? _checkSvg : _arrowSvg) + '</div>' +
         '</div>';
     }).join('');
 
     // Clicks
     container.querySelectorAll('.am-place-row').forEach(row => {
       row.addEventListener('click', () => {
-        this.setPlace({
-          name: row.dataset.name,
-          lat: parseFloat(row.dataset.lat),
-          lng: parseFloat(row.dataset.lng),
-          place_id: row.dataset.placeId || null
-        });
-        // Resetear todos los rows
+        this.setPlace({ name: row.dataset.name, lat: parseFloat(row.dataset.lat), lng: parseFloat(row.dataset.lng) });
+        // Resetear todos los iconos
         container.querySelectorAll('.am-place-row').forEach(r => {
-          r.style.background = '#f5f5f5';
-          const name = r.querySelector('.am-place-row-name');
-          const ratingEl = r.querySelector('.am-place-row-rating');
-          const addrEl = r.querySelector('.am-place-row-address');
-          if (name) name.style.color = '#111';
-          if (ratingEl) ratingEl.style.color = '#f59e0b';
-          if (addrEl) addrEl.style.color = '#9ca3af';
+          r.style.borderColor = '#f0f0f0';
           const icon = r.querySelector('.am-row-icon');
-          if (icon) { icon.style.background = '#e5e7eb'; icon.style.color = '#9ca3af'; icon.innerHTML = _arrowSvg; }
+          if (icon) { icon.style.background = '#f5f5f5'; icon.style.color = '#9ca3af'; icon.innerHTML = _arrowSvg; }
         });
         // Marcar solo el row clickeado
-        row.style.background = '#1a5cf5';
-        const name = row.querySelector('.am-place-row-name');
-        const ratingEl = row.querySelector('.am-place-row-rating');
-        const addrEl = row.querySelector('.am-place-row-address');
-        if (name) name.style.color = '#fff';
-        if (ratingEl) ratingEl.style.color = 'rgba(255,255,255,0.85)';
-        if (addrEl) addrEl.style.color = 'rgba(255,255,255,0.7)';
+        row.style.borderColor = '#1a5cf5';
         const icon = row.querySelector('.am-row-icon');
-        if (icon) { icon.style.background = '#fff'; icon.style.color = '#1a5cf5'; icon.innerHTML = _checkSvg; }
+        if (icon) { icon.style.background = '#1a5cf5'; icon.style.color = 'white'; icon.innerHTML = _checkSvg; }
       });
     });
   }
@@ -1227,68 +1216,40 @@ export class ActivityModal {
       if (g) { this._showStep1B(g, GROUPS); return; }
     }
 
-    this._setProgress(1);
-
     const catList = document.getElementById('am-cat-list');
     if (!catList) return;
 
-    let selectedCat = null;
-    const nextBtn = document.getElementById('am-next-1a');
-    const _disableNext = () => {
-      if (!nextBtn) return;
-      nextBtn.disabled = true;
-      nextBtn.style.background = '#e5e5e5';
-      nextBtn.style.color = '#9ca3af';
-      nextBtn.style.cursor = 'not-allowed';
-    };
-    _disableNext();
-
     catList.innerHTML = GROUPS.map(g =>
       '<button class="am-cat-row" data-cat="' + g.cat + '" style="' +
-        'width:100%;display:flex;align-items:center;justify-content:center;gap:14px;' +
-        'padding:18px 20px;border-radius:20px;border:none;' +
-        'background:#f5f5f5;cursor:pointer;margin-bottom:10px;text-align:center;' +
-        'transition:background 0.15s;' +
+        'width:100%;display:flex;align-items:center;gap:14px;' +
+        'padding:18px 20px;border-radius:20px;border:1.5px solid #f0f0f0;' +
+        'background:white;cursor:pointer;margin-bottom:10px;text-align:left;' +
+        'transition:background 0.15s,border-color 0.15s;' +
         '-webkit-tap-highlight-color:transparent;">' +
-        '<span style="font-size:26px;line-height:1;flex-shrink:0;">' + g.emoji + '</span>' +
-        '<div style="min-width:0;">' +
-          '<div class="am-cat-row-title" style="font-size:15px;font-weight:700;color:#111;transition:color 0.15s;">' + g.name + '</div>' +
-          '<div class="am-cat-row-desc" style="font-size:12px;color:#9ca3af;margin-top:2px;transition:color 0.15s;">' + g.desc + '</div>' +
+        '<div style="width:48px;height:48px;border-radius:14px;background:#f3f4f6;' +
+          'display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">' +
+          g.emoji +
         '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:15px;font-weight:700;color:#111;">' + g.name + '</div>' +
+          '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">' + g.desc + '</div>' +
+        '</div>' +
+        '<span style="color:#d1d5db;font-size:18px;flex-shrink:0;">›</span>' +
       '</button>'
     ).join('');
 
     catList.querySelectorAll('.am-cat-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        catList.querySelectorAll('.am-cat-row').forEach(b => {
-          b.style.background = '#f5f5f5';
-          const t = b.querySelector('.am-cat-row-title');
-          const d = b.querySelector('.am-cat-row-desc');
-          if (t) t.style.color = '#111';
-          if (d) d.style.color = '#9ca3af';
-        });
-        btn.style.background = '#1a5cf5';
-        const title = btn.querySelector('.am-cat-row-title');
-        const desc = btn.querySelector('.am-cat-row-desc');
-        if (title) title.style.color = '#fff';
-        if (desc) desc.style.color = 'rgba(255,255,255,0.75)';
-        selectedCat = btn.dataset.cat;
-        if (nextBtn) {
-          nextBtn.disabled = false;
-          nextBtn.style.background = '#1a5cf5';
-          nextBtn.style.color = '#fff';
-          nextBtn.style.cursor = 'pointer';
-        }
+        btn.style.background = '#f5f5f5';
+        btn.style.borderColor = '#1a5cf5';
+        setTimeout(() => {
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          const g = GROUPS.find(g => g.cat === btn.dataset.cat);
+          if (g) this._showStep1B(g, GROUPS);
+        }, 120);
       });
     });
-
-    if (nextBtn) {
-      nextBtn.onclick = () => {
-        if (!selectedCat) return;
-        const g = GROUPS.find(g => g.cat === selectedCat);
-        if (g) this._showStep1B(g, GROUPS);
-      };
-    }
   }
 
   // ── Paso 1B: acciones de la categoría elegida ─────────────────────
@@ -1304,65 +1265,44 @@ export class ActivityModal {
     const countEl = document.getElementById('am-1b-count');
     if (countEl) {
       const n = ACTIVITY_TYPES.filter(t => t.cat === group.cat).length;
-      countEl.textContent = n + ' opciones · Elige una';
+      countEl.textContent = n + ' opciones · Toca una para continuar';
     }
-
-    this._setProgress(2);
 
     // Seleccionar primer tipo
     const firstType = ACTIVITY_TYPES.find(t => t.cat === group.cat);
     if (firstType) this.selectedType = firstType.key;
 
-    // Renderizar acciones — emoji + nombre + traducción en paréntesis, todo en una línea
+    // Renderizar acciones — emoji grande a la derecha, estilo img3
     const types = ACTIVITY_TYPES.filter(t => t.cat === group.cat);
     actionList.innerHTML = types.map(t =>
       '<button class="am-action-row" data-type="' + t.key + '" style="' +
-        'width:100%;display:flex;align-items:center;justify-content:center;' +
-        'padding:18px 20px;border-radius:20px;border:none;' +
-        'background:#f5f5f5;cursor:pointer;margin-bottom:10px;text-align:center;' +
-        'transition:background 0.15s;' +
+        'width:100%;display:flex;align-items:center;justify-content:space-between;' +
+        'padding:18px 20px;border-radius:20px;border:1.5px solid #f0f0f0;' +
+        'background:white;cursor:pointer;margin-bottom:10px;text-align:left;' +
+        'transition:background 0.15s,border-color 0.15s;' +
         '-webkit-tap-highlight-color:transparent;">' +
-        '<span class="am-action-row-label" style="font-size:15px;font-weight:700;color:#111;transition:color 0.15s;">' +
-          t.emoji + ' ' + t.label +
-          (t.label_en ? ' <span style="font-weight:500;opacity:0.55;">(' + t.label_en + ')</span>' : '') +
-        '</span>' +
+        '<span style="font-size:15px;font-weight:700;color:#111;flex:1;">' + t.label + '</span>' +
+        '<span style="font-size:32px;flex-shrink:0;line-height:1;">' + t.emoji + '</span>' +
       '</button>'
     ).join('');
 
-    const nextBtn1b = document.getElementById('am-next-1b');
-    const _disableNext1b = () => {
-      if (!nextBtn1b) return;
-      nextBtn1b.disabled = true;
-      nextBtn1b.style.background = '#e5e5e5';
-      nextBtn1b.style.color = '#9ca3af';
-      nextBtn1b.style.cursor = 'not-allowed';
-    };
-    _disableNext1b();
-
-    // Al tocar una acción → solo marca selección, ya no avanza solo
+    // Al tocar una acción → feedback visual + paso 2
     actionList.querySelectorAll('.am-action-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        actionList.querySelectorAll('.am-action-row').forEach(b => {
-          b.style.background = '#f5f5f5';
-          const l = b.querySelector('.am-action-row-label');
-          if (l) l.style.color = '#111';
-        });
-        btn.style.background = '#1a5cf5';
-        const label = btn.querySelector('.am-action-row-label');
-        if (label) label.style.color = '#fff';
-        this.selectedType = btn.dataset.type;
-        if (nextBtn1b) {
-          nextBtn1b.disabled = false;
-          nextBtn1b.style.background = '#1a5cf5';
-          nextBtn1b.style.color = '#fff';
-          nextBtn1b.style.cursor = 'pointer';
-        }
+        // Flash de selección
+        btn.style.background = '#f5f5f5';
+        btn.style.borderColor = '#1a5cf5';
+        setTimeout(() => {
+          this.selectedType = btn.dataset.type;
+          this._goToStep(2);
+        }, 120);
       });
     });
 
-    if (nextBtn1b) nextBtn1b.onclick = () => this._goToStep(2);
-
     // Botón volver → mostrar 1A
+    // Mostrar el am-back global cuando estamos en 1B
+    const globalBack = document.getElementById('am-back');
+    if (globalBack) { globalBack.style.opacity = '1'; globalBack.style.pointerEvents = 'auto'; }
     const backBtn = document.getElementById('am-back-1b');
     if (backBtn) {
       backBtn.onclick = () => {
@@ -1382,6 +1322,8 @@ export class ActivityModal {
   }
 
   setupListeners() {
+    document.getElementById('activity-modal-close')?.addEventListener('click', () => this.hide());
+
     // Chips: botones prev/next con gradiente — sin scroll touch para evitar swipe back del OS
     const chipsEl = document.getElementById('am-subcat-chips');
     const nextWrap = document.getElementById('am-chips-next-wrap');
@@ -1409,26 +1351,27 @@ export class ActivityModal {
       _observer.observe(chipsEl, { childList: true });
     }
 
-    // Back button — en 1A actúa como cerrar (✕), en el resto retrocede un paso
+    // Back button
     document.getElementById('am-back')?.addEventListener('click', () => {
       if (this._currentStep === 1) {
         if (this._in1B) {
           this._in1B = false;
-          this._isSpontaneous = false;
+    this._isSpontaneous = false;
           const p1b = document.getElementById('am-step-1b');
           if (p1b) p1b.style.transform = 'translateX(100%)';
+          const globalBackBtn = document.getElementById('am-back');
+          if (globalBackBtn) { globalBackBtn.style.opacity = '0'; globalBackBtn.style.pointerEvents = 'none'; }
           const p1a = document.getElementById('am-step-1a');
           if (p1a) p1a.style.transform = 'translateX(0%)';
-          this._setProgress(1);
           return;
         }
-        this.hide();
-        return;
       }
-      this._goToStep(this._currentStep - 1);
+      if (this._currentStep > 1) this._goToStep(this._currentStep - 1);
     });
 
     // Tipo de actividad (step 1) — manejado por _renderStep1Types directamente
+
+    // Paso 1 no tiene botón continuar — la selección de acción lleva al paso 2 directamente
 
     // Seleccionar lugar en mapa (step 2)
     document.getElementById('activity-no-place')?.addEventListener('click', () => {
@@ -1466,7 +1409,12 @@ export class ActivityModal {
               this._in1B = false;
             }
             this._currentStep = 2;
-            this._setProgress(3);
+            const back = document.getElementById('am-back');
+            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+            [1,2,3].forEach(n => {
+              const pill = document.getElementById('am-pill-' + n);
+              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 2 ? '48px' : '32px'; }
+            });
             if (!this._popstateHandler) {
               this._popstateHandler = (e) => this._handlePopState(e);
               window.addEventListener('popstate', this._popstateHandler);
@@ -1492,7 +1440,12 @@ export class ActivityModal {
               el.style.transform = n === '2' ? 'translateX(0%)' : 'translateX(-100%)';
             });
             this._currentStep = 2;
-            this._setProgress(3);
+            const back = document.getElementById('am-back');
+            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+            [1,2,3].forEach(n => {
+              const pill = document.getElementById('am-pill-' + n);
+              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e0e0e0'; pill.style.width = n === 2 ? '48px' : '32px'; }
+            });
             this.modal.style.display = 'flex';
             requestAnimationFrame(() => {
               ['1','2','3'].forEach(n => {
@@ -1706,53 +1659,44 @@ export class ActivityModal {
     // Cerrar ficha de lugar y minisnap si están abiertos
     const mapView = window.wpApp?.mapView;
     document.getElementById('activity-popup')?.remove();
-    window.wpApp?.placeModal?.hide?.();
-    // Ocultar minisnap si está abierto
-    const minisnap = document.getElementById('wp-minisnap-panel');
+    if (mapView?.closeDetailsModal) mapView.closeDetailsModal();
+    // Ocultar place-card-overlay (minisnap)
+    const minisnap = document.getElementById('place-card-overlay');
     if (minisnap) minisnap.style.display = 'none';
 
-    // placeModal.hide() restaura topbar/footer/panel ~340ms después (su propia animación
-    // de cierre), asumiendo vuelta a mapview normal. Forzamos el ocultamiento de nuevo
-    // tras ese delay, ya que seguimos dentro del flujo de ActivityModal.
-    const _forceHideMapChrome = () => {
-      const t = document.getElementById('topbar');
-      if (t) { t.style.transition = 'none'; t.style.opacity = '0'; t.style.pointerEvents = 'none'; }
-      const f = document.getElementById('wp-footer-menu');
-      if (f) { f.style.transition = 'none'; f.style.opacity = '0'; f.style.pointerEvents = 'none'; }
-      const p = document.querySelector('.map-results-panel-float');
-      if (p) { p.style.transition = 'none'; p.style.transform = 'translateY(100%)'; }
-    };
-    _forceHideMapChrome();
-    setTimeout(_forceHideMapChrome, 400); // después de la animación interna de placeModal.hide()
-
-    // Guardar estado para usarlo al final (después de que _doEnablePickMode esté definido)
+    // Guardar catData para usarlo al final (después de que _doEnablePickMode esté definido)
+    let _pendingCatData = null;
     let _alreadyLoaded = false;
     if (mapView && typeObj.cat) {
-      _alreadyLoaded = mapView.currentCatId === typeObj.cat && mapView.markers?.length > 0;
-      if (!_alreadyLoaded) {
-        // Agregar pick-mode ANTES de cargar para que showLoading y renderCategoriesRow lo respeten
-        document.body.classList.add('pick-mode');
-        // Ocultar header inmediatamente
-        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
-        });
-        // Flag para bloquear chip "Buscando lugares"
-        mapView._pickModePending = true;
-        // Cargar categoría — _doEnablePickMode se llama en el finally
-        this._skipPickModeSetup = true;
-        mapView.loadCategory(typeObj.cat).catch(()=>{}).finally(() => {
-          mapView._pickModePending = false;
-          this._skipPickModeSetup = false;
-          if (mapView.enablePickMode && !mapView.pickModeActive) {
-            this._doEnablePickMode(mapView);
-          }
-        });
+      const catData = (mapView.categories||[]).find(c => c.menuKey === typeObj.cat);
+      if (catData) {
+        _pendingCatData = catData;
+        _alreadyLoaded = mapView.currentCategory === catData.menuKey && mapView.markers?.length > 0;
+        if (!_alreadyLoaded) {
+          // Agregar pick-mode ANTES de cargar para que showLoading y renderCategoriesRow lo respeten
+          document.body.classList.add('pick-mode');
+          // Ocultar header inmediatamente
+          ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
+          });
+          // Flag para bloquear chip "Buscando lugares"
+          mapView._pickModePending = true;
+          // Cargar categoria — _doEnablePickMode se llama en el finally
+          this._skipPickModeSetup = true;
+          mapView.loadPlacesByCategory(catData).catch(()=>{}).finally(() => {
+            mapView._pickModePending = false;
+            this._skipPickModeSetup = false;
+            if (mapView.enablePickMode && !mapView.pickModeActive) {
+              this._doEnablePickMode(mapView);
+            }
+          });
+        }
       }
     }
 
     // Ocultar subcategorías COMPLETAMENTE
-    const _subcats = document.getElementById('wp-scats');
+    const _subcats = document.getElementById('map-subcategories-footer');
     if (_subcats) {
       _subcats.style.transition = 'none';
       _subcats.style.opacity = '0';
@@ -1770,7 +1714,7 @@ export class ActivityModal {
     }
 
     // Ocultar el panel de resultados (draggable bottom panel)
-    const _resultsPanel = document.querySelector('.map-results-panel-float');
+    const _resultsPanel = window.wpApp?.mapView?.elements?.resultsPanel;
     if (_resultsPanel) {
       _resultsPanel.style.transform = 'translateY(100%)';
       _resultsPanel.style.transition = 'none';
@@ -1779,10 +1723,27 @@ export class ActivityModal {
     // Ocultar header via clase CSS
     document.body.classList.add('pick-mode');
 
-    // Si búsqueda global activa: cerrarla (más simple que ocultar elementos individuales)
-    const _wasSearchActive = !!(window.wpApp?.searchBar?.isActive?.());
-    if (_wasSearchActive) {
-      window.wpApp.searchBar.deactivate();
+    // Si búsqueda global activa: ocultar barra de búsqueda y todos sus elementos
+    const _searchBar = document.getElementById('search-overlay-bar');
+    const _wasSearchActive = !!_searchBar;
+    if (_searchBar) {
+      _searchBar.style.opacity = '0';
+      _searchBar.style.pointerEvents = 'none';
+      _searchBar.style.visibility = 'hidden';
+    }
+    // Ocultar chips de categorías de búsqueda global
+    const _searchChips = document.getElementById('search-mode-category-chips');
+    if (_searchChips) {
+      _searchChips.style.opacity = '0';
+      _searchChips.style.pointerEvents = 'none';
+      _searchChips.style.visibility = 'hidden';
+    }
+    // Ocultar panel de resultados de búsqueda global
+    const _globalResults = document.getElementById('map-search-global-results');
+    if (_globalResults) {
+      _globalResults.style.opacity = '0';
+      _globalResults.style.pointerEvents = 'none';
+      _globalResults.style.visibility = 'hidden';
     }
     // Ocultar botón GPS
     const _gpsBtn = document.getElementById('map-gps-btn');
@@ -1792,7 +1753,7 @@ export class ActivityModal {
     const hint = document.createElement('div');
     hint.id = 'pick-place-hint';
     hint.style.cssText = `
-      position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 16px; right: 68px;
+      position: fixed; top: 12px; left: 16px; right: 68px;
       z-index: 99999;
       display: flex; align-items: center; gap: 10px;
       animation: fadeIn 0.2s ease;
@@ -1823,7 +1784,7 @@ export class ActivityModal {
     const cancelBtn = document.createElement('button');
     cancelBtn.id = 'pick-cancel-btn';
     cancelBtn.style.cssText = `
-      position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px;
+      position: fixed; top: 12px; right: 12px;
       width: 44px; height: 44px; flex-shrink: 0;
       background: #111; color: white; border: none;
       border-radius: 50%; cursor: pointer;
@@ -1890,36 +1851,84 @@ export class ActivityModal {
     `;
     document.body.appendChild(pickFooter);
 
-    // Botón de ubicación — centra mapa y selecciona punto actual (geolocalización nativa)
+    // Botón de ubicación — centra mapa y selecciona punto actual
     document.getElementById('pick-location-btn')?.addEventListener('click', () => {
       const mapView = window.wpApp?.mapView;
       const btn = document.getElementById('pick-location-btn');
-      const _pinIcon = '<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display=\'none\'">';
+
+      // Si ya tenemos el punto azul en el mapa, usarlo directamente
+      if (mapView?._locationMarker) {
+        const latlng = mapView._locationMarker.getLatLng();
+        if (mapView?.map) mapView.map.setView([latlng.lat, latlng.lng], 17);
+        const customPlace = {
+          customPoint: true,
+          lat: latlng.lat, lng: latlng.lng,
+          place_name: 'Mi ubicación',
+          formatted_address: `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`
+        };
+        const cb = this._currentPickCallback || mapView?.pickModeCallback;
+        console.log('[AM] pick-location-btn (marker ya existe), cb:', !!cb);
+        if (cb) cb(customPlace);
+        return;
+      }
 
       if (!navigator.geolocation) {
         window.wpApp?.showMapToast?.('GPS no disponible en este dispositivo', '#ef4444');
         return;
       }
 
-      if (btn) { btn.style.opacity = '0.75'; btn.innerHTML = `<div class="pick-spinner"></div><span>Obteniendo ubicación...</span>`; }
+      // Mostrar spinner en el botón
+      if (btn) {
+        btn.style.opacity = '0.75';
+        btn.innerHTML = `<div class="pick-spinner"></div><span>Obteniendo ubicación...</span>`;
+      }
 
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          if (btn) { btn.style.opacity = ''; btn.innerHTML = `${_pinIcon} Usar mi ubicación actual`; }
-          if (mapView?.map) mapView.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400 });
+      // Activar watchPosition ahora que hay gesto del usuario (necesario en mobile)
+      if (mapView && !mapView._locationMarker) {
+        mapView._startLiveLocation();
+      }
+
+      // Timeout de espera para la primera posición del watchPosition
+      let _resolved = false;
+      const _waitTimeout = setTimeout(() => {
+        if (_resolved) return;
+        _resolved = true;
+        if (btn) { btn.style.opacity = ''; btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'"> Usar mi ubicación actual`; }
+        window.wpApp?.showMapToast?.('GPS tardó demasiado — activa la ubicación en tu navegador', '#f59e0b', 5000);
+      }, 12000);
+
+      // Esperar a que _startLiveLocation obtenga la primera posición
+      const _checkInterval = setInterval(() => {
+        if (_resolved) { clearInterval(_checkInterval); return; }
+
+        // Detectar permiso denegado rápidamente
+        if (mapView?._locationError === 1) {
+          clearInterval(_checkInterval);
+          clearTimeout(_waitTimeout);
+          _resolved = true;
+          if (btn) { btn.style.opacity = ''; btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'"> Usar mi ubicación actual`; }
+          window.wpApp?.showMapToast?.('Activa el GPS: toca el candado 🔒 en la barra del navegador → Permisos → Ubicación', '#f59e0b', 6000);
+          return;
+        }
+
+        if (mapView?._locationMarker) {
+          clearInterval(_checkInterval);
+          clearTimeout(_waitTimeout);
+          _resolved = true;
+          if (btn) { btn.style.opacity = ''; btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Round%20Pushpin/3D/round_pushpin_3d.png" style="width:20px;height:20px;object-fit:contain;" onerror="this.style.display='none'"> Usar mi ubicación actual`; }
+          const latlng = mapView._locationMarker.getLatLng();
+          if (mapView?.map) mapView.map.setView([latlng.lat, latlng.lng], 17);
+          const customPlace = {
+            customPoint: true,
+            lat: latlng.lat, lng: latlng.lng,
+            place_name: 'Mi ubicación',
+            formatted_address: `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`
+          };
           const cb = this._currentPickCallback || mapView?.pickModeCallback;
-          if (cb) cb({ customPoint: true, lat, lng });
-        },
-        (err) => {
-          if (btn) { btn.style.opacity = ''; btn.innerHTML = `${_pinIcon} Usar mi ubicación actual`; }
-          const msg = err.code === 1
-            ? 'Activa el GPS: toca el candado 🔒 en la barra del navegador → Permisos → Ubicación'
-            : 'No se pudo obtener tu ubicación — intenta de nuevo';
-          window.wpApp?.showMapToast?.(msg, '#f59e0b', 5500);
-        },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
-      );
+          console.log('[AM] pick-location-btn (GPS resuelto), cb:', !!cb);
+          if (cb) cb(customPlace);
+        }
+      }, 500);
     });
 
     let _cleaned = false;
@@ -1930,7 +1939,7 @@ export class ActivityModal {
       document.getElementById('pick-cancel-btn')?.remove();
       document.getElementById('pick-mode-footer')?.remove();
       // Restaurar subcategorías
-      const _subcats = document.getElementById('wp-scats');
+      const _subcats = document.getElementById('map-subcategories-footer');
       if (_subcats) {
         _subcats.style.transition = '';
         _subcats.style.opacity = '';
@@ -1950,7 +1959,7 @@ export class ActivityModal {
         _catPanel.style.pointerEvents = '';
       }
       // Restaurar panel de resultados
-      const _resultsPanel = document.querySelector('.map-results-panel-float');
+      const _resultsPanel = window.wpApp?.mapView?.elements?.resultsPanel;
       if (_resultsPanel) {
         _resultsPanel.style.transform = '';
         _resultsPanel.style.transition = '';
@@ -1958,17 +1967,42 @@ export class ActivityModal {
       // Restaurar header
       document.body.classList.remove('pick-mode');
       // Restaurar barra de búsqueda si estaba activa
+      const _sBar = document.getElementById('search-overlay-bar');
+      if (_sBar) {
+        _sBar.style.opacity = '';
+        _sBar.style.pointerEvents = '';
+        _sBar.style.visibility = '';
+      }
+      // Restaurar chips de categorías de búsqueda global
+      const _sChips = document.getElementById('search-mode-category-chips');
+      if (_sChips) {
+        _sChips.style.opacity = '';
+        _sChips.style.pointerEvents = '';
+        _sChips.style.visibility = '';
+      }
+      // Restaurar panel de resultados global
+      const _gResults = document.getElementById('map-search-global-results');
+      if (_gResults) {
+        _gResults.style.opacity = '';
+        _gResults.style.pointerEvents = '';
+        _gResults.style.visibility = '';
+      }
       // Restaurar botón GPS siempre
       const _gBtn = document.getElementById('map-gps-btn');
       if (_gBtn) { _gBtn.style.opacity = ''; _gBtn.style.pointerEvents = ''; }
 
-      // Restaurar header completo de mapview (la búsqueda, si estaba activa, se cerró
-      // por completo al entrar a pickMode — no queda nada parcial que restaurar)
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
-      });
-      window.wpApp?.mapView?.disablePickMode();
+      if (!_wasSearchActive) {
+        // Fuera de búsqueda global: restaurar header completo de mapview
+        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
+        });
+      }
+      // Si venimos de búsqueda global: NO tocar nada del header de mapview
+      // La búsqueda global ya restaura su propio estado
+      window.wpApp?.mapView?.disablePickMode(_wasSearchActive);
+      // Reposicionar subcats encima del panel
+      requestAnimationFrame(() => window.wpApp?.mapView?._positionSubcats?.());
     };
 
     cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); cleanup(); this._resumeAtStep2?.(); });
@@ -1995,7 +2029,15 @@ export class ActivityModal {
       });
       this._currentStep = targetStep;
       this._in1B = _wasIn1B;
-      this._setProgress(targetStep === 1 ? (_wasIn1B ? 2 : 1) : targetStep + 1);
+      [1,2,3].forEach(n => {
+        const pill = document.getElementById('am-pill-' + n);
+        if (pill) {
+          pill.style.background = n <= targetStep ? '#1a5cf5' : '#e5e5e5';
+          pill.style.width = n === targetStep ? '48px' : '32px';
+        }
+      });
+      const back = document.getElementById('am-back');
+      if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
       this.modal.style.display = 'flex';
       // Re-registrar popstate si fue removido por _closeForPickMode
       if (!this._popstateHandler) {
@@ -2074,7 +2116,15 @@ export class ActivityModal {
           this._in1B = false;
         }
         this._currentStep = 2;
-        this._setProgress(3);
+        const back = document.getElementById('am-back');
+        if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+        [1,2,3].forEach(n => {
+          const pill = document.getElementById('am-pill-' + n);
+          if (pill) {
+            pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5';
+            pill.style.width = n === 2 ? '48px' : '32px';
+          }
+        });
         // History: show() ya puso [1a], agregar [1b] si aplica, luego [2]
         if (_wasIn1B) {
           history.pushState({ amModal: true, step: '1b' }, '');
@@ -2129,11 +2179,11 @@ export class ActivityModal {
 
     // ── Ocultar UI del mapa ───────────────────────────────────────────
     const _forceHide = () => {
-      const s = document.getElementById('wp-scats');
+      const s = document.getElementById('map-subcategories-footer');
       if (s) { s.style.visibility = 'hidden'; s.style.opacity = '0'; s.style.pointerEvents = 'none'; }
       const c = document.getElementById('map-categories-footer');
       if (c) { c.style.visibility = 'hidden'; c.style.opacity = '0'; c.style.pointerEvents = 'none'; }
-      const r = document.querySelector('.map-results-panel-float');
+      const r = window.wpApp?.mapView?.elements?.resultsPanel;
       if (r) { r.style.transform = 'translateY(100%)'; r.style.transition = 'none'; }
       const gps = document.getElementById('map-gps-btn');
       if (gps) { gps.style.opacity = '0'; gps.style.pointerEvents = 'none'; }
@@ -2206,7 +2256,7 @@ export class ActivityModal {
       // Hint visual que desaparece solo
       const repoHint = document.createElement('div');
       repoHint.id = 'cps-repo-hint';
-      repoHint.style.cssText = 'position:fixed;top:calc(64px + env(safe-area-inset-top, 0px));left:50%;transform:translateX(-50%);' +
+      repoHint.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);' +
         'font-size:11px;font-weight:600;color:white;white-space:nowrap;pointer-events:none;z-index:99999;' +
         'background:rgba(0,0,0,0.55);padding:4px 10px;border-radius:20px;';
       repoHint.textContent = '✦ Arrastra el mapa para reposicionar';
@@ -2221,9 +2271,7 @@ export class ActivityModal {
     // ── Centrar el marker entre header (68px) y footer (~100px) ──────
     // El punto visible del mapa es: top=68px, bottom=viewport.height-100px
     // Centro visual = top + (visible_height / 2)
-    const _topbarEl = document.getElementById('topbar');
-    const _safeTop  = _topbarEl ? _topbarEl.getBoundingClientRect().top : 12;
-    const HEADER_H = 56 + Math.max(0, _safeTop); // 56px de chip + safe-area real del dispositivo
+    const HEADER_H = 68;
     const FOOTER_H = 104;
     const _centerMarker = (animated = true) => {
       if (!mapView?.map) return;
@@ -2248,7 +2296,7 @@ export class ActivityModal {
     // ── Header: input pill negro ──────────────────────────────────────
     const header = document.createElement('div');
     header.id = 'custom-point-header';
-    header.style.cssText = 'position:fixed;top:calc(12px + env(safe-area-inset-top, 0px));left:0;right:0;z-index:9999999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
+    header.style.cssText = 'position:fixed;top:12px;left:0;right:0;z-index:9999999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
     header.innerHTML =
       '<input id="custom-place-name" type="search" placeholder="Nombre del lugar (ej: Mi casa, Oxxo.)" maxlength="50"' +
       ' autocomplete="new-password" autocorrect="off" autocapitalize="sentences" spellcheck="false"' +
@@ -2424,7 +2472,6 @@ export class ActivityModal {
         title: finalTitle,
         type: this.selectedType,
         place_name: this.selectedPlace.name,
-        place_id: this.selectedPlace.place_id || null,
         lat: this.selectedPlace.lat,
         lng: this.selectedPlace.lng,
         scheduled_at: this._isSpontaneous
@@ -2484,40 +2531,10 @@ export class ActivityModal {
       document.activeElement.blur();
     }
     // Ocultar header del mapa inmediatamente al abrir el modal
-    const _topbar = document.getElementById('topbar');
-    if (_topbar) { _topbar.style.opacity = '0'; _topbar.style.pointerEvents = 'none'; _topbar.style.transition = 'none'; }
-    const _footerMenu = document.getElementById('wp-footer-menu');
-    if (_footerMenu) { _footerMenu.style.opacity = '0'; _footerMenu.style.pointerEvents = 'none'; _footerMenu.style.transition = 'none'; }
-    const _resultsPanel = document.querySelector('.map-results-panel-float');
-    if (_resultsPanel) { _resultsPanel.style.transform = 'translateY(100%)'; _resultsPanel.style.transition = 'none'; }
     ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; el.style.transition = 'none'; }
     });
-
-    // Watcher: algo externo (fuera de nuestro control) re-muestra el panel de
-    // resultados y los chips de categoría de forma asíncrona tras cargar una
-    // categoría. En vez de cazar esa causa exacta, forzamos el ocultamiento
-    // mientras el modal esté abierto.
-    if (this._chromeWatcher) clearInterval(this._chromeWatcher);
-    this._chromeWatcher = setInterval(() => {
-      document.querySelectorAll('.map-results-panel-float').forEach(p => {
-        if (p.style.display !== 'none') {
-          p.style.transition = 'none';
-          p.style.display = 'none';
-        }
-      });
-      const s = document.getElementById('wp-scats');
-      if (s && s.style.display !== 'none') {
-        s.style.transition = 'none';
-        s.style.display = 'none';
-      }
-      const c = document.getElementById('map-categories-footer');
-      if (c && c.style.display !== 'none') {
-        c.style.transition = 'none';
-        c.style.display = 'none';
-      }
-    }, 150);
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
     this._in1B = false;
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
@@ -2587,7 +2604,15 @@ export class ActivityModal {
         if (s1) { s1.style.transition = 'transform 0.3s ease'; s1.style.transform = 'translateX(0%)'; }
         if (s2) { s2.style.transition = 'transform 0.3s ease'; s2.style.transform = 'translateX(100%)'; }
       });
-      this._setProgress(goTo1B ? 2 : 1);
+      [1,2,3].forEach(n => {
+        const pill = document.getElementById('am-pill-' + n);
+        if (pill) { pill.style.background = n <= 1 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 1 ? '48px' : '32px'; }
+      });
+      const back = document.getElementById('am-back');
+      if (back) {
+        back.style.opacity = goTo1B ? '1' : '0';
+        back.style.pointerEvents = goTo1B ? 'auto' : 'none';
+      }
       if (!goTo1B) requestAnimationFrame(() => this._renderStep1Types());
       const histStep = goTo1B ? '1b' : '1a';
       if (!fromGesture) history.replaceState({ amModal: true, step: histStep }, '');
@@ -2601,7 +2626,8 @@ export class ActivityModal {
         const p1a = document.getElementById('am-step-1a');
         if (p1b) { p1b.style.transition = 'transform 0.3s ease'; p1b.style.transform = 'translateX(100%)'; }
         if (p1a) { p1a.style.transition = 'transform 0.3s ease'; p1a.style.transform = 'translateX(0%)'; }
-        this._setProgress(1);
+        const back = document.getElementById('am-back');
+        if (back) { back.style.opacity = '0'; back.style.pointerEvents = 'none'; }
         if (!fromGesture) history.replaceState({ amModal: true, step: '1a' }, '');
         else history.pushState({ amModal: true, step: '1a' }, '');
         return;
@@ -2612,15 +2638,14 @@ export class ActivityModal {
 
   _closeForPickMode() {
     // Cerrar modal y limpiar TODAS las entradas amModal del historial
-    // antes de activar pickMode, para que no haya popstate colgados.
-    // NO restauramos el chrome del mapa (topbar/footer/panel) — seguimos
-    // dentro del flujo de selección, debe permanecer oculto.
+    // antes de activar pickMode, para que no haya popstate colgados
     window.removeEventListener('popstate', this._popstateHandler);
     this._popstateHandler = null;
     this._modalOpen = false;
     this.modal.style.display = 'none';
     this._fromCategory = null;
     this._fromSubcats  = [];
+    this._restoreMapUI();
     // Neutralizar la entrada actual del historial
     if (history.state?.amModal) {
       history.replaceState(null, '');
@@ -2628,7 +2653,6 @@ export class ActivityModal {
   }
 
   hide() {
-    if (this._chromeWatcher) { clearInterval(this._chromeWatcher); this._chromeWatcher = null; }
     if (this._popstateHandler) {
       window.removeEventListener('popstate', this._popstateHandler);
       this._popstateHandler = null;
@@ -2679,22 +2703,16 @@ export class ActivityModal {
 
   _restoreMapUI() {
     const mapView = window.wpApp?.mapView;
-    // Topbar completo
-    const topbar = document.getElementById('topbar');
-    if (topbar) { topbar.style.opacity = ''; topbar.style.pointerEvents = ''; topbar.style.transition = ''; }
-    // Footer menu completo
-    const footerMenu = document.getElementById('wp-footer-menu');
-    if (footerMenu) { footerMenu.style.opacity = ''; footerMenu.style.pointerEvents = ''; footerMenu.style.transition = ''; }
     // Panel de resultados
-    document.querySelectorAll('.map-results-panel-float').forEach(p => {
-      p.style.transform = '';
-      p.style.transition = '';
-      p.style.display = '';
-    });
-    // Header buttons (avatar, bell, +Actividad) — por si quedó algo suelto
+    const resultsPanel = document.querySelector('.map-results-panel-float');
+    if (resultsPanel) {
+      resultsPanel.style.transform = '';
+      resultsPanel.style.transition = '';
+    }
+    // Header buttons (avatar, bell, +Actividad)
     ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; el.style.transition = ''; }
+      if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
     });
     document.body.classList.remove('pick-mode');
     // Chips de categorías
@@ -2704,16 +2722,22 @@ export class ActivityModal {
       catPanel.style.opacity = '';
       catPanel.style.pointerEvents = '';
       catPanel.style.transition = '';
-      catPanel.style.display = '';
     }
-    // Subcategorías — limpiar todos los estilos inline
-    const subcats = document.getElementById('wp-scats');
+    // Subcategorías — limpiar todos los estilos inline y reposicionar
+    const subcats = document.getElementById('map-subcategories-footer');
     if (subcats) {
       subcats.style.visibility = '';
       subcats.style.opacity = '';
       subcats.style.pointerEvents = '';
       subcats.style.transition = '';
-      subcats.style.display = '';
+      subcats.style.zIndex = '';
+      subcats.style.position = '';
+      subcats.style.bottom = '';
+      subcats.style.top = '';
+    }
+    // Reposicionar subcats encima del panel (no en el footer)
+    if (mapView?._positionSubcats) {
+      requestAnimationFrame(() => mapView._positionSubcats());
     }
   }
 
@@ -2734,7 +2758,6 @@ export class ActivityModal {
 
   async _showPostCreateSheet(activity) {
     this.modal.style.display = 'none';
-    if (this._chromeWatcher) { clearInterval(this._chromeWatcher); this._chromeWatcher = null; }
     this._restoreMapUI();
     if (history.state?.amModal) history.replaceState(null, '');
 
