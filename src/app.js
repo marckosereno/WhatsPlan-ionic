@@ -293,28 +293,29 @@ function setupActivitySubscription(mv) {
 
     // Footer menu
     let activityModal = null;
+    const openActivityModal = () => {
+      if (!window.wpApp.currentUser) {
+        window.wpApp.authModal?.show();
+        return;
+      }
+      if (!activityModal) {
+        activityModal = new ActivityModal({
+          currentUser: window.wpApp.currentUser,
+          onActivityCreated: (activity) => {
+            console.log('✅ Actividad creada:', activity);
+            // Refresh inmediato local — no esperar el round-trip de Realtime
+            window.wpApp?.mapView?._loadActivities?.();
+          },
+          onActivityJoined: (activity) => {
+            console.log('✅ Te uniste a:', activity);
+          },
+        });
+      }
+      activityModal.setUser(window.wpApp.currentUser);
+      activityModal.show();
+    };
     const footerMenu = new FooterMenu({
-      onActividades: () => {
-        if (!window.wpApp.currentUser) {
-          window.wpApp.authModal?.show();
-          return;
-        }
-        if (!activityModal) {
-          activityModal = new ActivityModal({
-            currentUser: window.wpApp.currentUser,
-            onActivityCreated: (activity) => {
-              console.log('✅ Actividad creada:', activity);
-              // Refresh inmediato local — no esperar el round-trip de Realtime
-              window.wpApp?.mapView?._loadActivities?.();
-            },
-            onActivityJoined: (activity) => {
-              console.log('✅ Te uniste a:', activity);
-            },
-          });
-        }
-        activityModal.setUser(window.wpApp.currentUser);
-        activityModal.show();
-      },
+      onActividades: openActivityModal,
       onHome:        () => console.log('Home'),
       onSocial:      () => console.log('Social'),
     });
@@ -470,12 +471,12 @@ function setupActivitySubscription(mv) {
         });
       }
 
-      // +Actividad — función próximamente
+      // +Actividad — chip junto al avatar, misma función que el footer
       const actBtn = document.getElementById('topbar-activity-btn');
       if (actBtn) {
         actBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          console.log('+ Actividad — próximamente');
+          openActivityModal();
         });
       }
 
