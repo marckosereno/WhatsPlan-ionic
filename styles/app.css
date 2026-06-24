@@ -345,8 +345,7 @@ ion-app {
 .wp-menu-center-btn,
 .subcategory-footer-chip,
 .hm-live-chip,
-.hm-loading-chip,
-#topbar-activity-btn {
+.hm-loading-chip {
   font-family: 'Inter Tight', system-ui, sans-serif;
   font-weight: 300;
 }
@@ -417,12 +416,6 @@ ion-app {
   border: none;
 }
 
-/* ── Grupo izquierdo fijo — avatar + chip +Actividad juntos ── */
-#topbar-left {
-  display: flex; align-items: center;
-  gap: 0; flex-shrink: 0;
-}
-
 /* ── Grupo derecho fijo — siempre a la derecha ── */
 #topbar-right {
   display: flex; align-items: center;
@@ -466,27 +459,40 @@ ion-app {
 /* Ocultar elementos no usados */
 #topbar-messages-btn { display: none !important; }
 
-/* ── Pill +Plan — mismo glass que .wp-pill del footer menu (icon+label fusionados con el avatar) ── */
-#topbar-activity-btn {
-  display: flex; align-items: center;
-  padding: 0 16px;
-  height: 44px;
+/* ── Panel flotante lateral izquierdo — liquid glass, 3 slots verticales de ícono ── */
+#wp-side-panel {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
   border-radius: 9999px;
-  border: none;
   background: rgba(255,255,255,0.88);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
   box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  pointer-events: none;
+}
+#wp-side-panel > * { pointer-events: auto; }
+
+.wp-side-icon {
+  width: 44px; height: 44px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: #9ca3af;
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 300; color: #374151;
-  font-family: 'Inter Tight', system-ui, sans-serif;
-  white-space: nowrap;
 }
-#topbar-activity-btn:active { transform: scale(0.92); }
-.act-plus { font-weight: 700; }
+.wp-side-icon:active { transform: scale(0.88); }
+.wp-side-icon-active { color: #1a5cf5; }
 
 /* ════════════════════════════════════════════════════════════
    WP-TAP — Pulse spring universal para elementos táctiles
