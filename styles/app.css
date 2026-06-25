@@ -478,21 +478,21 @@ ion-app {
   box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
-/* Cada slot es su propio chip — mismo gradiente/blur/sombra que .subcategory-footer-chip, en círculo */
+/* Cada slot es su propio chip — vidrio plano: backdrop-blur + highlight especular
+   apilado como capa de fondo (no pseudo-elemento, así nunca tapa el ícono) */
 .wp-side-icon {
   width: 32px; height: 32px;
   border-radius: 999px;
-  background: linear-gradient(170deg,
-    rgba(255,255,255,0.95) 0%,
-    rgba(240,244,255,0.88) 100%);
-  border: 1px solid rgba(255,255,255,0.7);
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 56%),
+    rgba(255,255,255,0.38);
+  border: 1px solid rgba(255,255,255,0.55);
   box-shadow:
-    0 3px 10px rgba(0,0,0,0.08),
-    0 1px 3px rgba(0,0,0,0.05),
-    inset 0 1.5px 0 rgba(255,255,255,1),
-    inset 0 -1px 0 rgba(0,0,0,0.04);
-  backdrop-filter: blur(12px) saturate(1.6);
-  -webkit-backdrop-filter: blur(12px) saturate(1.6);
+    0 3px 10px rgba(0,0,0,0.10),
+    inset 0 1px 1px rgba(255,255,255,0.55),
+    inset 0 -3px 5px rgba(0,0,0,0.07);
+  backdrop-filter: blur(14px) saturate(2.2);
+  -webkit-backdrop-filter: blur(14px) saturate(2.2);
   display: flex; align-items: center; justify-content: center;
   color: #374151;
   cursor: pointer; touch-action: manipulation;
@@ -503,13 +503,17 @@ ion-app {
 }
 .wp-side-icon:active { transform: scale(0.88); }
 .wp-side-icon-active {
-  background: linear-gradient(150deg, #4a74f5 0%, #1a5cf5 60%, #1540cc 100%);
-  border-color: rgba(74,116,245,0.3);
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0) 56%),
+    rgba(26,92,245,0.42);
+  border-color: rgba(132,166,255,0.5);
   color: white;
   box-shadow:
-    0 2px 8px rgba(26,92,245,0.25),
-    inset 0 1.5px 0 rgba(255,255,255,0.26),
-    inset 0 -1px 0 rgba(0,0,0,0.12);
+    0 4px 14px rgba(26,92,245,0.30),
+    inset 0 1px 1px rgba(255,255,255,0.4),
+    inset 0 -3px 5px rgba(10,30,120,0.18);
+  backdrop-filter: blur(14px) saturate(2.4);
+  -webkit-backdrop-filter: blur(14px) saturate(2.4);
 }
 
 /* ════════════════════════════════════════════════════════════
