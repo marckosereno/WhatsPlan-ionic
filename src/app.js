@@ -291,6 +291,45 @@ function setupActivitySubscription(mv) {
     // Liquid Glass topbar
     setTimeout(initLiquidGlass, 200);
 
+    // Panel lateral +Plan — centrarlo verticalmente entre el topbar y el
+    // panel de resultados / minisnap (lo que esté visible más abajo)
+    const updateSidePanelPosition = () => {
+      const panel = document.getElementById('wp-side-panel');
+      if (!panel) return;
+      const topbar = document.getElementById('topbar');
+      const topbarBottom = topbar ? topbar.getBoundingClientRect().bottom : 56;
+
+      const isOnScreen = (el) => {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return false;
+        const cs = window.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return false;
+        return r.top < window.innerHeight && r.bottom > 0;
+      };
+
+      const minisnap = document.getElementById('wp-minisnap-panel');
+      const resultsPanel = document.querySelector('.map-results-panel-float');
+      const footerMenu = document.getElementById('wp-footer-menu');
+
+      let bottomRef = window.innerHeight;
+      if (isOnScreen(minisnap)) {
+        bottomRef = minisnap.getBoundingClientRect().top;
+      } else if (isOnScreen(resultsPanel)) {
+        bottomRef = resultsPanel.getBoundingClientRect().top;
+      } else if (footerMenu) {
+        bottomRef = footerMenu.getBoundingClientRect().top;
+      }
+
+      panel.style.top = ((topbarBottom + bottomRef) / 2) + 'px';
+    };
+    setTimeout(updateSidePanelPosition, 250);
+    window.addEventListener('resize', updateSidePanelPosition);
+    window.addEventListener('orientationchange', updateSidePanelPosition);
+    // Watcher: el panel de resultados / minisnap cambian de tamaño y visibilidad
+    // desde muchos puntos distintos del código — recalculamos en un intervalo liviano
+    setInterval(updateSidePanelPosition, 400);
+
     // Footer menu
     let activityModal = null;
     const openActivityModal = () => {
