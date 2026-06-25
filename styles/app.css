@@ -459,12 +459,12 @@ ion-app {
 /* Ocultar elementos no usados */
 #topbar-messages-btn { display: none !important; }
 
-/* ── Panel flotante lateral izquierdo — 2 capas: fondo glass + chips encima ── */
-#wp-side-panel {
+/* ── Panel flotante lateral izquierdo — 2 cápsulas separadas (como 3D + auto/flecha
+   de Apple Maps): la de arriba con un solo chip, la de abajo con 2 juntos ── */
+#wp-side-panel-top,
+#wp-side-panel-bottom {
   position: fixed;
   left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
   z-index: 90;
   display: flex;
   flex-direction: column;
@@ -475,13 +475,14 @@ ion-app {
   opacity: 0; /* aparece recién cuando el JS ya calculó la posición real — sin salto visible */
   transition: opacity 0.25s ease;
 }
-#wp-side-panel.wp-positioned { opacity: 1; }
+#wp-side-panel-top.wp-positioned,
+#wp-side-panel-bottom.wp-positioned { opacity: 1; }
 
-/* Capa 1 — fondo: glass SVG real (kube.io liquid-glass-css-svg) en navegadores que
+/* Capa de fondo — glass SVG real (kube.io liquid-glass-css-svg) en navegadores que
    soportan backdrop-filter:url(#filtro) (solo Chrome). Fallback plano en el resto
    (Safari/iOS WKWebView, que es donde corre esta app vía Capacitor — ahí no se
    aplica backdrop-filter:url() y se queda con el blur+saturate normal). */
-#wp-side-panel-bg {
+.wp-side-panel-bg {
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -492,14 +493,23 @@ ion-app {
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
   box-shadow: 0 4px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.16);
 }
-@supports (backdrop-filter: url(#wp-glass-filter)) {
-  #wp-side-panel-bg {
+@supports (backdrop-filter: url(#wp-glass-filter-top)) {
+  #wp-side-panel-bg-top {
     background: rgba(10,12,18,0.38);
-    backdrop-filter: url(#wp-glass-filter) saturate(1.3);
+    backdrop-filter: url(#wp-glass-filter-top) saturate(1.3);
     box-shadow:
       0 4px 16px rgba(0,0,0,0.18),
       inset 0 1.5px 1px rgba(255,255,255,0.22),
       inset 0 -3px 6px rgba(0,0,0,0.22);
+  }
+  #wp-side-panel-bg-bottom {
+    background: rgba(10,12,18,0.38);
+    backdrop-filter: url(#wp-glass-filter-bottom) saturate(1.3);
+    box-shadow:
+      0 4px 16px rgba(0,0,0,0.18),
+      inset 0 1.5px 1px rgba(255,255,255,0.22),
+      inset 0 -3px 6px rgba(0,0,0,0.22);
+
   }
 }
 
