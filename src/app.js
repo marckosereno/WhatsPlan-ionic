@@ -314,6 +314,7 @@ try {
       : window.innerHeight;
 
     panel.style.top = ((topbarBottom + catPanelTop) / 2) + 'px';
+    panel.classList.add('wp-positioned'); // recién ahora se hace visible (fade-in), nunca antes
   };
 
   // Filtro liquid-glass real (kube.io/blog/liquid-glass-css-svg) para el fondo
