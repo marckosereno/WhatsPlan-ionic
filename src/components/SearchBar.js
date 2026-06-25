@@ -55,9 +55,11 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // Ocultar footer menu y mini snap
+    // Ocultar footer menu, panel lateral +Plan y mini snap
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
+    var sidePanel = document.getElementById('wp-side-panel');
+    if (sidePanel) { sidePanel.style.transition='opacity 0.2s ease'; sidePanel.style.opacity='0'; sidePanel.style.pointerEvents='none'; }
     // Ocultar mini snap completamente — nunca visible en search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms) {
@@ -100,6 +102,9 @@ export class SearchBar {
     // Restaurar footer menu
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
+    // Restaurar panel lateral +Plan
+    var sidePanel = document.getElementById('wp-side-panel');
+    if (sidePanel) { sidePanel.style.transition='opacity 0.28s ease'; sidePanel.style.opacity='1'; sidePanel.style.pointerEvents=''; }
     // Restaurar mini snap si estaba visible antes del search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms && ms._searchHidden) {
