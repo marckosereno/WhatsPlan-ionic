@@ -93,8 +93,9 @@
     <button id="topbar-search-btn" style="display:none"></button>
   </div>
 
-  <!-- Panel flotante lateral izquierdo — 3 slots, dimensiones de chip de subcategoría -->
+  <!-- Panel flotante lateral izquierdo — 2 capas: fondo glass SVG + chips encima -->
   <div id="wp-side-panel">
+    <div id="wp-side-panel-bg"></div>
     <button id="wp-side-plan-btn" class="wp-side-icon wp-side-icon-active" title="Crear plan">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
     </button>
@@ -105,6 +106,11 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="9" r="2.5" stroke="currentColor" stroke-width="2"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5M15.5 14.5c2.5 0.3 4.5 2 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
   </div>
+
+  <!-- Defs ocultos: filtro SVG liquid-glass (feImage + feDisplacementMap), generado/calibrado en runtime -->
+  <svg id="wp-svg-defs" style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
+    <defs id="wp-svg-defs-inner"></defs>
+  </svg>
 </ion-app>
 
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
