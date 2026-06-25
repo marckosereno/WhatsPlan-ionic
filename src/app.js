@@ -323,11 +323,14 @@ function setupActivitySubscription(mv) {
 
       panel.style.top = ((topbarBottom + bottomRef) / 2) + 'px';
     };
+    updateSidePanelPosition();
     setTimeout(updateSidePanelPosition, 250);
+    window.addEventListener('load', updateSidePanelPosition);
     window.addEventListener('resize', updateSidePanelPosition);
     window.addEventListener('orientationchange', updateSidePanelPosition);
     // Watcher: el panel de resultados / minisnap cambian de tamaño y visibilidad
     // desde muchos puntos distintos del código — recalculamos en un intervalo liviano
+    // para que el panel siempre se mantenga en esa altura calculada, sin saltos
     setInterval(updateSidePanelPosition, 400);
 
     // Footer menu
