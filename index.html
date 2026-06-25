@@ -93,12 +93,18 @@
     <button id="topbar-search-btn" style="display:none"></button>
   </div>
 
-  <!-- Panel flotante lateral izquierdo — 2 capas: fondo glass SVG + chips encima -->
-  <div id="wp-side-panel">
-    <div id="wp-side-panel-bg"></div>
+  <!-- Panel flotante lateral izquierdo — 2 cápsulas separadas, como el 3D + auto/flecha de Apple Maps -->
+  <!-- Cápsula superior — solo +Plan -->
+  <div id="wp-side-panel-top">
+    <div id="wp-side-panel-bg-top" class="wp-side-panel-bg"></div>
     <button id="wp-side-plan-btn" class="wp-side-icon wp-side-icon-active" title="Crear plan">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
     </button>
+  </div>
+
+  <!-- Cápsula inferior — 2 slots juntos -->
+  <div id="wp-side-panel-bottom">
+    <div id="wp-side-panel-bg-bottom" class="wp-side-panel-bg"></div>
     <button id="wp-side-slot-2" class="wp-side-icon" title="Próximamente">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
