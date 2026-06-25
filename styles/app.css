@@ -459,7 +459,7 @@ ion-app {
 /* Ocultar elementos no usados */
 #topbar-messages-btn { display: none !important; }
 
-/* ── Panel flotante lateral izquierdo — cápsula liquid glass delgada, 3 slots adentro ── */
+/* ── Panel flotante lateral izquierdo — 2 capas: fondo glass + chips encima ── */
 #wp-side-panel {
   position: fixed;
   left: 12px;
@@ -472,15 +472,39 @@ ion-app {
   gap: 6px;
   padding: 5px 4px;
   border-radius: 999px;
+}
+
+/* Capa 1 — fondo: glass SVG real (kube.io liquid-glass-css-svg) en navegadores que
+   soportan backdrop-filter:url(#filtro) (solo Chrome). Fallback plano en el resto
+   (Safari/iOS WKWebView, que es donde corre esta app vía Capacitor — ahí no se
+   aplica backdrop-filter:url() y se queda con el blur+saturate normal). */
+#wp-side-panel-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
   background: rgba(255,255,255,0.88);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
   box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
 }
+@supports (backdrop-filter: url(#wp-glass-filter)) {
+  #wp-side-panel-bg {
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: url(#wp-glass-filter) saturate(1.3);
+    box-shadow:
+      0 4px 16px rgba(0,0,0,0.10),
+      inset 0 1.5px 1px rgba(255,255,255,0.65),
+      inset 0 -3px 6px rgba(0,0,0,0.10);
+  }
+}
 
 /* Cada slot es su propio chip — vidrio plano: backdrop-blur + highlight especular
    apilado como capa de fondo (no pseudo-elemento, así nunca tapa el ícono) */
 .wp-side-icon {
+  position: relative;
+  z-index: 1;
   width: 32px; height: 32px;
   border-radius: 999px;
   background:
