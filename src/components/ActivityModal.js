@@ -1,4 +1,4 @@
-// ==================================================================
+// ===================================================================
 // ACTIVITY MODAL - himarco! Tourism Bot
 // Crear y ver detalles de actividades sociales
 // ====================================================================
@@ -2496,35 +2496,10 @@ export class ActivityModal {
     if (document.activeElement && document.activeElement.blur) {
       document.activeElement.blur();
     }
-    // El modal ahora es una tarjeta flotante (no fullscreen) — topbar y footer
-    // del mapa quedan visibles alrededor. Solo ocultamos el panel de resultados,
-    // que ocupa la misma zona inferior donde flota esta tarjeta.
-    const _resultsPanel = document.querySelector('.map-results-panel-float');
-    if (_resultsPanel) { _resultsPanel.style.transform = 'translateY(100%)'; _resultsPanel.style.transition = 'none'; }
+    // El modal ahora es una tarjeta flotante (no fullscreen) — topbar, footer
+    // y el panel de categorías quedan visibles e intactos, sin ocultarse ni
+    // hacer translate. La tarjeta del Activity ya los cubre/desenfoca encima.
 
-    // Watcher: algo externo (fuera de nuestro control) re-muestra el panel de
-    // resultados y los chips de categoría de forma asíncrona tras cargar una
-    // categoría. En vez de cazar esa causa exacta, forzamos el ocultamiento
-    // mientras el modal esté abierto.
-    if (this._chromeWatcher) clearInterval(this._chromeWatcher);
-    this._chromeWatcher = setInterval(() => {
-      document.querySelectorAll('.map-results-panel-float').forEach(p => {
-        if (p.style.display !== 'none') {
-          p.style.transition = 'none';
-          p.style.display = 'none';
-        }
-      });
-      const s = document.getElementById('wp-scats');
-      if (s && s.style.display !== 'none') {
-        s.style.transition = 'none';
-        s.style.display = 'none';
-      }
-      const c = document.getElementById('map-categories-footer');
-      if (c && c.style.display !== 'none') {
-        c.style.transition = 'none';
-        c.style.display = 'none';
-      }
-    }, 150);
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
     this._in1B = false;
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
