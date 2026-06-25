@@ -303,6 +303,11 @@ function setupActivitySubscription(mv) {
       const activityOverlay = document.getElementById('activity-modal-overlay');
       if (activityOverlay && window.getComputedStyle(activityOverlay).display !== 'none') return;
 
+      // El mini snap de un pin también flota en esa misma franja — congelar la
+      // posición mientras esté abierto evita el saltito al aparecer/cambiar de tamaño.
+      const minisnap = document.getElementById('wp-minisnap-panel');
+      if (minisnap && window.getComputedStyle(minisnap).opacity !== '0') return;
+
       const topbar = document.getElementById('topbar');
       const catPanel = document.getElementById('map-results-panel');
       if (!topbar || !catPanel) return; // reintenta en el siguiente tick
@@ -318,7 +323,8 @@ function setupActivitySubscription(mv) {
 
       panel.style.top = ((topbarBottom + catPanelTop) / 2) + 'px';
     };
-    updateSidePanelPosition();
+    // Primer cálculo tras el layout real del frame (evita medir con 0/valores a medio aplicar)
+    requestAnimationFrame(() => requestAnimationFrame(updateSidePanelPosition));
     setTimeout(updateSidePanelPosition, 250);
     window.addEventListener('load', updateSidePanelPosition);
     window.addEventListener('resize', updateSidePanelPosition);
