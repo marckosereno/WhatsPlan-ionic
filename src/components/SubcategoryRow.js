@@ -226,20 +226,29 @@ export class SubcategoryRow {
   _insertLiveChip() {
     if (this._liveBtn) return;
 
+    // Wrapper sin transform propio — centra al chip vía flex, no vía
+    // translateX(-50%) en el chip mismo. Así el pulse de wp-tap.js (que anima
+    // `transform: scale()` inline) no le pisa el centrado y lo manda a la derecha.
+    const wrap = document.createElement('div');
+    wrap.className = 'hm-live-chip-wrap';
+
     const chip = document.createElement('button');
     chip.id = 'hm-live-chip';
-    chip.className = 'hm-live-chip hm-live-chip-under-avatar';
+    chip.className = 'hm-live-chip';
     chip.innerHTML = '<span class="hm-live-dot"></span>LIVE';
     chip.addEventListener('click', () => this._toggleLive());
 
-    document.body.appendChild(chip);
-    this._liveBtn = chip;
+    wrap.appendChild(chip);
+    document.body.appendChild(wrap);
+    this._liveBtn  = chip;
+    this._liveWrap = wrap;
   }
 
   _removeLiveChip() {
-    if (this._liveBtn) {
-      this._liveBtn.remove();
-      this._liveBtn = null;
+    if (this._liveWrap) {
+      this._liveWrap.remove();
+      this._liveWrap = null;
+      this._liveBtn  = null;
     }
     if (this._liveRecenterBtn) {
       this._liveRecenterBtn.remove();
@@ -379,16 +388,15 @@ export class SubcategoryRow {
     const s = document.createElement('style');
     s.id = 'subcats-row-styles';
     s.textContent = `
-      /* GPS como chip circular dentro del scroll */
       /* GPS — ahora vive en #wp-side-slot-3 (panel lateral), no aquí.
          Activo: borde verde sólido en el slot, sin pulso. Loading: sigue pulsando. */
       #wp-side-slot-3.active {
         box-sizing: border-box;
         border: 2px solid #16a34a;
-        color: #16a34a;
+        color: #15803d;
       }
       #wp-side-slot-3.loading svg { animation: gpsPulse 1.2s infinite; }
-      #wp-side-slot-3.active svg { color: #16a34a; }
+      #wp-side-slot-3.active svg { color: #15803d; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
       /* Marcador de ubicación en el mapa */
@@ -396,7 +404,21 @@ export class SubcategoryRow {
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#1a5cf5; }
 
-      /* ── Chip LIVE — fijo debajo del avatar, centrado con él, un poco más chico ── */
+      /* ── Chip LIVE — fijo debajo del avatar, centrado con él, un poco más chico ──
+         El wrapper centra vía flex (mismo ancho que el avatar, justify-content:center);
+         el chip mismo NO tiene transform propio, así el pulse de tap (wp-tap.js, que
+         anima transform:scale() inline) no le pisa el centrado y lo manda a la derecha. */
+      .hm-live-chip-wrap {
+        position: fixed;
+        left: 12px;
+        width: 44px; /* mismo ancho que el avatar */
+        top: calc(12px + env(safe-area-inset-top, 0px) + 44px + 4px);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .hm-live-chip-wrap .hm-live-chip { pointer-events: auto; }
       .hm-live-chip {
         display: inline-flex; align-items: center; gap: 4px;
         height: 26px; padding: 0 9px;
@@ -405,16 +427,9 @@ export class SubcategoryRow {
         border-radius: 999px;
         font-size: 11px; font-weight: 600;
         color: #dc2626; white-space: nowrap; cursor: pointer;
-        transition: all 0.18s; flex-shrink: 0;
+        transition: background 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s;
+        flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
-      }
-      .hm-live-chip-under-avatar {
-        position: fixed;
-        left: 34px; /* centro del avatar: left 12px + mitad de sus 44px de ancho */
-        transform: translateX(-50%);
-        top: calc(12px + env(safe-area-inset-top, 0px) + 44px + 8px);
-        z-index: 9999;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
       .hm-live-chip.active {
         background: #dc2626;
@@ -430,15 +445,10 @@ export class SubcategoryRow {
       }
       @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-      /* Avatar — borde rojo pulsante (anillo expansivo) mientras LIVE está activo,
+      /* Avatar — borde rojo fijo (sin pulso) mientras LIVE está activo,
          reemplaza el borde blanco normal de #topbar-auth-btn */
       #topbar-auth-btn.avatar-live-active {
         border-color: #dc2626 !important;
-        animation: wpAvatarLivePulse 1.8s ease-in-out infinite;
-      }
-      @keyframes wpAvatarLivePulse {
-        0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 0 rgba(220,38,38,0.55); }
-        50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 7px rgba(220,38,38,0); }
       }
 
       /* Chips de subcategoría — estilo nativo */
