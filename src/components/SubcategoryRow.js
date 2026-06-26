@@ -381,13 +381,12 @@ export class SubcategoryRow {
     s.textContent = `
       /* GPS como chip circular dentro del scroll */
       /* GPS — ahora vive en #wp-side-slot-3 (panel lateral), no aquí.
-         Activo: borde verde en el slot + ícono pulsando en verde. */
+         Activo: borde verde sólido en el slot, sin pulso. Loading: sigue pulsando. */
       #wp-side-slot-3.active {
         box-sizing: border-box;
         border: 2px solid #16a34a;
         color: #16a34a;
       }
-      #wp-side-slot-3.active svg,
       #wp-side-slot-3.loading svg { animation: gpsPulse 1.2s infinite; }
       #wp-side-slot-3.active svg { color: #16a34a; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
@@ -397,7 +396,7 @@ export class SubcategoryRow {
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#1a5cf5; }
 
-      /* ── Chip LIVE — fijo debajo del avatar (mismo diseño de siempre) ── */
+      /* ── Chip LIVE — fijo al lado derecho del avatar, centrado verticalmente con él ── */
       .hm-live-chip {
         display: inline-flex; align-items: center; gap: 5px;
         height: 30px; padding: 0 11px;
@@ -411,8 +410,8 @@ export class SubcategoryRow {
       }
       .hm-live-chip-under-avatar {
         position: fixed;
-        left: 12px;
-        top: calc(12px + env(safe-area-inset-top, 0px) + 44px + 8px);
+        left: 64px;
+        top: calc(12px + env(safe-area-inset-top, 0px) + 7px);
         z-index: 9999;
         box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
