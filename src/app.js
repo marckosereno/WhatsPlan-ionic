@@ -664,16 +664,15 @@ try {
           openActivityModal();
         });
       }
-      // Slots 2 y 3 del panel lateral — función próximamente
-      ['wp-side-slot-2', 'wp-side-slot-3'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.addEventListener('click', function(e) {
-            e.stopPropagation();
-            console.log(id + ' — próximamente');
-          });
-        }
-      });
+      // Slot 2 del panel lateral — función próximamente
+      // (slot 3 ya tiene función real: GPS, conectado desde SubcategoryRow._build())
+      const slot2 = document.getElementById('wp-side-slot-2');
+      if (slot2) {
+        slot2.addEventListener('click', function(e) {
+          e.stopPropagation();
+          console.log('wp-side-slot-2 — próximamente');
+        });
+      }
 
       // Mensajes — función próximamente
       const msgBtn = document.getElementById('topbar-messages-btn');
