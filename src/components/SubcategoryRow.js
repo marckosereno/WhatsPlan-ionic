@@ -396,22 +396,23 @@ export class SubcategoryRow {
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#1a5cf5; }
 
-      /* ── Chip LIVE — fijo al lado derecho del avatar, centrado verticalmente con él ── */
+      /* ── Chip LIVE — fijo debajo del avatar, centrado con él, un poco más chico ── */
       .hm-live-chip {
-        display: inline-flex; align-items: center; gap: 5px;
-        height: 30px; padding: 0 11px;
+        display: inline-flex; align-items: center; gap: 4px;
+        height: 26px; padding: 0 9px;
         background: #f5f5f5;
         border: 1px solid rgba(239,68,68,0.25);
         border-radius: 999px;
-        font-size: 12px; font-weight: 600;
+        font-size: 11px; font-weight: 600;
         color: #dc2626; white-space: nowrap; cursor: pointer;
         transition: all 0.18s; flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
       }
       .hm-live-chip-under-avatar {
         position: fixed;
-        left: 64px;
-        top: calc(12px + env(safe-area-inset-top, 0px) + 7px);
+        left: 34px; /* centro del avatar: left 12px + mitad de sus 44px de ancho */
+        transform: translateX(-50%);
+        top: calc(12px + env(safe-area-inset-top, 0px) + 44px + 8px);
         z-index: 9999;
         box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
@@ -422,7 +423,7 @@ export class SubcategoryRow {
         box-shadow: 0 2px 8px rgba(220,38,38,0.3);
       }
       .hm-live-dot {
-        width: 7px; height: 7px; border-radius: 50%;
+        width: 6px; height: 6px; border-radius: 50%;
         background: currentColor;
         animation: livePulse 1.2s infinite;
         flex-shrink: 0;
