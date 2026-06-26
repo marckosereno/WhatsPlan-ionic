@@ -1732,8 +1732,10 @@ export class ActivityModal {
       if (f) { f.style.transition = 'none'; f.style.opacity = '0'; f.style.pointerEvents = 'none'; }
       const p = document.querySelector('.map-results-panel-float');
       if (p) { p.style.transition = 'none'; p.style.transform = 'translateY(100%)'; }
-      const sp = document.getElementById('wp-side-panel');
-      if (sp) { sp.style.transition = 'none'; sp.style.opacity = '0'; sp.style.pointerEvents = 'none'; }
+      ['wp-side-panel-top', 'wp-side-panel-bottom'].forEach(id => {
+        const sp = document.getElementById(id);
+        if (sp) { sp.style.transition = 'none'; sp.style.opacity = '0'; sp.style.pointerEvents = 'none'; }
+      });
     };
     _forceHideMapChrome();
     setTimeout(_forceHideMapChrome, 400); // después de la animación interna de placeModal.hide()
@@ -1746,7 +1748,7 @@ export class ActivityModal {
         // Agregar pick-mode ANTES de cargar para que showLoading y renderCategoriesRow lo respeten
         document.body.classList.add('pick-mode');
         // Ocultar header inmediatamente
-        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
+        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel-top','wp-side-panel-bottom'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
         });
@@ -1798,7 +1800,7 @@ export class ActivityModal {
       window.wpApp.searchBar.deactivate();
     }
     // Ocultar botón GPS
-    const _gpsBtn = document.getElementById('map-gps-btn');
+    const _gpsBtn = document.getElementById('wp-side-slot-3');
     if (_gpsBtn) { _gpsBtn.style.opacity = '0'; _gpsBtn.style.pointerEvents = 'none'; }
 
     // Tooltip en posición del header — misma altura top:12px, ocupa el espacio
@@ -1972,12 +1974,12 @@ export class ActivityModal {
       document.body.classList.remove('pick-mode');
       // Restaurar barra de búsqueda si estaba activa
       // Restaurar botón GPS siempre
-      const _gBtn = document.getElementById('map-gps-btn');
+      const _gBtn = document.getElementById('wp-side-slot-3');
       if (_gBtn) { _gBtn.style.opacity = ''; _gBtn.style.pointerEvents = ''; }
 
       // Restaurar header completo de mapview (la búsqueda, si estaba activa, se cerró
       // por completo al entrar a pickMode — no queda nada parcial que restaurar)
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel-top','wp-side-panel-bottom'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
       });
@@ -2148,14 +2150,14 @@ export class ActivityModal {
       if (c) { c.style.visibility = 'hidden'; c.style.opacity = '0'; c.style.pointerEvents = 'none'; }
       const r = document.querySelector('.map-results-panel-float');
       if (r) { r.style.transform = 'translateY(100%)'; r.style.transition = 'none'; }
-      const gps = document.getElementById('map-gps-btn');
+      const gps = document.getElementById('wp-side-slot-3');
       if (gps) { gps.style.opacity = '0'; gps.style.pointerEvents = 'none'; }
-      const live = document.getElementById('map-live-badge');
+      const live = document.getElementById('hm-live-chip');
       if (live) { live.style.opacity = '0'; live.style.pointerEvents = 'none'; }
       // Deshabilitar subcatsRow — intercepta touches durante drag
       const sr = document.getElementById('map-subcats-row');
       if (sr) { sr.style.pointerEvents = 'none'; sr.style.opacity = '0'; }
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel-top','wp-side-panel-bottom'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
       });
@@ -2164,7 +2166,7 @@ export class ActivityModal {
     _forceHide();
     // Re-ocultar en el siguiente frame por si disablePickMode los restauró
     requestAnimationFrame(() => {
-      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
+      ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel-top','wp-side-panel-bottom'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
       });
@@ -2357,9 +2359,9 @@ export class ActivityModal {
       if (_tempMarker) { _tempMarker.remove(); _tempMarker = null; }
       // Resetear padding del mapa
       if (mapView?.map) mapView.map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
-      const live = document.getElementById('map-live-badge');
+      const live = document.getElementById('hm-live-chip');
       if (live) { live.style.opacity = ''; live.style.pointerEvents = ''; }
-      const gps = document.getElementById('map-gps-btn');
+      const gps = document.getElementById('wp-side-slot-3');
       if (gps) { gps.style.opacity = ''; gps.style.pointerEvents = ''; }
       // Restaurar subcatsRow
       const sr = document.getElementById('map-subcats-row');
@@ -2367,7 +2369,7 @@ export class ActivityModal {
       // Solo restaurar header buttons si se confirma (no al cancelar, porque
       // _resumeAtStep2 vuelve al paso 2 donde el header sigue oculto)
       if (restoreHeader) {
-        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
+        ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel-top','wp-side-panel-bottom'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
         });
@@ -2674,7 +2676,7 @@ export class ActivityModal {
       p.style.display = '';
     });
     // Header buttons (avatar, bell, panel lateral +Plan) — por si quedó algo suelto
-    ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel'].forEach(id => {
+    ['topbar-notif-btn','topbar-auth-btn','btn-create-activity','wp-side-panel-top','wp-side-panel-bottom'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; el.style.transition = ''; }
     });
