@@ -55,21 +55,18 @@ export class SubcategoryRow {
     const footer = document.getElementById('map-subcategories-footer');
     if (!footer) return;
 
+    // El botón de GPS ya no vive en este scroll — ahora es el slot inferior
+    // del panel lateral (#wp-side-slot-3). Solo limpiamos el skeleton viejo.
     const sk = footer.querySelector('.hm-gps-skeleton');
     if (sk) sk.remove();
-
-    const gps = document.createElement('button');
-    gps.id = 'map-gps-btn';
-    gps.className = 'hm-gps-btn';
-    gps.title = 'Mi ubicación';
-    gps.innerHTML = `<svg class="hm-gps-icon" viewBox="0 0 122.88 122.88" fill="currentColor">
-      <path d="M120.3.14,1.24,40.38A1.82,1.82,0,0,0,.1,42.7a1.78,1.78,0,0,0,1.21,1.15h0L60.85,62,79,121.58h0a1.78,1.78,0,0,0,1.15,1.21,1.82,1.82,0,0,0,2.32-1.14L122.74,2.58A1.85,1.85,0,0,0,120.3.14Z"/>
-    </svg>`;
-    gps.addEventListener('click', () => this._toggleGps());
-
-    footer.appendChild(gps);
-    this._gpsEl    = gps;
     this._footerEl = footer;
+
+    const gpsEl = document.getElementById('wp-side-slot-3');
+    if (gpsEl) {
+      gpsEl.title = 'Mi ubicación';
+      gpsEl.addEventListener('click', () => this._toggleGps());
+      this._gpsEl = gpsEl;
+    }
   }
 
   _toggleGps() {
@@ -225,23 +222,17 @@ export class SubcategoryRow {
     }
   }
 
-  // ── Chip LIVE dentro del scroll (después del GPS) ─────────────────
+  // ── Chip LIVE — debajo del avatar (mismo diseño que antes, otra ubicación) ──
   _insertLiveChip() {
     if (this._liveBtn) return;
 
     const chip = document.createElement('button');
     chip.id = 'hm-live-chip';
-    chip.className = 'hm-live-chip';
+    chip.className = 'hm-live-chip hm-live-chip-under-avatar';
     chip.innerHTML = '<span class="hm-live-dot"></span>LIVE';
     chip.addEventListener('click', () => this._toggleLive());
 
-    const gpsEl = this._footerEl.querySelector('#map-gps-btn');
-    if (gpsEl && gpsEl.nextSibling) {
-      this._footerEl.insertBefore(chip, gpsEl.nextSibling);
-    } else {
-      this._footerEl.appendChild(chip);
-    }
-
+    document.body.appendChild(chip);
     this._liveBtn = chip;
   }
 
@@ -264,6 +255,7 @@ export class SubcategoryRow {
   _startLive() {
     this._liveActive = true;
     if (this._liveBtn) this._liveBtn.classList.add('active');
+    document.getElementById('topbar-auth-btn')?.classList.add('avatar-live-active');
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
     const handler = (e) => {
@@ -289,6 +281,7 @@ export class SubcategoryRow {
   _stopLive() {
     this._liveActive = false;
     if (this._liveBtn) this._liveBtn.classList.remove('active');
+    document.getElementById('topbar-auth-btn')?.classList.remove('avatar-live-active');
     if (this._liveHandler) window.removeEventListener('deviceorientation', this._liveHandler, true);
     if (this._liveFrame) cancelAnimationFrame(this._liveFrame);
     this.map.dragRotate.enable();
@@ -387,24 +380,24 @@ export class SubcategoryRow {
     s.id = 'subcats-row-styles';
     s.textContent = `
       /* GPS como chip circular dentro del scroll */
-      .hm-gps-btn {
-        width: 31px; height: 31px; border-radius: 50%;
-        border: 1px solid rgba(0,0,0,0.08); background: #f5f5f5;
-        display: inline-flex; align-items: center; justify-content: center;
-        cursor: pointer; flex-shrink: 0; transition: all 0.2s;
+      /* GPS — ahora vive en #wp-side-slot-3 (panel lateral), no aquí.
+         Activo: borde verde en el slot + ícono pulsando en verde. */
+      #wp-side-slot-3.active {
+        box-sizing: border-box;
+        border: 2px solid #16a34a;
+        color: #16a34a;
       }
-      .hm-gps-icon { width: 11px; height: 11px; color: #6b7280; }
-      .hm-gps-btn.active { background: #e8f5e9; border-color: rgba(22,163,74,0.2); }
-      .hm-gps-btn.active .hm-gps-icon { color: #16a34a; }
-      .hm-gps-btn.loading { animation: gpsPulse 1s infinite; }
-      @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+      #wp-side-slot-3.active svg,
+      #wp-side-slot-3.loading svg { animation: gpsPulse 1.2s infinite; }
+      #wp-side-slot-3.active svg { color: #16a34a; }
+      @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
       /* Marcador de ubicación en el mapa */
       .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#1a5cf5; }
       .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#1a5cf5; }
 
-      /* ── Chip LIVE dentro del scroll (mismo tamaño que subcategory chips) ── */
+      /* ── Chip LIVE — fijo debajo del avatar (mismo diseño de siempre) ── */
       .hm-live-chip {
         display: inline-flex; align-items: center; gap: 5px;
         height: 30px; padding: 0 11px;
@@ -415,6 +408,13 @@ export class SubcategoryRow {
         color: #dc2626; white-space: nowrap; cursor: pointer;
         transition: all 0.18s; flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
+      }
+      .hm-live-chip-under-avatar {
+        position: fixed;
+        left: 12px;
+        top: calc(12px + env(safe-area-inset-top, 0px) + 44px + 8px);
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
       .hm-live-chip.active {
         background: #dc2626;
@@ -429,6 +429,17 @@ export class SubcategoryRow {
         flex-shrink: 0;
       }
       @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+      /* Avatar — borde rojo pulsante (anillo expansivo) mientras LIVE está activo,
+         reemplaza el borde blanco normal de #topbar-auth-btn */
+      #topbar-auth-btn.avatar-live-active {
+        border-color: #dc2626 !important;
+        animation: wpAvatarLivePulse 1.8s ease-in-out infinite;
+      }
+      @keyframes wpAvatarLivePulse {
+        0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 0 rgba(220,38,38,0.55); }
+        50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 7px rgba(220,38,38,0); }
+      }
 
       /* Chips de subcategoría — estilo nativo */
       .subcategory-footer-chip {
