@@ -6,11 +6,9 @@
 const SELECTORS = [
   '.subcategory-footer-chip',
   '.category-footer-chip',
-  '#map-gps-btn',
   '.wps-cat-chip',
   '.wps-card',
   '.hm-live-chip',
-  '#topbar-activity-btn',
   '#topbar-right-chip',
   '#topbar-search-btn',
   '#topbar-messages-btn',
