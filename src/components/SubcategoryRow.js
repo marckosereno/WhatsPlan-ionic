@@ -389,14 +389,10 @@ export class SubcategoryRow {
     s.id = 'subcats-row-styles';
     s.textContent = `
       /* GPS — ahora vive en #wp-side-slot-3 (panel lateral), no aquí.
-         Activo: borde verde sólido en el slot, sin pulso. Loading: sigue pulsando. */
-      #wp-side-slot-3.active {
-        box-sizing: border-box;
-        border: 2px solid #16a34a;
-        color: #15803d;
-      }
-      #wp-side-slot-3.loading svg { animation: gpsPulse 1.2s infinite; }
-      #wp-side-slot-3.active svg { color: #15803d; }
+         Activo: sin borde en el slot, solo el ícono en verde y pulsando. */
+      #wp-side-slot-3.active { color: #15803d; }
+      #wp-side-slot-3.loading svg,
+      #wp-side-slot-3.active svg { animation: gpsPulse 1.2s infinite; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
       /* Marcador de ubicación en el mapa */
