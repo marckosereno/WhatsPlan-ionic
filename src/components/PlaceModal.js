@@ -328,6 +328,11 @@ export class PlaceModal {
 
     document.body.classList.add('wp-pm-open');
 
+    // Chip LIVE (bajo el avatar) — se oculta mientras la ficha está abierta,
+    // se restaura al cerrar solo si el GPS sigue activo (ver hide())
+    var liveWrap = document.querySelector('.hm-live-chip-wrap');
+    if (liveWrap) { liveWrap.style.transition = 'opacity 0.18s ease'; liveWrap.style.opacity = '0'; liveWrap.style.pointerEvents = 'none'; }
+
     // Footer menu queda intacto pero detrás de la ficha
     var footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.zIndex = '50';
@@ -389,6 +394,12 @@ export class PlaceModal {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
+
+      // Restaurar chip LIVE solo si el GPS sigue activo (si no, ya estaba oculto de antes)
+      var liveWrap = document.querySelector('.hm-live-chip-wrap');
+      var gpsActive = document.getElementById('wp-side-slot-3')?.classList.contains('active');
+      if (liveWrap && gpsActive) { liveWrap.style.opacity = '1'; liveWrap.style.pointerEvents = ''; }
+
       // Restaurar z-index del footer solo en mapview (en search ya está oculto por SearchBar)
       if (!fromSearch) {
         var footerMenu = document.getElementById('wp-footer-menu');
