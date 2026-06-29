@@ -66,6 +66,7 @@ export class SubcategoryRow {
       gpsEl.title = 'Mi ubicación';
       gpsEl.addEventListener('click', () => this._toggleGps());
       this._gpsEl = gpsEl;
+      this._gpsIconEl = gpsEl.querySelector('svg');
     }
   }
 
@@ -91,6 +92,7 @@ export class SubcategoryRow {
         this._gpsEl.classList.remove('loading');
         this._gpsEl.classList.add('active');
         this._insertLiveChip();
+        this._startGpsHeading();
       }
     };
 
@@ -199,8 +201,56 @@ export class SubcategoryRow {
     this._gpsStarting = false;
     this._lastGpsPos  = null;
     this._gpsEl.classList.remove('active', 'loading');
+    this._stopGpsHeading();
     if (this._liveActive) this._stopLive();
     this._removeLiveChip();
+  }
+
+  // ── Rumbo del dispositivo — rota el ícono de GPS (no el mapa; eso es _startLive) ──
+  async _startGpsHeading() {
+    if (this._gpsHeadingActive || !this._gpsIconEl) return;
+
+    // iOS 13+ exige permiso explícito antes de que deviceorientation dispare algo —
+    // sin esto, en iPhone el ícono simplemente nunca rota (queda "descalibrado").
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted') return;
+      } catch (e) { return; }
+    }
+
+    this._gpsHeadingActive = true;
+    this._gpsHeadingRaw    = 0;
+    this._gpsHeadingSmooth = 0;
+
+    const handler = (e) => {
+      // webkitCompassHeading (iOS) ya es el rumbo real respecto al norte — no se invierte.
+      // alpha (Android/estándar) crece en sentido contrario, por eso 360 - alpha.
+      if (e.webkitCompassHeading != null) this._gpsHeadingRaw = e.webkitCompassHeading;
+      else if (e.alpha != null) this._gpsHeadingRaw = 360 - e.alpha;
+    };
+    window.addEventListener('deviceorientation', handler, true);
+    this._gpsHeadingHandler = handler;
+
+    const loop = () => {
+      if (!this._gpsHeadingActive) return;
+      // Suavizado por el camino más corto (evita el salto de 359°→0°)
+      let diff = this._gpsHeadingRaw - this._gpsHeadingSmooth;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      this._gpsHeadingSmooth += diff * 0.15;
+      if (this._gpsIconEl) this._gpsIconEl.style.transform = 'rotate(' + this._gpsHeadingSmooth.toFixed(1) + 'deg)';
+      this._gpsHeadingFrame = requestAnimationFrame(loop);
+    };
+    this._gpsHeadingFrame = requestAnimationFrame(loop);
+  }
+
+  _stopGpsHeading() {
+    this._gpsHeadingActive = false;
+    if (this._gpsHeadingHandler) { window.removeEventListener('deviceorientation', this._gpsHeadingHandler, true); this._gpsHeadingHandler = null; }
+    if (this._gpsHeadingFrame) { cancelAnimationFrame(this._gpsHeadingFrame); this._gpsHeadingFrame = null; }
+    if (this._gpsIconEl) this._gpsIconEl.style.transform = '';
   }
 
   _upsertLocationMarker(lat, lng) {
@@ -393,6 +443,7 @@ export class SubcategoryRow {
       #wp-side-slot-3.active { color: #15803d; }
       #wp-side-slot-3.loading svg,
       #wp-side-slot-3.active svg { animation: gpsPulse 1.2s infinite; }
+      #wp-side-slot-3 svg { transform-origin: center; }
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
       /* Marcador de ubicación en el mapa */
