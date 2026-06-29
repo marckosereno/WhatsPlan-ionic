@@ -268,8 +268,19 @@ export class SubcategoryRow {
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
     const handler = (e) => {
-      if (e.webkitCompassHeading != null) this._liveRawHead = e.webkitCompassHeading;
-      else if (e.alpha != null) this._liveRawHead = 360 - e.alpha;
+      if (e.webkitCompassHeading != null) {
+        // iOS: ya es heading real respecto al norte, no hace falta compensar nada
+        this._liveRawHead = e.webkitCompassHeading;
+      } else if (e.alpha != null && e.beta != null && e.gamma != null) {
+        // Android/estándar: alpha solo es confiable con el teléfono perfectamente
+        // plano. Caminando, normalmente está algo inclinado — esa inclinación
+        // (beta/gamma) se filtra en alpha de forma distinta según hacia dónde
+        // apuntes, por eso antes funcionaba bien en unas direcciones y mal en
+        // otras. Esto compensa la inclinación combinando los tres ejes.
+        this._liveRawHead = this._tiltCompensatedHeading(e.alpha, e.beta, e.gamma);
+      } else if (e.alpha != null) {
+        this._liveRawHead = (360 - e.alpha) % 360; // respaldo si el navegador no manda beta/gamma
+      }
     };
     window.addEventListener('deviceorientation', handler, true);
     this._liveHandler = handler;
@@ -285,6 +296,27 @@ export class SubcategoryRow {
       this._liveFrame = requestAnimationFrame(loop);
     };
     this._liveFrame = requestAnimationFrame(loop);
+  }
+
+  // ── Heading compensado por inclinación (alpha+beta+gamma) ──────────
+  // Fórmula estándar derivada de la matriz de rotación del W3C Device
+  // Orientation spec. A diferencia de "360 - alpha" sola, esta sigue dando
+  // el rumbo correcto aunque el teléfono no esté perfectamente plano/vertical.
+  _tiltCompensatedHeading(alpha, beta, gamma) {
+    const aRad = alpha * Math.PI / 180;
+    const bRad = beta  * Math.PI / 180;
+    const gRad = gamma * Math.PI / 180;
+
+    const cA = Math.cos(aRad), sA = Math.sin(aRad);
+    const cB = Math.cos(bRad), sB = Math.sin(bRad);
+    const cG = Math.cos(gRad), sG = Math.sin(gRad);
+
+    const rA = -cA * sG - sA * sB * cG;
+    const rB = -sA * sG + cA * sB * cG;
+
+    let heading = Math.atan2(rA, rB) * 180 / Math.PI;
+    if (heading < 0) heading += 360;
+    return heading;
   }
 
   _stopLive() {
