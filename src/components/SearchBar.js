@@ -272,24 +272,27 @@ export class SearchBar {
         '<svg viewBox="0 0 14 14" width="9" height="9" fill="none">' +
           '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
         '</svg></button>' +
-      '<span id="wps-count" class="wps-count">' + count + '</span>';
+      '<span id="wps-count" class="wps-count" style="margin-left:auto;">' + count + '</span>';
 
+    // El antiguo closeBtn pasa a ser filterBtn (dentro del chip expandido)
     var filterBtn = document.createElement('button');
     filterBtn.id = 'wps-filter-chip';
     filterBtn.className = 'topbar-icon-btn';
     filterBtn.style.cssText = 'opacity:0;transform:scale(0.3);flex-shrink:0;';
     filterBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="#374151"><path d="M5.786 3C4.247 3 3 4.247 3 5.786c0 .807.289 1.588.814 2.2l2.834 3.307C7.736 12.561 8.333 14.177 8.333 15.848V18c0 1.657 1.343 3 3 3h1.334c1.657 0 3-1.343 3-3v-2.152c0-1.671.597-3.287 1.685-4.562l2.834-3.307A3.786 3.786 0 0021 5.786C21 4.247 19.753 3 18.214 3H5.786z"/></svg>';
 
-    var closeBtn = document.createElement('button');
-    closeBtn.id = 'wps-close-chip';
-    closeBtn.className = 'topbar-icon-btn';
-    closeBtn.style.cssText = 'opacity:0;transform:scale(0.3);flex-shrink:0;font-size:15px;font-weight:700;color:#374151;';
-    closeBtn.textContent = '✕';
+    // El ícono de notificaciones se convierte en el botón cerrar de la searchbar
+    var notifBtn = document.getElementById('topbar-notif-btn');
+    if (notifBtn) {
+      notifBtn._origHTML = notifBtn.innerHTML;
+      notifBtn._origStyle = notifBtn.getAttribute('style') || '';
+      notifBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg>';
+      notifBtn.style.transition = 'all 0.2s ease';
+    }
 
     if (chip) {
       chip.insertBefore(inner, chip.firstChild);
       chip.appendChild(filterBtn);
-      chip.appendChild(closeBtn);
     }
 
     // ── PASO 4: Animar expansión ──
@@ -297,18 +300,16 @@ export class SearchBar {
       gsap.timeline()
         .to(chip,      { width: self._targetW || targetW, duration: 0.2, ease: 'expo.out' })
         .to(inner,     { opacity: 1,     duration: 0.12, ease: 'power1.out' }, '-=0.08')
-        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)' }, '-=0.04')
-        .to(closeBtn,  { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)',
+        .to(filterBtn, { opacity: 1, scale: 1, duration: 0.16, ease: 'back.out(3)',
           onComplete: function() {
             var inp = document.getElementById('wps-input');
             if (inp) { inp.removeAttribute('readonly'); inp.focus(); }
           }
-        }, '-=0.1');
+        }, '-=0.04');
     } else if (chip) {
       chip.style.width = (self._targetW || targetW) + 'px';
       inner.style.opacity = '1';
       filterBtn.style.opacity = '1'; filterBtn.style.transform = '';
-      closeBtn.style.opacity  = '1'; closeBtn.style.transform  = '';
     }
 
     // ── PASO 5: Eventos ──
@@ -316,7 +317,7 @@ export class SearchBar {
       var input      = document.getElementById('wps-input');
       var clearBtnEl = document.getElementById('wps-clear');
       var filterEl   = document.getElementById('wps-filter-chip');
-      var closeEl    = document.getElementById('wps-close-chip');
+      var notifEl    = document.getElementById('topbar-notif-btn');
       if (!input) return;
 
       input.addEventListener('input', function(ev) {
@@ -334,7 +335,8 @@ export class SearchBar {
           input.focus(); self._onInput('');
         });
       }
-      if (closeEl)  closeEl.addEventListener('click',  function(ev){ ev.stopPropagation(); self.deactivate(); });
+      // Notif ahora cierra la searchbar
+      if (notifEl) notifEl.addEventListener('click', function(ev){ ev.stopPropagation(); self.deactivate(); });
       if (filterEl) filterEl.addEventListener('click', function(ev){ ev.stopPropagation(); console.log('Filtros próximamente'); });
 
       self._mapClick = function(ev) {
@@ -357,30 +359,29 @@ export class SearchBar {
     var searchBtn = document.getElementById('topbar-search-btn');
     var inner     = document.getElementById('wps-inner');
     var filterEl  = document.getElementById('wps-filter-chip');
-    var closeEl   = document.getElementById('wps-close-chip');
+    var notifBtn  = document.getElementById('topbar-notif-btn');
 
-    var self2 = this;
     var self2 = this;
     var restoreAll = function() {
       if (inner)    inner.remove();
       if (filterEl) filterEl.remove();
-      if (closeEl)  closeEl.remove();
+      // Restaurar ícono de notificaciones
+      if (notifBtn && notifBtn._origHTML !== undefined) {
+        notifBtn.innerHTML = notifBtn._origHTML;
+        delete notifBtn._origHTML;
+      }
       if (chip) {
         chip.style.cssText = '';
         if (self2._chipHTML !== undefined) { chip.innerHTML = self2._chipHTML; self2._chipHTML = undefined; }
       }
       if (searchBtn) searchBtn.style.display = '';
       if (msgBtn && msgBtn.dataset.wpHidden) { msgBtn.style.display=''; delete msgBtn.dataset.wpHidden; }
-      // Avatar - restauración instantánea, sin GSAP ni transforms
       if (authBtn && authBtn.dataset.wpHidden) {
         delete authBtn.dataset.wpHidden;
         if (gsap) gsap.killTweensOf(authBtn);
-        // Solo cambiar visibility - NADA MAS
         authBtn.style.visibility = '';
         authBtn.style.pointerEvents = '';
       }
-      // Notif no se ocultó, no hay que restaurar
-      // +Actividad: restore display, sin transform
       if (actBtn) {
         if (gsap) gsap.killTweensOf(actBtn);
         actBtn.style.transition = 'none';
@@ -390,17 +391,13 @@ export class SearchBar {
         actBtn.getBoundingClientRect();
         actBtn.style.transition = 'opacity 0.2s';
         actBtn.style.opacity    = '';
-        setTimeout(function() {
-          actBtn.style.transition = '';
-          actBtn.style.transform  = '';
-        }, 220);
+        setTimeout(function() { actBtn.style.transition = ''; actBtn.style.transform = ''; }, 220);
       }
-      // Pines INDEPENDIENTES - no se tocan al cerrar barra
     };
 
     if (chip && gsap) {
       gsap.timeline()
-        .to([filterEl, closeEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)', stagger: 0.04 })
+        .to([filterEl].filter(Boolean), { opacity: 0, scale: 0.3, duration: 0.16, ease: 'back.in(3)' })
         .to(inner, { opacity: 0, duration: 0.1, ease: 'power1.in' }, '-=0.08')
         .to(chip,  { width: (this._chipInitW || 120) + 'px', right: (this._chipRight || 12), duration: 0.2, ease: 'expo.out', onComplete: restoreAll }, '-=0.06');
     } else {
