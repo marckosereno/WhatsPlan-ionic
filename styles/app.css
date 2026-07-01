@@ -347,7 +347,7 @@ ion-app {
 .hm-live-chip,
 .hm-loading-chip {
   font-family: 'Roboto', system-ui, sans-serif;
-  font-weight: 300;
+  font-weight: 600;
 }
 
 /* ── Topbar ─────────────────────────────────────────────────────────── */
@@ -444,7 +444,7 @@ ion-app {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 300; color: #374151;
+  font-size: 15px; font-weight: 600; color: #374151;
   font-family: 'Roboto', system-ui, sans-serif;
   white-space: nowrap;
 }
@@ -459,12 +459,11 @@ ion-app {
 /* Ocultar elementos no usados */
 #topbar-messages-btn { display: none !important; }
 
-/* ── Panel flotante lateral izquierdo — 2 cápsulas separadas (como 3D + auto/flecha
-   de Apple Maps): la de arriba con un solo chip, la de abajo con 2 juntos ── */
-#wp-side-panel-top,
+/* ── Panel flotante lateral izquierdo — 2 cápsulas ancladas desde abajo ── */
 #wp-side-panel-bottom {
   position: fixed;
   left: 12px;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   z-index: 90;
   display: flex;
   flex-direction: column;
@@ -472,38 +471,34 @@ ion-app {
   gap: 6px;
   padding: 5px 4px;
   border-radius: 999px;
-  opacity: 0; /* aparece recién cuando el JS ya calculó la posición real — sin salto visible */
-  transition: opacity 0.25s ease;
+  opacity: 1;
 }
+#wp-side-panel-top {
+  position: fixed;
+  left: 12px;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px) + 84px + 8px);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 4px;
+  border-radius: 999px;
+  opacity: 1;
+}
+/* Nunca se usan para posicionar pero se dejan por si SearchBar los anima */
 #wp-side-panel-top.wp-positioned,
 #wp-side-panel-bottom.wp-positioned { opacity: 1; }
 
-/* Capa de fondo — glass SVG real (kube.io liquid-glass-css-svg) en navegadores que
-   soportan backdrop-filter:url(#filtro) (solo Chrome). Fallback plano en el resto
-   (Safari/iOS WKWebView, que es donde corre esta app vía Capacitor — ahí no se
-   aplica backdrop-filter:url() y se queda con el blur+saturate normal). */
+/* Fondo sólido — sin liquid glass, sin backdrop-filter */
 .wp-side-panel-bg {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   z-index: 0;
   pointer-events: none;
-  background: linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%);
-  backdrop-filter: blur(16px) saturate(1.8);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow: 0 0 0 1.5px rgba(160,205,255,0.5), 0 3px 10px rgba(100,170,255,0.22), 0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-}
-@supports (backdrop-filter: url(#wp-glass-filter-top)) {
-  #wp-side-panel-bg-top {
-    background: linear-gradient(145deg,rgba(255,255,255,0.85) 0%,rgba(210,235,255,0.7) 40%,rgba(180,215,255,0.6) 65%,rgba(255,255,255,0.8) 100%);
-    backdrop-filter: url(#wp-glass-filter-top) saturate(1.3);
-    box-shadow: 0 0 0 1.5px rgba(160,205,255,0.5), 0 3px 10px rgba(100,170,255,0.22), 0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-  }
-  #wp-side-panel-bg-bottom {
-    background: linear-gradient(145deg,rgba(255,255,255,0.85) 0%,rgba(210,235,255,0.7) 40%,rgba(180,215,255,0.6) 65%,rgba(255,255,255,0.8) 100%);
-    backdrop-filter: url(#wp-glass-filter-bottom) saturate(1.3);
-    box-shadow: 0 0 0 1.5px rgba(160,205,255,0.5), 0 3px 10px rgba(100,170,255,0.22), 0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-  }
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.13), 0 1px 3px rgba(0,0,0,0.09), inset 0 1px 0 rgba(255,255,255,1);
 }
 
 /* Cada slot es su propio chip — mismos colores exactos que el footer menu:
