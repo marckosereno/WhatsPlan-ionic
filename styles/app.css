@@ -459,11 +459,12 @@ ion-app {
 /* Ocultar elementos no usados */
 #topbar-messages-btn { display: none !important; }
 
-/* ── Panel flotante lateral izquierdo — 2 cápsulas ancladas desde abajo ── */
+/* ── Panel flotante lateral izquierdo — 2 cápsulas al lado izquierdo del mapa ── */
 #wp-side-panel-bottom {
   position: fixed;
   left: 12px;
-  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  top: 50%; /* JS lo ajusta una sola vez al cargar — este es solo el valor inicial */
+  transform: translateY(-50%);
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -471,12 +472,14 @@ ion-app {
   gap: 6px;
   padding: 5px 4px;
   border-radius: 999px;
-  opacity: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 #wp-side-panel-top {
   position: fixed;
   left: 12px;
-  bottom: calc(100px + env(safe-area-inset-bottom, 0px) + 84px + 8px);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -484,9 +487,9 @@ ion-app {
   gap: 6px;
   padding: 5px 4px;
   border-radius: 999px;
-  opacity: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
-/* Nunca se usan para posicionar pero se dejan por si SearchBar los anima */
 #wp-side-panel-top.wp-positioned,
 #wp-side-panel-bottom.wp-positioned { opacity: 1; }
 
