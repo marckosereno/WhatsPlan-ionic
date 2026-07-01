@@ -514,7 +514,10 @@ ion-app {
   background: rgba(255,255,255,0.88);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow:
+    0 8px 24px rgba(37,99,235,0.35),
+    0 2px 8px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.9);
   display: flex; align-items: center; justify-content: center;
   color: #374151;
   cursor: pointer; touch-action: manipulation;
