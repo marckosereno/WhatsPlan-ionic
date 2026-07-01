@@ -283,88 +283,11 @@ function setupActivitySubscription(mv) {
 // truena en el bloque MAIN de abajo, esto debe seguir funcionando igual.
 // ════════════════════════════════════════════════════════════════════
 try {
-  const GAP_FROM_PANEL = 16; // separación entre la cápsula inferior y el panel de categorías
-  const GAP_BETWEEN = 8;     // separación entre las dos cápsulas
+  // Chip LIVE (bajo el avatar) y SearchBar ya manejan mostrar/ocultar los paneles.
+  // La posición se fija vía CSS (bottom anclado), no hay que recalcular en JS.
 
-  // Posiciona ambas cápsulas ancladas desde abajo, pegadas al panel de categorías
-  // (#map-results-panel, visible desde el HTML estático) — ya no centradas entre topbar y panel.
-  const updateSidePanelPosition = () => {
-    const topPanel = document.getElementById('wp-side-panel-top');
-    const bottomPanel = document.getElementById('wp-side-panel-bottom');
-    if (!topPanel || !bottomPanel) return;
-
-    // El Activity (tarjeta flotante) oculta el panel de categorías al abrirse —
-    // eso NO debe mover el panel lateral. Si está abierto, lo dejamos quieto
-    // donde ya estaba (de todas formas queda cubierto/desenfocado por la tarjeta).
-    const activityOverlay = document.getElementById('activity-modal-overlay');
-    if (activityOverlay && window.getComputedStyle(activityOverlay).display !== 'none') return;
-
-    // El mini snap de un pin también flota en esa misma franja — congelar la
-    // posición mientras esté abierto evita el saltito al aparecer/cambiar de tamaño.
-    const minisnap = document.getElementById('wp-minisnap-panel');
-    if (minisnap && window.getComputedStyle(minisnap).opacity !== '0') return;
-
-    const catPanel = document.getElementById('map-results-panel');
-    if (!catPanel) return; // reintenta en el siguiente tick
-
-    const catPanelRect = catPanel.getBoundingClientRect();
-    // Si el panel de categorías está oculto (translateY 100% / display none),
-    // su propio rect ya no sirve de referencia — usar el borde inferior de la pantalla
-    const cs = window.getComputedStyle(catPanel);
-    const catPanelTop = (cs.display !== 'none' && catPanelRect.top < window.innerHeight)
-      ? catPanelRect.top
-      : window.innerHeight;
-
-    const bottomH = bottomPanel.getBoundingClientRect().height || 80;
-    const topH = topPanel.getBoundingClientRect().height || 42;
-
-    let bottomTop = catPanelTop - GAP_FROM_PANEL - bottomH;
-    let topTop = bottomTop - GAP_BETWEEN - topH;
-
-    // Red de seguridad: si alguna medida vino en 0/rara, no dejar que el panel
-    // se vaya fuera de pantalla — mejor un valor razonable que invisible.
-    const minTop = 100;
-    if (topTop < minTop) {
-      const shift = minTop - topTop;
-      topTop += shift;
-      bottomTop += shift;
-    }
-
-    bottomPanel.style.top = bottomTop + 'px';
-    topPanel.style.top = topTop + 'px';
-    // recién ahora se hacen visibles (fade-in) — nunca antes de tener la posición real
-    topPanel.classList.add('wp-positioned');
-    bottomPanel.classList.add('wp-positioned');
-  };
-
-  // Red de seguridad final: si por lo que sea nunca se marcó como posicionado
-  // (algo falló en silencio arriba), forzamos que se vea de todas formas tras
-  // 1.2s — preferible verlo en una posición aproximada que invisible para siempre.
-  setTimeout(() => {
-    ['wp-side-panel-top', 'wp-side-panel-bottom'].forEach((id, i) => {
-      const el = document.getElementById(id);
-      if (el && !el.classList.contains('wp-positioned')) {
-        el.style.top = (window.innerHeight - 220 - i * 60) + 'px';
-        el.classList.add('wp-positioned');
-      }
-    });
-  }, 1200);
-
-  // Filtro liquid-glass real (kube.io/blog/liquid-glass-css-svg) para el fondo de
-  // cada cápsula — feImage + feDisplacementMap. Solo lo aplica el navegador si
-  // soporta backdrop-filter:url() (Chrome); el CSS ya trae fallback plano.
-  // El mapa de desplazamiento se genera con la SDF de un rectángulo redondeado
-  // (no un gradiente circular simple) para que calce con la forma real de cada cápsula.
-  // Ambas cápsulas comparten el mismo <defs>, así que cada filtro se actualiza por
-  // su propio id en vez de sobreescribir el innerHTML completo (eso borraría al otro).
-  const setFilterNode = (filterId, html) => {
-    const defs = document.getElementById('wp-svg-defs-inner');
-    if (!defs) return;
-    const existing = document.getElementById(filterId);
-    if (existing) existing.outerHTML = html;
-    else defs.insertAdjacentHTML('beforeend', html);
-  };
-
+  // Filtro liquid-glass SVG (solo Chrome) — si el navegador no lo soporta,
+  // el CSS fallback de fondo sólido ya funciona desde el primer frame.
   const buildLiquidGlassFilter = (bgId, filterId) => {
     try {
       const bg = document.getElementById(bgId);
@@ -372,7 +295,7 @@ try {
       const rect = bg.getBoundingClientRect();
       const w = Math.round(rect.width), h = Math.round(rect.height);
       if (w < 4 || h < 4) return;
-      if (bg._lgW === w && bg._lgH === h) return; // ya construido para este tamaño
+      if (bg._lgW === w && bg._lgH === h) return;
       bg._lgW = w; bg._lgH = h;
 
       const radius = Math.min(w, h) / 2;
@@ -398,70 +321,49 @@ try {
             nx = (d > 0.0001 ? qx / d : 0) * (px < 0 ? -1 : 1);
             ny = (d > 0.0001 ? qy / d : 0) * (py < 0 ? -1 : 1);
           } else if (qx > qy) {
-            dist = qx - radius;
-            nx = px < 0 ? -1 : 1; ny = 0;
+            dist = qx - radius; nx = px < 0 ? -1 : 1; ny = 0;
           } else {
-            dist = qy - radius;
-            nx = 0; ny = py < 0 ? -1 : 1;
+            dist = qy - radius; nx = 0; ny = py < 0 ? -1 : 1;
           }
           const idx = (y * w + x) * 4;
           if (dist < -edge) {
-            img.data[idx] = 128; img.data[idx + 1] = 128; img.data[idx + 2] = 128; img.data[idx + 3] = 255;
+            img.data[idx] = 128; img.data[idx+1] = 128; img.data[idx+2] = 128; img.data[idx+3] = 255;
           } else if (dist < 0) {
-            const t = 1 - (-dist / edge); // 0 en el límite interior de la banda → 1 en el borde
-            img.data[idx]     = Math.max(0, Math.min(255, 128 + nx * t * 110));
-            img.data[idx + 1] = Math.max(0, Math.min(255, 128 + ny * t * 110));
-            img.data[idx + 2] = 128;
-            img.data[idx + 3] = 255;
+            const t = 1 - (-dist / edge);
+            img.data[idx]   = Math.max(0,Math.min(255,128 + nx*t*110));
+            img.data[idx+1] = Math.max(0,Math.min(255,128 + ny*t*110));
+            img.data[idx+2] = 128; img.data[idx+3] = 255;
           } else {
-            img.data[idx] = 128; img.data[idx + 1] = 128; img.data[idx + 2] = 128; img.data[idx + 3] = 0;
+            img.data[idx] = 128; img.data[idx+1] = 128; img.data[idx+2] = 128; img.data[idx+3] = 0;
           }
         }
       }
       ctx.putImageData(img, 0, 0);
       const dataUrl = canvas.toDataURL();
-
-      setFilterNode(filterId,
-        '<filter id="' + filterId + '" x="0" y="0" width="' + w + '" height="' + h + '" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">' +
-          '<feImage href="' + dataUrl + '" xlink:href="' + dataUrl + '" x="0" y="0" width="' + w + '" height="' + h + '" result="wpDispMap" />' +
-          '<feGaussianBlur in="wpDispMap" stdDeviation="1.2" result="wpDispMapBlur" />' +
-          '<feDisplacementMap in="SourceGraphic" in2="wpDispMapBlur" scale="14" xChannelSelector="R" yChannelSelector="G" />' +
-        '</filter>'
-      );
-    } catch (e) {
-      console.error('[wp-side-panel] buildLiquidGlassFilter(' + filterId + ') falló, se queda con el glass plano de respaldo:', e);
-    }
+      const defs = document.getElementById('wp-svg-defs-inner');
+      if (!defs) return;
+      const existing = document.getElementById(filterId);
+      const html = '<filter id="' + filterId + '" x="0" y="0" width="' + w + '" height="' + h + '" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">' +
+        '<feImage href="' + dataUrl + '" x="0" y="0" width="' + w + '" height="' + h + '" result="d"/>' +
+        '<feGaussianBlur in="d" stdDeviation="1.2" result="db"/>' +
+        '<feDisplacementMap in="SourceGraphic" in2="db" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter>';
+      if (existing) existing.outerHTML = html; else defs.insertAdjacentHTML('beforeend', html);
+    } catch(e) {}
   };
 
-  // Solo construir el filtro SVG (canvas + feDisplacementMap) si el navegador
-  // realmente puede usarlo. En Safari/iOS WKWebView (el target real de esta app
-  // vía Capacitor) esto siempre es false — el CSS ya cae al glass plano, así
-  // que aquí ni siquiera intentamos el trabajo de canvas (cero beneficio ahí,
-  // solo riesgo). Probado con feature-detection real, no solo @supports en CSS.
-  let supportsSvgGlass = false;
-  try {
-    supportsSvgGlass = !!(window.CSS && CSS.supports && CSS.supports('backdrop-filter', 'url(#wp-glass-filter-probe)'));
-  } catch (e) { supportsSvgGlass = false; }
-
-  const tick = () => {
-    updateSidePanelPosition();
-    if (supportsSvgGlass) {
+  let svgGlassSupported = false;
+  try { svgGlassSupported = !!(window.CSS && CSS.supports && CSS.supports('backdrop-filter','url(#x)')); } catch(e) {}
+  if (svgGlassSupported) {
+    const tick = () => {
       buildLiquidGlassFilter('wp-side-panel-bg-top', 'wp-glass-filter-top');
       buildLiquidGlassFilter('wp-side-panel-bg-bottom', 'wp-glass-filter-bottom');
-    }
-  };
-  requestAnimationFrame(() => requestAnimationFrame(tick));
-  setTimeout(tick, 250);
-  window.addEventListener('load', tick);
-  window.addEventListener('resize', tick);
-  window.addEventListener('orientationchange', () => setTimeout(tick, 200));
-  // Watcher: el panel de resultados / minisnap cambian de tamaño y visibilidad
-  // desde muchos puntos distintos del código — recalculamos en un intervalo liviano
-  // para que el panel siempre se mantenga en esa altura calculada, sin saltos
-  setInterval(updateSidePanelPosition, 400);
-} catch (e) {
-  console.error('[wp-side-panel] setup falló:', e);
-}
+    };
+    requestAnimationFrame(() => requestAnimationFrame(tick));
+    setTimeout(tick, 300);
+    window.addEventListener('resize', tick);
+  }
+} catch(e) { console.error('[wp-side-panel] setup falló:', e); }
+
 
 // ════════════════════════════════════════════════════════════════════
 // MAIN
