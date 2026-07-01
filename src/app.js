@@ -294,7 +294,7 @@ try {
     const catPanelTop    = catPanel.getBoundingClientRect().top;
     if (catPanelTop <= topbarBottom) return false; // panel aún no visible
 
-    const midY        = topbarBottom + (catPanelTop - topbarBottom) * 0.75;
+    const midY        = topbarBottom + (catPanelTop - topbarBottom) * 0.85;
     const bottomH     = bottomPanel.offsetHeight || 80;
     const topH        = topPanel.offsetHeight    || 42;
     const GAP         = 8;
