@@ -283,86 +283,42 @@ function setupActivitySubscription(mv) {
 // truena en el bloque MAIN de abajo, esto debe seguir funcionando igual.
 // ════════════════════════════════════════════════════════════════════
 try {
-  // Chip LIVE (bajo el avatar) y SearchBar ya manejan mostrar/ocultar los paneles.
-  // La posición se fija vía CSS (bottom anclado), no hay que recalcular en JS.
+  const positionSidePanel = () => {
+    const topPanel    = document.getElementById('wp-side-panel-top');
+    const bottomPanel = document.getElementById('wp-side-panel-bottom');
+    const catPanel    = document.getElementById('map-results-panel');
+    const topbar      = document.getElementById('topbar');
+    if (!topPanel || !bottomPanel || !catPanel || !topbar) return false;
 
-  // Filtro liquid-glass SVG (solo Chrome) — si el navegador no lo soporta,
-  // el CSS fallback de fondo sólido ya funciona desde el primer frame.
-  const buildLiquidGlassFilter = (bgId, filterId) => {
-    try {
-      const bg = document.getElementById(bgId);
-      if (!bg) return;
-      const rect = bg.getBoundingClientRect();
-      const w = Math.round(rect.width), h = Math.round(rect.height);
-      if (w < 4 || h < 4) return;
-      if (bg._lgW === w && bg._lgH === h) return;
-      bg._lgW = w; bg._lgH = h;
+    const topbarBottom   = topbar.getBoundingClientRect().bottom;
+    const catPanelTop    = catPanel.getBoundingClientRect().top;
+    if (catPanelTop <= topbarBottom) return false; // panel aún no visible
 
-      const radius = Math.min(w, h) / 2;
-      const edge = Math.max(6, Math.min(16, radius * 0.55));
-      const hw = w / 2, hh = h / 2;
-      const innerHw = Math.max(0, hw - radius), innerHh = Math.max(0, hh - radius);
+    const midY        = (topbarBottom + catPanelTop) / 2;
+    const bottomH     = bottomPanel.offsetHeight || 80;
+    const topH        = topPanel.offsetHeight    || 42;
+    const GAP         = 8;
 
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const img = ctx.createImageData(w, h);
+    const bottomTop   = midY - (bottomH + GAP + topH) / 2 + topH + GAP;
+    const topTop      = bottomTop - GAP - topH;
 
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const px = x - hw, py = y - hh;
-          const ax = Math.abs(px), ay = Math.abs(py);
-          const qx = ax - innerHw, qy = ay - innerHh;
-          let dist, nx, ny;
-          if (qx > 0 && qy > 0) {
-            const d = Math.sqrt(qx * qx + qy * qy);
-            dist = d - radius;
-            nx = (d > 0.0001 ? qx / d : 0) * (px < 0 ? -1 : 1);
-            ny = (d > 0.0001 ? qy / d : 0) * (py < 0 ? -1 : 1);
-          } else if (qx > qy) {
-            dist = qx - radius; nx = px < 0 ? -1 : 1; ny = 0;
-          } else {
-            dist = qy - radius; nx = 0; ny = py < 0 ? -1 : 1;
-          }
-          const idx = (y * w + x) * 4;
-          if (dist < -edge) {
-            img.data[idx] = 128; img.data[idx+1] = 128; img.data[idx+2] = 128; img.data[idx+3] = 255;
-          } else if (dist < 0) {
-            const t = 1 - (-dist / edge);
-            img.data[idx]   = Math.max(0,Math.min(255,128 + nx*t*110));
-            img.data[idx+1] = Math.max(0,Math.min(255,128 + ny*t*110));
-            img.data[idx+2] = 128; img.data[idx+3] = 255;
-          } else {
-            img.data[idx] = 128; img.data[idx+1] = 128; img.data[idx+2] = 128; img.data[idx+3] = 0;
-          }
-        }
-      }
-      ctx.putImageData(img, 0, 0);
-      const dataUrl = canvas.toDataURL();
-      const defs = document.getElementById('wp-svg-defs-inner');
-      if (!defs) return;
-      const existing = document.getElementById(filterId);
-      const html = '<filter id="' + filterId + '" x="0" y="0" width="' + w + '" height="' + h + '" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">' +
-        '<feImage href="' + dataUrl + '" x="0" y="0" width="' + w + '" height="' + h + '" result="d"/>' +
-        '<feGaussianBlur in="d" stdDeviation="1.2" result="db"/>' +
-        '<feDisplacementMap in="SourceGraphic" in2="db" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter>';
-      if (existing) existing.outerHTML = html; else defs.insertAdjacentHTML('beforeend', html);
-    } catch(e) {}
+    topPanel.style.transform    = 'none';
+    bottomPanel.style.transform = 'none';
+    topPanel.style.top          = Math.round(topTop)    + 'px';
+    bottomPanel.style.top       = Math.round(bottomTop) + 'px';
+    topPanel.classList.add('wp-positioned');
+    bottomPanel.classList.add('wp-positioned');
+    return true;
   };
 
-  let svgGlassSupported = false;
-  try { svgGlassSupported = !!(window.CSS && CSS.supports && CSS.supports('backdrop-filter','url(#x)')); } catch(e) {}
-  if (svgGlassSupported) {
-    const tick = () => {
-      buildLiquidGlassFilter('wp-side-panel-bg-top', 'wp-glass-filter-top');
-      buildLiquidGlassFilter('wp-side-panel-bg-bottom', 'wp-glass-filter-bottom');
-    };
-    requestAnimationFrame(() => requestAnimationFrame(tick));
-    setTimeout(tick, 300);
-    window.addEventListener('resize', tick);
-  }
-} catch(e) { console.error('[wp-side-panel] setup falló:', e); }
+  // Intenta posicionar en cada frame hasta que el panel de categorías tenga altura real.
+  // Tan pronto como lo consigue, se detiene — nunca vuelve a correr.
+  const tryPosition = () => {
+    if (!positionSidePanel()) requestAnimationFrame(tryPosition);
+  };
+  requestAnimationFrame(tryPosition);
+
+} catch(e) { console.error('[wp-side-panel]', e); }
 
 
 // ════════════════════════════════════════════════════════════════════
