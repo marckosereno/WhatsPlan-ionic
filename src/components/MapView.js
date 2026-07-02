@@ -787,18 +787,41 @@ export class MapView {
     this.markerEls.forEach(el => {
       if (!el) return;
       const show = zoom >= (el._showAtZoom ?? 13);
-      if (show === el._wpVisible) return;
-      el._wpVisible = show;
+
       if (show) {
+        if (el._wpVisible === true) return;
+        el._wpVisible = true;
+        // Restaurar wrapper al tamaño real y animar la transición
+        const wrapper = el.querySelector('.place-pin-wrapper');
+        if (wrapper) {
+          wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
+          wrapper.style.width    = '';
+          wrapper.style.height   = '';
+          wrapper.style.padding  = '';
+        }
+        const inner = el.querySelector('.pin-inner, img, .pin-icon');
+        if (inner) { inner.style.transition = 'opacity 0.3s ease'; inner.style.opacity = '1'; }
         el.style.visibility    = 'visible';
         el.style.pointerEvents = '';
         el.style.transition    = 'opacity 0.35s ease';
         el.style.opacity       = '1';
       } else {
-        el.style.transition    = 'none';
-        el.style.opacity       = '0';
-        el.style.visibility    = 'hidden';
+        if (el._wpVisible === false) return;
+        el._wpVisible = false;
+        // En vez de ocultar completamente, mostrar un punto pequeño celeste
+        el.style.visibility    = 'visible';
         el.style.pointerEvents = 'none';
+        el.style.transition    = 'none';
+        el.style.opacity       = '1';
+        const wrapper = el.querySelector('.place-pin-wrapper');
+        if (wrapper) {
+          wrapper.style.transition = 'none';
+          wrapper.style.width    = '7px';
+          wrapper.style.height   = '7px';
+          wrapper.style.padding  = '0';
+        }
+        const inner = el.querySelector('.pin-inner, img, .pin-icon');
+        if (inner) { inner.style.transition = 'none'; inner.style.opacity = '0'; }
       }
     });
   }
@@ -831,8 +854,8 @@ export class MapView {
       if (idx === -1) return null;
       const marker = this.markers[idx];
       if (!marker) return null;
-      // No mostrar label si el pin está oculto por zoom
-      if (el.style.visibility === 'hidden') {
+      // No mostrar label si el pin está en modo punto (zoom bajo)
+      if (!el._wpVisible) {
         const lbl = el.querySelector('.place-pin-label');
         if (lbl) { lbl.style.opacity = '0'; }
         return null;
