@@ -786,42 +786,46 @@ export class MapView {
     const zoom = Math.floor(this.map.getZoom());
     this.markerEls.forEach(el => {
       if (!el) return;
-      const show = zoom >= (el._showAtZoom ?? 13);
+      const threshold = el._showAtZoom ?? 13;
+      // 3 estados: 0=oculto, 1=punto (1 zoom antes del umbral), 2=pin completo
+      const state = zoom >= threshold ? 2 : zoom >= threshold - 1 ? 1 : 0;
+      if (state === el._wpState) return;
+      el._wpState   = state;
+      el._wpVisible = state === 2; // usado por _updateLabelsProgressive
 
-      if (show) {
-        if (el._wpVisible === true) return;
-        el._wpVisible = true;
-        // Restaurar wrapper al tamaño real y animar la transición
-        const wrapper = el.querySelector('.place-pin-wrapper');
-        if (wrapper) {
-          wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
-          wrapper.style.width    = '';
-          wrapper.style.height   = '';
-          wrapper.style.padding  = '';
-        }
-        const inner = el.querySelector('.pin-inner, img, .pin-icon');
-        if (inner) { inner.style.transition = 'opacity 0.3s ease'; inner.style.opacity = '1'; }
+      const wrapper = el.querySelector('.place-pin-wrapper');
+      const inner   = el.querySelector('.pin-inner, img, .pin-icon');
+
+      if (state === 2) {
+        // Pin completo — restaurar tamaño real
         el.style.visibility    = 'visible';
         el.style.pointerEvents = '';
         el.style.transition    = 'opacity 0.35s ease';
         el.style.opacity       = '1';
-      } else {
-        if (el._wpVisible === false) return;
-        el._wpVisible = false;
-        // En vez de ocultar completamente, mostrar un punto pequeño celeste
+        if (wrapper) {
+          wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
+          wrapper.style.width = ''; wrapper.style.height = ''; wrapper.style.padding = '';
+        }
+        if (inner) { inner.style.transition = 'opacity 0.3s ease'; inner.style.opacity = '1'; }
+
+      } else if (state === 1) {
+        // Punto pequeño celeste — 1 zoom antes del umbral
         el.style.visibility    = 'visible';
         el.style.pointerEvents = 'none';
         el.style.transition    = 'none';
         el.style.opacity       = '1';
-        const wrapper = el.querySelector('.place-pin-wrapper');
         if (wrapper) {
           wrapper.style.transition = 'none';
-          wrapper.style.width    = '7px';
-          wrapper.style.height   = '7px';
-          wrapper.style.padding  = '0';
+          wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
         }
-        const inner = el.querySelector('.pin-inner, img, .pin-icon');
         if (inner) { inner.style.transition = 'none'; inner.style.opacity = '0'; }
+
+      } else {
+        // Completamente oculto
+        el.style.transition    = 'none';
+        el.style.opacity       = '0';
+        el.style.visibility    = 'hidden';
+        el.style.pointerEvents = 'none';
       }
     });
   }
