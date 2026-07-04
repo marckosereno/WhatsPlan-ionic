@@ -901,13 +901,13 @@ export class MapView {
 
       // font-size fijo en 16px — NO se sobreescribe aquí
       // Resetear display para que -webkit-line-clamp funcione
-      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;';
+      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;visibility:visible;';
 
       const t = setTimeout(() => {
-        // No mostrar label si el pin está en highlight
         const pinRoot = el.closest('.place-marker-el');
         if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
-        label.style.opacity = opacity;
+        label.style.opacity     = opacity;
+        label.style.visibility  = 'visible';
       }, i * 25);
       this._labelTimers.push(t);
     });
