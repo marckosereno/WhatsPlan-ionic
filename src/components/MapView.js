@@ -847,7 +847,7 @@ export class MapView {
     // Ocultar todo si zoom < 16 — labels solo aparecen desde zoom 16
     if (zoom < 16) {
       document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-        l.style.opacity = '0'; l.style.display = 'none';
+        l.style.opacity = '0'; l.style.visibility = 'hidden';
       });
       return;
     }
@@ -1562,7 +1562,7 @@ export class MapView {
 
     // Ocultar labels de pines (vuelven a su comportamiento normal por zoom)
     document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-      l.style.opacity = '0'; l.style.display = 'none';
+      l.style.opacity = '0'; l.style.visibility = 'hidden';
     });
 
     if (this._pickMapClickHandler) {
@@ -1598,7 +1598,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:130px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);opacity:0;visibility:hidden;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:130px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
