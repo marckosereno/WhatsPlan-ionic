@@ -886,28 +886,14 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 20;
-      if (side === 'right') {
-        label.style.left      = (pinW + 6) + 'px';
-        label.style.right     = 'auto';
-        label.style.transform = 'translateY(-50%)';
-        label.style.textAlign = 'left';
-      } else {
-        label.style.left      = 'auto';
-        label.style.right     = (pinW + 6) + 'px';
-        label.style.transform = 'translateY(-50%)';
-        label.style.textAlign = 'right';
-      }
-
-      // font-size fijo en 16px — NO se sobreescribe aquí
-      // Resetear display para que -webkit-line-clamp funcione
+      // Label es flex-child inline — ya no necesita left/right/transform posicionales
       label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;visibility:visible;';
 
       const t = setTimeout(() => {
         const pinRoot = el.closest('.place-marker-el');
         if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
-        label.style.opacity     = opacity;
-        label.style.visibility  = 'visible';
+        label.style.opacity    = opacity;
+        label.style.visibility = 'visible';
       }, i * 25);
       this._labelTimers.push(t);
     });
@@ -1597,13 +1583,13 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const featShadow   = '0 0 0 2.5px #FF6D00,0 0 0 4.5px rgba(255,109,0,0.2),0 3px 10px rgba(255,109,0,0.3),inset 0 1px 0 rgba(255,255,255,0.9)';
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
-  // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);opacity:0;visibility:hidden;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:130px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  // Label en línea como flex-child — nunca usa position:absolute (que requería
+  // escapar el containing block y se cortaba por el canvas del mapa)
+  const labelHtml = `<div class="place-pin-label" style="opacity:0;visibility:hidden;flex-shrink:0;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:120px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;margin-left:5px;align-self:center;">${shortName}</div>`;
 
   if (photoUrl) {
-    // data-liquid-shadow: para restaurar después del highlight
-    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div class="place-pin-rel">${featHtml}${pulseHtml}
+    return `<div class="place-pin-root" style="display:inline-flex;align-items:center;overflow:visible;">
+      <div class="place-pin-rel" style="flex-shrink:0;">${featHtml}${pulseHtml}
         <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
           <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
         </div>
@@ -1612,9 +1598,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     </div>`;
   }
 
-  // ── Sin foto: mostrar el icono (subcategoría > categoría > emoji) dentro del pin ──
-  return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-    <div class="place-pin-rel">${featHtml}${pulseHtml}
+  return `<div class="place-pin-root" style="display:inline-flex;align-items:center;overflow:visible;">
+    <div class="place-pin-rel" style="flex-shrink:0;">${featHtml}${pulseHtml}
       <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
         <div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">${catIcon}</div>
       </div>
