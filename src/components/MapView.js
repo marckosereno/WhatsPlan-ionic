@@ -886,7 +886,19 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      // Label es flex-child inline — ya no necesita left/right/transform posicionales
+      // Posición dinámica left/right via flex order — sin position:absolute
+      if (side === 'right') {
+        label.style.order      = '1';
+        label.style.marginLeft = '5px';
+        label.style.marginRight = '';
+        label.style.textAlign  = 'left';
+      } else {
+        label.style.order      = '-1';
+        label.style.marginLeft = '';
+        label.style.marginRight = '5px';
+        label.style.textAlign  = 'right';
+      }
+
       label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;visibility:visible;';
 
       const t = setTimeout(() => {
@@ -1588,8 +1600,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const labelHtml = `<div class="place-pin-label" style="opacity:0;visibility:hidden;flex-shrink:0;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:120px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;margin-left:5px;align-self:center;">${shortName}</div>`;
 
   if (photoUrl) {
-    return `<div class="place-pin-root" style="display:inline-flex;align-items:center;overflow:visible;">
-      <div class="place-pin-rel" style="flex-shrink:0;">${featHtml}${pulseHtml}
+    return `<div class="place-pin-root" style="position:relative;display:inline-flex;align-items:center;overflow:visible;">
+      <div class="place-pin-rel" style="flex-shrink:0;position:relative;">${featHtml}${pulseHtml}
         <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
           <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
         </div>
@@ -1598,8 +1610,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     </div>`;
   }
 
-  return `<div class="place-pin-root" style="display:inline-flex;align-items:center;overflow:visible;">
-    <div class="place-pin-rel" style="flex-shrink:0;">${featHtml}${pulseHtml}
+  return `<div class="place-pin-root" style="position:relative;display:inline-flex;align-items:center;overflow:visible;">
+    <div class="place-pin-rel" style="flex-shrink:0;position:relative;">${featHtml}${pulseHtml}
       <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
         <div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">${catIcon}</div>
       </div>
