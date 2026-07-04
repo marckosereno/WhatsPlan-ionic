@@ -1598,7 +1598,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:150px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:11px;font-weight:700;line-height:1.15;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
