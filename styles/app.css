@@ -254,7 +254,7 @@ ion-app::after {
 .category-chip-skeleton:nth-child(5) .cat-sk-label { animation-delay: 320ms; }
 .category-chip-skeleton:nth-child(6) .cat-sk-circle,
 .category-chip-skeleton:nth-child(6) .cat-sk-label { animation-delay: 400ms; }
-.maplibregl-marker { background: transparent !important; border: none !important; }
+.maplibregl-marker { background: transparent !important; border: none !important; overflow: visible !important; }
 
 /* ── Pin sizes — .maplibregl-marker da especificidad suficiente ── */
 .maplibregl-marker .place-pin-wrapper {
@@ -281,9 +281,11 @@ ion-app::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
 .maplibregl-marker .place-pin-root {
   display: inline-block;
+  overflow: visible;
 }
 
 
