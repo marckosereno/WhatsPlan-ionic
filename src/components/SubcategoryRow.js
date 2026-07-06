@@ -429,8 +429,8 @@ export class SubcategoryRow {
       @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
       /* Marcador de ubicación en el mapa */
-      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#1a5cf5; }
-      .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; }
+      .hm-loc-avatar-wrap { width:36px; height:36px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); overflow:hidden; background:#1a5cf5; -webkit-mask-image:-webkit-radial-gradient(white, black); }
+      .hm-loc-avatar-img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
       .hm-loc-avatar-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:20px; background:#1a5cf5; }
 
       /* ── Chip LIVE — fijo debajo del avatar, centrado con él, un poco más chico ──
