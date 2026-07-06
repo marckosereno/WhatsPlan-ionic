@@ -914,22 +914,31 @@ export class MapView {
         label.style.textAlign = 'right';
       }
 
-      // Una línea cuando cabe, salto solo si excede maxwidth
-      label.style.cssText += ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;display:block;max-width:110px;';
+      // Preparar label invisible: medir si cabe en una línea antes de mostrarlo
+      label.style.opacity      = '0';
+      label.style.visibility   = 'visible';
+      label.style.whiteSpace   = 'nowrap';
+      label.style.overflow     = 'hidden';
+      label.style.textOverflow = 'ellipsis';
+      label.style.display      = 'block';
+      label.style.maxWidth     = '110px';
+      label.style.fontSize     = '12px';
 
       const t = setTimeout(() => {
         if (!label.isConnected) return;
         const pinRoot = el.closest('.place-marker-el');
         if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
-        // Si el texto desborda una línea, permitir 2 líneas
+        // Medir con nowrap — si desborda, cambiar a 2 líneas (aún invisible)
         if (label.scrollWidth > label.offsetWidth + 2) {
-          label.style.whiteSpace    = 'normal';
-          label.style.display       = '-webkit-box';
+          label.style.whiteSpace      = 'normal';
+          label.style.display         = '-webkit-box';
           label.style.webkitLineClamp = '2';
           label.style.webkitBoxOrient = 'vertical';
+          label.style.textOverflow    = '';
         }
-        label.style.opacity     = opacity;
-        label.style.visibility  = 'visible';
+        // Ahora sí, aparece ya con el modo correcto — sin parpadeo
+        label.style.transition = 'opacity 0.22s ease';
+        label.style.opacity    = opacity;
       }, i * 25);
       this._labelTimers.push(t);
     });
