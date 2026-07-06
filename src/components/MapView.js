@@ -335,12 +335,7 @@ export class MapView {
       });
       this.map.on('moveend', () => {
         this._updatePinsByZoom();
-        // Solo recalcular labels si el zoom cambió desde la última vez
-        const currentZoom = this.map.getZoom();
-        if (this._lastLabelZoom === null || Math.abs(currentZoom - this._lastLabelZoom) > 0.05) {
-          this._updateLabelsProgressive();
-          this._lastLabelZoom = currentZoom;
-        }
+        this._updateLabelsProgressive();
       });
 
       // Ghost-pan fix
@@ -898,17 +893,23 @@ export class MapView {
         if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
         return null;
       }
+      // No mostrar label si el pin está en highlight (ya tiene nombre+badge encima)
+      if (el.classList.contains('featured-highlight')) {
+        const lbl = el.querySelector('.place-pin-label');
+        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
+        return null;
+      }
       const ll = marker.getLngLat();
       if (!bounds.contains(ll)) {
         const lbl = el.querySelector('.place-pin-label');
         if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
         return null;
       }
+      // Posición en pantalla — recalculada cada vez para que left/right sea dinámico
       const pt   = this.map.project(ll);
       const side = pt.x > screenW / 2 ? 'left' : 'right';
       const dx   = ll.lng - center.lng, dy = ll.lat - center.lat;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      // Prioridad: destacados primero, luego por rating, luego por cercanía
       const place    = el._place || {};
       const featured = place.featured ? 0 : 1;
       const rating   = -(parseFloat(place.rating) || 0);
