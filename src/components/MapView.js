@@ -108,12 +108,19 @@ function proxyPhotoCard(url) {
 function applyPhotoToPin(photoUrl, el) {
   const pi = el.querySelector('.pin-inner');
   if (!pi || pi.classList.contains('loaded')) return;
-  pi.style.opacity    = '0';
   pi.style.background = `url('${photoUrl}') center/cover no-repeat`;
   pi.innerHTML        = '';
   pi.classList.remove('loading');
   pi.classList.add('loaded');
-  requestAnimationFrame(() => { pi.style.opacity = '1'; });
+  // No mostrar la foto si el marcador está en modo punto (state 1) —
+  // el wrapper tiene overflow:hidden y opacity:0 en pi, respetarlo
+  const markerEl = el.closest('.place-marker-el') || el;
+  if (markerEl._wpState === 1) {
+    pi.style.opacity = '0';
+  } else {
+    pi.style.opacity = '0';
+    requestAnimationFrame(() => { pi.style.opacity = '1'; });
+  }
 }
 
 function applyErrorToPin(el) {
@@ -318,14 +325,23 @@ export class MapView {
         }, 80);
       });
 
-      // Labels y pines — solo en zoomend/moveend (nunca durante animación)
-      const _updateOrHideLabels = () => {
+      // Labels: solo recalcular cuando el zoom cambia — no en cada pan/drag
+      // En moveend solo actualizar visibilidad de pines (dot/full/hidden)
+      this._lastLabelZoom = null;
+      this.map.on('zoomend', () => {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
-      };
-      // Solo actualizar al TERMINAR zoom — nunca durante animación
-      this.map.on('zoomend', _updateOrHideLabels);
-      this.map.on('moveend', _updateOrHideLabels);
+        this._lastLabelZoom = this.map.getZoom();
+      });
+      this.map.on('moveend', () => {
+        this._updatePinsByZoom();
+        // Solo recalcular labels si el zoom cambió desde la última vez
+        const currentZoom = this.map.getZoom();
+        if (this._lastLabelZoom === null || Math.abs(currentZoom - this._lastLabelZoom) > 0.05) {
+          this._updateLabelsProgressive();
+          this._lastLabelZoom = currentZoom;
+        }
+      });
 
       // Ghost-pan fix
       const c = this.map.getContainer();
