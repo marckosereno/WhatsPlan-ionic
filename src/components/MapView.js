@@ -1638,7 +1638,13 @@ export class MapView {
 
 // PATCH: _buildPinHtml — foto con borde liquid celestial 3D + Roboto
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
-  const shortName = place.name || '';
+  const rawName   = place.name || '';
+  // Si el nombre viene en TODAS MAYÚSCULAS, convertirlo a Title Case.
+  // CSS text-transform:capitalize solo funciona en textos que ya tienen minúsculas.
+  const isAllCaps = rawName === rawName.toUpperCase() && /[A-ZÁÉÍÓÚÑa-záéíóúñ]{2,}/.test(rawName);
+  const shortName = isAllCaps
+    ? rawName.toLowerCase().replace(/(?:^|\s|['"([\-])\S/g, c => c.toUpperCase())
+    : rawName;
   const isFeat    = !!place.featured;
   const featType  = typeof place.featured === 'string' ? place.featured : '';
 
