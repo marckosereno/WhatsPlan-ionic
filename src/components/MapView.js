@@ -841,43 +841,61 @@ export class MapView {
     const bounds  = this.map.getBounds();
     const screenW = this.map.getContainer().offsetWidth;
 
-    // Ocultar todo si zoom < 16 — labels solo aparecen desde zoom 16
+    // Ocultar todo si zoom < 16
     if (zoom < 16) {
       document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-        l.style.opacity = '0'; l.style.display = 'none';
+        l.style.opacity = '0'; l.style.visibility = 'hidden';
       });
       return;
     }
 
-    // Nivel visual según zoom — fontSize SIEMPRE 16px, solo cambia opacidad
-    const lvl = zoom >= 17 ? 'full' : zoom >= 16.5 ? 'mid' : 'small';
+    const lvl     = zoom >= 17 ? 'full' : zoom >= 16.5 ? 'mid' : 'small';
     const opacity = lvl === 'full' ? '1' : lvl === 'mid' ? '0.88' : '0.72';
+    // Máximo de labels en pantalla según zoom — evita el amontonamiento
+    const MAX_LABELS = lvl === 'full' ? 12 : lvl === 'mid' ? 8 : 5;
 
     const center = this.map.getCenter();
     const els = Array.from(document.querySelectorAll('.place-marker-el'));
-    const visible = els.map(el => {
+
+    const candidates = els.map(el => {
       const idx = this.markerEls.indexOf(el);
       if (idx === -1) return null;
       const marker = this.markers[idx];
       if (!marker) return null;
-      // No mostrar label si el pin está oculto por zoom
-      if (el.style.visibility === 'hidden') {
+      // No mostrar label si el pin está en modo punto o invisible
+      if (!el._wpVisible) {
         const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; }
+        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
         return null;
       }
       const ll = marker.getLngLat();
       if (!bounds.contains(ll)) {
         const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; }
+        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
         return null;
       }
-      // Posición en pantalla para decidir izquierda/derecha
-      const pt = this.map.project(ll);
+      const pt   = this.map.project(ll);
       const side = pt.x > screenW / 2 ? 'left' : 'right';
-      const dx = ll.lng - center.lng, dy = ll.lat - center.lat;
-      return { el, dist: Math.sqrt(dx*dx + dy*dy), side, pt };
-    }).filter(Boolean).sort((a, b) => a.dist - b.dist);
+      const dx   = ll.lng - center.lng, dy = ll.lat - center.lat;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      // Prioridad: destacados primero, luego por rating, luego por cercanía
+      const place    = el._place || {};
+      const featured = place.featured ? 0 : 1;
+      const rating   = -(parseFloat(place.rating) || 0);
+      return { el, dist, side, pt, priority: featured * 1000 + rating * 10 + dist };
+    }).filter(Boolean).sort((a, b) => a.priority - b.priority);
+
+    // Ocultar labels de los que no entran
+    candidates.forEach((item, i) => {
+      const lbl = item.el.querySelector('.place-pin-label');
+      if (lbl && i >= MAX_LABELS) {
+        lbl.style.opacity     = '0';
+        lbl.style.visibility  = 'hidden';
+        item._labelHidden = true;
+      }
+    });
+
+    const visible = candidates.slice(0, MAX_LABELS);
 
     visible.forEach(({ el, side }, i) => {
       const label = el.querySelector('.place-pin-label');
@@ -896,15 +914,22 @@ export class MapView {
         label.style.textAlign = 'right';
       }
 
-      // font-size fijo en 16px — NO se sobreescribe aquí
-      // Resetear display para que -webkit-line-clamp funcione
-      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;';
+      // Una línea cuando cabe, salto solo si excede maxwidth
+      label.style.cssText += ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;display:block;max-width:110px;';
 
       const t = setTimeout(() => {
-        // No mostrar label si el pin está en highlight
+        if (!label.isConnected) return;
         const pinRoot = el.closest('.place-marker-el');
         if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
-        label.style.opacity = opacity;
+        // Si el texto desborda una línea, permitir 2 líneas
+        if (label.scrollWidth > label.offsetWidth + 2) {
+          label.style.whiteSpace    = 'normal';
+          label.style.display       = '-webkit-box';
+          label.style.webkitLineClamp = '2';
+          label.style.webkitBoxOrient = 'vertical';
+        }
+        label.style.opacity     = opacity;
+        label.style.visibility  = 'visible';
       }, i * 25);
       this._labelTimers.push(t);
     });
