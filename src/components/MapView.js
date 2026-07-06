@@ -643,6 +643,7 @@ export class MapView {
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
+      el.style.cssText = 'position:relative;overflow:visible;';
       el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
       el._place    = place;
       // Tier para zoom dinámico: 0=featured, 1=top rated, 2=rated, 3=all
@@ -886,18 +887,17 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      // Posición dinámica left/right via flex order — sin position:absolute
+      const pinW = el.querySelector('.place-pin-wrapper')?.offsetWidth || 22;
       if (side === 'right') {
-        label.style.order      = '1';
-        label.style.marginLeft = '5px';
-        label.style.marginRight = '';
-        label.style.textAlign  = 'left';
+        label.style.left      = (pinW + 4) + 'px';
+        label.style.right     = 'auto';
+        label.style.textAlign = 'left';
       } else {
-        label.style.order      = '-1';
-        label.style.marginLeft = '';
-        label.style.marginRight = '5px';
-        label.style.textAlign  = 'right';
+        label.style.left      = 'auto';
+        label.style.right     = (pinW + 4) + 'px';
+        label.style.textAlign = 'right';
       }
+      label.style.transform = 'translateY(-50%)';
 
       label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;visibility:visible;';
 
@@ -1597,25 +1597,27 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
   // Label en línea como flex-child — nunca usa position:absolute (que requería
   // escapar el containing block y se cortaba por el canvas del mapa)
-  const labelHtml = `<div class="place-pin-label" style="opacity:0;visibility:hidden;flex-shrink:0;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:120px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;margin-left:5px;align-self:center;">${shortName}</div>`;
+  // Label FUERA del place-pin-root — hijo del place-marker-el.
+  // Así es position:absolute sin afectar el bounding box del marcador,
+  // y sin quedar dentro del containing block del pin (que es solo 20-24px).
+  // El JS de _updateLabelsProgressive le ajusta left/right/top tras render.
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;top:50%;transform:translateY(-50%);left:26px;opacity:0;visibility:hidden;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:120px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
-    return `<div class="place-pin-root" style="position:relative;display:inline-flex;align-items:center;overflow:visible;">
-      <div class="place-pin-rel" style="flex-shrink:0;position:relative;">${featHtml}${pulseHtml}
+    return `<div class="place-pin-root" style="position:relative;display:inline-block;">
+      <div class="place-pin-rel" style="position:relative;">${featHtml}${pulseHtml}
         <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
           <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
         </div>
       </div>
-      ${labelHtml}
-    </div>`;
+    </div>${labelHtml}`;
   }
 
-  return `<div class="place-pin-root" style="position:relative;display:inline-flex;align-items:center;overflow:visible;">
-    <div class="place-pin-rel" style="flex-shrink:0;position:relative;">${featHtml}${pulseHtml}
+  return `<div class="place-pin-root" style="position:relative;display:inline-block;">
+    <div class="place-pin-rel" style="position:relative;">${featHtml}${pulseHtml}
       <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
         <div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">${catIcon}</div>
       </div>
     </div>
-    ${labelHtml}
-  </div>`;
+  </div>${labelHtml}`;
 };
