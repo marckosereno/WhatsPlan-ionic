@@ -702,6 +702,20 @@ export class MapView {
 
       el._marker = marker;
 
+      // Pre-calcular modo del label una sola vez — el elemento ya está en el DOM
+      // (addTo lo insertó), invisible (opacity:0/visibility:hidden del CSS inicial),
+      // pero medible. Guardamos si necesita 1 o 2 líneas en el elemento para que
+      // _updateLabelsProgressive solo aplique, nunca mida.
+      requestAnimationFrame(() => {
+        const label = el.querySelector('.place-pin-label');
+        if (!label) return;
+        // Medir con nowrap — el label ya tiene max-width:110px del buildPinHtml
+        const prev = label.style.cssText;
+        label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
+        el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
+        label.style.cssText = prev; // restaurar estado inicial
+      });
+
       // Foto lazy con IntersectionObserver
       if (photoUrl) {
         if ('IntersectionObserver' in window) {
@@ -930,33 +944,24 @@ export class MapView {
         label.style.textAlign = 'right';
       }
 
-      // Preparar label invisible: medir si cabe en una línea antes de mostrarlo
-      label.style.opacity      = '0';
-      label.style.visibility   = 'visible';
-      label.style.whiteSpace   = 'nowrap';
-      label.style.overflow     = 'hidden';
-      label.style.textOverflow = 'ellipsis';
-      label.style.display      = 'block';
-      label.style.maxWidth     = '110px';
-      label.style.fontSize     = '12px';
-
-      const t = setTimeout(() => {
-        if (!label.isConnected) return;
-        const pinRoot = el.closest('.place-marker-el');
-        if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
-        // Medir con nowrap — si desborda, cambiar a 2 líneas (aún invisible)
-        if (label.scrollWidth > label.offsetWidth + 2) {
-          label.style.whiteSpace      = 'normal';
-          label.style.display         = '-webkit-box';
-          label.style.webkitLineClamp = '2';
-          label.style.webkitBoxOrient = 'vertical';
-          label.style.textOverflow    = '';
-        }
-        // Ahora sí, aparece ya con el modo correcto — sin parpadeo
-        label.style.transition = 'opacity 0.22s ease';
-        label.style.opacity    = opacity;
-      }, i * 25);
-      this._labelTimers.push(t);
+      // Aplicar modo pre-calculado — sin medir, sin setTimeout, sin parpadeo
+      if (el._labelMultiline) {
+        label.style.whiteSpace      = 'normal';
+        label.style.display         = '-webkit-box';
+        label.style.webkitLineClamp = '2';
+        label.style.webkitBoxOrient = 'vertical';
+        label.style.textOverflow    = '';
+      } else {
+        label.style.whiteSpace   = 'nowrap';
+        label.style.display      = 'block';
+        label.style.textOverflow = 'ellipsis';
+      }
+      label.style.overflow    = 'hidden';
+      label.style.fontSize    = '12px';
+      label.style.maxWidth    = '110px';
+      label.style.visibility  = 'visible';
+      label.style.transition  = 'opacity 0.22s ease';
+      label.style.opacity     = opacity;
     });
   }
 
