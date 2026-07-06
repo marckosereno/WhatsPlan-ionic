@@ -643,7 +643,6 @@ export class MapView {
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
-      el.style.cssText = 'position:relative;overflow:visible;';
       el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
       el._place    = place;
       // Tier para zoom dinámico: 0=featured, 1=top rated, 2=rated, 3=all
@@ -788,17 +787,15 @@ export class MapView {
     this.markerEls.forEach(el => {
       if (!el) return;
       const threshold = el._showAtZoom ?? 13;
-      // 3 estados: 0=oculto, 1=punto (1 zoom antes del umbral), 2=pin completo
+      // 3 estados: 0=oculto, 1=punto celeste (1 zoom antes), 2=pin completo
       const state = zoom >= threshold ? 2 : zoom >= threshold - 1 ? 1 : 0;
       if (state === el._wpState) return;
       el._wpState   = state;
-      el._wpVisible = state === 2; // usado por _updateLabelsProgressive
+      el._wpVisible = state === 2;
 
       const wrapper = el.querySelector('.place-pin-wrapper');
-      const inner   = el.querySelector('.pin-inner, img, .pin-icon');
 
       if (state === 2) {
-        // Pin completo — restaurar tamaño real
         el.style.visibility    = 'visible';
         el.style.pointerEvents = '';
         el.style.transition    = 'opacity 0.35s ease';
@@ -806,15 +803,13 @@ export class MapView {
         if (wrapper) {
           wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
           wrapper.style.width = ''; wrapper.style.height = ''; wrapper.style.padding = '';
-          Array.from(wrapper.children).forEach(c => {
-            c.style.transition  = 'opacity 0.3s ease';
-            c.style.opacity     = '1';
-            c.style.visibility  = '';
-          });
+          wrapper.style.overflow = '';
+          const inner = wrapper.querySelector('.pin-inner');
+          if (inner) inner.style.opacity = '';
+          wrapper.querySelectorAll('img').forEach(img => { img.style.opacity = ''; });
         }
 
       } else if (state === 1) {
-        // Punto pequeño celeste — 1 zoom antes del umbral
         el.style.visibility    = 'visible';
         el.style.pointerEvents = 'none';
         el.style.transition    = 'none';
@@ -822,12 +817,13 @@ export class MapView {
         if (wrapper) {
           wrapper.style.transition = 'none';
           wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
-          // Ocultar TODO el contenido del wrapper (foto, icono, emoji — cualquiera)
-          Array.from(wrapper.children).forEach(c => { c.style.transition = 'none'; c.style.opacity = '0'; c.style.visibility = 'hidden'; });
+          wrapper.style.overflow = 'hidden';
+          const inner = wrapper.querySelector('.pin-inner');
+          if (inner) inner.style.opacity = '0';
+          wrapper.querySelectorAll('img').forEach(img => { img.style.opacity = '0'; });
         }
 
       } else {
-        // Completamente oculto
         el.style.transition    = 'none';
         el.style.opacity       = '0';
         el.style.visibility    = 'hidden';
@@ -848,7 +844,7 @@ export class MapView {
     // Ocultar todo si zoom < 16 — labels solo aparecen desde zoom 16
     if (zoom < 16) {
       document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-        l.style.opacity = '0'; l.style.visibility = 'hidden';
+        l.style.opacity = '0'; l.style.display = 'none';
       });
       return;
     }
@@ -864,8 +860,8 @@ export class MapView {
       if (idx === -1) return null;
       const marker = this.markers[idx];
       if (!marker) return null;
-      // No mostrar label si el pin está en modo punto (zoom bajo)
-      if (!el._wpVisible) {
+      // No mostrar label si el pin está oculto por zoom
+      if (el.style.visibility === 'hidden') {
         const lbl = el.querySelector('.place-pin-label');
         if (lbl) { lbl.style.opacity = '0'; }
         return null;
@@ -887,25 +883,28 @@ export class MapView {
       const label = el.querySelector('.place-pin-label');
       if (!label) return;
 
-      const pinW = el.querySelector('.place-pin-wrapper')?.offsetWidth || 22;
+      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 20;
       if (side === 'right') {
-        label.style.left      = (pinW + 4) + 'px';
+        label.style.left      = (pinW + 6) + 'px';
         label.style.right     = 'auto';
+        label.style.transform = 'translateY(-50%)';
         label.style.textAlign = 'left';
       } else {
         label.style.left      = 'auto';
-        label.style.right     = (pinW + 4) + 'px';
+        label.style.right     = (pinW + 6) + 'px';
+        label.style.transform = 'translateY(-50%)';
         label.style.textAlign = 'right';
       }
-      label.style.transform = 'translateY(-50%)';
 
-      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;visibility:visible;';
+      // font-size fijo en 16px — NO se sobreescribe aquí
+      // Resetear display para que -webkit-line-clamp funcione
+      label.style.cssText += ';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;';
 
       const t = setTimeout(() => {
+        // No mostrar label si el pin está en highlight
         const pinRoot = el.closest('.place-marker-el');
         if (pinRoot && pinRoot.classList.contains('featured-highlight')) return;
-        label.style.opacity    = opacity;
-        label.style.visibility = 'visible';
+        label.style.opacity = opacity;
       }, i * 25);
       this._labelTimers.push(t);
     });
@@ -1560,7 +1559,7 @@ export class MapView {
 
     // Ocultar labels de pines (vuelven a su comportamiento normal por zoom)
     document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-      l.style.opacity = '0'; l.style.visibility = 'hidden';
+      l.style.opacity = '0'; l.style.display = 'none';
     });
 
     if (this._pickMapClickHandler) {
@@ -1595,29 +1594,28 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const featShadow   = '0 0 0 2.5px #FF6D00,0 0 0 4.5px rgba(255,109,0,0.2),0 3px 10px rgba(255,109,0,0.3),inset 0 1px 0 rgba(255,255,255,0.9)';
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
-  // Label en línea como flex-child — nunca usa position:absolute (que requería
-  // escapar el containing block y se cortaba por el canvas del mapa)
-  // Label FUERA del place-pin-root — hijo del place-marker-el.
-  // Así es position:absolute sin afectar el bounding box del marcador,
-  // y sin quedar dentro del containing block del pin (que es solo 20-24px).
-  // El JS de _updateLabelsProgressive le ajusta left/right/top tras render.
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;top:50%;transform:translateY(-50%);left:26px;opacity:0;visibility:hidden;font-size:11px;font-weight:700;line-height:1.25;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;max-width:120px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  // Label: más grande, más ancho
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:150px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
-    return `<div class="place-pin-root" style="position:relative;display:inline-block;">
-      <div class="place-pin-rel" style="position:relative;">${featHtml}${pulseHtml}
+    // data-liquid-shadow: para restaurar después del highlight
+    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+      <div class="place-pin-rel">${featHtml}${pulseHtml}
         <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
           <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
         </div>
       </div>
-    </div>${labelHtml}`;
+      ${labelHtml}
+    </div>`;
   }
 
-  return `<div class="place-pin-root" style="position:relative;display:inline-block;">
-    <div class="place-pin-rel" style="position:relative;">${featHtml}${pulseHtml}
+  // ── Sin foto: mostrar el icono (subcategoría > categoría > emoji) dentro del pin ──
+  return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+    <div class="place-pin-rel">${featHtml}${pulseHtml}
       <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
         <div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">${catIcon}</div>
       </div>
     </div>
-  </div>${labelHtml}`;
+    ${labelHtml}
+  </div>`;
 };
