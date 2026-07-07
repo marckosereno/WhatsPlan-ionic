@@ -704,7 +704,7 @@ export class MapView {
       requestAnimationFrame(() => {
         const label = el.querySelector('.place-pin-label');
         if (!label) return;
-        // Medir con nowrap — el label ya tiene max-width:110px del buildPinHtml
+        // Medir con nowrap — el label ya tiene max-width:90px del buildPinHtml
         const prev = label.style.cssText;
         label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
         el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
@@ -959,7 +959,7 @@ export class MapView {
       }
       label.style.overflow    = 'hidden';
       label.style.fontSize    = '12px';
-      label.style.maxWidth    = '110px';
+      label.style.maxWidth    = '90px';
       label.style.visibility  = 'visible';
       label.style.transition  = 'opacity 0.22s ease';
       label.style.opacity     = opacity;
@@ -1292,7 +1292,7 @@ export class MapView {
             "font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif",
             'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
             'opacity:1', `transition:opacity 0.4s ease ${seed}ms`,
-            'max-width:110px', 'overflow:hidden', 'text-overflow:ellipsis',
+            'max-width:90px', 'overflow:hidden', 'text-overflow:ellipsis',
             'border:1px solid rgba(255,255,255,0.12)',
             'backdrop-filter:blur(4px)', '-webkit-backdrop-filter:blur(4px)',
           ].join(';');
@@ -1309,7 +1309,7 @@ export class MapView {
         inner.style.cssText = 'gap:3px;';
 
         const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:130px;overflow:hidden;text-overflow:ellipsis;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;';
+        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:\'Yahoo Sans Bold Regular\',system-ui,sans-serif;';
         label.textContent = item.title || '';
 
         const borderStyle = borderColor
@@ -1657,7 +1657,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:150px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Roboto',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
