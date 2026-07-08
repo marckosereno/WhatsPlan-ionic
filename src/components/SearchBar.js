@@ -55,9 +55,10 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // Ocultar footer menu y mini snap
+    // Ocultar footer menu, panel lateral y mini snap
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
+    ['wp-side-panel-top','wp-side-panel-bottom'].forEach(function(id){var el=document.getElementById(id);if(el){el.style.transition='opacity 0.2s ease';el.style.opacity='0';el.style.pointerEvents='none';}});
     // Ocultar mini snap completamente — nunca visible en search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms) {
@@ -97,9 +98,10 @@ export class SearchBar {
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
-    // Restaurar footer menu
+    // Restaurar footer menu y panel lateral
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
+    ['wp-side-panel-top','wp-side-panel-bottom'].forEach(function(id){var el=document.getElementById(id);if(el){el.style.transition='opacity 0.28s ease';el.style.opacity='1';el.style.pointerEvents='';}});
     // Restaurar mini snap si estaba visible antes del search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms && ms._searchHidden) {
@@ -569,18 +571,29 @@ export class SearchBar {
         var vvNow   = window.visualViewport;
         var canvasH = map.getCanvas().clientHeight;
 
-        // Borde superior: fondo de la barra de búsqueda expandida
-        var chip    = document.getElementById('topbar-right-chip');
-        var topEdge = chip ? chip.getBoundingClientRect().bottom + 8 : 68;
+        // Borde superior estable: safe-area-inset-top + altura del topbar (44px) + gap
+        // NO usar getBoundingClientRect del chip — su posición varía según el estado
+        // de la búsqueda (expandido, con/sin resultados, teclado abierto/cerrado)
+        var safeTop = parseInt(getComputedStyle(document.documentElement)
+          .getPropertyValue('--sat') || '0', 10) || 0;
+        // Fallback: CSS env() via un elemento temporal
+        if (!safeTop) {
+          var tmp = document.createElement('div');
+          tmp.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);height:0;width:0;';
+          document.body.appendChild(tmp);
+          safeTop = tmp.getBoundingClientRect().top || 0;
+          document.body.removeChild(tmp);
+        }
+        var topEdge = safeTop + 44 + 8 + 44; // safe-area + topbar + gap + searchbar
 
         var vvH      = vvNow ? vvNow.height : canvasH;
         var visibleH = Math.min(vvH, canvasH);
 
         // Borde inferior: minifichas si visibles → panel categorías → footer
-        var scats   = document.getElementById('wp-scats');
-        var results = document.getElementById('wp-sresults');
+        var scats    = document.getElementById('wp-scats');
+        var results  = document.getElementById('wp-sresults');
         var catPanel = document.getElementById('map-results-panel');
-        var footer  = document.getElementById('wp-footer-menu');
+        var footer   = document.getElementById('wp-footer-menu');
 
         var botEl = (scats && scats.offsetParent !== null && scats.getBoundingClientRect().top < visibleH) ? scats :
                     (results && results.offsetParent !== null && results.getBoundingClientRect().top < visibleH) ? results :
@@ -591,7 +604,6 @@ export class SearchBar {
         botEdge = Math.max(botEdge, visibleH * 0.4);
 
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
-        // +45: minicard aparece 45px ENCIMA del pin (igual que MapView)
         var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
