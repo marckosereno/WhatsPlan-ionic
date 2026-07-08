@@ -55,15 +55,9 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
-    // Ocultar footer menu, panel lateral +Plan (2 cápsulas) y mini snap
+    // Ocultar footer menu y mini snap
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
-    ['wp-side-panel-top', 'wp-side-panel-bottom'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) { el.style.transition='opacity 0.2s ease'; el.style.opacity='0'; el.style.pointerEvents='none'; }
-    });
-    var liveWrap = document.querySelector('.hm-live-chip-wrap');
-    if (liveWrap) { liveWrap.style.opacity='0'; liveWrap.style.pointerEvents='none'; }
     // Ocultar mini snap completamente — nunca visible en search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms) {
@@ -106,15 +100,6 @@ export class SearchBar {
     // Restaurar footer menu
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
-    // Restaurar panel lateral +Plan (2 cápsulas)
-    ['wp-side-panel-top', 'wp-side-panel-bottom'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) { el.style.transition='opacity 0.28s ease'; el.style.opacity='1'; el.style.pointerEvents=''; }
-    });
-    // Restaurar chip LIVE solo si el GPS sigue activo
-    var liveWrap = document.querySelector('.hm-live-chip-wrap');
-    var gpsActive = document.getElementById('wp-side-slot-3') && document.getElementById('wp-side-slot-3').classList.contains('active');
-    if (liveWrap && gpsActive) { liveWrap.style.opacity='1'; liveWrap.style.pointerEvents=''; }
     // Restaurar mini snap si estaba visible antes del search
     var ms = document.getElementById('wp-minisnap-panel');
     if (ms && ms._searchHidden) {
@@ -583,21 +568,28 @@ export class SearchBar {
       var doFlyTo = function() {
         var vvNow   = window.visualViewport;
         var canvasH = map.getCanvas().clientHeight;
-        var topbar  = document.getElementById('topbar-right-chip');
-        var topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        // Usar vv.height actual (teclado ya cerrado en este punto)
+
+        // Borde superior: fondo de la barra de búsqueda expandida
+        var chip    = document.getElementById('topbar-right-chip');
+        var topEdge = chip ? chip.getBoundingClientRect().bottom + 8 : 68;
+
         var vvH      = vvNow ? vvNow.height : canvasH;
         var visibleH = Math.min(vvH, canvasH);
-        // Bot edge: chips de subcategorías o resultados si están visibles
-        var scats    = document.getElementById('wp-scats');
-        var results  = document.getElementById('wp-sresults');
-        var botEl    = (scats && scats.offsetParent !== null) ? scats :
-                       (results && results.offsetParent !== null) ? results : null;
-        var botEdge  = botEl
-          ? botEl.getBoundingClientRect().top - 8
-          : visibleH;
-        // Nunca menor a la mitad del área visible
-        botEdge = Math.max(botEdge, visibleH * 0.5);
+
+        // Borde inferior: minifichas si visibles → panel categorías → footer
+        var scats   = document.getElementById('wp-scats');
+        var results = document.getElementById('wp-sresults');
+        var catPanel = document.getElementById('map-results-panel');
+        var footer  = document.getElementById('wp-footer-menu');
+
+        var botEl = (scats && scats.offsetParent !== null && scats.getBoundingClientRect().top < visibleH) ? scats :
+                    (results && results.offsetParent !== null && results.getBoundingClientRect().top < visibleH) ? results :
+                    (catPanel && catPanel.getBoundingClientRect().top < visibleH) ? catPanel :
+                    (footer && footer.getBoundingClientRect().top < visibleH) ? footer : null;
+
+        var botEdge = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
+        botEdge = Math.max(botEdge, visibleH * 0.4);
+
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
         // +45: minicard aparece 45px ENCIMA del pin (igual que MapView)
         var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
