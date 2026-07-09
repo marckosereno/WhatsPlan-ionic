@@ -279,6 +279,37 @@ function setupActivitySubscription(mv) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// PANEL LATERAL
+// ════════════════════════════════════════════════════════════════════
+try {
+  const positionSidePanel = () => {
+    const topPanel    = document.getElementById('wp-side-panel-top');
+    const bottomPanel = document.getElementById('wp-side-panel-bottom');
+    const catPanel    = document.getElementById('map-results-panel');
+    const topbar      = document.getElementById('topbar');
+    if (!topPanel || !bottomPanel || !catPanel || !topbar) return false;
+    const topbarBottom = topbar.getBoundingClientRect().bottom;
+    const catPanelTop  = catPanel.getBoundingClientRect().top;
+    if (catPanelTop <= topbarBottom) return false;
+    const midY      = topbarBottom + (catPanelTop - topbarBottom) * 0.82;
+    const bottomH   = bottomPanel.offsetHeight || 80;
+    const topH      = topPanel.offsetHeight    || 42;
+    const GAP       = 8;
+    const bottomTop = midY - (bottomH + GAP + topH) / 2 + topH + GAP;
+    const topTop    = bottomTop - GAP - topH;
+    topPanel.style.transform    = 'none';
+    bottomPanel.style.transform = 'none';
+    topPanel.style.top    = Math.round(topTop)    + 'px';
+    bottomPanel.style.top = Math.round(bottomTop) + 'px';
+    topPanel.classList.add('wp-positioned');
+    bottomPanel.classList.add('wp-positioned');
+    return true;
+  };
+  const tryPosition = () => { if (!positionSidePanel()) requestAnimationFrame(tryPosition); };
+  requestAnimationFrame(tryPosition);
+} catch(e) { console.error('[wp-side-panel]', e); }
+
+// ════════════════════════════════════════════════════════════════════
 // MAIN
 // ════════════════════════════════════════════════════════════════════
 (async () => {
@@ -293,32 +324,33 @@ function setupActivitySubscription(mv) {
 
     // Footer menu
     let activityModal = null;
+    const openActivityModal = () => {
+      if (!window.wpApp.currentUser) { window.wpApp.authModal?.show(); return; }
+      if (!activityModal) {
+        activityModal = new ActivityModal({
+          currentUser: window.wpApp.currentUser,
+          onActivityCreated: (activity) => {
+            console.log('✅ Actividad creada:', activity);
+            window.wpApp?.mapView?._loadActivities?.();
+          },
+          onActivityJoined: (activity) => { console.log('✅ Te uniste a:', activity); },
+        });
+      }
+      activityModal.setUser(window.wpApp.currentUser);
+      activityModal.show();
+    };
+
     const footerMenu = new FooterMenu({
-      onActividades: () => {
-        if (!window.wpApp.currentUser) {
-          window.wpApp.authModal?.show();
-          return;
-        }
-        if (!activityModal) {
-          activityModal = new ActivityModal({
-            currentUser: window.wpApp.currentUser,
-            onActivityCreated: (activity) => {
-              console.log('✅ Actividad creada:', activity);
-              // Refresh inmediato local — no esperar el round-trip de Realtime
-              window.wpApp?.mapView?._loadActivities?.();
-            },
-            onActivityJoined: (activity) => {
-              console.log('✅ Te uniste a:', activity);
-            },
-          });
-        }
-        activityModal.setUser(window.wpApp.currentUser);
-        activityModal.show();
-      },
+      onActividades: openActivityModal,
       onHome:        () => console.log('Home'),
       onSocial:      () => console.log('Social'),
     });
     footerMenu.animateIn();
+
+    // Botones del panel lateral
+    document.getElementById('wp-side-plan-btn')?.addEventListener('click', e => { e.stopPropagation(); openActivityModal(); });
+    document.getElementById('wp-side-slot-2')?.addEventListener('click',  e => { e.stopPropagation(); console.log('Estoy aquí — próximamente'); });
+    document.getElementById('wp-side-slot-3')?.addEventListener('click',  e => { e.stopPropagation(); /* GPS — wired by SubcategoryRow */ });
 
     // Tap en un pin de actividad (custom point) en el mapa
     document.addEventListener('wp:activity-tap', (e) => {
