@@ -746,30 +746,22 @@ export class ActivityModal {
 
     const overlay = document.createElement('div');
     overlay.id = 'activity-modal-overlay';
-    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:999999;background:white;overscroll-behavior:none;touch-action:pan-y;';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:10000;background:transparent;overscroll-behavior:none;touch-action:pan-y;pointer-events:none;';
 
     overlay.innerHTML = `
-      <div id="activity-modal" style="background:white;padding:0;width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
-        <!-- Edge guard: bloquea el gesto de back del browser en Android/iOS -->
-        <div style="position:absolute;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;"></div>
+      <div style="position:fixed;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;pointer-events:auto;"></div>
+      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:auto;"></div>
+      <div id="activity-modal" style="pointer-events:auto;position:fixed;left:12px;right:12px;top:calc(70px + env(safe-area-inset-top, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));border-radius:32px;background:rgba(255,255,255,0.94);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.6);overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
 
-        <!-- Header: pills izquierda, botones derecha -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;flex-shrink:0;">
-          <!-- Píldoras de progreso a la izquierda -->
-          <div style="display:flex;gap:5px;align-items:center;">
-            <div id="am-pill-1" style="height:4px;width:48px;border-radius:4px;background:#1a5cf5;transition:all 0.35s ease;"></div>
-            <div id="am-pill-2" style="height:4px;width:32px;border-radius:4px;background:#e0e0e0;transition:all 0.35s ease;"></div>
-            <div id="am-pill-3" style="height:4px;width:32px;border-radius:4px;background:#e0e0e0;transition:all 0.35s ease;"></div>
+        <!-- Header: back/cerrar (liquid glass) + barra de progreso + contador -->
+        <div style="display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top, 0px)) 12px 14px;flex-shrink:0;">
+          <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);padding:0;">
+            <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
+          </button>
+          <div style="flex:1;height:4px;border-radius:4px;background:#e5e5e5;overflow:hidden;">
+            <div id="am-progress-fill" style="height:100%;width:25%;border-radius:4px;background:#1a5cf5;transition:width 0.35s ease;"></div>
           </div>
-          <!-- Back + Close a la derecha -->
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button id="am-back" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;opacity:0;pointer-events:none;flex-shrink:0;transition:opacity 0.2s;">
-              <svg width="18" height="18" fill="currentColor"><use href="#icon-back"/></svg>
-            </button>
-            <button id="activity-modal-close" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;">
-              <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
-            </button>
-          </div>
+          <div id="am-step-count" style="width:44px;height:44px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 6px 20px rgba(0,0,0,0.10),inset 0 1.5px 0 rgba(255,255,255,1);font-size:13px;font-weight:700;color:#374151;flex-shrink:0;">1/4</div>
         </div>
 
         <!-- Steps container -->
@@ -2458,41 +2450,7 @@ export class ActivityModal {
     if (document.activeElement && document.activeElement.blur) {
       document.activeElement.blur();
     }
-    // Ocultar header del mapa inmediatamente al abrir el modal
-    const _topbar = document.getElementById('topbar');
-    if (_topbar) { _topbar.style.opacity = '0'; _topbar.style.pointerEvents = 'none'; _topbar.style.transition = 'none'; }
-    const _footerMenu = document.getElementById('wp-footer-menu');
-    if (_footerMenu) { _footerMenu.style.opacity = '0'; _footerMenu.style.pointerEvents = 'none'; _footerMenu.style.transition = 'none'; }
-    const _resultsPanel = document.querySelector('.map-results-panel-float');
-    if (_resultsPanel) { _resultsPanel.style.transform = 'translateY(100%)'; _resultsPanel.style.transition = 'none'; }
-    ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; el.style.transition = 'none'; }
-    });
-
-    // Watcher: algo externo (fuera de nuestro control) re-muestra el panel de
-    // resultados y los chips de categoría de forma asíncrona tras cargar una
-    // categoría. En vez de cazar esa causa exacta, forzamos el ocultamiento
-    // mientras el modal esté abierto.
-    if (this._chromeWatcher) clearInterval(this._chromeWatcher);
-    this._chromeWatcher = setInterval(() => {
-      document.querySelectorAll('.map-results-panel-float').forEach(p => {
-        if (p.style.display !== 'none') {
-          p.style.transition = 'none';
-          p.style.display = 'none';
-        }
-      });
-      const s = document.getElementById('wp-scats');
-      if (s && s.style.display !== 'none') {
-        s.style.transition = 'none';
-        s.style.display = 'none';
-      }
-      const c = document.getElementById('map-categories-footer');
-      if (c && c.style.display !== 'none') {
-        c.style.transition = 'none';
-        c.style.display = 'none';
-      }
-    }, 150);
+    // El modal es una tarjeta flotante — topbar y footer quedan visibles detrás del blur.
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
     this._in1B = false;
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
