@@ -963,19 +963,25 @@ export class ActivityModal {
     const prev = this._currentStep;
     this._currentStep = step;
 
-    // Actualizar píldoras de progreso
-    const back = document.getElementById('am-back');
-    [1,2,3].forEach(n => {
-      const pill = document.getElementById('am-pill-' + n);
-      if (pill) {
-        pill.style.background = n <= step ? '#1a5cf5' : '#e5e5e5';
-        pill.style.width = n === step ? '48px' : '32px';
-      }
-    });
+    // ── Barra de progreso ──
+    const fill  = document.getElementById('am-progress-fill');
+    const count = document.getElementById('am-step-count');
+    const back  = document.getElementById('am-back');
+    const TOTAL = 4;
+    if (fill)  fill.style.width  = (step / TOTAL * 100) + '%';
+    if (count) count.textContent = step + '/' + TOTAL;
     if (back) {
-      back.style.opacity = step > 1 ? '1' : '0';
-      back.style.pointerEvents = step > 1 ? 'auto' : 'none';
+      back.innerHTML = step === 1
+        ? '<svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>';
     }
+    // CTA buttons — step 4 (detalles) usa su propio footer "Publicar"
+    [['am-next-1a',1],['am-next-1b',2],['am-next-2',3]].forEach(([id,s]) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.style.display = step === s ? 'block' : 'none';
+    });
+    const grad = document.getElementById('am-cta-gradient');
+    if (grad) grad.style.display = step === 4 ? 'none' : 'block';
 
     // Animar steps
     const dir = step > prev ? 1 : -1;
@@ -1300,7 +1306,6 @@ export class ActivityModal {
     // Botón volver → mostrar 1A
     // Mostrar el am-back global cuando estamos en 1B
     const globalBack = document.getElementById('am-back');
-    if (globalBack) { globalBack.style.opacity = '1'; globalBack.style.pointerEvents = 'auto'; }
     const backBtn = document.getElementById('am-back-1b');
     if (backBtn) {
       backBtn.onclick = () => {
@@ -1358,7 +1363,6 @@ export class ActivityModal {
           const p1b = document.getElementById('am-step-1b');
           if (p1b) p1b.style.transform = 'translateX(100%)';
           const globalBackBtn = document.getElementById('am-back');
-          if (globalBackBtn) { globalBackBtn.style.opacity = '0'; globalBackBtn.style.pointerEvents = 'none'; }
           const p1a = document.getElementById('am-step-1a');
           if (p1a) p1a.style.transform = 'translateX(0%)';
           return;
@@ -1408,11 +1412,7 @@ export class ActivityModal {
             }
             this._currentStep = 2;
             const back = document.getElementById('am-back');
-            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
-            [1,2,3].forEach(n => {
-              const pill = document.getElementById('am-pill-' + n);
-              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 2 ? '48px' : '32px'; }
-            });
+            
             if (!this._popstateHandler) {
               this._popstateHandler = (e) => this._handlePopState(e);
               window.addEventListener('popstate', this._popstateHandler);
@@ -1439,11 +1439,7 @@ export class ActivityModal {
             });
             this._currentStep = 2;
             const back = document.getElementById('am-back');
-            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
-            [1,2,3].forEach(n => {
-              const pill = document.getElementById('am-pill-' + n);
-              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e0e0e0'; pill.style.width = n === 2 ? '48px' : '32px'; }
-            });
+            
             this.modal.style.display = 'flex';
             requestAnimationFrame(() => {
               ['1','2','3'].forEach(n => {
@@ -1946,15 +1942,8 @@ export class ActivityModal {
       });
       this._currentStep = targetStep;
       this._in1B = _wasIn1B;
-      [1,2,3].forEach(n => {
-        const pill = document.getElementById('am-pill-' + n);
-        if (pill) {
-          pill.style.background = n <= targetStep ? '#1a5cf5' : '#e5e5e5';
-          pill.style.width = n === targetStep ? '48px' : '32px';
-        }
-      });
+      
       const back = document.getElementById('am-back');
-      if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
       this.modal.style.display = 'flex';
       // Re-registrar popstate si fue removido por _closeForPickMode
       if (!this._popstateHandler) {
@@ -2034,14 +2023,7 @@ export class ActivityModal {
         }
         this._currentStep = 2;
         const back = document.getElementById('am-back');
-        if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
-        [1,2,3].forEach(n => {
-          const pill = document.getElementById('am-pill-' + n);
-          if (pill) {
-            pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5';
-            pill.style.width = n === 2 ? '48px' : '32px';
-          }
-        });
+        
         // History: show() ya puso [1a], agregar [1b] si aplica, luego [2]
         if (_wasIn1B) {
           history.pushState({ amModal: true, step: '1b' }, '');
@@ -2474,7 +2456,16 @@ export class ActivityModal {
       if (_p1b) _p1b.style.transition = '';
 
       this.modal.style.display = 'flex';
+      this._setProgress(1); // asegurar barra y botón visibles desde el primer frame
       this.hideMessage();
+
+      // Cerrar al tocar fuera (en el backdrop blur)
+      const backdrop = document.getElementById('am-backdrop-blur');
+      if (backdrop && !backdrop._wired) {
+        backdrop._wired = true;
+        backdrop.style.pointerEvents = 'auto';
+        backdrop.addEventListener('click', () => this.hide());
+      }
       history.pushState({ amModal: true, step: '1a' }, '');
       if (!this._popstateHandler) {
         this._popstateHandler = (e) => this._handlePopState(e);
@@ -2520,14 +2511,9 @@ export class ActivityModal {
         if (s1) { s1.style.transition = 'transform 0.3s ease'; s1.style.transform = 'translateX(0%)'; }
         if (s2) { s2.style.transition = 'transform 0.3s ease'; s2.style.transform = 'translateX(100%)'; }
       });
-      [1,2,3].forEach(n => {
-        const pill = document.getElementById('am-pill-' + n);
-        if (pill) { pill.style.background = n <= 1 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 1 ? '48px' : '32px'; }
-      });
+      
       const back = document.getElementById('am-back');
       if (back) {
-        back.style.opacity = goTo1B ? '1' : '0';
-        back.style.pointerEvents = goTo1B ? 'auto' : 'none';
       }
       if (!goTo1B) requestAnimationFrame(() => this._renderStep1Types());
       const histStep = goTo1B ? '1b' : '1a';
@@ -2543,7 +2529,6 @@ export class ActivityModal {
         if (p1b) { p1b.style.transition = 'transform 0.3s ease'; p1b.style.transform = 'translateX(100%)'; }
         if (p1a) { p1a.style.transition = 'transform 0.3s ease'; p1a.style.transform = 'translateX(0%)'; }
         const back = document.getElementById('am-back');
-        if (back) { back.style.opacity = '0'; back.style.pointerEvents = 'none'; }
         if (!fromGesture) history.replaceState({ amModal: true, step: '1a' }, '');
         else history.pushState({ amModal: true, step: '1a' }, '');
         return;
