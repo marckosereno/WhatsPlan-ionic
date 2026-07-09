@@ -77,7 +77,7 @@ export class LiquidGlassPanel {
     const p = this.params;
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:'Inter Tight',system-ui,sans-serif;">Liquid Glass</span>
+        <span style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:var(--wp-font);">Liquid Glass</span>
         <button id="lgp-close" style="background:transparent;border:none;color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>
       </div>
 
@@ -99,14 +99,14 @@ export class LiquidGlassPanel {
       <button id="lgp-copy" style="
         background:#2563eb;color:white;border:none;border-radius:10px;
         padding:9px;font-size:11px;font-weight:700;cursor:pointer;width:100%;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:var(--wp-font);
         touch-action:manipulation;
       ">📋 Copiar parámetros</button>
 
       <button id="lgp-reset" style="
         background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);border:none;border-radius:10px;
         padding:7px;font-size:11px;font-weight:600;cursor:pointer;width:100%;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:var(--wp-font);
         touch-action:manipulation;
       ">↺ Reset</button>
     `;
@@ -116,10 +116,10 @@ export class LiquidGlassPanel {
     const decimals = step < 1 ? 2 : 0;
     return `
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:500;width:100px;flex-shrink:0;font-family:'Inter Tight',system-ui,sans-serif;">${label}</span>
+        <span style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:500;width:100px;flex-shrink:0;font-family:var(--wp-font);">${label}</span>
         <input type="range" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${value}"
           style="flex:1;height:3px;appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.15);border-radius:2px;outline:none;">
-        <span id="lgp-v-${key}" style="color:rgba(255,255,255,0.8);font-size:10px;font-weight:600;width:30px;text-align:right;font-family:'Inter Tight',system-ui,sans-serif;">${parseFloat(value).toFixed(decimals)}</span>
+        <span id="lgp-v-${key}" style="color:rgba(255,255,255,0.8);font-size:10px;font-weight:600;width:30px;text-align:right;font-family:var(--wp-font);">${parseFloat(value).toFixed(decimals)}</span>
       </div>
     `;
   }
@@ -127,7 +127,7 @@ export class LiquidGlassPanel {
   _color(key, label, value) {
     return `
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:500;width:100px;flex-shrink:0;font-family:'Inter Tight',system-ui,sans-serif;">${label}</span>
+        <span style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:500;width:100px;flex-shrink:0;font-family:var(--wp-font);">${label}</span>
         <input type="color" data-key="${key}" value="${value}"
           style="width:28px;height:22px;border:none;border-radius:6px;cursor:pointer;padding:1px;background:transparent;">
         <span id="lgp-v-${key}" style="color:rgba(255,255,255,0.6);font-size:10px;font-family:monospace;">${value}</span>
