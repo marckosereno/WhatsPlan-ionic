@@ -966,7 +966,7 @@ export class MapView {
   }
 
   // ── MiniCard ──────────────────────────────────────────────────────
-  _showMiniCard(place, index, rawPhoto) {
+  _showMiniCard(place, index, rawPhoto, skipMove = false) {
     this._closeMiniCard();
     this.miniCardPlace  = place;
     this.miniCardMarker = this.markers[index];
@@ -1097,7 +1097,7 @@ export class MapView {
 
       // DEBUG disabled
 
-      this.map.easeTo({
+      if (!skipMove) this.map.easeTo({
         center: [lng, lat],
         duration: 300,
         offset: [0, offsetY]
