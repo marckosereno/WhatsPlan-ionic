@@ -893,7 +893,6 @@ export class MapView {
         if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
         return null;
       }
-      // No mostrar label si el pin está en highlight (ya tiene nombre+badge encima)
       if (el.classList.contains('featured-highlight')) {
         const lbl = el.querySelector('.place-pin-label');
         if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
