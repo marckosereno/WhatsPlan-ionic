@@ -940,6 +940,11 @@ export class ActivityModal {
             </div>
           </div>
 
+
+        <!-- CTA fijo fuera de #am-steps -->
+        <div id="am-cta-gradient" style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
+        <button id="am-next-1a" disabled style="display:none;position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">Continuar →</button>
+        <button id="am-next-1b" disabled style="display:none;position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">Continuar →</button>
         </div>
       </div>
     `;
@@ -1359,14 +1364,17 @@ export class ActivityModal {
       if (this._currentStep === 1) {
         if (this._in1B) {
           this._in1B = false;
-    this._isSpontaneous = false;
+          this._isSpontaneous = false;
           const p1b = document.getElementById('am-step-1b');
           if (p1b) p1b.style.transform = 'translateX(100%)';
-          const globalBackBtn = document.getElementById('am-back');
           const p1a = document.getElementById('am-step-1a');
           if (p1a) p1a.style.transform = 'translateX(0%)';
+          this._goToStep(1);
           return;
         }
+        // Paso 1A: cerrar el modal
+        this.hide();
+        return;
       }
       if (this._currentStep > 1) this._goToStep(this._currentStep - 1);
     });
