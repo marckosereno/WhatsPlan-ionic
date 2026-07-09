@@ -152,7 +152,7 @@ export class AuthModal {
         border-bottom: 2.5px solid transparent;
         margin-bottom: -1.5px;
         transition: all 0.2s;
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-family: var(--wp-font);
       }
       .auth-tab.active { color: #111; border-bottom-color: #111; }
 
@@ -166,7 +166,7 @@ export class AuthModal {
         font-size: 16px;
         outline: none;
         transition: border 0.2s;
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-family: var(--wp-font);
         background: #fafafa;
       }
       .auth-input:focus { border-color: #2563eb; background: white; }
@@ -181,7 +181,7 @@ export class AuthModal {
         font-weight: 700;
         cursor: pointer;
         transition: opacity 0.2s;
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-family: var(--wp-font);
       }
       .auth-btn-primary:disabled { opacity: 0.6; }
 
@@ -199,7 +199,7 @@ export class AuthModal {
         font-weight: 500;
         cursor: pointer;
         transition: background 0.2s;
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-family: var(--wp-font);
       }
       .auth-btn-google:active { background: #f9fafb; }
 
@@ -226,7 +226,7 @@ export class AuthModal {
         border-radius: 12px;
         font-size: 14px;
         margin-top: 4px;
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-family: var(--wp-font);
       }
       .auth-message.error   { background: #fee2e2; color: #dc2626; }
       .auth-message.success { background: #dcfce7; color: #16a34a; }
