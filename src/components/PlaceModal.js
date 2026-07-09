@@ -128,7 +128,7 @@ export class PlaceModal {
       'z-index:100',
       'opacity:0',
       'transition:opacity 0.22s ease',
-      'font-family:Roboto,system-ui,sans-serif',
+      'font-family:var(--wp-font)',
       'cursor:pointer',
       'padding:8px 14px 8px',
       'box-sizing:border-box',
@@ -145,7 +145,7 @@ export class PlaceModal {
       return `<img src="${url}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i>0?'-7px':'0'};object-fit:cover;position:relative;z-index:${avatarCount-i};background:#e2e8f0" onerror="this.style.background='#e2e8f0'">`;
     }).join('');
 
-    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:Roboto,system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:var(--wp-font);cursor:pointer;-webkit-tap-highlight-color:transparent';
 
     // Dot animado inline
     var dotStyle = isOpen===true
@@ -156,10 +156,10 @@ export class PlaceModal {
     var badgeDot = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
     // Estilos idénticos a .wp-pm-open-badge de la ficha, tamaño mini snap
     var glassBadge = isOpen===true
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15)'
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:var(--wp-font);background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15)'
       : isOpen===false
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12)'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);box-shadow:0 1px 4px rgba(0,0,0,0.06)';
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:var(--wp-font);background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12)'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:var(--wp-font);background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);box-shadow:0 1px 4px rgba(0,0,0,0.06)';
 
     ms.innerHTML = `
       <!-- Handle azul absoluto — no ocupa altura -->
@@ -197,7 +197,7 @@ export class PlaceModal {
               ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
             </div>`;
           }
-          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:20px">📷</span><span style="font-size:8px;color:#9ca3af;font-family:Roboto,system-ui,sans-serif">Sin fotos</span></div>`;
+          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:20px">📷</span><span style="font-size:8px;color:#9ca3af;font-family:var(--wp-font)">Sin fotos</span></div>`;
         })()}
       </div>
 
@@ -328,11 +328,6 @@ export class PlaceModal {
 
     document.body.classList.add('wp-pm-open');
 
-    // Chip LIVE (bajo el avatar) — se oculta mientras la ficha está abierta,
-    // se restaura al cerrar solo si el GPS sigue activo (ver hide())
-    var liveWrap = document.querySelector('.hm-live-chip-wrap');
-    if (liveWrap) { liveWrap.style.transition = 'opacity 0.18s ease'; liveWrap.style.opacity = '0'; liveWrap.style.pointerEvents = 'none'; }
-
     // Footer menu queda intacto pero detrás de la ficha
     var footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.zIndex = '50';
@@ -394,12 +389,6 @@ export class PlaceModal {
       this._el.classList.add('wp-pm-hidden');
       this._el.classList.remove('wp-pm-visible');
       document.body.classList.remove('wp-pm-open');
-
-      // Restaurar chip LIVE solo si el GPS sigue activo (si no, ya estaba oculto de antes)
-      var liveWrap = document.querySelector('.hm-live-chip-wrap');
-      var gpsActive = document.getElementById('wp-side-slot-3')?.classList.contains('active');
-      if (liveWrap && gpsActive) { liveWrap.style.opacity = '1'; liveWrap.style.pointerEvents = ''; }
-
       // Restaurar z-index del footer solo en mapview (en search ya está oculto por SearchBar)
       if (!fromSearch) {
         var footerMenu = document.getElementById('wp-footer-menu');
@@ -669,9 +658,6 @@ export class PlaceModal {
 
         <!-- ── CTA BOTTOM ── -->
         <div class="wp-pm-bottom">
-          <button class="wp-pm-here-btn" id="wp-pm-here-btn" title="Estoy aquí">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0.4" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.5742 21.8187C12.2295 22.0604 11.7699 22.0601 11.4253 21.8184L11.4228 21.8166L11.4172 21.8127L11.3986 21.7994C11.3829 21.7882 11.3607 21.7722 11.3325 21.7517C11.2762 21.7106 11.1956 21.6511 11.0943 21.5741C10.8917 21.4203 10.6058 21.1962 10.2641 20.9101C9.58227 20.3389 8.67111 19.5139 7.75692 18.4988C5.96368 16.5076 4 13.6105 4 10.3636C4 8.16134 4.83118 6.0397 6.32548 4.46777C7.82141 2.89413 9.86146 2 12 2C14.1385 2 16.1786 2.89413 17.6745 4.46777C19.1688 6.0397 20 8.16134 20 10.3636C20 13.6105 18.0363 16.5076 16.2431 18.4988C15.3289 19.5139 14.4177 20.3389 13.7359 20.9101C13.3942 21.1962 13.1083 21.4203 12.9057 21.5741C12.8044 21.6511 12.7238 21.7106 12.6675 21.7517C12.6393 21.7722 12.6171 21.7882 12.6014 21.7994L12.5828 21.8127L12.5772 21.8166L12.5754 21.8179L12.5742 21.8187ZM9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10Z"/></svg>
-          </button>
           <button class="wp-pm-cta" id="wp-pm-cta">
             <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M464,256c0-114.87-93.13-208-208-208S48,141.13,48,256s93.13,208,208,208S464,370.87,464,256ZM251.35,347.36a16,16,0,0,1-.09-22.63L303.58,272H170a16,16,0,0,1,0-32H303.58l-52.32-52.73A16,16,0,1,1,274,164.73l79.39,80a16,16,0,0,1,0,22.54l-79.39,80A16,16,0,0,1,251.35,347.36Z"/></svg>
             Planear visita
@@ -1331,7 +1317,7 @@ export class PlaceModal {
     if (!toast) {
       toast = document.createElement('div');
       toast.id = 'wp-global-toast';
-      toast.style.cssText = 'position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-20px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;white-space:nowrap;padding:10px 20px;border-radius:999px;font-family:Roboto,system-ui,sans-serif;pointer-events:none;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.24s ease,transform 0.28s cubic-bezier(0.34,1.2,0.64,1);';
+      toast.style.cssText = 'position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-20px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;white-space:nowrap;padding:10px 20px;border-radius:999px;font-family:var(--wp-font);pointer-events:none;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.24s ease,transform 0.28s cubic-bezier(0.34,1.2,0.64,1);';
       document.body.appendChild(toast);
     }
     toast.textContent = msg;
@@ -1406,9 +1392,6 @@ export class PlaceModal {
 
     const ctaBtn = this._el.querySelector('#wp-pm-cta');
     ctaBtn.addEventListener('click', () => { console.log('Planear visita:', this._place); });
-
-    const hereBtn = this._el.querySelector('#wp-pm-here-btn');
-    if (hereBtn) hereBtn.addEventListener('click', () => { console.log('Estoy aquí:', this._place); });
     ctaBtn.addEventListener('pointerdown', () => {
       ctaBtn.style.transition = 'transform 0.1s ease';
       ctaBtn.style.transform  = 'scale(0.92)';
@@ -1648,7 +1631,7 @@ export class PlaceModal {
     frag.id = 'wp-review-modal-body';
     frag.innerHTML = `
       <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:2200;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
-      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2300;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:Roboto,system-ui,sans-serif">
+      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2300;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
         <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
         <div style="padding:4px 20px 12px">
           <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
@@ -1657,13 +1640,13 @@ export class PlaceModal {
         <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
           ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;cursor:pointer;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
         </div>
-        <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:Roboto,system-ui,sans-serif">Toca para calificar</div>
+        <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:var(--wp-font)">Toca para calificar</div>
         <div style="padding:0 16px">
-          <textarea id="wp-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:Roboto,system-ui,sans-serif;color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
-          <div id="wp-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px;font-family:Roboto,system-ui,sans-serif">0 / 500</div>
+          <textarea id="wp-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+          <div id="wp-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px;font-family:var(--wp-font)">0 / 500</div>
         </div>
         <div style="padding:12px 16px 16px">
-          <button id="wp-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:Roboto,system-ui,sans-serif;transition:filter 0.15s;opacity:0.4">Publicar reseña</button>
+          <button id="wp-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);transition:filter 0.15s;opacity:0.4">Publicar reseña</button>
         </div>
       </div>`;
     document.body.appendChild(frag);
@@ -1951,7 +1934,7 @@ export class PlaceModal {
         display:flex; align-items:center; justify-content:center;
         gap:4px; padding:10px 0 4px;
         font-size:10px; color:#9ca3af; letter-spacing:0.05em;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-minisnap-hint::before, .wp-pm-minisnap-hint::after {
         content:''; flex:1; height:0.5px; background:#e5e7eb;
@@ -1997,12 +1980,12 @@ export class PlaceModal {
       .wp-pm-ms-texts { flex:1; min-width:0; }
       .wp-pm-minisnap-name {
         font-size:16px; font-weight:800; color:#0a0a0a; line-height:1.2;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       }
       .wp-pm-minisnap-meta {
         font-size:12px; color:#6b7280; margin-top:2px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-minisnap-save {
         width:36px; height:36px; border-radius:50%; border:1px solid #e5e7eb;
@@ -2020,7 +2003,7 @@ export class PlaceModal {
       .wp-pm-ms-tag {
         font-size:11px; font-weight:600; color:#4b5563;
         background:#f4f4f6; padding:4px 10px; border-radius:999px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         border:1px solid #e5e7eb;
       }
 
@@ -2035,11 +2018,11 @@ export class PlaceModal {
       .wp-pm-minisnap-cta:active { transform:scale(0.98); filter:brightness(0.88); }
       .wp-pm-ms-cta-label {
         font-size:14px; font-weight:700;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-ms-cta-sub {
         font-size:11px; opacity:0.7;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-ms-cta-arrow {
         font-size:18px; opacity:0.9;
@@ -2063,7 +2046,7 @@ export class PlaceModal {
         overflow:hidden;
         transform:translateY(100%);
         will-change:transform;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         /* Sin background en la card — el topbar y body tienen su propio bg */
         background:transparent;
       }
@@ -2101,7 +2084,7 @@ export class PlaceModal {
         position:absolute; inset:0;
         display:flex; align-items:center; justify-content:center;
         font-size:16px; font-weight:700; color:#111;
-        font-family:'Yahoo Sans Bold Regular','Roboto',system-ui,sans-serif;
+        font-family:'Yahoo Sans Bold Regular',Avenir,"Avenir Next",system-ui,sans-serif,system-ui,sans-serif;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         padding:0 8px;
         -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
@@ -2203,7 +2186,7 @@ export class PlaceModal {
       .wp-pm-slide-add:active { background:rgba(0,0,0,0.08); }
       .wp-pm-slide-add span {
         font-size:11px; font-weight:600;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         letter-spacing:0.02em;
       }
       .wp-pm-slide-placeholder {
@@ -2283,7 +2266,7 @@ export class PlaceModal {
         background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
         border:1px solid rgba(180,180,180,0.5);
         padding:3px 9px; border-radius:999px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         box-shadow:0 2px 6px rgba(28,28,30,0.15);
       }
       @keyframes wp-ai-pulse {
@@ -2300,7 +2283,7 @@ export class PlaceModal {
       }
       .wp-pm-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         font-weight:400; font-style:normal;
         animation: wp-ai-fadein 0.4s ease both;
       }
@@ -2322,7 +2305,7 @@ export class PlaceModal {
       }
       .wp-pm-name {
         font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         line-height:1.05; letter-spacing:-0.03em;
       }
       .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
@@ -2362,14 +2345,14 @@ export class PlaceModal {
         display:inline-flex; align-items:center; gap:5px;
         font-size:11px; font-weight:600;
         padding:3px 9px; border-radius:999px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         letter-spacing:0.01em;
       }
       .wp-pm-nohours-badge {
         display:inline-flex; align-items:center;
         font-size:11px; font-weight:600;
         padding:3px 9px; border-radius:999px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         background:rgba(118,118,128,0.12);
         color:#8e8e93;
         border:1px solid rgba(118,118,128,0.18);
@@ -2409,7 +2392,7 @@ export class PlaceModal {
         background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
         border:1px solid rgba(180,180,180,0.5);
         padding:3px 10px; border-radius:999px; cursor:pointer;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         letter-spacing:0.01em;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
@@ -2439,7 +2422,7 @@ export class PlaceModal {
         background:#1c1c1e; color:#fff;
         font-size:13px; font-weight:500; white-space:nowrap;
         padding:10px 18px; border-radius:999px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         pointer-events:none; z-index:99999;
         box-shadow:0 4px 20px rgba(0,0,0,0.25);
       }
@@ -2490,7 +2473,7 @@ export class PlaceModal {
         width:100%; display:flex; align-items:center; gap:14px;
         padding:14px 20px; border:none; background:transparent;
         font-size:15px; font-weight:500; color:#1c1c1e;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         cursor:pointer; text-align:left;
         -webkit-tap-highlight-color:transparent;
         transition:background 0.15s;
@@ -2537,11 +2520,11 @@ export class PlaceModal {
       }
       .wpt-float-title {
         font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
-        font-family:'Roboto',system-ui,sans-serif; letter-spacing:-0.02em;
+        font-family:var(--wp-font),system-ui,sans-serif; letter-spacing:-0.02em;
       }
       .wpt-float-sub {
         font-size:12px; font-weight:500; color:#8e8e93;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpt-x-btn {
         width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
@@ -2587,7 +2570,7 @@ export class PlaceModal {
         width:100%; height:48px; border-radius:999px; border:none;
         background:rgba(0,0,0,0.06); color:#8e8e93;
         font-size:15px; font-weight:600; cursor:pointer;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         display:flex; align-items:center; justify-content:center; gap:10px;
         -webkit-tap-highlight-color:transparent;
         transition:background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
@@ -2617,7 +2600,7 @@ export class PlaceModal {
       .wpt-cat-label {
         font-size:13px; font-weight:700; color:#0a0a0a;
         margin:14px 0 8px; line-height:1.3;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         display:block;
       }
       .wpt-cat-label:first-child { margin-top:4px; }
@@ -2632,7 +2615,7 @@ export class PlaceModal {
         border:1.5px solid rgba(0,0,0,0.10);
         background:#f4f4f6; cursor:pointer;
         font-size:12.5px; font-weight:600; color:#1c1c1e; line-height:1.4;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.14s ease; white-space:nowrap;
       }
@@ -2657,11 +2640,11 @@ export class PlaceModal {
       .wpr-header { padding:4px 20px 12px; }
       .wpr-title {
         display:block; font-size:16px; font-weight:700; color:#0a0a0a;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpr-sub {
         display:block; font-size:12px; color:#8e8e93; margin-top:2px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpr-stars {
         display:flex; justify-content:center; gap:8px;
@@ -2676,27 +2659,27 @@ export class PlaceModal {
       .wpr-star:active { transform:scale(0.88); }
       .wpr-star-label {
         text-align:center; font-size:12px; color:#8e8e93;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         margin-bottom:12px;
       }
       .wpr-textarea {
         width:100%; height:100px; border-radius:14px;
         border:1px solid rgba(0,0,0,0.10);
         background:#f9f9f9; padding:12px 14px;
-        font-size:14px; font-family:'Roboto',system-ui,sans-serif;
+        font-size:14px; font-family:var(--wp-font),system-ui,sans-serif;
         color:#0a0a0a; resize:none; box-sizing:border-box;
         outline:none;
       }
       .wpr-textarea:focus { border-color:rgba(0,0,0,0.25); }
       .wpr-char {
         text-align:right; font-size:11px; color:#8e8e93; margin-top:4px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpr-submit {
         width:100%; height:46px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff;
         font-size:15px; font-weight:700; cursor:pointer;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s, filter 0.15s;
       }
@@ -2708,7 +2691,7 @@ export class PlaceModal {
         font-size:10px; font-weight:600; color:#6b7280;
         background:#f3f4f6; border:0.5px solid #e5e7eb;
         padding:2px 7px; border-radius:999px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         margin-left:6px; vertical-align:middle;
       }
       /* Divider comunidad */
@@ -2731,7 +2714,7 @@ export class PlaceModal {
         padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
         background:#f4f4f6; font-size:11px; font-weight:600;
         color:#6b7280; cursor:pointer;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
         transition:all 0.15s ease; white-space:nowrap;
       }
@@ -2754,7 +2737,7 @@ export class PlaceModal {
       .wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
       .wpr-empty {
         text-align:center; color:#9ca3af; font-size:13px;
-        padding:24px 20px; font-family:'Roboto',system-ui,sans-serif;
+        padding:24px 20px; font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpr-community-header {
         display:flex; align-items:center; gap:10px;
@@ -2763,7 +2746,7 @@ export class PlaceModal {
       .wpr-community-label {
         font-size:11px; font-weight:700; color:#8e8e93;
         text-transform:uppercase; letter-spacing:0.06em;
-        font-family:'Roboto',system-ui,sans-serif; white-space:nowrap;
+        font-family:var(--wp-font),system-ui,sans-serif; white-space:nowrap;
       }
       .wpr-community-line {
         flex:1; height:0.5px; background:#e5e7eb;
@@ -2782,19 +2765,19 @@ export class PlaceModal {
         background:#0a0a0a; color:#fff;
         display:flex; align-items:center; justify-content:center;
         font-size:13px; font-weight:700; flex-shrink:0;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpr-community-name {
         font-size:13px; font-weight:700; color:#0a0a0a;
-        font-family:'Roboto',system-ui,sans-serif; flex:1;
+        font-family:var(--wp-font),system-ui,sans-serif; flex:1;
       }
       .wpr-community-date {
         font-size:11px; color:#8e8e93;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wpr-community-text {
         font-size:13px; color:#374151; line-height:1.5;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-more-sep {
         height:0.5px; background:rgba(0,0,0,0.1);
@@ -2806,7 +2789,7 @@ export class PlaceModal {
         display:block;
         padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
         line-height:1.15; font-weight:400;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         max-width:calc(100% - 40px);
       }
       #wp-pm-addr { display:inline; }
@@ -2874,13 +2857,13 @@ export class PlaceModal {
       .wp-pm-stat-val {
         font-size:14px; font-weight:800; color:#0a0a0a;
         display:flex; align-items:center; gap:3px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         letter-spacing:-0.02em;
       }
       .wp-pm-stat-lbl {
         font-size:9px; color:#8e8e93; font-weight:500;
         text-transform:uppercase; letter-spacing:0.05em;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-stat-sep {
         width:1px; background:rgba(0,0,0,0.15);
@@ -2899,7 +2882,7 @@ export class PlaceModal {
         font-size:12px; font-weight:600; color:#1c1c1e; cursor:pointer;
         -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         letter-spacing:-0.01em;
         box-shadow:0 3px 10px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04),inset 0 -1px 0 rgba(0,0,0,0.04);
         backdrop-filter:blur(12px) saturate(1.6);
@@ -2939,7 +2922,7 @@ export class PlaceModal {
         font-size:12px; font-weight:800; color:#0a0a0a;
         padding:0 20px 8px;
         letter-spacing:-0.01em;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
 
       /* ── Description ── */
@@ -2947,14 +2930,14 @@ export class PlaceModal {
       .wp-pm-desc-text {
         font-size:15px; line-height:1.6; color:#3a3a3c;
         padding:0 20px 4px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         font-weight:400;
       }
       .wp-pm-read-more {
         border:none; background:none; color:#0a0a0a;
         font-size:15px; font-weight:400; cursor:pointer;
         padding:0 20px 12px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
       }
 
@@ -2968,7 +2951,7 @@ export class PlaceModal {
         border:1px solid rgba(255,255,255,0.7);
         color:#3a3a3c; font-size:13px; font-weight:600;
         display:flex; align-items:center; gap:4px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         box-shadow:0 2px 6px rgba(0,0,0,0.07);
       }
       .wp-pm-tag-accent {
@@ -2994,7 +2977,7 @@ export class PlaceModal {
       }
       .wp-pm-hours-today {
         font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-hours-status {
         font-size:12px; font-weight:600;
@@ -3013,7 +2996,7 @@ export class PlaceModal {
         display:flex; justify-content:space-between;
         padding:8px 0; font-size:14px; color:#8e8e93;
         border-bottom:0.5px solid #e5e5ea;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-hours-row:last-child { border-bottom:none; }
       .wp-pm-hours-day { min-width:90px; }
@@ -3028,7 +3011,7 @@ export class PlaceModal {
         display:block; text-align:center;
         font-size:12px; font-weight:600; color:#4285F4;
         padding:12px 0 4px;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         text-decoration:none;
         -webkit-tap-highlight-color:transparent;
       }
@@ -3070,21 +3053,21 @@ export class PlaceModal {
         background:linear-gradient(135deg,#0a0a0a,#5856d6);
         color:#fff; font-size:15px; font-weight:600;
         display:flex; align-items:center; justify-content:center;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
       .wp-pm-review-name {
         font-size:14px; font-weight:600; color:#0a0a0a;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-review-time {
         font-size:11px; color:#8e8e93;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
       }
       .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
       .wp-pm-review-text {
         font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
-        font-family:'Roboto',system-ui,sans-serif; font-weight:400;
+        font-family:var(--wp-font),system-ui,sans-serif; font-weight:400;
         display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
       }
 
@@ -3096,26 +3079,15 @@ export class PlaceModal {
         background:transparent;
         border:none; z-index:2;
         pointer-events:none;
-        display:flex; align-items:center; gap:10px;
-      }
-      .wp-pm-here-btn {
-        width:52px; height:52px; border-radius:50%; border:none;
-        background:#0a0a0a;
-        box-shadow:0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
-        color:#fff; cursor:pointer;
-        display:flex; align-items:center; justify-content:center;
-        -webkit-tap-highlight-color:transparent;
-        flex-shrink:0;
-        pointer-events:auto;
       }
       .wp-pm-cta {
-        flex:1; height:52px; border-radius:9999px; border:none;
+        width:100%; height:52px; border-radius:9999px; border:none;
         background:#0a0a0a;
         box-shadow:0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
         color:#fff; font-size:17px; font-weight:600; cursor:pointer;
         display:flex; align-items:center; justify-content:center; gap:8px;
         -webkit-tap-highlight-color:transparent;
-        font-family:'Roboto',system-ui,sans-serif;
+        font-family:var(--wp-font),system-ui,sans-serif;
         letter-spacing:-0.01em;
         pointer-events:auto;
       }
