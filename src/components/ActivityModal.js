@@ -1341,7 +1341,12 @@ export class ActivityModal {
       };
     }
 
-    // Animar 1A → 1B
+    // Animar 1A → 1B — mostrar CTA de 1B, ocultar el de 1A
+    const next1aBtn = document.getElementById('am-next-1a');
+    const next1bBtn = document.getElementById('am-next-1b');
+    if (next1aBtn) next1aBtn.style.display = 'none';
+    if (next1bBtn) next1bBtn.style.display = 'block';
+
     if (panel1a) panel1a.style.transform = 'translateX(-100%)';
     panel1b.style.transform = 'translateX(0%)';
     this._in1B = true;
@@ -1391,6 +1396,11 @@ export class ActivityModal {
           if (p1b) p1b.style.transform = 'translateX(100%)';
           const p1a = document.getElementById('am-step-1a');
           if (p1a) p1a.style.transform = 'translateX(0%)';
+          // Restore 1A CTA, hide 1B CTA
+          const n1a = document.getElementById('am-next-1a');
+          const n1b = document.getElementById('am-next-1b');
+          if (n1b) n1b.style.display = 'none';
+          if (n1a) n1a.style.display = 'block';
           this._goToStep(1);
           return;
         }
