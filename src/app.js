@@ -163,7 +163,7 @@ function _showProfileMenu() {
   document.getElementById('profile-menu')?.remove();
   const menu = document.createElement('div');
   menu.id = 'profile-menu';
-  menu.style.cssText = 'position:fixed;top:64px;right:12px;z-index:2000;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;font-family:"Inter Tight",system-ui,sans-serif;';
+  menu.style.cssText = 'position:fixed;top:64px;right:12px;z-index:2000;background:white;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:160px;font-family:var(--wp-font);';
   const user = window.wpApp.currentUser;
   const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
   menu.innerHTML = `
@@ -279,49 +279,6 @@ function setupActivitySubscription(mv) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PANEL LATERAL +PLAN — independiente del resto del init. Si algo más
-// truena en el bloque MAIN de abajo, esto debe seguir funcionando igual.
-// ════════════════════════════════════════════════════════════════════
-try {
-  const positionSidePanel = () => {
-    const topPanel    = document.getElementById('wp-side-panel-top');
-    const bottomPanel = document.getElementById('wp-side-panel-bottom');
-    const catPanel    = document.getElementById('map-results-panel');
-    const topbar      = document.getElementById('topbar');
-    if (!topPanel || !bottomPanel || !catPanel || !topbar) return false;
-
-    const topbarBottom   = topbar.getBoundingClientRect().bottom;
-    const catPanelTop    = catPanel.getBoundingClientRect().top;
-    if (catPanelTop <= topbarBottom) return false; // panel aún no visible
-
-    const midY        = topbarBottom + (catPanelTop - topbarBottom) * 0.82;
-    const bottomH     = bottomPanel.offsetHeight || 80;
-    const topH        = topPanel.offsetHeight    || 42;
-    const GAP         = 8;
-
-    const bottomTop   = midY - (bottomH + GAP + topH) / 2 + topH + GAP;
-    const topTop      = bottomTop - GAP - topH;
-
-    topPanel.style.transform    = 'none';
-    bottomPanel.style.transform = 'none';
-    topPanel.style.top          = Math.round(topTop)    + 'px';
-    bottomPanel.style.top       = Math.round(bottomTop) + 'px';
-    topPanel.classList.add('wp-positioned');
-    bottomPanel.classList.add('wp-positioned');
-    return true;
-  };
-
-  // Intenta posicionar en cada frame hasta que el panel de categorías tenga altura real.
-  // Tan pronto como lo consigue, se detiene — nunca vuelve a correr.
-  const tryPosition = () => {
-    if (!positionSidePanel()) requestAnimationFrame(tryPosition);
-  };
-  requestAnimationFrame(tryPosition);
-
-} catch(e) { console.error('[wp-side-panel]', e); }
-
-
-// ════════════════════════════════════════════════════════════════════
 // MAIN
 // ════════════════════════════════════════════════════════════════════
 (async () => {
@@ -336,29 +293,28 @@ try {
 
     // Footer menu
     let activityModal = null;
-    const openActivityModal = () => {
-      if (!window.wpApp.currentUser) {
-        window.wpApp.authModal?.show();
-        return;
-      }
-      if (!activityModal) {
-        activityModal = new ActivityModal({
-          currentUser: window.wpApp.currentUser,
-          onActivityCreated: (activity) => {
-            console.log('✅ Actividad creada:', activity);
-            // Refresh inmediato local — no esperar el round-trip de Realtime
-            window.wpApp?.mapView?._loadActivities?.();
-          },
-          onActivityJoined: (activity) => {
-            console.log('✅ Te uniste a:', activity);
-          },
-        });
-      }
-      activityModal.setUser(window.wpApp.currentUser);
-      activityModal.show();
-    };
     const footerMenu = new FooterMenu({
-      onActividades: openActivityModal,
+      onActividades: () => {
+        if (!window.wpApp.currentUser) {
+          window.wpApp.authModal?.show();
+          return;
+        }
+        if (!activityModal) {
+          activityModal = new ActivityModal({
+            currentUser: window.wpApp.currentUser,
+            onActivityCreated: (activity) => {
+              console.log('✅ Actividad creada:', activity);
+              // Refresh inmediato local — no esperar el round-trip de Realtime
+              window.wpApp?.mapView?._loadActivities?.();
+            },
+            onActivityJoined: (activity) => {
+              console.log('✅ Te uniste a:', activity);
+            },
+          });
+        }
+        activityModal.setUser(window.wpApp.currentUser);
+        activityModal.show();
+      },
       onHome:        () => console.log('Home'),
       onSocial:      () => console.log('Social'),
     });
@@ -514,21 +470,12 @@ try {
         });
       }
 
-      // +Plan — panel flotante lateral izquierdo, abre directo el ActivityModal
-      const planBtn = document.getElementById('wp-side-plan-btn');
-      if (planBtn) {
-        planBtn.addEventListener('click', function(e) {
+      // +Actividad — función próximamente
+      const actBtn = document.getElementById('topbar-activity-btn');
+      if (actBtn) {
+        actBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          openActivityModal();
-        });
-      }
-      // Slot 2 del panel lateral — función próximamente
-      // (slot 3 ya tiene función real: GPS, conectado desde SubcategoryRow._build())
-      const slot2 = document.getElementById('wp-side-slot-2');
-      if (slot2) {
-        slot2.addEventListener('click', function(e) {
-          e.stopPropagation();
-          console.log('wp-side-slot-2 — próximamente');
+          console.log('+ Actividad — próximamente');
         });
       }
 
