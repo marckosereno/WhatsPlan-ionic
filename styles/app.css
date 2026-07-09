@@ -447,14 +447,14 @@ ion-app {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 600; color: #374151;
+  font-size: 15px; font-weight: 400; color: #374151;
   font-family: var(--wp-font);
   white-space: nowrap;
 }
 #topbar-right-chip:active { transform: scale(0.92); }
 
 .topbar-search-label {
-  font-size: 15px; font-weight: 600; color: #374151;
+  font-size: 15px; font-weight: 400; color: #374151;
   font-family: 'Yahoo Sans Bold Regular', system-ui, sans-serif;
   white-space: nowrap;
 }
