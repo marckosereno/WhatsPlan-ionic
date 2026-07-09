@@ -1228,6 +1228,21 @@ export class ActivityModal {
     const catList = document.getElementById('am-cat-list');
     if (!catList) return;
 
+    let selectedGroup = null;
+    const next1a = document.getElementById('am-next-1a');
+    const enableNext1a = (g) => {
+      selectedGroup = g;
+      if (next1a) {
+        next1a.disabled = false;
+        next1a.style.background = '#1a5cf5';
+        next1a.style.color = 'white';
+        next1a.style.cursor = 'pointer';
+      }
+    };
+    if (next1a) {
+      next1a.onclick = () => { if (selectedGroup) this._showStep1B(selectedGroup, GROUPS); };
+    }
+
     catList.innerHTML = GROUPS.map(g =>
       '<button class="am-cat-row" data-cat="' + g.cat + '" style="' +
         'width:100%;display:flex;align-items:center;gap:14px;' +
@@ -1249,14 +1264,11 @@ export class ActivityModal {
 
     catList.querySelectorAll('.am-cat-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        btn.style.background = '#f5f5f5';
+        catList.querySelectorAll('.am-cat-row').forEach(b => { b.style.background = 'white'; b.style.borderColor = '#f0f0f0'; });
+        btn.style.background = '#f0f7ff';
         btn.style.borderColor = '#1a5cf5';
-        setTimeout(() => {
-          btn.style.background = '';
-          btn.style.borderColor = '';
-          const g = GROUPS.find(g => g.cat === btn.dataset.cat);
-          if (g) this._showStep1B(g, GROUPS);
-        }, 120);
+        const g = GROUPS.find(g => g.cat === btn.dataset.cat);
+        if (g) enableNext1a(g);
       });
     });
   }
@@ -1283,6 +1295,20 @@ export class ActivityModal {
 
     // Renderizar acciones — emoji grande a la derecha, estilo img3
     const types = ACTIVITY_TYPES.filter(t => t.cat === group.cat);
+    const next1b = document.getElementById('am-next-1b');
+    const enableNext1b = (typeKey) => {
+      this.selectedType = typeKey;
+      if (next1b) {
+        next1b.disabled = false;
+        next1b.style.background = '#1a5cf5';
+        next1b.style.color = 'white';
+        next1b.style.cursor = 'pointer';
+      }
+    };
+    if (next1b) {
+      next1b.onclick = () => { if (this.selectedType) this._goToStep(2); };
+    }
+
     actionList.innerHTML = types.map(t =>
       '<button class="am-action-row" data-type="' + t.key + '" style="' +
         'width:100%;display:flex;align-items:center;justify-content:space-between;' +
@@ -1295,16 +1321,12 @@ export class ActivityModal {
       '</button>'
     ).join('');
 
-    // Al tocar una acción → feedback visual + paso 2
     actionList.querySelectorAll('.am-action-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        // Flash de selección
-        btn.style.background = '#f5f5f5';
+        actionList.querySelectorAll('.am-action-row').forEach(b => { b.style.background = 'white'; b.style.borderColor = '#f0f0f0'; });
+        btn.style.background = '#f0f7ff';
         btn.style.borderColor = '#1a5cf5';
-        setTimeout(() => {
-          this.selectedType = btn.dataset.type;
-          this._goToStep(2);
-        }, 120);
+        enableNext1b(btn.dataset.type);
       });
     });
 
@@ -2443,6 +2465,11 @@ export class ActivityModal {
     // El modal es una tarjeta flotante — topbar y footer quedan visibles detrás del blur.
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
     this._in1B = false;
+    // Reset CTA continuar buttons to disabled on each open
+    ['am-next-1a','am-next-1b'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) { btn.disabled = true; btn.style.background = '#e5e5e5'; btn.style.color = '#9ca3af'; btn.style.cursor = 'not-allowed'; btn.onclick = null; }
+    });
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.transition = 'none'; el.style.transform = 'translateX(100%)'; }
