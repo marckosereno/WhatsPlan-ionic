@@ -946,7 +946,7 @@ export class SearchBar {
       .wps-input {
         flex:1;border:none;background:transparent;outline:none;
         font-size:15px;font-weight:400;color:#111827;min-width:0;
-        font-family:'Inter Tight',system-ui,sans-serif;
+        font-family:var(--wp-font);
       }
       .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
 
