@@ -150,7 +150,7 @@ export class PlaceTagPicker {
 
   _showToast(msg) {
     const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-family:"Inter Tight",sans-serif;z-index:99999;white-space:nowrap;pointer-events:none;';
+    t.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-family:var(--wp-font);z-index:99999;white-space:nowrap;pointer-events:none;';
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2200);
@@ -183,7 +183,7 @@ export class PlaceTagPicker {
 
     .wpt-title {
       font-size:27px; font-weight:800; color:#0a0a0a;
-      font-family:'Inter Tight',system-ui,sans-serif;
+      font-family:var(--wp-font);
       text-align:center; line-height:1.2; letter-spacing:-0.03em;
       margin-bottom:10px;
       text-shadow:0 1px 8px rgba(255,255,255,0.5);
@@ -193,7 +193,7 @@ export class PlaceTagPicker {
       display:flex; align-items:center; gap:6px;
       padding:5px 14px; border-radius:999px;
       font-size:12px; font-weight:700;
-      font-family:'Inter Tight',system-ui,sans-serif;
+      font-family:var(--wp-font);
       margin-bottom:18px; flex-shrink:0;
     }
     .wpt-s-ok { background:rgba(52,199,89,0.18); color:#15803d; }
@@ -256,7 +256,7 @@ export class PlaceTagPicker {
     .wpt-em  { font-size:24px; flex-shrink:0; }
     .wpt-lbl {
       font-size:19px; font-weight:700; color:#0a0a0a;
-      font-family:'Inter Tight',system-ui,sans-serif;
+      font-family:var(--wp-font);
       letter-spacing:-0.02em;
     }
     .wpt-pill-btn {
@@ -273,7 +273,7 @@ export class PlaceTagPicker {
       height:52px; border-radius:999px; border:none;
       background:#007aff; color:#fff;
       font-size:16px; font-weight:700; cursor:pointer;
-      font-family:'Inter Tight',system-ui,sans-serif;
+      font-family:var(--wp-font);
       box-shadow:0 4px 20px rgba(0,122,255,0.35);
       -webkit-tap-highlight-color:transparent;
       transition:transform 0.15s, filter 0.15s;
