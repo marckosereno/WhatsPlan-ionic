@@ -55,6 +55,7 @@ export class SearchBar {
     this._showOverlay();
     this._showCategoryChips();
 
+    document.body.classList.add('wp-search-active');
     // Ocultar footer menu, panel lateral y mini snap
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.22s ease,opacity 0.22s ease'; footer.style.transform='translateY(120%)'; footer.style.opacity='0'; footer.style.pointerEvents='none'; }
@@ -98,6 +99,7 @@ export class SearchBar {
     this._hideOverlay();
     this._hideResults();
     this._hideCategoryChips();
+    document.body.classList.remove('wp-search-active');
     // Restaurar footer menu y panel lateral
     var footer = document.getElementById('wp-footer-menu');
     if (footer) { footer.style.transition='transform 0.3s cubic-bezier(0.34,1.2,0.64,1),opacity 0.28s ease'; footer.style.transform=''; footer.style.opacity='1'; footer.style.pointerEvents=''; }
