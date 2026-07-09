@@ -9,7 +9,7 @@ html {
 }
 
 body {
-  font-family: 'Inter Tight', system-ui, sans-serif;
+  font-family: var(--wp-font);
   position: fixed; top: 0; left: 0;
   width: 100%; height: 100%;
   overflow: hidden; overscroll-behavior: none;
@@ -254,7 +254,7 @@ ion-app::after {
 .category-chip-skeleton:nth-child(5) .cat-sk-label { animation-delay: 320ms; }
 .category-chip-skeleton:nth-child(6) .cat-sk-circle,
 .category-chip-skeleton:nth-child(6) .cat-sk-label { animation-delay: 400ms; }
-.maplibregl-marker { background: transparent !important; border: none !important; overflow: visible !important; }
+.maplibregl-marker { background: transparent !important; border: none !important; }
 
 /* ── Pin sizes — .maplibregl-marker da especificidad suficiente ── */
 .maplibregl-marker .place-pin-wrapper {
@@ -281,11 +281,9 @@ ion-app::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  overflow: visible;
 }
 .maplibregl-marker .place-pin-root {
   display: inline-block;
-  overflow: visible;
 }
 
 
@@ -328,10 +326,13 @@ ion-app::after {
   --safe-right:  env(safe-area-inset-right,  0px);
   --vh: 1vh; /* sobreescrito por ios-fixes.js */
 
+  /* ── Typography ── */
+  --wp-font: Avenir, 'Avenir Next', system-ui, sans-serif;
+
   /* ── Brand colors ── */
-  --wp-blue:       #1a5cf5;  /* Azul principal WhatsPlan */
-  --wp-blue-dark:  #1438b8;  /* Sombra 3D / hover */
-  --wp-blue-glow:  rgba(37, 99, 235, 0.35); /* Glow / sombra difusa */
+  --wp-blue:       #1a5cf5;
+  --wp-blue-dark:  #1438b8;
+  --wp-blue-glow:  rgba(37, 99, 235, 0.35);
 }
 
 /* Usar --vh en vez de vh para altura real en iOS */
@@ -339,7 +340,7 @@ ion-app::after {
 ion-app {
   height: calc(var(--vh, 1vh) * 100);
 }
-/* ── Fuente global chips de navegación — Inter Tight ── */
+/* ── Fuente global chips de navegación ── */
 #topbar-right-chip,
 #topbar-notif-btn,
 .wp-pill,
@@ -347,9 +348,9 @@ ion-app {
 .wp-menu-center-btn,
 .subcategory-footer-chip,
 .hm-live-chip,
-.hm-loading-chip {
-  font-family: 'Roboto', system-ui, sans-serif;
-  font-weight: 600;
+.hm-loading-chip,
+#topbar-activity-btn {
+  font-weight: 300;
 }
 
 /* ── Topbar ─────────────────────────────────────────────────────────── */
@@ -446,8 +447,8 @@ ion-app {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 600; color: #374151;
-  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 15px; font-weight: 500; color: #374151;
+  font-family: 'Inter Tight', system-ui, sans-serif;
   white-space: nowrap;
 }
 #topbar-right-chip:active { transform: scale(0.92); }
@@ -459,87 +460,9 @@ ion-app {
 }
 
 /* Ocultar elementos no usados */
+#topbar-activity-btn { display: none !important; }
 #topbar-messages-btn { display: none !important; }
-
-/* ── Panel flotante lateral izquierdo — 2 cápsulas al lado izquierdo del mapa ── */
-#wp-side-panel-bottom {
-  position: fixed;
-  left: 12px;
-  top: 50%; /* JS lo ajusta una sola vez al cargar — este es solo el valor inicial */
-  transform: translateY(-50%);
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 4px;
-  border-radius: 999px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-#wp-side-panel-top {
-  position: fixed;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 4px;
-  border-radius: 999px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-#wp-side-panel-top.wp-positioned,
-#wp-side-panel-bottom.wp-positioned { opacity: 1; }
-
-/* Fondo sólido — sin liquid glass, sin backdrop-filter */
-.wp-side-panel-bg {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  z-index: 0;
-  pointer-events: none;
-  background: rgba(255,255,255,0.96);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.13), 0 1px 3px rgba(0,0,0,0.09), inset 0 1px 0 rgba(255,255,255,1);
-}
-
-/* Cada slot es su propio chip — mismos colores exactos que el footer menu:
-   blanco como .wp-pill, y el "+" azul sólido como .wp-menu-center-btn */
-.wp-side-icon {
-  position: relative;
-  z-index: 1;
-  width: 32px; height: 32px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(16px) saturate(1.8);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow:
-    0 8px 24px rgba(37,99,235,0.35),
-    0 2px 8px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,0.9);
-  display: flex; align-items: center; justify-content: center;
-  color: #374151;
-  cursor: pointer; touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-}
-.wp-side-icon:active { transform: scale(0.88); }
-.wp-side-icon-active {
-  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-  color: white;
-  box-shadow:
-    0 8px 24px rgba(37,99,235,0.45),
-    0 2px 8px rgba(0,0,0,0.12),
-    inset 0 1px 0 rgba(255,255,255,0.25);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
+.act-plus { display: none; }
 
 /* ════════════════════════════════════════════════════════════
    WP-TAP — Pulse spring universal para elementos táctiles
