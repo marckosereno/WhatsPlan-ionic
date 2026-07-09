@@ -746,22 +746,30 @@ export class ActivityModal {
 
     const overlay = document.createElement('div');
     overlay.id = 'activity-modal-overlay';
-    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:10000;background:transparent;overscroll-behavior:none;touch-action:pan-y;pointer-events:none;';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:999999;background:white;overscroll-behavior:none;touch-action:pan-y;';
 
     overlay.innerHTML = `
-      <div style="position:fixed;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;pointer-events:auto;"></div>
-      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:none;"></div>
-      <div id="activity-modal" style="pointer-events:auto;position:fixed;left:12px;right:12px;top:calc(70px + env(safe-area-inset-top, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));border-radius:32px;background:rgba(255,255,255,0.94);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.6);overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
+      <div id="activity-modal" style="background:white;padding:0;width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
+        <!-- Edge guard: bloquea el gesto de back del browser en Android/iOS -->
+        <div style="position:absolute;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;"></div>
 
-        <!-- Header: back/cerrar (liquid glass) + barra de progreso + contador -->
-        <div style="display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top, 0px)) 12px 14px;flex-shrink:0;">
-          <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);padding:0;">
-            <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
-          </button>
-          <div style="flex:1;height:4px;border-radius:4px;background:#e5e5e5;overflow:hidden;">
-            <div id="am-progress-fill" style="height:100%;width:25%;border-radius:4px;background:#1a5cf5;transition:width 0.35s ease;"></div>
+        <!-- Header: pills izquierda, botones derecha -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;flex-shrink:0;">
+          <!-- Píldoras de progreso a la izquierda -->
+          <div style="display:flex;gap:5px;align-items:center;">
+            <div id="am-pill-1" style="height:4px;width:48px;border-radius:4px;background:#1a5cf5;transition:all 0.35s ease;"></div>
+            <div id="am-pill-2" style="height:4px;width:32px;border-radius:4px;background:#e0e0e0;transition:all 0.35s ease;"></div>
+            <div id="am-pill-3" style="height:4px;width:32px;border-radius:4px;background:#e0e0e0;transition:all 0.35s ease;"></div>
           </div>
-          <div id="am-step-count" style="width:44px;height:44px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 6px 20px rgba(0,0,0,0.10),inset 0 1.5px 0 rgba(255,255,255,1);font-size:13px;font-weight:700;color:#374151;flex-shrink:0;">1/4</div>
+          <!-- Back + Close a la derecha -->
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="am-back" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;opacity:0;pointer-events:none;flex-shrink:0;transition:opacity 0.2s;">
+              <svg width="18" height="18" fill="currentColor"><use href="#icon-back"/></svg>
+            </button>
+            <button id="activity-modal-close" style="width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;">
+              <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- Steps container -->
@@ -939,11 +947,8 @@ export class ActivityModal {
               </button>
             </div>
           </div>
-        <!-- CTA fijo — sibling de #am-steps, fuera de su overflow:hidden -->
+
         </div>
-        <div id="am-cta-gradient" style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(to bottom,rgba(255,255,255,0) 0%,rgba(255,255,255,0.92) 45%,#fff 75%);pointer-events:none;"></div>
-        <button id="am-next-1a" disabled style="display:none;position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">Continuar →</button>
-        <button id="am-next-1b" disabled style="display:none;position:absolute;left:24px;right:24px;bottom:14px;padding:17px;background:#e5e5e5;color:#9ca3af;border:none;border-radius:50px;font-size:16px;font-weight:700;cursor:not-allowed;letter-spacing:-0.2px;transition:background 0.2s,color 0.2s;box-shadow:0 10px 28px rgba(0,0,0,0.14);">Continuar →</button>
       </div>
     `;
 
@@ -966,25 +971,19 @@ export class ActivityModal {
     const prev = this._currentStep;
     this._currentStep = step;
 
-    // ── Barra de progreso ──
-    const fill  = document.getElementById('am-progress-fill');
-    const count = document.getElementById('am-step-count');
-    const back  = document.getElementById('am-back');
-    const TOTAL = 4;
-    if (fill)  fill.style.width  = (step / TOTAL * 100) + '%';
-    if (count) count.textContent = step + '/' + TOTAL;
-    if (back) {
-      back.innerHTML = step === 1
-        ? '<svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>'
-        : '<svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>';
-    }
-    // CTA buttons — step 4 (detalles) usa su propio footer "Publicar"
-    [['am-next-1a',1],['am-next-1b',2],['am-next-2',3]].forEach(([id,s]) => {
-      const btn = document.getElementById(id);
-      if (btn) btn.style.display = step === s ? 'block' : 'none';
+    // Actualizar píldoras de progreso
+    const back = document.getElementById('am-back');
+    [1,2,3].forEach(n => {
+      const pill = document.getElementById('am-pill-' + n);
+      if (pill) {
+        pill.style.background = n <= step ? '#1a5cf5' : '#e5e5e5';
+        pill.style.width = n === step ? '48px' : '32px';
+      }
     });
-    const grad = document.getElementById('am-cta-gradient');
-    if (grad) grad.style.display = step === 4 ? 'none' : 'block';
+    if (back) {
+      back.style.opacity = step > 1 ? '1' : '0';
+      back.style.pointerEvents = step > 1 ? 'auto' : 'none';
+    }
 
     // Animar steps
     const dir = step > prev ? 1 : -1;
@@ -1226,21 +1225,6 @@ export class ActivityModal {
     const catList = document.getElementById('am-cat-list');
     if (!catList) return;
 
-    let selectedGroup = null;
-    const next1a = document.getElementById('am-next-1a');
-    const enableNext1a = (g) => {
-      selectedGroup = g;
-      if (next1a) {
-        next1a.disabled = false;
-        next1a.style.background = '#1a5cf5';
-        next1a.style.color = 'white';
-        next1a.style.cursor = 'pointer';
-      }
-    };
-    if (next1a) {
-      next1a.onclick = () => { if (selectedGroup) this._showStep1B(selectedGroup, GROUPS); };
-    }
-
     catList.innerHTML = GROUPS.map(g =>
       '<button class="am-cat-row" data-cat="' + g.cat + '" style="' +
         'width:100%;display:flex;align-items:center;gap:14px;' +
@@ -1262,11 +1246,14 @@ export class ActivityModal {
 
     catList.querySelectorAll('.am-cat-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        catList.querySelectorAll('.am-cat-row').forEach(b => { b.style.background = 'white'; b.style.borderColor = '#f0f0f0'; });
-        btn.style.background = '#f0f7ff';
+        btn.style.background = '#f5f5f5';
         btn.style.borderColor = '#1a5cf5';
-        const g = GROUPS.find(g => g.cat === btn.dataset.cat);
-        if (g) enableNext1a(g);
+        setTimeout(() => {
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          const g = GROUPS.find(g => g.cat === btn.dataset.cat);
+          if (g) this._showStep1B(g, GROUPS);
+        }, 120);
       });
     });
   }
@@ -1293,20 +1280,6 @@ export class ActivityModal {
 
     // Renderizar acciones — emoji grande a la derecha, estilo img3
     const types = ACTIVITY_TYPES.filter(t => t.cat === group.cat);
-    const next1b = document.getElementById('am-next-1b');
-    const enableNext1b = (typeKey) => {
-      this.selectedType = typeKey;
-      if (next1b) {
-        next1b.disabled = false;
-        next1b.style.background = '#1a5cf5';
-        next1b.style.color = 'white';
-        next1b.style.cursor = 'pointer';
-      }
-    };
-    if (next1b) {
-      next1b.onclick = () => { if (this.selectedType) this._goToStep(2); };
-    }
-
     actionList.innerHTML = types.map(t =>
       '<button class="am-action-row" data-type="' + t.key + '" style="' +
         'width:100%;display:flex;align-items:center;justify-content:space-between;' +
@@ -1319,18 +1292,23 @@ export class ActivityModal {
       '</button>'
     ).join('');
 
+    // Al tocar una acción → feedback visual + paso 2
     actionList.querySelectorAll('.am-action-row').forEach(btn => {
       btn.addEventListener('click', () => {
-        actionList.querySelectorAll('.am-action-row').forEach(b => { b.style.background = 'white'; b.style.borderColor = '#f0f0f0'; });
-        btn.style.background = '#f0f7ff';
+        // Flash de selección
+        btn.style.background = '#f5f5f5';
         btn.style.borderColor = '#1a5cf5';
-        enableNext1b(btn.dataset.type);
+        setTimeout(() => {
+          this.selectedType = btn.dataset.type;
+          this._goToStep(2);
+        }, 120);
       });
     });
 
     // Botón volver → mostrar 1A
     // Mostrar el am-back global cuando estamos en 1B
     const globalBack = document.getElementById('am-back');
+    if (globalBack) { globalBack.style.opacity = '1'; globalBack.style.pointerEvents = 'auto'; }
     const backBtn = document.getElementById('am-back-1b');
     if (backBtn) {
       backBtn.onclick = () => {
@@ -1339,12 +1317,7 @@ export class ActivityModal {
       };
     }
 
-    // Animar 1A → 1B — mostrar CTA de 1B, ocultar el de 1A
-    const next1aBtn = document.getElementById('am-next-1a');
-    const next1bBtn = document.getElementById('am-next-1b');
-    if (next1aBtn) next1aBtn.style.display = 'none';
-    if (next1bBtn) next1bBtn.style.display = 'block';
-
+    // Animar 1A → 1B
     if (panel1a) panel1a.style.transform = 'translateX(-100%)';
     panel1b.style.transform = 'translateX(0%)';
     this._in1B = true;
@@ -1389,22 +1362,15 @@ export class ActivityModal {
       if (this._currentStep === 1) {
         if (this._in1B) {
           this._in1B = false;
-          this._isSpontaneous = false;
+    this._isSpontaneous = false;
           const p1b = document.getElementById('am-step-1b');
           if (p1b) p1b.style.transform = 'translateX(100%)';
+          const globalBackBtn = document.getElementById('am-back');
+          if (globalBackBtn) { globalBackBtn.style.opacity = '0'; globalBackBtn.style.pointerEvents = 'none'; }
           const p1a = document.getElementById('am-step-1a');
           if (p1a) p1a.style.transform = 'translateX(0%)';
-          // Restore 1A CTA, hide 1B CTA
-          const n1a = document.getElementById('am-next-1a');
-          const n1b = document.getElementById('am-next-1b');
-          if (n1b) n1b.style.display = 'none';
-          if (n1a) n1a.style.display = 'block';
-          this._goToStep(1);
           return;
         }
-        // Paso 1A: cerrar el modal
-        this.hide();
-        return;
       }
       if (this._currentStep > 1) this._goToStep(this._currentStep - 1);
     });
@@ -1450,7 +1416,11 @@ export class ActivityModal {
             }
             this._currentStep = 2;
             const back = document.getElementById('am-back');
-            
+            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+            [1,2,3].forEach(n => {
+              const pill = document.getElementById('am-pill-' + n);
+              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 2 ? '48px' : '32px'; }
+            });
             if (!this._popstateHandler) {
               this._popstateHandler = (e) => this._handlePopState(e);
               window.addEventListener('popstate', this._popstateHandler);
@@ -1477,7 +1447,11 @@ export class ActivityModal {
             });
             this._currentStep = 2;
             const back = document.getElementById('am-back');
-            
+            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+            [1,2,3].forEach(n => {
+              const pill = document.getElementById('am-pill-' + n);
+              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e0e0e0'; pill.style.width = n === 2 ? '48px' : '32px'; }
+            });
             this.modal.style.display = 'flex';
             requestAnimationFrame(() => {
               ['1','2','3'].forEach(n => {
@@ -1980,8 +1954,15 @@ export class ActivityModal {
       });
       this._currentStep = targetStep;
       this._in1B = _wasIn1B;
-      
+      [1,2,3].forEach(n => {
+        const pill = document.getElementById('am-pill-' + n);
+        if (pill) {
+          pill.style.background = n <= targetStep ? '#1a5cf5' : '#e5e5e5';
+          pill.style.width = n === targetStep ? '48px' : '32px';
+        }
+      });
       const back = document.getElementById('am-back');
+      if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
       this.modal.style.display = 'flex';
       // Re-registrar popstate si fue removido por _closeForPickMode
       if (!this._popstateHandler) {
@@ -2061,7 +2042,14 @@ export class ActivityModal {
         }
         this._currentStep = 2;
         const back = document.getElementById('am-back');
-        
+        if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+        [1,2,3].forEach(n => {
+          const pill = document.getElementById('am-pill-' + n);
+          if (pill) {
+            pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5';
+            pill.style.width = n === 2 ? '48px' : '32px';
+          }
+        });
         // History: show() ya puso [1a], agregar [1b] si aplica, luego [2]
         if (_wasIn1B) {
           history.pushState({ amModal: true, step: '1b' }, '');
@@ -2470,14 +2458,43 @@ export class ActivityModal {
     if (document.activeElement && document.activeElement.blur) {
       document.activeElement.blur();
     }
-    // El modal es una tarjeta flotante — topbar y footer quedan visibles detrás del blur.
+    // Ocultar header del mapa inmediatamente al abrir el modal
+    const _topbar = document.getElementById('topbar');
+    if (_topbar) { _topbar.style.opacity = '0'; _topbar.style.pointerEvents = 'none'; _topbar.style.transition = 'none'; }
+    const _footerMenu = document.getElementById('wp-footer-menu');
+    if (_footerMenu) { _footerMenu.style.opacity = '0'; _footerMenu.style.pointerEvents = 'none'; _footerMenu.style.transition = 'none'; }
+    const _resultsPanel = document.querySelector('.map-results-panel-float');
+    if (_resultsPanel) { _resultsPanel.style.transform = 'translateY(100%)'; _resultsPanel.style.transition = 'none'; }
+    ['topbar-notif-btn','topbar-auth-btn','btn-create-activity'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; el.style.transition = 'none'; }
+    });
+
+    // Watcher: algo externo (fuera de nuestro control) re-muestra el panel de
+    // resultados y los chips de categoría de forma asíncrona tras cargar una
+    // categoría. En vez de cazar esa causa exacta, forzamos el ocultamiento
+    // mientras el modal esté abierto.
+    if (this._chromeWatcher) clearInterval(this._chromeWatcher);
+    this._chromeWatcher = setInterval(() => {
+      document.querySelectorAll('.map-results-panel-float').forEach(p => {
+        if (p.style.display !== 'none') {
+          p.style.transition = 'none';
+          p.style.display = 'none';
+        }
+      });
+      const s = document.getElementById('wp-scats');
+      if (s && s.style.display !== 'none') {
+        s.style.transition = 'none';
+        s.style.display = 'none';
+      }
+      const c = document.getElementById('map-categories-footer');
+      if (c && c.style.display !== 'none') {
+        c.style.transition = 'none';
+        c.style.display = 'none';
+      }
+    }, 150);
     // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
     this._in1B = false;
-    // Reset CTA continuar buttons to disabled on each open
-    ['am-next-1a','am-next-1b'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) { btn.disabled = true; btn.style.background = '#e5e5e5'; btn.style.color = '#9ca3af'; btn.style.cursor = 'not-allowed'; btn.onclick = null; }
-    });
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.style.transition = 'none'; el.style.transform = 'translateX(100%)'; }
@@ -2499,16 +2516,7 @@ export class ActivityModal {
       if (_p1b) _p1b.style.transition = '';
 
       this.modal.style.display = 'flex';
-      this._setProgress(1); // asegurar barra y botón visibles desde el primer frame
       this.hideMessage();
-
-      // Cerrar al tocar fuera (en el backdrop blur)
-      const backdrop = document.getElementById('am-backdrop-blur');
-      if (backdrop && !backdrop._wired) {
-        backdrop._wired = true;
-        backdrop.style.pointerEvents = 'auto';
-        backdrop.addEventListener('click', () => this.hide());
-      }
       history.pushState({ amModal: true, step: '1a' }, '');
       if (!this._popstateHandler) {
         this._popstateHandler = (e) => this._handlePopState(e);
@@ -2554,9 +2562,14 @@ export class ActivityModal {
         if (s1) { s1.style.transition = 'transform 0.3s ease'; s1.style.transform = 'translateX(0%)'; }
         if (s2) { s2.style.transition = 'transform 0.3s ease'; s2.style.transform = 'translateX(100%)'; }
       });
-      
+      [1,2,3].forEach(n => {
+        const pill = document.getElementById('am-pill-' + n);
+        if (pill) { pill.style.background = n <= 1 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 1 ? '48px' : '32px'; }
+      });
       const back = document.getElementById('am-back');
       if (back) {
+        back.style.opacity = goTo1B ? '1' : '0';
+        back.style.pointerEvents = goTo1B ? 'auto' : 'none';
       }
       if (!goTo1B) requestAnimationFrame(() => this._renderStep1Types());
       const histStep = goTo1B ? '1b' : '1a';
@@ -2572,6 +2585,7 @@ export class ActivityModal {
         if (p1b) { p1b.style.transition = 'transform 0.3s ease'; p1b.style.transform = 'translateX(100%)'; }
         if (p1a) { p1a.style.transition = 'transform 0.3s ease'; p1a.style.transform = 'translateX(0%)'; }
         const back = document.getElementById('am-back');
+        if (back) { back.style.opacity = '0'; back.style.pointerEvents = 'none'; }
         if (!fromGesture) history.replaceState({ amModal: true, step: '1a' }, '');
         else history.pushState({ amModal: true, step: '1a' }, '');
         return;
