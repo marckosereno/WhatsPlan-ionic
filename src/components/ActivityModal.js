@@ -750,7 +750,7 @@ export class ActivityModal {
 
     overlay.innerHTML = `
       <div style="position:fixed;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;pointer-events:auto;"></div>
-      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:auto;"></div>
+      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:none;"></div>
       <div id="activity-modal" style="pointer-events:auto;position:fixed;left:12px;right:12px;top:calc(70px + env(safe-area-inset-top, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));border-radius:32px;background:rgba(255,255,255,0.94);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.6);overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
 
         <!-- Header: back/cerrar (liquid glass) + barra de progreso + contador -->
