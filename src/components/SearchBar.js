@@ -607,7 +607,7 @@ export class SearchBar {
 
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
         var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
-        mv._showMiniCard(place, idx, raw);
+        mv._showMiniCard(place, idx, raw, true);  // skipMove=true: SearchBar's flyTo controls position
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
