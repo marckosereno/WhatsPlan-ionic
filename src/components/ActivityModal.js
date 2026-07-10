@@ -749,19 +749,24 @@ export class ActivityModal {
     overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:10000;background:transparent;overscroll-behavior:none;touch-action:pan-y;pointer-events:none;';
 
     overlay.innerHTML = `
+      <!-- Edge guard -->
       <div style="position:fixed;top:0;left:0;width:20px;height:100%;z-index:9999;touch-action:none;pointer-events:auto;"></div>
-      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:none;"></div>
-      <div id="activity-modal" style="pointer-events:auto;position:fixed;left:12px;right:12px;top:calc(70px + env(safe-area-inset-top, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));border-radius:32px;background:rgba(255,255,255,0.94);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.6);overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
 
-        <!-- Header: back/cerrar (liquid glass) + barra de progreso + contador -->
-        <div style="display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top, 0px)) 12px 14px;flex-shrink:0;">
-          <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);padding:0;">
+      <!-- Blur de fondo -->
+      <div id="am-backdrop-blur" style="position:fixed;inset:0;backdrop-filter:blur(6px) brightness(0.92);-webkit-backdrop-filter:blur(6px) brightness(0.92);pointer-events:auto;" id="am-backdrop-blur"></div>
+
+      <!-- Tarjeta flotante -->
+      <div id="activity-modal" style="pointer-events:auto;position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top, 0px));bottom:calc(8px + env(safe-area-inset-bottom, 0px));border-radius:36px;background:rgba(255,255,255,0.97);backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);box-shadow:0 12px 48px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.6);overflow:hidden;display:flex;flex-direction:column;overscroll-behavior:none;">
+
+        <!-- Header: back (liquid-glass) + barra progreso + chip contador -->
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 12px 14px;flex-shrink:0;">
+          <button id="am-back" style="width:44px;height:44px;border-radius:9999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px) saturate(1.8);-webkit-backdrop-filter:blur(16px) saturate(1.8);box-shadow:0 4px 16px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9);border:2.5px solid rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;color:#111;flex-shrink:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:0;">
             <svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>
           </button>
           <div style="flex:1;height:4px;border-radius:4px;background:#e5e5e5;overflow:hidden;">
             <div id="am-progress-fill" style="height:100%;width:25%;border-radius:4px;background:#1a5cf5;transition:width 0.35s ease;"></div>
           </div>
-          <div id="am-step-count" style="width:44px;height:44px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 6px 20px rgba(0,0,0,0.10),inset 0 1.5px 0 rgba(255,255,255,1);font-size:13px;font-weight:700;color:#374151;flex-shrink:0;">1/4</div>
+          <div id="am-step-count" style="width:44px;height:44px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 6px 20px rgba(0,0,0,0.10),inset 0 1.5px 0 rgba(255,255,255,1);font-size:13px;font-weight:700;color:#374151;flex-shrink:0;">1/3</div>
         </div>
 
         <!-- Steps container -->
@@ -963,18 +968,17 @@ export class ActivityModal {
     const prev = this._currentStep;
     this._currentStep = step;
 
-    // Actualizar píldoras de progreso
-    const back = document.getElementById('am-back');
-    [1,2,3].forEach(n => {
-      const pill = document.getElementById('am-pill-' + n);
-      if (pill) {
-        pill.style.background = n <= step ? '#1a5cf5' : '#e5e5e5';
-        pill.style.width = n === step ? '48px' : '32px';
-      }
-    });
+    // Actualizar barra de progreso y contador
+    const TOTAL = 3;
+    const fill  = document.getElementById('am-progress-fill');
+    const count = document.getElementById('am-step-count');
+    const back  = document.getElementById('am-back');
+    if (fill)  fill.style.width  = (step / TOTAL * 100) + '%';
+    if (count) count.textContent = step + '/' + TOTAL;
     if (back) {
-      back.style.opacity = step > 1 ? '1' : '0';
-      back.style.pointerEvents = step > 1 ? 'auto' : 'none';
+      back.innerHTML = step === 1
+        ? '<svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>';
     }
 
     // Animar steps
@@ -984,7 +988,7 @@ export class ActivityModal {
     if (current) current.style.transform = 'translateX(' + (-dir * 100) + '%)';
     if (next) { next.style.transform = 'translateX(' + (dir * 100) + '%)'; requestAnimationFrame(() => { next.style.transform = 'translateX(0%)'; }); }
 
-    // Empujar historial solo cuando avanza (no cuando retrocede via _goToStep interno)
+    // Empujar historial solo cuando avanza
     if (step > prev && this._popstateHandler) {
       history.pushState({ amModal: true, step }, '');
     }
@@ -1300,7 +1304,6 @@ export class ActivityModal {
     // Botón volver → mostrar 1A
     // Mostrar el am-back global cuando estamos en 1B
     const globalBack = document.getElementById('am-back');
-    if (globalBack) { globalBack.style.opacity = '1'; globalBack.style.pointerEvents = 'auto'; }
     const backBtn = document.getElementById('am-back-1b');
     if (backBtn) {
       backBtn.onclick = () => {
@@ -1320,7 +1323,7 @@ export class ActivityModal {
   }
 
   setupListeners() {
-    document.getElementById('activity-modal-close')?.addEventListener('click', () => this.hide());
+    
 
     // Chips: botones prev/next con gradiente — sin scroll touch para evitar swipe back del OS
     const chipsEl = document.getElementById('am-subcat-chips');
@@ -1349,20 +1352,24 @@ export class ActivityModal {
       _observer.observe(chipsEl, { childList: true });
     }
 
-    // Back button
+    // Backdrop — cerrar al tocar fuera de la tarjeta
+    document.getElementById('am-backdrop-blur')?.addEventListener('click', () => this.hide());
+
+    // Back button — en 1A cierra, en 1B vuelve a 1A, en paso 2+ retrocede
     document.getElementById('am-back')?.addEventListener('click', () => {
       if (this._currentStep === 1) {
         if (this._in1B) {
           this._in1B = false;
-    this._isSpontaneous = false;
+          this._isSpontaneous = false;
           const p1b = document.getElementById('am-step-1b');
           if (p1b) p1b.style.transform = 'translateX(100%)';
-          const globalBackBtn = document.getElementById('am-back');
-          if (globalBackBtn) { globalBackBtn.style.opacity = '0'; globalBackBtn.style.pointerEvents = 'none'; }
           const p1a = document.getElementById('am-step-1a');
           if (p1a) p1a.style.transform = 'translateX(0%)';
+          this._goToStep(1);
           return;
         }
+        this.hide();
+        return;
       }
       if (this._currentStep > 1) this._goToStep(this._currentStep - 1);
     });
@@ -1408,11 +1415,7 @@ export class ActivityModal {
             }
             this._currentStep = 2;
             const back = document.getElementById('am-back');
-            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
-            [1,2,3].forEach(n => {
-              const pill = document.getElementById('am-pill-' + n);
-              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 2 ? '48px' : '32px'; }
-            });
+            
             if (!this._popstateHandler) {
               this._popstateHandler = (e) => this._handlePopState(e);
               window.addEventListener('popstate', this._popstateHandler);
@@ -1439,11 +1442,7 @@ export class ActivityModal {
             });
             this._currentStep = 2;
             const back = document.getElementById('am-back');
-            if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
-            [1,2,3].forEach(n => {
-              const pill = document.getElementById('am-pill-' + n);
-              if (pill) { pill.style.background = n <= 2 ? '#1a5cf5' : '#e0e0e0'; pill.style.width = n === 2 ? '48px' : '32px'; }
-            });
+            
             this.modal.style.display = 'flex';
             requestAnimationFrame(() => {
               ['1','2','3'].forEach(n => {
@@ -1946,15 +1945,8 @@ export class ActivityModal {
       });
       this._currentStep = targetStep;
       this._in1B = _wasIn1B;
-      [1,2,3].forEach(n => {
-        const pill = document.getElementById('am-pill-' + n);
-        if (pill) {
-          pill.style.background = n <= targetStep ? '#1a5cf5' : '#e5e5e5';
-          pill.style.width = n === targetStep ? '48px' : '32px';
-        }
-      });
+      
       const back = document.getElementById('am-back');
-      if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
       this.modal.style.display = 'flex';
       // Re-registrar popstate si fue removido por _closeForPickMode
       if (!this._popstateHandler) {
@@ -2034,14 +2026,7 @@ export class ActivityModal {
         }
         this._currentStep = 2;
         const back = document.getElementById('am-back');
-        if (back) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
-        [1,2,3].forEach(n => {
-          const pill = document.getElementById('am-pill-' + n);
-          if (pill) {
-            pill.style.background = n <= 2 ? '#1a5cf5' : '#e5e5e5';
-            pill.style.width = n === 2 ? '48px' : '32px';
-          }
-        });
+        
         // History: show() ya puso [1a], agregar [1b] si aplica, luego [2]
         if (_wasIn1B) {
           history.pushState({ amModal: true, step: '1b' }, '');
@@ -2446,12 +2431,11 @@ export class ActivityModal {
   }
 
   show() {
-    console.log('[AM] show() llamado desde:', new Error().stack.split('\n')[2]);
     if (document.activeElement && document.activeElement.blur) {
       document.activeElement.blur();
     }
-    // El modal es una tarjeta flotante — topbar y footer quedan visibles detrás del blur.
-    // Resetear todos los panels antes de mostrar — evita pantalla blanca al reabrir
+    // Tarjeta flotante — topbar, footer y panel de categorías permanecen visibles
+    // Solo reseteamos el estado interno del modal
     this._in1B = false;
     ['am-step-1','am-step-2','am-step-3'].forEach(id => {
       const el = document.getElementById(id);
@@ -2520,13 +2504,10 @@ export class ActivityModal {
         if (s1) { s1.style.transition = 'transform 0.3s ease'; s1.style.transform = 'translateX(0%)'; }
         if (s2) { s2.style.transition = 'transform 0.3s ease'; s2.style.transform = 'translateX(100%)'; }
       });
-      [1,2,3].forEach(n => {
-        const pill = document.getElementById('am-pill-' + n);
-        if (pill) { pill.style.background = n <= 1 ? '#1a5cf5' : '#e5e5e5'; pill.style.width = n === 1 ? '48px' : '32px'; }
-      });
+      
       const back = document.getElementById('am-back');
       if (back) {
-        back.style.opacity = goTo1B ? '1' : '0';
+        // back icon updated by _goToStep
         back.style.pointerEvents = goTo1B ? 'auto' : 'none';
       }
       if (!goTo1B) requestAnimationFrame(() => this._renderStep1Types());
@@ -2543,7 +2524,6 @@ export class ActivityModal {
         if (p1b) { p1b.style.transition = 'transform 0.3s ease'; p1b.style.transform = 'translateX(100%)'; }
         if (p1a) { p1a.style.transition = 'transform 0.3s ease'; p1a.style.transform = 'translateX(0%)'; }
         const back = document.getElementById('am-back');
-        if (back) { back.style.opacity = '0'; back.style.pointerEvents = 'none'; }
         if (!fromGesture) history.replaceState({ amModal: true, step: '1a' }, '');
         else history.pushState({ amModal: true, step: '1a' }, '');
         return;
@@ -2570,7 +2550,7 @@ export class ActivityModal {
   }
 
   hide() {
-    if (this._chromeWatcher) { clearInterval(this._chromeWatcher); this._chromeWatcher = null; }
+    
     if (this._popstateHandler) {
       window.removeEventListener('popstate', this._popstateHandler);
       this._popstateHandler = null;
@@ -2676,7 +2656,7 @@ export class ActivityModal {
 
   async _showPostCreateSheet(activity) {
     this.modal.style.display = 'none';
-    if (this._chromeWatcher) { clearInterval(this._chromeWatcher); this._chromeWatcher = null; }
+    
     this._restoreMapUI();
     if (history.state?.amModal) history.replaceState(null, '');
 
