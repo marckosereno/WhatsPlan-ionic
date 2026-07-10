@@ -585,11 +585,21 @@ export class SearchBar {
         var visibleH = Math.min(vvH, canvasH);
         var scats    = document.getElementById('wp-scats');
         var results  = document.getElementById('wp-sresults');
-        var botEl    = (scats && scats.offsetParent !== null) ? scats :
-                       (results && results.offsetParent !== null) ? results : null;
-        var botEdge  = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
-        botEdge = Math.max(botEdge, visibleH * 0.5);
-        var nudge    = (results && results.offsetParent !== null) ? 6 : 0;
+        var catPanel = document.getElementById('map-results-panel');
+        var nudge    = 0;
+        var botEdge;
+        if (results && results.offsetParent !== null) {
+          // Minifichas abiertas: centro entre topbar-chip y minifichas
+          botEdge = results.getBoundingClientRect().top - 8;
+          nudge = 6;
+        } else if (scats && scats.offsetParent !== null && catPanel) {
+          // Sin minifichas: centro entre wp-scats (abajo) y map-results-panel (arriba de la lista)
+          topEdge = scats.getBoundingClientRect().bottom + 8;
+          botEdge = catPanel.getBoundingClientRect().top - 8;
+        } else {
+          botEdge = visibleH * 0.7;
+        }
+        botEdge = Math.max(botEdge, topEdge + 80);
         var areaCenter = topEdge + (botEdge - topEdge) / 2 - nudge;
         var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw, true);
