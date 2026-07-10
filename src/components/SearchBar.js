@@ -570,6 +570,17 @@ export class SearchBar {
 
     this._highlightSingle(place);
 
+    // Calcular el centro AHORA — justo cuando el usuario tocó la minificha.
+    // wp-scats está arriba (position:fixed, no se mueve con el teclado).
+    // wp-sresults sin teclado tiene bottom:0 → top = innerHeight - offsetHeight.
+    var scats = document.getElementById('wp-scats');
+    var res   = document.getElementById('wp-sresults');
+    if (scats && res) {
+      var topEdge = scats.getBoundingClientRect().bottom + 8;
+      var botEdge = window.innerHeight - res.offsetHeight - 8;
+      this._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
+    }
+
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
     if (lat && lng) {
