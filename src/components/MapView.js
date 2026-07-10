@@ -1042,15 +1042,20 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
+      // En modo búsqueda, SearchBar.doFlyTo controla el posicionamiento.
+      // No permitimos que ningún cálculo de MapView interfiera.
+      const inSearch = document.body.classList.contains('wp-search-active') ||
+                       !!(document.getElementById('wps-inner'));
+      if (inSearch) {
+        // skipMove ya viene como true desde SearchBar — solo por seguridad
+        return;
+      }
+
       const vv      = window.visualViewport;
       const canvasH = this.map.getCanvas().clientHeight;
       const vvH     = vv ? vv.height : canvasH;
       const visibleH = Math.min(vvH, canvasH);
 
-      // Top edge: estable independientemente del estado del chip
-      // En modo búsqueda el chip está expandido, getBoundingClientRect no es fiable
-      const inSearch = document.body.classList.contains('wp-search-active') ||
-                       !!(document.getElementById('wps-inner'));
       let topEdge;
       const topbar = document.getElementById('topbar-right-chip');
       topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
