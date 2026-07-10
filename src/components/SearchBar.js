@@ -604,19 +604,27 @@ export class SearchBar {
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
       var doFlyTo = function() {
-        var canvasH   = map.getCanvas().clientHeight;
-        var centerY   = self._miniCardCenterY || (canvasH * 0.4);
-        var offsetY   = Math.round(centerY + 45 - canvasH / 2);
+        var vvNow   = window.visualViewport;
+        var canvasH = map.getCanvas().clientHeight;
+        var topbar  = document.getElementById('topbar-right-chip');
+        var topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        var vvH      = vvNow ? vvNow.height : canvasH;
+        var visibleH = Math.min(vvH, canvasH);
+        var scats    = document.getElementById('wp-scats');
+        var results  = document.getElementById('wp-sresults');
+        var botEl    = (scats && scats.offsetParent !== null) ? scats :
+                       (results && results.offsetParent !== null) ? results : null;
+        var botEdge  = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
+        botEdge = Math.max(botEdge, visibleH * 0.5);
+        var areaCenter = topEdge + (botEdge - topEdge) / 2;
+        var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw, true);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
-      // El teclado ya se cierra al hacer tap en la minificha.
-      // El cálculo ya está hecho desde antes — mostramos directo.
       var vv = window.visualViewport;
       var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
       if (kbH > 50 && vv) {
-        // Esperar que el teclado cierre para que flyTo anime correctamente
         var done = false;
         var onResize = function() { if (!done) { done = true; vv.removeEventListener('resize', onResize); requestAnimationFrame(doFlyTo); } };
         vv.addEventListener('resize', onResize);
