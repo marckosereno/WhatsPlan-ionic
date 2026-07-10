@@ -319,8 +319,10 @@ export class SearchBar {
       if (!input) return;
 
       input.addEventListener('input', function(ev) {
-        if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
-        self._onInput(ev.target.value);
+        var v = ev.target.value;
+        if (v.length === 1) { v = v.charAt(0).toUpperCase() + v.slice(1); input.value = v; }
+        if (clearBtnEl) clearBtnEl.classList.toggle('visible', v.length > 0);
+        self._onInput(v);
       });
       input.addEventListener('search', function() {
         if (clearBtnEl) clearBtnEl.classList.toggle('visible', input.value.length > 0);
