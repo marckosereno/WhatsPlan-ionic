@@ -548,6 +548,23 @@ export class SearchBar {
     var place  = places[idx];
     if (!place) return;
 
+    // ── Calcular el centro PRIMERO, antes de cualquier cambio de UI ──
+    // wp-sresults puede desaparecer después de _highlightSingle.
+    // Centro = mitad entre scats (abajo del topbar) y sresults (arriba del footer).
+    var scats = document.getElementById('wp-scats');
+    var res   = document.getElementById('wp-sresults');
+    if (scats && res) {
+      var topEdge = scats.getBoundingClientRect().bottom + 8;
+      var botEdge = res.getBoundingClientRect().top - 8;
+      // Si el teclado está abierto, sresults está elevado — usamos su posición
+      // real ya que eso es lo que verá el usuario cuando el teclado cierre
+      if (botEdge <= topEdge) {
+        // Fallback: sresults sin teclado = innerHeight - offsetHeight
+        botEdge = window.innerHeight - Math.min(res.offsetHeight, window.innerHeight * 0.4) - 8;
+      }
+      this._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
+    }
+
     var gsap = window.gsap;
     if (mv.miniCardMarker) {
       var oldWrapper = mv.miniCardMarker.getElement();
@@ -569,22 +586,6 @@ export class SearchBar {
     }
 
     this._highlightSingle(place);
-
-    // Calcular el centro AHORA — justo cuando el usuario tocó la minificha.
-    // wp-scats está arriba (position:fixed, no se mueve con el teclado).
-    // wp-sresults sin teclado tiene bottom:0 → top = innerHeight - offsetHeight.
-    // Limitamos la altura del panel de resultados al 45% de pantalla para que
-    // el botEdge siempre quede en la mitad inferior de la pantalla.
-    var scats = document.getElementById('wp-scats');
-    var res   = document.getElementById('wp-sresults');
-    if (scats && res) {
-      var topEdge  = scats.getBoundingClientRect().bottom + 8;
-      var maxResH  = window.innerHeight * 0.45;
-      var resH     = Math.min(res.offsetHeight, maxResH);
-      var botEdge  = window.innerHeight - resH - 8;
-      if (botEdge <= topEdge) botEdge = topEdge + (window.innerHeight - topEdge) * 0.6;
-      this._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
-    }
 
     var lat = (place.location && place.location.lat) || place.lat;
     var lng = (place.location && place.location.lng) || place.lng;
