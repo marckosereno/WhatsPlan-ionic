@@ -612,11 +612,11 @@ export class SearchBar {
         var visibleH = Math.min(vvH, canvasH);
         var scats    = document.getElementById('wp-scats');
         var results  = document.getElementById('wp-sresults');
-        var botEl    = (scats && scats.offsetParent !== null) ? scats :
-                       (results && results.offsetParent !== null) ? results : null;
+        var botEl    = (results && results.offsetParent !== null) ? results :
+                       (scats && scats.offsetParent !== null) ? scats : null;
         var botEdge  = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
         botEdge = Math.max(botEdge, visibleH * 0.5);
-        var areaCenter = topEdge + (botEdge - topEdge) / 2;
+        var areaCenter = topEdge + (botEdge - topEdge) / 2 - 30;
         var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw, true);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
