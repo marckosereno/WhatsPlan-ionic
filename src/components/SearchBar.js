@@ -1,4 +1,3 @@
-
 // ====================================================================
 // WHATSPLAN — src/components/SearchBar.js  (v4)
 // ====================================================================
@@ -528,16 +527,15 @@ export class SearchBar {
     this._positionResults();
     this._syncCategoryChips();
 
-    // Calcular centro DESPUÉS de posicionar, usando el bottom sin teclado.
-    // wp-sresults tiene bottom:0px cuando teclado está cerrado — su top real
-    // es: window.innerHeight - element.offsetHeight.
     var self0 = this;
     requestAnimationFrame(function() {
-      var chip = document.getElementById('topbar-right-chip');
-      var res  = document.getElementById('wp-sresults');
-      if (!chip || !res) return;
-      var topEdge = chip.getBoundingClientRect().bottom + 8;
-      // top del panel cuando teclado cerrado (bottom:0) = innerHeight - offsetHeight
+      var scats = document.getElementById('wp-scats');
+      var res   = document.getElementById('wp-sresults');
+      if (!scats || !res) return;
+      // Con teclado cerrado:
+      // - wp-scats está fijo arriba → su bottom es estable
+      // - wp-sresults tiene bottom:0px → su top = innerHeight - offsetHeight
+      var topEdge = scats.getBoundingClientRect().bottom + 8;
       var botEdge = window.innerHeight - res.offsetHeight - 8;
       self0._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
     });
@@ -1121,4 +1119,3 @@ export class SearchBar {
     document.head.appendChild(s);
   }
 }
-
