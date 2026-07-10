@@ -215,6 +215,10 @@ export class SearchBar {
     this._chipInitW = chipInitW;
     var targetW   = window.innerWidth - 24;
 
+    // Cache topEdge AQUÍ — antes del teclado, antes de la animación del chip.
+    // doFlyTo usa este valor fijo sin re-medirlo, evitando la distorsión del teclado.
+    this._cachedTopEdge = chipRect ? chipRect.bottom + 8 : 120;
+
     var chipRight = chipRect ? (window.innerWidth - chipRect.right) : 12;
     this._chipRight = chipRight;
     var avatarEl  = document.getElementById('topbar-auth-btn');
@@ -570,89 +574,56 @@ export class SearchBar {
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
       var doFlyTo = function() {
-        var vvNow   = window.visualViewport;
         var canvasH = map.getCanvas().clientHeight;
 
-        // Borde superior estable: safe-area-inset-top + altura del topbar (44px) + gap
-        // NO usar getBoundingClientRect del chip — su posición varía según el estado
-        // de la búsqueda (expandido, con/sin resultados, teclado abierto/cerrado)
-        var safeTop = parseInt(getComputedStyle(document.documentElement)
-          .getPropertyValue('--sat') || '0', 10) || 0;
-        // Fallback: CSS env() via un elemento temporal
-        if (!safeTop) {
-          var tmp = document.createElement('div');
-          tmp.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);height:0;width:0;';
-          document.body.appendChild(tmp);
-          safeTop = tmp.getBoundingClientRect().top || 0;
-          document.body.removeChild(tmp);
-        }
-        var topEdge = safeTop + 44 + 8 + 44; // safe-area + topbar + gap + searchbar
+        // topEdge — medido en activate() antes del teclado, nunca se re-mide
+        var topEdge = self._cachedTopEdge || 120;
 
-        var vvH      = vvNow ? vvNow.height : canvasH;
-        var visibleH = Math.min(vvH, canvasH);
-
-        // Borde inferior: minifichas → panel categorías → estimado desde footer
-        // El panel de categorías puede estar oculto si venimos de un minisnap
-        // (PlaceModal.showMini lo translada). En ese caso usamos la altura del
-        // footer para estimar dónde empieza el área de chrome inferior.
-        var scats    = document.getElementById('wp-scats');
+        // botEdge — dos cálculos fijos según el estado de búsqueda:
+        // 1) Con minifichas de autocompletado abiertas → su top
+        // 2) Con chips de categoría en el footer → su top
+        // Las referencias son position:fixed → sus coords NO cambian con el teclado
+        var botEdge;
         var results  = document.getElementById('wp-sresults');
+        var scats    = document.getElementById('wp-scats');
         var catPanel = document.getElementById('map-results-panel');
         var footer   = document.getElementById('wp-footer-menu');
 
-        var botEdge;
-        if (scats && scats.offsetParent !== null && scats.getBoundingClientRect().top < visibleH * 0.9) {
-          botEdge = scats.getBoundingClientRect().top - 8;
-        } else if (results && results.offsetParent !== null && results.getBoundingClientRect().top < visibleH * 0.9) {
+        if (results && results.offsetParent !== null) {
+          // Minifichas de autocompletado visibles
           botEdge = results.getBoundingClientRect().top - 8;
+        } else if (scats && scats.offsetParent !== null) {
+          // Chips de subcategoría visibles
+          botEdge = scats.getBoundingClientRect().top - 8;
         } else if (catPanel) {
           var cpRect = catPanel.getBoundingClientRect();
-          // Si el panel está en su posición normal (no oculto por minisnap)
-          if (cpRect.top < visibleH * 0.9 && cpRect.top > 0) {
+          if (cpRect.top > 0 && cpRect.top < canvasH * 0.9) {
+            // Panel de categorías visible (posición normal)
             botEdge = cpRect.top - 8;
           } else {
-            // Panel oculto → estimamos usando la altura del panel (offsetHeight) desde el bottom
+            // Panel oculto (minisnap lo escondió) → estimamos su posición
             var footerH = footer ? footer.offsetHeight + 8 : 92;
-            var panelH  = catPanel.offsetHeight || 200;
-            botEdge = visibleH - footerH - panelH;
+            botEdge = canvasH - footerH - (catPanel.offsetHeight || 200);
           }
         } else if (footer) {
-          var footerRect = footer.getBoundingClientRect();
-          botEdge = footerRect.top - 8;
+          botEdge = footer.getBoundingClientRect().top - 8;
         } else {
-          botEdge = visibleH * 0.65;
+          botEdge = canvasH * 0.6;
         }
-        botEdge = Math.max(botEdge, visibleH * 0.35);
+
+        // Sanidad: botEdge siempre por debajo de topEdge
+        botEdge = Math.max(botEdge, topEdge + 80);
 
         var areaCenter = topEdge + (botEdge - topEdge) / 2;
         var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
-        mv._showMiniCard(place, idx, raw, true);  // skipMove=true: SearchBar's flyTo controls position
+        mv._showMiniCard(place, idx, raw, true);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
-      if (kbH > 50) {
-        var inp = document.getElementById('wps-input');
-        if (inp) inp.blur();
-        if (document.activeElement && document.activeElement !== document.body) {
-          document.activeElement.blur();
-        }
-        // Esperar cierre del teclado — detectar via innerHeight (WebView) o vv resize (Chrome)
-        var refInnerH = window.innerHeight;
-        var waited    = 0;
-        var kbClosePoll = setInterval(function() {
-          waited += 30;
-          var vvNow  = window.visualViewport;
-          var kbNow  = vvNow ? Math.max(0, window.innerHeight - vvNow.height) : 0;
-          var grew   = window.innerHeight > refInnerH + 30; // WebView: innerHeight crece
-          if (kbNow < 100 || grew || waited > 700) {
-            clearInterval(kbClosePoll);
-            // Delay extra para que el layout se estabilice
-            setTimeout(doFlyTo, 80);
-          }
-        }, 30);
-      } else {
-        requestAnimationFrame(doFlyTo);
-      }
+      // doFlyTo usa topEdge cacheado (no afectado por teclado) y botEdge de
+      // elementos position:fixed (coords estables). No hace falta esperar el
+      // cierre del teclado — la posición es correcta con o sin teclado abierto.
+      requestAnimationFrame(doFlyTo);
     }
   }
 
