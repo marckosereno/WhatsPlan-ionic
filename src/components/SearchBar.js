@@ -620,10 +620,24 @@ export class SearchBar {
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
-      // doFlyTo usa topEdge cacheado (no afectado por teclado) y botEdge de
-      // elementos position:fixed (coords estables). No hace falta esperar el
-      // cierre del teclado — la posición es correcta con o sin teclado abierto.
-      requestAnimationFrame(doFlyTo);
+      // El teclado se cierra al tapar la minificha. Esperamos que cierre
+      // completamente antes de calcular la posición del minimodal.
+      // visualViewport.resize dispara cuando el teclado termina de cerrar.
+      var vv = window.visualViewport;
+      if (vv && kbH > 50) {
+        var handler = function() {
+          vv.removeEventListener('resize', handler);
+          requestAnimationFrame(doFlyTo);
+        };
+        vv.addEventListener('resize', handler);
+        // Fallback por si el evento no dispara (WebView sin VV support)
+        setTimeout(function() {
+          vv.removeEventListener('resize', handler);
+          doFlyTo();
+        }, 400);
+      } else {
+        requestAnimationFrame(doFlyTo);
+      }
     }
   }
 
