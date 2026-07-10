@@ -1060,7 +1060,7 @@ export class MapView {
         botEdge = Math.max(botEdge, visibleH * 0.5);
         const areaCenter = topEdge + (botEdge - topEdge) / 2;
         const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
-        this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
+        this.map.easeTo({ center: [lng, lat], zoom: this.map.getZoom(), duration: 400, offset: [0, offsetY] });
         return;
       }
 
