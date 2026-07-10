@@ -266,7 +266,7 @@ export class SearchBar {
       '<img class="wps-icon" style="width:20px;height:20px;object-fit:contain;flex-shrink:0" ' +
       'src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Magnifying%20glass%20tilted%20right/3D/magnifying_glass_tilted_right_3d.png">' +
       '<input id="wps-input" class="wps-input" type="search" placeholder="..." ' +
-      'autocomplete="new-password" autocorrect="off" autocapitalize="words" spellcheck="false" readonly>' +
+      'autocomplete="new-password" autocorrect="off" autocapitalize="sentences" spellcheck="false" readonly>' +
       '<button id="wps-clear" class="wps-clear" aria-label="Limpiar">' +
         '<svg viewBox="0 0 14 14" width="9" height="9" fill="none">' +
           '<path d="M1 1l12 12M13 1L1 13" stroke="white" stroke-width="2.5" stroke-linecap="round"/>' +
@@ -527,18 +527,6 @@ export class SearchBar {
     this._positionResults();
     this._syncCategoryChips();
 
-    var self0 = this;
-    requestAnimationFrame(function() {
-      var scats = document.getElementById('wp-scats');
-      var res   = document.getElementById('wp-sresults');
-      if (!scats || !res) return;
-      // Con teclado cerrado:
-      // - wp-scats está fijo arriba → su bottom es estable
-      // - wp-sresults tiene bottom:0px → su top = innerHeight - offsetHeight
-      var topEdge = scats.getBoundingClientRect().bottom + 8;
-      var botEdge = window.innerHeight - res.offsetHeight - 8;
-      self0._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
-    });
   }
 
   _onCardClick(idx) {
@@ -547,23 +535,6 @@ export class SearchBar {
     var places = this._getAllPlaces();
     var place  = places[idx];
     if (!place) return;
-
-    // ── Calcular el centro PRIMERO, antes de cualquier cambio de UI ──
-    // wp-sresults puede desaparecer después de _highlightSingle.
-    // Centro = mitad entre scats (abajo del topbar) y sresults (arriba del footer).
-    var scats = document.getElementById('wp-scats');
-    var res   = document.getElementById('wp-sresults');
-    if (scats && res) {
-      var topEdge = scats.getBoundingClientRect().bottom + 8;
-      var botEdge = res.getBoundingClientRect().top - 8;
-      // Si el teclado está abierto, sresults está elevado — usamos su posición
-      // real ya que eso es lo que verá el usuario cuando el teclado cierre
-      if (botEdge <= topEdge) {
-        // Fallback: sresults sin teclado = innerHeight - offsetHeight
-        botEdge = window.innerHeight - Math.min(res.offsetHeight, window.innerHeight * 0.4) - 8;
-      }
-      this._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
-    }
 
     var gsap = window.gsap;
     if (mv.miniCardMarker) {
@@ -867,26 +838,6 @@ export class SearchBar {
     });
 
     document.body.appendChild(container);
-
-    var self3 = this;
-    requestAnimationFrame(function() {
-      var chip  = document.getElementById('topbar-right-chip');
-      var scats = document.getElementById('wp-scats');
-      if (!chip || !scats) return;
-      var topEdge = chip.getBoundingClientRect().bottom + 8;
-      // wp-scats tiene bottom: calc(16px + safe-area-inset-bottom) cuando teclado cerrado
-      // top real = innerHeight - offsetHeight - 16 - safeBottom
-      var safeBottom = 0;
-      try {
-        var tmp = document.createElement('div');
-        tmp.style.cssText = 'position:fixed;bottom:env(safe-area-inset-bottom,0px);height:0;pointer-events:none;';
-        document.body.appendChild(tmp);
-        safeBottom = window.innerHeight - tmp.getBoundingClientRect().top;
-        document.body.removeChild(tmp);
-      } catch(e) {}
-      var botEdge = window.innerHeight - scats.offsetHeight - 16 - safeBottom - 8;
-      self3._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
-    });
 
     var self2 = this;
     setTimeout(function() {
