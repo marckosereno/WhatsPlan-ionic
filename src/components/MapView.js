@@ -1042,12 +1042,25 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      // En modo búsqueda, SearchBar.doFlyTo controla el posicionamiento.
-      // No permitimos que ningún cálculo de MapView interfiera.
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
       if (inSearch) {
-        // skipMove ya viene como true desde SearchBar — solo por seguridad
+        // Tap en un pin durante búsqueda — usar el mismo cálculo que SearchBar.doFlyTo
+        const vvNow   = window.visualViewport;
+        const canvasH = this.map.getCanvas().clientHeight;
+        const vvH     = vvNow ? vvNow.height : canvasH;
+        const visibleH = Math.min(vvH, canvasH);
+        const topbar  = document.getElementById('topbar-right-chip');
+        const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        const scats   = document.getElementById('wp-scats');
+        const results = document.getElementById('wp-sresults');
+        const botEl   = (scats && scats.offsetParent !== null) ? scats :
+                        (results && results.offsetParent !== null) ? results : null;
+        let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
+        botEdge = Math.max(botEdge, visibleH * 0.5);
+        const areaCenter = topEdge + (botEdge - topEdge) / 2;
+        const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
+        this.map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
         return;
       }
 
