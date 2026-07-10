@@ -1,3 +1,4 @@
+
 // ====================================================================
 // WHATSPLAN — src/components/SearchBar.js  (v4)
 // ====================================================================
@@ -527,17 +528,18 @@ export class SearchBar {
     this._positionResults();
     this._syncCategoryChips();
 
-    // Calcular y cachear el centro del minimodal AHORA que las minifichas
-    // ya están en el DOM — sin teclado en este momento, medición estable.
+    // Calcular centro DESPUÉS de posicionar, usando el bottom sin teclado.
+    // wp-sresults tiene bottom:0px cuando teclado está cerrado — su top real
+    // es: window.innerHeight - element.offsetHeight.
     var self0 = this;
     requestAnimationFrame(function() {
       var chip = document.getElementById('topbar-right-chip');
       var res  = document.getElementById('wp-sresults');
-      if (chip && res) {
-        var topEdge = chip.getBoundingClientRect().bottom + 8;
-        var botEdge = res.getBoundingClientRect().top - 8;
-        self0._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
-      }
+      if (!chip || !res) return;
+      var topEdge = chip.getBoundingClientRect().bottom + 8;
+      // top del panel cuando teclado cerrado (bottom:0) = innerHeight - offsetHeight
+      var botEdge = window.innerHeight - res.offsetHeight - 8;
+      self0._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
     });
   }
 
@@ -842,17 +844,24 @@ export class SearchBar {
 
     document.body.appendChild(container);
 
-    // Calcular y cachear el centro del minimodal AHORA que los chips
-    // ya están en el DOM — medición estable, sin teclado.
     var self3 = this;
     requestAnimationFrame(function() {
       var chip  = document.getElementById('topbar-right-chip');
       var scats = document.getElementById('wp-scats');
-      if (chip && scats) {
-        var topEdge = chip.getBoundingClientRect().bottom + 8;
-        var botEdge = scats.getBoundingClientRect().top - 8;
-        self3._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
-      }
+      if (!chip || !scats) return;
+      var topEdge = chip.getBoundingClientRect().bottom + 8;
+      // wp-scats tiene bottom: calc(16px + safe-area-inset-bottom) cuando teclado cerrado
+      // top real = innerHeight - offsetHeight - 16 - safeBottom
+      var safeBottom = 0;
+      try {
+        var tmp = document.createElement('div');
+        tmp.style.cssText = 'position:fixed;bottom:env(safe-area-inset-bottom,0px);height:0;pointer-events:none;';
+        document.body.appendChild(tmp);
+        safeBottom = window.innerHeight - tmp.getBoundingClientRect().top;
+        document.body.removeChild(tmp);
+      } catch(e) {}
+      var botEdge = window.innerHeight - scats.offsetHeight - 16 - safeBottom - 8;
+      self3._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
     });
 
     var self2 = this;
@@ -1112,3 +1121,4 @@ export class SearchBar {
     document.head.appendChild(s);
   }
 }
+
