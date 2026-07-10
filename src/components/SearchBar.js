@@ -526,6 +526,19 @@ export class SearchBar {
     document.body.appendChild(container);
     this._positionResults();
     this._syncCategoryChips();
+
+    // Calcular y cachear el centro del minimodal AHORA que las minifichas
+    // ya están en el DOM — sin teclado en este momento, medición estable.
+    var self0 = this;
+    requestAnimationFrame(function() {
+      var chip = document.getElementById('topbar-right-chip');
+      var res  = document.getElementById('wp-sresults');
+      if (chip && res) {
+        var topEdge = chip.getBoundingClientRect().bottom + 8;
+        var botEdge = res.getBoundingClientRect().top - 8;
+        self0._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
+      }
+    });
   }
 
   _onCardClick(idx) {
@@ -574,67 +587,23 @@ export class SearchBar {
       var raw = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
 
       var doFlyTo = function() {
-        var canvasH = map.getCanvas().clientHeight;
-
-        // topEdge — medido en activate() antes del teclado, nunca se re-mide
-        var topEdge = self._cachedTopEdge || 120;
-
-        // botEdge — dos cálculos fijos según el estado de búsqueda:
-        // 1) Con minifichas de autocompletado abiertas → su top
-        // 2) Con chips de categoría en el footer → su top
-        // Las referencias son position:fixed → sus coords NO cambian con el teclado
-        var botEdge;
-        var results  = document.getElementById('wp-sresults');
-        var scats    = document.getElementById('wp-scats');
-        var catPanel = document.getElementById('map-results-panel');
-        var footer   = document.getElementById('wp-footer-menu');
-
-        if (results && results.offsetParent !== null) {
-          // Minifichas de autocompletado visibles
-          botEdge = results.getBoundingClientRect().top - 8;
-        } else if (scats && scats.offsetParent !== null) {
-          // Chips de subcategoría visibles
-          botEdge = scats.getBoundingClientRect().top - 8;
-        } else if (catPanel) {
-          var cpRect = catPanel.getBoundingClientRect();
-          if (cpRect.top > 0 && cpRect.top < canvasH * 0.9) {
-            // Panel de categorías visible (posición normal)
-            botEdge = cpRect.top - 8;
-          } else {
-            // Panel oculto (minisnap lo escondió) → estimamos su posición
-            var footerH = footer ? footer.offsetHeight + 8 : 92;
-            botEdge = canvasH - footerH - (catPanel.offsetHeight || 200);
-          }
-        } else if (footer) {
-          botEdge = footer.getBoundingClientRect().top - 8;
-        } else {
-          botEdge = canvasH * 0.6;
-        }
-
-        // Sanidad: botEdge siempre por debajo de topEdge
-        botEdge = Math.max(botEdge, topEdge + 80);
-
-        var areaCenter = topEdge + (botEdge - topEdge) / 2;
-        var offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
+        var canvasH   = map.getCanvas().clientHeight;
+        var centerY   = self._miniCardCenterY || (canvasH * 0.4);
+        var offsetY   = Math.round(centerY + 45 - canvasH / 2);
         mv._showMiniCard(place, idx, raw, true);
         map.flyTo({ center: [lng, lat], zoom: 17, duration: 400, offset: [0, offsetY] });
       };
 
-      // El teclado se cierra al tapar la minificha. Esperamos que cierre
-      // completamente antes de calcular la posición del minimodal.
-      // visualViewport.resize dispara cuando el teclado termina de cerrar.
+      // El teclado ya se cierra al hacer tap en la minificha.
+      // El cálculo ya está hecho desde antes — mostramos directo.
       var vv = window.visualViewport;
-      if (vv && kbH > 50) {
-        var handler = function() {
-          vv.removeEventListener('resize', handler);
-          requestAnimationFrame(doFlyTo);
-        };
-        vv.addEventListener('resize', handler);
-        // Fallback por si el evento no dispara (WebView sin VV support)
-        setTimeout(function() {
-          vv.removeEventListener('resize', handler);
-          doFlyTo();
-        }, 400);
+      var kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+      if (kbH > 50 && vv) {
+        // Esperar que el teclado cierre para que flyTo anime correctamente
+        var done = false;
+        var onResize = function() { if (!done) { done = true; vv.removeEventListener('resize', onResize); requestAnimationFrame(doFlyTo); } };
+        vv.addEventListener('resize', onResize);
+        setTimeout(function() { if (!done) { done = true; vv.removeEventListener('resize', onResize); doFlyTo(); } }, 350);
       } else {
         requestAnimationFrame(doFlyTo);
       }
@@ -872,6 +841,20 @@ export class SearchBar {
     });
 
     document.body.appendChild(container);
+
+    // Calcular y cachear el centro del minimodal AHORA que los chips
+    // ya están en el DOM — medición estable, sin teclado.
+    var self3 = this;
+    requestAnimationFrame(function() {
+      var chip  = document.getElementById('topbar-right-chip');
+      var scats = document.getElementById('wp-scats');
+      if (chip && scats) {
+        var topEdge = chip.getBoundingClientRect().bottom + 8;
+        var botEdge = scats.getBoundingClientRect().top - 8;
+        self3._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
+      }
+    });
+
     var self2 = this;
     setTimeout(function() {
       var active = container.querySelector('.wps-cat-chip.active');
