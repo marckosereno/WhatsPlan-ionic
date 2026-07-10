@@ -573,11 +573,16 @@ export class SearchBar {
     // Calcular el centro AHORA — justo cuando el usuario tocó la minificha.
     // wp-scats está arriba (position:fixed, no se mueve con el teclado).
     // wp-sresults sin teclado tiene bottom:0 → top = innerHeight - offsetHeight.
+    // Limitamos la altura del panel de resultados al 45% de pantalla para que
+    // el botEdge siempre quede en la mitad inferior de la pantalla.
     var scats = document.getElementById('wp-scats');
     var res   = document.getElementById('wp-sresults');
     if (scats && res) {
-      var topEdge = scats.getBoundingClientRect().bottom + 8;
-      var botEdge = window.innerHeight - res.offsetHeight - 8;
+      var topEdge  = scats.getBoundingClientRect().bottom + 8;
+      var maxResH  = window.innerHeight * 0.45;
+      var resH     = Math.min(res.offsetHeight, maxResH);
+      var botEdge  = window.innerHeight - resH - 8;
+      if (botEdge <= topEdge) botEdge = topEdge + (window.innerHeight - topEdge) * 0.6;
       this._miniCardCenterY = topEdge + (botEdge - topEdge) / 2;
     }
 
