@@ -1052,19 +1052,8 @@ export class MapView {
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
       let topEdge;
-      if (inSearch) {
-        // Mismo cálculo estable que SearchBar.doFlyTo
-        let safeTop = 0;
-        const tmp = document.createElement('div');
-        tmp.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);height:0;width:0;pointer-events:none;';
-        document.body.appendChild(tmp);
-        safeTop = tmp.getBoundingClientRect().top || 0;
-        document.body.removeChild(tmp);
-        topEdge = safeTop + 44 + 8 + 44; // safe-area + topbar + gap + searchbar
-      } else {
-        const topbar = document.getElementById('topbar-right-chip');
-        topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-      }
+      const topbar = document.getElementById('topbar-right-chip');
+      topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
 
       // Bot edge: buscar el elemento visible más alto en la parte inferior
       const scats   = document.getElementById('wp-scats');
