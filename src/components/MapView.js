@@ -1006,19 +1006,21 @@ export class MapView {
       : mcEmoji;
     const mcFallbackHtml = `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${mcIconInner}</div>`;
 
-    // Minicard con mismo estilo exacto del original PWA
-    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:260px;min-width:160px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Yahoo Sans Bold Regular',system-ui,sans-serif;">
+    // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2
+    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:2px solid #f0f0f0;box-shadow:0 6px 24px rgba(0,0,0,0.14);cursor:pointer;max-width:280px;min-width:200px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;">
       ${photoUrl
-        ? `<div class="wp-mc-photo-wrap" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
+        ? `<div class="wp-mc-photo-wrap" style="width:52px;height:52px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
             <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
           </div>`
-        : mcFallbackHtml}
+        : `<div style="width:52px;height:52px;border-radius:10px;background:${cardGrad};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;">${mcIconInner}</div>`}
       <div style="flex:1;min-width:0;overflow:hidden;">
-        <div style="font-size:14px;font-weight:900;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.2px;">${place.name}</div>
-        ${rating  ? `<div style="font-size:11px;font-weight:600;color:#92400e;">${rating}</div>` : ''}
-        ${address ? `<div style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${address}</div>` : ''}
+        <div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${place.name}</div>
+        ${rating  ? `<div style="font-size:12px;color:#f59e0b;margin-top:2px;">${rating}</div>` : ''}
+        ${address ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${address}</div>` : ''}
       </div>
-      <div style="font-size:16px;flex-shrink:0;margin-left:2px;color:#9ca3af;">›</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#9ca3af;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
     </div>`;
 
     const card = wrapper.querySelector('.minicard-marker-content');
@@ -1042,36 +1044,29 @@ export class MapView {
     const lat = place.location?.lat ?? place.lat;
     const lng = place.location?.lng ?? place.lng;
     if (lat && lng) {
-      const inSearch = document.body.classList.contains('wp-search-active') ||
-                       !!(document.getElementById('wps-inner'));
-      if (inSearch) {
-        // Tap en un pin durante búsqueda — usar el mismo cálculo que SearchBar.doFlyTo
-        const vvNow   = window.visualViewport;
-        const canvasH = this.map.getCanvas().clientHeight;
-        const vvH     = vvNow ? vvNow.height : canvasH;
-        const visibleH = Math.min(vvH, canvasH);
-        const topbar  = document.getElementById('topbar-right-chip');
-        const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        const scats   = document.getElementById('wp-scats');
-        const results = document.getElementById('wp-sresults');
-        const botEl   = (scats && scats.offsetParent !== null) ? scats :
-                        (results && results.offsetParent !== null) ? results : null;
-        let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
-        botEdge = Math.max(botEdge, visibleH * 0.5);
-        const areaCenter = topEdge + (botEdge - topEdge) / 2;
-        const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
-        this.map.easeTo({ center: [lng, lat], zoom: this.map.getZoom(), duration: 400, offset: [0, offsetY] });
-        return;
-      }
-
       const vv      = window.visualViewport;
       const canvasH = this.map.getCanvas().clientHeight;
       const vvH     = vv ? vv.height : canvasH;
       const visibleH = Math.min(vvH, canvasH);
 
+      // Top edge: estable independientemente del estado del chip
+      // En modo búsqueda el chip está expandido, getBoundingClientRect no es fiable
+      const inSearch = document.body.classList.contains('wp-search-active') ||
+                       !!(document.getElementById('wps-inner'));
       let topEdge;
-      const topbar = document.getElementById('topbar-right-chip');
-      topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+      if (inSearch) {
+        // Mismo cálculo estable que SearchBar.doFlyTo
+        let safeTop = 0;
+        const tmp = document.createElement('div');
+        tmp.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);height:0;width:0;pointer-events:none;';
+        document.body.appendChild(tmp);
+        safeTop = tmp.getBoundingClientRect().top || 0;
+        document.body.removeChild(tmp);
+        topEdge = safeTop + 44 + 8 + 44; // safe-area + topbar + gap + searchbar
+      } else {
+        const topbar = document.getElementById('topbar-right-chip');
+        topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+      }
 
       // Bot edge: buscar el elemento visible más alto en la parte inferior
       const scats   = document.getElementById('wp-scats');
