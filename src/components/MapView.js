@@ -1316,7 +1316,7 @@ export class MapView {
         inner.style.cssText = 'gap:3px;';
 
         const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:Avenir,'Avenir Next',system-ui,sans-serif;';
+        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:Avenir,\'Avenir Next\',system-ui,sans-serif;';
         label.textContent = item.title || '';
 
         const borderStyle = borderColor
@@ -1426,7 +1426,7 @@ export class MapView {
       nameEl.className = 'pin-featured-name';
       nameEl.style.cssText = 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
       nameEl.innerHTML =
-        '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:Avenir,'Avenir Next',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
+        '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:Avenir,\'Avenir Next\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
         closest.place.name + '</div>' +
         '<div style="font-size:9px;font-weight:700;background:' +
         (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)') +
