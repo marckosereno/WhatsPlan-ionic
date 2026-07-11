@@ -1049,35 +1049,35 @@ export class MapView {
       const vvH     = vv ? vv.height : canvasH;
       const visibleH = Math.min(vvH, canvasH);
 
-      // Top edge: estable independientemente del estado del chip
-      // En modo búsqueda el chip está expandido, getBoundingClientRect no es fiable
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
-      let topEdge;
+
       if (inSearch) {
-        // Mismo cálculo estable que SearchBar.doFlyTo
-        let safeTop = 0;
-        const tmp = document.createElement('div');
-        tmp.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);height:0;width:0;pointer-events:none;';
-        document.body.appendChild(tmp);
-        safeTop = tmp.getBoundingClientRect().top || 0;
-        document.body.removeChild(tmp);
-        topEdge = safeTop + 44 + 8 + 44; // safe-area + topbar + gap + searchbar
-      } else {
-        const topbar = document.getElementById('topbar-right-chip');
-        topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        // En búsqueda: mismo cálculo que SearchBar.doFlyTo, respeta zoom actual
+        const topbar  = document.getElementById('topbar-right-chip');
+        const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        const scats   = document.getElementById('wp-scats');
+        const results = document.getElementById('wp-sresults');
+        const botEl   = (scats && scats.offsetParent !== null) ? scats :
+                        (results && results.offsetParent !== null) ? results : null;
+        let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
+        botEdge = Math.max(botEdge, visibleH * 0.5);
+        const areaCenter = topEdge + (botEdge - topEdge) / 2;
+        const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
+        this.map.easeTo({ center: [lng, lat], zoom: this.map.getZoom(), duration: 400, offset: [0, offsetY] });
+        return;
       }
 
-      // Bot edge: buscar el elemento visible más alto en la parte inferior
-      const scats   = document.getElementById('wp-scats');
-      const results = document.getElementById('wp-sresults');
-      const panel   = document.querySelector('.map-results-panel-float') || document.getElementById('map-results-panel');
+      // Modo normal: cálculo original
+      const topbar  = document.getElementById('topbar-right-chip');
+      const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
 
-      // Bot edge: panel principal, scats y mini snap
+      const panel   = document.querySelector('.map-results-panel-float') || document.getElementById('map-results-panel');
       let botEdge;
       const panelRect = panel ? panel.getBoundingClientRect() : null;
       const panelTop  = panelRect && panelRect.top > 0 && panelRect.top < visibleH ? panelRect.top : 9999;
-      const scatsTop  = scats && scats.offsetParent !== null ? scats.getBoundingClientRect().top : 9999;
+      const scats2    = document.getElementById('wp-scats');
+      const scatsTop  = scats2 && scats2.offsetParent !== null ? scats2.getBoundingClientRect().top : 9999;
       const msEl      = document.getElementById('wp-minisnap-panel');
       const msRect    = msEl ? msEl.getBoundingClientRect() : null;
       const msTop     = msRect && msRect.top > topEdge && msRect.top < visibleH ? msRect.top : 9999;
@@ -1085,25 +1085,11 @@ export class MapView {
       const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
-      // Minicard: ~90px altura, aparece encima del pin
-      // Para centrar la minicard (no el pin) en areaCenter:
-      // - el centro de la minicard = pinTarget - 90/2 = areaCenter
-      // - pinTarget = areaCenter + 45   ← centro del pin
-      // Para que el centro VISUAL del conjunto (pin + minicard) quede centrado:
-      // - conjunto total ≈ 130px (minicard 90 + pin 40)
-      // - centro del conjunto = pinTarget - 90 + 65 = pinTarget - 25
-      // - pinTarget = areaCenter + 25
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
-      const pinTarget  = areaCenter + 35;   // baja la minicard para centrar el conjunto
+      const pinTarget  = areaCenter + 35;
       const offsetY    = Math.round(pinTarget - canvasH / 2);
 
-      // DEBUG disabled
-
-      if (!skipMove) this.map.easeTo({
-        center: [lng, lat],
-        duration: 300,
-        offset: [0, offsetY]
-      });
+      if (!skipMove) this.map.easeTo({ center: [lng, lat], duration: 300, offset: [0, offsetY] });
     }
   }
 
