@@ -1007,7 +1007,7 @@ export class MapView {
     const mcFallbackHtml = `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${mcIconInner}</div>`;
 
     // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2
-    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px) saturate(1.8);-webkit-backdrop-filter:blur(20px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:260px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:Avenir,'Avenir Next',system-ui,sans-serif;">
+    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:260px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:Avenir,'Avenir Next',system-ui,sans-serif;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
       ${photoUrl
         ? `<div class="wp-mc-photo-wrap" style="width:52px;height:52px;border-radius:10px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
             <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
@@ -1026,8 +1026,12 @@ export class MapView {
     const card = wrapper.querySelector('.minicard-marker-content');
     if (card) {
       animateMinicardIn(card);
+      const pulse = () => {
+        card.style.transform = 'scale(0.93)';
+        setTimeout(() => { card.style.transform = ''; }, 150);
+      };
       let tx = 0, ty = 0;
-      card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+      card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; pulse(); }, { passive: true });
       card.addEventListener('touchend', e => {
         if (Math.abs(e.changedTouches[0].clientX - tx) > 8 || Math.abs(e.changedTouches[0].clientY - ty) > 8) return;
         e.stopPropagation(); e.preventDefault();
@@ -1036,6 +1040,7 @@ export class MapView {
       });
       card.addEventListener('click', e => {
         e.stopPropagation();
+        pulse();
         this.haptic('select');
         if (this.onPlaceSelect) this.onPlaceSelect(place);
       });
