@@ -71,19 +71,10 @@ export class PlaceTagPicker {
     this._remaining = remaining;
     // Exacto mismo patrón que more menu de PlaceModal:
     // display:'' → browser ve translateY(110%) → rAF → clase → transición
-    // Fase 1: mostrar skeleton instantáneamente + disparar animación
-    const list = this._el.querySelector('#wpt-list');
-    const slots = this._el.querySelector('#wpt-slots');
-    slots.innerHTML = '';
-    slots.className = 'wpt-slots wpt-slots-sk';
-    list.querySelectorAll('.wpt-pill').forEach(p => p.classList.add('wpt-pill-sk'));
-
+    // Modal vacío primero — sin pills ni contenido dinámico
+    // para verificar que el translate funciona
     this._el.style.visibility = 'visible';
-    requestAnimationFrame(() => {
-      this._el.classList.add('wpt-in');
-      // Fase 2: cargar contenido real mientras el panel ya está animándose
-      setTimeout(() => this._render(), 80);
-    });
+    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
   }
 
   hide() {
