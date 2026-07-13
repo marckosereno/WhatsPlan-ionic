@@ -14,7 +14,7 @@ function _showSkeleton() {
     style.textContent = `
       #wpt-sk{display:none;position:fixed;inset:0;z-index:99996;flex-direction:column;
         align-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(28px + env(safe-area-inset-bottom,0px));
-        background:rgba(249,249,251,0.98);display:none;transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);overflow-y:auto;}
+        background:rgba(249,249,251,0.98);display:flex;visibility:hidden;transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);will-change:transform;overflow-y:auto;}
       #wpt-sk.sk-in{transform:translateY(0);}
       @keyframes wpt-sk-sh{0%{background-position:200% center}100%{background-position:-200% center}}
       .wpt-sk-b{border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,0.25) 25%,rgba(255,255,255,0.55) 50%,rgba(255,255,255,0.25) 75%);
@@ -71,17 +71,15 @@ export class PlaceTagPicker {
     this._remaining = remaining;
     // Exacto mismo patrón que more menu de PlaceModal:
     // display:'' → browser ve translateY(110%) → rAF → clase → transición
-    this._el.style.display = 'flex';
-    requestAnimationFrame(() => {
-      this._el.classList.add('wpt-in');
-      this._render();
-    });
+    this._render();
+    this._el.style.visibility = 'visible';
+    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
   }
 
   hide() {
     this._el.classList.remove('wpt-in');
     setTimeout(() => {
-      this._el.style.display = 'none';
+      this._el.style.visibility = 'hidden';
       this._session  = [];
       this._userTags = [];
     }, 340);
@@ -209,7 +207,7 @@ export class PlaceTagPicker {
       transform:translateY(100%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
       overflow-y:auto;
     }
-    #wpt-root.wpt-in { transform:translateY(0); }
+    #wpt-root.wpt-in { transform:translateY(0); visibility:visible; }
 
     .wpt-close {
       align-self:flex-end; margin-bottom:6px;
