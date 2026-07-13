@@ -450,7 +450,7 @@ export class PlaceModal {
         <div class="wp-pm-topbar" id="wp-pm-topbar">
           <!-- Botón back -->
           <button class="wp-pm-tb-btn" id="wp-pm-back">
-            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
+            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="112 244 256 400 400 244" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="256" y1="120" x2="256" y2="380" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
           </button>
           <!-- Centro: stats (default) / nombre (al scrollear) -->
           <div class="wp-pm-tb-center">
