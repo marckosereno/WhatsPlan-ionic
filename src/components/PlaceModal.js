@@ -435,54 +435,53 @@ export class PlaceModal {
   isVisible() { return !this._el.classList.contains('wp-pm-hidden'); }
 
   _buildTagPills(list, slotsEl, confirmBtn) {
-    const userTags = this._place?._userTags || [];
-    let session = [];
-    const remaining = 3 - userTags.length;
+    const userTags  = this._place?._userTags || [];
+    const MAX       = 3;
+    let session     = [];
 
     const update = () => {
-      const n = session.length;
-      const rem2 = remaining - n;
-      if (slotsEl) {
-        slotsEl.innerHTML = rem2 > 0
-          ? `<span class="wp-pm-tag-dot"></span>${rem2} etiqueta${rem2!==1?'s':''} disponible${rem2!==1?'s':''}`
-          : '⚠ Sin etiquetas disponibles';
-        slotsEl.className = 'wp-pm-tag-slots ' + (rem2 > 0 ? 'wp-pm-tag-s-ok' : 'wp-pm-tag-s-no');
+      const n    = session.length;
+      const left = MAX - userTags.length - n;
+      if (slotsEl) slotsEl.textContent = left > 0 ? `Elige hasta ${left} etiqueta${left!==1?'s':''}` : 'Máximo alcanzado';
+      if (confirmBtn) {
+        confirmBtn.textContent = n > 0 ? `Guardar ${n} etiqueta${n!==1?'s':''}` : 'Selecciona etiquetas';
+        confirmBtn.classList.toggle('ready', n > 0);
+        confirmBtn.disabled = n === 0;
       }
-      if (confirmBtn) { confirmBtn.style.display = n > 0 ? '' : 'none'; confirmBtn.textContent = `Guardar ${n} etiqueta${n!==1?'s':''}`; }
     };
 
-    list.innerHTML = PLACE_TAGS.map(tag => {
-      const active = userTags.includes(tag.key);
-      return `<div class="wp-pm-tag-pill${active?' active':''}" data-key="${tag.key}">
-        <span class="wp-pm-tag-em">${tag.emoji}</span>
-        <span class="wp-pm-tag-lbl">${tag.label}</span>
-        <button class="wp-pm-tag-btn${active?' wp-pm-tag-btn-active':''}" tabindex="-1">${active?'−':'+'}</button>
-      </div>`;
-    }).join('');
+    // Agrupar por categoría
+    const groups = {};
+    PLACE_TAGS.forEach(tag => {
+      if (!groups[tag.cat]) groups[tag.cat] = [];
+      groups[tag.cat].push(tag);
+    });
 
-    list.querySelectorAll('.wp-pm-tag-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        const key = pill.dataset.key;
-        if (userTags.includes(key)) return;
-        const idx = session.indexOf(key);
-        if (idx >= 0) {
-          session.splice(idx,1);
-          pill.classList.remove('active');
-          const btn = pill.querySelector('.wp-pm-tag-btn');
-          if (btn) { btn.textContent = '+'; btn.classList.remove('wp-pm-tag-btn-active'); }
-        } else if (session.length < remaining) {
-          session.push(key);
-          pill.classList.add('active');
-          const btn = pill.querySelector('.wp-pm-tag-btn');
-          if (btn) { btn.textContent = '−'; btn.classList.add('wp-pm-tag-btn-active'); }
-        }
-        update();
-      });
+    list.innerHTML = Object.entries(groups).map(([cat, tags]) =>
+      `<div class="wp-pm-tag-group-title">${cat}</div>
+       <div class="wp-pm-tag-pills">${tags.map(tag => {
+         const active = userTags.includes(tag.key);
+         return `<button class="wp-pm-tag-pill${active?' active':''}" data-key="${tag.key}">${tag.emoji} ${tag.label}</button>`;
+       }).join('')}</div>`
+    ).join('');
+
+    list.addEventListener('click', e => {
+      const pill = e.target.closest('.wp-pm-tag-pill');
+      if (!pill) return;
+      const key = pill.dataset.key;
+      if (userTags.includes(key)) return;
+      const idx = session.indexOf(key);
+      if (idx >= 0) { session.splice(idx,1); pill.classList.remove('active'); }
+      else if (session.length < MAX - userTags.length) { session.push(key); pill.classList.add('active'); }
+      update();
     });
 
     if (confirmBtn) confirmBtn.onclick = async () => {
       if (!session.length) return;
-      try { await PlaceTagService.addTags(this._place?.place_id || this._place?.id, session); this.closeTagPanel?.(); } catch(e) { console.error(e); }
+      try {
+        await PlaceTagService.addTags(this._place?.place_id || this._place?.id, session);
+        this.closeTagPanel?.();
+      } catch(e) { console.error(e); }
     };
     update();
   }
@@ -588,14 +587,21 @@ export class PlaceModal {
           </button>
         </div>
 
-        <!-- ── ETIQUETAR LUGAR — mismo patrón que more/reviews ── -->
+        <!-- ── ETIQUETAR LUGAR ── -->
         <div class="wp-pm-more-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
         <div class="wp-pm-tag-panel" id="wp-pm-tag-panel" style="display:none">
-          <button class="wp-pm-tag-close" id="wp-pm-tag-close">✕</button>
-          <div class="wp-pm-tag-title">¿Cómo describirías<br>este lugar?</div>
-          <div class="wp-pm-tag-slots" id="wp-pm-tag-slots"></div>
-          <div class="wp-pm-tag-list" id="wp-pm-tag-list"></div>
-          <button class="wp-pm-tag-confirm" id="wp-pm-tag-confirm" style="display:none">Guardar</button>
+          <div class="wp-pm-tag-top">
+            <div class="wp-pm-tag-icon">📎</div>
+            <div class="wp-pm-tag-titles">
+              <div class="wp-pm-tag-title">Describe este lugar</div>
+              <div class="wp-pm-tag-sub" id="wp-pm-tag-slots">Elige hasta 3 etiquetas</div>
+            </div>
+            <button class="wp-pm-tag-x" id="wp-pm-tag-close">✕</button>
+          </div>
+          <div class="wp-pm-tag-scroll" id="wp-pm-tag-list"></div>
+          <div class="wp-pm-tag-footer">
+            <button class="wp-pm-tag-confirm" id="wp-pm-tag-confirm">Selecciona etiquetas</button>
+          </div>
         </div>
 
         <!-- ── HERO — peek carousel, no fullwidth ── -->
@@ -2559,66 +2565,57 @@ export class PlaceModal {
       .wp-pm-more-menu.open {
         transform:translateY(0);
       }
-      /* ── Tag picker panel — diseño original restaurado ── */
+      /* ── Tag picker panel — diseño con grupos de categorías ── */
       .wp-pm-tag-panel {
         position:absolute; inset:0; z-index:202;
-        -webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-        backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-        background:rgba(255,255,255,0.12);
+        background:white;
         transform:translateY(110%);
         transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        display:flex; flex-direction:column; align-items:center;
-        padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(28px + env(safe-area-inset-bottom,0px));
-        overflow-y:auto;
+        display:flex; flex-direction:column;
+        overflow:hidden;
+        border-radius:inherit;
       }
       .wp-pm-tag-panel.open { transform:translateY(0); }
-      .wp-pm-tag-header { text-align:center; margin:0 0 10px; align-self:flex-end; }
-      .wp-pm-tag-close {
-        align-self:flex-end; margin-bottom:6px;
-        width:34px; height:34px; border-radius:50%; border:none;
-        background:rgba(0,0,0,0.10); color:#1c1c1e;
-        font-size:15px; cursor:pointer; flex-shrink:0;
-        display:flex; align-items:center; justify-content:center;
+      .wp-pm-tag-top {
+        display:flex; align-items:flex-start; gap:12px;
+        padding:18px 16px 12px; flex-shrink:0;
       }
-      .wp-pm-tag-title {
-        font-size:27px; font-weight:800; color:#0a0a0a;
-        font-family:var(--wp-font);
-        text-align:center; line-height:1.2; letter-spacing:-0.03em;
-        margin-bottom:10px;
-        text-shadow:0 1px 8px rgba(255,255,255,0.5);
+      .wp-pm-tag-icon {
+        width:46px; height:46px; border-radius:14px;
+        background:#f2f2f7; display:flex; align-items:center; justify-content:center;
+        font-size:22px; flex-shrink:0;
       }
-      .wp-pm-tag-slots {
-        display:flex; align-items:center; gap:6px;
-        padding:5px 14px; border-radius:999px;
-        font-size:12px; font-weight:700; font-family:var(--wp-font);
-        margin-bottom:18px; flex-shrink:0;
+      .wp-pm-tag-titles { flex:1; }
+      .wp-pm-tag-title { font-size:17px; font-weight:700; color:#111; font-family:var(--wp-font); }
+      .wp-pm-tag-sub   { font-size:13px; color:#8e8e93; margin-top:2px; font-family:var(--wp-font); }
+      .wp-pm-tag-x {
+        width:32px; height:32px; border-radius:50%; border:none;
+        background:#f2f2f7; color:#3c3c43; font-size:13px; font-weight:600;
+        cursor:pointer; display:flex; align-items:center; justify-content:center;
+        flex-shrink:0; margin-top:4px; -webkit-tap-highlight-color:transparent;
       }
-      .wp-pm-tag-s-ok { background:rgba(52,199,89,0.18); color:#15803d; }
-      .wp-pm-tag-s-no { background:rgba(255,59,48,0.15); color:#c0392b; }
-      .wp-pm-tag-dot { width:7px; height:7px; border-radius:50%; background:#34c759; box-shadow:0 0 6px rgba(52,199,89,0.8); flex-shrink:0; }
-      .wp-pm-tag-list { display:flex; flex-direction:column; align-items:flex-start; gap:10px; width:100%; max-width:400px; padding:0 8px; }
-      .wp-pm-tag-pill { display:inline-flex; align-items:center; gap:10px; padding:10px 16px 10px 14px; border-radius:999px; border:2px dashed rgba(0,0,0,0.22); background:rgba(255,255,255,0.22); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background 0.16s,border 0.16s,box-shadow 0.16s; }
-      .wp-pm-tag-pill:nth-child(odd)  { align-self:flex-start; }
-      .wp-pm-tag-pill:nth-child(even) { align-self:center; }
-      .wp-pm-tag-pill:nth-child(3n)   { align-self:flex-end; }
-      .wp-pm-tag-pill:nth-child(1)  { transform:rotate(-1.8deg); }
-      .wp-pm-tag-pill:nth-child(2)  { transform:rotate( 1.2deg); }
-      .wp-pm-tag-pill:nth-child(3)  { transform:rotate(-0.8deg); }
-      .wp-pm-tag-pill:nth-child(4)  { transform:rotate( 2.1deg); }
-      .wp-pm-tag-pill:nth-child(5)  { transform:rotate(-1.5deg); }
-      .wp-pm-tag-pill:nth-child(6)  { transform:rotate( 0.9deg); }
-      .wp-pm-tag-pill:nth-child(7)  { transform:rotate(-2.2deg); }
-      .wp-pm-tag-pill:nth-child(8)  { transform:rotate( 1.6deg); }
-      .wp-pm-tag-pill:nth-child(9)  { transform:rotate(-0.6deg); }
-      .wp-pm-tag-pill:nth-child(10) { transform:rotate( 1.9deg); }
-      .wp-pm-tag-pill.active { transform:rotate(0deg) scale(1.03) !important; background:rgba(255,255,255,0.88); border:2px solid transparent; box-shadow:0 6px 20px rgba(0,0,0,0.10); }
-      .wp-pm-tag-pill:not(.active):active { transform:rotate(0deg) scale(0.96) !important; }
-      .wp-pm-tag-em  { font-size:24px; flex-shrink:0; }
-      .wp-pm-tag-lbl { font-size:19px; font-weight:700; color:#0a0a0a; font-family:var(--wp-font); letter-spacing:-0.02em; }
-      .wp-pm-tag-btn { width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0; background:rgba(0,0,0,0.13); color:#fff; font-size:18px; font-weight:300; cursor:pointer; display:flex; align-items:center; justify-content:center; pointer-events:none; line-height:1; }
-      .wp-pm-tag-btn-active { background:#007aff; }
-      .wp-pm-tag-confirm { margin-top:18px; width:100%; max-width:380px; flex-shrink:0; height:52px; border-radius:999px; border:none; background:#007aff; color:#fff; font-size:16px; font-weight:700; font-family:var(--wp-font); box-shadow:0 4px 20px rgba(0,122,255,0.35); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s,filter 0.15s; }
-      .wp-pm-tag-confirm:active { transform:scale(0.97); filter:brightness(0.92); }
+      .wp-pm-tag-scroll { flex:1; overflow-y:auto; padding:4px 16px 0; }
+      .wp-pm-tag-group-title { font-size:13px; font-weight:600; color:#8e8e93; margin:12px 0 8px; font-family:var(--wp-font); }
+      .wp-pm-tag-pills { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
+      .wp-pm-tag-pill {
+        display:inline-flex; align-items:center; gap:6px;
+        padding:8px 14px; border-radius:999px;
+        border:1.5px solid #e5e7eb; background:white;
+        font-size:14px; font-weight:500; color:#111; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background 0.14s, border-color 0.14s;
+      }
+      .wp-pm-tag-pill.active { background:#f0f7ff; border-color:#1a5cf5; color:#1a5cf5; }
+      .wp-pm-tag-pill:active { transform:scale(0.95); }
+      .wp-pm-tag-footer { padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); flex-shrink:0; }
+      .wp-pm-tag-confirm {
+        width:100%; height:50px; border-radius:999px; border:none;
+        background:#e5e7eb; color:#9ca3af;
+        font-size:16px; font-weight:600; font-family:var(--wp-font);
+        cursor:not-allowed; transition:background 0.2s, color 0.2s;
+      }
+      .wp-pm-tag-confirm.ready { background:#0a0a0a; color:white; cursor:pointer; }
+      .wp-pm-tag-confirm.ready:active { transform:scale(0.97); }
       .wp-pm-more-handle {
         width:36px; height:4px; border-radius:2px;
         background:rgba(0,0,0,0.15); margin:0 auto 8px;
