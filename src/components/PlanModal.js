@@ -1,3112 +1,1128 @@
 // ====================================================================
-// WHATSPLAN — src/components/PlaceModal.js
-// Ficha de lugar — diseño tipo Insightlancer/travel card
+// PLAN MODAL - Whatsplan
+// Crear planes desde plantillas o desde cero, agregar pasos, compartir
 // ====================================================================
 
-import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
-import { ReviewService } from '/src/services/ReviewService.js';
-import { getAvatarUrl }  from '/src/services/AvatarService.js';
+import { PlanService } from '/src/services/PlanService.js';
 
-export class PlaceModal {
-  constructor(opts = {}) {
-    this.proxyPhoto     = opts.proxyPhoto     || (u => u);
-    this.getCurrentUser = opts.getCurrentUser || (() => null);
-    this.onClose        = opts.onClose        || null;
-    this._place         = null;
-    this._el            = null;
-    this._card          = null;
-    this._currentPhoto  = 0;
-    this._photos        = [];
-    this._injectStyles();
-    this._build();
-    this._tagPicker = null;
+const R3D = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
+
+// Catálogo de tipos de paso — mismo que ACTIVITY_TYPES en ActivityModal
+const STEP_TYPES = [
+  { key:'tacos',       emoji:'🌮', icon3d:R3D+'Taco/3D/taco_3d.png',                                    label:'Unos tacos',        cat:'RESTAURANTS' },
+  { key:'mariscos',    emoji:'🦐', icon3d:R3D+'Shrimp/3D/shrimp_3d.png',                                label:'Mariscos',          cat:'RESTAURANTS' },
+  { key:'hamburguer',  emoji:'🍔', icon3d:R3D+'Hamburger/3D/hamburger_3d.png',                           label:'Hamburguesas',      cat:'RESTAURANTS' },
+  { key:'coffee',      emoji:'☕', icon3d:R3D+'Hot+Beverage/3D/hot_beverage_3d.png',                     label:'Un café',           cat:'RESTAURANTS' },
+  { key:'antojitos',   emoji:'🫔', icon3d:R3D+'Burrito/3D/burrito_3d.png',                              label:'Antojitos',         cat:'RESTAURANTS' },
+  { key:'brunch',      emoji:'🥞', icon3d:R3D+'Pancakes/3D/pancakes_3d.png',                            label:'Brunch',            cat:'RESTAURANTS' },
+  { key:'drinks',      emoji:'🍻', icon3d:R3D+'Clinking+Beer+Mugs/3D/clinking_beer_mugs_3d.png',        label:'Unas chelas',       cat:'ENTERTAINMENT' },
+  { key:'shots',       emoji:'🥃', icon3d:R3D+'Tumbler+Glass/3D/tumbler_glass_3d.png',                  label:'Shots y cocteles',  cat:'ENTERTAINMENT' },
+  { key:'musica',      emoji:'🎵', icon3d:R3D+'Musical+Note/3D/musical_note_3d.png',                    label:'Bailar / Música',   cat:'ENTERTAINMENT' },
+  { key:'karaoke',     emoji:'🎤', icon3d:R3D+'Microphone/3D/microphone_3d.png',                        label:'Karaoke',           cat:'ENTERTAINMENT' },
+  { key:'chill',       emoji:'🎮', icon3d:R3D+'Video+Game/3D/video_game_3d.png',                        label:'Chill y juegos',    cat:'ENTERTAINMENT' },
+  { key:'ropa',        emoji:'👗', icon3d:R3D+'Dress/3D/dress_3d.png',                                  label:'Ir de shopping',    cat:'SHOPPING' },
+  { key:'artesanias',  emoji:'🎨', icon3d:R3D+'Artist+Palette/3D/artist_palette_3d.png',                label:'Artesanías',        cat:'SHOPPING' },
+  { key:'mercado',     emoji:'🛒', icon3d:R3D+'Shopping+Cart/3D/shopping_cart_3d.png',                  label:'El mercado',        cat:'SHOPPING' },
+  { key:'dentist',     emoji:'🦷', icon3d:R3D+'Tooth/3D/tooth_3d.png',                                  label:'Ir al dentista',    cat:'HEALTH' },
+  { key:'dental_tour', emoji:'😁', icon3d:R3D+'Beaming+Face+with+Smiling+Eyes/3D/beaming_face_with_smiling_eyes_3d.png', label:'Tour dental', cat:'HEALTH' },
+  { key:'spa',         emoji:'💆', icon3d:R3D+'Person+Getting+Massage/3D/person_getting_massage_3d.png', label:'Spa / Masaje',     cat:'HEALTH' },
+  { key:'farmacia',    emoji:'💊', icon3d:R3D+'Pill/3D/pill_3d.png',                                    label:'Farmacia',          cat:'HEALTH' },
+  { key:'paseo',       emoji:'🌳', icon3d:R3D+'Deciduous+Tree/3D/deciduous_tree_3d.png',                label:'Un paseo',          cat:'PARKS' },
+  { key:'foto',        emoji:'📸', icon3d:R3D+'Camera+with+Flash/3D/camera_with_flash_3d.png',          label:'Sesión de fotos',   cat:'PARKS' },
+  { key:'deporte',     emoji:'⚽', icon3d:R3D+'Soccer+Ball/3D/soccer_ball_3d.png',                      label:'Deporte',           cat:'PARKS' },
+];
+
+const TEMPLATE_STEPS = {
+  dental:    ['dentist','dental_tour','tacos','farmacia'],
+  nightlife: ['drinks','shots','musica','karaoke','tacos'],
+  family:    ['tacos','mercado','artesanias','paseo'],
+  shopping:  ['farmacia','ropa','artesanias','mercado'],
+};
+
+export class PlanModal {
+  constructor({ currentUser, onPlanCreated } = {}) {
+    this.currentUser = currentUser;
+    this.onPlanCreated = onPlanCreated;
+    this.currentPlan = null;   // plan activo siendo editado
+    this.currentStep = 1;      // 1=plantillas, 2=detalle+pasos, 3=compartir
+    this._rendered = false;
+    this._render();
   }
 
-  // ── Public ────────────────────────────────────────────────────────
+  setUser(user) { this.currentUser = user; }
 
-  _hideMapUI() {
-    var panel = document.querySelector('.map-results-panel-float');
-    if (panel) {
-      panel.style.transition  = 'opacity 0.2s ease, transform 0.2s ease';
-      panel.style.opacity     = '0';
-      panel.style.transform   = 'scale(0.96)';
-      panel.style.pointerEvents = 'none';
-    }
-  }
-
-  _showMapUI() {
-    var panel = document.querySelector('.map-results-panel-float');
-    if (panel) {
-      panel.style.transition  = 'opacity 0.25s ease, transform 0.35s cubic-bezier(0.34,1.2,0.64,1)';
-      panel.style.opacity     = '1';
-      panel.style.transform   = 'scale(1)';
-      panel.style.pointerEvents = '';
-    }
-  }
-
-  _hideTopbar() {
-    var mapTopbar = document.getElementById('topbar');
-    if (!mapTopbar) return;
-    var gsapG = window.gsap;
-    if (gsapG) {
-      gsapG.killTweensOf(mapTopbar);
-      gsapG.to(mapTopbar, { opacity:0, duration:0.2, ease:'power2.in',
-        onComplete: function() { mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none'; }
-      });
-    } else {
-      mapTopbar.style.transition = 'opacity 0.2s ease';
-      mapTopbar.style.opacity = '0';
-      mapTopbar.style.visibility='hidden'; mapTopbar.style.pointerEvents='none';
-    }
-  }
-
-  _restoreTopbar() {
-    var mapTopbar = document.getElementById('topbar');
-    if (!mapTopbar) return;
-    mapTopbar.style.visibility=''; mapTopbar.style.pointerEvents='';
-    var gsapG = window.gsap;
-    if (gsapG) {
-      gsapG.killTweensOf(mapTopbar);
-      gsapG.fromTo(mapTopbar, {opacity:0}, {opacity:1, duration:0.24, ease:'power1.out'});
-    } else {
-      mapTopbar.style.transition = 'opacity 0.24s ease';
-      mapTopbar.style.opacity = '1';
+  preloadActivity(activity) {
+    if (!this.currentPlan) return;
+    if (!this.currentPlan.pendingActivities) this.currentPlan.pendingActivities = [];
+    if (!this.currentPlan.pendingActivities.find(a => a.id === activity.id)) {
+      this.currentPlan.pendingActivities.push(activity);
     }
   }
 
-  showMini(place) {
-    this._place = place;
-    // Ocultar panel del mapa
-    this._hideMapUI();
-    // Construir/mostrar el mini snap fijo
-    this._showMiniSnap(place);
+  // Guardar actividad para inyectar en cuanto el usuario elija plantilla o "desde cero"
+  setPendingActivity(activity) {
+    this._pendingActivity = activity || null;
   }
 
-  _showMiniSnap(place) {
-    var self = this;
-    // Reusar o crear el elemento fijo del mini snap
-    var ms = document.getElementById('wp-minisnap-panel');
-    var isAlreadyVisible = ms && ms.style.opacity === '1';
-    if (!ms) {
-      ms = document.createElement('div');
-      ms.id = 'wp-minisnap-panel';
-      document.body.appendChild(ms);
+  // Inyectar _pendingActivity en currentPlan recién creado
+  _injectPendingActivity() {
+    if (!this._pendingActivity || !this.currentPlan) return;
+    if (!this.currentPlan.pendingActivities) this.currentPlan.pendingActivities = [];
+    const already = this.currentPlan.pendingActivities.find(a => a.id === this._pendingActivity.id);
+    if (!already) {
+      this.currentPlan.pendingActivities.push(this._pendingActivity);
     }
-
-    var name    = place.name || place.displayName || '';
-    var rating  = parseFloat(place.rating) || 0;
-    var count   = place.userRatingCount || place.user_ratings_total || 0;
-    var photo   = (place.photosUrls || place.photos_urls || [])[0] || place.photo_url || '';
-    var types   = (place.types || []).filter(t => !['point_of_interest','establishment','food'].includes(t)).slice(0,2).map(t=>t.replace(/_/g,' ')).join(' · ');
-    var price   = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-    var isOpen  = self._isOpenNow(place);
-    var statusTxt   = isOpen===true ? 'Abierto' : isOpen===false ? 'Cerrado' : 'Sin horario';
-    var statusColor = isOpen===true ? '#16a34a'   : isOpen===false ? '#ef4444'   : '#6b7280';
-
-    // ── Hero card: foto derecha, contenido izquierda ──
-    var addr = (place.formatted_address||place.address||place.vicinity||'').split(',').slice(0,2).join(',').trim();
-
-    var photos4 = (place.photosUrls||place.photos_urls||(place.photo_url?[place.photo_url]:[])).slice(0,5);
-    var extraPhotos = Math.max(0,(place.photosUrls||place.photos_urls||[]).length - 4);
-
-    // Medir la altura real del panel para igualarla
-    var panelEl     = document.querySelector('.map-results-panel-float');
-    var panelHeight = panelEl ? panelEl.offsetHeight : 156;
-
-    ms.style.cssText = [
-      'position:fixed',
-      'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
-      'left:12px','right:12px',
-      'height:'+panelHeight+'px',
-      'border-radius:32px',
-      'background:rgba(255,255,255,0.82)',
-      'backdrop-filter:blur(24px) saturate(1.6)',
-      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
-      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
-      'border:1px solid rgba(255,255,255,0.6)',
-      'overflow:hidden',
-      'z-index:100',
-      'opacity:0',
-      'transition:opacity 0.22s ease',
-      'font-family:var(--wp-font)',
-      'cursor:pointer',
-      'padding:8px 14px 8px',
-      'box-sizing:border-box',
-      'display:flex',
-      'flex-direction:column',
-      'gap:6px',
-    ].join(';');
-
-    // Avatares con Tapback memojis — seeds genéricos por posición
-    var mSeeds = ['user_m_1','user_f_1','user_m_2','user_f_2','user_m_3'];
-    var avatarCount = Math.min(count||4, 5);
-    var avatarsHtml = Array.from({length:avatarCount},(_,i)=>{
-      var url = 'https://www.tapback.co/api/avatar/'+mSeeds[i]+'.webp';
-      return `<img src="${url}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i>0?'-7px':'0'};object-fit:cover;position:relative;z-index:${avatarCount-i};background:#e2e8f0" onerror="this.style.background='#e2e8f0'">`;
-    }).join('');
-
-    var glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:var(--wp-font);cursor:pointer;-webkit-tap-highlight-color:transparent';
-
-    // Dot animado inline
-    var dotStyle = isOpen===true
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-dot-pulse 1.8s ease-in-out infinite'
-      : isOpen===false
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
-      : '';
-    var badgeDot = isOpen!==null ? `<span style="${dotStyle}"></span>` : '';
-    // Estilos idénticos a .wp-pm-open-badge de la ficha, tamaño mini snap
-    var glassBadge = isOpen===true
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:var(--wp-font);background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25);box-shadow:0 1px 4px rgba(52,199,89,0.15)'
-      : isOpen===false
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:var(--wp-font);background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20);box-shadow:0 1px 4px rgba(255,59,48,0.12)'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:var(--wp-font);background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18);box-shadow:0 1px 4px rgba(0,0,0,0.06)';
-
-    ms.innerHTML = `
-      <!-- Handle azul absoluto — no ocupa altura -->
-      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:20px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
-      </div>
-      <!-- Badge horario | Nombre centrado | Favoritos -->
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
-        <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
-          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 4px 14px rgba(0,0,0,0.10),0 1px 3px rgba(0,0,0,0.06),inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 0 rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
-            <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
-          </button>
-          <button id="wp-ms-close-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(240,244,255,0.90) 100%);backdrop-filter:blur(20px) saturate(2);-webkit-backdrop-filter:blur(20px) saturate(2);box-shadow:0 4px 14px rgba(0,0,0,0.10),0 1px 3px rgba(0,0,0,0.06),inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 0 rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Foto strip — centradas con skeleton -->
-      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
-        ${photos4.slice(0,3).map(u=>`
-          <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-ms-skeleton 1.4s ease-in-out infinite">
-            <img src="${u}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'">
-          </div>`
-        ).join('')}
-        <!-- 4ta foto: muestra +N si hay más, o la foto si solo hay 4 -->
-        ${(()=>{
-          var total = (place.photosUrls||place.photos_urls||[]).length;
-          var remaining = total - 3;
-          if (photos4[3]) {
-            return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-ms-skeleton 1.4s ease-in-out infinite">
-              <img src="${photos4[3]}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none'">
-              ${remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:-0.02em">+${remaining-1}<br><span style="font-size:9px;font-weight:500;opacity:0.85">fotos</span></div>` : ''}
-            </div>`;
-          }
-          return `<div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:20px">📷</span><span style="font-size:8px;color:#9ca3af;font-family:var(--wp-font)">Sin fotos</span></div>`;
-        })()}
-      </div>
-
-      <!-- Footer: avatares reseñas + CTA -->
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <!-- Avatares apilados + conteo -->
-        <div style="display:flex;align-items:center;gap:7px">
-          <div style="display:flex;align-items:center">${avatarsHtml}</div>
-          ${count>0?`<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>`:'<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>'}
-        </div>
-        <!-- CTA glass -->
-        <button id="wp-ms-cta-btn" style="${glassBtn}">
-          + Detalles
-        </button>
-      </div>`;
-
-    ms.className = 'wp-minisnap-panel';
-
-    // Notificar al SearchBar para reposicionar chips
-    document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
-
-    if (!isAlreadyVisible) {
-      ms.style.transition = 'none';
-      ms.style.opacity    = '0';
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        ms.style.transition = 'opacity 0.22s ease';
-        ms.style.opacity    = '1';
-      }));
-    } else {
-      // Ya visible: mostrar inmediatamente sin animación
-      ms.style.transition = 'none';
-      ms.style.opacity    = '1';
-    }
-    // Si ya está visible: contenido actualizado, sin ninguna animación
-    // Favoritos
-    var favBtn = ms.querySelector('#wp-ms-fav-btn');
-    if (favBtn) {
-      favBtn.onclick = function(e) {
-        e.stopPropagation();
-        favBtn.classList.toggle('active');
-        var svg = favBtn.querySelector('path');
-        if (favBtn.classList.contains('active')) {
-          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
-          self._showToast('❤️ Guardado en favoritos');
-        } else {
-          svg.setAttribute('fill','none');
-          svg.setAttribute('stroke','#6b7280');
-          favBtn.style.background = 'rgba(240,240,245,0.9)';
-          favBtn.style.borderColor = 'rgba(0,0,0,0.15)';
-        }
-      };
-    }
-    // Pulse en mini snap completo al tocar
-    var addPulse = function(el, scale) {
-      el.addEventListener('pointerdown', function(){ el.style.transform='scale('+scale+')'; el.style.transition='transform 0.1s ease'; },{passive:true});
-      el.addEventListener('pointerup',   function(){ el.style.transform='scale(1)'; el.style.transition='transform 0.25s cubic-bezier(0.34,1.56,0.64,1)'; },{passive:true});
-      el.addEventListener('pointercancel', function(){ el.style.transform='scale(1)'; },{passive:true});
-    };
-
-    // Pulse en botones individuales
-    var favBtn2 = ms.querySelector('#wp-ms-fav-btn');
-    var closeB  = ms.querySelector('#wp-ms-close-btn');
-    if (favBtn2) addPulse(favBtn2, 0.92);
-    if (closeB)  addPulse(closeB, 0.92);
-
-    // Pulse en el minisnap al tap (solo cuando hace tap para abrir)
-    ms.addEventListener('pointerdown', function(e){
-      if (e.target.closest('#wp-ms-fav-btn') || e.target.closest('#wp-ms-close-btn') || e.target.closest('#wp-ms-handle')) return;
-      ms.style.transform = 'scale(0.985)';
-      ms.style.transition = 'transform 0.1s ease';
-    },{passive:true});
-    ms.addEventListener('pointerup', function(){
-      ms.style.transform = 'scale(1)';
-      ms.style.transition = 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)';
-    },{passive:true});
-    ms.addEventListener('pointercancel', function(){
-      ms.style.transform = 'scale(1)';
-    },{passive:true});
-
-    // Botón X → cerrar mini snap
-    var closeBtn = ms.querySelector('#wp-ms-close-btn');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        self._hideMiniSnap();
-      });
-    }
-
-    // Handle drag → ficha completa
-    var handle = ms.querySelector('#wp-ms-handle');
-    if (handle) {
-      var _hY = 0;
-      handle.addEventListener('touchstart', function(e){ _hY=e.touches[0].clientY; e.stopPropagation(); },{passive:true});
-      handle.addEventListener('touchend', function(e){ e.stopPropagation(); if(_hY-e.changedTouches[0].clientY>25){self._fromMiniSnap=true;self.show(self._place);} },{passive:true});
-      handle.addEventListener('click', function(e){ e.stopPropagation(); self._fromMiniSnap=true; self.show(self._place); });
-    }
-
-    // CTA → ficha completa
-    var cta = ms.querySelector('#wp-ms-cta-btn');
-    if (cta) cta.onclick = function(){ self._fromMiniSnap=true; self.show(self._place); };
-    // Tap en la card → ficha completa
-    ms.addEventListener('click', function(e){
-      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) { self._fromMiniSnap=true; self.show(self._place); }
-    });
+    this._pendingActivity = null; // consumir — solo se inyecta una vez
   }
 
-  _hideMiniSnap() {
-    var ms = document.getElementById('wp-minisnap-panel');
-    if (!ms) return;
-    ms.style.pointerEvents = 'none';
-    ms.style.transition    = 'opacity 0.2s ease';
-    ms.style.opacity       = '0';
-    document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
-    setTimeout(function(){ if(ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
-    this._showMapUI();
-  }
-
-  expandToFull() {
-    this._fromMiniSnap = true;
-    this.show(this._place);  // minisnap queda intacto, el overlay lo cubre
-  }
-
-  show(place) {
-    this._place = place;
-    this._populate(place);
-    const card = this._card;
-    const fromSearch = this._fromSearch;
-
-    document.body.classList.add('wp-pm-open');
-
-    // Footer menu queda intacto pero detrás de la ficha
-    var footerMenu = document.getElementById('wp-footer-menu');
-    if (footerMenu) footerMenu.style.zIndex = '50';
-
-    if (!fromSearch) {
-      // Mapview normal (directo o vía minisnap): ocultar topbar — solo fade
-      var mapTopbar = document.getElementById('topbar');
-      var gsapG = window.gsap;
-      if (mapTopbar && gsapG) {
-        gsapG.killTweensOf(mapTopbar);
-        gsapG.to(mapTopbar, { opacity: 0, duration: 0.2, ease: 'power2.in',
-          onComplete: function() { mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none'; }
-        });
-      } else if (mapTopbar) {
-        mapTopbar.style.transition = 'opacity 0.2s ease';
-        mapTopbar.style.opacity = '0';
-        mapTopbar.style.visibility = 'hidden'; mapTopbar.style.pointerEvents = 'none';
-      }
-    }
-
-    if (fromSearch || this._fromMiniSnap) {
-      // Search o minisnap: blur overlay encima de todo lo que queda intacto
-      this._el.style.zIndex = '2100';
-      // Eliminar overlay anterior si existe (evita acumulación)
-      var prevOv = document.getElementById('wp-search-blur-overlay');
-      if (prevOv && prevOv.parentNode) prevOv.parentNode.removeChild(prevOv);
-      var blurOv = document.createElement('div');
-      blurOv.id = 'wp-search-blur-overlay';
-      blurOv.style.cssText = [
-        'position:fixed','inset:0',
-        'background:rgba(0,0,0,0)',
-        'backdrop-filter:blur(6px) brightness(0.92)',
-        '-webkit-backdrop-filter:blur(6px) brightness(0.92)',
-        'z-index:2000',
-        'opacity:0',
-        'transition:opacity 0.18s ease',
-        'pointer-events:none',
-      ].join(';');
-      document.body.appendChild(blurOv);
-      requestAnimationFrame(function(){ blurOv.style.opacity = '1'; });
-    }
-
-    this._el.classList.remove('wp-pm-hidden');
-    this._el.classList.add('wp-pm-visible');
-    card.style.transition = 'none';
-    card.style.transform  = 'translateY(100%)';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      card.style.transition = 'transform 0.38s cubic-bezier(0.32,0.72,0,1)';
-      card.style.transform  = 'translateY(0)';
-    }));
+  // ── Mostrar modal ────────────────────────────────────────────────
+  show() {
+    this.currentPlan = null;
+    this.currentStep = 1;
+    // _pendingActivity se puede setear antes de show() via setPendingActivity()
+    this._goToStep(1);
+    document.getElementById('plan-modal-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
   }
 
   hide() {
-    this._card.style.transition = 'transform 0.32s cubic-bezier(0.32,0.72,0,1)';
-    this._card.style.transform  = 'translateY(100%)';
-    var fromSearch = this._fromSearch;
-    this._fromSearch = false;
-    setTimeout(() => {
-      this._el.classList.add('wp-pm-hidden');
-      this._el.classList.remove('wp-pm-visible');
-      document.body.classList.remove('wp-pm-open');
-      // Restaurar z-index del footer solo en mapview (en search ya está oculto por SearchBar)
-      if (!fromSearch) {
-        var footerMenu = document.getElementById('wp-footer-menu');
-        if (footerMenu) footerMenu.style.zIndex = '';
-      }
-      // Restaurar topbar
-      if (!fromSearch) {
-        // Solo restaurar topbar si NO venimos de búsqueda (con animación)
-        var mapTopbar = document.getElementById('topbar');
-        if (mapTopbar) {
-          mapTopbar.style.visibility = '';
-          mapTopbar.style.pointerEvents = '';
-          var gsapG = window.gsap;
-          if (gsapG) {
-            gsapG.killTweensOf(mapTopbar);
-            gsapG.fromTo(mapTopbar,
-              { opacity: 0 },
-              { opacity: 1, duration: 0.24, ease: 'power1.out' }
-            );
-          }
-        }
-      }
-      // Quitar blur overlay (search o minisnap) y restaurar z-index
-      if (fromSearch || this._fromMiniSnap) {
-        this._fromMiniSnap = false;
-        this._el.style.zIndex = '';
-        var blurOv = document.getElementById('wp-search-blur-overlay');
-        if (blurOv) {
-          blurOv.style.opacity = '0';
-          setTimeout(function(){ if (blurOv.parentNode) blurOv.parentNode.removeChild(blurOv); }, 240);
-        }
-        // En search: ocultar minisnap. En minisnap: ya está intacto, no tocar.
-        if (fromSearch) {
-          var ms = document.getElementById('wp-minisnap-panel');
-          if (ms) { ms.style.visibility = 'hidden'; ms.style.opacity = '0'; ms.style.pointerEvents = 'none'; }
-        }
-      } else {
-        this._showMapUI();
-      }
-      if (this.onClose) this.onClose();
-    }, 340);
+    document.getElementById('plan-modal-overlay').style.display = 'none';
+    document.body.style.overflow = '';
   }
 
-  isVisible() { return !this._el.classList.contains('wp-pm-hidden'); }
-
-  // ── Build DOM ─────────────────────────────────────────────────────
-
-  _build() {
-    const el = document.createElement('div');
-    el.id        = 'wp-place-modal';
-    el.className = 'wp-pm wp-pm-hidden';
-    el.innerHTML = `
-      <div class="wp-pm-backdrop" id="wp-pm-backdrop"></div>
-      <div class="wp-pm-card" id="wp-pm-card">
-
-
-
-        <!-- ── TOPBAR ficha — reemplaza topbar principal ── -->
-        <div class="wp-pm-topbar" id="wp-pm-topbar">
-          <!-- Botón back -->
-          <button class="wp-pm-tb-btn" id="wp-pm-back">
-            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="112 244 256 400 400 244" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="256" y1="120" x2="256" y2="380" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
-          </button>
-          <!-- Centro: stats (default) / nombre (al scrollear) -->
-          <div class="wp-pm-tb-center">
-            <!-- Featured badge encima del pill -->
-            <span class="wp-pm-featured-badge" id="wp-pm-featured" style="display:none"></span>
-            <!-- Stats pill en topbar -->
-            <div class="wp-pm-stats-row" id="wp-pm-stats-row">
-              <div class="wp-pm-stats-inner">
-              <div class="wp-pm-stat" id="wp-pm-stat-rating" style="display:none">
-                <span class="wp-pm-stat-val"><span style="color:#f59e0b">★</span> <span id="wp-pm-rating"></span></span>
-                <span class="wp-pm-stat-lbl">Rating</span>
-              </div>
-              <div class="wp-pm-stat-sep" id="wp-pm-sep1" style="display:none"></div>
-              <div class="wp-pm-stat" id="wp-pm-stat-reviews" style="display:none">
-                <span class="wp-pm-stat-val" id="wp-pm-reviews-count"></span>
-                <span class="wp-pm-stat-lbl">Reseñas</span>
-              </div>
-              <div class="wp-pm-stat-sep" id="wp-pm-sep2" style="display:none"></div>
-              <div class="wp-pm-stat" id="wp-pm-stat-price" style="display:none">
-                <span class="wp-pm-stat-val" id="wp-pm-price"></span>
-                <span class="wp-pm-stat-lbl">Precio</span>
-              </div>
-              </div>
-            </div>
-            <!-- Nombre (aparece al scrollear) -->
-            <div class="wp-pm-tb-title" id="wp-pm-tb-name">Lugar</div>
-          </div>
-          <!-- Tres puntos -->
-          <button class="wp-pm-tb-btn" id="wp-pm-more">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-          </button>
-        </div>
-
-        <!-- ── REVIEW MODAL ── -->
-        <div class="wp-pm-more-overlay" id="wp-pm-review-overlay" style="display:none"></div>
-        <div class="wp-pm-more-menu" id="wp-pm-review-menu" style="display:none">
-          <div class="wp-pm-more-handle"></div>
-          <div class="wpr-header">
-            <span class="wpr-title">Tu reseña</span>
-            <span class="wpr-sub">Comparte tu experiencia con la comunidad</span>
-          </div>
-          <!-- Estrellas -->
-          <div class="wpr-stars" id="wpr-stars">
-            <span class="wpr-star" data-v="1">★</span>
-            <span class="wpr-star" data-v="2">★</span>
-            <span class="wpr-star" data-v="3">★</span>
-            <span class="wpr-star" data-v="4">★</span>
-            <span class="wpr-star" data-v="5">★</span>
-          </div>
-          <div class="wpr-star-label" id="wpr-star-label">Toca para calificar</div>
-          <!-- Textarea -->
-          <div style="padding:0 16px">
-            <textarea class="wpr-textarea" id="wpr-textarea" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" maxlength="500"></textarea>
-            <div class="wpr-char" id="wpr-char">0 / 500</div>
-          </div>
-          <!-- Submit -->
-          <div style="padding:12px 16px 16px">
-            <button class="wpr-submit" id="wpr-submit">Publicar reseña</button>
-          </div>
-        </div>
-
-        <!-- ── MORE MENU modal ── -->
-        <div class="wp-pm-more-overlay" id="wp-pm-more-overlay" style="display:none"></div>
-        <div class="wp-pm-more-menu" id="wp-pm-more-menu" style="display:none">
-          <div class="wp-pm-more-handle"></div>
-          <button class="wp-pm-more-item" id="wp-pm-more-share">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
-            <span>Compartir lugar</span>
-          </button>
-          <div class="wp-pm-more-sep"></div>
-          <button class="wp-pm-more-item" id="wp-pm-more-report">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Reportar problema</span>
-          </button>
-          <button class="wp-pm-more-item" id="wp-pm-more-sources">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-            <span>Acerca de las fuentes</span>
-          </button>
-          <button class="wp-pm-more-item" id="wp-pm-more-suggest">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-            <span>Sugerir edición</span>
-          </button>
-        </div>
-
-        <!-- ── HERO — peek carousel, no fullwidth ── -->
-        <div class="wp-pm-hero" id="wp-pm-hero">
-          <div class="wp-pm-carousel" id="wp-pm-carousel">
-            <!-- slides injected by JS -->
-          </div>
-          <!-- Dots carrusel -->
-          <div class="wp-pm-dots" id="wp-pm-dots"></div>
-        </div>
-
-        <!-- Sombra fija encima del body scrolleable -->
-        <div class="wp-pm-top-fade"></div>
-
-        <!-- ── BODY SCROLLABLE ── -->
-        <div class="wp-pm-body" id="wp-pm-body">
-          <div class="wp-pm-handle"></div>
-
-          <!-- Nombre + badges -->
-          <div class="wp-pm-header-row">
-            <div class="wp-pm-badges-top">
-              <span class="wp-pm-open-badge" id="wp-pm-open-badge" style="display:none">
-                <span class="wp-pm-open-dot" id="wp-pm-open-dot"></span>
-                <span id="wp-pm-open-label"></span>
-              </span>
-              <span class="wp-pm-nohours-badge" id="wp-pm-nohours-badge" style="display:none">Sin horario</span>
-              <button class="wp-pm-tag-chip" id="wp-pm-tag-chip">+ Etiquetar lugar</button>
-              <div class="wp-pm-badges-actions">
-                <button class="wp-pm-save-btn" id="wp-pm-save">
-                  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="currentColor" stroke-width="48"/></svg>
-                </button>
-                <button class="wp-pm-save-btn" id="wp-pm-share-body" title="Compartir">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="wp-pm-title-row">
-              <h2 class="wp-pm-name" id="wp-pm-name"></h2>
-              <span class="wp-pm-verified" id="wp-pm-verified" style="display:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1c1c1e"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </span>
-            </div>
-          </div>
-
-          <!-- Dirección — sin icono, line-height ajustado -->
-          <div class="wp-pm-addr-row" id="wp-pm-addr-row" style="display:none">
-            <span id="wp-pm-addr"></span>&#8202;<button class="wp-pm-addr-copy" id="wp-pm-addr-copy" title="Copiar dirección">
-              <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            </button>
-          </div>
-
-          <!-- AI Description — icono + badge arriba, luego texto -->
-          <div class="wp-pm-ai-block" id="wp-pm-ai-block" style="display:none">
-            <div class="wp-pm-ai-header">
-              <svg class="wp-pm-ai-icon" width="18" height="18" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
-              <span class="wp-pm-ai-badge">Descripción generada con IA</span>
-            </div>
-            <div class="wp-pm-ai-text" id="wp-pm-ai-text"></div>
-          </div>
-
-          <!-- Botones acción: teléfono · web · maps -->
-          <div class="wp-pm-actions-row" id="wp-pm-actions-row">
-            <button class="wp-pm-action-btn" id="wp-pm-btn-phone" style="display:none">
-              <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M391,480c-19.52,0-46.94-7.06-88-30-49.93-28-88.55-53.85-138.21-103.38C116.91,298.77,93.61,267.79,61,208.45c-36.84-67-30.56-102.12-23.54-117.13C45.82,73.38,58.16,62.65,74.11,52A176.3,176.3,0,0,1,102.75,36.8c1-.43,1.93-.84,2.76-1.21,4.95-2.23,12.45-5.6,21.95-2,6.34,2.38,12,7.25,20.86,16,18.17,17.92,43,57.83,52.16,77.43,6.15,13.21,10.22,21.93,10.23,31.71,0,11.45-5.76,20.28-12.75,29.81-1.31,1.79-2.61,3.5-3.87,5.16-7.61,10-9.28,12.89-8.18,18.05,2.23,10.37,18.86,41.24,46.19,68.51s57.31,42.85,67.72,45.07c5.38,1.15,8.33-.59,18.65-8.47,1.48-1.13,3-2.3,4.59-3.47,10.66-7.93,19.08-13.54,30.26-13.54h.06c9.73,0,18.06,4.22,31.86,11.18,18,9.08,59.11,33.59,77.14,51.78,8.77,8.84,13.66,14.48,16.05,20.81,3.6,9.53.21,17-2,22-.37.83-.78,1.74-1.21,2.75a176.49,176.49,0,0,1-15.29,28.58c-10.63,15.9-21.4,28.21-39.38,36.58A67.42,67.42,0,0,1,391,480Z"/></svg></span>
-              <span>Llamar</span>
-            </button>
-            <button class="wp-pm-action-btn" id="wp-pm-btn-web" style="display:none">
-              <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M414.39,97.74A224,224,0,1,0,97.61,414.52,224,224,0,1,0,414.39,97.74ZM64,256.13a191.63,191.63,0,0,1,6.7-50.31c7.34,15.8,18,29.45,25.25,45.66,9.37,20.84,34.53,15.06,45.64,33.32,9.86,16.21-.67,36.71,6.71,53.67,5.36,12.31,18,15,26.72,24,8.91,9.08,8.72,21.52,10.08,33.36a305.36,305.36,0,0,0,7.45,41.27c0,.1,0,.21.08.31C117.8,411.13,64,339.8,64,256.13Zm192,192a193.12,193.12,0,0,1-32-2.68c.11-2.71.16-5.24.43-7,2.43-15.9,10.39-31.45,21.13-43.35,10.61-11.74,25.15-19.68,34.11-33,8.78-13,11.41-30.5,7.79-45.69-5.33-22.44-35.82-29.93-52.26-42.1-9.45-7-17.86-17.82-30.27-18.7-5.72-.4-10.51.83-16.18-.63-5.2-1.35-9.28-4.15-14.82-3.42-10.35,1.36-16.88,12.42-28,10.92-10.55-1.41-21.42-13.76-23.82-23.81-3.08-12.92,7.14-17.11,18.09-18.26,4.57-.48,9.7-1,14.09.68,5.78,2.14,8.51,7.8,13.7,10.66,9.73,5.34,11.7-3.19,10.21-11.83-2.23-12.94-4.83-18.21,6.71-27.12,8-6.14,14.84-10.58,13.56-21.61-.76-6.48-4.31-9.41-1-15.86,2.51-4.91,9.4-9.34,13.89-12.27,11.59-7.56,49.65-7,34.1-28.16-4.57-6.21-13-17.31-21-18.83-10-1.89-14.44,9.27-21.41,14.19-7.2,5.09-21.22,10.87-28.43,3-9.7-10.59,6.43-14.06,10-21.46,1.65-3.45,0-8.24-2.78-12.75q5.41-2.28,11-4.23a15.6,15.6,0,0,0,8,3c6.69.44,13-3.18,18.84,1.38,6.48,5,11.15,11.32,19.75,12.88,8.32,1.51,17.13-3.34,19.19-11.86,1.25-5.18,0-10.65-1.2-16a190.83,190.83,0,0,1,105,32.21c-2-.76-4.39-.67-7.34.7-6.07,2.82-14.67,10-15.38,17.12-.81,8.08,11.11,9.22,16.77,9.22,8.5,0,17.11-3.8,14.37-13.62-1.19-4.26-2.81-8.69-5.42-11.37a193.27,193.27,0,0,1,18,14.14c-.09.09-.18.17-.27.27-5.76,6-12.45,10.75-16.39,18.05-2.78,5.14-5.91,7.58-11.54,8.91-3.1.73-6.64,1-9.24,3.08-7.24,5.7-3.12,19.4,3.74,23.51,8.67,5.19,21.53,2.75,28.07-4.66,5.11-5.8,8.12-15.87,17.31-15.86a15.4,15.4,0,0,1,10.82,4.41c3.8,3.94,3.05,7.62,3.86,12.54,1.43,8.74,9.14,4,13.83-.41a192.12,192.12,0,0,1,9.24,18.77c-5.16,7.43-9.26,15.53-21.67,6.87-7.43-5.19-12-12.72-21.33-15.06-8.15-2-16.5.08-24.55,1.47-9.15,1.59-20,2.29-26.94,9.22-6.71,6.68-10.26,15.62-17.4,22.33-13.81,13-19.64,27.19-10.7,45.57,8.6,17.67,26.59,27.26,46,26,19.07-1.27,38.88-12.33,38.33,15.38-.2,9.81,1.85,16.6,4.86,25.71,2.79,8.4,2.6,16.54,3.24,25.21A158,158,0,0,0,407.43,374,191.75,191.75,0,0,1,256,448.13Z"/></svg></span>
-              <span>Web</span>
-            </button>
-            <button class="wp-pm-action-btn" id="wp-pm-btn-maps">
-              <span class="wp-pm-action-icon"><svg width="15" height="15" viewBox="0 0 512 512" fill="currentColor"><path d="M272,464a16,16,0,0,1-16-16.42V264.13a8,8,0,0,0-8-8H64.41a16.31,16.31,0,0,1-15.49-10.65,16,16,0,0,1,8.41-19.87l384-176.15a16,16,0,0,1,21.22,21.19l-176,384A16,16,0,0,1,272,464Z"/></svg></span>
-              <span>Mapa</span>
-            </button>
-          </div>
-          <div class="wp-pm-divider"></div>
-
-          <!-- Horarios — justo debajo de los botones -->
-          <div class="wp-pm-hours-block" id="wp-pm-hours-block" style="display:none">
-            <div class="wp-pm-hours-trigger" id="wp-pm-hours-trigger">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="#6b7280"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 100-16 8 8 0 000 16zm1-8V7a1 1 0 00-2 0v5a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L13 11.586z"/></svg>
-              <span class="wp-pm-hours-today" id="wp-pm-hours-today"></span>
-              <span class="wp-pm-hours-status" id="wp-pm-hours-status"></span>
-              <svg class="wp-pm-chevron" id="wp-pm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-            <div class="wp-pm-hours-list" id="wp-pm-hours-list"></div>
-            <div class="wp-pm-divider"></div>
-          </div>
-
-          <!-- Etiquetas: servicios del lugar + tags de usuarios -->
-          <div class="wp-pm-services-block" id="wp-pm-services-block" style="display:none">
-            <div class="wp-pm-section-title">Etiquetas</div>
-            <div class="wp-pm-tags-row" id="wp-pm-services-tags"></div>
-            <div class="wp-pm-divider"></div>
-          </div>
-
-          <!-- Descripción -->
-          <div class="wp-pm-desc-block" id="wp-pm-desc-block" style="display:none">
-            <div class="wp-pm-section-title">Sobre el lugar</div>
-            <div class="wp-pm-desc-text" id="wp-pm-desc-text"></div>
-            <button class="wp-pm-read-more" id="wp-pm-read-more" style="display:none">Leer más</button>
-            <div class="wp-pm-divider"></div>
-          </div>
-
-          <!-- Subcategory tags -->
-          <div class="wp-pm-tags-block" id="wp-pm-tags-block" style="display:none">
-            <div class="wp-pm-section-title">Especialidades</div>
-            <div class="wp-pm-tags-row" id="wp-pm-tags-row"></div>
-            <div class="wp-pm-divider"></div>
-          </div>
-
-          <!-- Reviews -->
-          <div class="wp-pm-reviews-block" id="wp-pm-reviews-block" style="display:none">
-            <div class="wpr-header-row" id="wpr-header-row"></div>
-            <div class="wp-pm-reviews-list" id="wp-pm-reviews-list"></div>
-          </div>
-
-          <!-- Lugares similares — última sección -->
-
-
-          <div style="height:16px"></div>
-        </div>
-
-        <!-- ── CTA BOTTOM ── -->
-        <div class="wp-pm-bottom">
-          <button class="wp-pm-here-btn" id="wp-pm-here-btn" title="Estoy aquí">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.5742 21.8187C12.2295 22.0604 11.7699 22.0601 11.4253 21.8184L11.4228 21.8166L11.4172 21.8127L11.3986 21.7994C11.3829 21.7882 11.3607 21.7722 11.3325 21.7517C11.2762 21.7106 11.1956 21.6511 11.0943 21.5741C10.8917 21.4203 10.6058 21.1962 10.2641 20.9101C9.58227 20.3389 8.67111 19.5139 7.75692 18.4988C5.96368 16.5076 4 13.6105 4 10.3636C4 8.16134 4.83118 6.0397 6.32548 4.46777C7.82141 2.89413 9.86146 2 12 2C14.1385 2 16.1786 2.89413 17.6745 4.46777C19.1688 6.0397 20 8.16134 20 10.3636C20 13.6105 18.0363 16.5076 16.2431 18.4988C15.3289 19.5139 14.4177 20.3389 13.7359 20.9101C13.3942 21.1962 13.1083 21.4203 12.9057 21.5741C12.8044 21.6511 12.7238 21.7106 12.6675 21.7517C12.6393 21.7722 12.6171 21.7882 12.6014 21.7994L12.5828 21.8127L12.5772 21.8166L12.5754 21.8179L12.5742 21.8187ZM9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10Z"/></svg>
-          </button>
-          <button class="wp-pm-cta" id="wp-pm-cta">
-            <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M464,256c0-114.87-93.13-208-208-208S48,141.13,48,256s93.13,208,208,208S464,370.87,464,256ZM251.35,347.36a16,16,0,0,1-.09-22.63L303.58,272H170a16,16,0,0,1,0-32H303.58l-52.32-52.73A16,16,0,1,1,274,164.73l79.39,80a16,16,0,0,1,0,22.54l-79.39,80A16,16,0,0,1,251.35,347.36Z"/></svg>
-            Planear visita
-          </button>
-        </div>
-
-      </div>`;
-
-    document.body.appendChild(el);
-    this._el   = el;
-    this._card = el.querySelector('#wp-pm-card');
-
-    // Tag modal — inyectado en body para evitar conflicto con transform del parent
-    if (!document.getElementById('wp-pm-tag-overlay')) {
-      const tagEl = document.createElement('div');
-      tagEl.innerHTML = `
-        <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
-        <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
-          <!-- Header iOS -->
-          <div class="wpt-float-top">
-            <div class="wpt-float-icon">
-              <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M216.08,192V335.85a40.08,40.08,0,0,0,80.15,0l.13-188.55a67.94,67.94,0,1,0-135.87,0V337.12a95.51,95.51,0,1,0,191,0V159.74" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></path></svg>
-            </div>
-            <div class="wpt-float-titles">
-              <span class="wpt-float-title">Describe este lugar</span>
-              <span class="wpt-float-sub">Elige hasta 3 etiquetas</span>
-            </div>
-            <button class="wpt-x-btn" id="wp-pm-tag-close">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <!-- Body scrollable -->
-          <div class="wpt-tag-body-wrap">
-            <div class="wpt-fade-top"></div>
-            <div class="wpt-tag-body" id="wp-pm-tag-items"></div>
-            <div class="wpt-fade-bot"></div>
-          </div>
-          <!-- CTA flotante dentro del modal, sin divider -->
-          <div class="wpt-float-footer">
-            <button class="wpt-cta-btn" id="wp-pm-tag-save">
-              <span class="wpt-cta-label">Selecciona etiquetas</span>
-              <span class="wpt-cta-badge" id="wp-pm-tag-badge" style="display:none">0</span>
-            </button>
-          </div>
-        </div>`;
-      while (tagEl.firstChild) document.body.appendChild(tagEl.firstChild);
-    }
-
-    this._wireEvents();
-  }
-
-  // ── Populate ──────────────────────────────────────────────────────
-
-  _populate(place) {
-    this._populateHero(place);
-    // Set topbar search label to place name
-    const tbName = this._el.querySelector('#wp-pm-tb-name');
-    if (tbName) tbName.textContent = (place.name || 'Detalles').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-    this._populateHeader(place);
-    this._populateAddress(place);
-    this._populateStats(place);
-    this._populateActions(place);
-    this._populateDescription(place);
-    this._populateAI(place);
-    this._populateServices(place);
-    this._populateTags(place);
-    this._populateHours(place);
-    this._populateReviews(place);  // async, no bloqueante
-    // scroll body to top + reset topbar nombre/stats
-    const body = this._el.querySelector('#wp-pm-body');
-    if (body) body.scrollTop = 0;
-    const statsRow = this._el.querySelector('#wp-pm-stats-row');
-    if (tbName)   { tbName.style.opacity   = '0'; tbName.style.transform   = 'translateY(6px)'; }
-    if (statsRow) { statsRow.style.opacity = '1'; statsRow.style.transform = ''; statsRow.style.pointerEvents = ''; }
-  }
-
-  _populateHero(place) {
-    const carousel = this._el.querySelector('#wp-pm-carousel');
-    const dotsEl   = this._el.querySelector('#wp-pm-dots');
-
-    let photos = [];
-    if (place.photoUrl) photos.push(place.photoUrl);
-    if (place.photosUrls) place.photosUrls.forEach(u => { if (u && !photos.includes(u)) photos.push(u); });
-    this._photos = photos.map(u => this.proxyPhoto(u)).filter(Boolean);
-    this._currentPhoto = 0;
-
-    // Si no hay fotos, emoji placeholder
-    if (this._photos.length === 0) {
-      carousel.innerHTML = `<div class="wp-pm-slide wp-pm-slide-placeholder"><span>${place.emoji || '📍'}</span></div>`;
-      dotsEl.style.display = 'none';
-      return;
-    }
-
-    // Slides con skeleton + cuadro añadir foto al final
-    carousel.innerHTML = this._photos.map((u, i) =>
-      `<div class="wp-pm-slide wp-pm-slide-skeleton" data-i="${i}">
-         <img class="wp-pm-slide-img" src="${u}" alt="" loading="lazy"
-              onload="this.classList.add('loaded');this.parentElement.classList.remove('wp-pm-slide-skeleton')"
-              onerror="this.parentElement.classList.remove('wp-pm-slide-skeleton')">
-       </div>`
-    ).join('') +
-    `<div class="wp-pm-slide wp-pm-slide-add" id="wp-pm-slide-add" data-add="1">
-       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-       <span>Añadir foto</span>
-     </div>`;
-
-    // Foto unica: ampliar y centrar, sin dots
-    if (this._photos.length === 1) {
-      carousel.classList.add('single-photo');
-      dotsEl.style.display = 'none';
-      // Aun con foto unica se muestra el add al final
-      carousel.classList.remove('single-photo'); // resetear para que add se vea
-    } else {
-      carousel.classList.remove('single-photo');
-    }
-
-    // Dots — always rebuild, show for any count
-    dotsEl.innerHTML = '';
-    dotsEl.style.display = '';
-    this._photos.slice(0, 9).forEach((_, i) => {
-      const d = document.createElement('span');
-      d.className = 'wp-pm-dot' + (i === 0 ? ' active' : '');
-      d.dataset.i = i;
-      d.addEventListener('click', () => this._goToPhoto(i));
-      dotsEl.appendChild(d);
-    });
-
-    // Set initial position first so layout is stable
-    requestAnimationFrame(() => {
-      this._goToPhoto(0, false);
-    });
-    // Wire swipe once
-    // Cancelar spring anterior y re-enganchar swipe siempre
-    if (this._heroRafId) { cancelAnimationFrame(this._heroRafId); this._heroRafId = null; }
-    this._wireHeroSwipe();
-  }
-
-  _goToPhoto(i, animate = true) {
-    const n = this._photos.length;
-    if (n === 0) return;
-    // Clamp
-    i = Math.max(0, Math.min(n - 1, i));
-    this._currentPhoto = i;
-    const carousel = this._el.querySelector('#wp-pm-carousel');
-    if (!carousel) return;
-    // Leer ancho real del slide actual (puede estar expandido por scroll)
-    const firstSlide = carousel.querySelector('.wp-pm-slide:not(.wp-pm-slide-add)');
-    const slideW = firstSlide ? firstSlide.getBoundingClientRect().width + 8 : carousel.getBoundingClientRect().width * 0.44 + 8;
-    carousel.style.transition = animate ? 'transform 0.32s cubic-bezier(0.32,0.72,0,1)' : 'none';
-    carousel.style.transform  = `translateX(${8 - i * slideW}px)`;
-    this._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
-      d.classList.toggle('active', idx === i)
-    );
-  }
-
-  _populateHeader(place) {
-    const _cap = s => s ? s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) : '';
-    this._el.querySelector('#wp-pm-name').textContent = _cap(place.name);
-
-    const verified = this._el.querySelector('#wp-pm-verified');
-    if (verified) verified.style.display = (place.featured === 'verified' || place.featured === 'premium') ? '' : 'none';
-
-    // Featured badge en topbar + borde gradiente en pill
-    const featured  = this._el.querySelector('#wp-pm-featured');
-    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
-    if (place.featured) {
-      const labels = { premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado' };
-      featured.style.display = '';
-      featured.textContent   = labels[place.featured] || place.featured;
-      featured.className     = `wp-pm-featured-badge wp-pm-badge-${place.featured}`;
-      // Borde highlight via clase CSS
-      if (statsRow) {
-        statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
-        statsRow.classList.add(`hl-${place.featured}`);
-      }
-    } else {
-      if (featured) featured.style.display = 'none';
-      if (statsRow) statsRow.classList.remove('hl-featured','hl-premium','hl-verified');
-    }
-
-    // Open / closed badge — calculado desde horarios reales
-    const openBadge    = this._el.querySelector('#wp-pm-open-badge');
-    const openDot      = this._el.querySelector('#wp-pm-open-dot');
-    const openLabel    = this._el.querySelector('#wp-pm-open-label');
-    const noHoursBadge = this._el.querySelector('#wp-pm-nohours-badge');
-    const isOpen = this._isOpenNow(place);
-    const hasHours = !!(place.regularOpeningHours?.periods?.length || place.openingHoursText);
-    if (openBadge) {
-      if (isOpen !== null) {
-        openBadge.style.display = '';
-        openBadge.className     = `wp-pm-open-badge ${isOpen ? 'is-open' : 'is-closed'}`;
-        if (openDot) openDot.className = 'wp-pm-open-dot';
-        if (openLabel) openLabel.textContent = isOpen ? 'Abierto' : 'Cerrado';
-        if (noHoursBadge) noHoursBadge.style.display = 'none';
-      } else {
-        openBadge.style.display = 'none';
-        if (noHoursBadge) noHoursBadge.style.display = hasHours ? 'none' : '';
-      }
-    }
-  }
-
-  _populateAddress(place) {
-    const row  = this._el.querySelector('#wp-pm-addr-row');
-    const addr = place.formattedAddress || place.vicinity || '';
-    if (addr) {
-      row.style.display = '';
-      this._el.querySelector('#wp-pm-addr').textContent = addr;
-    } else {
-      row.style.display = 'none';
-    }
-  }
-
-  _populateStats(place) {
-    const rating  = parseFloat(place.rating) || 0;
-    const reviews = parseInt(place.userRatingCount) || 0;
-    const price   = place.priceLevel;
-
-    // Reset todos los stats/seps antes de mostrar
-    ['#wp-pm-stat-rating','#wp-pm-stat-reviews','#wp-pm-stat-price',
-     '#wp-pm-sep1','#wp-pm-sep2'].forEach(id => {
-      const el = this._el.querySelector(id);
-      if (el) el.style.display = 'none';
-    });
-
-    const show = (id, val) => {
-      const el = this._el.querySelector(id);
-      if (el) el.style.display = val ? '' : 'none';
+  // Abrir directo en Step 2 con un plan existente ya cargado y actividad pre-inyectada
+  showAtStep2WithPlan(plan, activity) {
+    this.currentPlan = {
+      id:          plan.id,
+      title:       plan.title       || '',
+      emoji:       plan.emoji       || '✨',
+      description: plan.description || '',
+      steps:       (plan.plan_activities || []).map(pa => pa.activity || pa),
+      from_template_id: plan.from_template_id || null,
+      pendingActivities: []
     };
-
-    if (rating > 0) {
-      this._el.querySelector('#wp-pm-rating').textContent = rating.toFixed(1);
-      show('#wp-pm-stat-rating', true);
-      show('#wp-pm-sep1', reviews > 0 || price);
+    // Inyectar la actividad directamente
+    if (activity) {
+      const already = this.currentPlan.pendingActivities.find(a => a.id === activity.id);
+      if (!already) this.currentPlan.pendingActivities.push(activity);
     }
-    if (reviews > 0) {
-      this._el.querySelector('#wp-pm-reviews-count').textContent = reviews.toLocaleString();
-      show('#wp-pm-stat-reviews', true);
-      show('#wp-pm-sep2', !!price);
-    }
-    if (price) {
-      this._el.querySelector('#wp-pm-price').textContent = '$'.repeat(Math.min(price, 4));
-      show('#wp-pm-stat-price', true);
-    }
-
-    // Si no hay ningún stat, ocultar row
-    const statsRow = this._el.querySelector('#wp-pm-stats-row');
-    if (!rating && !reviews && !price) statsRow.style.display = 'none';
-    else statsRow.style.display = '';
+    this.currentStep = 2;
+    this._goToStep(2);
+    document.getElementById('plan-modal-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
   }
 
-  _populateActions(place) {
-    const btnPhone = this._el.querySelector('#wp-pm-btn-phone');
-    const btnWeb   = this._el.querySelector('#wp-pm-btn-web');
-    const btnMaps  = this._el.querySelector('#wp-pm-btn-maps');
+  // ── Render base ──────────────────────────────────────────────────
+  _render() {
+    if (this._rendered) return;
+    this._rendered = true;
 
-    const phone = place.phone || place.internationalPhoneNumber || '';
-    if (phone) {
-      btnPhone.style.display = '';
-      btnPhone.onclick = () => window.open('tel:' + phone);
-    }
+    const existing = document.getElementById('plan-modal-overlay');
+    if (existing) existing.remove();
 
-    const website = place.website || '';
-    if (website) {
-      btnWeb.style.display = '';
-      btnWeb.onclick = () => window.open(website, '_blank', 'noopener');
-    }
+    const overlay = document.createElement('div');
+    overlay.id = 'plan-modal-overlay';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:999998;background:white;flex-direction:column;';
 
-    if (place.lat && place.lng) {
-      btnMaps.onclick = () => window.open(
-        place.googleMapsUri || `https://maps.google.com/?q=${place.lat},${place.lng}`,
-        '_blank', 'noopener'
-      );
-    }
-  }
-
-  _populateDescription(place) {
-    const block = this._el.querySelector('#wp-pm-desc-block');
-    const text  = place.description || place.editorialSummary || '';
-    if (!text) { block.style.display = 'none'; return; }
-
-    block.style.display = '';
-    const descEl = this._el.querySelector('#wp-pm-desc-text');
-    const readMore = this._el.querySelector('#wp-pm-read-more');
-    const MAX = 160;
-
-    if (text.length > MAX) {
-      descEl.textContent = text.slice(0, MAX) + '...';
-      readMore.style.display = '';
-      let expanded = false;
-      readMore.onclick = () => {
-        expanded = !expanded;
-        descEl.textContent = expanded ? text : text.slice(0, MAX) + '...';
-        readMore.textContent = expanded ? 'Leer menos' : 'Leer más';
-      };
-    } else {
-      descEl.textContent = text;
-      readMore.style.display = 'none';
-    }
-  }
-
-  _populateAI(place) {
-    const block  = this._el.querySelector('#wp-pm-ai-block');
-    const textEl = this._el.querySelector('#wp-pm-ai-text');
-    const icon   = this._el.querySelector('.wp-pm-ai-icon');
-    if (!block || !textEl) return;
-
-    // Cancel any previous typewriter + fetch
-    if (this._aiAbort) this._aiAbort();
-    this._aiAbort = null;
-
-    block.style.display = 'none';
-    textEl.textContent  = '';
-
-    const placeId = place.place_id || place.id;
-    if (!placeId) return;
-
-    // Check if place already has ai_descriptions
-    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
-    if (existing.length > 0) {
-      // Show a random one immediately
-      const desc = existing[Math.floor(Math.random() * existing.length)];
-      block.style.display = '';
-      this._typewrite(textEl, desc);
-      return;
-    }
-
-    let aborted = false;
-    let cancelTypewrite = null;
-    this._aiAbort = () => {
-      aborted = true;
-      if (cancelTypewrite) cancelTypewrite();
-      block.style.display = 'none';
-      textEl.textContent  = '';
-      if (icon) icon.classList.remove('wp-pm-ai-pulse');
-    };
-
-    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
-    .then(r => r.json().then(data => ({ ok: r.ok, data })))
-    .then(({ ok, data }) => {
-      if (aborted) return;
-      if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
-      block.style.display = '';
-      textEl.textContent  = '';
-      if (icon) icon.classList.add('wp-pm-ai-pulse');
-      cancelTypewrite = this._typewrite(textEl, data.description, null, () => {
-        if (icon) icon.classList.remove('wp-pm-ai-pulse');
-      });
-    })
-    .catch(() => { if (!aborted) block.style.display = 'none'; });
-  }
-
-  _typewrite(el, text, onStart, onDone) {
-    el.textContent = '';
-    let i = 0;
-    let cancelled = false;
-    let timer = null;
-    const step = () => {
-      if (cancelled) return;
-      if (i < text.length) {
-        el.textContent += text[i++];
-        timer = setTimeout(step, 16);
-      } else {
-        if (onDone) onDone();
-      }
-    };
-    if (onStart) onStart();
-    timer = setTimeout(step, 16);
-    // Return cancel fn
-    return function cancel() {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }
-
-  async _populateServices(place) {
-    const block = this._el.querySelector('#wp-pm-services-block');
-    const tags  = this._el.querySelector('#wp-pm-services-tags');
-
-    // Tags por defecto del lugar (sin abierto/cerrado)
-    const defaultItems = [];
-    if (place.dineIn   === true) defaultItems.push({ icon:'🍽️', label:'Comer aquí' });
-    if (place.takeout  === true) defaultItems.push({ icon:'🥡',  label:'Para llevar' });
-    if (place.delivery === true) defaultItems.push({ icon:'🛵',  label:'Delivery' });
-
-    // Tags de usuarios desde Supabase
-    const placeId  = place.place_id || place.id;
-    let userTags   = [];
-    if (placeId) {
-      try { userTags = await PlaceTagService.getTagsForPlace(place); } catch(_) {}
-    }
-
-    if (!defaultItems.length && !userTags.length) {
-      block.style.display = 'none'; return;
-    }
-    block.style.display = '';
-
-    const defaultHtml = defaultItems.map(it =>
-      `<span class="wp-pm-tag">${it.icon} ${it.label}</span>`
-    ).join('');
-
-    const userHtml = userTags.map(t =>
-      `<span class="wp-pm-tag wp-pm-user-tag" title="${t.count} persona${t.count!==1?'s':''} lo etiquetó así">
-        ${t.emoji} ${t.label}
-        <span class="wp-pm-tag-count">×${t.count}</span>
-      </span>`
-    ).join('');
-
-    tags.innerHTML = defaultHtml + userHtml;
-  }
-
-  _populateTags(place) {
-    const block   = this._el.querySelector('#wp-pm-tags-block');
-    const tagsRow = this._el.querySelector('#wp-pm-tags-row');
-    const tagArr  = place.subcategoryTags || [];
-    if (tagArr.length === 0) { block.style.display = 'none'; return; }
-    block.style.display = '';
-    tagsRow.innerHTML = tagArr.map(t =>
-      `<span class="wp-pm-tag wp-pm-tag-accent">${t}</span>`
-    ).join('');
-  }
-
-  _populateHours(place) {
-    const block   = this._el.querySelector('#wp-pm-hours-block');
-    const hrsRaw  = place.openingHoursText;
-    if (!hrsRaw || typeof hrsRaw !== 'object') { block.style.display = 'none'; return; }
-
-    block.style.display = '';
-    const DAY_ORDER  = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-    const DAY_LABELS = { monday:'Lunes', tuesday:'Martes', wednesday:'Miércoles', thursday:'Jueves', friday:'Viernes', saturday:'Sábado', sunday:'Domingo' };
-    const todayKey   = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
-
-    // Today row
-    const todayText = hrsRaw[todayKey] || 'Sin horario';
-    this._el.querySelector('#wp-pm-hours-today').textContent = `Hoy: ${todayText}`;
-
-    // Status
-    const isOpen = this._isOpenNow(place);
-    const statusEl = this._el.querySelector('#wp-pm-hours-status');
-    if (isOpen === true)  { statusEl.textContent = 'Abierto'; statusEl.className = 'wp-pm-hours-status wp-pm-open'; }
-    else if (isOpen === false) { statusEl.textContent = 'Cerrado'; statusEl.className = 'wp-pm-hours-status wp-pm-closed'; }
-    else statusEl.textContent = '';
-
-    // List
-    const list = this._el.querySelector('#wp-pm-hours-list');
-    list.innerHTML = DAY_ORDER.map(d =>
-      `<div class="wp-pm-hours-row${d === todayKey ? ' wp-pm-today' : ''}">
-        <span class="wp-pm-hours-day">${DAY_LABELS[d]}</span>
-        <span class="wp-pm-hours-time">${hrsRaw[d] || 'Cerrado'}</span>
-      </div>`
-    ).join('');
-
-    // Toggle
-    let open = false;
-    const trigger = this._el.querySelector('#wp-pm-hours-trigger');
-    const chevron = this._el.querySelector('#wp-pm-chevron');
-    trigger.onclick = () => {
-      open = !open;
-      list.classList.toggle('expanded', open);
-      chevron.style.transform = open ? 'rotate(180deg)' : '';
-    };
-  }
-
-  _populateMiniSnap(place) {
-    var self = this;
-    const name   = place.name || place.displayName || '';
-    const rating = parseFloat(place.rating) || 0;
-    const count  = place.userRatingCount || place.user_ratings_total || 0;
-    const types  = (place.types || []).slice(0,3)
-                     .map(t => t.replace(/_/g,' '))
-                     .filter(t => !['point_of_interest','establishment','food'].includes(t));
-    const photos = place.photosUrls || place.photos_urls || (place.photo_url?[place.photo_url]:[]);
-    const price  = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-
-    // Foto hero
-    const img = this._el.querySelector('#wp-pm-ms-img');
-    if (photos[0]) { img.src = photos[0]; img.style.display=''; }
-    else { img.style.display='none'; }
-
-    // Status badge
-    const statusEl = this._el.querySelector('#wp-pm-ms-status');
-    const oh = place.regularOpeningHours || place.opening_hours;
-    if (oh) {
-      const isOpen = oh.open_now ?? oh.isOpen?.();
-      if (isOpen === true)  { statusEl.textContent='● Abierto'; statusEl.className='wp-pm-ms-status open'; }
-      else if (isOpen===false){ statusEl.textContent='● Cerrado'; statusEl.className='wp-pm-ms-status closed'; }
-      else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
-    } else { statusEl.textContent='Sin horario'; statusEl.className='wp-pm-ms-status nohours'; }
-
-    // Rating badge
-    const ratingEl = this._el.querySelector('#wp-pm-ms-rating');
-    if (rating > 0) {
-      ratingEl.textContent = '★ '+rating.toFixed(1)+(count?' ('+count+')':'');
-      ratingEl.style.display = '';
-    } else { ratingEl.style.display='none'; }
-
-    // Nombre + meta
-    this._el.querySelector('#wp-pm-ms-name').textContent = name;
-    this._el.querySelector('#wp-pm-ms-meta').textContent =
-      [price, ...types.slice(0,2)].filter(Boolean).join(' · ');
-
-    // Tags
-    const tagsEl = this._el.querySelector('#wp-pm-ms-tags');
-    const tagItems = [
-      ...types.slice(0,2).map(t => '🏷 '+t),
-      price ? price+' precio' : null,
-    ].filter(Boolean);
-    tagsEl.innerHTML = tagItems.map(t=>`<span class="wp-pm-ms-tag">${t}</span>`).join('');
-
-    // CTA
-    this._el.querySelector('#wp-pm-ms-cta').onclick = ()=>self.expandToFull();
-
-    // Swipe up → expandir
-    const card = this._el.querySelector('#wp-pm-card');
-    var startY=0;
-    function onStart(e){ startY=e.touches[0].clientY; }
-    function onEnd(e){ if(startY-e.changedTouches[0].clientY>50) self.expandToFull(); }
-    card.addEventListener('touchstart',onStart,{passive:true,once:true});
-    card.addEventListener('touchend',onEnd,{passive:true,once:true});
-
-    // Save
-    const saveBtn = this._el.querySelector('#wp-pm-ms-save');
-    if (saveBtn) {
-      saveBtn.onclick = ()=>{
-        saveBtn.classList.toggle('saved');
-        if(saveBtn.classList.contains('saved')) self._showToast('❤️ Guardado en favoritos');
-      };
-    }
-  }
-
-  async _populateReviews(place) {
-    const block = this._el.querySelector('#wp-pm-reviews-block');
-    const list  = this._el.querySelector('#wp-pm-reviews-list');
-    const googleRevs = place.reviews || [];
-    const placeId = String(place.place_id || place.id || '');
-    let communityRevs = [];
-    if (placeId) {
-      try { communityRevs = await ReviewService.getForPlace(placeId); } catch(e) { console.warn('reviews:', e); }
-    }
-    if (!googleRevs.length && !communityRevs.length) { block.style.display='none'; return; }
-    block.style.display = '';
-
-    // ── Tabs ──
-    const googleCard  = r => {
-      const name  = r.author_name || r.authorName || 'Anónimo';
-      const init  = name.charAt(0).toUpperCase();
-      const photo = r.profile_photo_url || r.authorPhotoUrl || '';
-      const stars = parseFloat(r.rating) || 0;
-      const time  = r.relative_time_description || r.relativeTime || '';
-      const text  = r.text || r.comment || '';
-      const short = text.length > 180 ? text.slice(0,180)+'…' : text;
-      return `<div class="wp-pm-review-card">
-        <div class="wp-pm-review-top">
-          <div class="wp-pm-review-avatar" style="${photo?'background:url('+photo+') center/cover no-repeat;color:transparent':''}">
-            ${photo?'':init}
-          </div>
-          <div class="wp-pm-review-info">
-            <span class="wp-pm-review-name">${name}</span>
-            ${time?`<span class="wp-pm-review-time">${time}</span>`:''}
-          </div>
-          ${stars>0?`<div class="wp-pm-review-stars">${'★'.repeat(Math.round(stars))}<span style="color:#e2e8f0">${'★'.repeat(5-Math.round(stars))}</span></div>`:''}
-        </div>
-        ${short?`<p class="wp-pm-review-text">${short}</p>`:''}
-      </div>`;
-    };
-
-    const communityCard = r => {
-      const name  = r.display_name || 'WhatsPlan User';
-      const photo = r.avatar_url || getAvatarUrl(name); // Tapback si no hay foto
-      const init  = name.charAt(0).toUpperCase();
-      const stars = '★'.repeat(r.rating)+'<span style="color:#e2e8f0">'+'★'.repeat(5-r.rating)+'</span>';
-      const date  = new Date(r.created_at).toLocaleDateString('es-MX',{month:'short',day:'numeric',year:'numeric'});
-      return `<div class="wpr-community-card">
-        <div class="wpr-community-header-row">
-          <div class="wpr-community-avatar" style="${photo?'background:url('+photo+') center/cover;color:transparent':''}">
-            ${photo?'':init}
-          </div>
-          <div style="flex:1;min-width:0">
-            <div class="wpr-community-name">${name}</div>
-            <div class="wpr-community-date">${date}</div>
-          </div>
-          <div style="color:#f59e0b;font-size:13px">${stars}</div>
-        </div>
-        <div class="wpr-community-text">${r.text}</div>
-      </div>`;
-    };
-
-    const gCount = googleRevs.length;
-    const cCount = communityRevs.length;
-
-    // ── Tabs en el header ──
-    const headerRow = this._el.querySelector('#wpr-header-row');
-    if (headerRow) {
-      headerRow.innerHTML = `
-        <span class="wp-pm-section-title" style="flex-shrink:0">Reseñas</span>
-        <div class="wpr-header-tabs-row">
-          <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
-          <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
-          <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir reseña</button>
-        </div>
-      `;
-
-      // Tab switching — listeners en headerRow
-      headerRow.querySelector('.wpr-header-tabs-row')?.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
-        tab.onclick = () => {
-          headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
-          tab.classList.add('wpr-tab-active');
-          list.querySelector('#wpr-panel-google').style.display    = tab.dataset.tab==='google'    ? '' : 'none';
-          list.querySelector('#wpr-panel-community').style.display = tab.dataset.tab==='community' ? '' : 'none';
-        };
-      });
-      const addBtn = headerRow.querySelector('#wpr-add-btn');
-      if (addBtn) addBtn.onclick = () => this._openReviewModal();
-    }
-
-    // ── Panels en list ──
-    list.innerHTML = `
-      <div id="wpr-panel-google">
-        ${gCount ? googleRevs.slice(0,5).map(googleCard).join('') : '<p class="wpr-empty">Sin reseñas de Google</p>'}
-        ${gCount && place.place_id ? `<a class="wpr-see-more"
-          href="https://search.google.com/local/reviews?placeid=${place.place_id}"
-          target="_blank" rel="noopener">Ver todas las reseñas en Google →</a>` : ''}
+    overlay.innerHTML = `
+      <!-- Progress bar -->
+      <div style="height:3px;background:#f0f0f0;flex-shrink:0;">
+        <div id="pm-progress" style="height:100%;background:#111;transition:width 0.3s ease;width:33%;"></div>
       </div>
-      <div id="wpr-panel-community" style="display:none">${cCount ? communityRevs.map(communityCard).join('') : '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>'}</div>
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;flex-shrink:0;">
+        <button id="pm-back" style="width:32px;height:32px;border-radius:50%;background:#f0f0f0;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;opacity:0;pointer-events:none;">←</button>
+        <div style="text-align:center;">
+          <div id="pm-step-label" style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Paso 1 de 3</div>
+        </div>
+        <button id="pm-close" style="width:32px;height:32px;border-radius:50%;background:#f0f0f0;border:none;font-size:16px;cursor:pointer;color:#666;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <!-- Contenido dinámico -->
+      <div id="pm-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;"></div>
     `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('pm-close').addEventListener('click', () => this.hide());
+    document.getElementById('pm-back').addEventListener('click', () => {
+      if (this.currentStep > 1) this._goToStep(this.currentStep - 1);
+    });
   }
 
-  // ── Place Tags ───────────────────────────────────────────────────
+  // ── Navegación entre pasos ───────────────────────────────────────
+  _goToStep(step) {
+    this.currentStep = step;
+    const progress = { 1: '33%', 2: '66%', 3: '100%' };
+    const labels   = { 1: 'Paso 1 de 3', 2: 'Paso 2 de 3', 3: 'Paso 3 de 3' };
 
-  async _populatePlaceTags(place) {
-    const block  = this._el.querySelector('#wp-pm-place-tags');
-    const tagsRow= this._el.querySelector('#wp-pm-place-tags-row');
-    if (!block || !tagsRow) return;
+    document.getElementById('pm-progress').style.width = progress[step];
+    document.getElementById('pm-step-label').textContent = labels[step];
 
-    const placeId = place.place_id || place.id;
-    if (!placeId) { block.style.display = 'none'; return; }
+    const back = document.getElementById('pm-back');
+    if (step > 1) { back.style.opacity = '1'; back.style.pointerEvents = 'auto'; }
+    else          { back.style.opacity = '0'; back.style.pointerEvents = 'none'; }
+
+    const content = document.getElementById('pm-content');
+    content.innerHTML = '';
+
+    if (step === 1) this._renderStep1(content);
+    if (step === 2) this._renderStep2(content);
+    if (step === 3) this._renderStep3(content);
+  }
+
+  // ── guardar estado del paso 2 antes de salir ──────────────────────
+  _saveStep2State() {
+    const title = document.getElementById('pm-plan-title');
+    const desc  = document.getElementById('pm-plan-desc');
+    const date  = document.getElementById('pm-plan-date');
+    const max   = document.querySelector('.pm-max-btn.selected');
+    if (title) this.currentPlan.title       = title.value;
+    if (desc)  this.currentPlan.description = desc.value;
+    if (date)  this.currentPlan.scheduled_date = date.value || null;
+    if (max)   this.currentPlan.max_participants = parseInt(max.dataset.max) || 4;
+  }
+
+  // ── STEP 1: Elegir plantilla o crear desde cero ──────────────────
+  async _renderStep1(container) {
+    container.innerHTML = `
+      <div style="padding:4px 20px 16px;flex-shrink:0;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">👆</div>
+        <h2 style="font-size:20px;font-weight:800;color:#111;margin:0 0 4px;">What's the plan?</h2>
+        <p style="font-size:13px;color:#9ca3af;margin:0;">Elige una plantilla o crea el tuyo</p>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 20px 20px;">
+
+        <!-- Desde cero -->
+        <button id="pm-from-scratch" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:2px dashed #e5e7eb;background:white;cursor:pointer;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
+          <div style="width:44px;height:44px;border-radius:12px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">✨</div>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:700;color:#111;">Crear desde cero</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:2px;">Arma tu propio itinerario</div>
+          </div>
+          <span style="margin-left:auto;color:#9ca3af;font-size:18px;">›</span>
+        </button>
+
+        <!-- Plantillas -->
+        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">✦ Plantillas</div>
+        <div id="pm-templates-list">
+          <div style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">Cargando...</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('pm-from-scratch').addEventListener('click', () => {
+      this.currentPlan = { title: '', emoji: '✨', steps: [], from_template_id: null };
+      this._injectPendingActivity();
+      this._goToStep(2);
+    });
+
+    // Cargar plantillas
+    try {
+      const templates = await PlanService.getTemplates();
+      const list = document.getElementById('pm-templates-list');
+      if (!list) return;
+
+      if (!templates.length) {
+        list.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:13px;padding:16px;">Sin plantillas disponibles</p>';
+        return;
+      }
+
+      list.innerHTML = templates.map(t => {
+        const steps = (t.plan_activities || []).slice(0, 3)
+          .map(s => STEP_TYPES.find(st => st.key === s.type)?.emoji || '📍').join(' ');
+        return `
+          <button class="pm-template-btn" data-id="${t.id}" data-title="${t.title}" data-emoji="${t.emoji}" data-desc="${t.description || ''}"
+            style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1.5px solid #e5e7eb;background:white;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;">
+            <div style="width:44px;height:44px;border-radius:12px;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${t.emoji}</div>
+            <div style="text-align:left;flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:700;color:#111;">${t.title}</div>
+              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">${steps || ''} ${t.description ? '· ' + t.description.substring(0, 35) + '...' : ''}</div>
+            </div>
+            <span style="color:#9ca3af;font-size:18px;flex-shrink:0;">›</span>
+          </button>`;
+      }).join('');
+
+      list.querySelectorAll('.pm-template-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tmpl = templates.find(t => t.id === btn.dataset.id);
+          if (!tmpl) return;
+          // Pre-cargar pasos de la plantilla
+          const steps = (tmpl.plan_activities || []).map(s => {
+            const type = STEP_TYPES.find(st => st.key === s.type) || STEP_TYPES[0];
+            return { ...s, emoji: type.emoji, icon3d: type.icon3d, label: s.label || type.label };
+          });
+          this.currentPlan = {
+            title: tmpl.title,
+            emoji: tmpl.emoji,
+            description: tmpl.description || '',
+            steps,
+            from_template_id: tmpl.id
+          };
+          this._injectPendingActivity();
+          this._goToStep(2);
+        });
+      });
+    } catch (e) {
+      const list = document.getElementById('pm-templates-list');
+      if (list) list.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:13px;padding:16px;">Error cargando plantillas</p>';
+    }
+  }
+
+  // ── STEP 2: Nombre + actividades + detalles ─────────────────────
+  _renderStep2(container) {
+    const plan     = this.currentPlan;
+    const maxOpts  = [2, 3, 4, 5, 6, 8, 10];
+    const savedMax = plan.max_participants || 4;
+    const isPublic = plan.is_public !== false;
+
+    // Calcular fecha auto desde actividades con fecha
+    const acts = plan.pendingActivities || [];
+    const actsWithDate = acts.filter(a => a.scheduled_at);
+    const _autoDate = actsWithDate.length
+      ? actsWithDate.reduce((min, a) => a.scheduled_at < min ? a.scheduled_at : min, actsWithDate[0].scheduled_at)
+      : null;
+    // Si hay fecha auto, usarla; si no, usar la guardada manualmente
+    if (_autoDate && !plan._dateSetManually) {
+      plan.scheduled_date = _autoDate;
+    }
+    const savedDate = plan.scheduled_date || '';
+    const _hasAutoDate = !!(_autoDate && !plan._dateSetManually);
+
+    container.innerHTML = `
+      <!-- Nombre y emoji -->
+      <div style="padding:4px 20px 12px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <button id="pm-emoji-btn" style="width:52px;height:52px;border-radius:14px;border:1.5px solid #e5e7eb;background:#f9fafb;font-size:26px;cursor:pointer;flex-shrink:0;">${plan.emoji}</button>
+          <input id="pm-plan-title" type="text" placeholder="Nombre del plan..." maxlength="50" value="${plan.title}"
+            style="flex:1;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:15px;font-weight:600;outline:none;font-family:inherit;">
+        </div>
+        <input id="pm-plan-desc" type="text" placeholder="Descripción breve (opcional)..." maxlength="100" value="${plan.description || ''}"
+          style="width:100%;border:1.5px solid #e5e7eb;border-radius:12px;padding:10px 14px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box;">
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:0 20px;">
+
+        <!-- Actividades del plan -->
+        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Actividades</div>
+        <div id="pm-activities-list"></div>
+
+        <!-- Botones de acción -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;">
+          <button id="pm-add-existing" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:14px;border:1.5px solid #e5e7eb;background:white;cursor:pointer;color:#374151;font-size:12px;font-weight:700;-webkit-tap-highlight-color:transparent;">
+            🗺️ Del mapa
+          </button>
+          <button id="pm-add-new" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:14px;border:1.5px solid #6366f1;background:#eef2ff;cursor:pointer;color:#6366f1;font-size:12px;font-weight:700;-webkit-tap-highlight-color:transparent;">
+            + Nueva
+          </button>
+        </div>
+
+        <!-- Cuándo — auto si hay actividades con fecha -->
+        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">¿Cuándo?</div>
+        ${_hasAutoDate
+          ? '<div id="pm-date-auto" style="width:100%;border:1.5px solid #e5e7eb;border-radius:12px;padding:11px 14px;font-size:13px;color:#6b7280;background:#f9fafb;box-sizing:border-box;margin-bottom:8px;display:flex;align-items:center;gap:8px;">' +
+            '<span>📅</span><span>Tomada de tus actividades</span>' +
+            '<button id="pm-date-override" style="margin-left:auto;font-size:11px;color:#6366f1;background:none;border:none;cursor:pointer;font-weight:700;">Cambiar</button>' +
+            '</div>' +
+            '<input id="pm-plan-date" type="datetime-local" value="' + savedDate + '" style="display:none;width:100%;border:1.5px solid #6366f1;border-radius:12px;padding:11px 14px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box;margin-bottom:20px;color:#111;">'
+          : '<input id="pm-plan-date" type="datetime-local" value="${savedDate}" style="width:100%;border:1.5px solid #e5e7eb;border-radius:12px;padding:11px 14px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box;margin-bottom:20px;color:#111;">'}
+
+        <!-- Máximo de personas -->
+        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Máximo de personas</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+          ${maxOpts.map(n => '<button class="pm-max-btn' + (n===savedMax?' selected':'') + '" data-max="' + n + '" style="padding:9px 14px;border-radius:10px;border:1.5px solid ' + (n===savedMax? '#1a5cf5' :'#e5e5e5') + ';background:' + (n===savedMax? '#1a5cf5' :'white') + ';color:' + (n===savedMax?'white':'#374151') + ';font-size:13px;font-weight:600;cursor:pointer;">' + (n===10?'10+':n) + '</button>').join('')}
+        </div>
+
+        <!-- Visibilidad -->
+        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Visibilidad</div>
+        <div style="display:flex;gap:10px;margin-bottom:24px;">
+          <button id="pm-vis-public" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid ${isPublic? '#1a5cf5' :'#e5e7eb'};background:${isPublic? '#1a5cf5' :'white'};color:${isPublic?'white':'#374151'};font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            🌍 Público
+          </button>
+          <button id="pm-vis-private" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid ${!isPublic? '#1a5cf5' :'#e5e7eb'};background:${!isPublic? '#1a5cf5' :'white'};color:${!isPublic?'white':'#374151'};font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            🔒 Solo amigos
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:12px 20px calc(12px + env(safe-area-inset-bottom));flex-shrink:0;border-top:1px solid #f0f0f0;background:white;">
+        <button id="pm-next-2" style="width:100%;padding:14px;background:#111;color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;">
+          Confirmar plan →
+        </button>
+      </div>
+    `;
+
+    this._renderActivitiesList();
+
+    document.getElementById('pm-emoji-btn').addEventListener('click', () => this._showEmojiPicker());
+    document.getElementById('pm-next-2').addEventListener('click',   () => this._handleSavePlan());
+
+    // Agregar actividad existente del mapa
+    document.getElementById('pm-add-existing').addEventListener('click', () => this._showActivitiesSheet());
+
+    // Crear nueva actividad — abre ActivityModal normal
+    document.getElementById('pm-add-new').addEventListener('click', () => {
+      document.getElementById('plan-modal-overlay').style.display = 'none';
+      const am = window.wpApp?.activityModal;
+      if (am) {
+        am.setUser(this.currentUser);
+        // Cuando se crea, la capturo y la agrego al plan
+        const originalCreated = window.wpApp?.onActivityCreated;
+        window.wpApp._pendingPlanCapture = (activity) => {
+          if (!this.currentPlan.pendingActivities) this.currentPlan.pendingActivities = [];
+          this.currentPlan.pendingActivities.push(activity);
+          document.getElementById('plan-modal-overlay').style.display = 'flex';
+          this._renderActivitiesList();
+        };
+        am.show();
+      }
+    });
+
+    // Max personas
+    container.querySelectorAll('.pm-max-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('.pm-max-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.style.background='white'; b.style.color='#374151'; b.style.borderColor='#e5e5e5';
+        });
+        btn.classList.add('selected');
+        btn.style.background='#1a5cf5'; btn.style.color='white'; btn.style.borderColor='#1a5cf5';
+        this.currentPlan.max_participants = parseInt(btn.dataset.max);
+      });
+    });
+
+    // Visibilidad
+    const pubBtn  = document.getElementById('pm-vis-public');
+    const privBtn = document.getElementById('pm-vis-private');
+    const _setVis = (pub) => {
+      this.currentPlan.is_public = pub;
+      pubBtn.style.background  = pub  ? '#1a5cf5' : 'white';
+      pubBtn.style.color       = pub  ? 'white' : '#374151';
+      pubBtn.style.borderColor = pub  ? '#1a5cf5' : '#e5e7eb';
+      privBtn.style.background = !pub ? '#1a5cf5' : 'white';
+      privBtn.style.color      = !pub ? 'white' : '#374151';
+      privBtn.style.borderColor= !pub ? '#1a5cf5' : '#e5e7eb';
+    };
+    pubBtn.addEventListener('click',  () => _setVis(true));
+    privBtn.addEventListener('click', () => _setVis(false));
+
+    document.getElementById('pm-plan-title').addEventListener('input', e => { this.currentPlan.title = e.target.value; });
+    document.getElementById('pm-plan-desc').addEventListener('input',  e => { this.currentPlan.description = e.target.value; });
+    document.getElementById('pm-plan-date').addEventListener('change', e => {
+      this.currentPlan.scheduled_date = e.target.value || null;
+      if (e.target.value) this.currentPlan._dateSetManually = true;
+    });
+    // Botón "Cambiar" en modo auto-fecha
+    document.getElementById('pm-date-override')?.addEventListener('click', () => {
+      const autoLabel = document.getElementById('pm-date-auto');
+      const dateInput = document.getElementById('pm-plan-date');
+      if (autoLabel) autoLabel.style.display = 'none';
+      if (dateInput) {
+        dateInput.style.display = 'block';
+        dateInput.style.marginBottom = '20px';
+        dateInput.focus();
+      }
+      this.currentPlan._dateSetManually = true;
+    });
+  }
+
+  // ── Lista de actividades del plan ────────────────────────────────
+  _renderActivitiesList() {
+    const list = document.getElementById('pm-activities-list');
+    if (!list) return;
+    const acts = this.currentPlan.pendingActivities || [];
+
+    if (!acts.length) {
+      list.innerHTML = `
+        <div style="text-align:center;padding:20px 16px;background:#f9fafb;border-radius:14px;margin-bottom:12px;">
+          <div style="font-size:28px;margin-bottom:6px;">🗺️</div>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">Sin actividades aún.<br>Agrega una del mapa o crea una nueva.</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = acts.map((a, i) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f9fafb;border-radius:14px;margin-bottom:8px;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#111;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:#111;">${a.title || a.type}</div>
+          <div style="font-size:11px;color:#16a34a;">✓ ${a.place_name || 'Lugar en el mapa'}</div>
+        </div>
+        <button class="pm-remove-act" data-index="${i}"
+          style="width:26px;height:26px;border-radius:50%;border:none;background:#fee2e2;color:#ef4444;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+      </div>`).join('');
+
+    list.querySelectorAll('.pm-remove-act').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.currentPlan.pendingActivities.splice(parseInt(btn.dataset.index), 1);
+        this._renderActivitiesList();
+      });
+    });
+  }
+
+  // ── Sheet: elegir activity existente del mapa ─────────────────────
+  async _showActivitiesSheet() {
+    document.getElementById('pm-act-sheet')?.remove();
+    const sheet = document.createElement('div');
+    sheet.id = 'pm-act-sheet';
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999999;background:white;border-radius:24px 24px 0 0;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.25s ease;';
+    sheet.innerHTML = `
+      <div style="width:36px;height:4px;background:#e5e7eb;border-radius:4px;margin:12px auto 0;flex-shrink:0;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px 8px;flex-shrink:0;">
+        <div style="font-size:16px;font-weight:800;color:#111;">Actividades en el mapa</div>
+        <button id="pm-act-sheet-close" style="width:30px;height:30px;border-radius:50%;border:none;background:#f3f4f6;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 16px 24px;">
+        <div id="pm-act-sheet-list">
+          <div style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">Cargando actividades...</div>
+        </div>
+      </div>`;
+    document.body.appendChild(sheet);
+    document.getElementById('pm-act-sheet-close').addEventListener('click', () => sheet.remove());
 
     try {
-      const tags = await PlaceTagService.getTagsForPlace(place);
-      if (!tags.length) { block.style.display = 'none'; return; }
+      const acts = await PlanService.getActiveActivitiesForPlan();
+      const already = (this.currentPlan.pendingActivities || []).map(a => a.id);
+      const available = acts.filter(a => !already.includes(a.id));
+      const listEl = document.getElementById('pm-act-sheet-list');
+      if (!listEl) return;
 
-      block.style.display = '';
-      tagsRow.innerHTML = tags.map(t =>
-        `<span class="wp-pm-tag wp-pm-user-tag" title="${t.count} persona${t.count !== 1 ? 's' : ''} lo etiquetó así">
-          ${t.emoji} ${t.label}
-          <span class="wp-pm-tag-count">×${t.count}</span>
-        </span>`
-      ).join('');
-    } catch(e) {
-      block.style.display = 'none';
-    }
-  }
+      if (!available.length) {
+        listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">No hay actividades activas en el mapa.<br>Crea una nueva con "+ Nueva".</div>';
+        return;
+      }
 
-  // ── Events ────────────────────────────────────────────────────────
+      listEl.innerHTML = available.map(a => {
+        const parts = parseInt(a.participants ? a.participants.length : 0);
+        const max   = a.max_participants || 4;
+        const time  = a.scheduled_at ? new Date(a.scheduled_at).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) : '';
+        return `<div class="pm-act-opt" data-id="${a.id}"
+          style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:1.5px solid #f0f0f0;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;">
+          <div style="width:44px;height:44px;border-radius:12px;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
+            ${a.icon_url ? '<img src="'+a.icon_url+'" style="width:32px;height:32px;object-fit:contain;">' : '📍'}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:#111;">${a.title || a.type}</div>
+            <div style="font-size:11px;color:#9ca3af;">${a.place_name || ''}${time?' · '+time:''}</div>
+            <div style="font-size:11px;color:#6366f1;margin-top:2px;">👥 ${parts}/${max} personas</div>
+          </div>
+          <div style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:16px;color:#9ca3af;">+</div>
+        </div>`;
+      }).join('');
 
-  _showToast(msg) {
-    var toast = document.getElementById('wp-global-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'wp-global-toast';
-      toast.style.cssText = 'position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-20px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;white-space:nowrap;padding:10px 20px;border-radius:999px;font-family:var(--wp-font);pointer-events:none;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.24s ease,transform 0.28s cubic-bezier(0.34,1.2,0.64,1);';
-      document.body.appendChild(toast);
-    }
-    toast.textContent = msg;
-    clearTimeout(this._toastTimer);
-    requestAnimationFrame(() => {
-      toast.style.opacity = '1';
-      toast.style.transform = 'translateX(-50%) translateY(0)';
-    });
-    this._toastTimer = setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(-50%) translateY(-10px)';
-    }, 2200);
-  }
+      listEl.querySelectorAll('.pm-act-opt').forEach(el => {
+        el.addEventListener('click', () => {
+          const act = available.find(a => a.id === el.dataset.id);
+          if (!act) return;
 
-  _wireEvents() {
-    this._el.querySelector('#wp-pm-backdrop').addEventListener('click', () => this.hide());
-    this._el.querySelector('#wp-pm-back').addEventListener('click',    () => this.hide());
+          const uid = this.currentUser?.id;
+          const isOwner  = act.creator_id === uid;
+          const isMember = (act.participants || []).includes(uid);
 
-    // ── More menu ──
-    const moreBtn     = this._el.querySelector('#wp-pm-more');
-    const moreMenu    = this._el.querySelector('#wp-pm-more-menu');
-    const moreOverlay = this._el.querySelector('#wp-pm-more-overlay');
-    const closeMore   = () => {
-      moreMenu.classList.remove('open');
-      setTimeout(() => { moreMenu.style.display = 'none'; moreOverlay.style.display = 'none'; }, 320);
-    };
-    moreBtn.addEventListener('click', () => {
-      moreMenu.style.display = ''; moreOverlay.style.display = '';
-      requestAnimationFrame(() => moreMenu.classList.add('open'));
-    });
-    moreOverlay.addEventListener('click', closeMore);
-    this._el.querySelector('#wp-pm-more-share').addEventListener('click', () => {
-      closeMore();
-      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
-    });
-    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
-    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
-    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
+          const _doAdd = () => {
+            if (!this.currentPlan.pendingActivities) this.currentPlan.pendingActivities = [];
+            this.currentPlan.pendingActivities.push(act);
+            sheet.remove();
+            this._renderActivitiesList();
+            window.wpApp?.showMapToast?.('Actividad agregada al plan ✓', '#10b981');
+          };
 
-    // ── Modal añadir reseña ──
-    const addReviewBtn = this._el.querySelector('#wp-pm-add-review');
-    if (addReviewBtn) {
-      addReviewBtn.addEventListener('click', () => this._openReviewModal());
-    }
-
-    // Etiquetar lugar — placeholder hasta recibir indicaciones
-    const tagChip = this._el.querySelector('#wp-pm-tag-chip');
-    if (tagChip) tagChip.addEventListener('click', () => this._onTagPlace());
-
-    // Añadir foto — por ahora placeholder hasta recibir indicaciones
-    this._el.addEventListener('click', (e) => {
-      const addSlide = e.target.closest('#wp-pm-slide-add');
-      if (addSlide) this._onAddPhoto();
-    });
-    const copyBtn = this._el.querySelector('#wp-pm-addr-copy');
-    if (copyBtn) copyBtn.addEventListener('click', () => {
-      const addr = this._el.querySelector('#wp-pm-addr').textContent;
-      if (!addr) return;
-      navigator.clipboard.writeText(addr).then(() => {
-        copyBtn.classList.add('copied');
-        copyBtn.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-        setTimeout(() => {
-          copyBtn.classList.remove('copied');
-          copyBtn.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
-        }, 2000);
-      });
-    });
-    const shareBody = this._el.querySelector('#wp-pm-share-body');
-    if (shareBody) shareBody.addEventListener('click', () => {
-      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
-    });
-
-    const ctaBtn = this._el.querySelector('#wp-pm-cta');
-    ctaBtn.addEventListener('click', () => { console.log('Planear visita:', this._place); });
-    const hereBtn = this._el.querySelector('#wp-pm-here-btn');
-    if (hereBtn) hereBtn.addEventListener('click', () => { console.log('Estoy aquí:', this._place); });
-    ctaBtn.addEventListener('pointerdown', () => {
-      ctaBtn.style.transition = 'transform 0.1s ease';
-      ctaBtn.style.transform  = 'scale(0.92)';
-    });
-    ctaBtn.addEventListener('pointerup', () => {
-      ctaBtn.style.transition = 'transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      ctaBtn.style.transform  = 'scale(1.05)';
-      setTimeout(() => {
-        ctaBtn.style.transition = 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)';
-        ctaBtn.style.transform  = 'scale(1)';
-      }, 200);
-    });
-    ctaBtn.addEventListener('pointercancel', () => {
-      ctaBtn.style.transition = 'transform 0.2s ease';
-      ctaBtn.style.transform  = 'scale(1)';
-    });
-    const saveBtn = this._el.querySelector('#wp-pm-save');
-    const self = this;
-    if (saveBtn) saveBtn.addEventListener('click', function() {
-      const wasSaved = saveBtn.classList.contains('saved');
-      saveBtn.classList.toggle('saved');
-      if (!wasSaved) self._showToast('❤️ Guardado en favoritos');
-    });
-
-    // Scroll: stats se desvanecen → nombre aparece en topbar
-    const body      = this._el.querySelector('#wp-pm-body');
-    const statsRow  = this._el.querySelector('#wp-pm-stats-row');
-    const tbName    = this._el.querySelector('#wp-pm-tb-name');
-    const carousel  = this._el.querySelector('#wp-pm-carousel');
-    let   _scrolled = false;
-    if (body && statsRow && tbName) {
-      body.addEventListener('scroll', () => {
-        const sy = body.scrollTop;
-
-        // ── Expansión progresiva de slides ──
-        // de 44% (sy=0) a 88% (sy>=120px), proporcional
-        if (carousel) {
-          const progress  = Math.min(sy / 120, 1);           // 0→1
-          const pct       = 44 + (88 - 44) * progress;       // 44%→88%
-          const slides    = carousel.querySelectorAll('.wp-pm-slide');
-          slides.forEach(s => {
-            s.style.minWidth = pct + '%';
-            s.style.transition = 'min-width 0.12s linear';
-          });
-          // Recalcular posición del carrusel para que siga centrado en el slide activo
-          if (this._photos.length > 0) {
-            const slideW = carousel.getBoundingClientRect().width * (pct / 100) + 8;
-            const targetX = 8 - this._currentPhoto * slideW;
-            carousel.style.transition = 'none';
-            carousel.style.transform  = `translateX(${targetX}px)`;
+          if (isOwner || isMember) {
+            // Es dueño o ya es miembro → añadir directo
+            _doAdd();
+          } else {
+            // Actividad ajena → pedir confirmación para unirse
+            this._confirmJoinForPlan(act, sheet, _doAdd);
           }
-        }
-
-        // ── Stats → nombre ──
-        const nameEl    = body.querySelector('#wp-pm-name');
-        const threshold = nameEl ? nameEl.offsetTop - 20 : 60;
-        const past      = sy > threshold;
-        if (past !== _scrolled) {
-          _scrolled = past;
-          statsRow.style.opacity       = past ? '0' : '1';
-          statsRow.style.transform     = past ? 'scale(0.9)' : 'scale(1)';
-          statsRow.style.pointerEvents = past ? 'none' : '';
-          tbName.style.opacity         = past ? '1' : '0';
-          tbName.style.transform       = past ? 'translateY(0)' : 'translateY(6px)';
-        }
-      }, { passive: true });
+        });
+      });
+    } catch(e) {
+      const listEl = document.getElementById('pm-act-sheet-list');
+      if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px;">Error cargando actividades</div>';
     }
   }
 
-  _wireHeroSwipe() {
-    const self = this;
-    const hero = this._el.querySelector('#wp-pm-hero');
-    let startX = 0, startT = 0, lastX = 0, lastT = 0;
-    let tracking = false, baseX = 0, velX = 0;
-    self._heroRafId = null;
+  // ── Confirmar unirse antes de añadir al plan ────────────────────
+  _confirmJoinForPlan(activity, sheet, onConfirmed) {
+    document.getElementById('pm-join-confirm')?.remove();
 
-    const getCarousel = () => self._el.querySelector('#wp-pm-carousel');
-    const getSlideW   = () => {
-      const c = getCarousel();
-      if (!c) return 180;
-      // Leer el ancho real del primer slide (puede haber cambiado por expansión)
-      const firstSlide = c.querySelector('.wp-pm-slide:not(.wp-pm-slide-add)');
-      return firstSlide ? firstSlide.getBoundingClientRect().width + 8 : c.getBoundingClientRect().width * 0.44 + 8;
-    };
-    const snapX = i => 8 - i * getSlideW();
+    const popup = document.createElement('div');
+    popup.id = 'pm-join-confirm';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:99999999;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
 
-    const springTo = (targetX, fromX, fromV) => {
-      if (self._heroRafId) cancelAnimationFrame(self._heroRafId);
-      const stiffness = 280, damping = 28, mass = 1;
-      let x = fromX, v = fromV;
-      const step = () => {
-        const f = -stiffness * (x - targetX) - damping * v;
-        v += (f / mass) * (1/60);
-        x += v * (1/60);
-        const c = getCarousel();
-        if (c) { c.style.transition = 'none'; c.style.transform = `translateX(${x}px)`; }
-        if (Math.abs(x - targetX) < 0.5 && Math.abs(v) < 0.5) {
-          if (c) c.style.transform = `translateX(${targetX}px)`;
-          self._heroRafId = null; return;
-        }
-        self._heroRafId = requestAnimationFrame(step);
-      };
-      self._heroRafId = requestAnimationFrame(step);
-    };
+    const actTitle = activity.title || activity.type || 'Actividad';
+    const actPlace = activity.place_name || '';
 
-    // Remover listeners anteriores para evitar acumulación
-    var oldHero = self._el.querySelector('#wp-pm-hero');
-    if (oldHero && self._heroTouchStart) {
-      oldHero.removeEventListener('touchstart',  self._heroTouchStart);
-      oldHero.removeEventListener('touchmove',   self._heroTouchMove);
-      oldHero.removeEventListener('touchend',    self._heroTouchEnd);
-      oldHero.removeEventListener('touchcancel', self._heroTouchCancel);
-    }
+    popup.innerHTML =
+      '<div style="background:white;border-radius:24px 24px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));width:100%;max-width:480px;animation:slideUp 0.25s ease;">' +
+        '<div style="text-align:center;margin-bottom:16px;">' +
+          '<div style="font-size:36px;margin-bottom:8px;">👋</div>' +
+          '<div style="font-size:16px;font-weight:800;color:#111;margin-bottom:4px;">¿Unirte a esta actividad?</div>' +
+          '<div style="font-size:13px;color:#9ca3af;">' + actTitle + (actPlace ? ' · ' + actPlace : '') + '</div>' +
+        '</div>' +
+        '<p style="font-size:13px;color:#374151;text-align:center;margin:0 0 20px;line-height:1.5;">' +
+          'Para añadirla a tu plan necesitas unirte primero.' +
+        '</p>' +
+        '<button id="pm-join-yes" style="width:100%;padding:14px;background:#111;color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;">' +
+          'Unirme y añadir al plan' +
+        '</button>' +
+        '<button id="pm-join-no" style="width:100%;padding:14px;background:#f3f4f6;color:#374151;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;">' +
+          'Cancelar' +
+        '</button>' +
+      '</div>';
 
-    self._heroTouchStart = e => {
-      if (e.touches.length !== 1) return;
-      if (self._heroRafId) { cancelAnimationFrame(self._heroRafId); self._heroRafId = null; }
-      startX = lastX = e.touches[0].clientX;
-      startT = lastT = Date.now();
-      tracking = true;
-      velX = 0;
-      const c = getCarousel();
-      // Read current actual translateX to start from
-      if (c) {
-        c.style.transition = 'none';
-        const mat = new DOMMatrix(getComputedStyle(c).transform);
-        baseX = mat.m41;
-      } else {
-        baseX = snapX(self._currentPhoto);
+    document.body.appendChild(popup);
+
+    document.getElementById('pm-join-no').addEventListener('click', () => popup.remove());
+    popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
+
+    document.getElementById('pm-join-yes').addEventListener('click', async () => {
+      const btn = document.getElementById('pm-join-yes');
+      btn.disabled = true;
+      btn.textContent = 'Uniéndote...';
+      try {
+        await window.wpApp?.handleJoinActivity?.(activity.id);
+        popup.remove();
+        onConfirmed();
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = 'Unirme y añadir al plan';
+        window.wpApp?.showMapToast?.(e.message || 'Error al unirse', '#ef4444');
       }
-    };
-
-    self._heroTouchMove = e => {
-      if (!tracking || e.touches.length !== 1) return;
-      const x  = e.touches[0].clientX;
-      const dx = x - startX;
-      const now = Date.now();
-      // Velocity tracking
-      velX = (x - lastX) / Math.max(1, now - lastT) * 16;
-      lastX = x; lastT = now;
-
-      const n = self._photos.length;
-      const slideW = getSlideW();
-      // Rubber band at edges
-      let tx = baseX + dx;
-      const minX = snapX(n - 1);
-      const maxX = snapX(0);
-      if (tx > maxX)      tx = maxX + (tx - maxX) * 0.18;
-      else if (tx < minX) tx = minX + (tx - minX) * 0.18;
-
-      const c = getCarousel();
-      if (c) c.style.transform = `translateX(${tx}px)`;
-    };
-
-    self._heroTouchEnd = null; // se asigna abajo
-    self._heroTouchCancel = null;
-
-    const onEnd = e => {
-      if (!tracking) return;
-      tracking = false;
-      const endX = e.changedTouches ? e.changedTouches[0].clientX : lastX;
-      const dx   = endX - startX;
-      const dt   = Date.now() - startT;
-      const n    = self._photos.length;
-      const slideW = getSlideW();
-
-      // How many slides to advance based on drag distance + velocity
-      const totalDx  = baseX + dx - snapX(self._currentPhoto);
-      const momentum = velX * 8; // project velocity forward
-      const total    = dx + momentum;
-      let advance    = Math.round(-total / slideW);
-      // Cap at max slides per gesture based on speed
-      const maxAdv   = Math.max(1, Math.min(n, Math.abs(Math.round(momentum / slideW)) + 1));
-      advance        = Math.max(-maxAdv, Math.min(maxAdv, advance));
-
-      let next = Math.max(0, Math.min(n - 1, self._currentPhoto + advance));
-      // Read current carousel X for smooth spring from current position
-      const c = getCarousel();
-      let curX = snapX(self._currentPhoto);
-      if (c) {
-        const mat = new DOMMatrix(getComputedStyle(c).transform);
-        curX = mat.m41;
-      }
-      self._currentPhoto = next;
-      self._el.querySelectorAll('.wp-pm-dot').forEach((d, idx) =>
-        d.classList.toggle('active', idx === next)
-      );
-      springTo(snapX(next), curX, velX * 60);
-    };
-
-    self._heroTouchEnd    = onEnd;
-    self._heroTouchCancel = () => {
-      tracking = false;
-      const c = getCarousel();
-      let curX = snapX(self._currentPhoto);
-      if (c) { const m = new DOMMatrix(getComputedStyle(c).transform); curX = m.m41; }
-      springTo(snapX(self._currentPhoto), curX, 0);
-    };
-
-    hero.addEventListener('touchstart',  self._heroTouchStart,  { passive: true });
-    hero.addEventListener('touchmove',   self._heroTouchMove,   { passive: true });
-    hero.addEventListener('touchend',    self._heroTouchEnd,    { passive: true });
-    hero.addEventListener('touchcancel', self._heroTouchCancel, { passive: true });
+    });
   }
 
-  async _onTagPlace() {
-    const place = this._place;
-    if (!place) return;
-    const placeId = place.place_id || place.id;
-    if (!placeId) return;
+  _renderStepsList() {
+    const list = document.getElementById('pm-steps-list');
+    if (!list) return;
+    const steps = this.currentPlan.steps || [];
 
-    // Verificar sesión
-    const user = this.getCurrentUser?.();
-    if (!user) {
-      window.wpApp?.showMapToast?.('Inicia sesión para etiquetar lugares', '#ff9f0a');
+    if (!steps.length) {
+      list.innerHTML = `
+        <div style="text-align:center;padding:24px 16px;background:#f9fafb;border-radius:14px;margin-bottom:12px;">
+          <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">Sin pasos todavía.<br>Agrega actividades a tu plan.</p>
+        </div>`;
       return;
     }
 
-    // Cargar estado actual del usuario — si falla red, abrir igual con vacío
-    let userTags = [];
-    try { userTags = await PlaceTagService.getUserTagsForPlace(place, user.id); } catch(_) {}
-    const remaining = Math.max(0, 3 - userTags.length);
-    this._openTagSheet(place, user, userTags, remaining);
-  }
-
-  async _openReviewModal() {
-    const place = this._place;
-    if (!place) return;
-    const user = this.getCurrentUser?.();
-    if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
-
-    // Crear el modal en body para escapar overflow:hidden del card
-    var prevModal = document.getElementById('wp-review-modal-body');
-    if (prevModal) prevModal.remove();
-
-    var frag = document.createElement('div');
-    frag.id = 'wp-review-modal-body';
-    frag.innerHTML = `
-      <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:2200;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
-      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2300;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
-        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
-        <div style="padding:4px 20px 12px">
-          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
-          <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
+    list.innerHTML = steps.map((s, i) => {
+      const hasPlace = !!s.place_name;
+      return `
+      <div class="pm-step-item" data-index="${i}"
+        style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f9fafb;border-radius:14px;margin-bottom:8px;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#111;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+        <div style="font-size:22px;flex-shrink:0;">${s.emoji || '📍'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:#111;">${s.label || s.type}</div>
+          ${hasPlace
+            ? `<div style="font-size:11px;color:#16a34a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">✓ ${s.place_name}</div>`
+            : `<div class="pm-assign-place" data-index="${i}" style="font-size:11px;color:#6366f1;font-weight:600;cursor:pointer;">👆 Toca para elegir lugar</div>`
+          }
         </div>
-        <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
-          ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;cursor:pointer;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
-        </div>
-        <div id="wp-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px;font-family:var(--wp-font)">Toca para calificar</div>
-        <div style="padding:0 16px">
-          <textarea id="wp-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
-          <div id="wp-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px;font-family:var(--wp-font)">0 / 500</div>
-        </div>
-        <div style="padding:12px 16px 16px">
-          <button id="wp-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);transition:filter 0.15s;opacity:0.4">Publicar reseña</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          ${hasPlace ? `<button class="pm-clear-place" data-index="${i}" style="width:26px;height:26px;border-radius:50%;border:none;background:#e0e7ff;color:#6366f1;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Cambiar lugar">↺</button>` : ''}
+          <button class="pm-remove-step" data-index="${i}" style="width:26px;height:26px;border-radius:50%;border:none;background:#fee2e2;color:#ef4444;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
         </div>
       </div>`;
-    document.body.appendChild(frag);
+    }).join('');
 
-    const overlay  = document.getElementById('wp-rm-overlay');
-    const menu     = document.getElementById('wp-rm-menu');
-    const starsEl  = document.getElementById('wp-rm-stars');
-    const labelEl  = document.getElementById('wp-rm-label');
-    const textarea = document.getElementById('wp-rm-textarea');
-    const charEl   = document.getElementById('wp-rm-char');
-    const submit   = document.getElementById('wp-rm-submit');
-    if (!menu) return;
-
-    // Mostrar memoji del usuario en el modal
-    var userDisplayName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario';
-    var userAvatarUrl   = user.user_metadata?.avatar_url || getAvatarUrl(userDisplayName);
-    var reviewHeaderEl  = document.querySelector('.wpr-header');
-    if (reviewHeaderEl) {
-      var existingAvImg = reviewHeaderEl.querySelector('.wpr-user-avatar');
-      if (!existingAvImg) {
-        var avImg = document.createElement('img');
-        avImg.className = 'wpr-user-avatar';
-        avImg.style.cssText = 'width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f2f2f2;margin-bottom:6px';
-        avImg.src = userAvatarUrl;
-        reviewHeaderEl.insertBefore(avImg, reviewHeaderEl.firstChild);
-      }
-    }
-
-    const LABELS = ['','Muy malo','Regular','Bueno','Muy bueno','Excelente'];
-    let rating = 0;
-
-    // Ver si ya tiene reseña
-    const placeId = place.place_id || place.id;
-    let existing = null;
-    try { existing = await ReviewService.getUserReview(placeId, user.id); } catch(_) {}
-    if (existing) { rating = existing.rating; textarea.value = existing.text; }
-    else { rating = 0; textarea.value = ''; }
-
-    const updateStars = (v) => {
-      rating = v;
-      starsEl.querySelectorAll('.wpr-star').forEach((s,i) => {
-        s.style.color  = i < v ? '#f59e0b' : '#d1d5db';
-        s.style.transform = i < v ? 'scale(1.1)' : 'scale(1)';
+    // Tap en "Toca para elegir lugar"
+    list.querySelectorAll('.pm-assign-place').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.index);
+        this._pickPlaceForStep(idx);
       });
-      labelEl.textContent = LABELS[v] || 'Toca para calificar';
-      submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
-    };
-    updateStars(rating);
-
-    starsEl.querySelectorAll('.wpr-star').forEach(s => {
-      s.onclick = () => updateStars(parseInt(s.dataset.v));
     });
-    textarea.oninput = () => {
-      charEl.textContent = textarea.value.length + ' / 500';
-      submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
-    };
-    charEl.textContent = textarea.value.length + ' / 500';
-    submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
 
-    const closeModal = () => {
-      menu.style.transform = 'translateY(110%)';
-      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
-      setTimeout(() => { var f=document.getElementById('wp-review-modal-body'); if(f) f.remove(); }, 320);
-    };
-    overlay.onclick = closeModal;
-
-    const self = this;
-    submit.onclick = async () => {
-      if (rating === 0 || textarea.value.trim().length < 10) return;
-      submit.disabled = true;
-      submit.textContent = 'Publicando...';
-      try {
-        const pid = place.place_id || place.id || place.placeId;
-        if (!pid) throw new Error('ID del lugar no encontrado');
-        const displayName   = user.user_metadata?.display_name
-          || user.user_metadata?.full_name
-          || user.email?.split('@')[0]
-          || 'Usuario';
-        const existingAvatar = user.user_metadata?.avatar_url || null;
-        await ReviewService.upsert(String(pid), user.id, rating, textarea.value.trim(), displayName, existingAvatar);
-        closeModal();
-        self._showToast('✓ Reseña publicada');
-        // Refrescar tab comunidad
-        setTimeout(() => {
-          self._populateReviews(place).then(() => {
-            // Activar tab WhatsPlan para ver la reseña publicada
-            const headerRow2 = self._el.querySelector('#wpr-header-row');
-            const list2 = self._el.querySelector('#wp-pm-reviews-list');
-            if (headerRow2 && list2) {
-              headerRow2.querySelectorAll('.wpr-header-tabs-row .wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
-              const wpTab = headerRow2.querySelector('[data-tab="community"]');
-              if (wpTab) { wpTab.classList.add('wpr-tab-active'); }
-              list2.querySelector('#wpr-panel-google').style.display    = 'none';
-              list2.querySelector('#wpr-panel-community').style.display = '';
-            }
-          });
-        }, 400);
-      } catch(err) {
-        console.error('Review error:', err);
-        self._showToast(err.message || 'Error al publicar');
-        submit.disabled = false;
-        submit.textContent = 'Publicar reseña';
-      }
-    };
-
-    // Abrir con reflow forzado para que la transición dispare
-    void menu.offsetHeight;
-    requestAnimationFrame(() => { menu.style.transform = 'translateY(0)'; });
-  }
-
-  _openTagSheet(place, user, userTags, remaining) {
-    const overlay  = document.getElementById('wp-pm-tag-overlay');
-    const menu     = document.getElementById('wp-pm-tag-menu');
-    const body     = document.getElementById('wp-pm-tag-items');
-    const saveBtn  = document.getElementById('wp-pm-tag-save');
-    if (!menu) return;
-
-    const CAT_COLORS = {
-      'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
-      'Servicio':'#fb923c','Precio':'#facc15','Destacado':'#f472b6',
-    };
-    let session   = [];
-
-    const updateCTA = () => {
-      const n     = session.filter(k => !k.startsWith('__remove__')).length;
-      const label = saveBtn.querySelector('.wpt-cta-label');
-      const badge = saveBtn.querySelector('.wpt-cta-badge');
-      if (n > 0) {
-        saveBtn.classList.add('active');
-        if (label) label.textContent = 'Etiquetar lugar';
-        if (badge) {
-          badge.style.display = '';
-          badge.textContent   = n;
-          badge.classList.remove('pop');
-          void badge.offsetWidth;
-          badge.classList.add('pop');
-          setTimeout(() => badge.classList.remove('pop'), 250);
-        }
-      } else {
-        saveBtn.classList.remove('active');
-        if (label) label.textContent = 'Selecciona etiquetas';
-        if (badge) badge.style.display = 'none';
-      }
-    };
-
-    const renderBody = () => {
-      // Agrupar por categoría — todos los tags sin límite
-      const cats = {};
-      PLACE_TAGS.forEach(tag => {
-        if (!cats[tag.cat]) cats[tag.cat] = [];
-        cats[tag.cat].push(tag);
+    // Tap en paso con lugar → cambiar lugar
+    list.querySelectorAll('.pm-clear-place').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index);
+        this._pickPlaceForStep(idx);
       });
+    });
 
-      let html = '';
-      for (const [cat, tags] of Object.entries(cats)) {
-        let catHtml = '';
-        for (const tag of tags) {
-          const already  = userTags.includes(tag.key);
-          const selected = session.includes(tag.key);
-          const cls = already ? 'already-done' : selected ? 'selected' : '';
-          catHtml += `<button class="wp-pm-tag-item ${cls}" data-key="${tag.key}" data-already="${already}">
-            <span class="wp-pm-tag-icon">${tag.emoji}</span>
-            <span class="wp-pm-tag-item-label">${tag.label}</span>
-          </button>`;
-        }
-        if (catHtml) {
-          html += `<span class="wpt-cat-label">${cat}</span><div class="wpt-chip-row">${catHtml}</div>`;
-        }
-      }
-
-      body.innerHTML = html;
-
-
-      // Listeners de tags
-      body.querySelectorAll('.wp-pm-tag-item').forEach(btn => {
-        btn.onclick = () => {
-          const key     = btn.dataset.key;
-          const already = btn.dataset.already === 'true';
-          if (already) {
-            // Toggle remove
-            if (session.includes('__remove__' + key)) {
-              session = session.filter(k => k !== '__remove__' + key);
-              btn.className = 'wp-pm-tag-item already-done';
-            } else {
-              session.push('__remove__' + key);
-              btn.className = 'wp-pm-tag-item';
-            }
-          } else {
-            if (session.includes(key)) {
-              session = session.filter(k => k !== key);
-              btn.className = 'wp-pm-tag-item';
-            } else {
-              if (session.filter(k => !k.startsWith('__remove__')).length >= remaining) {
-                window.wpApp?.showMapToast?.('Máximo ' + remaining + ' etiquetas', '#ff9f0a');
-                return;
-              }
-              session.push(key);
-              btn.className = 'wp-pm-tag-item selected';
-            }
-          }
-          updateCTA();
-        };
+    // Quitar paso
+    list.querySelectorAll('.pm-remove-step').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index);
+        this.currentPlan.steps.splice(idx, 1);
+        this._renderStepsList();
       });
-    };
-
-    renderBody();
-    updateCTA();
-
-    const closeSheet = () => {
-      menu.classList.remove('open','expanded');
-      overlay.classList.remove('open');
-      setTimeout(() => {
-        menu.style.display='none'; overlay.style.display='none'; session=[];
-      }, 320);
-    };
-
-    const closeBtn = document.getElementById('wp-pm-tag-close');
-    if (closeBtn) closeBtn.onclick = closeSheet;
-    overlay.onclick = closeSheet;
-
-    saveBtn.onclick = async () => {
-      if (!session.length) return;
-      for (const key of session) {
-        try {
-          if (key.startsWith('__remove__')) {
-            await PlaceTagService.removeTag(place, key.replace('__remove__',''), user.id);
-          } else {
-            await PlaceTagService.addTag(place, key, user.id);
-          }
-        } catch(err) { window.wpApp?.showMapToast?.(err.message||'Error','#ff3b30'); }
-      }
-      const added = session.filter(k => !k.startsWith('__remove__')).length;
-      if (added > 0) window.wpApp?.showMapToast?.('✓ Etiquetas guardadas','#34c759');
-      closeSheet();
-      this._populateServices(place);
-    };
-
-    overlay.style.display = '';
-    menu.style.display    = '';
-    requestAnimationFrame(() => menu.classList.add('open'));
-  }
-  _onAddPhoto() {
-    console.log('Añadir foto:', this._place?.name);
-    // TODO: implementar flujo de subida de foto
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────
-
-  _isOpenNow(place) {
-    const oh = place.regularOpeningHours;
-    if (!oh || !oh.periods || !oh.periods.length) return null;
-    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
-    return oh.periods.some(p => {
-      if (!p.open || !p.close || p.open.day !== day) return false;
-      const o = p.open.hour * 60 + (p.open.minute || 0);
-      const c = p.close.hour * 60 + (p.close.minute || 0);
-      return mins >= o && mins < c;
     });
   }
 
-  // ── Styles ────────────────────────────────────────────────────────
+  // ── Sheet de lugar para un paso (lista sugeridos + mapa) ──────────
+  async _pickPlaceForStep(stepIndex) {
+    const step = this.currentPlan.steps[stepIndex];
+    if (!step) return;
 
-  _injectStyles() {
-    if (document.getElementById('wp-pm-styles')) return;
-    if (!document.getElementById('wp-ms-skeleton-style')) {
-      var sk=document.createElement('style'); sk.id='wp-ms-skeleton-style';
-      sk.textContent='@keyframes wp-ms-skeleton{0%{background-position:200% 0}100%{background-position:-200% 0}}';
-      document.head.appendChild(sk);
-    }
-    const s = document.createElement('style');
-    s.id = 'wp-pm-styles';
-    s.textContent = `
-      /* ── Mini Snap panel fijo ── */
-      .wp-minisnap-panel:active { filter:brightness(0.97); }
-      #wp-ms-cta-btn:active { filter:brightness(0.8) !important; transform:scale(0.96); }
+    document.getElementById('pm-place-sheet')?.remove();
 
-      /* ── Mini Snap — estilo panel flotante del mapa ── */
-      .wp-pm-minisnap {
-        display:none; flex-direction:column; overflow:hidden;
-      }
-      .wp-pm-minisnap.active { display:flex; }
+    const stepType = STEP_TYPES.find(t => t.key === step.type);
+    const catKey   = stepType?.cat || 'RESTAURANTS';
 
-      /* Drag hint */
-      .wp-pm-minisnap-hint {
-        display:flex; align-items:center; justify-content:center;
-        gap:4px; padding:10px 0 4px;
-        font-size:10px; color:#9ca3af; letter-spacing:0.05em;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-minisnap-hint::before, .wp-pm-minisnap-hint::after {
-        content:''; flex:1; height:0.5px; background:#e5e7eb;
-      }
+    const sheet = document.createElement('div');
+    sheet.id = 'pm-place-sheet';
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999999;background:white;border-radius:24px 24px 0 0;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.25s ease;';
 
-      /* Foto hero con gradiente */
-      .wp-pm-ms-hero {
-        position:relative; height:120px; overflow:hidden;
-        border-radius:20px; margin:0 14px 12px; flex-shrink:0;
-      }
-      .wp-pm-ms-hero-img {
-        width:100%; height:100%; object-fit:cover;
-        border-radius:20px;
-      }
-      .wp-pm-ms-hero-overlay {
-        position:absolute; inset:0; border-radius:20px;
-        background:linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%);
-      }
-      .wp-pm-ms-hero-badges {
-        position:absolute; bottom:10px; left:12px; right:12px;
-        display:flex; align-items:center; gap:6px;
-      }
-      .wp-pm-ms-status {
-        font-size:11px; font-weight:700; padding:3px 8px;
-        border-radius:999px; backdrop-filter:blur(8px);
-        -webkit-backdrop-filter:blur(8px);
-      }
-      .wp-pm-ms-status.open   { background:rgba(22,163,74,0.85); color:#fff; }
-      .wp-pm-ms-status.closed { background:rgba(239,68,68,0.85);  color:#fff; }
-      .wp-pm-ms-status.nohours{ background:rgba(0,0,0,0.45);       color:#fff; }
-      .wp-pm-ms-rating-badge {
-        margin-left:auto;
-        font-size:11px; font-weight:800; color:#fff;
-        background:rgba(0,0,0,0.45); backdrop-filter:blur(8px);
-        padding:3px 8px; border-radius:999px;
-      }
+    sheet.innerHTML = `
+      <div style="width:36px;height:4px;background:#e5e7eb;border-radius:4px;margin:12px auto 0;flex-shrink:0;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px 8px;flex-shrink:0;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#111;">${step.emoji || ''} ${step.label || step.type}</div>
+          <div style="font-size:12px;color:#9ca3af;">Elige un lugar</div>
+        </div>
+        <button id="pm-place-sheet-close" style="width:30px;height:30px;border-radius:50%;border:none;background:#f3f4f6;font-size:16px;cursor:pointer;">✕</button>
+      </div>
 
-      /* Info row */
-      .wp-pm-ms-inforow {
-        display:flex; align-items:flex-start; gap:10px;
-        padding:0 16px 10px;
-      }
-      .wp-pm-ms-texts { flex:1; min-width:0; }
-      .wp-pm-minisnap-name {
-        font-size:16px; font-weight:800; color:#0a0a0a; line-height:1.2;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      }
-      .wp-pm-minisnap-meta {
-        font-size:12px; color:#6b7280; margin-top:2px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-minisnap-save {
-        width:36px; height:36px; border-radius:50%; border:1px solid #e5e7eb;
-        background:#fff; display:flex; align-items:center; justify-content:center;
-        color:#9ca3af; flex-shrink:0; cursor:pointer;
-        -webkit-tap-highlight-color:transparent; transition:all 0.2s ease;
-        box-shadow:0 2px 8px rgba(0,0,0,0.06);
-      }
-      .wp-pm-minisnap-save.saved { color:#ef4444; border-color:#fecaca; background:#fff5f5; }
+      <!-- Chips de subcategoría -->
+      <div id="pm-sc-chips" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex-shrink:0;"></div>
 
-      /* Tags rápidos */
-      .wp-pm-ms-tags {
-        display:flex; gap:6px; padding:0 16px 12px; flex-wrap:wrap;
-      }
-      .wp-pm-ms-tag {
-        font-size:11px; font-weight:600; color:#4b5563;
-        background:#f4f4f6; padding:4px 10px; border-radius:999px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        border:1px solid #e5e7eb;
-      }
+      <!-- Lista scrollable -->
+      <div style="flex:1;overflow-y:auto;padding:0 16px;">
 
-      /* CTA */
-      .wp-pm-minisnap-cta {
-        display:flex; align-items:center; justify-content:space-between;
-        margin:0 14px; padding:12px 16px; border-radius:16px;
-        background:#0a0a0a; color:#fff; border:none; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s ease, filter 0.15s;
-      }
-      .wp-pm-minisnap-cta:active { transform:scale(0.98); filter:brightness(0.88); }
-      .wp-pm-ms-cta-label {
-        font-size:14px; font-weight:700;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-ms-cta-sub {
-        font-size:11px; opacity:0.7;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-ms-cta-arrow {
-        font-size:18px; opacity:0.9;
-      }
+        <!-- Botón seleccionar en mapa -->
+        <div id="pm-pick-on-map" style="background:#fff8e1;border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1.5px dashed #fcd34d;cursor:pointer;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;flex-shrink:0;">🗺️</span>
+          <div>
+            <p style="margin:0;font-size:13px;font-weight:700;color:#d97706;">Seleccionar en el mapa</p>
+            <p style="margin:2px 0 0;font-size:11px;color:#d97706;">Toca cualquier lugar del mapa</p>
+          </div>
+        </div>
 
-      /* ── Modal wrapper ── */
-      .wp-pm {
-        position:fixed; inset:0; z-index:2100;
-        display:flex; flex-direction:column;
-        pointer-events:none;
-      }
-      .wp-pm-hidden { display:none !important; }
-      .wp-pm.wp-pm-visible { pointer-events:all; }
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="flex:1;height:1px;background:#f0f0f0;"></div>
+          <span style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;">Sugeridos</span>
+          <div style="flex:1;height:1px;background:#f0f0f0;"></div>
+        </div>
 
-      .wp-pm-backdrop { display:none; }
-
-      /* Card ocupa toda la pantalla pero el top es transparente */
-      .wp-pm-card {
-        position:absolute; inset:0;
-        display:flex; flex-direction:column;
-        overflow:hidden;
-        transform:translateY(100%);
-        will-change:transform;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        /* Sin background en la card — el topbar y body tienen su propio bg */
-        background:transparent;
-      }
-
-      /* Shadow handled in app.css */
-
-      /* ── Topbar ficha — mismo espacio que #topbar del mapa ── */
-      .wp-pm-topbar {
-        position:absolute;
-        top:0; left:0; right:0;
-        padding-top:calc(12px + env(safe-area-inset-top, 0px));
-        padding-left:12px; padding-right:12px; padding-bottom:0;
-        display:flex; align-items:center; gap:8px;
-        pointer-events:auto;
-        z-index:2;
-        background:transparent;
-      }
-      /* Sombra azul manejada por ion-app::before en app.css */
-      /* Botones topbar: 44px como chips del sistema */
-      .wp-pm-tb-btn {
-        width:44px; height:44px; border-radius:9999px; flex-shrink:0;
-        border:none;
-        background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(238,244,255,0.90) 100%);
-        backdrop-filter:blur(20px) saturate(2);
-        -webkit-backdrop-filter:blur(20px) saturate(2);
-        box-shadow:0 4px 14px rgba(0,0,0,0.09),0 1px 3px rgba(0,0,0,0.05),inset 0 -1px 0 rgba(0,0,0,0.04);
-        display:flex; align-items:center; justify-content:center;
-        color:#374151; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
-      }
-      .wp-pm-tb-btn:active { transform:scale(0.92); }
-      /* Nombre centrado en topbar — superpuesto, aparece al scrollear */
-      .wp-pm-tb-title {
-        position:absolute; inset:0;
-        display:flex; align-items:center; justify-content:center;
-        font-size:16px; font-weight:700; color:#111;
-        font-family:'Yahoo Sans Bold Regular',Avenir,"Avenir Next",system-ui,sans-serif,system-ui,sans-serif;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        padding:0 8px;
-        -webkit-text-stroke: 3.5px rgba(255,255,255,0.95);
-        paint-order: stroke fill;
-        letter-spacing:-0.01em;
-        opacity:0; transform:translateY(6px);
-        transition:opacity 0.22s ease, transform 0.22s ease;
-        pointer-events:none;
-      }
-
-      /* Fondo blanco difuminado detrás del carousel —
-         sube desde el panel y se pierde hacia la sombra azul del top */
-      .wp-pm-hero::before {
-        content:'';
-        position:absolute; inset:0;
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,0)    0%,
-          rgba(255,255,255,0.5)  8%,
-          rgba(255,255,255,0.85) 22%,
-          rgba(255,255,255,0.97) 38%,
-          rgba(255,255,255,1)    52%);
-        z-index:0;
-        pointer-events:none;
-      }
-
-      .wp-pm-carousel { position:relative; z-index:1; }
-      .wp-pm-dots     { z-index:2; }
-
-
-      /* ── Hero peek carousel — portrait, 2 slides + peek 3a ── */
-      .wp-pm-hero {
-        position:absolute;
-        top:calc(env(safe-area-inset-top, 0px) + 68px);
-        left:0; right:0;
-        height:240px;
-        overflow:hidden; background:transparent;
-        z-index:1;
-        touch-action:none;
-        /* padding top separa del topbar, padding bottom separa del panel */
-        padding:14px 0 18px;
-      }
-      /* Carousel track */
-      .wp-pm-carousel {
-        display:flex; align-items:center;
-        height:100%;
-        will-change:transform;
-      }
-      /* Slide portrait */
-      .wp-pm-slide {
-        min-width:44%; height:100%;
-        border-radius:22px;
-        background:center/cover no-repeat #e2e8f0;
-        flex-shrink:0; margin:0 4px;
-        overflow:hidden; position:relative;
-        /* Sombra interior que une foto con borde */
-        box-shadow:
-          inset 0 0 0 1px rgba(255,255,255,0.18),
-          inset 0 -40px 40px -20px rgba(0,0,0,0.18);
-      }
-      /* Vignette + saturación sobre cada slide */
-      .wp-pm-slide::after {
-        content:'';
-        position:absolute; inset:0; border-radius:22px;
-        background:radial-gradient(
-          ellipse at center,
-          rgba(0,0,0,0)    45%,
-          rgba(0,0,0,0.22) 100%
-        );
-        pointer-events:none; z-index:1;
-      }
-      /* Boost de color en la imagen */
-      .wp-pm-slide-img {
-        width:100%; height:100%; object-fit:cover;
-        opacity:0; transition:opacity 0.3s ease;
-        position:absolute; inset:0;
-        filter:contrast(1.05) saturate(1.12);
-      }
-      .wp-pm-slide-img.loaded { opacity:1; }
-      @keyframes wp-skeleton-shimmer {
-        0%   { background-position: -200% 0; }
-        100% { background-position:  200% 0; }
-      }
-      .wp-pm-slide-skeleton {
-        background: linear-gradient(90deg,
-          #e8eaed 25%, #f3f4f6 50%, #e8eaed 75%);
-        background-size: 200% 100%;
-        animation: wp-skeleton-shimmer 1.4s ease-in-out infinite;
-      }
-      /* Cuadro añadir foto */
-      .wp-pm-slide-add {
-        display:flex; flex-direction:column;
-        align-items:center; justify-content:center; gap:8px;
-        background:rgba(0,0,0,0.04);
-        border:1.5px dashed rgba(0,0,0,0.18);
-        color:#8e8e93; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:background 0.15s, border-color 0.15s;
-      }
-      .wp-pm-slide-add:active { background:rgba(0,0,0,0.08); }
-      .wp-pm-slide-add span {
-        font-size:11px; font-weight:600;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        letter-spacing:0.02em;
-      }
-      .wp-pm-slide-placeholder {
-        display:flex; align-items:center; justify-content:center;
-        font-size:64px; background:#f1f5f9;
-        transform:scale(1) !important; opacity:1 !important;
-      }
-      /* Foto única: ocupa ancho de 2 slides, centrada */
-      .wp-pm-carousel.single-photo {
-        justify-content:center;
-      }
-      .wp-pm-carousel.single-photo .wp-pm-slide {
-        min-width:88%;
-        margin:0 4px;
-      }
-
-      /* Dots */
-      .wp-pm-dots {
-        position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
-        display:flex; gap:5px; align-items:center;
-      }
-      .wp-pm-dot {
-        width:5px; height:5px; border-radius:9999px;
-        background:#cbd5e1; cursor:pointer;
-        transition:all 0.2s ease;
-      }
-      .wp-pm-dot.active { background:#1c1c1e; width:14px; }
-
-      /* ── Body ── */
-      .wp-pm-body {
-        position:absolute;
-        top:calc(env(safe-area-inset-top, 0px) + 308px);
-        left:0; right:0; bottom:0;
-        overflow-y:auto; overflow-x:clip;
-        -webkit-overflow-scrolling:touch;
-        scrollbar-width:none;
-        background:#fff;
-        border-radius:0;
-        padding-top:20px;
-        padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));
-      }
-      .wp-pm-body::-webkit-scrollbar { display:none; }
-      .wp-pm-handle { display:none; }
-      /* Sombra fija encima del body — elemento hermano, no ::before */
-      .wp-pm-top-fade {
-        position:absolute;
-        top:calc(env(safe-area-inset-top, 0px) + 308px);
-        left:0; right:0;
-        height:36px;
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,1)   0%,
-          rgba(255,255,255,0)   100%);
-        z-index:20;
-        pointer-events:none;
-      }
-
-      /* ── AI Description block ── */
-      .wp-pm-ai-block {
-        margin:0 20px 16px;
-        padding:0;
-        background:transparent;
-        border:none;
-        display:flex; flex-direction:column; gap:8px;
-      }
-      .wp-pm-ai-header {
-        display:flex; align-items:center; gap:8px;
-      }
-      .wp-pm-ai-icon {
-        flex-shrink:0; color:#1c1c1e;
-        transition:color 0.3s ease;
-        filter:drop-shadow(0 0 6px rgba(28,28,30,0.4));
-      }
-      .wp-pm-ai-badge {
-        font-size:10px; font-weight:700;
-        letter-spacing:0.04em; text-transform:uppercase;
-        color:#000000;
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        border:1px solid rgba(180,180,180,0.5);
-        padding:3px 9px; border-radius:999px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        box-shadow:0 2px 6px rgba(28,28,30,0.15);
-      }
-      @keyframes wp-ai-pulse {
-        0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
-        50%  { color:#818cf8; filter:drop-shadow(0 0 10px rgba(129,140,248,0.7)); }
-        100% { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
-      }
-      .wp-pm-ai-pulse {
-        animation: wp-ai-pulse 1.4s ease-in-out infinite;
-      }
-      @keyframes wp-ai-fadein {
-        from { opacity:0; transform:translateY(4px); }
-        to   { opacity:1; transform:translateY(0); }
-      }
-      .wp-pm-ai-text {
-        font-size:14px; line-height:1.6; color:#3a3a3c;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        font-weight:400; font-style:normal;
-        animation: wp-ai-fadein 0.4s ease both;
-      }
-
-      /* ── Nombre + badges ── */
-      .wp-pm-header-row {
-        display:flex; flex-direction:column; gap:2px;
-        padding:0 20px 2px;
-      }
-      .wp-pm-badges-top {
-        display:flex; align-items:center; gap:6px; min-height:0;
-        justify-content:space-between;
-      }
-      .wp-pm-badges-actions {
-        display:flex; align-items:center; gap:4px; margin-left:auto;
-      }
-      .wp-pm-title-row {
-        display:flex; align-items:center; gap:8px;
-      }
-      .wp-pm-name {
-        font-size:24px; font-weight:900; color:#0a0a0a; margin:0; flex:1;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        line-height:1.05; letter-spacing:-0.03em;
-      }
-      .wp-pm-verified { display:flex; align-items:center; flex-shrink:0; }
-      .wp-pm-featured-badge {
-        font-size:10px; font-weight:700; padding:3px 8px;
-        border-radius:9999px; white-space:nowrap;
-        letter-spacing:0.01em;
-      }
-      .wp-pm-badge-featured {
-        background:linear-gradient(135deg,#fef3c7,#fde68a);
-        color:#92400e; border:1px solid rgba(253,230,138,0.6);
-        box-shadow:0 2px 6px rgba(251,191,36,0.25);
-      }
-      .wp-pm-badge-verified {
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        color:#111111; border:1px solid rgba(180,180,180,0.6);
-        box-shadow:0 2px 6px rgba(28,28,30,0.20);
-      }
-      .wp-pm-badge-premium {
-        background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
-        color:#6b21a8; border:1px solid rgba(216,180,254,0.6);
-        box-shadow:0 2px 6px rgba(168,85,247,0.22);
-      }
-
-      /* Featured encima del pill — posición absoluta */
-      .wp-pm-tb-center .wp-pm-featured-badge {
-        position:absolute; top:-8px; left:50%; transform:translateX(-50%);
-        z-index:10; white-space:nowrap; pointer-events:none;
-        box-shadow:0 2px 8px rgba(0,0,0,0.10);
-      }
-
-      /* Open / closed */
-      .wp-pm-badges-top {
-        display:flex; align-items:center; gap:6px; min-height:0;
-      }
-      .wp-pm-open-badge {
-        display:inline-flex; align-items:center; gap:5px;
-        font-size:11px; font-weight:600;
-        padding:3px 9px; border-radius:999px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        letter-spacing:0.01em;
-      }
-      .wp-pm-nohours-badge {
-        display:inline-flex; align-items:center;
-        font-size:11px; font-weight:600;
-        padding:3px 9px; border-radius:999px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        background:rgba(118,118,128,0.12);
-        color:#8e8e93;
-        border:1px solid rgba(118,118,128,0.18);
-        box-shadow:0 1px 4px rgba(0,0,0,0.06);
-      }
-      .wp-pm-open-badge.is-open {
-        background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));
-        color:#15803d; border:1px solid rgba(52,199,89,0.25);
-        box-shadow:0 1px 4px rgba(52,199,89,0.15);
-      }
-      .wp-pm-open-badge.is-closed {
-        background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));
-        color:#c0392b; border:1px solid rgba(255,59,48,0.20);
-        box-shadow:0 1px 4px rgba(255,59,48,0.12);
-      }
-      .wp-pm-open-dot {
-        width:6px; height:6px; border-radius:50%; flex-shrink:0;
-      }
-      @keyframes wp-dot-pulse {
-        0%,100% { transform:scale(1);   opacity:1; }
-        50%      { transform:scale(1.5); opacity:0.6; }
-      }
-      .is-open  .wp-pm-open-dot {
-        background:#34c759;
-        box-shadow:0 0 5px rgba(52,199,89,0.6);
-        animation:wp-dot-pulse 1.8s ease-in-out infinite;
-      }
-      .is-closed .wp-pm-open-dot {
-        background:#ff3b30;
-        box-shadow:0 0 5px rgba(255,59,48,0.5);
-      }
-
-      /* Etiquetar chip */
-      .wp-pm-tag-chip {
-        display:inline-flex; align-items:center;
-        font-size:11px; font-weight:700; color:#000000;
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        border:1px solid rgba(180,180,180,0.5);
-        padding:3px 10px; border-radius:999px; cursor:pointer;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        letter-spacing:0.01em;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        box-shadow:0 2px 6px rgba(28,28,30,0.18);
-      }
-      .wp-pm-tag-chip:active { transform:scale(0.94); filter:brightness(0.95); }
-      /* Save button */
-      .wp-pm-save-btn {
-        width:38px; height:38px; border-radius:9999px; flex-shrink:0;
-        border:1px solid rgba(0,0,0,0.1);
-        background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(238,244,255,0.88));
-        display:flex; align-items:center; justify-content:center;
-        color:#9ca3af; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-        box-shadow:0 2px 8px rgba(0,0,0,0.08);
-        position:relative;
-      }
-      .wp-pm-save-btn:active { transform:scale(0.88); }
-      .wp-pm-save-btn svg path { transition:fill 0.2s ease, stroke 0.2s ease; }
-      .wp-pm-save-btn.saved { color:#ef4444; }
-      .wp-pm-save-btn.saved svg path { fill:#ef4444; stroke:#ef4444; }
-      .wp-pm-save-tooltip {
-        display:none; position:fixed;
-        bottom:calc(24px + env(safe-area-inset-bottom,0px));
-        left:50%; transform:translateX(-50%);
-        background:#1c1c1e; color:#fff;
-        font-size:13px; font-weight:500; white-space:nowrap;
-        padding:10px 18px; border-radius:999px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        pointer-events:none; z-index:99999;
-        box-shadow:0 4px 20px rgba(0,0,0,0.25);
-      }
-      .wp-pm-save-tooltip.show {
-        display:block;
-        animation:wp-toast-in 0.28s cubic-bezier(0.34,1.2,0.64,1) both;
-      }
-      .wp-pm-save-tooltip.hide {
-        animation:wp-toast-out 0.22s ease forwards;
-      }
-      @keyframes wp-toast-in {
-        from { opacity:0; transform:translateX(-50%) translateY(12px); }
-        to   { opacity:1; transform:translateX(-50%) translateY(0); }
-      }
-      @keyframes wp-toast-out {
-        from { opacity:1; transform:translateX(-50%) translateY(0); }
-        to   { opacity:0; transform:translateX(-50%) translateY(8px); }
-      }
-
-      /* ── More menu ── */
-      .wp-pm-more-overlay {
-        position:absolute; inset:0; z-index:200;
-        background:rgba(0,0,0,0.3);
-        backdrop-filter:blur(2px);
-        -webkit-backdrop-filter:blur(2px);
-      }
-      .wp-pm-more-menu {
-        position:absolute; left:12px; right:12px;
-        bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:201;
-        background:rgba(255,255,255,0.96);
-        backdrop-filter:blur(24px) saturate(1.8);
-        -webkit-backdrop-filter:blur(24px) saturate(1.8);
-        border-radius:24px;
-        padding:8px 0 4px;
-        box-shadow:0 8px 40px rgba(0,0,0,0.18);
-        transform:translateY(110%);
-        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-      }
-      .wp-pm-more-menu.open {
-        transform:translateY(0);
-      }
-      .wp-pm-more-handle {
-        width:36px; height:4px; border-radius:2px;
-        background:rgba(0,0,0,0.15); margin:0 auto 8px;
-      }
-      .wp-pm-more-item {
-        width:100%; display:flex; align-items:center; gap:14px;
-        padding:14px 20px; border:none; background:transparent;
-        font-size:15px; font-weight:500; color:#1c1c1e;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        cursor:pointer; text-align:left;
-        -webkit-tap-highlight-color:transparent;
-        transition:background 0.15s;
-      }
-      .wp-pm-more-item:active { background:rgba(0,0,0,0.05); }
-      .wp-pm-more-item svg { flex-shrink:0; color:#6b7280; }
-      /* ── Tag modal — idéntico al more-menu ── */
-      .wpt-overlay {
-        position:fixed; inset:0; z-index:2200;
-        background:rgba(0,0,0,0.3);
-        backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
-      }
-      .wpt-float {
-        position:fixed; left:12px; right:12px;
-        bottom:calc(12px + env(safe-area-inset-bottom,0px));
-        z-index:2300;
-        background:rgba(255,255,255,0.97);
-        backdrop-filter:blur(24px) saturate(1.8);
-        -webkit-backdrop-filter:blur(24px) saturate(1.8);
-        border-radius:24px;
-        box-shadow:0 8px 40px rgba(0,0,0,0.18);
-        transform:translateY(110%);
-        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        max-height:65vh; min-height:360px; display:flex; flex-direction:column;
-        overflow:hidden;
-      }
-      .wpt-float.open { transform:translateY(0); }
-
-      /* Header iOS */
-      .wpt-float-top {
-        display:flex; align-items:center; gap:11px;
-        padding:16px 14px 14px; flex-shrink:0; z-index:2;
-        background:rgba(255,255,255,0.97);
-        box-shadow:0 6px 14px rgba(0,0,0,0.07);
-      }
-      .wpt-float-icon {
-        width:42px; height:42px; border-radius:11px; flex-shrink:0;
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        display:flex; align-items:center; justify-content:center; color:#0a0a0a;
-        box-shadow:0 2px 8px rgba(10,10,10,0.18);
-      }
-      .wpt-float-titles {
-        flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
-      }
-      .wpt-float-title {
-        font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
-        font-family:var(--wp-font),system-ui,sans-serif; letter-spacing:-0.02em;
-      }
-      .wpt-float-sub {
-        font-size:12px; font-weight:500; color:#8e8e93;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpt-x-btn {
-        width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
-        background:rgba(0,0,0,0.08); color:#6b7280;
-        display:flex; align-items:center; justify-content:center;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background 0.15s;
-      }
-      .wpt-x-btn:active { background:rgba(0,0,0,0.16); }
-
-      /* Body wrap ocupa todo el espacio restante incluyendo el área del footer */
-      .wpt-tag-body-wrap {
-        flex:1; position:relative; min-height:0; overflow:hidden;
-      }
-      .wpt-tag-body {
-        position:absolute; inset:0;
-        overflow-y:auto; overflow-x:clip;
-        padding:8px 16px 80px;
-        scrollbar-width:none; box-sizing:border-box;
-        -webkit-overflow-scrolling:touch;
-      }
-      .wpt-tag-body::-webkit-scrollbar { display:none; }
-      .wpt-fade-top {
-        position:absolute; top:0; left:0; right:0; height:28px;
-        background:linear-gradient(to bottom,rgba(255,255,255,0.97),rgba(255,255,255,0));
-        z-index:2; pointer-events:none;
-      }
-      .wpt-fade-bot {
-        position:absolute; bottom:0; left:0; right:0; height:88px;
-        background:linear-gradient(to top,rgba(255,255,255,1) 55%,rgba(255,255,255,0));
-        z-index:2; pointer-events:none;
-      }
-
-      /* Footer con CTA siempre visible */
-      .wpt-float-footer {
-        position:absolute; bottom:0; left:0; right:0;
-        padding:16px 16px 18px;
-        background:transparent;
-        pointer-events:none; z-index:3;
-      }
-      .wpt-float-footer .wpt-cta-btn { pointer-events:auto; }
-      .wpt-cta-btn {
-        width:100%; height:48px; border-radius:999px; border:none;
-        background:rgba(0,0,0,0.06); color:#8e8e93;
-        font-size:15px; font-weight:600; cursor:pointer;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        display:flex; align-items:center; justify-content:center; gap:10px;
-        -webkit-tap-highlight-color:transparent;
-        transition:background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-      }
-      .wpt-cta-btn.active {
-        background:#0a0a0a; color:#fff;
-        box-shadow:0 6px 18px rgba(10,10,10,0.35);
-      }
-      .wpt-cta-btn:active { filter:brightness(0.92); }
-      .wpt-cta-label { transition:none; }
-
-      /* Badge contador */
-      @keyframes wpt-pop {
-        0%   { transform:scale(1); }
-        50%  { transform:scale(1.5); }
-        100% { transform:scale(1); }
-      }
-      .wpt-cta-badge {
-        min-width:22px; height:22px; border-radius:999px;
-        background:rgba(255,255,255,0.28);
-        font-size:12px; font-weight:800;
-        display:inline-flex; align-items:center; justify-content:center;
-        padding:0 6px; line-height:1;
-      }
-      .wpt-cta-badge.pop { animation:wpt-pop 0.25s cubic-bezier(0.34,1.56,0.64,1); }
-
-      .wpt-cat-label {
-        font-size:13px; font-weight:700; color:#0a0a0a;
-        margin:14px 0 8px; line-height:1.3;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        display:block;
-      }
-      .wpt-cat-label:first-child { margin-top:4px; }
-      .wpt-chip-row {
-        display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;
-      }
-
-      /* Chip individual */
-      .wp-pm-tag-item {
-        display:inline-flex; align-items:center; gap:6px;
-        padding:6px 13px 6px 10px; border-radius:999px;
-        border:1.5px solid rgba(0,0,0,0.10);
-        background:#f4f4f6; cursor:pointer;
-        font-size:12.5px; font-weight:600; color:#1c1c1e; line-height:1.4;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.14s ease; white-space:nowrap;
-      }
-      .wp-pm-tag-item:active { transform:scale(0.94); }
-      .wp-pm-tag-item.selected {
-        background:#0a0a0a; border-color:#0a0a0a; color:#fff;
-        box-shadow:0 2px 8px rgba(10,10,10,0.28);
-      }
-      .wp-pm-tag-item.already-done {
-        background:rgba(52,199,89,0.10);
-        border-color:rgba(52,199,89,0.35); color:#15803d;
-      }
-      .wp-pm-tag-icon {
-        font-size:14px; line-height:1; flex-shrink:0;
-      }
-      .wp-pm-tag-item-label { line-height:1.2; }
-
-      .wpt-show-more { display:none; }
-
-
-      /* ── Review modal ── */
-      .wpr-header { padding:4px 20px 12px; }
-      .wpr-title {
-        display:block; font-size:16px; font-weight:700; color:#0a0a0a;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpr-sub {
-        display:block; font-size:12px; color:#8e8e93; margin-top:2px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpr-stars {
-        display:flex; justify-content:center; gap:8px;
-        padding:8px 0 4px;
-      }
-      .wpr-star {
-        font-size:36px; color:#d1d5db; cursor:pointer;
-        transition:color 0.15s, transform 0.15s;
-        -webkit-tap-highlight-color:transparent;
-      }
-      .wpr-star.active { color:#f59e0b; }
-      .wpr-star:active { transform:scale(0.88); }
-      .wpr-star-label {
-        text-align:center; font-size:12px; color:#8e8e93;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        margin-bottom:12px;
-      }
-      .wpr-textarea {
-        width:100%; height:100px; border-radius:14px;
-        border:1px solid rgba(0,0,0,0.10);
-        background:#f9f9f9; padding:12px 14px;
-        font-size:14px; font-family:var(--wp-font),system-ui,sans-serif;
-        color:#0a0a0a; resize:none; box-sizing:border-box;
-        outline:none;
-      }
-      .wpr-textarea:focus { border-color:rgba(0,0,0,0.25); }
-      .wpr-char {
-        text-align:right; font-size:11px; color:#8e8e93; margin-top:4px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpr-submit {
-        width:100%; height:46px; border-radius:999px; border:none;
-        background:#0a0a0a; color:#fff;
-        font-size:15px; font-weight:700; cursor:pointer;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s, filter 0.15s;
-      }
-      .wpr-submit:active { transform:scale(0.97); filter:brightness(0.88); }
-      .wpr-submit:disabled { background:#d1d5db; cursor:not-allowed; }
-      /* Badge Google en reseñas */
-      .wpr-google-badge {
-        display:inline-flex; align-items:center; gap:4px;
-        font-size:10px; font-weight:600; color:#6b7280;
-        background:#f3f4f6; border:0.5px solid #e5e7eb;
-        padding:2px 7px; border-radius:999px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        margin-left:6px; vertical-align:middle;
-      }
-      /* Divider comunidad */
-      .wpr-header-row {
-        display:flex; align-items:center; gap:10px;
-        padding:0 20px 10px;
-      }
-      .wpr-header-row .wp-pm-section-title {
-        line-height:1; margin:0; padding:0;
-      }
-      .wpr-header-tabs-row {
-        display:flex; gap:5px; align-items:center; flex:1;
-      }
-      /* ── Review tabs ── */
-      .wpr-tabs {
-        display:flex; gap:6px;
-      }
-      .wpr-tab {
-        display:inline-flex; align-items:center; justify-content:center; gap:4px;
-        padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
-        background:#f4f4f6; font-size:11px; font-weight:600;
-        color:#6b7280; cursor:pointer;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s ease; white-space:nowrap;
-      }
-      .wpr-tab-active {
-        background:#0a0a0a; color:#fff; border-color:#0a0a0a;
-      }
-      .wpr-tab-count {
-        font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
-        background:rgba(255,255,255,0.2);
-      }
-      .wpr-tab:not(.wpr-tab-active) .wpr-tab-count {
-        background:rgba(0,0,0,0.08); color:#6b7280;
-      }
-      /* Añadir reseña — naranja motivador */
-      .wpr-tab-add {
-        background:linear-gradient(135deg,#f59e0b,#f97316);
-        border-color:transparent; color:#fff !important;
-        box-shadow:0 2px 8px rgba(249,115,22,0.30);
-      }
-      .wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
-      .wpr-empty {
-        text-align:center; color:#9ca3af; font-size:13px;
-        padding:24px 20px; font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpr-community-header {
-        display:flex; align-items:center; gap:10px;
-        padding:16px 20px 8px;
-      }
-      .wpr-community-label {
-        font-size:11px; font-weight:700; color:#8e8e93;
-        text-transform:uppercase; letter-spacing:0.06em;
-        font-family:var(--wp-font),system-ui,sans-serif; white-space:nowrap;
-      }
-      .wpr-community-line {
-        flex:1; height:0.5px; background:#e5e7eb;
-      }
-      /* Reseña de comunidad */
-      .wpr-community-card {
-        margin:0 0 12px;
-        background:#f9f9f9; border-radius:16px;
-        padding:14px;
-      }
-      .wpr-community-header-row {
-        display:flex; align-items:center; gap:10px; margin-bottom:6px;
-      }
-      .wpr-community-avatar {
-        width:32px; height:32px; border-radius:50%;
-        background:#0a0a0a; color:#fff;
-        display:flex; align-items:center; justify-content:center;
-        font-size:13px; font-weight:700; flex-shrink:0;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpr-community-name {
-        font-size:13px; font-weight:700; color:#0a0a0a;
-        font-family:var(--wp-font),system-ui,sans-serif; flex:1;
-      }
-      .wpr-community-date {
-        font-size:11px; color:#8e8e93;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wpr-community-text {
-        font-size:13px; color:#374151; line-height:1.5;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-more-sep {
-        height:0.5px; background:rgba(0,0,0,0.1);
-        margin:2px 20px;
-      }
-
-      /* ── Dirección ── */
-      .wp-pm-addr-row {
-        display:block;
-        padding:0 20px 10px; font-size:12.5px; color:#8e8e93;
-        line-height:1.15; font-weight:400;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        max-width:calc(100% - 40px);
-      }
-      #wp-pm-addr { display:inline; }
-      .wp-pm-addr-copy {
-        flex-shrink:0; border:none; background:transparent;
-        color:#8e8e93; cursor:pointer; padding:0; margin-top:1px;
-        display:inline-flex; align-items:center;
-        -webkit-tap-highlight-color:transparent;
-        transition:color 0.2s, transform 0.15s;
-        font-size:12.5px;
-      }
-      .wp-pm-addr-copy:active { transform:scale(0.85); }
-      .wp-pm-addr-copy.copied { color:#34c759; }
-
-      /* ── Stats — pill compacto en topbar ── */
-      .wp-pm-tb-center {
-        flex:1; position:relative;
-        display:flex; align-items:center; justify-content:center;
-        height:44px;
-      }
-      .wp-pm-stats-row {
-        display:flex; align-items:stretch;
-        border-radius:999px; height:44px; position:relative;
-        transition:opacity 0.22s ease, transform 0.22s ease;
-        /* glass solo cuando NO hay highlight */
-        background:linear-gradient(170deg,rgba(255,255,255,0.96) 0%,rgba(238,244,255,0.90) 100%);
-        -webkit-backdrop-filter:blur(20px) saturate(2);
-        backdrop-filter:blur(20px) saturate(2);
-        box-shadow:0 4px 14px rgba(0,0,0,0.09),0 1px 3px rgba(0,0,0,0.05),inset 0 -1px 0 rgba(0,0,0,0.04);
-      }
-      /* highlight: solo borde gradiente, sin glass */
-      .wp-pm-stats-row.hl-featured,
-      .wp-pm-stats-row.hl-premium,
-      .wp-pm-stats-row.hl-verified {
-        background:transparent;
-        -webkit-backdrop-filter:none;
-        backdrop-filter:none;
-        box-shadow:none;
-      }
-      /* borde gradiente via ::before */
-      .wp-pm-stats-row::before {
-        content:''; display:none; pointer-events:none;
-        position:absolute; inset:-2px; border-radius:999px; z-index:-1;
-      }
-      .wp-pm-stats-row.hl-featured::before { display:block; background:linear-gradient(135deg,#f59e0b,#f97316); }
-      .wp-pm-stats-row.hl-premium::before  { display:block; background:linear-gradient(135deg,#a855f7,#ec4899,#f59e0b); }
-      .wp-pm-stats-row.hl-verified::before { display:block; background:linear-gradient(135deg,#1c1c1e,#06b6d4); }
-      .wp-pm-stats-inner {
-        display:flex; align-items:stretch;
-        border-radius:999px;
-        /* sin overflow:hidden — mata backdrop-filter en WebView */
-        flex:1; height:100%;
-        /* inner blanco para el highlight (actúa como relleno del borde) */
-        background:rgba(255,255,255,0.95);
-      }
-      /* sin highlight: inner transparente para que el glass del row se vea */
-      .wp-pm-stats-row:not(.hl-featured):not(.hl-premium):not(.hl-verified) .wp-pm-stats-inner {
-        background:transparent;
-      }
-      .wp-pm-stat {
-        flex:1; display:flex; flex-direction:column;
-        align-items:center; justify-content:center;
-        padding:6px 18px; gap:1px;
-      }
-      .wp-pm-stat-val {
-        font-size:14px; font-weight:800; color:#0a0a0a;
-        display:flex; align-items:center; gap:3px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        letter-spacing:-0.02em;
-      }
-      .wp-pm-stat-lbl {
-        font-size:9px; color:#8e8e93; font-weight:500;
-        text-transform:uppercase; letter-spacing:0.05em;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-stat-sep {
-        width:1px; background:rgba(0,0,0,0.15);
-        align-self:stretch; margin:8px 0; flex-shrink:0;
-      }
-
-      /* ── Botones acción — frosted glass como topbar chips ── */
-      .wp-pm-actions-row {
-        display:flex; gap:8px; padding:0 20px 16px;
-      }
-      .wp-pm-action-btn {
-        flex:1; height:44px; border-radius:9999px;
-        border:1px solid rgba(255,255,255,0.7);
-        background:linear-gradient(170deg,rgba(255,255,255,0.95) 0%,rgba(238,244,255,0.88) 100%);
-        display:flex; align-items:center; justify-content:center; gap:6px;
-        font-size:12px; font-weight:600; color:#1c1c1e; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
-        font-family:var(--wp-font),system-ui,sans-serif;
-        letter-spacing:-0.01em;
-        box-shadow:0 3px 10px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04),inset 0 -1px 0 rgba(0,0,0,0.04);
-        backdrop-filter:blur(12px) saturate(1.6);
-        -webkit-backdrop-filter:blur(12px) saturate(1.6);
-      }
-      .wp-pm-action-btn:active { transform:scale(0.96); filter:brightness(0.96); }
-      #wp-pm-btn-phone { border:0.5px solid rgba(22,163,74,0.35); }
-      #wp-pm-btn-phone .wp-pm-action-icon { background:rgba(22,163,74,0.14); color:#16a34a; }
-      #wp-pm-btn-web   { border:0.5px solid rgba(174,230,237,0.5); }
-      #wp-pm-btn-web   .wp-pm-action-icon { background:rgba(174,230,237,0.20); color:#0e7490; }
-      #wp-pm-btn-maps  { border:0.5px solid rgba(234,88,12,0.35); }
-      #wp-pm-btn-maps  .wp-pm-action-icon { background:rgba(234,88,12,0.14); color:#ea580c; }
-      .wp-pm-action-icon {
-        width:28px; height:28px; border-radius:50%; flex-shrink:0;
-        display:flex; align-items:center; justify-content:center;
-        background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(220,230,255,0.80));
-        box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 -1px 0 rgba(0,0,0,0.06);
-        color:#374151;
-      }
-
-      /* ── Divider con gradiente lateral ── */
-      .wp-pm-divider {
-        height:1px; margin:4px 20px 16px;
-        background:linear-gradient(
-          to right,
-          rgba(0,0,0,0)       0%,
-          rgba(0,0,0,0.12)   15%,
-          rgba(0,0,0,0.15)   50%,
-          rgba(0,0,0,0.12)   85%,
-          rgba(0,0,0,0)      100%
-        );
-        border:none;
-      }
-
-      /* ── Section title iOS style ── */
-      .wp-pm-section-title {
-        font-size:12px; font-weight:800; color:#0a0a0a;
-        padding:0 20px 8px;
-        letter-spacing:-0.01em;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-
-      /* ── Description ── */
-      .wp-pm-desc-block { padding-bottom:4px; }
-      .wp-pm-desc-text {
-        font-size:15px; line-height:1.6; color:#3a3a3c;
-        padding:0 20px 4px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        font-weight:400;
-      }
-      .wp-pm-read-more {
-        border:none; background:none; color:#0a0a0a;
-        font-size:15px; font-weight:400; cursor:pointer;
-        padding:0 20px 12px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        -webkit-tap-highlight-color:transparent;
-      }
-
-      /* ── Tags iOS pills ── */
-      .wp-pm-tags-row {
-        display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 12px;
-      }
-      .wp-pm-tag {
-        height:32px; padding:0 14px; border-radius:9999px;
-        background:linear-gradient(170deg,rgba(255,255,255,0.92),rgba(238,244,255,0.85));
-        border:1px solid rgba(255,255,255,0.7);
-        color:#3a3a3c; font-size:13px; font-weight:600;
-        display:flex; align-items:center; gap:4px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        box-shadow:0 2px 6px rgba(0,0,0,0.07);
-      }
-      .wp-pm-tag-accent {
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        border:1px solid rgba(180,180,180,0.5); color:#111111;
-        box-shadow:0 2px 6px rgba(28,28,30,0.15);
-      }
-      .wp-pm-user-tag {
-        background:linear-gradient(170deg,rgba(255,255,255,0.92),rgba(238,244,255,0.85));
-        border:1px solid rgba(255,255,255,0.7); color:#3a3a3c; font-weight:600;
-        box-shadow:0 2px 6px rgba(0,0,0,0.07);
-      }
-      .wp-pm-tag-count {
-        font-size:11px; font-weight:700;
-        color:#8e8e93; margin-left:2px;
-      }
-
-      /* ── Horarios ── */
-      .wp-pm-hours-trigger {
-        display:flex; align-items:center; gap:8px;
-        padding:0 20px 8px; cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
-      }
-      .wp-pm-hours-today {
-        font-size:15px; color:#3a3a3c; font-weight:400; flex:1;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-hours-status {
-        font-size:12px; font-weight:600;
-        padding:2px 8px; border-radius:9999px;
-      }
-      .wp-pm-open   { background:#e8fdf0; color:#34c759; }
-      .wp-pm-closed { background:#fff1f0; color:#ff3b30; }
-      .wp-pm-chevron { transition:transform 0.25s ease; flex-shrink:0; }
-      .wp-pm-hours-list {
-        max-height:0; overflow:hidden;
-        transition:max-height 0.3s ease;
-        padding:0 20px;
-      }
-      .wp-pm-hours-list.expanded { max-height:300px; }
-      .wp-pm-hours-row {
-        display:flex; justify-content:space-between;
-        padding:8px 0; font-size:14px; color:#8e8e93;
-        border-bottom:0.5px solid #e5e5ea;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-hours-row:last-child { border-bottom:none; }
-      .wp-pm-hours-day { min-width:90px; }
-      .wp-pm-today .wp-pm-hours-day,
-      .wp-pm-today .wp-pm-hours-time { color:#0a0a0a; font-weight:600; }
-
-      /* ── Reviews ── */
-      .wp-pm-reviews-block { padding-bottom:8px; }
-
-      /* ── Ver más Google ── */
-      .wpr-see-more {
-        display:block; text-align:center;
-        font-size:12px; font-weight:600; color:#4285F4;
-        padding:12px 0 4px;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        text-decoration:none;
-        -webkit-tap-highlight-color:transparent;
-      }
-      .wpr-see-more:active { opacity:0.7; }
-      .wp-pm-similar-card:active { transform:scale(0.97); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-      .wp-pm-similar-img {
-        width:70px; height:70px; object-fit:cover;
-        border-radius:12px; flex-shrink:0; background:#e2e8f0;
-      }
-      .wp-pm-similar-icon {
-        width:70px; height:70px; border-radius:12px; flex-shrink:0;
-        display:flex; align-items:center; justify-content:center;
-        background:linear-gradient(135deg,#0a0a0a,#374151); font-size:32px;
-      }
-      .wp-pm-similar-body { flex:1; min-width:0; }
-      #wpr-panel-google, #wpr-panel-community {
-        padding:12px 0 0;
-      }
-      /* Reviews con padding lateral del body y separación entre cards */
-      #wpr-panel-google .wp-pm-review-card,
-      #wpr-panel-community .wpr-community-card {
-        margin-bottom:12px;
-      }
-      /* reviews header fusionado en tabs */
-      .wp-pm-reviews-list {
-        display:flex; flex-direction:column; gap:10px;
-        padding:0 20px;
-      }
-      .wp-pm-review-card {
-        background:#f2f2f7;
-        border-radius:22px;
-        padding:14px 16px;
-      }
-      .wp-pm-review-top {
-        display:flex; align-items:center; gap:10px; margin-bottom:8px;
-      }
-      .wp-pm-review-avatar {
-        width:36px; height:36px; border-radius:9999px; flex-shrink:0;
-        background:linear-gradient(135deg,#0a0a0a,#5856d6);
-        color:#fff; font-size:15px; font-weight:600;
-        display:flex; align-items:center; justify-content:center;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-review-info { display:flex; flex-direction:column; flex:1; gap:1px; }
-      .wp-pm-review-name {
-        font-size:14px; font-weight:600; color:#0a0a0a;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-review-time {
-        font-size:11px; color:#8e8e93;
-        font-family:var(--wp-font),system-ui,sans-serif;
-      }
-      .wp-pm-review-stars { font-size:12px; color:#ff9f0a; margin-left:auto; }
-      .wp-pm-review-text {
-        font-size:14px; color:#3a3a3c; line-height:1.5; margin:0;
-        font-family:var(--wp-font),system-ui,sans-serif; font-weight:400;
-        display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
-      }
-
-      /* ── CTA bottom bar — fixed at bottom ── */
-      /* ── CTA flotante sin container ── */
-      .wp-pm-bottom {
-        position:absolute; bottom:calc(16px + env(safe-area-inset-bottom,0px));
-        left:20px; right:20px;
-        background:transparent;
-        border:none; z-index:2;
-        pointer-events:none;
-        display:flex; align-items:center; gap:10px;
-      }
-      .wp-pm-here-btn {
-        width:52px; height:52px; border-radius:50%; border:none;
-        background:#0a0a0a;
-        box-shadow:0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
-        color:#fff; cursor:pointer;
-        display:flex; align-items:center; justify-content:center;
-        -webkit-tap-highlight-color:transparent;
-        flex-shrink:0; pointer-events:auto;
-      }
-      .wp-pm-cta {
-        flex:1; height:52px; border-radius:9999px; border:none;
-        background:#0a0a0a;
-        box-shadow:0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
-        color:#fff; font-size:17px; font-weight:600; cursor:pointer;
-        display:flex; align-items:center; justify-content:center; gap:8px;
-        -webkit-tap-highlight-color:transparent;
-        font-family:var(--wp-font),system-ui,sans-serif;
-        letter-spacing:-0.01em;
-        pointer-events:auto;
-      }
+        <div id="pm-suggested-places" style="display:flex;flex-direction:column;gap:8px;padding-bottom:24px;">
+          <div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Cargando...</div>
+        </div>
+      </div>
     `;
-    document.head.appendChild(s);
+
+    document.body.appendChild(sheet);
+
+    const _assignPlace = (place) => {
+      this.currentPlan.steps[stepIndex].place_name = place.name || place.place_name || null;
+      this.currentPlan.steps[stepIndex].place_id   = place.place_id || null;
+      this.currentPlan.steps[stepIndex].lat        = place.lat || place.location?.lat || null;
+      this.currentPlan.steps[stepIndex].lng        = place.lng || place.location?.lng || null;
+      sheet.remove();
+      this._renderStepsList();
+      window.wpApp?.showMapToast?.('Lugar asignado ✓', '#10b981');
+    };
+
+    document.getElementById('pm-place-sheet-close').addEventListener('click', () => sheet.remove());
+
+    // Botón seleccionar en mapa
+    document.getElementById('pm-pick-on-map').addEventListener('click', () => {
+      sheet.remove();
+      const mapView = window.wpApp?.mapView;
+      if (!mapView) return;
+
+      document.getElementById('plan-modal-overlay').style.display = 'none';
+
+      const hint = document.createElement('div');
+      hint.style.cssText = 'position:fixed;top:12px;left:16px;right:68px;z-index:99999;animation:fadeIn 0.2s ease;';
+      hint.innerHTML = '<div style="background:#111;color:white;padding:0 16px;height:44px;border-radius:50px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,0.3);overflow:hidden;white-space:nowrap;"><span style="font-size:18px;">👆</span><span>Elige dónde: ' + (step.label || step.type) + '</span></div>';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.style.cssText = 'position:fixed;top:12px;right:12px;width:44px;height:44px;background:#111;color:white;border:none;border-radius:50%;cursor:pointer;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:99999;touch-action:manipulation;';
+      cancelBtn.textContent = '✕';
+      document.body.appendChild(hint);
+      document.body.appendChild(cancelBtn);
+
+      const _cleanup = () => {
+        hint.remove(); cancelBtn.remove();
+        mapView.disablePickMode?.();
+        document.getElementById('plan-modal-overlay').style.display = 'flex';
+      };
+      cancelBtn.addEventListener('click', _cleanup);
+      cancelBtn.addEventListener('touchend', e => { e.preventDefault(); _cleanup(); });
+
+      const catData = (mapView.categories||[]).find(c => c.menuKey === catKey);
+      const _doEnable = () => {
+        if (mapView.pickModeActive) return;
+        mapView.enablePickMode((place) => {
+          hint.remove(); cancelBtn.remove();
+          _assignPlace(place);
+          document.getElementById('plan-modal-overlay').style.display = 'flex';
+        });
+      };
+      if (catData) mapView.loadPlacesByCategory(catData).catch(()=>{}).finally(_doEnable);
+      else _doEnable();
+    });
+
+    // Cargar chips y sugeridos
+    await this._loadPlaceSheetData(catKey, stepType, _assignPlace);
+  }
+
+  async _loadPlaceSheetData(catKey, stepType, onSelect) {
+    // Chips de subcategoría
+    const chipsEl = document.getElementById('pm-sc-chips');
+    if (chipsEl) {
+      let allSubcats = [];
+      try {
+        const mod = await import('/src/services/CategoryService.js');
+        allSubcats = await mod.getSubcategories(null, false, false);
+      } catch(e) {}
+
+      const typeSubs = (stepType?.subcats || [])
+        .map(val => allSubcats.find(s => s.value === val))
+        .filter(Boolean);
+
+      const chips = [{ val: '', label: 'Todos' }, ...typeSubs.map(s => ({
+        val: s.value,
+        label: (s.emoji ? s.emoji + ' ' : '') + (s.label_es || s.value)
+      }))];
+
+      chipsEl.innerHTML = chips.map((s, i) =>
+        '<button class="pm-sc-chip" data-val="' + s.val + '" style="padding:7px 14px;border-radius:50px;font-size:12px;font-weight:600;white-space:nowrap;border:1.5px solid ' + (i===0? '#1a5cf5' :'#e5e5e5') + ';background:' + (i===0? '#1a5cf5' :'white') + ';color:' + (i===0?'white':'#374151') + ';cursor:pointer;flex-shrink:0;">' + s.label + '</button>'
+      ).join('');
+
+      chipsEl.querySelectorAll('.pm-sc-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          chipsEl.querySelectorAll('.pm-sc-chip').forEach(b => {
+            b.style.background='white'; b.style.color='#374151'; b.style.borderColor='#e5e5e5';
+          });
+          btn.style.background='#1a5cf5'; btn.style.color='white'; btn.style.borderColor='#1a5cf5';
+          this._renderSuggestedPlaces(catKey, stepType, btn.dataset.val, onSelect);
+        });
+      });
+    }
+
+    await this._renderSuggestedPlaces(catKey, stepType, '', onSelect);
+  }
+
+  async _renderSuggestedPlaces(catKey, stepType, filterSubcat, onSelect) {
+    const container = document.getElementById('pm-suggested-places');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">Cargando...</div>';
+
+    const allPlaces = window.wpApp?.mapView?.allPlaces || window.wpApp?.mapView?.places || [];
+    let places = allPlaces.filter(p => !p._hidden && (p.category||'') === catKey);
+
+    if (places.length === 0) {
+      try {
+        const res = await fetch('/api/supabase-places?category=' + encodeURIComponent(catKey) + '&_t=' + Date.now());
+        const data = await res.json();
+        if (data.places?.length) places = data.places;
+      } catch(e) {}
+    }
+
+    if (filterSubcat) {
+      places = places.filter(p => (p.subcategoryTags||[]).includes(filterSubcat));
+    } else if (stepType?.subcats?.length) {
+      const typed = places.filter(p => stepType.subcats.some(s => (p.subcategoryTags||[]).includes(s)));
+      if (typed.length > 0) places = typed;
+    }
+
+    // Featured primero, luego por rating
+    places = places.sort((a, b) => {
+      const fa = a.featured ? 1 : 0, fb = b.featured ? 1 : 0;
+      if (fb !== fa) return fb - fa;
+      return parseFloat(b.rating||0) - parseFloat(a.rating||0);
+    }).slice(0, 12);
+
+    if (!places.length) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">No hay lugares para esta actividad.<br>Selecciona en el mapa. 🗺️</div>';
+      return;
+    }
+
+    container.innerHTML = places.map(p => {
+      const photo  = p.photoUrl || (p.photosUrls&&p.photosUrls[0]) || '';
+      const rating = p.rating ? '⭐ ' + parseFloat(p.rating).toFixed(1) : '';
+      const addr   = (p.formattedAddress||p.formatted_address||'').substring(0,40);
+      const featBadge = p.featured
+        ? '<span style="font-size:9px;font-weight:700;background:' + (p.featured==='verified'?'#10b981':p.featured==='premium'?'#8b5cf6':'#f59e0b') + ';color:white;padding:1px 5px;border-radius:20px;white-space:nowrap;flex-shrink:0;">' + (p.featured==='verified'?'✓ Verified':p.featured==='premium'?'💎 Premium':'⭐ Featured') + '</span>'
+        : '';
+      return '<div class="pm-place-row" data-name="' + (p.name||'').replace(/"/g,'&quot;') +
+        '" data-lat="' + (p.location?.lat||p.lat||'') +
+        '" data-lng="' + (p.location?.lng||p.lng||'') +
+        '" data-id="' + (p.place_id||p.placeId||'') +
+        '" style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:1.5px solid #f0f0f0;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
+        (photo
+          ? '<img src="' + photo + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
+          : '<div style="width:52px;height:52px;border-radius:10px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">📍</div>') +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+            '<div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'') + '</div>' +
+            featBadge +
+          '</div>' +
+          (rating ? '<div style="font-size:12px;color:#f59e0b;margin-top:2px;">' + rating + '</div>' : '') +
+          (addr   ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">' + addr + '</div>' : '') +
+        '</div>' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#9ca3af;">›</div>' +
+        '</div>';
+    }).join('');
+
+    container.querySelectorAll('.pm-place-row').forEach(row => {
+      row.addEventListener('click', () => {
+        onSelect({
+          name:     row.dataset.name,
+          place_id: row.dataset.id,
+          lat:      parseFloat(row.dataset.lat),
+          lng:      parseFloat(row.dataset.lng)
+        });
+      });
+    });
+  }
+
+  // ── Sheet para agregar un paso ───────────────────────────────────
+  _showAddStepSheet() {
+    document.getElementById('pm-add-step-sheet')?.remove();
+
+    const sheet = document.createElement('div');
+    sheet.id = 'pm-add-step-sheet';
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999999;background:white;border-radius:24px 24px 0 0;padding:0 0 32px;box-shadow:0 -8px 40px rgba(0,0,0,0.18);max-height:75vh;display:flex;flex-direction:column;animation:slideUp 0.25s ease;';
+
+    // Agrupar por categoría
+    const groups = [
+      { label: '🍽️ Comer y beber',    cat: 'RESTAURANTS' },
+      { label: '🎉 Salir',             cat: 'ENTERTAINMENT' },
+      { label: '🛍️ Compras',           cat: 'SHOPPING' },
+      { label: '💆 Salud',             cat: 'HEALTH' },
+      { label: '🌳 Explorar',          cat: 'PARKS' },
+    ];
+
+    const rowsHtml = groups.map(g => {
+      const items = STEP_TYPES.filter(s => s.cat === g.cat);
+      return `
+        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 8px 0;">${g.label}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${this._chunkArray(items, 2).map(pair => `
+            <div style="display:flex;gap:8px;">
+              ${pair.map(s => `
+                <button class="pm-step-type-btn" data-key="${s.key}"
+                  style="flex:1;display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:14px;border:1.5px solid #e5e7eb;background:white;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+                  <img src="${s.icon3d}" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">
+                  <span style="font-size:13px;font-weight:700;color:#111;text-align:left;">${s.label}</span>
+                </button>`).join('')}
+              ${pair.length === 1 ? '<div style="flex:1;"></div>' : ''}
+            </div>`).join('')}
+        </div>`;
+    }).join('');
+
+    sheet.innerHTML = `
+      <div style="width:36px;height:4px;background:#e5e7eb;border-radius:4px;margin:12px auto 0;flex-shrink:0;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px 8px;flex-shrink:0;">
+        <div style="font-size:16px;font-weight:800;color:#111;">Agregar paso</div>
+        <button id="pm-sheet-close" style="width:30px;height:30px;border-radius:50%;border:none;background:#f3f4f6;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 16px;">${rowsHtml}</div>
+    `;
+
+    document.body.appendChild(sheet);
+    document.getElementById('pm-sheet-close').addEventListener('click', () => sheet.remove());
+
+    sheet.querySelectorAll('.pm-step-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = STEP_TYPES.find(s => s.key === btn.dataset.key);
+        if (!type) return;
+        this.currentPlan.steps.push({
+          type: type.key,
+          label: type.label,
+          emoji: type.emoji,
+          icon_url: type.icon3d,
+          place_name: null,
+          place_id: null,
+          lat: null, lng: null
+        });
+        sheet.remove();
+        this._renderStepsList();
+      });
+    });
+  }
+
+  // ── Guardar plan + asociar activities ───────────────────────────
+  async _handleSavePlan() {
+    if (!this.currentUser) {
+      window.wpApp?.showMapToast?.('Inicia sesión para crear un plan', '#f59e0b');
+      return;
+    }
+
+    const title = this.currentPlan.title.trim();
+    if (!title) {
+      const input = document.getElementById('pm-plan-title');
+      if (input) { input.focus(); input.style.borderColor='#ef4444'; setTimeout(()=>input.style.borderColor='#e5e7eb',2000); }
+      window.wpApp?.showMapToast?.('Dale un nombre a tu plan', '#f59e0b');
+      return;
+    }
+
+    const btn = document.getElementById('pm-next-2');
+    if (btn) { btn.disabled=true; btn.textContent='Guardando...'; }
+
+    try {
+      // 1. Calcular scheduled_date: manual > auto desde actividades > null
+      const _acts = this.currentPlan.pendingActivities || [];
+      const _actsWithDate = _acts.filter(a => a.scheduled_at);
+      const _autoDate = _actsWithDate.length
+        ? _actsWithDate.reduce((min, a) => a.scheduled_at < min ? a.scheduled_at : min, _actsWithDate[0].scheduled_at)
+        : null;
+      const _finalDate = this.currentPlan._dateSetManually
+        ? (this.currentPlan.scheduled_date || null)
+        : (_autoDate || this.currentPlan.scheduled_date || null);
+
+      // Crear el plan (solo metadata)
+      const plan = await PlanService.createPlan({
+        title,
+        description:    this.currentPlan.description    || '',
+        emoji:          this.currentPlan.emoji           || '✨',
+        creator_id:     this.currentUser.id,
+        is_public:      this.currentPlan.is_public !== false,
+        scheduled_date: _finalDate
+      });
+
+      // 2. Asociar activities existentes al plan
+      const acts = this.currentPlan.pendingActivities || [];
+      for (let i = 0; i < acts.length; i++) {
+        await PlanService.addActivityToPlan(plan.id, acts[i].id, i);
+      }
+
+      // 3. Refrescar pines del mapa si hay actividades
+      if (acts.length > 0) {
+        window.wpApp?.loadActivitiesOnMap?.();
+      }
+
+      // 4. Obtener plan completo con share_token
+      const fullPlan = await PlanService.getPlanByToken(plan.share_token);
+      this.currentPlan = { ...this.currentPlan, ...fullPlan };
+
+      this.onPlanCreated?.(fullPlan);
+      this._goToStep(3);
+
+    } catch (err) {
+      console.error('Error creando plan:', err);
+      window.wpApp?.showMapToast?.(err.message || 'Error al guardar el plan', '#ef4444');
+      if (btn) { btn.disabled=false; btn.textContent='Confirmar plan →'; }
+    }
+  }
+
+  // ── STEP 3: Confirmar + Compartir ────────────────────────────────
+  _renderStep3(container) {
+    const plan     = this.currentPlan;
+    const shareUrl = PlanService.getShareUrl(plan.share_token);
+    const steps    = (plan.plan_activities || []).map(pa => pa.activities || pa).filter(Boolean);
+    const pending   = this.currentPlan.pendingActivities || [];
+    const allActs   = steps.length ? steps : pending;
+    const withPlace = allActs.filter(s => s.lat || s.place_name);
+    const privacy  = plan.is_public !== false ? '🌍 Público' : '🔒 Solo amigos';
+    const maxP     = plan.max_participants || 4;
+
+    container.innerHTML = `
+      <div style="flex:1;overflow-y:auto;padding:24px 20px;">
+
+        <!-- Check animado -->
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="width:72px;height:72px;border-radius:50%;background:#111;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;animation:pm-pop 0.4s cubic-bezier(.34,1.56,.64,1);">
+            <span style="font-size:32px;color:white;">✓</span>
+          </div>
+          <h2 style="font-size:22px;font-weight:800;color:#111;margin:0 0 4px;">${plan.emoji} ${plan.title}</h2>
+          <p style="font-size:13px;color:#9ca3af;margin:0;">${privacy} · Máx ${maxP} personas</p>
+        </div>
+
+        <!-- Resumen de pasos -->
+        ${allActs.length > 0 ? `
+        <div style="background:#f9fafb;border-radius:16px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Tu plan</div>
+          ${allActs.slice(0,5).map((s,i) => `
+            <div style="display:flex;align-items:center;gap:10px;${i<Math.min(steps.length,5)-1?'margin-bottom:10px;':''}">
+              <div style="width:24px;height:24px;border-radius:50%;background:#111;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+              <span style="font-size:16px;">${s.emoji||'📍'}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:700;color:#111;">${s.label||s.type}</div>
+                ${s.place_name ? `<div style="font-size:11px;color:#16a34a;">✓ ${s.place_name}</div>` : '<div style="font-size:11px;color:#d1d5db;">Sin lugar asignado</div>'}
+              </div>
+            </div>`).join('')}
+          ${allActs.length>5?`<p style="font-size:11px;color:#9ca3af;text-align:center;margin:10px 0 0;">+${allActs.length-5} más</p>`:''}
+        </div>` : ''}
+
+        <!-- Pines en el mapa -->
+        ${allActs.length > 0 ? `
+        <div style="background:#f0fdf4;border-radius:14px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;border:1.5px solid #86efac;">
+          <span style="font-size:20px;">📍</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#15803d;">${allActs.length} actividad${allActs.length!==1?'es':''} en el plan</div>
+            <div style="font-size:11px;color:#16a34a;">Visibles en el mapa · Otros pueden unirse</div>
+          </div>
+        </div>` : ''}
+
+        <!-- Link compartible -->
+        <div style="background:#f3f4f6;border-radius:12px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;color:#6b7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shareUrl}</span>
+          <button id="pm-copy-link" style="flex-shrink:0;background:#111;color:white;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Copiar</button>
+        </div>
+
+        <!-- Compartir -->
+        <button id="pm-share-btn" style="width:100%;padding:15px;background:#25D366;color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:20px;">📤</span> Compartir por WhatsApp / SMS
+        </button>
+        <button id="pm-done-btn" style="width:100%;padding:14px;background:#f3f4f6;color:#374151;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;">
+          Listo
+        </button>
+      </div>
+      <style>@keyframes pm-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}</style>
+    `;
+
+    document.getElementById('pm-share-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('pm-share-btn');
+      try {
+        const result = await PlanService.sharePlan(plan);
+        if (result === 'copied') {
+          btn.innerHTML = '✓ Link copiado';
+          setTimeout(() => { btn.innerHTML = '<span style="font-size:20px;">📤</span> Compartir por WhatsApp / SMS'; }, 2500);
+        }
+      } catch(e) {}
+    });
+
+    document.getElementById('pm-copy-link').addEventListener('click', async () => {
+      const btn = document.getElementById('pm-copy-link');
+      await navigator.clipboard.writeText(shareUrl).catch(()=>{});
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+    });
+
+    document.getElementById('pm-done-btn').addEventListener('click', () => this.hide());
+  }
+
+  // ── Emoji picker simple ──────────────────────────────────────────
+  _showEmojiPicker() {
+    document.getElementById('pm-emoji-sheet')?.remove();
+    const emojis = ['✨','🎉','🦷','🛍️','🌮','🍻','🎵','🌳','📸','💆','🏖️','🎯','🍔','☕','🥗','🌯','🎮','🎤','🛒','💊','🩺','⚽','🚴','🤝'];
+
+    const sheet = document.createElement('div');
+    sheet.id = 'pm-emoji-sheet';
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999999;background:white;border-radius:24px 24px 0 0;padding:16px 16px 32px;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.25s ease;';
+    sheet.innerHTML = `
+      <div style="width:36px;height:4px;background:#e5e7eb;border-radius:4px;margin:0 auto 16px;"></div>
+      <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:12px;">Elige un emoji</div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;">
+        ${emojis.map(e => `<button class="pm-emoji-opt" data-emoji="${e}" style="font-size:24px;background:none;border:none;cursor:pointer;padding:6px;border-radius:10px;">${e}</button>`).join('')}
+      </div>`;
+    document.body.appendChild(sheet);
+
+    sheet.querySelectorAll('.pm-emoji-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.currentPlan.emoji = btn.dataset.emoji;
+        const emojiBtn = document.getElementById('pm-emoji-btn');
+        if (emojiBtn) emojiBtn.textContent = btn.dataset.emoji;
+        sheet.remove();
+      });
+    });
+
+    sheet.addEventListener('click', e => { if (e.target === sheet) sheet.remove(); });
+  }
+
+  // ── Util ─────────────────────────────────────────────────────────
+  _chunkArray(arr, size) {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+    return chunks;
   }
 }
