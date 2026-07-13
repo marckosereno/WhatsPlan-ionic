@@ -70,10 +70,10 @@ export class PlaceTagPicker {
     this._userTags  = [...userTags];
     this._session   = [];
     this._remaining = remaining;
-    this._render();
-    // Mismo patrón que more menu: el elemento siempre está en el DOM,
-    // se muestra añadiendo la clase — sin display toggle, sin layout forzado
-    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
+    // Arrancar la animación PRIMERO (igual que more/reviews)
+    // _render() corre DESPUÉS, mientras el panel ya está deslizándose
+    this._el.classList.add('wpt-in');
+    requestAnimationFrame(() => this._render());
   }
 
   hide() {
