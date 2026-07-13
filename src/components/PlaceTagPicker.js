@@ -5,6 +5,45 @@
 
 import { PLACE_TAGS } from '/src/services/PlaceTagService.js';
 
+// ── Skeleton instantáneo — se monta una sola vez, sin dependencias ──
+const _PILL_W = [110,90,130,100,120,85,140,95,115,105,80,125];
+function _showSkeleton() {
+  let sk = document.getElementById('wpt-sk');
+  if (!sk) {
+    const style = document.createElement('style');
+    style.textContent = `
+      #wpt-sk{display:none;position:fixed;inset:0;z-index:99996;flex-direction:column;
+        align-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(28px + env(safe-area-inset-bottom,0px));
+        backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);-webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
+        background:rgba(255,255,255,0.12);opacity:0;transition:opacity 0.18s ease;overflow-y:auto;}
+      #wpt-sk.sk-in{opacity:1;}
+      @keyframes wpt-sk-sh{0%{background-position:200% center}100%{background-position:-200% center}}
+      .wpt-sk-b{border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,0.25) 25%,rgba(255,255,255,0.55) 50%,rgba(255,255,255,0.25) 75%);
+        background-size:400% 100%;animation:wpt-sk-sh 1.4s ease-in-out infinite;}`;
+    document.head.appendChild(style);
+    sk = document.createElement('div');
+    sk.id = 'wpt-sk';
+    sk.innerHTML =
+      '<div class="wpt-sk-b" style="width:34px;height:34px;border-radius:50%;align-self:flex-end;margin-bottom:6px;flex-shrink:0;"></div>' +
+      '<div class="wpt-sk-b" style="width:220px;height:27px;margin-bottom:8px;"></div>' +
+      '<div class="wpt-sk-b" style="width:160px;height:27px;margin-bottom:18px;"></div>' +
+      '<div class="wpt-sk-b" style="width:160px;height:28px;margin-bottom:22px;flex-shrink:0;"></div>' +
+      _PILL_W.map((w,i) => {
+        const a = i%3===0?'flex-start':i%3===1?'center':'flex-end';
+        return `<div class="wpt-sk-b" style="width:${w}px;height:38px;margin-bottom:10px;align-self:${a};"></div>`;
+      }).join('');
+    document.body.appendChild(sk);
+  }
+  sk.style.display = 'flex';
+  requestAnimationFrame(() => sk.classList.add('sk-in'));
+}
+function _hideSkeleton() {
+  const sk = document.getElementById('wpt-sk');
+  if (!sk) return;
+  sk.classList.remove('sk-in');
+  setTimeout(() => { sk.style.display = 'none'; }, 280);
+}
+
 // ── Singleton instance ────────────────────────────────────────────────
 let _instance = null;
 
@@ -28,13 +67,21 @@ export class PlaceTagPicker {
 
   // ── API ──────────────────────────────────────────────────────────
   show(userTags = [], remaining = 3) {
-    // Actualizar estado ANTES de renderizar
-    this._userTags  = [...userTags];
-    this._session   = [];
-    this._remaining = remaining;
-    this._render();
-    this._el.style.display = 'flex';
-    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
+    _showSkeleton();
+
+    // Diferir el render pesado al siguiente frame — el skeleton ya es visible
+    requestAnimationFrame(() => {
+      this._userTags  = [...userTags];
+      this._session   = [];
+      this._remaining = remaining;
+      this._render();
+      this._el.style.display = 'flex';
+      requestAnimationFrame(() => {
+        this._el.classList.add('wpt-in');
+        // Ocultar skeleton justo cuando el modal real está visible
+        _hideSkeleton();
+      });
+    });
   }
 
   hide() {
