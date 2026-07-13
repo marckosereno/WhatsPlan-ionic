@@ -71,9 +71,19 @@ export class PlaceTagPicker {
     this._remaining = remaining;
     // Exacto mismo patrón que more menu de PlaceModal:
     // display:'' → browser ve translateY(110%) → rAF → clase → transición
-    this._render();
+    // Fase 1: mostrar skeleton instantáneamente + disparar animación
+    const list = this._el.querySelector('#wpt-list');
+    const slots = this._el.querySelector('#wpt-slots');
+    slots.innerHTML = '';
+    slots.className = 'wpt-slots wpt-slots-sk';
+    list.querySelectorAll('.wpt-pill').forEach(p => p.classList.add('wpt-pill-sk'));
+
     this._el.style.visibility = 'visible';
-    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
+    requestAnimationFrame(() => {
+      this._el.classList.add('wpt-in');
+      // Fase 2: cargar contenido real mientras el panel ya está animándose
+      setTimeout(() => this._render(), 80);
+    });
   }
 
   hide() {
@@ -208,6 +218,9 @@ export class PlaceTagPicker {
       overflow-y:auto;
     }
     #wpt-root.wpt-in { transform:translateY(0); visibility:visible; }
+    .wpt-slots-sk { background:rgba(0,0,0,0.07); border-radius:999px; width:180px; height:26px; border:none; }
+    .wpt-pill-sk .wpt-em, .wpt-pill-sk .wpt-lbl, .wpt-pill-sk .wpt-pill-btn { opacity:0; }
+    .wpt-pill-sk { background:rgba(0,0,0,0.07); border-color:transparent; }
 
     .wpt-close {
       align-self:flex-end; margin-bottom:6px;
