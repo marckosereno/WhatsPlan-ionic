@@ -67,31 +67,21 @@ export class PlaceTagPicker {
 
   // ── API ──────────────────────────────────────────────────────────
   show(userTags = [], remaining = 3) {
-    _showSkeleton();
-
-    // Diferir el render pesado al siguiente frame — el skeleton ya es visible
-    requestAnimationFrame(() => {
-      this._userTags  = [...userTags];
-      this._session   = [];
-      this._remaining = remaining;
-      this._render();
-      this._el.style.display = 'flex';
-      requestAnimationFrame(() => {
-        this._el.classList.add('wpt-in');
-        // Ocultar skeleton justo cuando el modal real está visible
-        _hideSkeleton();
-      });
-    });
+    this._userTags  = [...userTags];
+    this._session   = [];
+    this._remaining = remaining;
+    this._render();
+    // Mismo patrón que more menu: el elemento siempre está en el DOM,
+    // se muestra añadiendo la clase — sin display toggle, sin layout forzado
+    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
   }
 
   hide() {
     this._el.classList.remove('wpt-in');
     setTimeout(() => {
-      this._el.style.display = 'none'; this._el.style.transform = '';
-      // Limpiar sesión al cerrar
       this._session  = [];
       this._userTags = [];
-    }, 300);
+    }, 340);
   }
 
   // ── Build — solo se llama UNA vez en toda la vida del app ────────
@@ -102,6 +92,7 @@ export class PlaceTagPicker {
 
     const el = document.createElement('div');
     el.id = 'wpt-root';
+    el.style.display = 'flex'; // siempre en DOM, oculto via transform
     el.innerHTML = `
       <button class="wpt-close" id="wpt-close">✕</button>
       <div class="wpt-title">¿Cómo describirías<br>este lugar?</div>
