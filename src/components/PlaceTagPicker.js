@@ -15,8 +15,8 @@ function _showSkeleton() {
       #wpt-sk{display:none;position:fixed;inset:0;z-index:99996;flex-direction:column;
         align-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(28px + env(safe-area-inset-bottom,0px));
         backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);-webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-        background:rgba(255,255,255,0.12);opacity:0;transition:opacity 0.18s ease;overflow-y:auto;}
-      #wpt-sk.sk-in{opacity:1;}
+        background:rgba(255,255,255,0.12);transform:translateY(100%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);overflow-y:auto;}
+      #wpt-sk.sk-in{transform:translateY(0);}
       @keyframes wpt-sk-sh{0%{background-position:200% center}100%{background-position:-200% center}}
       .wpt-sk-b{border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,0.25) 25%,rgba(255,255,255,0.55) 50%,rgba(255,255,255,0.25) 75%);
         background-size:400% 100%;animation:wpt-sk-sh 1.4s ease-in-out infinite;}`;
@@ -41,7 +41,7 @@ function _hideSkeleton() {
   const sk = document.getElementById('wpt-sk');
   if (!sk) return;
   sk.classList.remove('sk-in');
-  setTimeout(() => { sk.style.display = 'none'; }, 280);
+  setTimeout(() => { sk.style.display = 'none'; }, 340);
 }
 
 // ── Singleton instance ────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export class PlaceTagPicker {
   hide() {
     this._el.classList.remove('wpt-in');
     setTimeout(() => {
-      this._el.style.display = 'none';
+      this._el.style.display = 'none'; this._el.style.transform = '';
       // Limpiar sesión al cerrar
       this._session  = [];
       this._userTags = [];
@@ -213,10 +213,10 @@ export class PlaceTagPicker {
       -webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
       backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
       background:rgba(255,255,255,0.12);
-      opacity:0; transition:opacity 0.26s ease;
+      transform:translateY(100%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
       overflow-y:auto;
     }
-    #wpt-root.wpt-in { opacity:1; }
+    #wpt-root.wpt-in { transform:translateY(0); }
 
     .wpt-close {
       align-self:flex-end; margin-bottom:6px;
