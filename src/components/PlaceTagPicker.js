@@ -14,8 +14,7 @@ function _showSkeleton() {
     style.textContent = `
       #wpt-sk{display:none;position:fixed;inset:0;z-index:99996;flex-direction:column;
         align-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(28px + env(safe-area-inset-bottom,0px));
-        backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);-webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-        background:rgba(255,255,255,0.12);transform:translateY(100%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);overflow-y:auto;}
+        background:rgba(249,249,251,0.98);transform:translateY(100%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);overflow-y:auto;}
       #wpt-sk.sk-in{transform:translateY(0);}
       @keyframes wpt-sk-sh{0%{background-position:200% center}100%{background-position:-200% center}}
       .wpt-sk-b{border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,0.25) 25%,rgba(255,255,255,0.55) 50%,rgba(255,255,255,0.25) 75%);
@@ -206,9 +205,7 @@ export class PlaceTagPicker {
       flex-direction:column; align-items:center;
       padding:calc(20px + env(safe-area-inset-top,0px)) 24px
               calc(28px + env(safe-area-inset-bottom,0px));
-      -webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-      backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-      background:rgba(255,255,255,0.12);
+      background:#f9f9fb;
       transform:translateY(100%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
       overflow-y:auto;
     }
