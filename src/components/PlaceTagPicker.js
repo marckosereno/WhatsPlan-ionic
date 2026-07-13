@@ -100,7 +100,12 @@ export class PlaceTagPicker {
       <button class="wpt-close" id="wpt-close">✕</button>
       <div class="wpt-title">¿Cómo describirías<br>este lugar?</div>
       <div class="wpt-slots" id="wpt-slots"></div>
-      <div class="wpt-list"  id="wpt-list"></div>
+      <div class="wpt-list"  id="wpt-list">${PLACE_TAGS.map(tag =>
+        `<div class="wpt-pill" data-key="${tag.key}">
+          <span class="wpt-em">${tag.emoji}</span>
+          <span class="wpt-lbl">${tag.label}</span>
+          <button class="wpt-pill-btn" tabindex="-1">+</button>
+        </div>`).join('')}</div>
       <button class="wpt-confirm" id="wpt-confirm" style="display:none">Guardar</button>
       <style>${this._css()}</style>
     `;
@@ -133,9 +138,8 @@ export class PlaceTagPicker {
     });
   }
 
-  // ── Render — reconstruye el contenido con estado actual ──────────
+  // ── Render — solo actualiza clases y texto, no reconstruye el DOM ──
   _render() {
-    const list  = this._el.querySelector('#wpt-list');
     const slots = this._el.querySelector('#wpt-slots');
     const btn   = this._el.querySelector('#wpt-confirm');
     const rem   = this._remaining;
@@ -145,19 +149,17 @@ export class PlaceTagPicker {
       : '⚠ Sin etiquetas disponibles';
     slots.className = 'wpt-slots ' + (rem > 0 ? 'wpt-s-ok' : 'wpt-s-no');
 
-    // Reconstruir pills con estado actual
-    list.innerHTML = PLACE_TAGS.map(tag => {
-      const already  = this._userTags.includes(tag.key);
-      const selected = this._session.includes(tag.key);
-      const active   = already || selected;
-      return `<div class="wpt-pill${active ? ' wpt-active' : ''}" data-key="${tag.key}">
-        <span class="wpt-em">${tag.emoji}</span>
-        <span class="wpt-lbl">${tag.label}</span>
-        <button class="wpt-pill-btn${active ? ' wpt-pill-btn-active' : ''}" tabindex="-1">
-          ${active ? '−' : '+'}
-        </button>
-      </div>`;
-    }).join('');
+    // Solo actualizar clases — los pills ya están en el DOM desde _build()
+    this._el.querySelectorAll('.wpt-pill').forEach(pill => {
+      const key      = pill.dataset.key;
+      const active   = this._userTags.includes(key) || this._session.includes(key);
+      pill.classList.toggle('wpt-active', active);
+      const pillBtn  = pill.querySelector('.wpt-pill-btn');
+      if (pillBtn) {
+        pillBtn.classList.toggle('wpt-pill-btn-active', active);
+        pillBtn.textContent = active ? '−' : '+';
+      }
+    });
 
     const n = this._session.length;
     btn.style.display = n > 0 ? '' : 'none';
