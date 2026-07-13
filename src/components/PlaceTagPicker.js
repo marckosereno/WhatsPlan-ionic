@@ -69,18 +69,17 @@ export class PlaceTagPicker {
     this._userTags  = [...userTags];
     this._session   = [];
     this._remaining = remaining;
-    // Exacto mismo patrón que more menu de PlaceModal:
-    // display:'' → browser ve translateY(110%) → rAF → clase → transición
-    // Modal vacío primero — sin pills ni contenido dinámico
-    // para verificar que el translate funciona
-    this._el.style.visibility = 'visible';
-    requestAnimationFrame(() => this._el.classList.add('wpt-in'));
+    this._el.style.display = 'flex';
+    requestAnimationFrame(() => {
+      this._el.classList.add('wpt-in');
+      setTimeout(() => this._render(), 50);
+    });
   }
 
   hide() {
     this._el.classList.remove('wpt-in');
     setTimeout(() => {
-      this._el.style.visibility = 'hidden';
+      this._el.style.display = 'none';
       this._session  = [];
       this._userTags = [];
     }, 340);
@@ -107,7 +106,10 @@ export class PlaceTagPicker {
       <button class="wpt-confirm" id="wpt-confirm" style="display:none">Guardar</button>
       <style>${this._css()}</style>
     `;
-    document.body.appendChild(el);
+    // Insertar dentro del PlaceModal (igual que more menu y reviews)
+    // para que corra en el mismo compositor y la animación funcione
+    const pm = document.getElementById('wp-place-modal') || document.body;
+    pm.appendChild(el);
     this._el = el;
 
     // ── Listeners — uno solo, siempre lee this en tiempo de ejecución ──
@@ -200,15 +202,15 @@ export class PlaceTagPicker {
   // ── CSS ──────────────────────────────────────────────────────────
   _css() { return `
     #wpt-root {
-      display:none; position:fixed; inset:0; z-index:99997;
+      display:none; position:absolute; inset:0; z-index:202;
       flex-direction:column; align-items:center;
       padding:calc(20px + env(safe-area-inset-top,0px)) 24px
               calc(28px + env(safe-area-inset-bottom,0px));
       background:#f9f9fb;
-      transform:translateY(100%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+      transform:translateY(110%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
       overflow-y:auto;
     }
-    #wpt-root.wpt-in { transform:translateY(0); visibility:visible; }
+    #wpt-root.wpt-in { transform:translateY(0); }
     .wpt-slots-sk { background:rgba(0,0,0,0.07); border-radius:999px; width:180px; height:26px; border:none; }
     .wpt-pill-sk .wpt-em, .wpt-pill-sk .wpt-lbl, .wpt-pill-sk .wpt-pill-btn { opacity:0; }
     .wpt-pill-sk { background:rgba(0,0,0,0.07); border-color:transparent; }
