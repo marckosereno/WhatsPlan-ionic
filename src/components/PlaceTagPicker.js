@@ -70,10 +70,13 @@ export class PlaceTagPicker {
     this._userTags  = [...userTags];
     this._session   = [];
     this._remaining = remaining;
-    // Arrancar la animación PRIMERO (igual que more/reviews)
-    // _render() corre DESPUÉS, mientras el panel ya está deslizándose
-    this._el.classList.add('wpt-in');
-    requestAnimationFrame(() => this._render());
+    // Exacto mismo patrón que more/reviews:
+    // frame 1 → browser ve el estado inicial (translateY 100%)
+    // frame 2 → añadir clase dispara la transición
+    requestAnimationFrame(() => {
+      this._el.classList.add('wpt-in');
+      requestAnimationFrame(() => this._render());
+    });
   }
 
   hide() {
