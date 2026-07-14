@@ -434,61 +434,6 @@ export class PlaceModal {
 
   isVisible() { return !this._el.classList.contains('wp-pm-hidden'); }
 
-  _buildTagPills(list, slotsEl, confirmBtn) {
-    const userTags = this._place?._userTags || [];
-    let session    = [];
-    const remaining = 3 - userTags.length;
-
-    const render = () => {
-      const rem = remaining - session.length;
-      slotsEl.innerHTML = rem > 0
-        ? `<span class="wp-pm-tag-dot"></span>${rem} etiqueta${rem!==1?'s':''} disponible${rem!==1?'s':''}`
-        : '⚠ Sin etiquetas disponibles';
-      slotsEl.className = 'wp-pm-tag-slots ' + (rem > 0 ? 'wp-pm-tag-s-ok' : 'wp-pm-tag-s-no');
-      list.querySelectorAll('.wp-pm-tag-pill').forEach(pill => {
-        const key    = pill.dataset.key;
-        const active = userTags.includes(key) || session.includes(key);
-        pill.classList.toggle('wpt-active', active);
-        const btn = pill.querySelector('.wp-pm-tag-btn');
-        if (btn) { btn.classList.toggle('active', active); btn.textContent = active ? '−' : '+'; }
-      });
-      const n = session.length;
-      confirmBtn.style.display = n > 0 ? '' : 'none';
-      confirmBtn.textContent   = `Guardar ${n} etiqueta${n!==1?'s':''}`;
-    };
-
-    list.innerHTML = PLACE_TAGS.map(tag =>
-      `<div class="wp-pm-tag-pill" data-key="${tag.key}">
-        <span class="wp-pm-tag-em">${tag.emoji}</span>
-        <span class="wp-pm-tag-lbl">${tag.label}</span>
-        <button class="wp-pm-tag-btn" tabindex="-1">+</button>
-      </div>`
-    ).join('');
-
-    list.addEventListener('click', e => {
-      if (e.target === list) return;
-      const pill = e.target.closest('.wp-pm-tag-pill');
-      if (!pill) return;
-      const key     = pill.dataset.key;
-      const already = userTags.includes(key);
-      if (already) {
-        this.closeTagPanel?.();
-        PlaceTagService.addTags(this._place?.place_id || this._place?.id, [{ key, action:'remove' }]);
-        return;
-      }
-      const idx = session.indexOf(key);
-      if (idx > -1) session.splice(idx, 1);
-      else if (session.length < remaining) session.push(key);
-      render();
-    });
-
-    confirmBtn.onclick = async () => {
-      if (!session.length) return;
-      try { await PlaceTagService.addTags(this._place?.place_id || this._place?.id, session); this.closeTagPanel?.(); } catch(e) { console.error(e); }
-    };
-    render();
-  }
-
   // ── Build DOM ─────────────────────────────────────────────────────
 
   _build() {
@@ -505,7 +450,7 @@ export class PlaceModal {
         <div class="wp-pm-topbar" id="wp-pm-topbar">
           <!-- Botón back -->
           <button class="wp-pm-tb-btn" id="wp-pm-back">
-            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="112 244 256 400 400 244" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
+            <svg width="18" height="18" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none"><polyline points="112 244 256 400 400 244" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></polyline><line x1="256" y1="120" x2="256" y2="380" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"></line></svg>
           </button>
           <!-- Centro: stats (default) / nombre (al scrollear) -->
           <div class="wp-pm-tb-center">
@@ -588,16 +533,6 @@ export class PlaceModal {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             <span>Sugerir edición</span>
           </button>
-        </div>
-
-        <!-- ── ETIQUETAR LUGAR ── -->
-        <div class="wp-pm-more-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
-        <div class="wp-pm-tag-panel" id="wp-pm-tag-panel" style="display:none">
-          <button class="wp-pm-tag-x" id="wp-pm-tag-close">✕</button>
-          <div class="wp-pm-tag-title">¿Cómo describirías<br>este lugar?</div>
-          <div class="wp-pm-tag-slots" id="wp-pm-tag-slots"></div>
-          <div class="wp-pm-tag-list" id="wp-pm-tag-list"></div>
-          <button class="wp-pm-tag-confirm" id="wp-pm-tag-confirm" style="display:none">Guardar</button>
         </div>
 
         <!-- ── HERO — peek carousel, no fullwidth ── -->
@@ -1412,35 +1347,6 @@ export class PlaceModal {
       moreMenu.classList.remove('open');
       setTimeout(() => { moreMenu.style.display = 'none'; moreOverlay.style.display = 'none'; }, 320);
     };
-    // ── Tag picker (etiquetar lugar) ──────────────────────────────
-    const tagPanel   = this._el.querySelector('#wp-pm-tag-panel');
-    const tagOverlay = this._el.querySelector('#wp-pm-tag-overlay');
-    const tagList    = this._el.querySelector('#wp-pm-tag-list');
-    const tagConfirm = this._el.querySelector('#wp-pm-tag-confirm');
-    const tagSlots   = this._el.querySelector('#wp-pm-tag-slots');
-
-    const openTag = () => {
-      tagOverlay.style.display = '';
-      tagPanel.style.display   = 'flex';
-      requestAnimationFrame(() => {
-        tagPanel.classList.add('open');
-        setTimeout(() => this._buildTagPills(tagList, tagSlots, tagConfirm), 50);
-      });
-    };
-    const closeTag = () => {
-      tagPanel.classList.remove('open');
-      setTimeout(() => { tagPanel.style.display = 'none'; tagOverlay.style.display = 'none'; }, 340);
-    };
-    tagPanel.querySelector('#wp-pm-tag-close').addEventListener('click', closeTag);
-    tagOverlay.addEventListener('click', closeTag);
-
-    const tagChip = this._el.querySelector('#wp-pm-tag-chip');
-    if (tagChip) tagChip.addEventListener('click', () => openTag());
-
-    // Wired desde afuera (PlaceTagPicker legacy) — exponer método
-    this.openTagPanel = openTag;
-    this.closeTagPanel = closeTag;
-
     moreBtn.addEventListener('click', () => {
       moreMenu.style.display = ''; moreOverlay.style.display = '';
       requestAnimationFrame(() => moreMenu.classList.add('open'));
@@ -1461,6 +1367,8 @@ export class PlaceModal {
     }
 
     // Etiquetar lugar — placeholder hasta recibir indicaciones
+    const tagChip = this._el.querySelector('#wp-pm-tag-chip');
+    if (tagChip) tagChip.addEventListener('click', () => this._onTagPlace());
 
     // Añadir foto — por ahora placeholder hasta recibir indicaciones
     this._el.addEventListener('click', (e) => {
@@ -2562,39 +2470,6 @@ export class PlaceModal {
       .wp-pm-more-menu.open {
         transform:translateY(0);
       }
-      /* ── Tag picker — diseño original restaurado ── */
-      .wp-pm-tag-panel {
-        display:none; position:absolute; left:0; right:0; bottom:0;
-        z-index:202; max-height:82%;
-        flex-direction:column; align-items:center;
-        padding:20px 24px calc(20px + env(safe-area-inset-bottom,0px));
-        -webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-        backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
-        background:rgba(255,255,255,0.12);
-        border-radius:24px 24px 0 0;
-        transform:translateY(110%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        overflow-y:auto;
-      }
-      .wp-pm-tag-panel.open { transform:translateY(0); }
-      .wp-pm-tag-x { align-self:flex-end; margin-bottom:6px; width:34px; height:34px; border-radius:50%; border:none; background:rgba(0,0,0,0.10); color:#1c1c1e; font-size:15px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; }
-      .wp-pm-tag-x:active { background:rgba(0,0,0,0.20); }
-      .wp-pm-tag-title { font-size:27px; font-weight:800; color:#0a0a0a; font-family:var(--wp-font); text-align:center; line-height:1.2; letter-spacing:-0.03em; margin-bottom:10px; text-shadow:0 1px 8px rgba(255,255,255,0.5); }
-      .wp-pm-tag-slots { display:flex; align-items:center; gap:6px; padding:5px 14px; border-radius:999px; font-size:12px; font-weight:700; font-family:var(--wp-font); margin-bottom:18px; flex-shrink:0; }
-      .wp-pm-tag-s-ok { background:rgba(52,199,89,0.18); color:#15803d; }
-      .wp-pm-tag-s-no { background:rgba(255,59,48,0.15); color:#c0392b; }
-      .wp-pm-tag-dot { width:7px; height:7px; border-radius:50%; background:#34c759; box-shadow:0 0 6px rgba(52,199,89,0.8); flex-shrink:0; }
-      .wp-pm-tag-list { display:flex; flex-direction:column; align-items:flex-start; gap:10px; width:100%; max-width:400px; padding:0 8px; }
-      .wp-pm-tag-pill:nth-child(odd){align-self:flex-start}.wp-pm-tag-pill:nth-child(even){align-self:center}.wp-pm-tag-pill:nth-child(3n){align-self:flex-end}
-      .wp-pm-tag-pill:nth-child(1){transform:rotate(-1.8deg)}.wp-pm-tag-pill:nth-child(2){transform:rotate(1.2deg)}.wp-pm-tag-pill:nth-child(3){transform:rotate(-0.8deg)}.wp-pm-tag-pill:nth-child(4){transform:rotate(2.1deg)}.wp-pm-tag-pill:nth-child(5){transform:rotate(-1.5deg)}.wp-pm-tag-pill:nth-child(6){transform:rotate(0.9deg)}.wp-pm-tag-pill:nth-child(7){transform:rotate(-2.2deg)}.wp-pm-tag-pill:nth-child(8){transform:rotate(1.6deg)}.wp-pm-tag-pill:nth-child(9){transform:rotate(-0.6deg)}.wp-pm-tag-pill:nth-child(10){transform:rotate(1.9deg)}.wp-pm-tag-pill:nth-child(11){transform:rotate(-1.3deg)}.wp-pm-tag-pill:nth-child(12){transform:rotate(2.4deg)}.wp-pm-tag-pill:nth-child(13){transform:rotate(-1.0deg)}.wp-pm-tag-pill:nth-child(14){transform:rotate(0.7deg)}.wp-pm-tag-pill:nth-child(15){transform:rotate(-2.0deg)}.wp-pm-tag-pill:nth-child(16){transform:rotate(1.4deg)}.wp-pm-tag-pill:nth-child(17){transform:rotate(-0.9deg)}.wp-pm-tag-pill:nth-child(18){transform:rotate(2.2deg)}.wp-pm-tag-pill:nth-child(19){transform:rotate(-1.6deg)}.wp-pm-tag-pill:nth-child(20){transform:rotate(1.1deg)}.wp-pm-tag-pill:nth-child(21){transform:rotate(-1.8deg)}.wp-pm-tag-pill:nth-child(22){transform:rotate(0.8deg)}.wp-pm-tag-pill:nth-child(23){transform:rotate(-2.3deg)}
-      .wp-pm-tag-pill { display:inline-flex; align-items:center; gap:10px; padding:10px 16px 10px 14px; border-radius:999px; border:2px dashed rgba(0,0,0,0.22); background:rgba(255,255,255,0.22); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background 0.16s,border 0.16s,box-shadow 0.16s; }
-      .wp-pm-tag-pill:not(.wpt-active):active { transform:rotate(0deg) scale(0.96) !important; }
-      .wp-pm-tag-pill.wpt-active { transform:rotate(0deg) scale(1.03) !important; background:rgba(255,255,255,0.88); border:2px solid transparent; box-shadow:0 6px 20px rgba(0,0,0,0.10); }
-      .wp-pm-tag-em { font-size:24px; flex-shrink:0; }
-      .wp-pm-tag-lbl { font-size:19px; font-weight:700; color:#0a0a0a; font-family:var(--wp-font); letter-spacing:-0.02em; }
-      .wp-pm-tag-btn { width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0; background:rgba(0,0,0,0.13); color:#fff; font-size:18px; font-weight:300; cursor:pointer; display:flex; align-items:center; justify-content:center; pointer-events:none; line-height:1; }
-      .wp-pm-tag-btn.wpt-active { background:#007aff; }
-      .wp-pm-tag-confirm { margin-top:18px; width:100%; max-width:380px; flex-shrink:0; height:52px; border-radius:999px; border:none; background:#007aff; color:#fff; font-size:16px; font-weight:700; cursor:pointer; font-family:var(--wp-font); box-shadow:0 4px 20px rgba(0,122,255,0.35); -webkit-tap-highlight-color:transparent; transition:transform 0.15s,filter 0.15s; }
-      .wp-pm-tag-confirm:active { transform:scale(0.97); filter:brightness(0.92); }
       .wp-pm-more-handle {
         width:36px; height:4px; border-radius:2px;
         background:rgba(0,0,0,0.15); margin:0 auto 8px;
