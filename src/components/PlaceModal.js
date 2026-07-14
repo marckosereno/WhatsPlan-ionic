@@ -2561,12 +2561,14 @@ export class PlaceModal {
       .wp-pm-more-menu.open {
         transform:translateY(0);
       }
-      /* ── Tag picker — diseño original ── */
+      /* ── Tag picker — diseño original restaurado ── */
       .wp-pm-tag-panel {
         display:none; position:absolute; inset:0; z-index:202;
         flex-direction:column; align-items:center;
         padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(28px + env(safe-area-inset-bottom,0px));
-        background:#f9f9fb;
+        -webkit-backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
+        backdrop-filter:blur(28px) saturate(1.8) brightness(1.05);
+        background:rgba(255,255,255,0.12);
         transform:translateY(110%); transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
         overflow-y:auto; border-radius:inherit;
       }
@@ -2579,17 +2581,15 @@ export class PlaceModal {
       .wp-pm-tag-s-no { background:rgba(255,59,48,0.15); color:#c0392b; }
       .wp-pm-tag-dot { width:7px; height:7px; border-radius:50%; background:#34c759; box-shadow:0 0 6px rgba(52,199,89,0.8); flex-shrink:0; }
       .wp-pm-tag-list { display:flex; flex-direction:column; align-items:flex-start; gap:10px; width:100%; max-width:400px; padding:0 8px; }
-      .wp-pm-tag-pill:nth-child(odd)  { align-self:flex-start; }
-      .wp-pm-tag-pill:nth-child(even) { align-self:center; }
-      .wp-pm-tag-pill:nth-child(3n)   { align-self:flex-end; }
+      .wp-pm-tag-pill:nth-child(odd){align-self:flex-start}.wp-pm-tag-pill:nth-child(even){align-self:center}.wp-pm-tag-pill:nth-child(3n){align-self:flex-end}
       .wp-pm-tag-pill:nth-child(1){transform:rotate(-1.8deg)}.wp-pm-tag-pill:nth-child(2){transform:rotate(1.2deg)}.wp-pm-tag-pill:nth-child(3){transform:rotate(-0.8deg)}.wp-pm-tag-pill:nth-child(4){transform:rotate(2.1deg)}.wp-pm-tag-pill:nth-child(5){transform:rotate(-1.5deg)}.wp-pm-tag-pill:nth-child(6){transform:rotate(0.9deg)}.wp-pm-tag-pill:nth-child(7){transform:rotate(-2.2deg)}.wp-pm-tag-pill:nth-child(8){transform:rotate(1.6deg)}.wp-pm-tag-pill:nth-child(9){transform:rotate(-0.6deg)}.wp-pm-tag-pill:nth-child(10){transform:rotate(1.9deg)}.wp-pm-tag-pill:nth-child(11){transform:rotate(-1.3deg)}.wp-pm-tag-pill:nth-child(12){transform:rotate(2.4deg)}.wp-pm-tag-pill:nth-child(13){transform:rotate(-1.0deg)}.wp-pm-tag-pill:nth-child(14){transform:rotate(0.7deg)}.wp-pm-tag-pill:nth-child(15){transform:rotate(-2.0deg)}.wp-pm-tag-pill:nth-child(16){transform:rotate(1.4deg)}.wp-pm-tag-pill:nth-child(17){transform:rotate(-0.9deg)}.wp-pm-tag-pill:nth-child(18){transform:rotate(2.2deg)}.wp-pm-tag-pill:nth-child(19){transform:rotate(-1.6deg)}.wp-pm-tag-pill:nth-child(20){transform:rotate(1.1deg)}.wp-pm-tag-pill:nth-child(21){transform:rotate(-1.8deg)}.wp-pm-tag-pill:nth-child(22){transform:rotate(0.8deg)}.wp-pm-tag-pill:nth-child(23){transform:rotate(-2.3deg)}
       .wp-pm-tag-pill { display:inline-flex; align-items:center; gap:10px; padding:10px 16px 10px 14px; border-radius:999px; border:2px dashed rgba(0,0,0,0.22); background:rgba(255,255,255,0.22); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background 0.16s,border 0.16s,box-shadow 0.16s; }
       .wp-pm-tag-pill:not(.wpt-active):active { transform:rotate(0deg) scale(0.96) !important; }
       .wp-pm-tag-pill.wpt-active { transform:rotate(0deg) scale(1.03) !important; background:rgba(255,255,255,0.88); border:2px solid transparent; box-shadow:0 6px 20px rgba(0,0,0,0.10); }
-      .wp-pm-tag-em  { font-size:24px; flex-shrink:0; }
+      .wp-pm-tag-em { font-size:24px; flex-shrink:0; }
       .wp-pm-tag-lbl { font-size:19px; font-weight:700; color:#0a0a0a; font-family:var(--wp-font); letter-spacing:-0.02em; }
       .wp-pm-tag-btn { width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0; background:rgba(0,0,0,0.13); color:#fff; font-size:18px; font-weight:300; cursor:pointer; display:flex; align-items:center; justify-content:center; pointer-events:none; line-height:1; }
-      .wp-pm-tag-btn.active { background:#007aff; }
+      .wp-pm-tag-btn.wpt-active { background:#007aff; }
       .wp-pm-tag-confirm { margin-top:18px; width:100%; max-width:380px; flex-shrink:0; height:52px; border-radius:999px; border:none; background:#007aff; color:#fff; font-size:16px; font-weight:700; cursor:pointer; font-family:var(--wp-font); box-shadow:0 4px 20px rgba(0,122,255,0.35); -webkit-tap-highlight-color:transparent; transition:transform 0.15s,filter 0.15s; }
       .wp-pm-tag-confirm:active { transform:scale(0.97); filter:brightness(0.92); }
       .wp-pm-more-handle {
