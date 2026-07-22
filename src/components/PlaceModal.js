@@ -8,29 +8,49 @@ import { ReviewService } from '/src/services/ReviewService.js';
 import { getAvatarUrl }  from '/src/services/AvatarService.js';
 
 // Drag-to-close para bottom sheets (more, reviews, tag)
-function _addDragToClose(handle, panel, closeFn) {
-  let startY = 0, dy = 0, dragging = false;
+// dragEl = elemento desde donde inicia el drag (header/título)
+// panel  = el elemento que se mueve
+// closeFn = función para cerrarlo
+function _addDragToClose(dragEl, panel, closeFn) {
+  let startY = 0, dy = 0, dragging = false, scrollEl = null;
+
   const onStart = (e) => {
-    startY = e.touches ? e.touches[0].clientY : e.clientY;
-    dy = 0; dragging = true;
+    const t = e.touches ? e.touches[0] : e;
+    startY = t.clientY; dy = 0; dragging = true;
+    // Detectar si hay un elemento scrollable dentro del panel
+    scrollEl = null;
+    let el = e.target;
+    while (el && el !== panel) {
+      if (el.scrollHeight > el.clientHeight + 2) { scrollEl = el; break; }
+      el = el.parentElement;
+    }
     panel.style.transition = 'none';
   };
+
   const onMove = (e) => {
     if (!dragging) return;
-    dy = Math.max(0, (e.touches ? e.touches[0].clientY : e.clientY) - startY);
-    panel.style.transform = `translateY(${dy}px)`;
+    const t = e.touches ? e.touches[0] : e;
+    const currentDy = t.clientY - startY;
+    // Si hay scroll activo y el usuario va hacia arriba, ceder el control al scroll
+    if (scrollEl && scrollEl.scrollTop > 0 && currentDy < 0) {
+      dragging = false; panel.style.transition = ''; return;
+    }
+    dy = Math.max(0, currentDy);
+    if (dy > 0) panel.style.transform = `translateY(${dy}px)`;
   };
+
   const onEnd = () => {
     if (!dragging) return;
     dragging = false;
     panel.style.transition = '';
-    if (dy > 80) { closeFn(); panel.style.transform = ''; }
-    else { panel.style.transform = ''; }
+    if (dy > 80) { panel.style.transform = ''; closeFn(); }
+    else panel.style.transform = '';
   };
-  handle.addEventListener('touchstart', onStart, { passive:true });
-  handle.addEventListener('touchmove',  onMove,  { passive:true });
-  handle.addEventListener('touchend',   onEnd);
-  handle.addEventListener('mousedown',  onStart);
+
+  dragEl.addEventListener('touchstart', onStart, { passive:true });
+  dragEl.addEventListener('touchmove',  onMove,  { passive:true });
+  dragEl.addEventListener('touchend',   onEnd);
+  dragEl.addEventListener('mousedown',  onStart);
   window.addEventListener('mousemove',  onMove);
   window.addEventListener('mouseup',    onEnd);
 }
@@ -1927,9 +1947,11 @@ export class PlaceModal {
 
     // Drag handle para cerrar
     const handle = menu.querySelector('.wpt-float-handle');
-    if (handle && !handle._dragWired) {
-      handle._dragWired = true;
-      _addDragToClose(handle, menu, closeSheet);
+    const header = menu.querySelector('.wpt-float-top');
+    const dragTarget = header || handle;
+    if (dragTarget && !dragTarget._dragWired) {
+      dragTarget._dragWired = true;
+      _addDragToClose(dragTarget, menu, closeSheet);
     }
   }
   _onAddPhoto() {
@@ -2549,16 +2571,14 @@ export class PlaceModal {
       /* Header iOS */
       .wpt-float-handle {
         display:flex; align-items:center; justify-content:center;
-        padding:10px 0 4px; cursor:grab; flex-shrink:0;
+        padding:10px 0 4px; cursor:grab; flex-shrink:0; background:transparent;
       }
       .wpt-float-handle-bar {
         width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.18);
       }
       .wpt-float-top {
         display:flex; align-items:flex-start;
-        padding:4px 16px 14px; flex-shrink:0; z-index:2;
-        background:rgba(255,255,255,0.97);
-        box-shadow:0 6px 14px rgba(0,0,0,0.07);
+        padding:4px 16px 14px; flex-shrink:0;
       }
       .wpt-float-titles {
         display:flex; flex-direction:column; gap:2px;
