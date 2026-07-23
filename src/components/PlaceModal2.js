@@ -544,13 +544,14 @@ export class PlaceModal2 {
     body.addEventListener('scroll', onScroll, { passive: true });
   }
 
-  // Alias para compatibilidad con app.js — el minisnap ya lo maneja MapView,
-  // al hacer tap sobre él llama onPlaceSelect que llega aquí como show()
+  // showMini: muestra el minisnap del mapa.
+  // Al hacer tap en el minisnap, MapView llama onPlaceSelect → show()
   showMini(place) {
-    // En PlaceModal2 no hay minisnap propio — delegamos al MapView
-    // a través del onPlaceSelect ya configurado en app.js
-    if (this.onPlaceSelect) this.onPlaceSelect(place);
-    else this.show(place);
+    // MapView gestiona el minisnap — al taparlo dispara onPlaceSelect
+    // que en app.js llama placeModal.show(place). No hacemos nada aquí
+    // excepto guardar el lugar para referencia.
+    this._pendingPlace = place;
+    if (this.mapView) this.mapView._showMiniCard(place);
   }
 
   hide() {
@@ -581,20 +582,9 @@ export class PlaceModal2 {
     const rating = parseFloat(place.rating);
     $('wp-pm2-rating-hero').textContent = rating ? '⭐ ' + rating.toFixed(1) : '';
 
-    // Hero photos
-    const photosEl = $('wp-pm2-hero-photos');
-    photosEl.innerHTML = '';
+    // Photos array (used for hero bg + strip)
     const rawPhotos = place.photos || (place.photo_url ? [place.photo_url] : []);
     const photos = rawPhotos.slice(0, 6).map(u => this.proxyPhoto(u)).filter(Boolean);
-    if (photos.length) {
-      photos.forEach(url => {
-        const img = document.createElement('img');
-        img.src = url; img.alt = '';
-        photosEl.appendChild(img);
-      });
-    } else {
-      photosEl.style.background = '#e5e7eb';
-    }
 
     // Photo strip
     const stripEl = $('wp-pm2-strip');
@@ -607,10 +597,11 @@ export class PlaceModal2 {
 
     // Hero background — primera foto con parallax
     const heroBg = $('wp-pm2-hero-bg');
-    heroBg.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
+    if (heroBg) heroBg.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
 
     // Topbar title
-    $('wp-pm2-topbar-title').textContent = place.name || '';
+    const ttEl = $('wp-pm2-topbar-title');
+    if (ttEl) ttEl.textContent = place.name || '';
 
     // Phone
     const phone = place.phone || place.phone_number;
