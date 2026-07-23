@@ -11,13 +11,12 @@ import { getAvatarUrl }  from '/src/services/AvatarService.js';
 // dragEl = elemento desde donde inicia el drag (header/título)
 // panel  = el elemento que se mueve
 // closeFn = función para cerrarlo
-function _addDragToClose(dragEl, panel, closeFn) {
+function _addDragToClose(dragEl, panel, closeFn, resetTransform) {
   let startY = 0, dy = 0, dragging = false, scrollEl = null;
 
   const onStart = (e) => {
     const t = e.touches ? e.touches[0] : e;
     startY = t.clientY; dy = 0; dragging = true;
-    // Detectar si hay un elemento scrollable dentro del panel
     scrollEl = null;
     let el = e.target;
     while (el && el !== panel) {
@@ -31,7 +30,6 @@ function _addDragToClose(dragEl, panel, closeFn) {
     if (!dragging) return;
     const t = e.touches ? e.touches[0] : e;
     const currentDy = t.clientY - startY;
-    // Si hay scroll activo y el usuario va hacia arriba, ceder el control al scroll
     if (scrollEl && scrollEl.scrollTop > 0 && currentDy < 0) {
       dragging = false; panel.style.transition = ''; return;
     }
@@ -44,7 +42,7 @@ function _addDragToClose(dragEl, panel, closeFn) {
     dragging = false;
     panel.style.transition = '';
     if (dy > 80) { panel.style.transform = ''; closeFn(); }
-    else panel.style.transform = '';
+    else panel.style.transform = resetTransform || '';
   };
 
   dragEl.addEventListener('touchstart', onStart, { passive:true });
@@ -1811,7 +1809,7 @@ export class PlaceModal {
     });
     // Wire drag from title header — same pattern as tag sheet
     const rh = menu.querySelector('.wpr-header');
-    if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet); }
+    if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet, 'translateY(0)'); }
   }  _openTagSheet(place, user, userTags, remaining) {
     const overlay  = document.getElementById('wp-pm-tag-overlay');
     const menu     = document.getElementById('wp-pm-tag-menu');
