@@ -463,15 +463,13 @@ try {
       mv.onPlaceSelect = function(place) {
         var sb = window.wpApp && window.wpApp.searchBar;
         if (sb && sb.isActive()) {
-          // Abrir ficha ENCIMA del search — sin cerrar ni tocar el search
           placeModal._fromSearch = true;
           placeModal.show(place);
           return;
         }
+        // En mapview: si el minicard YA está visible, tap en él abre la ficha
+        // Si no, MapView mostrará el minicard (flujo normal del pin)
         placeModal._fromSearch = false;
-        placeModal.showMini(place);
-      };
-      mv.onMiniCardTap = function(place) {
         placeModal.show(place);
       };
       const subcatRow = new SubcategoryRow({
