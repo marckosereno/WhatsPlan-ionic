@@ -640,5 +640,3 @@ export class PlaceModal2 {
 
   isVisible() { return this._el?.classList.contains('visible'); }
 }
-
-export { PlaceModal2 as PlaceModal };
