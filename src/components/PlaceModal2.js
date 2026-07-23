@@ -583,7 +583,8 @@ export class PlaceModal2 {
     $('wp-pm2-rating-hero').textContent = rating ? '⭐ ' + rating.toFixed(1) : '';
 
     // Photos array (used for hero bg + strip)
-    const rawPhotos = place.photos || (place.photo_url ? [place.photo_url] : []);
+    const firstPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
+    const rawPhotos = place.photosUrls || (firstPhoto ? [firstPhoto] : []);
     const photos = rawPhotos.slice(0, 6).map(u => this.proxyPhoto(u)).filter(Boolean);
 
     // Photo strip
