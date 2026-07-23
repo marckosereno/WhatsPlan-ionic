@@ -7,68 +7,6 @@ import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService } from '/src/services/ReviewService.js';
 import { getAvatarUrl }  from '/src/services/AvatarService.js';
 
-// Drag-to-close para bottom sheets (more, reviews, tag)
-// dragEl = elemento desde donde inicia el drag (header/título)
-// panel  = el elemento que se mueve
-// closeFn = función para cerrarlo
-function _addDragToClose(dragEl, panel, closeFn, resetTransform) {
-  let startY = 0, dy = 0, dragging = false, scrollEl = null;
-
-  const onStart = (e) => {
-    const t = e.touches ? e.touches[0] : e;
-    startY = t.clientY; dy = 0; dragging = true;
-    scrollEl = null;
-    let el = e.target;
-    while (el && el !== panel) {
-      if (el.scrollHeight > el.clientHeight + 2) { scrollEl = el; break; }
-      el = el.parentElement;
-    }
-    panel.style.transition = 'none';
-  };
-
-  const onMove = (e) => {
-    if (!dragging) return;
-    const t = e.touches ? e.touches[0] : e;
-    const currentDy = t.clientY - startY;
-    if (scrollEl && scrollEl.scrollTop > 0 && currentDy < 0) {
-      dragging = false; panel.style.transition = ''; return;
-    }
-    dy = Math.max(0, currentDy);
-    if (dy > 0) panel.style.transform = `translateY(${dy}px)`;
-  };
-
-  const onEnd = () => {
-    if (!dragging) return;
-    dragging = false;
-    panel.style.transition = '';
-    if (dy > 80) { panel.style.transform = ''; closeFn(); }
-    else panel.style.transform = resetTransform || '';
-  };
-
-  dragEl.addEventListener('touchstart', onStart, { passive:true });
-  dragEl.addEventListener('touchmove',  onMove,  { passive:true });
-  dragEl.addEventListener('touchend',   onEnd);
-  dragEl.addEventListener('mousedown',  onStart);
-  window.addEventListener('mousemove',  onMove);
-  window.addEventListener('mouseup',    onEnd);
-}
-
-
-// Crea un ion-modal bottom sheet nativo
-async function _createIonSheet(innerHTML, cssClass = '') {
-  const modal = document.createElement('ion-modal');
-  modal.breakpoints          = [0, 1];
-  modal.initialBreakpoint    = 1;
-  modal.handleBehavior       = 'cycle';
-  modal.showBackdrop         = true;
-  modal.backdropDismiss      = true;
-  if (cssClass) modal.cssClass = cssClass;
-  modal.innerHTML = `<ion-content><div class="wp-ion-sheet-inner">${innerHTML}</div></ion-content>`;
-  document.body.appendChild(modal);
-  await modal.present();
-  modal.addEventListener('didDismiss', () => modal.remove(), { once: true });
-  return modal;
-}
 export class PlaceModal {
   constructor(opts = {}) {
     this.proxyPhoto     = opts.proxyPhoto     || (u => u);
@@ -742,14 +680,17 @@ export class PlaceModal {
         <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
         <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
           <!-- Header iOS -->
-          <div class="wpt-float-handle" id="wpt-drag-handle">
-            <div class="wpt-float-handle-bar"></div>
-          </div>
           <div class="wpt-float-top">
+            <div class="wpt-float-icon">
+              <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M216.08,192V335.85a40.08,40.08,0,0,0,80.15,0l.13-188.55a67.94,67.94,0,1,0-135.87,0V337.12a95.51,95.51,0,1,0,191,0V159.74" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></path></svg>
+            </div>
             <div class="wpt-float-titles">
               <span class="wpt-float-title">Describe este lugar</span>
               <span class="wpt-float-sub">Elige hasta 3 etiquetas</span>
             </div>
+            <button class="wpt-x-btn" id="wp-pm-tag-close">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <!-- Body scrollable -->
           <div class="wpt-tag-body-wrap">
@@ -1406,31 +1347,18 @@ export class PlaceModal {
       moreMenu.classList.remove('open');
       setTimeout(() => { moreMenu.style.display = 'none'; moreOverlay.style.display = 'none'; }, 320);
     };
-    moreBtn.addEventListener('click', async () => {
-      const place = this._place;
-      const modal = await _createIonSheet(`
-        <button class="wp-pm-more-item" id="ion-more-share">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
-          <span>Compartir lugar</span>
-        </button>
-        <div class="wp-pm-more-sep"></div>
-        <button class="wp-pm-more-item" id="ion-more-report">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-          <span>Reportar problema</span>
-        </button>
-        <button class="wp-pm-more-item" id="ion-more-sources">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-          <span>Acerca de las fuentes</span>
-        </button>
-        <button class="wp-pm-more-item" id="ion-more-suggest">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          <span>Sugerir edición</span>
-        </button>
-      `, 'wp-more-sheet');
-      modal.querySelector('#ion-more-share')?.addEventListener('click', () => {
-        if (navigator.share && place) navigator.share({ title: place.name, url: window.location.href });
-      });
+    moreBtn.addEventListener('click', () => {
+      moreMenu.style.display = ''; moreOverlay.style.display = '';
+      requestAnimationFrame(() => moreMenu.classList.add('open'));
     });
+    moreOverlay.addEventListener('click', closeMore);
+    this._el.querySelector('#wp-pm-more-share').addEventListener('click', () => {
+      closeMore();
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
+    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
+    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
 
     // ── Modal añadir reseña ──
     const addReviewBtn = this._el.querySelector('#wp-pm-add-review');
@@ -1704,14 +1632,16 @@ export class PlaceModal {
     var prevModal = document.getElementById('wp-review-modal-body');
     if (prevModal) prevModal.remove();
 
-    // ion-modal bottom sheet para reseña
-    const ionModal = document.createElement('ion-modal');
-    ionModal.breakpoints       = [0, 1];
-    ionModal.initialBreakpoint = 1;
-    ionModal.showBackdrop      = true;
-    ionModal.backdropDismiss   = true;
-    ionModal.cssClass          = 'wp-review-sheet';
-    ionModal.innerHTML = `<ion-content><div class="wp-ion-sheet-inner" id="wp-rm-inner">
+    var frag = document.createElement('div');
+    frag.id = 'wp-review-modal-body';
+    frag.innerHTML = `
+      <div id="wp-rm-overlay" style="position:fixed;inset:0;z-index:2200;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)"></div>
+      <div id="wp-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2300;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
+        <div style="padding:4px 20px 12px">
+          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
+          <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px">Comparte tu experiencia</span>
+        </div>
         <div id="wp-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:8px 0 4px">
           ${[1,2,3,4,5].map(v=>`<span class="wpr-star" data-v="${v}" style="font-size:36px;cursor:pointer;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
         </div>
@@ -1723,17 +1653,18 @@ export class PlaceModal {
         <div style="padding:12px 16px 16px">
           <button id="wp-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);transition:filter 0.15s;opacity:0.4">Publicar reseña</button>
         </div>
-      </div></ion-content>`;
-    document.body.appendChild(ionModal);
-    await ionModal.present();
-    ionModal.addEventListener('didDismiss', () => ionModal.remove(), { once: true });
+      </div>`;
+    document.body.appendChild(frag);
 
-    const starsEl  = ionModal.querySelector('#wp-rm-stars');
-    const labelEl  = ionModal.querySelector('#wp-rm-label');
-    const textarea = ionModal.querySelector('#wp-rm-textarea');
-    const charEl   = ionModal.querySelector('#wp-rm-char');
-    const submit   = ionModal.querySelector('#wp-rm-submit');
-    const closeModal = () => ionModal.dismiss();
+    const overlay  = document.getElementById('wp-rm-overlay');
+    const menu     = document.getElementById('wp-rm-menu');
+    const starsEl  = document.getElementById('wp-rm-stars');
+    const labelEl  = document.getElementById('wp-rm-label');
+    const textarea = document.getElementById('wp-rm-textarea');
+    const charEl   = document.getElementById('wp-rm-char');
+    const submit   = document.getElementById('wp-rm-submit');
+    if (!menu) return;
+
     // Mostrar memoji del usuario en el modal
     var userDisplayName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario';
     var userAvatarUrl   = user.user_metadata?.avatar_url || getAvatarUrl(userDisplayName);
@@ -1780,6 +1711,13 @@ export class PlaceModal {
     charEl.textContent = textarea.value.length + ' / 500';
     submit.style.opacity = (rating > 0 && textarea.value.trim().length >= 10) ? '1' : '0.4'; submit.disabled = !(rating > 0 && textarea.value.trim().length >= 10);
 
+    const closeModal = () => {
+      menu.style.transform = 'translateY(110%)';
+      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
+      setTimeout(() => { var f=document.getElementById('wp-review-modal-body'); if(f) f.remove(); }, 320);
+    };
+    overlay.onclick = closeModal;
+
     const self = this;
     submit.onclick = async () => {
       if (rating === 0 || textarea.value.trim().length < 10) return;
@@ -1819,27 +1757,17 @@ export class PlaceModal {
       }
     };
 
-  }  async _openTagSheet(place, user, userTags, remaining) {
-    const ionTag = document.createElement('ion-modal');
-    ionTag.breakpoints       = [0, 1];
-    ionTag.initialBreakpoint = 1;
-    ionTag.showBackdrop      = true;
-    ionTag.backdropDismiss   = true;
-    ionTag.cssClass          = 'wp-tag-sheet';
-    ionTag.innerHTML = `<ion-content><div class="wp-ion-sheet-inner" id="wp-pm-tag-items"></div>
-      <div style="padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));flex-shrink:0;">
-        <button id="wp-pm-tag-save" class="wpt-cta" style="width:100%;height:50px;border-radius:999px;border:none;background:#e5e7eb;color:#9ca3af;font-size:16px;font-weight:700;font-family:var(--wp-font);cursor:not-allowed;transition:background 0.2s,color 0.2s;">
-          <span class="wpt-cta-label">Selecciona etiquetas</span>
-          <span class="wpt-cta-badge" style="display:none;background:#ff3b30;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;display:none;align-items:center;justify-content:center;margin-left:6px;"></span>
-        </button>
-      </div></ion-content>`;
-    document.body.appendChild(ionTag);
-    await ionTag.present();
-    ionTag.addEventListener('didDismiss', () => ionTag.remove(), { once: true });
+    // Abrir con reflow forzado para que la transición dispare
+    void menu.offsetHeight;
+    requestAnimationFrame(() => { menu.style.transform = 'translateY(0)'; });
+  }
 
-    const body    = ionTag.querySelector('#wp-pm-tag-items');
-    const saveBtn = ionTag.querySelector('#wp-pm-tag-save');
-    const closeSheet = () => ionTag.dismiss();
+  _openTagSheet(place, user, userTags, remaining) {
+    const overlay  = document.getElementById('wp-pm-tag-overlay');
+    const menu     = document.getElementById('wp-pm-tag-menu');
+    const body     = document.getElementById('wp-pm-tag-items');
+    const saveBtn  = document.getElementById('wp-pm-tag-save');
+    if (!menu) return;
 
     const CAT_COLORS = {
       'Ambiente':'#a78bfa','Público':'#60a5fa','Accesibilidad':'#34d399',
@@ -1932,6 +1860,18 @@ export class PlaceModal {
     renderBody();
     updateCTA();
 
+    const closeSheet = () => {
+      menu.classList.remove('open','expanded');
+      overlay.classList.remove('open');
+      setTimeout(() => {
+        menu.style.display='none'; overlay.style.display='none'; session=[];
+      }, 320);
+    };
+
+    const closeBtn = document.getElementById('wp-pm-tag-close');
+    if (closeBtn) closeBtn.onclick = closeSheet;
+    overlay.onclick = closeSheet;
+
     saveBtn.onclick = async () => {
       if (!session.length) return;
       for (const key of session) {
@@ -1949,7 +1889,10 @@ export class PlaceModal {
       this._populateServices(place);
     };
 
-    renderBody();
+    overlay.style.display = '';
+    menu.style.display    = '';
+    void menu.offsetHeight;
+    requestAnimationFrame(() => menu.classList.add('open'));
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2566,28 +2509,37 @@ export class PlaceModal {
       .wpt-float.open { transform:translateY(0); }
 
       /* Header iOS */
-      .wpt-float-handle {
-        display:flex; align-items:center; justify-content:center;
-        padding:10px 0 4px; cursor:grab; flex-shrink:0; background:transparent;
-      }
-      .wpt-float-handle-bar {
-        width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.18);
-      }
       .wpt-float-top {
-        display:flex; align-items:flex-start;
-        padding:4px 16px 14px; flex-shrink:0;
+        display:flex; align-items:center; gap:11px;
+        padding:16px 14px 14px; flex-shrink:0; z-index:2;
+        background:rgba(255,255,255,0.97);
+        box-shadow:0 6px 14px rgba(0,0,0,0.07);
+      }
+      .wpt-float-icon {
+        width:42px; height:42px; border-radius:11px; flex-shrink:0;
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        display:flex; align-items:center; justify-content:center; color:#0a0a0a;
+        box-shadow:0 2px 8px rgba(10,10,10,0.18);
       }
       .wpt-float-titles {
-        display:flex; flex-direction:column; gap:2px;
+        flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
       }
       .wpt-float-title {
-        font-size:17px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
         font-family:var(--wp-font),system-ui,sans-serif; letter-spacing:-0.02em;
       }
       .wpt-float-sub {
-        font-size:13px; font-weight:500; color:#8e8e93;
+        font-size:12px; font-weight:500; color:#8e8e93;
         font-family:var(--wp-font),system-ui,sans-serif;
       }
+      .wpt-x-btn {
+        width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
+        background:rgba(0,0,0,0.08); color:#6b7280;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background 0.15s;
+      }
+      .wpt-x-btn:active { background:rgba(0,0,0,0.16); }
 
       /* Body wrap ocupa todo el espacio restante incluyendo el área del footer */
       .wpt-tag-body-wrap {
@@ -3155,18 +3107,6 @@ export class PlaceModal {
         letter-spacing:-0.01em;
         pointer-events:auto;
       }
-      /* ion-modal bottom sheets */
-      ion-modal.wp-more-sheet,
-      ion-modal.wp-review-sheet,
-      ion-modal.wp-tag-sheet {
-        --border-radius: 24px 24px 0 0;
-        --background: rgba(255,255,255,0.97);
-        --backdrop-opacity: 0.3;
-        --height: auto;
-        align-items: flex-end;
-      }
-      .wp-ion-sheet-inner { padding: 8px 0 0; font-family: var(--wp-font); }
-      .wpt-cta.active { background: #0a0a0a !important; color: white !important; cursor: pointer !important; }
     `;
     document.head.appendChild(s);
   }
