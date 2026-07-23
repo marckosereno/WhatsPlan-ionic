@@ -13,7 +13,7 @@ import { initIOSFixes }     from '/src/utils/ios-fixes.js';
 import { initLiquidGlass } from '/src/utils/liquid-glass.js';
 import { FooterMenu }      from '/src/components/FooterMenu.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
-import { PlaceModal }       from '/src/components/PlaceModal2.js';
+import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
@@ -457,6 +457,7 @@ try {
         getCurrentUser: function() { return window.wpApp.currentUser; }
       });
       window.wpApp.placeModal = placeModal;
+      placeModal.mapView = mv;
 
       // Al tocar la minicard → abrir el modal de detalles
       mv.onPlaceSelect = function(place) {
