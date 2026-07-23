@@ -673,6 +673,14 @@ export class PlaceModal {
     this._el   = el;
     this._card = el.querySelector('#wp-pm-card');
 
+    // Mover menus y overlays a body para evitar que position:fixed sea afectado
+    // por el transform del PlaceModal card durante su animación de entrada
+    ['wp-pm-review-overlay','wp-pm-review-menu',
+     'wp-pm-more-overlay','wp-pm-more-menu'].forEach(id => {
+      const node = el.querySelector('#' + id);
+      if (node) document.body.appendChild(node);
+    });
+
     // Tag modal — inyectado en body para evitar conflicto con transform del parent
     if (!document.getElementById('wp-pm-tag-overlay')) {
       const tagEl = document.createElement('div');
@@ -1786,7 +1794,7 @@ export class PlaceModal {
           badge.style.display = '';
           badge.textContent   = n;
           badge.classList.remove('pop');
-          void badge.offsetWidth;
+
           badge.classList.add('pop');
           setTimeout(() => badge.classList.remove('pop'), 250);
         }
@@ -2493,6 +2501,7 @@ export class PlaceModal {
         backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
       }
       .wpt-float {
+        display:none;
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px));
         z-index:2300;
@@ -2503,10 +2512,10 @@ export class PlaceModal {
         box-shadow:0 8px 40px rgba(0,0,0,0.18);
         transform:translateY(110%);
         transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
-        max-height:65vh; min-height:360px; display:flex; flex-direction:column;
+        max-height:65vh; min-height:360px; flex-direction:column;
         overflow:hidden;
       }
-      .wpt-float.open { transform:translateY(0); }
+      .wpt-float.open { display:flex; transform:translateY(0); }
 
       /* Header iOS */
       .wpt-float-top {
