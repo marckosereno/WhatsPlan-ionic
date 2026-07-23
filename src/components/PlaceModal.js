@@ -1828,7 +1828,8 @@ export class PlaceModal {
       });
     }
   }
-  }  _openTagSheet(place, user, userTags, remaining) {
+
+  _openTagSheet(place, user, userTags, remaining) {
     const overlay  = document.getElementById('wp-pm-tag-overlay');
     const menu     = document.getElementById('wp-pm-tag-menu');
     const body     = document.getElementById('wp-pm-tag-items');
