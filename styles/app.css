@@ -403,7 +403,7 @@ ion-app {
   border: none; cursor: pointer;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
-  color: #374151; flex-shrink: 0;
+  color: #1a5cf5; flex-shrink: 0;
 }
 #topbar-notif-btn:active { transform: scale(0.92); }
 #topbar-notif-btn svg { width: 20px; height: 20px; }
