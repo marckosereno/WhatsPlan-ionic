@@ -1804,12 +1804,30 @@ export class PlaceModal {
 
     // Abrir con reflow forzado para que la transición dispare
     void menu.offsetHeight;
-    requestAnimationFrame(() => {
-      menu.style.transform = 'translateY(0)';
-    });
-    // Wire drag from title header — same pattern as tag sheet
-    const rh = menu.querySelector('.wpr-header');
-    if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet, 'translateY(0)'); }
+    requestAnimationFrame(() => { menu.style.transform = 'translateY(0)'; });
+
+    // Drag desde el título para cerrar — igual que el tag sheet
+    const rmHeader = document.getElementById('wp-rm-header');
+    if (rmHeader) {
+      let sy = 0, dy = 0, dragging = false;
+      rmHeader.addEventListener('touchstart', e => {
+        sy = e.touches[0].clientY; dy = 0; dragging = true;
+        menu.style.transition = 'none';
+      }, { passive: true });
+      rmHeader.addEventListener('touchmove', e => {
+        if (!dragging) return;
+        dy = Math.max(0, e.touches[0].clientY - sy);
+        menu.style.transform = 'translateY(' + dy + 'px)';
+      }, { passive: true });
+      rmHeader.addEventListener('touchend', () => {
+        if (!dragging) return;
+        dragging = false;
+        menu.style.transition = '';
+        if (dy > 80) closeModal();
+        else menu.style.transform = 'translateY(0)';
+      });
+    }
+  }
   }  _openTagSheet(place, user, userTags, remaining) {
     const overlay  = document.getElementById('wp-pm-tag-overlay');
     const menu     = document.getElementById('wp-pm-tag-menu');
