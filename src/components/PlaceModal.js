@@ -1401,12 +1401,11 @@ export class PlaceModal {
     });
     moreOverlay.addEventListener('click', closeMore);
     this._el.querySelector('#wp-pm-more-share').addEventListener('click', () => {
-      closeMore();
       if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
     });
-    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
-    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
-    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
+    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => {});
+    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => {});
+    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => {});
 
     // ── Modal añadir reseña ──
     const addReviewBtn = this._el.querySelector('#wp-pm-add-review');
@@ -1809,9 +1808,10 @@ export class PlaceModal {
     void menu.offsetHeight;
     requestAnimationFrame(() => {
       menu.style.transform = 'translateY(0)';
-      const rh = menu.querySelector('.wpr-header') || menu.querySelector('.wp-pm-more-handle');
-      if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet); }
     });
+    // Wire drag from title header — same pattern as tag sheet
+    const rh = menu.querySelector('.wpr-header');
+    if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet); }
   }  _openTagSheet(place, user, userTags, remaining) {
     const overlay  = document.getElementById('wp-pm-tag-overlay');
     const menu     = document.getElementById('wp-pm-tag-menu');
