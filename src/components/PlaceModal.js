@@ -7,6 +7,52 @@ import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService } from '/src/services/ReviewService.js';
 import { getAvatarUrl }  from '/src/services/AvatarService.js';
 
+// Drag-to-close para bottom sheets (more, reviews, tag)
+// dragEl = elemento desde donde inicia el drag (header/título)
+// panel  = el elemento que se mueve
+// closeFn = función para cerrarlo
+function _addDragToClose(dragEl, panel, closeFn, resetTransform) {
+  let startY = 0, dy = 0, dragging = false, scrollEl = null;
+
+  const onStart = (e) => {
+    const t = e.touches ? e.touches[0] : e;
+    startY = t.clientY; dy = 0; dragging = true;
+    scrollEl = null;
+    let el = e.target;
+    while (el && el !== panel) {
+      if (el.scrollHeight > el.clientHeight + 2) { scrollEl = el; break; }
+      el = el.parentElement;
+    }
+    panel.style.transition = 'none';
+  };
+
+  const onMove = (e) => {
+    if (!dragging) return;
+    const t = e.touches ? e.touches[0] : e;
+    const currentDy = t.clientY - startY;
+    if (scrollEl && scrollEl.scrollTop > 0 && currentDy < 0) {
+      dragging = false; panel.style.transition = ''; return;
+    }
+    dy = Math.max(0, currentDy);
+    if (dy > 0) panel.style.transform = `translateY(${dy}px)`;
+  };
+
+  const onEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    panel.style.transition = '';
+    if (dy > 80) { panel.style.transform = ''; closeFn(); }
+    else panel.style.transform = resetTransform || '';
+  };
+
+  dragEl.addEventListener('touchstart', onStart, { passive:true });
+  dragEl.addEventListener('touchmove',  onMove,  { passive:true });
+  dragEl.addEventListener('touchend',   onEnd);
+  dragEl.addEventListener('mousedown',  onStart);
+  window.addEventListener('mousemove',  onMove);
+  window.addEventListener('mouseup',    onEnd);
+}
+
 export class PlaceModal {
   constructor(opts = {}) {
     this.proxyPhoto     = opts.proxyPhoto     || (u => u);
@@ -680,17 +726,14 @@ export class PlaceModal {
         <div class="wpt-overlay" id="wp-pm-tag-overlay" style="display:none"></div>
         <div class="wpt-float" id="wp-pm-tag-menu" style="display:none">
           <!-- Header iOS -->
+          <div class="wpt-float-handle" id="wpt-drag-handle">
+            <div class="wpt-float-handle-bar"></div>
+          </div>
           <div class="wpt-float-top">
-            <div class="wpt-float-icon">
-              <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M216.08,192V335.85a40.08,40.08,0,0,0,80.15,0l.13-188.55a67.94,67.94,0,1,0-135.87,0V337.12a95.51,95.51,0,1,0,191,0V159.74" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></path></svg>
-            </div>
             <div class="wpt-float-titles">
               <span class="wpt-float-title">Describe este lugar</span>
               <span class="wpt-float-sub">Elige hasta 3 etiquetas</span>
             </div>
-            <button class="wpt-x-btn" id="wp-pm-tag-close">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
           </div>
           <!-- Body scrollable -->
           <div class="wpt-tag-body-wrap">
@@ -1349,16 +1392,18 @@ export class PlaceModal {
     };
     moreBtn.addEventListener('click', () => {
       moreMenu.style.display = ''; moreOverlay.style.display = '';
-      requestAnimationFrame(() => moreMenu.classList.add('open'));
+      requestAnimationFrame(() => {
+        moreMenu.classList.add('open');
+        if (!moreMenu._dragWired) { moreMenu._dragWired = true; _addDragToClose(moreMenu, moreMenu, closeMore); }
+      });
     });
     moreOverlay.addEventListener('click', closeMore);
     this._el.querySelector('#wp-pm-more-share').addEventListener('click', () => {
-      closeMore();
       if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
     });
-    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => closeMore());
-    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => closeMore());
-    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => closeMore());
+    this._el.querySelector('#wp-pm-more-report').addEventListener('click',  () => {});
+    this._el.querySelector('#wp-pm-more-sources').addEventListener('click', () => {});
+    this._el.querySelector('#wp-pm-more-suggest').addEventListener('click', () => {});
 
     // ── Modal añadir reseña ──
     const addReviewBtn = this._el.querySelector('#wp-pm-add-review');
@@ -1759,32 +1804,13 @@ export class PlaceModal {
 
     // Abrir con reflow forzado para que la transición dispare
     void menu.offsetHeight;
-    requestAnimationFrame(() => { menu.style.transform = 'translateY(0)'; });
-
-    // Drag desde el título para cerrar — igual que el tag sheet
-    const rmHeader = document.getElementById('wp-rm-header');
-    if (rmHeader) {
-      let sy = 0, dy = 0, dragging = false;
-      rmHeader.addEventListener('touchstart', e => {
-        sy = e.touches[0].clientY; dy = 0; dragging = true;
-        menu.style.transition = 'none';
-      }, { passive: true });
-      rmHeader.addEventListener('touchmove', e => {
-        if (!dragging) return;
-        dy = Math.max(0, e.touches[0].clientY - sy);
-        menu.style.transform = 'translateY(' + dy + 'px)';
-      }, { passive: true });
-      rmHeader.addEventListener('touchend', () => {
-        if (!dragging) return;
-        dragging = false;
-        menu.style.transition = '';
-        if (dy > 80) closeModal();
-        else menu.style.transform = 'translateY(0)';
-      });
-    }
-  }
-
-  _openTagSheet(place, user, userTags, remaining) {
+    requestAnimationFrame(() => {
+      menu.style.transform = 'translateY(0)';
+    });
+    // Wire drag from title header — same pattern as tag sheet
+    const rh = menu.querySelector('.wpr-header');
+    if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet, 'translateY(0)'); }
+  }  _openTagSheet(place, user, userTags, remaining) {
     const overlay  = document.getElementById('wp-pm-tag-overlay');
     const menu     = document.getElementById('wp-pm-tag-menu');
     const body     = document.getElementById('wp-pm-tag-items');
@@ -1913,7 +1939,17 @@ export class PlaceModal {
 
     overlay.style.display = '';
     menu.style.display    = '';
+    void menu.offsetHeight;
     requestAnimationFrame(() => menu.classList.add('open'));
+
+    // Drag handle para cerrar
+    const handle = menu.querySelector('.wpt-float-handle');
+    const header = menu.querySelector('.wpt-float-top');
+    const dragTarget = header || handle;
+    if (dragTarget && !dragTarget._dragWired) {
+      dragTarget._dragWired = true;
+      _addDragToClose(dragTarget, menu, closeSheet);
+    }
   }
   _onAddPhoto() {
     console.log('Añadir foto:', this._place?.name);
@@ -2530,37 +2566,28 @@ export class PlaceModal {
       .wpt-float.open { transform:translateY(0); }
 
       /* Header iOS */
-      .wpt-float-top {
-        display:flex; align-items:center; gap:11px;
-        padding:16px 14px 14px; flex-shrink:0; z-index:2;
-        background:rgba(255,255,255,0.97);
-        box-shadow:0 6px 14px rgba(0,0,0,0.07);
+      .wpt-float-handle {
+        display:flex; align-items:center; justify-content:center;
+        padding:10px 0 4px; cursor:grab; flex-shrink:0; background:transparent;
       }
-      .wpt-float-icon {
-        width:42px; height:42px; border-radius:11px; flex-shrink:0;
-        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
-        display:flex; align-items:center; justify-content:center; color:#0a0a0a;
-        box-shadow:0 2px 8px rgba(10,10,10,0.18);
+      .wpt-float-handle-bar {
+        width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.18);
+      }
+      .wpt-float-top {
+        display:flex; align-items:flex-start;
+        padding:4px 16px 14px; flex-shrink:0;
       }
       .wpt-float-titles {
-        flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;
+        display:flex; flex-direction:column; gap:2px;
       }
       .wpt-float-title {
-        font-size:15px; font-weight:800; color:#0a0a0a; line-height:1.2;
+        font-size:17px; font-weight:800; color:#0a0a0a; line-height:1.2;
         font-family:var(--wp-font),system-ui,sans-serif; letter-spacing:-0.02em;
       }
       .wpt-float-sub {
-        font-size:12px; font-weight:500; color:#8e8e93;
+        font-size:13px; font-weight:500; color:#8e8e93;
         font-family:var(--wp-font),system-ui,sans-serif;
       }
-      .wpt-x-btn {
-        width:28px; height:28px; border-radius:50%; border:none; flex-shrink:0;
-        background:rgba(0,0,0,0.08); color:#6b7280;
-        display:flex; align-items:center; justify-content:center;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background 0.15s;
-      }
-      .wpt-x-btn:active { background:rgba(0,0,0,0.16); }
 
       /* Body wrap ocupa todo el espacio restante incluyendo el área del footer */
       .wpt-tag-body-wrap {
