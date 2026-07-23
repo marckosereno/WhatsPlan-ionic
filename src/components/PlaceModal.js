@@ -1396,8 +1396,7 @@ export class PlaceModal {
       moreMenu.style.display = ''; moreOverlay.style.display = '';
       requestAnimationFrame(() => {
         moreMenu.classList.add('open');
-        const h = moreMenu.querySelector('.wp-pm-more-handle');
-        if (h && !h._dragWired) { h._dragWired = true; _addDragToClose(h, moreMenu, closeMore); }
+        if (!moreMenu._dragWired) { moreMenu._dragWired = true; _addDragToClose(moreMenu, moreMenu, closeMore); }
       });
     });
     moreOverlay.addEventListener('click', closeMore);
@@ -1810,8 +1809,8 @@ export class PlaceModal {
     void menu.offsetHeight;
     requestAnimationFrame(() => {
       menu.style.transform = 'translateY(0)';
-      const h = menu.querySelector('.wp-pm-more-handle');
-      if (h && !h._dragWired) { h._dragWired = true; _addDragToClose(h, menu, closeSheet); }
+      const rh = menu.querySelector('.wpr-header') || menu.querySelector('.wp-pm-more-handle');
+      if (rh && !rh._dragWired) { rh._dragWired = true; _addDragToClose(rh, menu, closeSheet); }
     });
   }  _openTagSheet(place, user, userTags, remaining) {
     const overlay  = document.getElementById('wp-pm-tag-overlay');
