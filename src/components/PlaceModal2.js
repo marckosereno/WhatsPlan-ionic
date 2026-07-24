@@ -32,6 +32,9 @@ export class PlaceModal2 {
           <span id="wp-pm2-topbar-title"></span>
         </div>
 
+        <!-- OVERLAY — sombra blanca que sube con el hero -->
+        <div id="wp-pm2-overlay"></div>
+
         <!-- HERO — fuera del scroll, fijo -->
         <div id="wp-pm2-hero">
           <div id="wp-pm2-hero-bg"></div>
@@ -194,6 +197,12 @@ export class PlaceModal2 {
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
 
+      #wp-pm2-overlay {
+        position:fixed; left:0; right:0; z-index:4;
+        height:28px;
+        background:linear-gradient(to bottom, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%);
+        pointer-events:none;
+      }
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
@@ -519,6 +528,8 @@ export class PlaceModal2 {
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     nameEl.style.transform = '';
+    const ovl = this._el.querySelector('#wp-pm2-overlay');
+    if (ovl) ovl.style.top = heroEl.offsetHeight - 14 + 'px';
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
 
