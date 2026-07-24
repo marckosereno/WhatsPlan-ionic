@@ -559,20 +559,19 @@ export class PlaceModal2 {
     const topbarBg    = this._el.querySelector('#wp-pm2-topbar-bg');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
-    const onScroll = () => {
-      const sy     = body.scrollTop;
-      const fullH  = heroEl.offsetHeight;
-      const topbarH = topbar.offsetHeight;
-      const travel  = fullH - topbarH;
-      const prog    = Math.min(1, Math.max(0, sy / travel));
+    const topbarH = topbar.offsetHeight;
+    const fullH   = heroEl.offsetHeight;
+    const travel  = fullH - topbarH;
 
-      // 1. Imagen sube (parallax hacia arriba)
+    const onScroll = () => {
+      const sy   = body.scrollTop;
+      const prog = Math.min(1, Math.max(0, sy / travel));
+
+      // 1. Imagen sube — parallax realtime
       heroBg.style.transform = `translateY(-${sy * 0.5}px)`;
 
-      // 2. Hero encoge suavemente con easing
-      const newH = Math.max(topbarH, fullH - sy);
-      heroEl.style.height = newH + 'px';
-      heroEl.style.minHeight = topbarH + 'px';
+      // 2. Hero encoge directo sin transition — sigue el scroll 1:1
+      heroEl.style.height = Math.max(topbarH, fullH - sy) + 'px';
 
       // 3. Contenido del hero (título/meta) desaparece
       nameEl.style.opacity = Math.max(0, 1 - prog * 2);
