@@ -204,8 +204,10 @@ export class PlaceModal2 {
         pointer-events:none; top:0;
       }
       #wp-pm2-white-overlay {
-        position:fixed; left:0; right:0; bottom:0; top:auto;
-        background:#fff; z-index:5; height:0; pointer-events:none;
+        position:absolute; left:0; right:0; bottom:0;
+        height:35%; z-index:3; pointer-events:none;
+        background:linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.9) 40%, #fff 100%);
+        will-change:transform;
       }
       /* TOPBAR */
       #wp-pm2-topbar {
@@ -548,27 +550,33 @@ export class PlaceModal2 {
 
     const overlay = this._el.querySelector('#wp-pm2-overlay');
 
+    const whiteOverlay = this._el.querySelector('#wp-pm2-white-overlay');
+
     const onScroll = () => {
       const sy   = body.scrollTop;
       const prog = Math.min(1, Math.max(0, sy / travel));
+
+      // Imagen y overlay suben juntos — mismo translateY
+      const up = sy * 0.7;
+      heroBg.style.transform = `translateY(-${up}px)`;
+
+      // Overlay blanco sube con la imagen desde la base del hero
+      if (whiteOverlay) {
+        whiteOverlay.style.transform = `translateY(-${up}px)`;
+      }
+
+      // Hero encoge para que el contenido suba
       const newH = Math.max(topbarH, fullH - sy);
-
-      // Hero encoge hasta quedar del tamaño del topbar
       heroEl.style.height = newH + 'px';
+      body.style.paddingTop = Math.ceil(newH) + 'px';
 
-      // Imagen sube con parallax
-      heroBg.style.transform = `translateY(-${Math.min(sy * 0.4, (fullH - topbarH) * 0.5)}px)`;
-
-      // Overlay sigue pegado al borde inferior del hero
-      if (overlay) overlay.style.top = newH + 'px';
-
-      // Título y rating del hero suben y desaparecen
+      // Título desaparece rápido
       nameEl.style.opacity   = Math.max(0, 1 - prog * 3);
-      nameEl.style.transform = `translateY(-${sy * 0.4}px)`;
+      nameEl.style.transform = `translateY(-${up * 0.8}px)`;
 
-      // Título aparece centrado en topbar
-      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, Math.max(0, (prog - 0.5) / 0.3));
-      if (prog > 0.5) topbar.classList.add('scrolled');
+      // Título en topbar
+      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.6) / 0.3);
+      if (prog > 0.6) topbar.classList.add('scrolled');
       else            topbar.classList.remove('scrolled');
     };
 
