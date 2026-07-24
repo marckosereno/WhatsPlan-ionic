@@ -197,7 +197,7 @@ export class PlaceModal2 {
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
       #wp-pm2-topbar-bg {
-        position:fixed; top:0; left:0; right:0;
+        position:fixed; top:0; left:0; right:0; z-index:9;
         height:calc(60px + env(safe-area-inset-top,0px));
         background-size:cover; background-position:center 20%;
         opacity:0; transition:opacity 0.2s ease;
@@ -218,7 +218,7 @@ export class PlaceModal2 {
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center; gap:12px;
         padding-left:12px; padding-right:16px;
-        z-index:9; background:transparent;
+        z-index:10; background:transparent;
         transition:background 0.25s ease;
       }
       #wp-pm2-topbar.scrolled {
@@ -251,7 +251,7 @@ export class PlaceModal2 {
         position:absolute; top:0; left:0; right:0;
         height:72vw; min-height:260px; max-height:380px;
         overflow:hidden; background:#1a1a2e;
-        will-change:height; z-index:2;
+        will-change:height; z-index:3;
       }
       #wp-pm2-hero-bg {
         position:absolute; inset:0; will-change:transform;
@@ -289,6 +289,7 @@ export class PlaceModal2 {
         position:absolute; inset:0;
         overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
+        background:#fff; z-index:1;
       }
 
       /* ROWS */
