@@ -680,8 +680,8 @@ const onScroll = () => {
     tagsSection.style.display = '';
 
     // Saves (placeholder)
-    $('wp-pm2-save-count').textContent = (place.saves_count || 0) + ' guardados';
-    $('wp-pm2-save-avatars').innerHTML = '';
+    const saveCount = $('wp-pm2-save-count'); if (saveCount) saveCount.textContent = (place.saves_count || 0) + ' guardados';
+    const saveAv = $('wp-pm2-save-avatars'); if (saveAv) saveAv.innerHTML = '';
 
     // User avatar
     const user = this.getCurrentUser?.();
