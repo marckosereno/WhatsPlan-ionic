@@ -489,31 +489,33 @@ export class PlaceModal2 {
     this._populate(place);
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
-    const body     = this._el.querySelector('#wp-pm2-body');
-    const heroEl   = this._el.querySelector('#wp-pm2-hero');
-    const heroBg   = this._el.querySelector('#wp-pm2-hero-bg');
-    const topbar   = this._el.querySelector('#wp-pm2-topbar');
-    const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
 
-    heroEl.style.height = '';
-    heroEl.style.minHeight = '';
-    heroBg.style.transform = '';
-    nameEl.style.opacity = '';
-    nameEl.style.transform = '';
-    requestAnimationFrame(() => {
-      });
-    topbar.classList.remove('scrolled');
-    body.scrollTop = 0;
-
+    const body    = this._el.querySelector('#wp-pm2-body');
+    const heroEl  = this._el.querySelector('#wp-pm2-hero');
+    const heroBg  = this._el.querySelector('#wp-pm2-hero-bg');
+    const topbar  = this._el.querySelector('#wp-pm2-topbar');
+    const nameEl  = this._el.querySelector('#wp-pm2-hero-bottom');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
-    // Ceder un frame para que el elemento sea visible y offsetHeight sea correcto
-    requestAnimationFrame(() => {
+    // Reset
+    heroEl.style.height = '';
+    heroBg.style.transform = '';
+    nameEl.style.opacity = '';
+    topbar.classList.remove('scrolled');
+    if (topbarTitle) topbarTitle.style.opacity = '0';
+    body.scrollTop = 0;
+
+    // Set paddingTop via CSS class so it uses the hero's natural CSS height
+    body.style.paddingTop = '';
+
+    // Wire scroll after two frames so layout is stable
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
-      const fullH   = heroEl.getBoundingClientRect().height || heroEl.offsetHeight;
-      const travel  = fullH - topbarH;
+      const fullH   = heroEl.offsetHeight;
+      if (!fullH) return;
 
       body.style.paddingTop = fullH + 'px';
+      const travel = fullH - topbarH;
 
       const onScroll = () => {
         const sy   = body.scrollTop;
@@ -522,7 +524,6 @@ export class PlaceModal2 {
 
         heroEl.style.height   = newH + 'px';
         body.style.paddingTop = newH + 'px';
-
         heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
         nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
 
@@ -534,7 +535,7 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = onScroll;
       body.addEventListener('scroll', onScroll, { passive: true });
-    });
+    }));
   }
 
   // showMini: muestra el minisnap del mapa.
