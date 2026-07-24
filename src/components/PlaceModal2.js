@@ -227,14 +227,14 @@ export class PlaceModal2 {
         transition:transform 0.01s linear;
       }
       #wp-pm2-hero-gradient {
-        position:absolute; inset:0;
+        position:absolute; left:0; right:0; bottom:0;
+        height:60%; /* ocupa el 60% inferior del hero */
         background:linear-gradient(to bottom,
-          rgba(0,0,0,0.2) 0%,
-          transparent 30%,
-          transparent 50%,
-          rgba(255,255,255,0.7) 72%,
+          transparent 0%,
+          rgba(255,255,255,0.6) 50%,
           rgba(255,255,255,1) 100%);
         pointer-events:none;
+        z-index:2;
       }
       #wp-pm2-hero-bottom {
         position:absolute; bottom:0; left:0; right:0;
