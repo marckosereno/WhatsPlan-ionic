@@ -198,7 +198,7 @@ export class PlaceModal2 {
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
-        height:calc(44px + env(safe-area-inset-top,0px));
+        height:calc(44px + env(safe-area-inset-top,0px)); max-height:88px;
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
@@ -228,12 +228,11 @@ export class PlaceModal2 {
       #wp-pm2-hero {
         position:fixed; top:0; left:0; right:0;
         height:72vw; min-height:260px; max-height:380px;
-        overflow:hidden; background:#1a1a2e;
+        overflow:hidden; background:transparent;
         will-change:height; z-index:5;
-        clip-path:inset(0);
       }
       #wp-pm2-hero-bg {
-        position:absolute; top:0; left:0; right:0; bottom:-80px; will-change:transform;
+        position:absolute; top:0; left:0; right:0; bottom:-200px; will-change:transform;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
@@ -267,7 +266,7 @@ export class PlaceModal2 {
       #wp-pm2-body {
         flex:1; overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
-        background:#fff;
+        background:#fff; position:relative; z-index:1;
       }
 
       /* ROWS */
@@ -544,10 +543,9 @@ const onScroll = () => {
       body.style.paddingTop = Math.ceil(newH) + 'px';
 
       // 3. Imagen parallax — sube más lento que el hero
-      // Image sube al 40% del scroll — hero la clipea arriba
-      heroBg.style.transform = `translateY(-${sy * 0.4}px)`;
-      // Titulo sube igual que la imagen
-      nameEl.style.transform = `translateY(-${sy * 0.4}px)`;
+      const up = Math.min(sy * 0.4, fullH - topbarH);
+      heroBg.style.transform = `translateY(-${up}px)`;
+      nameEl.style.transform = `translateY(-${up * 0.85}px)`;
 
       // 4. Título/meta se desvanecen al subir
       nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
