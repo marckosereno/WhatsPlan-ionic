@@ -205,8 +205,9 @@ export class PlaceModal2 {
       }
       #wp-pm2-topbar-bg::after {
         content:''; position:absolute; inset:0;
-        backdrop-filter:blur(18px) brightness(0.75);
-        -webkit-backdrop-filter:blur(18px) brightness(0.75);
+        backdrop-filter:blur(16px);
+        -webkit-backdrop-filter:blur(16px);
+        background:linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 100%);
       }
       #wp-pm2-topbar-bg.visible { opacity:1; }
 
@@ -221,10 +222,7 @@ export class PlaceModal2 {
         transition:background 0.25s ease;
       }
       #wp-pm2-topbar.scrolled {
-        background:rgba(255,255,255,0.15);
-        backdrop-filter:blur(0px);
-        -webkit-backdrop-filter:blur(0px);
-        box-shadow:none;
+        background:linear-gradient(to bottom, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 100%);
       }
       #wp-pm2-back {
         width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
@@ -240,12 +238,13 @@ export class PlaceModal2 {
         background:transparent; box-shadow:none; backdrop-filter:none;
       }
       #wp-pm2-topbar-title {
-        font-size:16px; font-weight:800; color:#0a0a0a; flex:1;
-        letter-spacing:-0.2px; opacity:0; transition:opacity 0.2s ease;
+        font-size:16px; font-weight:800; color:#fff; flex:1;
+        letter-spacing:-0.2px; opacity:0;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        text-align:center;
+        text-shadow:0 1px 6px rgba(0,0,0,0.4);
       }
-      #wp-pm2-topbar.scrolled #wp-pm2-topbar-title { opacity:1; color:#fff; }
-      #wp-pm2-topbar.scrolled #wp-pm2-back { background:rgba(255,255,255,0.2); box-shadow:none; color:#fff; }
+      #wp-pm2-topbar.scrolled #wp-pm2-back { background:rgba(255,255,255,0.25); box-shadow:none; color:#fff; }
 
       /* HERO */
       #wp-pm2-hero {
