@@ -206,7 +206,7 @@ export class PlaceModal2 {
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
-        height:calc(30px + env(safe-area-inset-top,0px));
+        height:calc(44px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
@@ -524,13 +524,15 @@ export class PlaceModal2 {
     const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
 
     heroEl.style.height = '';
-    heroEl.style.minHeight = '';
+    body.style.paddingTop = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     nameEl.style.transform = '';
     requestAnimationFrame(() => {
+      const heroH0 = heroEl.offsetHeight;
+      body.style.paddingTop = heroH0 + 'px';
       const ovl = this._el.querySelector('#wp-pm2-overlay');
-      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
+      if (ovl) ovl.style.top = heroH0 + 'px';
     });
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
@@ -545,25 +547,28 @@ export class PlaceModal2 {
 
     const onScroll = () => {
       const sy   = body.scrollTop;
-      const prog = Math.min(1, Math.max(0, sy / travel));
       const newH = Math.max(topbarH, fullH - sy);
+      const prog = Math.min(1, (fullH - newH) / (fullH - topbarH));
 
-      // Hero encoge hasta quedar del tamaño del topbar
+      // 1. Hero encoge con el scroll hasta quedar del tamaño del topbar
       heroEl.style.height = newH + 'px';
+      body.style.paddingTop = newH + 'px';
 
-      // Imagen sube con parallax
-      heroBg.style.transform = `translateY(-${Math.min(sy * 0.4, (fullH - topbarH) * 0.5)}px)`;
+      // 2. Imagen parallax — sube más lento que el scroll
+      const imgUp = Math.min(sy * 0.45, fullH - topbarH);
+      heroBg.style.transform = `translateY(-${imgUp}px)`;
 
-      // Overlay sigue pegado al borde inferior del hero
+      // 3. Overlay sigue el borde inferior del hero
       if (overlay) overlay.style.top = newH + 'px';
 
-      // Título y rating del hero suben y desaparecen
-      nameEl.style.opacity   = Math.max(0, 1 - prog * 3);
-      nameEl.style.transform = `translateY(-${sy * 0.4}px)`;
+      // 4. Título y meta del hero se desvanecen y suben
+      nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
+      nameEl.style.transform = `translateY(-${sy * 0.5}px)`;
 
-      // Título aparece centrado en topbar
-      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, Math.max(0, (prog - 0.5) / 0.3));
-      if (prog > 0.5) topbar.classList.add('scrolled');
+      // 5. Topbar: título aparece centrado cuando hero casi colapsa
+      const titleProg = Math.max(0, (prog - 0.6) / 0.4);
+      if (topbarTitle) topbarTitle.style.opacity = titleProg;
+      if (prog > 0.6) topbar.classList.add('scrolled');
       else            topbar.classList.remove('scrolled');
     };
 
