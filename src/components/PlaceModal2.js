@@ -203,10 +203,10 @@ export class PlaceModal2 {
         transition:background 0.25s ease;
       }
       #wp-pm2-topbar.scrolled {
-        background:rgba(255,255,255,0.97);
-        backdrop-filter:blur(20px);
-        -webkit-backdrop-filter:blur(20px);
-        box-shadow:0 1px 0 rgba(0,0,0,0.08);
+        background:rgba(255,255,255,0.15);
+        backdrop-filter:blur(0px);
+        -webkit-backdrop-filter:blur(0px);
+        box-shadow:none;
       }
       #wp-pm2-back {
         width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
@@ -230,7 +230,7 @@ export class PlaceModal2 {
 
       /* HERO */
       #wp-pm2-hero {
-        position:relative; height:58vw; min-height:220px; max-height:300px;
+        position:relative; height:72vw; min-height:260px; max-height:380px;
         flex-shrink:0; overflow:hidden; background:#1a1a2e; margin-top:calc(-56px - env(safe-area-inset-top,0px));
       }
       #wp-pm2-hero-bg {
