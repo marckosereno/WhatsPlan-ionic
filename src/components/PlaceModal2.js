@@ -35,10 +35,7 @@ export class PlaceModal2 {
           <span id="wp-pm2-topbar-title"></span>
         </div>
 
-        <!-- SCROLLABLE BODY -->
-        <div id="wp-pm2-body">
-
-        <!-- HERO — dentro del scroll para que el parallax funcione -->
+        <!-- HERO — fuera del scroll, fijo -->
         <div id="wp-pm2-hero">
           <div id="wp-pm2-hero-bg"></div>
           <div id="wp-pm2-hero-gradient"></div>
@@ -52,6 +49,9 @@ export class PlaceModal2 {
             </div>
           </div>
         </div>
+
+        <!-- SCROLLABLE BODY -->
+        <div id="wp-pm2-body">
 
           <!-- SAVED + COLLECTIONS -->
           <div class="wp-pm2-row" id="wp-pm2-saves-row">
@@ -188,7 +188,7 @@ export class PlaceModal2 {
         position:absolute; inset:0;
         background:#fff;
         display:flex; flex-direction:column;
-        overflow:hidden;
+        overflow:hidden; position:relative;
         transform:translateY(100%);
         transition:transform 0.38s cubic-bezier(0.32,0.72,0,1);
       }
@@ -248,9 +248,10 @@ export class PlaceModal2 {
 
       /* HERO */
       #wp-pm2-hero {
-        position:relative; height:72vw; min-height:260px; max-height:380px;
-        flex-shrink:0; overflow:hidden; background:#1a1a2e;
-        will-change:height; transition:none;
+        position:absolute; top:0; left:0; right:0;
+        height:72vw; min-height:260px; max-height:380px;
+        overflow:hidden; background:#1a1a2e;
+        will-change:height; z-index:2;
       }
       #wp-pm2-hero-bg {
         position:absolute; inset:0; will-change:transform;
@@ -285,9 +286,9 @@ export class PlaceModal2 {
 
       /* BODY */
       #wp-pm2-body {
-        flex:1; overflow-y:auto; overscroll-behavior:contain;
+        position:absolute; inset:0;
+        overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
-        position:relative;
       }
 
       /* ROWS */
@@ -531,6 +532,9 @@ export class PlaceModal2 {
     document.body.style.overflow = 'hidden';
     const body = this._el.querySelector('#wp-pm2-body');
     heroEl.style.height = '';
+    body.style.paddingTop = '';
+    // Set initial padding after render
+    requestAnimationFrame(() => { body.style.paddingTop = heroEl.offsetHeight + 'px'; });
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     body.scrollTop = 0;
