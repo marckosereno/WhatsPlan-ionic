@@ -26,6 +26,7 @@ export class PlaceModal2 {
 
         <!-- TOPBAR BG (foto borrosa al hacer scroll) -->
         <div id="wp-pm2-topbar-bg"></div>
+        <div id="wp-pm2-topbar-shadow"></div>
 
         <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
@@ -210,6 +211,15 @@ export class PlaceModal2 {
         background:linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 100%);
       }
       #wp-pm2-topbar-bg.visible { opacity:1; }
+      #wp-pm2-topbar-shadow {
+        position:fixed;
+        top:calc(60px + env(safe-area-inset-top,0px));
+        left:0; right:0; height:32px;
+        background:linear-gradient(to bottom, rgba(255,255,255,0.85) 0%, transparent 100%);
+        pointer-events:none; z-index:8; opacity:0;
+        transition:opacity 0.3s ease;
+      }
+      #wp-pm2-topbar-shadow.visible { opacity:1; }
 
       /* TOPBAR */
       #wp-pm2-topbar {
@@ -541,6 +551,8 @@ export class PlaceModal2 {
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     if (this._el.querySelector('#wp-pm2-topbar-bg')) this._el.querySelector('#wp-pm2-topbar-bg').style.opacity = '0';
+    const shadowEl = this._el.querySelector('#wp-pm2-topbar-shadow');
+    if (shadowEl) shadowEl.classList.remove('visible');
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
 
@@ -557,8 +569,9 @@ export class PlaceModal2 {
       // 1. Imagen sube (parallax hacia arriba)
       heroBg.style.transform = `translateY(-${sy * 0.5}px)`;
 
-      // 2. Hero encoge hacia arriba quedando como topbar
-      heroEl.style.height = Math.max(topbarH, fullH - sy) + 'px';
+      // 2. Hero encoge suavemente con easing
+      const newH = Math.max(topbarH, fullH - sy);
+      heroEl.style.height = newH + 'px';
       heroEl.style.minHeight = topbarH + 'px';
 
       // 3. Contenido del hero (título/meta) desaparece
@@ -566,6 +579,8 @@ export class PlaceModal2 {
 
       // 4. Topbar bg (foto borrosa) aparece
       if (topbarBg) topbarBg.style.opacity = prog;
+      const shadow = this._el.querySelector('#wp-pm2-topbar-shadow');
+      if (shadow) { if (prog > 0.1) shadow.classList.add('visible'); else shadow.classList.remove('visible'); }
 
       // 5. Título aparece en el centro del topbar
       if (prog > 0.5) {
