@@ -530,20 +530,19 @@ export class PlaceModal2 {
     this._populate(place);
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
-    const body = this._el.querySelector('#wp-pm2-body');
+    const body     = this._el.querySelector('#wp-pm2-body');
+    const heroEl   = this._el.querySelector('#wp-pm2-hero');
+    const heroBg   = this._el.querySelector('#wp-pm2-hero-bg');
+    const topbar   = this._el.querySelector('#wp-pm2-topbar');
+    const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
+
     heroEl.style.height = '';
     body.style.paddingTop = '';
-    // Set initial padding after render
-    requestAnimationFrame(() => { body.style.paddingTop = heroEl.offsetHeight + 'px'; });
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     body.scrollTop = 0;
+    requestAnimationFrame(() => { body.style.paddingTop = heroEl.offsetHeight + 'px'; });
 
-    // Parallax + topbar scroll
-    const heroBg   = this._el.querySelector('#wp-pm2-hero-bg');
-    const heroEl   = this._el.querySelector('#wp-pm2-hero');
-    const topbar   = this._el.querySelector('#wp-pm2-topbar');
-    const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
     const heroH    = () => heroEl.offsetHeight;
 
     const onScroll = () => {
