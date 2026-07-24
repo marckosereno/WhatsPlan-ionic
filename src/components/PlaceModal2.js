@@ -195,11 +195,11 @@ export class PlaceModal2 {
       /* TOPBAR */
       #wp-pm2-topbar {
         position:absolute; top:0; left:0; right:0;
-        height:calc(56px + env(safe-area-inset-top,0px));
+        height:calc(60px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center; gap:12px;
         padding-left:12px; padding-right:16px;
-        z-index:10; background:transparent;
+        z-index:10; background:transparent; position:absolute; top:0; left:0; right:0;
         transition:background 0.25s ease;
       }
       #wp-pm2-topbar.scrolled {
