@@ -250,10 +250,11 @@ export class PlaceModal2 {
       /* HERO */
       #wp-pm2-hero {
         position:relative; height:72vw; min-height:260px; max-height:380px;
-        flex-shrink:0; overflow:hidden; background:#1a1a2e; margin-top:calc(-56px - env(safe-area-inset-top,0px));
+        flex-shrink:0; overflow:hidden; background:#1a1a2e; margin-top:calc(-60px - env(safe-area-inset-top,0px));
+        will-change:height; transition:none;
       }
       #wp-pm2-hero-bg {
-        position:absolute; inset:0;
+        position:absolute; inset:0; will-change:transform;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
@@ -529,6 +530,9 @@ export class PlaceModal2 {
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
     const body = this._el.querySelector('#wp-pm2-body');
+    heroEl.style.height = '';
+    heroBg.style.transform = '';
+    nameEl.style.opacity = '';
     body.scrollTop = 0;
 
     // Parallax + topbar scroll
