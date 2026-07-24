@@ -25,8 +25,7 @@ export class PlaceModal2 {
       <div id="wp-pm2-card">
 
         <!-- WHITE OVERLAY grows upward on scroll -->
-        <div id="wp-pm2-white-overlay"></div>
-        <!-- TOPBAR -->
+<!-- TOPBAR -->
         <div id="wp-pm2-topbar">
           <button id="wp-pm2-back">
             <svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
@@ -54,16 +53,7 @@ export class PlaceModal2 {
         <div id="wp-pm2-body">
 
           <!-- SAVED + COLLECTIONS -->
-          <div class="wp-pm2-row" id="wp-pm2-saves-row">
-            <div id="wp-pm2-saves">
-              <div id="wp-pm2-save-avatars"></div>
-              <span id="wp-pm2-save-count"></span>
-            </div>
-            <button class="wp-pm2-pill-btn" id="wp-pm2-collections">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Colecciones
-            </button>
-          </div>
+
 
           <!-- CTA ROW -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row">
@@ -196,19 +186,6 @@ export class PlaceModal2 {
       #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
-
-      #wp-pm2-overlay {
-        position:fixed; left:0; right:0; z-index:4;
-        height:24px;
-        background:linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
-        pointer-events:none; top:0;
-      }
-      #wp-pm2-white-overlay {
-        position:absolute; left:0; right:0; bottom:0;
-        height:35%; z-index:3; pointer-events:none;
-        background:linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.9) 40%, #fff 100%);
-        will-change:transform;
-      }
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
@@ -535,9 +512,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     nameEl.style.transform = '';
     requestAnimationFrame(() => {
-      const ovl = this._el.querySelector('#wp-pm2-overlay');
-      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
-    });
+      });
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
 
@@ -548,9 +523,7 @@ export class PlaceModal2 {
     const travel  = fullH - topbarH;
     heroEl.style.height = fullH + 'px'; // stays fixed height
 
-    const overlay = this._el.querySelector('#wp-pm2-overlay');
-
-    const onScroll = () => {
+const onScroll = () => {
       const sy   = body.scrollTop;
       const prog = Math.min(1, sy / travel);
       const newH = Math.max(topbarH, fullH - sy);
