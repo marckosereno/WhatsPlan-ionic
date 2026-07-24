@@ -199,8 +199,8 @@ export class PlaceModal2 {
 
       #wp-pm2-overlay {
         position:fixed; left:0; right:0; z-index:4;
-        height:24px;
-        background:linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+        height:36px;
+        background:linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0) 100%);
         pointer-events:none; top:0;
       }
       /* TOPBAR */
@@ -241,7 +241,7 @@ export class PlaceModal2 {
         will-change:height;
       }
       #wp-pm2-hero-bg {
-        position:absolute; inset:0; will-change:transform;
+        position:absolute; inset:-40px 0 0; will-change:transform;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
@@ -249,10 +249,10 @@ export class PlaceModal2 {
       #wp-pm2-hero-gradient {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
-          rgba(0,0,0,0.2) 0%,
-          transparent 30%,
-          transparent 50%,
-          rgba(255,255,255,0.7) 72%,
+          rgba(0,0,0,0.3) 0%,
+          transparent 40%,
+          transparent 100%,
+          rgba(0,0,0,0) 100%,
           rgba(255,255,255,1) 100%);
         pointer-events:none;
       }
@@ -552,7 +552,8 @@ export class PlaceModal2 {
       heroEl.style.height = newH + 'px';
 
       // Imagen sube con parallax
-      heroBg.style.transform = `translateY(-${Math.min(sy * 0.4, (fullH - topbarH) * 0.5)}px)`;
+      const imgUp = Math.min(sy * 0.4, fullH - topbarH - 40);
+      heroBg.style.transform = `translateY(-${Math.max(0, imgUp)}px)`;
 
       // Overlay sigue pegado al borde inferior del hero
       if (overlay) overlay.style.top = newH + 'px';
