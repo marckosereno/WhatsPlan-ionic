@@ -52,9 +52,6 @@ export class PlaceModal2 {
         <!-- SCROLLABLE BODY -->
         <div id="wp-pm2-body">
 
-          <!-- SAVED + COLLECTIONS -->
-
-
           <!-- CTA ROW -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row">
             <button id="wp-pm2-fuiste">
@@ -266,14 +263,6 @@ export class PlaceModal2 {
         display:flex; align-items:center; gap:10px;
         padding:12px 16px; border-bottom:1px solid #f3f4f6;
       }
-      #wp-pm2-saves { display:flex; align-items:center; gap:8px; flex:1; }
-      #wp-pm2-save-avatars { display:flex; }
-      #wp-pm2-save-avatars img {
-        width:26px; height:26px; border-radius:50%;
-        border:2px solid #fff; margin-left:-8px; object-fit:cover;
-      }
-      #wp-pm2-save-avatars img:first-child { margin-left:0; }
-      #wp-pm2-save-count { font-size:13px; color:#374151; font-weight:500; }
       .wp-pm2-pill-btn {
         display:inline-flex; align-items:center; gap:5px;
         padding:7px 14px; border-radius:999px; border:1.5px solid #e5e7eb;
@@ -538,8 +527,7 @@ const onScroll = () => {
       heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
 
       // Título y rating se desvanecen
-      nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
-      nameEl.style.transform = `translateY(-${sy * 0.5}px)`;
+      nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
 
       // Topbar title aparece
       if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.6) / 0.3);
