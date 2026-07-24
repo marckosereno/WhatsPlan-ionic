@@ -24,6 +24,8 @@ export class PlaceModal2 {
       <div id="wp-pm2-backdrop"></div>
       <div id="wp-pm2-card">
 
+        <!-- WHITE OVERLAY grows upward on scroll -->
+        <div id="wp-pm2-white-overlay"></div>
         <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
           <button id="wp-pm2-back">
@@ -33,11 +35,10 @@ export class PlaceModal2 {
         </div>
 
         <!-- OVERLAY — sombra blanca que sube con el hero -->
-<!-- HERO — fuera del scroll, fijo -->
+        <!-- HERO — imagen fija detras de todo -->
         <div id="wp-pm2-hero">
-          <div id="wp-pm2-hero-bg">
-            <div id="wp-pm2-hero-gradient"></div>
-          </div>
+          <div id="wp-pm2-hero-bg"></div>
+          <div id="wp-pm2-hero-gradient"></div>
           <div id="wp-pm2-hero-bottom">
             <h1 id="wp-pm2-name"></h1>
             <div id="wp-pm2-meta">
@@ -195,23 +196,35 @@ export class PlaceModal2 {
       #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
+
+      #wp-pm2-overlay {
+        position:fixed; left:0; right:0; z-index:4;
+        height:24px;
+        background:linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+        pointer-events:none; top:0;
+      }
+      #wp-pm2-white-overlay {
+        position:fixed; left:0; right:0; bottom:0; top:auto;
+        background:#fff; z-index:5; height:0; pointer-events:none;
+      }
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
-        height:calc(44px + env(safe-area-inset-top,0px)); max-height:88px;
+        height:calc(60px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
       }
       #wp-pm2-back {
-        width:40px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
+        width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
         box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
         color:#111; display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s; flex-shrink:0;
       }
       #wp-pm2-topbar.scrolled #wp-pm2-back {
         background:transparent; box-shadow:none; backdrop-filter:none;
@@ -226,13 +239,13 @@ export class PlaceModal2 {
 
       /* HERO */
       #wp-pm2-hero {
-        position:fixed; top:0; left:0; right:0;
+        position:relative;
         height:72vw; min-height:260px; max-height:380px;
-        overflow:hidden; background:transparent;
-        will-change:height; z-index:5;
+        flex-shrink:0; overflow:hidden; background:#1a1a2e;
+        will-change:height;
       }
       #wp-pm2-hero-bg {
-        position:absolute; top:0; left:0; right:0; bottom:-200px; will-change:transform;
+        position:absolute; inset:0; will-change:transform;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
@@ -244,16 +257,16 @@ export class PlaceModal2 {
           transparent 30%,
           transparent 50%,
           rgba(255,255,255,0.7) 72%,
-          rgba(255,255,255,1) 95%);
+          rgba(255,255,255,1) 100%);
         pointer-events:none;
       }
       #wp-pm2-hero-bottom {
         position:absolute; bottom:0; left:0; right:0;
-        padding:8px 16px 16px;
+        padding:8px 16px 16px; z-index:3;
       }
       #wp-pm2-name {
-        font-size:22px; font-weight:800; color:#0a0a0a; margin:0 0 3px;
-        letter-spacing:-0.3px; line-height:1.2;
+        font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
+        letter-spacing:-0.4px; line-height:1.2;
       }
       #wp-pm2-meta {
         display:flex; align-items:center; gap:5px;
@@ -266,7 +279,7 @@ export class PlaceModal2 {
       #wp-pm2-body {
         flex:1; overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
-        background:#fff; position:relative; z-index:1;
+        background:#fff;
       }
 
       /* ROWS */
@@ -515,45 +528,48 @@ export class PlaceModal2 {
     const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
 
     heroEl.style.height = '';
+    heroEl.style.minHeight = '';
     heroBg.style.transform = '';
-    if (nameEl) { nameEl.style.opacity = ''; nameEl.style.transform = ''; }
+    nameEl.style.opacity = '';
+    nameEl.style.transform = '';
+    requestAnimationFrame(() => {
+      const ovl = this._el.querySelector('#wp-pm2-overlay');
+      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
+    });
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
-    // Setear paddingTop SINCRONO para que el contenido no aparezca arriba
-    body.style.paddingTop = (heroEl.offsetHeight || parseInt(heroEl.style.maxHeight) || 300) + 'px';
-    requestAnimationFrame(() => {
-      body.style.paddingTop = heroEl.offsetHeight + 'px';
-    });
 
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
     const topbarH = topbar.offsetHeight;
     const fullH   = heroEl.offsetHeight;
     const travel  = fullH - topbarH;
+    heroEl.style.height = fullH + 'px'; // stays fixed height
 
-const onScroll = () => {
+    const overlay = this._el.querySelector('#wp-pm2-overlay');
+
+    const onScroll = () => {
       const sy   = body.scrollTop;
+      const prog = Math.min(1, Math.max(0, sy / travel));
       const newH = Math.max(topbarH, fullH - sy);
-      const prog = Math.min(1, sy / (fullH - topbarH));
 
-      // 1. Hero (imagen + gradient + título) sube como una pieza
-      heroEl.style.height   = newH + 'px';
+      // Hero encoge hasta quedar del tamaño del topbar
+      heroEl.style.height = newH + 'px';
 
-      // 2. Contenido siempre empieza justo debajo del hero
-      body.style.paddingTop = Math.ceil(newH) + 'px';
+      // Imagen sube con parallax
+      heroBg.style.transform = `translateY(-${Math.min(sy * 0.4, (fullH - topbarH) * 0.5)}px)`;
 
-      // 3. Imagen parallax — sube más lento que el hero
-      const up = Math.min(sy * 0.4, fullH - topbarH);
-      heroBg.style.transform = `translateY(-${up}px)`;
-      nameEl.style.transform = `translateY(-${up * 0.85}px)`;
+      // Overlay sigue pegado al borde inferior del hero
+      if (overlay) overlay.style.top = newH + 'px';
 
-      // 4. Título/meta se desvanecen al subir
-      nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
+      // Título y rating del hero suben y desaparecen
+      nameEl.style.opacity   = Math.max(0, 1 - prog * 3);
+      nameEl.style.transform = `translateY(-${sy * 0.4}px)`;
 
-      // 5. Título en topbar aparece centrado
-      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.55) / 0.35);
-      if (prog > 0.55) topbar.classList.add('scrolled');
-      else             topbar.classList.remove('scrolled');
+      // Título aparece centrado en topbar
+      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, Math.max(0, (prog - 0.5) / 0.3));
+      if (prog > 0.5) topbar.classList.add('scrolled');
+      else            topbar.classList.remove('scrolled');
     };
 
     // Limpiar listener anterior si existe
