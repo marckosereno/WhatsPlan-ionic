@@ -24,10 +24,6 @@ export class PlaceModal2 {
       <div id="wp-pm2-backdrop"></div>
       <div id="wp-pm2-card">
 
-        <!-- TOPBAR BG (foto borrosa al hacer scroll) -->
-        <div id="wp-pm2-topbar-bg"></div>
-        <div id="wp-pm2-topbar-shadow"></div>
-
         <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
           <button id="wp-pm2-back">
@@ -197,42 +193,15 @@ export class PlaceModal2 {
       #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
-      #wp-pm2-topbar-bg {
-        position:fixed; top:0; left:0; right:0; z-index:9;
-        height:calc(60px + env(safe-area-inset-top,0px));
-        background-size:cover; background-position:center 20%;
-        opacity:0; transition:opacity 0.2s ease;
-        z-index:8; pointer-events:none;
-      }
-      #wp-pm2-topbar-bg::after {
-        content:''; position:absolute; inset:0;
-        backdrop-filter:blur(16px);
-        -webkit-backdrop-filter:blur(16px);
-        background:linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 100%);
-      }
-      #wp-pm2-topbar-bg.visible { opacity:1; }
-      #wp-pm2-topbar-shadow {
-        position:fixed;
-        top:calc(60px + env(safe-area-inset-top,0px));
-        left:0; right:0; height:32px;
-        background:linear-gradient(to bottom, rgba(255,255,255,0.85) 0%, transparent 100%);
-        pointer-events:none; z-index:8; opacity:0;
-        transition:opacity 0.3s ease;
-      }
-      #wp-pm2-topbar-shadow.visible { opacity:1; }
 
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
         height:calc(60px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
-        display:flex; align-items:center; gap:12px;
-        padding-left:12px; padding-right:16px;
+        display:flex; align-items:center;
+        padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
-        transition:background 0.25s ease;
-      }
-      #wp-pm2-topbar.scrolled {
-        background:linear-gradient(to bottom, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 100%);
       }
       #wp-pm2-back {
         width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
@@ -248,13 +217,12 @@ export class PlaceModal2 {
         background:transparent; box-shadow:none; backdrop-filter:none;
       }
       #wp-pm2-topbar-title {
-        font-size:16px; font-weight:800; color:#fff; flex:1;
+        position:absolute; left:68px; right:68px;
+        font-size:16px; font-weight:800; color:#111;
         letter-spacing:-0.2px; opacity:0;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         text-align:center;
-        text-shadow:0 1px 6px rgba(0,0,0,0.4);
       }
-      #wp-pm2-topbar.scrolled #wp-pm2-back { background:rgba(255,255,255,0.25); box-shadow:none; color:#fff; }
 
       /* HERO */
       #wp-pm2-hero {
@@ -272,7 +240,7 @@ export class PlaceModal2 {
       #wp-pm2-hero-gradient {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
-          rgba(0,0,0,0.15) 0%,
+          rgba(255,255,255,0.0) 0%,
           transparent 35%,
           rgba(0,0,0,0.05) 55%,
           rgba(255,255,255,0.6) 78%,
@@ -550,13 +518,9 @@ export class PlaceModal2 {
     heroEl.style.minHeight = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
-    if (this._el.querySelector('#wp-pm2-topbar-bg')) this._el.querySelector('#wp-pm2-topbar-bg').style.opacity = '0';
-    const shadowEl = this._el.querySelector('#wp-pm2-topbar-shadow');
-    if (shadowEl) shadowEl.classList.remove('visible');
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
 
-    const topbarBg    = this._el.querySelector('#wp-pm2-topbar-bg');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
     const topbarH = topbar.offsetHeight;
@@ -576,10 +540,7 @@ export class PlaceModal2 {
       // 3. Contenido del hero (título/meta) desaparece
       nameEl.style.opacity = Math.max(0, 1 - prog * 2);
 
-      // 4. Topbar bg (foto borrosa) aparece
-      if (topbarBg) topbarBg.style.opacity = prog;
-      const shadow = this._el.querySelector('#wp-pm2-topbar-shadow');
-      if (shadow) { if (prog > 0.1) shadow.classList.add('visible'); else shadow.classList.remove('visible'); }
+      // 4. Nada extra — el gradient del hero sube con él
 
       // 5. Título aparece en el centro del topbar
       if (prog > 0.5) {
@@ -652,8 +613,6 @@ export class PlaceModal2 {
     // Hero background — primera foto con parallax
     const heroBg = $('wp-pm2-hero-bg');
     if (heroBg) heroBg.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
-    const topbarBgEl = $('wp-pm2-topbar-bg');
-    if (topbarBgEl) topbarBgEl.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
 
     // Topbar title
     const ttEl = $('wp-pm2-topbar-title');
