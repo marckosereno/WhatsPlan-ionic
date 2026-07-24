@@ -537,29 +537,44 @@ export class PlaceModal2 {
     const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
 
     heroEl.style.height = '';
+    heroEl.style.minHeight = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
+    if (this._el.querySelector('#wp-pm2-topbar-bg')) this._el.querySelector('#wp-pm2-topbar-bg').style.opacity = '0';
+    topbar.classList.remove('scrolled');
     body.scrollTop = 0;
 
-    const heroH    = () => heroEl.offsetHeight;
+    const topbarBg    = this._el.querySelector('#wp-pm2-topbar-bg');
+    const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
     const onScroll = () => {
-      const sy = body.scrollTop;
-      const hh = heroH();
+      const sy     = body.scrollTop;
+      const fullH  = heroEl.offsetHeight;
+      const topbarH = topbar.offsetHeight;
+      const travel  = fullH - topbarH;
+      const prog    = Math.min(1, Math.max(0, sy / travel));
 
-      // Parallax — mover el bg más lento que el scroll
-      const py = Math.min(sy * 0.4, hh * 0.4);
-      heroBg.style.transform = `translateY(${py}px)`;
+      // 1. Imagen sube (parallax hacia arriba)
+      heroBg.style.transform = `translateY(-${sy * 0.5}px)`;
 
-      // Fade del hero bottom al hacer scroll
-      const fadeStart = hh * 0.3;
-      const fadeEnd   = hh * 0.7;
-      const opacity   = Math.max(0, 1 - (sy - fadeStart) / (fadeEnd - fadeStart));
-      nameEl.style.opacity = opacity;
+      // 2. Hero encoge hacia arriba quedando como topbar
+      heroEl.style.height = Math.max(topbarH, fullH - sy) + 'px';
+      heroEl.style.minHeight = topbarH + 'px';
 
-      // Topbar: scrolled state cuando el hero casi desaparece
-      if (sy > hh - 80) topbar.classList.add('scrolled');
-      else               topbar.classList.remove('scrolled');
+      // 3. Contenido del hero (título/meta) desaparece
+      nameEl.style.opacity = Math.max(0, 1 - prog * 2);
+
+      // 4. Topbar bg (foto borrosa) aparece
+      if (topbarBg) topbarBg.style.opacity = prog;
+
+      // 5. Título aparece en el centro del topbar
+      if (prog > 0.5) {
+        topbar.classList.add('scrolled');
+        if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.5) / 0.3);
+      } else {
+        topbar.classList.remove('scrolled');
+        if (topbarTitle) topbarTitle.style.opacity = '0';
+      }
     };
 
     // Limpiar listener anterior si existe
