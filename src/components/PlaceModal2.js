@@ -515,17 +515,15 @@ export class PlaceModal2 {
     const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
 
     heroEl.style.height = '';
-    body.style.paddingTop = '';
-    if (nameEl) { nameEl.style.opacity = ''; }
     heroBg.style.transform = '';
-    nameEl.style.opacity = '';
-    nameEl.style.transform = '';
-    requestAnimationFrame(() => {
-      const ovl = this._el.querySelector('#wp-pm2-overlay');
-      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
-    });
+    if (nameEl) { nameEl.style.opacity = ''; nameEl.style.transform = ''; }
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
+    // Setear paddingTop SINCRONO para que el contenido no aparezca arriba
+    body.style.paddingTop = (heroEl.offsetHeight || parseInt(heroEl.style.maxHeight) || 300) + 'px';
+    requestAnimationFrame(() => {
+      body.style.paddingTop = heroEl.offsetHeight + 'px';
+    });
 
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
