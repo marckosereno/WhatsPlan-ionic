@@ -507,38 +507,34 @@ export class PlaceModal2 {
 
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
-    const topbarH = topbar.offsetHeight;
-    const fullH   = heroEl.offsetHeight;
-    const travel  = fullH - topbarH;
-    heroEl.style.height = fullH + 'px'; // stays fixed height
+    // Ceder un frame para que el elemento sea visible y offsetHeight sea correcto
+    requestAnimationFrame(() => {
+      const topbarH = topbar.offsetHeight;
+      const fullH   = heroEl.getBoundingClientRect().height || heroEl.offsetHeight;
+      const travel  = fullH - topbarH;
 
-const onScroll = () => {
-      const sy   = body.scrollTop;
-      const prog = Math.min(1, sy / travel);
-      const newH = Math.max(topbarH, fullH - sy);
+      body.style.paddingTop = fullH + 'px';
 
-      // Hero encoge hasta topbarH y SE DETIENE — queda como topbar fijo
-      heroEl.style.height = newH + 'px';
+      const onScroll = () => {
+        const sy   = body.scrollTop;
+        const prog = Math.min(1, sy / travel);
+        const newH = Math.max(topbarH, fullH - sy);
 
-      // Contenido siempre empieza debajo del hero actual
-      body.style.paddingTop = newH + 'px';
+        heroEl.style.height   = newH + 'px';
+        body.style.paddingTop = newH + 'px';
 
-      // Imagen sube suavemente dentro del hero
-      heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
+        heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
+        nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
 
-      // Título y rating se desvanecen
-      nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
+        if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.6) / 0.3);
+        if (prog > 0.6) topbar.classList.add('scrolled');
+        else            topbar.classList.remove('scrolled');
+      };
 
-      // Topbar title aparece
-      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.6) / 0.3);
-      if (prog > 0.6) topbar.classList.add('scrolled');
-      else            topbar.classList.remove('scrolled');
-    };
-
-    // Limpiar listener anterior si existe
-    if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
-    this._scrollHandler = onScroll;
-    body.addEventListener('scroll', onScroll, { passive: true });
+      if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = onScroll;
+      body.addEventListener('scroll', onScroll, { passive: true });
+    });
   }
 
   // showMini: muestra el minisnap del mapa.
