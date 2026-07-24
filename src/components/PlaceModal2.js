@@ -199,14 +199,14 @@ export class PlaceModal2 {
 
       #wp-pm2-overlay {
         position:fixed; left:0; right:0; z-index:4;
-        height:32px;
+        height:24px;
         background:linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
-        pointer-events:none;
+        pointer-events:none; top:0;
       }
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
-        height:calc(44px + env(safe-area-inset-top,0px));
+        height:calc(30px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
@@ -241,7 +241,7 @@ export class PlaceModal2 {
         will-change:height;
       }
       #wp-pm2-hero-bg {
-        position:absolute; inset:-40px 0 0; will-change:transform;
+        position:absolute; inset:0; will-change:transform;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
@@ -249,10 +249,10 @@ export class PlaceModal2 {
       #wp-pm2-hero-gradient {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
-          rgba(0,0,0,0.3) 0%,
-          transparent 40%,
-          transparent 100%,
-          rgba(0,0,0,0) 100%,
+          rgba(0,0,0,0.2) 0%,
+          transparent 30%,
+          transparent 50%,
+          rgba(255,255,255,0.7) 72%,
           rgba(255,255,255,1) 100%);
         pointer-events:none;
       }
@@ -525,15 +525,12 @@ export class PlaceModal2 {
 
     heroEl.style.height = '';
     heroEl.style.minHeight = '';
-    body.style.paddingTop = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     nameEl.style.transform = '';
     requestAnimationFrame(() => {
-      const heroH = heroEl.offsetHeight;
-      body.style.paddingTop = heroH + 'px';
       const ovl = this._el.querySelector('#wp-pm2-overlay');
-      if (ovl) ovl.style.top = heroH + 'px';
+      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
     });
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
@@ -553,11 +550,9 @@ export class PlaceModal2 {
 
       // Hero encoge hasta quedar del tamaño del topbar
       heroEl.style.height = newH + 'px';
-      body.style.paddingTop = newH + 'px';
 
       // Imagen sube con parallax
-      const imgUp = Math.min(sy * 0.4, fullH - topbarH - 40);
-      heroBg.style.transform = `translateY(-${Math.max(0, imgUp)}px)`;
+      heroBg.style.transform = `translateY(-${Math.min(sy * 0.4, (fullH - topbarH) * 0.5)}px)`;
 
       // Overlay sigue pegado al borde inferior del hero
       if (overlay) overlay.style.top = newH + 'px';
