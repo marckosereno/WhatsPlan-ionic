@@ -199,14 +199,14 @@ export class PlaceModal2 {
 
       #wp-pm2-overlay {
         position:fixed; left:0; right:0; z-index:4;
-        height:36px;
-        background:linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0) 100%);
-        pointer-events:none; top:0;
+        height:32px;
+        background:linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+        pointer-events:none;
       }
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
-        height:calc(60px + env(safe-area-inset-top,0px));
+        height:calc(44px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
@@ -525,12 +525,15 @@ export class PlaceModal2 {
 
     heroEl.style.height = '';
     heroEl.style.minHeight = '';
+    body.style.paddingTop = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     nameEl.style.transform = '';
     requestAnimationFrame(() => {
+      const heroH = heroEl.offsetHeight;
+      body.style.paddingTop = heroH + 'px';
       const ovl = this._el.querySelector('#wp-pm2-overlay');
-      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
+      if (ovl) ovl.style.top = heroH + 'px';
     });
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
@@ -550,6 +553,7 @@ export class PlaceModal2 {
 
       // Hero encoge hasta quedar del tamaño del topbar
       heroEl.style.height = newH + 'px';
+      body.style.paddingTop = newH + 'px';
 
       // Imagen sube con parallax
       const imgUp = Math.min(sy * 0.4, fullH - topbarH - 40);
