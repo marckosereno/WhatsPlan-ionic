@@ -32,10 +32,7 @@ export class PlaceModal2 {
           <span id="wp-pm2-topbar-title"></span>
         </div>
 
-        <!-- OVERLAY — sombra blanca que sube con el hero -->
-        <div id="wp-pm2-overlay"></div>
-
-        <!-- HERO — fuera del scroll, fijo -->
+<!-- HERO — fuera del scroll, fijo -->
         <div id="wp-pm2-hero">
           <div id="wp-pm2-hero-bg"></div>
           <div id="wp-pm2-hero-gradient"></div>
@@ -196,13 +193,6 @@ export class PlaceModal2 {
       #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
-
-      #wp-pm2-overlay {
-        position:fixed; left:0; right:0; z-index:4;
-        height:24px;
-        background:linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
-        pointer-events:none; top:0;
-      }
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
@@ -235,10 +225,10 @@ export class PlaceModal2 {
 
       /* HERO */
       #wp-pm2-hero {
-        position:relative;
+        position:fixed; top:0; left:0; right:0;
         height:72vw; min-height:260px; max-height:380px;
-        flex-shrink:0; overflow:hidden; background:#1a1a2e;
-        will-change:height;
+        overflow:hidden; background:#1a1a2e;
+        will-change:height; z-index:5;
       }
       #wp-pm2-hero-bg {
         position:absolute; inset:0; will-change:transform;
@@ -524,15 +514,13 @@ export class PlaceModal2 {
     const nameEl   = this._el.querySelector('#wp-pm2-hero-bottom');
 
     heroEl.style.height = '';
-    body.style.paddingTop = '';
+    heroEl.style.minHeight = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     nameEl.style.transform = '';
     requestAnimationFrame(() => {
-      const heroH0 = heroEl.offsetHeight;
-      body.style.paddingTop = heroH0 + 'px';
       const ovl = this._el.querySelector('#wp-pm2-overlay');
-      if (ovl) ovl.style.top = heroH0 + 'px';
+      if (ovl) ovl.style.top = heroEl.offsetHeight + 'px';
     });
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
@@ -543,32 +531,25 @@ export class PlaceModal2 {
     const fullH   = heroEl.offsetHeight;
     const travel  = fullH - topbarH;
 
-    const overlay = this._el.querySelector('#wp-pm2-overlay');
-
-    const onScroll = () => {
+const onScroll = () => {
       const sy   = body.scrollTop;
+      const prog = Math.min(1, Math.max(0, sy / travel));
       const newH = Math.max(topbarH, fullH - sy);
-      const prog = Math.min(1, (fullH - newH) / (fullH - topbarH));
 
-      // 1. Hero encoge con el scroll hasta quedar del tamaño del topbar
+      // Hero encoge hasta quedar del tamaño del topbar
       heroEl.style.height = newH + 'px';
-      body.style.paddingTop = newH + 'px';
 
-      // 2. Imagen parallax — sube más lento que el scroll
-      const imgUp = Math.min(sy * 0.45, fullH - topbarH);
-      heroBg.style.transform = `translateY(-${imgUp}px)`;
+      // Imagen sube con parallax
+      heroBg.style.transform = `translateY(-${Math.min(sy * 0.4, (fullH - topbarH) * 0.5)}px)`;
 
-      // 3. Overlay sigue el borde inferior del hero
-      if (overlay) overlay.style.top = newH + 'px';
+      // Overlay sigue pegado al borde inferior del hero
+// Título y rating del hero suben y desaparecen
+      nameEl.style.opacity   = Math.max(0, 1 - prog * 3);
+      nameEl.style.transform = `translateY(-${sy * 0.4}px)`;
 
-      // 4. Título y meta del hero se desvanecen y suben
-      nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
-      nameEl.style.transform = `translateY(-${sy * 0.5}px)`;
-
-      // 5. Topbar: título aparece centrado cuando hero casi colapsa
-      const titleProg = Math.max(0, (prog - 0.6) / 0.4);
-      if (topbarTitle) topbarTitle.style.opacity = titleProg;
-      if (prog > 0.6) topbar.classList.add('scrolled');
+      // Título aparece centrado en topbar
+      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, Math.max(0, (prog - 0.5) / 0.3));
+      if (prog > 0.5) topbar.classList.add('scrolled');
       else            topbar.classList.remove('scrolled');
     };
 
