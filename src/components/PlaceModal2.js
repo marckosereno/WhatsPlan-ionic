@@ -530,7 +530,9 @@ export class PlaceModal2 {
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
     const body = this._el.querySelector('#wp-pm2-body');
-    heroEl.style.height = '';
+    heroEl.style.clipPath = '';
+    heroEl.style.position = '';
+    heroEl.style.top = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
     body.scrollTop = 0;
