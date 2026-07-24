@@ -205,14 +205,13 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
       }
       #wp-pm2-back {
-        width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
+        width:40px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
         box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
         color:#111; display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s; flex-shrink:0;
       }
       #wp-pm2-topbar.scrolled #wp-pm2-back {
         background:transparent; box-shadow:none; backdrop-filter:none;
@@ -239,18 +238,18 @@ export class PlaceModal2 {
         transition:transform 0.01s linear;
       }
       #wp-pm2-hero-gradient {
-        position:absolute; top:-60px; left:0; right:0; bottom:-20px;
+        position:absolute; inset:0;
         background:linear-gradient(to bottom,
           rgba(0,0,0,0.2) 0%,
           transparent 30%,
           transparent 50%,
           rgba(255,255,255,0.7) 72%,
-          rgba(255,255,255,1) 100%);
+          rgba(255,255,255,1) 95%);
         pointer-events:none;
       }
       #wp-pm2-hero-bottom {
         position:absolute; bottom:0; left:0; right:0;
-        padding:10px 16px 18px;
+        padding:8px 16px 16px;
       }
       #wp-pm2-name {
         font-size:22px; font-weight:800; color:#0a0a0a; margin:0 0 3px;
@@ -546,7 +545,7 @@ const onScroll = () => {
       // 3. Imagen parallax — sube más lento que el hero
       const shift = sy * 0.45;
       heroBg.style.transform = `translateY(-${shift}px)`;
-      nameEl.style.transform = `translateY(-${shift * 0.6}px)`;
+      nameEl.style.transform = `translateY(-${shift * 0.9}px)`;
 
       // 4. Título/meta se desvanecen al subir
       nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
