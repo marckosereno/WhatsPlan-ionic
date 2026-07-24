@@ -1057,21 +1057,7 @@ export class MapView {
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
 
-      if (inSearch) {
-        // En búsqueda: mismo cálculo que SearchBar.doFlyTo, respeta zoom actual
-        const topbar  = document.getElementById('topbar-right-chip');
-        const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        const scats   = document.getElementById('wp-scats');
-        const results = document.getElementById('wp-sresults');
-        const botEl   = (scats && scats.offsetParent !== null) ? scats :
-                        (results && results.offsetParent !== null) ? results : null;
-        let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
-        botEdge = Math.max(botEdge, visibleH * 0.5);
-        const areaCenter = topEdge + (botEdge - topEdge) / 2;
-        const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
-        this.map.easeTo({ center: [lng, lat], zoom: this.map.getZoom(), duration: 400, offset: [0, offsetY] });
-        return;
-      }
+
 
       // Modo normal: cálculo original
       const topbar  = document.getElementById('topbar-right-chip');
