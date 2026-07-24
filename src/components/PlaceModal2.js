@@ -35,8 +35,9 @@ export class PlaceModal2 {
         <!-- OVERLAY — sombra blanca que sube con el hero -->
 <!-- HERO — fuera del scroll, fijo -->
         <div id="wp-pm2-hero">
-          <div id="wp-pm2-hero-bg"></div>
-          <div id="wp-pm2-hero-gradient"></div>
+          <div id="wp-pm2-hero-bg">
+            <div id="wp-pm2-hero-gradient"></div>
+          </div>
           <div id="wp-pm2-hero-bottom">
             <h1 id="wp-pm2-name"></h1>
             <div id="wp-pm2-meta">
@@ -232,13 +233,13 @@ export class PlaceModal2 {
         will-change:height; z-index:5;
       }
       #wp-pm2-hero-bg {
-        position:absolute; inset:0; will-change:transform;
+        position:absolute; inset:0; will-change:transform; overflow:hidden;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
       }
       #wp-pm2-hero-gradient {
-        position:absolute; inset:0;
+        position:absolute; top:-60px; left:0; right:0; bottom:-20px;
         background:linear-gradient(to bottom,
           rgba(0,0,0,0.2) 0%,
           transparent 30%,
@@ -543,7 +544,9 @@ const onScroll = () => {
       body.style.paddingTop = newH + 'px';
 
       // 3. Imagen parallax — sube más lento que el hero
-      heroBg.style.transform = `translateY(-${sy * 0.45}px)`;
+      const shift = sy * 0.45;
+      heroBg.style.transform = `translateY(-${shift}px)`;
+      nameEl.style.transform = `translateY(-${shift * 0.6}px)`;
 
       // 4. Título/meta se desvanecen al subir
       nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
