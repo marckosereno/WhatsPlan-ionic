@@ -506,15 +506,11 @@ export class PlaceModal2 {
     body.scrollTop = 0;
 
     // Set paddingTop via CSS class so it uses the hero's natural CSS height
-    body.style.paddingTop = '';
-
-    // Wire scroll after two frames so layout is stable
+    // Wire scroll — hero is sticky so no paddingTop needed
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
       const fullH   = heroEl.offsetHeight;
       if (!fullH) return;
-
-      body.style.paddingTop = fullH + 'px';
       const travel = fullH - topbarH;
 
       const onScroll = () => {
@@ -522,8 +518,7 @@ export class PlaceModal2 {
         const prog = Math.min(1, sy / travel);
         const newH = Math.max(topbarH, fullH - sy);
 
-        heroEl.style.height   = newH + 'px';
-        body.style.paddingTop = newH + 'px';
+        heroEl.style.height = newH + 'px';
         heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
         nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
 
