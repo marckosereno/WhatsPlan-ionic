@@ -24,6 +24,9 @@ export class PlaceModal2 {
       <div id="wp-pm2-backdrop"></div>
       <div id="wp-pm2-card">
 
+        <!-- TOPBAR BG (foto borrosa al hacer scroll) -->
+        <div id="wp-pm2-topbar-bg"></div>
+
         <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
           <button id="wp-pm2-back">
@@ -192,6 +195,21 @@ export class PlaceModal2 {
       #wp-pm2-card > #wp-pm2-topbar { position:absolute; }
       #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
 
+      /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
+      #wp-pm2-topbar-bg {
+        position:fixed; top:0; left:0; right:0;
+        height:calc(60px + env(safe-area-inset-top,0px));
+        background-size:cover; background-position:center 20%;
+        opacity:0; transition:opacity 0.2s ease;
+        z-index:8; pointer-events:none;
+      }
+      #wp-pm2-topbar-bg::after {
+        content:''; position:absolute; inset:0;
+        backdrop-filter:blur(18px) brightness(0.75);
+        -webkit-backdrop-filter:blur(18px) brightness(0.75);
+      }
+      #wp-pm2-topbar-bg.visible { opacity:1; }
+
       /* TOPBAR */
       #wp-pm2-topbar {
         position:absolute; top:0; left:0; right:0;
@@ -199,7 +217,7 @@ export class PlaceModal2 {
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center; gap:12px;
         padding-left:12px; padding-right:16px;
-        z-index:10; background:transparent; position:absolute; top:0; left:0; right:0;
+        z-index:9; background:transparent;
         transition:background 0.25s ease;
       }
       #wp-pm2-topbar.scrolled {
@@ -226,7 +244,8 @@ export class PlaceModal2 {
         letter-spacing:-0.2px; opacity:0; transition:opacity 0.2s ease;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       }
-      #wp-pm2-topbar.scrolled #wp-pm2-topbar-title { opacity:1; }
+      #wp-pm2-topbar.scrolled #wp-pm2-topbar-title { opacity:1; color:#fff; }
+      #wp-pm2-topbar.scrolled #wp-pm2-back { background:rgba(255,255,255,0.2); box-shadow:none; color:#fff; }
 
       /* HERO */
       #wp-pm2-hero {
@@ -599,6 +618,8 @@ export class PlaceModal2 {
     // Hero background — primera foto con parallax
     const heroBg = $('wp-pm2-hero-bg');
     if (heroBg) heroBg.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
+    const topbarBgEl = $('wp-pm2-topbar-bg');
+    if (topbarBgEl) topbarBgEl.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
 
     // Topbar title
     const ttEl = $('wp-pm2-topbar-title');
