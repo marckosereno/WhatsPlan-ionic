@@ -35,7 +35,10 @@ export class PlaceModal2 {
           <span id="wp-pm2-topbar-title"></span>
         </div>
 
-        <!-- HERO -->
+        <!-- SCROLLABLE BODY -->
+        <div id="wp-pm2-body">
+
+        <!-- HERO — dentro del scroll para que el parallax funcione -->
         <div id="wp-pm2-hero">
           <div id="wp-pm2-hero-bg"></div>
           <div id="wp-pm2-hero-gradient"></div>
@@ -49,9 +52,6 @@ export class PlaceModal2 {
             </div>
           </div>
         </div>
-
-        <!-- SCROLLABLE BODY -->
-        <div id="wp-pm2-body">
 
           <!-- SAVED + COLLECTIONS -->
           <div class="wp-pm2-row" id="wp-pm2-saves-row">
@@ -212,7 +212,7 @@ export class PlaceModal2 {
 
       /* TOPBAR */
       #wp-pm2-topbar {
-        position:absolute; top:0; left:0; right:0;
+        position:fixed; top:0; left:0; right:0;
         height:calc(60px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center; gap:12px;
@@ -250,7 +250,7 @@ export class PlaceModal2 {
       /* HERO */
       #wp-pm2-hero {
         position:relative; height:72vw; min-height:260px; max-height:380px;
-        flex-shrink:0; overflow:hidden; background:#1a1a2e; margin-top:calc(-60px - env(safe-area-inset-top,0px));
+        flex-shrink:0; overflow:hidden; background:#1a1a2e;
         will-change:height; transition:none;
       }
       #wp-pm2-hero-bg {
@@ -288,6 +288,7 @@ export class PlaceModal2 {
       #wp-pm2-body {
         flex:1; overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
+        position:relative;
       }
 
       /* ROWS */
