@@ -240,10 +240,10 @@ export class PlaceModal2 {
       #wp-pm2-hero-gradient {
         position:absolute; inset:0;
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.0) 0%,
-          transparent 35%,
-          rgba(0,0,0,0.05) 55%,
-          rgba(255,255,255,0.6) 78%,
+          rgba(0,0,0,0.2) 0%,
+          transparent 30%,
+          transparent 50%,
+          rgba(255,255,255,0.7) 72%,
           rgba(255,255,255,1) 100%);
         pointer-events:none;
       }
@@ -518,6 +518,7 @@ export class PlaceModal2 {
     heroEl.style.minHeight = '';
     heroBg.style.transform = '';
     nameEl.style.opacity = '';
+    nameEl.style.transform = '';
     topbar.classList.remove('scrolled');
     body.scrollTop = 0;
 
@@ -531,25 +532,27 @@ export class PlaceModal2 {
       const sy   = body.scrollTop;
       const prog = Math.min(1, Math.max(0, sy / travel));
 
-      // 1. Imagen sube — parallax realtime
-      heroBg.style.transform = `translateY(-${sy * 0.5}px)`;
+      // 1. Hero encoge 1:1 con el scroll, mínimo = topbarH
+      const newH = Math.max(topbarH, fullH - sy);
+      heroEl.style.height = newH + 'px';
 
-      // 2. Hero encoge directo sin transition — sigue el scroll 1:1
-      heroEl.style.height = Math.max(topbarH, fullH - sy) + 'px';
+      // 2. Imagen sube con parallax — limitada para no salir del hero
+      const maxUp = fullH - topbarH;
+      const imgUp = Math.min(sy * 0.5, maxUp * 0.6);
+      heroBg.style.transform = `translateY(-${imgUp}px)`;
 
-      // 3. Contenido del hero (título/meta) desaparece
-      nameEl.style.opacity = Math.max(0, 1 - prog * 2);
+      // 3. Título y meta suben junto con el hero y se desvanecen
+      const titleUp = sy * prog;
+      nameEl.style.transform = `translateY(-${titleUp * 0.6}px)`;
+      nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
 
-      // 4. Nada extra — el gradient del hero sube con él
+      // 4. Gradiente (sombra blanca) queda pegado abajo del hero
+      //    — ya lo hace naturalmente al encoger el hero
 
-      // 5. Título aparece en el centro del topbar
-      if (prog > 0.5) {
-        topbar.classList.add('scrolled');
-        if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.5) / 0.3);
-      } else {
-        topbar.classList.remove('scrolled');
-        if (topbarTitle) topbarTitle.style.opacity = '0';
-      }
+      // 5. Título del lugar aparece centrado en el topbar
+      if (topbarTitle) topbarTitle.style.opacity = Math.min(1, Math.max(0, (prog - 0.5) / 0.3));
+      if (prog > 0.5) topbar.classList.add('scrolled');
+      else            topbar.classList.remove('scrolled');
     };
 
     // Limpiar listener anterior si existe
