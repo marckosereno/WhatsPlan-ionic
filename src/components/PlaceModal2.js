@@ -230,9 +230,10 @@ export class PlaceModal2 {
         height:72vw; min-height:260px; max-height:380px;
         overflow:hidden; background:#1a1a2e;
         will-change:height; z-index:5;
+        clip-path:inset(0);
       }
       #wp-pm2-hero-bg {
-        position:absolute; inset:0; will-change:transform; overflow:hidden;
+        position:absolute; top:0; left:0; right:0; bottom:-80px; will-change:transform;
         background-size:cover; background-position:center;
         transform:translateY(0);
         transition:transform 0.01s linear;
@@ -540,12 +541,13 @@ const onScroll = () => {
       heroEl.style.height   = newH + 'px';
 
       // 2. Contenido siempre empieza justo debajo del hero
-      body.style.paddingTop = newH + 'px';
+      body.style.paddingTop = Math.ceil(newH) + 'px';
 
       // 3. Imagen parallax — sube más lento que el hero
-      const shift = sy * 0.45;
-      heroBg.style.transform = `translateY(-${shift}px)`;
-      nameEl.style.transform = `translateY(-${shift * 0.9}px)`;
+      // Image sube al 40% del scroll — hero la clipea arriba
+      heroBg.style.transform = `translateY(-${sy * 0.4}px)`;
+      // Titulo sube igual que la imagen
+      nameEl.style.transform = `translateY(-${sy * 0.4}px)`;
 
       // 4. Título/meta se desvanecen al subir
       nameEl.style.opacity = Math.max(0, 1 - prog * 2.5);
