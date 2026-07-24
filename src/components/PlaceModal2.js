@@ -550,31 +550,25 @@ export class PlaceModal2 {
 
     const overlay = this._el.querySelector('#wp-pm2-overlay');
 
-    const whiteOverlay = this._el.querySelector('#wp-pm2-white-overlay');
-
     const onScroll = () => {
       const sy   = body.scrollTop;
-      const prog = Math.min(1, Math.max(0, sy / travel));
-
-      // Imagen y overlay suben juntos — mismo translateY
-      const up = sy * 0.7;
-      heroBg.style.transform = `translateY(-${up}px)`;
-
-      // Overlay blanco sube con la imagen desde la base del hero
-      if (whiteOverlay) {
-        whiteOverlay.style.transform = `translateY(-${up}px)`;
-      }
-
-      // Hero encoge para que el contenido suba
+      const prog = Math.min(1, sy / travel);
       const newH = Math.max(topbarH, fullH - sy);
+
+      // Hero encoge hasta topbarH y SE DETIENE — queda como topbar fijo
       heroEl.style.height = newH + 'px';
-      body.style.paddingTop = Math.ceil(newH) + 'px';
 
-      // Título desaparece rápido
-      nameEl.style.opacity   = Math.max(0, 1 - prog * 3);
-      nameEl.style.transform = `translateY(-${up * 0.8}px)`;
+      // Contenido siempre empieza debajo del hero actual
+      body.style.paddingTop = newH + 'px';
 
-      // Título en topbar
+      // Imagen sube suavemente dentro del hero
+      heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
+
+      // Título y rating se desvanecen
+      nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
+      nameEl.style.transform = `translateY(-${sy * 0.5}px)`;
+
+      // Topbar title aparece
       if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.6) / 0.3);
       if (prog > 0.6) topbar.classList.add('scrolled');
       else            topbar.classList.remove('scrolled');
