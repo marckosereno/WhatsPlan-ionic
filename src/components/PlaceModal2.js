@@ -326,7 +326,7 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:2px 16px 4px;
+        padding:0 16px 4px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
@@ -336,6 +336,13 @@ export class PlaceModal2 {
         border:2px solid #fff; background:#e2e8f0;
         object-fit:cover;
         margin-left:-8px; flex-shrink:0; position:relative;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-more {
+        width:28px; height:28px; border-radius:9999px;
+        border:2px solid #fff; background:#374151;
+        margin-left:-8px; flex-shrink:0; position:relative;
+        display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; color:#fff;
       }
       #wp-pm2-reviews-avatars .wp-pm2-fp-avatar:first-child { margin-left:0; }
       #wp-pm2-reviews-count {
@@ -789,11 +796,15 @@ export class PlaceModal2 {
     if (typeof reviews === 'string') { try { reviews = JSON.parse(reviews); } catch(e) { reviews = []; } }
     if (!Array.isArray(reviews)) reviews = [];
 
-    // Facepile: hasta 6 avatares (memoji de Tapback vía getAvatarUrl, misma
-    // función que usa PlaceModal1) + contador
+    // Facepile: solo 3 avatares reales (memoji de Tapback vía getAvatarUrl,
+    // misma función que usa PlaceModal1) + una bolita "+N" con el resto.
+    // El contador de al lado muestra el total REAL de Google entre paréntesis
+    // (place.userRatingCount / user_ratings_total), no solo lo que trae el
+    // array de reviews (Google Place Details solo da hasta 5 de muestra).
+    const totalReal = place.userRatingCount || place.user_ratings_total || reviews.length;
     if (reviews.length) {
       avatarsEl.innerHTML = '';
-      const shown = reviews.slice(0, 6);
+      const shown = reviews.slice(0, 3);
       shown.forEach((r, i) => {
         const av = document.createElement('img');
         av.className = 'wp-pm2-fp-avatar';
@@ -802,7 +813,17 @@ export class PlaceModal2 {
         av.onerror = () => { av.style.background = '#e2e8f0'; };
         avatarsEl.appendChild(av);
       });
-      countEl.textContent = reviews.length === 1 ? '1 reseña' : `${reviews.length} reseñas`;
+      const remaining = Math.max(0, totalReal - shown.length);
+      if (remaining > 0) {
+        const more = document.createElement('div');
+        more.className = 'wp-pm2-fp-more';
+        more.textContent = '+' + (remaining > 99 ? '99' : remaining);
+        more.style.zIndex = 0;
+        avatarsEl.appendChild(more);
+      }
+      countEl.textContent = reviews.length === 1
+        ? `1 reseña${totalReal !== reviews.length ? ` (${totalReal})` : ''}`
+        : `${reviews.length} reseñas${totalReal !== reviews.length ? ` (${totalReal})` : ''}`;
       summaryEl.style.display = '';
     } else {
       summaryEl.style.display = 'none';
