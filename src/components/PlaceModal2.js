@@ -79,7 +79,7 @@ export class PlaceModal2 {
                misma función que PlaceModal1 (_populateAI + /api/groq-description) -->
           <div class="wp-pm2-ai-block" id="wp-pm2-ai-block" style="display:none">
             <div class="wp-pm2-ai-header">
-              <svg class="wp-pm2-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
+              <svg class="wp-pm2-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path class="wp-pm2-spark wp-pm2-spark-1" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path class="wp-pm2-spark wp-pm2-spark-2" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path class="wp-pm2-spark wp-pm2-spark-3" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
               <span class="wp-pm2-ai-badge">Descripción generada con IA</span>
             </div>
             <div class="wp-pm2-ai-text" id="wp-pm2-ai-text"></div>
@@ -99,30 +99,30 @@ export class PlaceModal2 {
           <!-- ACTION PILLS -->
           <div id="wp-pm2-actions">
             <button class="wp-pm2-action" id="wp-pm2-map-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg></span>
               Ver en el mapa
             </button>
             <button class="wp-pm2-action" id="wp-pm2-call-btn" style="display:none">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.84a16 16 0 0 0 6 6l.86-.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.84a16 16 0 0 0 6 6l.86-.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
               Llamar
             </button>
             <button class="wp-pm2-action" id="wp-pm2-web-btn" style="display:none">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
               Sitio web
             </button>
             <button class="wp-pm2-action" id="wp-pm2-more-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>
             </button>
           </div>
+
+          <!-- PHOTO STRIP -->
+          <div id="wp-pm2-strip"></div>
 
           <!-- HOURS -->
           <div id="wp-pm2-hours" style="display:none">
             <span id="wp-pm2-hours-text"></span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
-
-          <!-- PHOTO STRIP -->
-          <div id="wp-pm2-strip"></div>
 
           <!-- DESCRIPTION -->
           <div id="wp-pm2-desc-wrap" style="display:none">
@@ -341,6 +341,33 @@ export class PlaceModal2 {
         100% { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
       }
       .wp-pm2-ai-pulse { animation: wp-pm2-ai-pulse 1.4s ease-in-out infinite; }
+      /* Cada sparkle tiene SU PROPIO color cíclico + SU PROPIO pulse, con
+         distinta duración/delay — se ven "vivos" e independientes, no
+         parpadeando todos al unísono */
+      .wp-pm2-spark { transform-box:fill-box; transform-origin:center; }
+      @keyframes wp-pm2-spark-color {
+        0%   { fill:#60a5fa; }
+        25%  { fill:#a78bfa; }
+        50%  { fill:#f472b6; }
+        75%  { fill:#fb923c; }
+        100% { fill:#60a5fa; }
+      }
+      @keyframes wp-pm2-spark-scale {
+        0%,100% { transform:scale(1); opacity:0.85; }
+        50%     { transform:scale(1.35); opacity:1; }
+      }
+      .wp-pm2-ai-pulse .wp-pm2-spark-1 {
+        animation: wp-pm2-spark-color 2.4s ease-in-out infinite,
+                   wp-pm2-spark-scale 1.1s ease-in-out infinite;
+      }
+      .wp-pm2-ai-pulse .wp-pm2-spark-2 {
+        animation: wp-pm2-spark-color 3.1s ease-in-out infinite 0.4s,
+                   wp-pm2-spark-scale 1.6s ease-in-out infinite 0.2s;
+      }
+      .wp-pm2-ai-pulse .wp-pm2-spark-3 {
+        animation: wp-pm2-spark-color 2.7s ease-in-out infinite 0.8s,
+                   wp-pm2-spark-scale 1.3s ease-in-out infinite 0.5s;
+      }
       @keyframes wp-pm2-ai-fadein {
         from { opacity:0; transform:translateY(4px); }
         to   { opacity:1; transform:translateY(0); }
@@ -367,7 +394,7 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:0 16px 4px; margin-top:-8px;
+        padding:0 16px 4px; margin-top:-20px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
@@ -408,18 +435,29 @@ export class PlaceModal2 {
 
       /* ACTION PILLS */
       #wp-pm2-actions {
-        display:flex; gap:8px; padding:12px 16px; overflow-x:auto;
+        display:flex; gap:10px; padding:14px 16px; overflow-x:auto;
         scrollbar-width:none;
       }
       #wp-pm2-actions::-webkit-scrollbar { display:none; }
       .wp-pm2-action {
-        display:inline-flex; align-items:center; gap:6px;
-        padding:8px 14px; border-radius:999px; border:1.5px solid #e5e7eb;
-        background:#fff; font-size:13px; font-weight:600; color:#374151;
+        display:inline-flex; align-items:center; gap:8px;
+        padding:8px 16px 8px 8px; border-radius:999px; border:none;
+        background:#fff; font-size:13px; font-weight:700; color:#1f2937;
         cursor:pointer; white-space:nowrap; flex-shrink:0; font-family:inherit;
         -webkit-tap-highlight-color:transparent;
+        box-shadow:0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+        transition:transform 0.12s ease, box-shadow 0.12s ease;
       }
-      .wp-pm2-action:active { background:#f3f4f6; }
+      .wp-pm2-action:active { transform:scale(0.96); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+      .wp-pm2-action-icon {
+        width:26px; height:26px; border-radius:50%; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+      }
+      #wp-pm2-map-btn .wp-pm2-action-icon  { background:#dbeafe; color:#2563eb; }
+      #wp-pm2-call-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
+      #wp-pm2-web-btn .wp-pm2-action-icon  { background:#ede9fe; color:#7c3aed; }
+      #wp-pm2-more-btn { padding:8px; }
+      #wp-pm2-more-btn .wp-pm2-action-icon { background:#f3f4f6; color:#4b5563; }
 
       /* HOURS */
       #wp-pm2-hours {
@@ -436,7 +474,7 @@ export class PlaceModal2 {
       }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
-        width:120px; height:120px; object-fit:cover;
+        width:150px; height:150px; object-fit:cover;
         border-radius:10px; flex-shrink:0; cursor:pointer;
       }
       #wp-pm2-strip:empty { display:none; }
@@ -732,7 +770,7 @@ export class PlaceModal2 {
     // Photo strip
     const stripEl = $('wp-pm2-strip');
     stripEl.innerHTML = '';
-    photos.slice(1).forEach(url => {
+    photos.forEach(url => {
       const img = document.createElement('img');
       img.src = url; img.alt = ''; img.loading = 'lazy';
       stripEl.appendChild(img);
