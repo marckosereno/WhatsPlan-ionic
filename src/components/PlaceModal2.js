@@ -572,8 +572,7 @@ export class PlaceModal2 {
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
 
-        // Topbar: sin blur — solo una sombra suave que crece con el scroll
-        topbar.style.boxShadow = prog > 0.05 ? `0 4px 16px rgba(0,0,0,${(prog * 0.1).toFixed(3)})` : 'none';
+        // Sin sombra ni blur: el topbar queda limpio, sin nada agregado
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
