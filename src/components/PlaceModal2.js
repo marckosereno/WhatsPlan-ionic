@@ -520,6 +520,7 @@ export class PlaceModal2 {
 
     // Reset
     heroEl.style.height = '';
+    heroEl.style.minHeight = '';   // usar el min-height del CSS SOLO para medir fullH
     heroInner.style.height = '';
     heroInner.style.transform = '';
     heroGradient.style.opacity = '';
@@ -545,10 +546,14 @@ export class PlaceModal2 {
     //    literalmente el fondo del topbar en ese punto.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
-      const fullH   = heroEl.offsetHeight;
+      const fullH   = heroEl.offsetHeight;   // con min-height:260px del CSS todavía activo
       if (!fullH) return;
       const travel = fullH - topbarH;
       heroInner.style.height = fullH + 'px';
+      // A partir de aquí el JS manda: anulamos el min-height del CSS para
+      // que #wp-pm2-hero pueda encogerse de verdad hasta topbarH (antes se
+      // quedaba pegado en 260px por el min-height → ese era el hueco negro)
+      heroEl.style.minHeight = '0px';
 
       const onScroll = () => {
         const sy    = body.scrollTop;
@@ -559,8 +564,8 @@ export class PlaceModal2 {
         heroEl.style.height = newH + 'px';
         heroInner.style.transform = `translateY(-${shift}px)`; // imagen + overlay suben juntos
 
-        // Overlay del hero: se desvanece gradualmente mientras sube
-        heroGradient.style.opacity = Math.max(0, 1 - prog * 1.3);
+        // Overlay del hero: se conserva SIEMPRE visible — es lo que termina
+        // siendo el fondo real del topbar al llegar al tope del recorrido
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
