@@ -75,6 +75,16 @@ export class PlaceModal2 {
             <button id="wp-pm2-add-review" class="wp-pm2-pill-btn">Añadir reseña</button>
           </div>
 
+          <!-- AI DESCRIPTION — generada con IA en base a las reseñas de Google,
+               misma función que PlaceModal1 (_populateAI + /api/groq-description) -->
+          <div class="wp-pm2-ai-block" id="wp-pm2-ai-block" style="display:none">
+            <div class="wp-pm2-ai-header">
+              <svg class="wp-pm2-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
+              <span class="wp-pm2-ai-badge">Descripción generada con IA</span>
+            </div>
+            <div class="wp-pm2-ai-text" id="wp-pm2-ai-text"></div>
+          </div>
+
           <!-- CTA ROW -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row">
             <button id="wp-pm2-fuiste">
@@ -309,10 +319,41 @@ export class PlaceModal2 {
         width:100%; height:0; /* alto real (=travel) seteado por JS */
       }
 
+      /* AI DESCRIPTION */
+      .wp-pm2-ai-block {
+        margin:4px 16px 12px; padding:0; background:transparent; border:none;
+        display:flex; flex-direction:column; gap:8px;
+      }
+      .wp-pm2-ai-header { display:flex; align-items:center; gap:8px; }
+      .wp-pm2-ai-icon {
+        flex-shrink:0; color:#1c1c1e; transition:color 0.3s ease;
+        filter:drop-shadow(0 0 6px rgba(28,28,30,0.4));
+      }
+      .wp-pm2-ai-badge {
+        font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+        color:#000; background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        border:1px solid rgba(180,180,180,0.5); padding:3px 9px; border-radius:999px;
+        font-family:inherit; box-shadow:0 2px 6px rgba(28,28,30,0.15);
+      }
+      @keyframes wp-pm2-ai-pulse {
+        0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+        50%  { color:#818cf8; filter:drop-shadow(0 0 10px rgba(129,140,248,0.7)); }
+        100% { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+      }
+      .wp-pm2-ai-pulse { animation: wp-pm2-ai-pulse 1.4s ease-in-out infinite; }
+      @keyframes wp-pm2-ai-fadein {
+        from { opacity:0; transform:translateY(4px); }
+        to   { opacity:1; transform:translateY(0); }
+      }
+      .wp-pm2-ai-text {
+        font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
+        animation: wp-pm2-ai-fadein 0.4s ease both;
+      }
+
       /* ROWS */
       .wp-pm2-row {
         display:flex; align-items:center; gap:10px;
-        padding:12px 16px; border-bottom:1px solid #f3f4f6;
+        padding:12px 16px;
       }
       .wp-pm2-pill-btn {
         display:inline-flex; align-items:center; gap:5px;
@@ -326,7 +367,7 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:0 16px 4px;
+        padding:0 16px 4px; margin-top:-8px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
@@ -368,7 +409,7 @@ export class PlaceModal2 {
       /* ACTION PILLS */
       #wp-pm2-actions {
         display:flex; gap:8px; padding:12px 16px; overflow-x:auto;
-        border-bottom:1px solid #f3f4f6; scrollbar-width:none;
+        scrollbar-width:none;
       }
       #wp-pm2-actions::-webkit-scrollbar { display:none; }
       .wp-pm2-action {
@@ -384,7 +425,7 @@ export class PlaceModal2 {
       #wp-pm2-hours {
         display:flex; align-items:center; gap:6px;
         padding:12px 16px; font-size:13px; color:#374151;
-        border-bottom:1px solid #f3f4f6; cursor:pointer;
+        cursor:pointer;
       }
       #wp-pm2-hours-text { flex:1; font-weight:500; }
 
@@ -392,17 +433,16 @@ export class PlaceModal2 {
       #wp-pm2-strip {
         display:flex; gap:4px; padding:12px 16px;
         overflow-x:auto; scrollbar-width:none;
-        border-bottom:1px solid #f3f4f6;
       }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
-        width:120px; height:90px; object-fit:cover;
+        width:120px; height:120px; object-fit:cover;
         border-radius:10px; flex-shrink:0; cursor:pointer;
       }
       #wp-pm2-strip:empty { display:none; }
 
       /* DESCRIPTION */
-      #wp-pm2-desc-wrap { padding:14px 16px; border-bottom:1px solid #f3f4f6; }
+      #wp-pm2-desc-wrap { padding:14px 16px; }
       #wp-pm2-desc {
         margin:0; font-size:14px; line-height:1.6; color:#374151;
         display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
@@ -435,7 +475,7 @@ export class PlaceModal2 {
       }
 
       /* TAGS */
-      #wp-pm2-tags-section { border-bottom:1px solid #f3f4f6; padding-bottom:12px; }
+      #wp-pm2-tags-section { padding-bottom:12px; }
       #wp-pm2-tags-list { display:flex; flex-wrap:wrap; gap:6px; padding:0 16px 8px; }
       .wp-pm2-tag-pill {
         padding:5px 12px; border-radius:999px; border:1px solid #e5e7eb;
@@ -444,7 +484,7 @@ export class PlaceModal2 {
       #wp-pm2-add-tag { margin:0 16px; }
 
       /* MENTIONS */
-      #wp-pm2-mentions { border-bottom:1px solid #f3f4f6; padding-bottom:16px; }
+      #wp-pm2-mentions { padding-bottom:16px; }
       #wp-pm2-mentions-list {
         display:flex; gap:8px; padding:0 16px; overflow-x:auto; scrollbar-width:none;
       }
@@ -489,7 +529,6 @@ export class PlaceModal2 {
       #wp-pm2-no-reviews { font-size:14px; color:#9ca3af; text-align:center; padding:8px 16px 16px; }
       .wp-pm2-review-row {
         display:flex; gap:10px; padding:10px 16px;
-        border-top:1px solid #f3f4f6;
       }
       .wp-pm2-review-avatar {
         width:34px; height:34px; border-radius:50%; flex-shrink:0;
@@ -657,6 +696,7 @@ export class PlaceModal2 {
     this._el.classList.remove('visible');
     document.body.style.overflow = '';
     this._place = null;
+    if (this._aiAbort) this._aiAbort();
     const body = this._el.querySelector('#wp-pm2-body');
     if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
     this._scrollHandler = null;
@@ -780,6 +820,81 @@ export class PlaceModal2 {
 
     // Reviews (async)
     this._loadReviews(place);
+
+    // Descripción generada con IA (misma función que PlaceModal1)
+    this._populateAI(place);
+  }
+
+  // Descripción generada con IA — misma lógica que PlaceModal1._populateAI:
+  // 1) si el place ya trae `ai_descriptions` (guardadas en Supabase), muestra
+  //    una al azar de inmediato; 2) si no, pide una nueva a
+  //    /api/groq-description (que arma el prompt en base a place.reviews)
+  _populateAI(place) {
+    const block  = this._el.querySelector('#wp-pm2-ai-block');
+    const textEl = this._el.querySelector('#wp-pm2-ai-text');
+    const icon   = this._el.querySelector('.wp-pm2-ai-icon');
+    if (!block || !textEl) return;
+
+    if (this._aiAbort) this._aiAbort();
+    this._aiAbort = null;
+
+    block.style.display = 'none';
+    textEl.textContent  = '';
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) return;
+
+    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
+    if (existing.length > 0) {
+      const desc = existing[Math.floor(Math.random() * existing.length)];
+      block.style.display = '';
+      this._typewrite(textEl, desc);
+      return;
+    }
+
+    let aborted = false;
+    let cancelTypewrite = null;
+    this._aiAbort = () => {
+      aborted = true;
+      if (cancelTypewrite) cancelTypewrite();
+      block.style.display = 'none';
+      textEl.textContent  = '';
+      if (icon) icon.classList.remove('wp-pm2-ai-pulse');
+    };
+
+    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (aborted) return;
+        if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
+        block.style.display = '';
+        textEl.textContent  = '';
+        if (icon) icon.classList.add('wp-pm2-ai-pulse');
+        cancelTypewrite = this._typewrite(textEl, data.description, null, () => {
+          if (icon) icon.classList.remove('wp-pm2-ai-pulse');
+        });
+      })
+      .catch(() => { if (!aborted) block.style.display = 'none'; });
+  }
+
+  _typewrite(el, text, onStart, onDone) {
+    el.textContent = '';
+    let i = 0;
+    let cancelled = false;
+    let timer = null;
+    const step = () => {
+      if (cancelled) return;
+      if (i < text.length) {
+        el.textContent += text[i++];
+        timer = setTimeout(step, 16);
+      } else if (onDone) onDone();
+    };
+    if (onStart) onStart();
+    timer = setTimeout(step, 16);
+    return function cancel() {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }
 
   // Google Reviews — vienen embebidas en el propio `place.reviews` (columna
@@ -821,9 +936,7 @@ export class PlaceModal2 {
         more.style.zIndex = 0;
         avatarsEl.appendChild(more);
       }
-      countEl.textContent = reviews.length === 1
-        ? `1 reseña${totalReal !== reviews.length ? ` (${totalReal})` : ''}`
-        : `${reviews.length} reseñas${totalReal !== reviews.length ? ` (${totalReal})` : ''}`;
+      countEl.textContent = `(${totalReal} reseñas)`;
       summaryEl.style.display = '';
     } else {
       summaryEl.style.display = 'none';
