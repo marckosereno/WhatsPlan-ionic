@@ -72,6 +72,7 @@ export class PlaceModal2 {
           <div id="wp-pm2-reviews-summary" style="display:none">
             <div id="wp-pm2-reviews-avatars"></div>
             <span id="wp-pm2-reviews-count"></span>
+            <button id="wp-pm2-add-review" class="wp-pm2-pill-btn">Añadir reseña</button>
           </div>
 
           <!-- CTA ROW -->
@@ -340,6 +341,9 @@ export class PlaceModal2 {
       #wp-pm2-reviews-count {
         font-size:13px; font-weight:600; color:#374151;
       }
+      #wp-pm2-add-review {
+        margin-left:auto; padding:6px 12px; font-size:12px; flex-shrink:0;
+      }
 
       #wp-pm2-cta-row { gap:8px; }
       #wp-pm2-fuiste {
@@ -550,6 +554,11 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
       console.log('[PM2] Añadir comentario');
     });
+    el.querySelector('#wp-pm2-add-review').addEventListener('click', () => {
+      // Reutiliza el mismo flujo de "Añade un comentario..." que ya existe
+      el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.querySelector('#wp-pm2-comment-box').click();
+    });
   }
 
   // ── SHOW ──────────────────────────────────────────────────────────
@@ -661,9 +670,12 @@ export class PlaceModal2 {
     $('wp-pm2-cat-icon').textContent = catIcon;
     $('wp-pm2-cat').textContent = catName;
 
-    // Rating
+    // Rating (+ total real de reseñas de Google entre paréntesis, igual que PlaceModal1)
     const rating = parseFloat(place.rating);
-    $('wp-pm2-rating-hero').textContent = rating ? '⭐ ' + rating.toFixed(1) : '';
+    const ratingCount = place.userRatingCount || place.user_ratings_total || 0;
+    $('wp-pm2-rating-hero').textContent = rating
+      ? '⭐ ' + rating.toFixed(1) + (ratingCount ? ` (${ratingCount})` : '')
+      : '';
 
     // Photos array (used for hero bg + strip)
     const firstPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
