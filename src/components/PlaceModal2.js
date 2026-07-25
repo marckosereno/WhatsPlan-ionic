@@ -557,7 +557,7 @@ export class PlaceModal2 {
       if (!fullH) return;
       const travel = fullH - topbarH;
       heroInner.style.height = fullH + 'px';
-      spacer.style.height = travel + 'px';
+      spacer.style.height = (travel + topbarH * 1.5) + 'px';
       heroEl.style.minHeight = '0px';
 
       const onScroll = () => {
