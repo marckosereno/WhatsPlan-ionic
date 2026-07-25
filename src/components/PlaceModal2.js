@@ -27,7 +27,6 @@ export class PlaceModal2 {
         <!-- WHITE OVERLAY grows upward on scroll -->
 <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
-          <div id="wp-pm2-topbar-bg"></div>
           <button id="wp-pm2-back">
             <svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
           </button>
@@ -56,6 +55,11 @@ export class PlaceModal2 {
 
         <!-- SCROLLABLE BODY -->
         <div id="wp-pm2-body">
+
+          <!-- SPACER — el primer tramo de scroll (alto = recorrido del hero)
+               se "gasta" acá, así el contenido real no se mueve hasta que
+               el hero termina de colapsar -->
+          <div id="wp-pm2-scroll-spacer"></div>
 
           <!-- CTA ROW -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row">
@@ -198,15 +202,9 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
       }
-      /* Scrim translúcido del topbar — nunca queda blanco sólido, es tipo glass */
-      #wp-pm2-topbar-bg {
-        position:absolute; inset:0; z-index:0;
-        background:rgba(255,255,255,0.78);
-        backdrop-filter:blur(24px) saturate(1.8);
-        -webkit-backdrop-filter:blur(24px) saturate(1.8);
-        opacity:0;
-        pointer-events:none;
-      }
+      /* Sin blur ni scrim propio: el fondo del topbar es el hero+overlay
+         que llega hasta acá (translate del hero-inner). Solo se le agrega
+         una sombra suave a medida que el hero termina de colapsar. */
 
       #wp-pm2-back {
         position:relative; z-index:1;
@@ -275,6 +273,9 @@ export class PlaceModal2 {
         flex:1; overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
         background:#fff;
+      }
+      #wp-pm2-scroll-spacer {
+        flex-shrink:0; width:100%; height:0; /* alto real seteado por JS */
       }
 
       /* ROWS */
@@ -510,11 +511,11 @@ export class PlaceModal2 {
     document.body.style.overflow = 'hidden';
 
     const body        = this._el.querySelector('#wp-pm2-body');
+    const spacer      = this._el.querySelector('#wp-pm2-scroll-spacer');
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
     const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
-    const topbarBg    = this._el.querySelector('#wp-pm2-topbar-bg');
     const nameEl      = this._el.querySelector('#wp-pm2-hero-bottom');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
@@ -524,32 +525,32 @@ export class PlaceModal2 {
     heroInner.style.height = '';
     heroInner.style.transform = '';
     heroGradient.style.opacity = '';
-    topbarBg.style.opacity = '0';
+    spacer.style.height = '0px';
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
 
-    // 1. Medimos el topbar (topbarH) — esa medida es el límite exacto del
-    //    recorrido: la imagen+overlay (hero-inner) NUNCA se traslada más de
-    //    lo necesario para terminar encajando ahí.
+    // 1. Medimos el topbar (topbarH) — límite exacto del recorrido (travel).
     // 2. hero (viewport) se encoge de fullH → topbarH.
-    // 3. hero-inner tiene alto FIJO = fullH (no se encoge) y se traslada
-    //    hacia arriba con translateY(-shift), shift 0..(fullH-topbarH),
-    //    en el MISMO ritmo (1:1) que se encoge el viewport → imagen y
-    //    overlay suben juntos, y como hero-inner siempre mide fullH (más
-    //    que el viewport visible), nunca se descubre hueco.
-    // 4. Al llegar al final (shift máximo = fullH-topbarH), lo único que
-    //    queda visible dentro del rectángulo del topbar es exactamente la
-    //    franja inferior de hero-inner — el overlay/gradiente — que es
-    //    literalmente el fondo del topbar en ese punto.
+    // 3. hero-inner tiene alto FIJO = fullH y se traslada hacia arriba con
+    //    translateY(-shift) — imagen + overlay suben juntos, y como
+    //    hero-inner siempre mide fullH nunca se descubre hueco.
+    // 4. El spacer, al inicio del body, mide exactamente `travel`: el
+    //    primer tramo de scroll se gasta ahí (fase 1 = solo anima el
+    //    hero) y recién cuando se agota, el contenido real empieza a
+    //    scrollear (fase 2) — sin esto, contenido y hero se movían juntos
+    //    desde el inicio y el contenido se "perdía" dentro del overlay.
+    // 5. El fondo del topbar es directamente el hero+overlay que llega
+    //    hasta ahí — sin blur ni scrim sintético encima.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
       const fullH   = heroEl.offsetHeight;   // con min-height:260px del CSS todavía activo
       if (!fullH) return;
       const travel = fullH - topbarH;
       heroInner.style.height = fullH + 'px';
+      spacer.style.height = travel + 'px';
       // A partir de aquí el JS manda: anulamos el min-height del CSS para
       // que #wp-pm2-hero pueda encogerse de verdad hasta topbarH (antes se
       // quedaba pegado en 260px por el min-height → ese era el hueco negro)
@@ -564,17 +565,16 @@ export class PlaceModal2 {
         heroEl.style.height = newH + 'px';
         heroInner.style.transform = `translateY(-${shift}px)`; // imagen + overlay suben juntos
 
-        // Overlay del hero: se conserva SIEMPRE visible — es lo que termina
-        // siendo el fondo real del topbar al llegar al tope del recorrido
+        // Overlay del hero: se conserva SIEMPRE visible — es el fondo real
+        // del topbar al llegar al tope del recorrido
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
 
-        // Topbar: scrim translúcido (nunca blanco sólido) + sombra suave
-        topbarBg.style.opacity = Math.min(0.85, prog);
+        // Topbar: sin blur — solo una sombra suave que crece con el scroll
         topbar.style.boxShadow = prog > 0.05 ? `0 4px 16px rgba(0,0,0,${(prog * 0.1).toFixed(3)})` : 'none';
 
-        // Título centrado del topbar aparece cuando el overlay ya casi se fue
+        // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
 
         if (prog >= 1) topbar.classList.add('scrolled');
