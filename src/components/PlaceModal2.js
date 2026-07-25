@@ -2,7 +2,6 @@
 // WHATSPLAN — PlaceModal2.js  (diseño alternativo, Google Maps-inspired)
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
-import { ReviewService }               from '/src/services/ReviewService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 
 export class PlaceModal2 {
@@ -487,10 +486,15 @@ export class PlaceModal2 {
         width:34px; height:34px; border-radius:50%; flex-shrink:0;
         background:#e5e7eb; object-fit:cover;
       }
+      .wp-pm2-review-avatar-fallback {
+        display:flex; align-items:center; justify-content:center;
+        background:#d1d5db; color:#4b5563; font-size:13px; font-weight:700;
+      }
       .wp-pm2-review-body { flex:1; }
       .wp-pm2-review-name { font-size:13px; font-weight:700; color:#0a0a0a; }
       .wp-pm2-review-stars { font-size:11px; color:#f59e0b; margin-top:1px; }
       .wp-pm2-review-text { font-size:13px; color:#374151; margin-top:4px; line-height:1.5; }
+      .wp-pm2-review-time { font-size:11px; color:#9ca3af; margin-top:2px; }
 
       /* FOOTER */
       #wp-pm2-footer {
@@ -767,56 +771,56 @@ export class PlaceModal2 {
     this._loadReviews(place);
   }
 
-  async _loadReviews(place) {
+  // Google Reviews — vienen embebidas en el propio `place.reviews` (columna
+  // JSONB de Supabase, cargada por /api/supabase-places al listar lugares),
+  // así que no hace falta ningún fetch acá: son las mismas reseñas de
+  // Google que Google Place Details trajo al guardar el lugar.
+  _loadReviews(place) {
     const listEl    = this._el.querySelector('#wp-pm2-reviews-list');
     const summaryEl = this._el.querySelector('#wp-pm2-reviews-summary');
     const avatarsEl = this._el.querySelector('#wp-pm2-reviews-avatars');
     const countEl   = this._el.querySelector('#wp-pm2-reviews-count');
-    try {
-      const reviews = await ReviewService.getForPlace(place.place_id || place.id);
 
-      // Facepile: hasta 6 avatares + contador — mismos datos, sin pegarle
-      // una segunda vez a Supabase
-      if (reviews?.length) {
-        avatarsEl.innerHTML = '';
-        reviews.slice(0, 6).forEach(r => {
-          const av = document.createElement('div');
-          av.className = 'wp-pm2-fp-avatar';
-          if (r.avatar_url) {
-            av.style.backgroundImage = `url('${r.avatar_url}')`;
-          } else {
-            av.textContent = (r.display_name || 'U').trim().charAt(0).toUpperCase();
-          }
-          avatarsEl.appendChild(av);
-        });
-        countEl.textContent = reviews.length === 1 ? '1 reseña' : `${reviews.length} reseñas`;
-        summaryEl.style.display = '';
-      } else {
-        summaryEl.style.display = 'none';
-      }
+    let reviews = place.reviews;
+    if (typeof reviews === 'string') { try { reviews = JSON.parse(reviews); } catch(e) { reviews = []; } }
+    if (!Array.isArray(reviews)) reviews = [];
 
-      if (!reviews?.length) {
-        listEl.innerHTML = '<p id="wp-pm2-no-reviews">¡Sé el primero en comentar!</p>';
-        return;
-      }
-      listEl.innerHTML = '';
-      reviews.slice(0, 5).forEach(r => {
-        const row = document.createElement('div');
-        row.className = 'wp-pm2-review-row';
-        const stars = r.rating ? '⭐'.repeat(Math.round(r.rating)) : '';
-        row.innerHTML = `
-          <img class="wp-pm2-review-avatar" src="${r.avatar_url || ''}" onerror="this.style.background='#e5e7eb'">
-          <div class="wp-pm2-review-body">
-            <div class="wp-pm2-review-name">${r.display_name || 'Usuario'}</div>
-            ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
-            <div class="wp-pm2-review-text">${r.text || ''}</div>
-          </div>`;
-        listEl.appendChild(row);
+    // Facepile: hasta 6 avatares (Google no trae foto de perfil en los
+    // datos guardados, así que usamos la inicial del nombre) + contador
+    if (reviews.length) {
+      avatarsEl.innerHTML = '';
+      reviews.slice(0, 6).forEach(r => {
+        const av = document.createElement('div');
+        av.className = 'wp-pm2-fp-avatar';
+        av.textContent = (r.author_name || 'U').trim().charAt(0).toUpperCase();
+        avatarsEl.appendChild(av);
       });
-    } catch(e) {
+      countEl.textContent = reviews.length === 1 ? '1 reseña' : `${reviews.length} reseñas`;
+      summaryEl.style.display = '';
+    } else {
       summaryEl.style.display = 'none';
-      listEl.innerHTML = '<p id="wp-pm2-no-reviews">¡Sé el primero en comentar!</p>';
     }
+
+    if (!reviews.length) {
+      listEl.innerHTML = '<p id="wp-pm2-no-reviews">Sin reseñas de Google todavía</p>';
+      return;
+    }
+    listEl.innerHTML = '';
+    reviews.slice(0, 5).forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'wp-pm2-review-row';
+      const stars = r.rating ? '⭐'.repeat(Math.round(r.rating)) : '';
+      const initial = (r.author_name || 'U').trim().charAt(0).toUpperCase();
+      row.innerHTML = `
+        <div class="wp-pm2-review-avatar wp-pm2-review-avatar-fallback">${initial}</div>
+        <div class="wp-pm2-review-body">
+          <div class="wp-pm2-review-name">${r.author_name || 'Usuario de Google'}</div>
+          ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
+          <div class="wp-pm2-review-text">${r.text || ''}</div>
+          ${r.relative_time ? `<div class="wp-pm2-review-time">${r.relative_time}</div>` : ''}
+        </div>`;
+      listEl.appendChild(row);
+    });
   }
 
   isVisible() { return this._el?.classList.contains('visible'); }
