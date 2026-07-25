@@ -32,6 +32,9 @@ export class PlaceModal2 {
           </button>
           <span id="wp-pm2-topbar-title"></span>
         </div>
+        <!-- FADE — degradado blanco pegado debajo del topbar; el contenido
+             que scrollea ahí se desvanece gradual en vez de cortarse -->
+        <div id="wp-pm2-topbar-fade"></div>
 
         <!-- CONTENT AREA — hero (overlay, absolute) encima de body (absolute
              inset:0, ocupa TODA el área incl. detrás del hero). Así el
@@ -210,8 +213,14 @@ export class PlaceModal2 {
         overflow:hidden;
       }
       /* Sin blur ni scrim propio: el fondo del topbar es el hero+overlay
-         que llega hasta acá (translate del hero-inner). Solo se le agrega
-         una sombra suave a medida que el hero termina de colapsar. */
+         que llega hasta acá (translate del hero-inner). */
+      #wp-pm2-topbar-fade {
+        position:fixed;
+        top:calc(60px + env(safe-area-inset-top,0px));
+        left:0; right:0; height:28px;
+        background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0));
+        z-index:9; pointer-events:none;
+      }
 
       #wp-pm2-back {
         position:relative; z-index:1;
