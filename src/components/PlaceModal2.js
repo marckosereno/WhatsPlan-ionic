@@ -35,17 +35,21 @@ export class PlaceModal2 {
         </div>
 
         <!-- OVERLAY — sombra blanca que sube con el hero -->
-        <!-- HERO — imagen fija detras de todo -->
+        <!-- HERO — viewport que se encoge; adentro, un wrapper de alto FIJO
+             (fullH) que se traslada hacia arriba. Así imagen + overlay suben
+             juntos y nunca se descubre hueco (el wrapper siempre "sobra"). -->
         <div id="wp-pm2-hero">
-          <div id="wp-pm2-hero-bg"></div>
-          <div id="wp-pm2-hero-gradient"></div>
-          <div id="wp-pm2-hero-bottom">
-            <h1 id="wp-pm2-name"></h1>
-            <div id="wp-pm2-meta">
-              <span id="wp-pm2-cat-icon"></span>
-              <span id="wp-pm2-cat"></span>
-              <span class="wp-pm2-dot">•</span>
-              <span id="wp-pm2-rating-hero"></span>
+          <div id="wp-pm2-hero-inner">
+            <div id="wp-pm2-hero-bg"></div>
+            <div id="wp-pm2-hero-gradient"></div>
+            <div id="wp-pm2-hero-bottom">
+              <h1 id="wp-pm2-name"></h1>
+              <div id="wp-pm2-meta">
+                <span id="wp-pm2-cat-icon"></span>
+                <span id="wp-pm2-cat"></span>
+                <span class="wp-pm2-dot">•</span>
+                <span id="wp-pm2-rating-hero"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -223,16 +227,22 @@ export class PlaceModal2 {
         text-align:center;
       }
 
-      /* HERO */
+      /* HERO — viewport que se encoge (overflow:hidden) */
       #wp-pm2-hero {
         position:relative;
         height:72vw; min-height:260px; max-height:380px;
         flex-shrink:0; overflow:hidden; background:#1a1a2e;
         will-change:height;
       }
+      /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
+         arriba. Imagen + gradiente + título viven aquí y suben juntos. */
+      #wp-pm2-hero-inner {
+        position:absolute; top:0; left:0; right:0;
+        will-change:transform;
+      }
       #wp-pm2-hero-bg {
         position:absolute; inset:0;
-        background-size:cover; background-position:center top;
+        background-size:cover; background-position:center;
       }
       #wp-pm2-hero-gradient {
         position:absolute; left:0; right:0; bottom:0;
@@ -243,7 +253,7 @@ export class PlaceModal2 {
           rgba(255,255,255,1) 100%);
         pointer-events:none;
         z-index:2;
-        will-change:transform,opacity;
+        will-change:opacity;
       }
       #wp-pm2-hero-bottom {
         position:absolute; bottom:0; left:0; right:0;
@@ -501,7 +511,7 @@ export class PlaceModal2 {
 
     const body        = this._el.querySelector('#wp-pm2-body');
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
-    const heroBg      = this._el.querySelector('#wp-pm2-hero-bg');
+    const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
     const topbarBg    = this._el.querySelector('#wp-pm2-topbar-bg');
@@ -510,6 +520,8 @@ export class PlaceModal2 {
 
     // Reset
     heroEl.style.height = '';
+    heroInner.style.height = '';
+    heroInner.style.transform = '';
     heroGradient.style.opacity = '';
     topbarBg.style.opacity = '0';
     nameEl.style.opacity = '';
@@ -518,30 +530,36 @@ export class PlaceModal2 {
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
 
-    // Hero se colapsa manualmente (no sticky) hasta quedar del alto del topbar.
-    // heroBg y hero-gradient viajan SOLOS con el encogimiento del contenedor
-    // (inset:0 / bottom:0) — no se les aplica transform extra, así nunca
-    // queda hueco descubriendo el fondo #1a1a2e del hero. El topbar nunca
-    // queda blanco sólido: es un scrim translúcido (glass) que gana
-    // opacidad + una sombra suave a medida que el overlay del hero se pierde.
+    // 1. Medimos el topbar (topbarH) — esa medida es el límite exacto del
+    //    recorrido: la imagen+overlay (hero-inner) NUNCA se traslada más de
+    //    lo necesario para terminar encajando ahí.
+    // 2. hero (viewport) se encoge de fullH → topbarH.
+    // 3. hero-inner tiene alto FIJO = fullH (no se encoge) y se traslada
+    //    hacia arriba con translateY(-shift), shift 0..(fullH-topbarH),
+    //    en el MISMO ritmo (1:1) que se encoge el viewport → imagen y
+    //    overlay suben juntos, y como hero-inner siempre mide fullH (más
+    //    que el viewport visible), nunca se descubre hueco.
+    // 4. Al llegar al final (shift máximo = fullH-topbarH), lo único que
+    //    queda visible dentro del rectángulo del topbar es exactamente la
+    //    franja inferior de hero-inner — el overlay/gradiente — que es
+    //    literalmente el fondo del topbar en ese punto.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
       const fullH   = heroEl.offsetHeight;
       if (!fullH) return;
       const travel = fullH - topbarH;
+      heroInner.style.height = fullH + 'px';
 
       const onScroll = () => {
         const sy    = body.scrollTop;
         const prog  = Math.min(1, Math.max(0, sy / travel));
+        const shift = Math.min(sy, travel);       // límite exacto = topbarH calculado
         const newH  = Math.max(topbarH, fullH - sy);
 
         heroEl.style.height = newH + 'px';
-        // heroBg no necesita JS: background-position:center top (CSS) hace
-        // que la foto quede pinneada arriba y se recorte desde abajo a
-        // medida que el hero se encoge → sube junto con el overlay.
+        heroInner.style.transform = `translateY(-${shift}px)`; // imagen + overlay suben juntos
 
-        // Overlay del hero: ya viaja solo (bottom:0 dentro del hero que se
-        // encoge) — solo lo desvanecemos gradualmente
+        // Overlay del hero: se desvanece gradualmente mientras sube
         heroGradient.style.opacity = Math.max(0, 1 - prog * 1.3);
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
