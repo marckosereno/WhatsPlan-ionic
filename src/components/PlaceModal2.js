@@ -60,8 +60,11 @@ export class PlaceModal2 {
           </div>
 
           <!-- SCROLLABLE BODY — cubre TODA el content-area (incl. detrás del
-               hero); el spacer (alto = fullH) queda tapado por el hero -->
+               hero); el spacer (alto = travel) queda tapado por el hero -->
           <div id="wp-pm2-body">
+
+          <!-- SPACER — alto = recorrido del hero (travel); queda tapado -->
+          <div id="wp-pm2-scroll-spacer"></div>
 
           <!-- CTA ROW -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row">
@@ -285,6 +288,9 @@ export class PlaceModal2 {
         overflow-y:auto; overscroll-behavior:contain;
         -webkit-overflow-scrolling:touch;
         background:#fff;
+      }
+      #wp-pm2-scroll-spacer {
+        width:100%; height:0; /* alto real (=travel) seteado por JS */
       }
 
       /* ROWS */
@@ -520,6 +526,7 @@ export class PlaceModal2 {
     document.body.style.overflow = 'hidden';
 
     const body        = this._el.querySelector('#wp-pm2-body');
+    const spacer      = this._el.querySelector('#wp-pm2-scroll-spacer');
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
     const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
@@ -533,47 +540,39 @@ export class PlaceModal2 {
     heroInner.style.height = '';
     heroInner.style.transform = '';
     heroGradient.style.opacity = '';
+    spacer.style.height = '0px';
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
-    body.style.overflowY = 'hidden'; // arranca bloqueado: fase 1 primero
 
-    this._removeScrollLock();
-
-    // 1. Medimos topbarH y fullH → travel = lo que tiene que "colapsar" el hero.
-    // 2. hero (overlay absoluto, encima del body) + hero-inner (alto FIJO
-    //    fullH, translateY) — imagen+overlay suben juntos, sin huecos.
-    // 3. FASE 1 y FASE 2 realmente separadas: interceptamos el gesto de
-    //    touch nosotros. Mientras `collapse < travel`, cada pixel que el
-    //    dedo mueve se lo comemos el hero (body.overflowY:hidden, no
-    //    scrollea). Recién cuando el hero llega a `travel` (topbarH),
-    //    liberamos body.overflowY:'auto' y el resto del gesto pasa al
-    //    scroll normal del contenido. Al revés (scroll hacia arriba desde
-    //    scrollTop 0) el hero se vuelve a expandir.
+    // hero (overlay absoluto encima del body) + hero-inner (alto FIJO fullH,
+    // translateY) — imagen+overlay suben juntos, sin huecos. El spacer al
+    // inicio del body mide `travel` (chico, no fullH) para que el hero lo
+    // termine de tapar justo cuando colapsa del todo.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
       const fullH   = heroEl.offsetHeight;   // con min-height:260px del CSS todavía activo
-      if (!fullH) { body.style.overflowY = 'auto'; return; }
+      if (!fullH) return;
       const travel = fullH - topbarH;
-      if (travel <= 0) { body.style.overflowY = 'auto'; return; }
       heroInner.style.height = fullH + 'px';
+      spacer.style.height = travel + 'px';
       heroEl.style.minHeight = '0px';
 
-      let collapse = 0; // 0..travel
-
-      const applyCollapse = () => {
-        const prog = Math.min(1, Math.max(0, collapse / travel));
-        const newH = Math.max(topbarH, fullH - collapse);
+      const onScroll = () => {
+        const sy    = body.scrollTop;
+        const prog  = Math.min(1, Math.max(0, sy / travel));
+        const shift = Math.min(sy, travel);
+        const newH  = Math.max(topbarH, fullH - sy);
 
         heroEl.style.height = newH + 'px';
-        heroInner.style.transform = `translateY(-${collapse}px)`; // imagen + overlay suben juntos
+        heroInner.style.transform = `translateY(-${shift}px)`; // imagen + overlay suben juntos
 
-        // Título/rating del hero: fade-out rápido al iniciar el colapso
+        // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
 
-        // Topbar: sin blur — solo una sombra suave que crece con el colapso
+        // Topbar: sin blur — solo una sombra suave que crece con el scroll
         topbar.style.boxShadow = prog > 0.05 ? `0 4px 16px rgba(0,0,0,${(prog * 0.1).toFixed(3)})` : 'none';
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
@@ -582,54 +581,11 @@ export class PlaceModal2 {
         if (prog >= 1) topbar.classList.add('scrolled');
         else            topbar.classList.remove('scrolled');
       };
-      applyCollapse();
 
-      let lastY = 0;
-      const onTouchStart = (e) => { lastY = e.touches[0].clientY; };
-
-      const onTouchMove = (e) => {
-        const y = e.touches[0].clientY;
-        const delta = lastY - y; // >0: dedo sube = intención de bajar contenido
-        lastY = y;
-
-        if (delta > 0 && collapse < travel) {
-          // FASE 1 (colapsando): el gesto se lo come el hero, el body no scrollea
-          const used = Math.min(travel - collapse, delta);
-          collapse += used;
-          applyCollapse();
-          const leftover = delta - used;
-          if (leftover > 0) {
-            body.style.overflowY = 'auto';
-            body.scrollTop += leftover; // lo que sobra ya pasa a fase 2
-          }
-          e.preventDefault();
-        } else if (delta < 0 && body.scrollTop <= 0 && collapse > 0) {
-          // Scroll hacia arriba en el tope del contenido: re-expande el hero
-          const used = Math.min(collapse, -delta);
-          collapse -= used;
-          applyCollapse();
-          e.preventDefault();
-        }
-        // en cualquier otro caso, scroll normal del body (fase 2)
-      };
-
-      body.addEventListener('touchstart', onTouchStart, { passive: true });
-      body.addEventListener('touchmove', onTouchMove, { passive: false });
-      this._touchStartHandler = onTouchStart;
-      this._touchMoveHandler = onTouchMove;
-      this._scrollLockBody = body;
+      if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = onScroll;
+      body.addEventListener('scroll', onScroll, { passive: true });
     }));
-  }
-
-  // Quita los listeners de touch de un show() anterior (si los hubiera)
-  _removeScrollLock() {
-    if (this._scrollLockBody) {
-      if (this._touchStartHandler) this._scrollLockBody.removeEventListener('touchstart', this._touchStartHandler);
-      if (this._touchMoveHandler)  this._scrollLockBody.removeEventListener('touchmove', this._touchMoveHandler);
-    }
-    this._touchStartHandler = null;
-    this._touchMoveHandler = null;
-    this._scrollLockBody = null;
   }
 
   // showMini: muestra el minisnap del mapa.
@@ -646,7 +602,9 @@ export class PlaceModal2 {
     this._el.classList.remove('visible');
     document.body.style.overflow = '';
     this._place = null;
-    this._removeScrollLock();
+    const body = this._el.querySelector('#wp-pm2-body');
+    if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+    this._scrollHandler = null;
     // Reset topbar
     this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
   }
