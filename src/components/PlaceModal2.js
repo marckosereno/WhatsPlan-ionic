@@ -83,6 +83,14 @@ export class PlaceModal2 {
               <span class="wp-pm2-ai-badge">Descripción generada con IA</span>
             </div>
             <div class="wp-pm2-ai-text" id="wp-pm2-ai-text"></div>
+            <div class="wp-pm2-ai-skeleton" id="wp-pm2-ai-skeleton">
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line" style="width:60%"></div>
+            </div>
           </div>
 
           <!-- CTA ROW — oculto por ahora -->
@@ -115,10 +123,15 @@ export class PlaceModal2 {
             </button>
           </div>
 
-          <!-- HOURS -->
-          <div id="wp-pm2-hours" style="display:none">
-            <span id="wp-pm2-hours-text"></span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <!-- HOURS — colapsable, igual que PlaceModal1 -->
+          <div class="wp-pm2-hours-block" id="wp-pm2-hours" style="display:none">
+            <div class="wp-pm2-hours-trigger" id="wp-pm2-hours-trigger">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#6b7280"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 100-16 8 8 0 000 16zm1-8V7a1 1 0 00-2 0v5a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L13 11.586z"/></svg>
+              <span id="wp-pm2-hours-text"></span>
+              <span class="wp-pm2-hours-status" id="wp-pm2-hours-status"></span>
+              <svg class="wp-pm2-chevron" id="wp-pm2-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="wp-pm2-hours-list" id="wp-pm2-hours-list"></div>
           </div>
 
           <!-- PHOTO STRIP -->
@@ -377,6 +390,17 @@ export class PlaceModal2 {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
         animation: wp-pm2-ai-fadein 0.4s ease both;
       }
+      @keyframes wp-pm2-skeleton-shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position:  200% 0; }
+      }
+      .wp-pm2-ai-skeleton { display:flex; flex-direction:column; gap:8px; }
+      .wp-pm2-ai-sk-line {
+        height:12px; border-radius:6px; width:100%;
+        background:linear-gradient(90deg,#e8eaed 25%,#f3f4f6 50%,#e8eaed 75%);
+        background-size:200% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
 
       /* ROWS */
       .wp-pm2-row {
@@ -460,23 +484,44 @@ export class PlaceModal2 {
       #wp-pm2-more-btn { padding:8px; }
       #wp-pm2-more-btn .wp-pm2-action-icon { background:#f3f4f6; color:#4b5563; }
 
-      /* HOURS */
-      #wp-pm2-hours {
-        display:flex; align-items:center; gap:6px;
-        padding:12px 16px; font-size:13px; color:#374151;
-        cursor:pointer;
+      /* HOURS — colapsable */
+      .wp-pm2-hours-trigger {
+        display:flex; align-items:center; gap:8px;
+        padding:12px 16px; cursor:pointer; font-size:14px; color:#374151;
+        -webkit-tap-highlight-color:transparent;
       }
       #wp-pm2-hours-text { flex:1; font-weight:500; }
+      .wp-pm2-hours-status {
+        font-size:12px; font-weight:600; padding:2px 8px; border-radius:9999px;
+      }
+      .wp-pm2-hours-status.wp-pm2-open   { background:#e8fdf0; color:#16a34a; }
+      .wp-pm2-hours-status.wp-pm2-closed { background:#fff1f0; color:#ef4444; }
+      .wp-pm2-chevron { transition:transform 0.25s ease; flex-shrink:0; }
+      .wp-pm2-hours-list {
+        max-height:0; overflow:hidden;
+        transition:max-height 0.3s ease;
+        padding:0 16px;
+      }
+      .wp-pm2-hours-list.expanded { max-height:300px; padding-bottom:8px; }
+      .wp-pm2-hours-row {
+        display:flex; justify-content:space-between;
+        padding:6px 0; font-size:13px; color:#9ca3af;
+        border-bottom:0.5px solid #e5e5ea;
+      }
+      .wp-pm2-hours-row:last-child { border-bottom:none; }
+      .wp-pm2-hours-day { min-width:90px; }
+      .wp-pm2-hours-today .wp-pm2-hours-day,
+      .wp-pm2-hours-today .wp-pm2-hours-time { color:#0a0a0a; font-weight:600; }
 
       /* PHOTO STRIP */
       #wp-pm2-strip {
-        display:flex; gap:4px; padding:12px 16px;
+        display:flex; gap:6px; padding:14px 18px;
         overflow-x:auto; scrollbar-width:none;
       }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
-        width:150px; height:270px; object-fit:cover;
-        border-radius:10px; flex-shrink:0; cursor:pointer;
+        width:150px; height:230px; object-fit:cover;
+        border-radius:6px; flex-shrink:0; cursor:pointer;
       }
       #wp-pm2-strip:empty { display:none; }
 
@@ -805,14 +850,48 @@ export class PlaceModal2 {
     if (web) { webBtn.style.display = ''; webBtn.onclick = () => window.open(web, '_blank'); }
     else webBtn.style.display = 'none';
 
-    // Hours
-    const hours = place.hours || place.opening_hours;
-    const hoursEl = $('wp-pm2-hours');
-    if (hours) {
-      $('wp-pm2-hours-text').textContent = typeof hours === 'string' ? hours : 'Ver horarios';
-      hoursEl.style.display = 'flex';
+    // Hours — colapsable, igual que PlaceModal1
+    const hoursRaw = place.openingHoursText || place.opening_hours || place.hours;
+    const hoursBlock = $('wp-pm2-hours');
+    if (hoursRaw && typeof hoursRaw === 'object') {
+      hoursBlock.style.display = '';
+      const DAY_ORDER  = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      const DAY_LABELS = { monday:'Lunes', tuesday:'Martes', wednesday:'Miércoles', thursday:'Jueves', friday:'Viernes', saturday:'Sábado', sunday:'Domingo' };
+      const todayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
+
+      $('wp-pm2-hours-text').textContent = `Hoy: ${hoursRaw[todayKey] || 'Sin horario'}`;
+
+      const isOpen = this._isOpenNow(place);
+      const statusEl = $('wp-pm2-hours-status');
+      if (isOpen === true)       { statusEl.textContent = 'Abierto'; statusEl.className = 'wp-pm2-hours-status wp-pm2-open'; }
+      else if (isOpen === false) { statusEl.textContent = 'Cerrado'; statusEl.className = 'wp-pm2-hours-status wp-pm2-closed'; }
+      else                       { statusEl.textContent = ''; statusEl.className = 'wp-pm2-hours-status'; }
+
+      const list = $('wp-pm2-hours-list');
+      list.innerHTML = DAY_ORDER.map(d =>
+        `<div class="wp-pm2-hours-row${d === todayKey ? ' wp-pm2-hours-today' : ''}">
+          <span class="wp-pm2-hours-day">${DAY_LABELS[d]}</span>
+          <span class="wp-pm2-hours-time">${hoursRaw[d] || 'Cerrado'}</span>
+        </div>`
+      ).join('');
+      list.classList.remove('expanded');
+
+      const trigger = $('wp-pm2-hours-trigger');
+      const chevron = $('wp-pm2-chevron');
+      let expanded = false;
+      trigger.onclick = () => {
+        expanded = !expanded;
+        list.classList.toggle('expanded', expanded);
+        chevron.style.transform = expanded ? 'rotate(180deg)' : '';
+      };
+    } else if (typeof hoursRaw === 'string' && hoursRaw) {
+      hoursBlock.style.display = '';
+      $('wp-pm2-hours-text').textContent = hoursRaw;
+      $('wp-pm2-hours-status').textContent = '';
+      $('wp-pm2-hours-list').innerHTML = '';
+      $('wp-pm2-hours-trigger').onclick = null;
     } else {
-      hoursEl.style.display = 'none';
+      hoursBlock.style.display = 'none';
     }
 
     // Description
@@ -877,25 +956,42 @@ export class PlaceModal2 {
   //    una al azar de inmediato; 2) si no, pide una nueva a
   //    /api/groq-description (que arma el prompt en base a place.reviews)
   _populateAI(place) {
-    const block  = this._el.querySelector('#wp-pm2-ai-block');
-    const textEl = this._el.querySelector('#wp-pm2-ai-text');
-    const icon   = this._el.querySelector('.wp-pm2-ai-icon');
+    const block    = this._el.querySelector('#wp-pm2-ai-block');
+    const textEl   = this._el.querySelector('#wp-pm2-ai-text');
+    const skelEl   = this._el.querySelector('#wp-pm2-ai-skeleton');
+    const icon     = this._el.querySelector('.wp-pm2-ai-icon');
     if (!block || !textEl) return;
 
     if (this._aiAbort) this._aiAbort();
     this._aiAbort = null;
 
-    block.style.display = 'none';
-    textEl.textContent  = '';
-
     const placeId = place.place_id || place.id;
-    if (!placeId) return;
+    if (!placeId) { block.style.display = 'none'; return; }
+
+    // Skeleton de 6 renglones visible DESDE EL ARRANQUE — el texto real
+    // aparece arriba recién cuando termina de cargar/generarse
+    block.style.display = '';
+    textEl.textContent  = '';
+    textEl.style.display = 'none';
+    skelEl.style.display = '';
+
+    const showText = (desc, animate) => {
+      skelEl.style.display = 'none';
+      textEl.style.display = '';
+      if (animate) {
+        if (icon) icon.classList.add('wp-pm2-ai-pulse');
+        return this._typewrite(textEl, desc, null, () => {
+          if (icon) icon.classList.remove('wp-pm2-ai-pulse');
+        });
+      }
+      this._typewrite(textEl, desc);
+      return null;
+    };
 
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
     if (existing.length > 0) {
       const desc = existing[Math.floor(Math.random() * existing.length)];
-      block.style.display = '';
-      this._typewrite(textEl, desc);
+      showText(desc, false);
       return;
     }
 
@@ -914,12 +1010,7 @@ export class PlaceModal2 {
       .then(({ ok, data }) => {
         if (aborted) return;
         if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
-        block.style.display = '';
-        textEl.textContent  = '';
-        if (icon) icon.classList.add('wp-pm2-ai-pulse');
-        cancelTypewrite = this._typewrite(textEl, data.description, null, () => {
-          if (icon) icon.classList.remove('wp-pm2-ai-pulse');
-        });
+        cancelTypewrite = showText(data.description, true);
       })
       .catch(() => { if (!aborted) block.style.display = 'none'; });
   }
@@ -948,6 +1039,20 @@ export class PlaceModal2 {
   // JSONB de Supabase, cargada por /api/supabase-places al listar lugares),
   // así que no hace falta ningún fetch acá: son las mismas reseñas de
   // Google que Google Place Details trajo al guardar el lugar.
+  // Calcula si el lugar está abierto ahora mismo en base a regularOpeningHours
+  // (mismo cálculo que PlaceModal1._isOpenNow)
+  _isOpenNow(place) {
+    const oh = place.regularOpeningHours;
+    if (!oh || !oh.periods || !oh.periods.length) return null;
+    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+    return oh.periods.some(p => {
+      if (!p.open || !p.close || p.open.day !== day) return false;
+      const o = p.open.hour * 60 + (p.open.minute || 0);
+      const c = p.close.hour * 60 + (p.close.minute || 0);
+      return mins >= o && mins < c;
+    });
+  }
+
   _loadReviews(place) {
     const listEl    = this._el.querySelector('#wp-pm2-reviews-list');
     const summaryEl = this._el.querySelector('#wp-pm2-reviews-summary');
