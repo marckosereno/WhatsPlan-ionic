@@ -85,8 +85,8 @@ export class PlaceModal2 {
             <div class="wp-pm2-ai-text" id="wp-pm2-ai-text"></div>
           </div>
 
-          <!-- CTA ROW -->
-          <div class="wp-pm2-row" id="wp-pm2-cta-row">
+          <!-- CTA ROW — oculto por ahora -->
+          <div class="wp-pm2-row" id="wp-pm2-cta-row" style="display:none">
             <button id="wp-pm2-fuiste">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               ¿Fuiste?
@@ -115,14 +115,14 @@ export class PlaceModal2 {
             </button>
           </div>
 
-          <!-- PHOTO STRIP -->
-          <div id="wp-pm2-strip"></div>
-
           <!-- HOURS -->
           <div id="wp-pm2-hours" style="display:none">
             <span id="wp-pm2-hours-text"></span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
+
+          <!-- PHOTO STRIP -->
+          <div id="wp-pm2-strip"></div>
 
           <!-- DESCRIPTION -->
           <div id="wp-pm2-desc-wrap" style="display:none">
@@ -328,6 +328,7 @@ export class PlaceModal2 {
       .wp-pm2-ai-icon {
         flex-shrink:0; color:#1c1c1e; transition:color 0.3s ease;
         filter:drop-shadow(0 0 6px rgba(28,28,30,0.4));
+        overflow:visible;
       }
       .wp-pm2-ai-badge {
         font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
@@ -354,7 +355,7 @@ export class PlaceModal2 {
       }
       @keyframes wp-pm2-spark-scale {
         0%,100% { transform:scale(1); opacity:0.85; }
-        50%     { transform:scale(1.35); opacity:1; }
+        50%     { transform:scale(1.1); opacity:1; }
       }
       .wp-pm2-ai-pulse .wp-pm2-spark-1 {
         animation: wp-pm2-spark-color 2.4s ease-in-out infinite,
@@ -394,7 +395,7 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:0 16px 4px; margin-top:-20px;
+        padding:0 16px 12px; margin-top:-20px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
@@ -474,7 +475,7 @@ export class PlaceModal2 {
       }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
-        width:150px; height:150px; object-fit:cover;
+        width:150px; height:270px; object-fit:cover;
         border-radius:10px; flex-shrink:0; cursor:pointer;
       }
       #wp-pm2-strip:empty { display:none; }
@@ -653,6 +654,11 @@ export class PlaceModal2 {
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
 
+    // Ocultar el footer menu del mapview mientras la ficha está abierta
+    // (tiene z-index:9995, más alto que el modal, así que quedaba encima)
+    const footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) footerMenu.style.display = 'none';
+
     const body        = this._el.querySelector('#wp-pm2-body');
     const spacer      = this._el.querySelector('#wp-pm2-scroll-spacer');
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
@@ -735,6 +741,9 @@ export class PlaceModal2 {
     document.body.style.overflow = '';
     this._place = null;
     if (this._aiAbort) this._aiAbort();
+    // Restaurar el footer menu del mapview
+    const footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) footerMenu.style.display = '';
     const body = this._el.querySelector('#wp-pm2-body');
     if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
     this._scrollHandler = null;
