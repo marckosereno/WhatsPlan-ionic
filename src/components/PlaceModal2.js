@@ -587,8 +587,6 @@ export class PlaceModal2 {
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
     topbarFade.style.opacity = '0';
-    const summaryElReset = this._el.querySelector('#wp-pm2-reviews-summary');
-    if (summaryElReset) summaryElReset.style.display = 'none';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
 
