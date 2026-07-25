@@ -27,6 +27,7 @@ export class PlaceModal2 {
         <!-- WHITE OVERLAY grows upward on scroll -->
 <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
+          <div id="wp-pm2-topbar-bg"></div>
           <button id="wp-pm2-back">
             <svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
           </button>
@@ -38,6 +39,7 @@ export class PlaceModal2 {
         <div id="wp-pm2-hero">
           <div id="wp-pm2-hero-bg"></div>
           <div id="wp-pm2-hero-gradient"></div>
+          <div id="wp-pm2-hero-scrim"></div>
           <div id="wp-pm2-hero-bottom">
             <h1 id="wp-pm2-name"></h1>
             <div id="wp-pm2-meta">
@@ -191,8 +193,17 @@ export class PlaceModal2 {
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
+        overflow:hidden;
+      }
+      /* Fondo blanco del topbar — recibe el overlay que el hero va perdiendo */
+      #wp-pm2-topbar-bg {
+        position:absolute; inset:0; z-index:0;
+        background:#fff;
+        opacity:0;
+        pointer-events:none;
       }
       #wp-pm2-back {
+        position:relative; z-index:1;
         width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
@@ -202,11 +213,8 @@ export class PlaceModal2 {
         cursor:pointer; -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s; flex-shrink:0;
       }
-      #wp-pm2-topbar.scrolled #wp-pm2-back {
-        background:transparent; box-shadow:none; backdrop-filter:none;
-      }
       #wp-pm2-topbar-title {
-        position:absolute; left:68px; right:68px;
+        position:absolute; left:68px; right:68px; z-index:1;
         font-size:16px; font-weight:800; color:#111;
         letter-spacing:-0.2px; opacity:0;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -235,6 +243,11 @@ export class PlaceModal2 {
           rgba(255,255,255,1) 100%);
         pointer-events:none;
         z-index:2;
+      }
+      /* Scrim blanco full-cover — crece con el scroll y se funde con #wp-pm2-topbar-bg */
+      #wp-pm2-hero-scrim {
+        position:absolute; inset:0; z-index:2;
+        background:#fff; opacity:0; pointer-events:none;
       }
       #wp-pm2-hero-bottom {
         position:absolute; bottom:0; left:0; right:0;
@@ -490,23 +503,29 @@ export class PlaceModal2 {
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
 
-    const body    = this._el.querySelector('#wp-pm2-body');
-    const heroEl  = this._el.querySelector('#wp-pm2-hero');
-    const heroBg  = this._el.querySelector('#wp-pm2-hero-bg');
-    const topbar  = this._el.querySelector('#wp-pm2-topbar');
-    const nameEl  = this._el.querySelector('#wp-pm2-hero-bottom');
+    const body       = this._el.querySelector('#wp-pm2-body');
+    const heroEl     = this._el.querySelector('#wp-pm2-hero');
+    const heroBg     = this._el.querySelector('#wp-pm2-hero-bg');
+    const heroScrim  = this._el.querySelector('#wp-pm2-hero-scrim');
+    const topbar     = this._el.querySelector('#wp-pm2-topbar');
+    const topbarBg   = this._el.querySelector('#wp-pm2-topbar-bg');
+    const nameEl     = this._el.querySelector('#wp-pm2-hero-bottom');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
     // Reset
     heroEl.style.height = '';
     heroBg.style.transform = '';
+    heroScrim.style.opacity = '0';
+    topbarBg.style.opacity = '0';
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
 
-    // Set paddingTop via CSS class so it uses the hero's natural CSS height
-    // Wire scroll — hero is sticky so no paddingTop needed
+    // Hero se colapsa manualmente (no sticky) hasta quedar del alto del topbar.
+    // Mientras colapsa, heroScrim (blanco, full-cover) crece 0→1 y topbarBg
+    // crece EN PARALELO con el mismo valor de prog: lo que el hero pierde de
+    // overlay "aparece" como fondo del topbar → continuidad visual sin salto.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
       const fullH   = heroEl.offsetHeight;
@@ -515,15 +534,25 @@ export class PlaceModal2 {
 
       const onScroll = () => {
         const sy   = body.scrollTop;
-        const prog = Math.min(1, sy / travel);
+        const prog = Math.min(1, Math.max(0, sy / travel));
         const newH = Math.max(topbarH, fullH - sy);
 
         heroEl.style.height = newH + 'px';
         heroBg.style.transform = `translateY(-${Math.min(sy * 0.5, fullH - topbarH)}px)`;
-        nameEl.style.opacity   = Math.max(0, 1 - prog * 2.5);
 
-        if (topbarTitle) topbarTitle.style.opacity = Math.min(1, (prog - 0.6) / 0.3);
-        if (prog > 0.6) topbar.classList.add('scrolled');
+        // Título/rating del hero: fade-out rápido al iniciar el scroll
+        nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
+
+        // Scrim blanco cubre el hero progresivamente (0 al inicio → 1 al colapsar)
+        heroScrim.style.opacity = prog;
+
+        // El topbar recibe exactamente el mismo blanco que el hero libera
+        topbarBg.style.opacity = prog;
+
+        // Título centrado del topbar aparece cuando el hero ya está casi cubierto
+        if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
+
+        if (prog >= 1) topbar.classList.add('scrolled');
         else            topbar.classList.remove('scrolled');
       };
 
