@@ -231,10 +231,9 @@ export class PlaceModal2 {
         will-change:height;
       }
       #wp-pm2-hero-bg {
-        position:absolute; inset:0; will-change:transform;
-        background-size:cover; background-position:center;
-        transform:translateY(0);
-        transition:transform 0.01s linear;
+        position:absolute; inset:0;
+        background-size:cover; background-position:center 50%;
+        transition:background-position 0.01s linear;
       }
       #wp-pm2-hero-gradient {
         position:absolute; left:0; right:0; bottom:0;
@@ -512,8 +511,7 @@ export class PlaceModal2 {
 
     // Reset
     heroEl.style.height = '';
-    heroBg.style.transform = '';
-    heroGradient.style.transform = '';
+    heroBg.style.backgroundPosition = 'center 50%';
     heroGradient.style.opacity = '';
     topbarBg.style.opacity = '0';
     nameEl.style.opacity = '';
@@ -523,9 +521,10 @@ export class PlaceModal2 {
     body.scrollTop = 0;
 
     // Hero se colapsa manualmente (no sticky) hasta quedar del alto del topbar.
-    // El overlay (hero-gradient) viaja CON la imagen (mismo translateY) y se
-    // desvanece gradualmente hasta desaparecer al llegar arriba. El topbar
-    // nunca queda blanco sólido: es un scrim translúcido (glass) que gana
+    // heroBg y hero-gradient viajan SOLOS con el encogimiento del contenedor
+    // (inset:0 / bottom:0) — no se les aplica transform extra, así nunca
+    // queda hueco descubriendo el fondo #1a1a2e del hero. El topbar nunca
+    // queda blanco sólido: es un scrim translúcido (glass) que gana
     // opacidad + una sombra suave a medida que el overlay del hero se pierde.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
@@ -537,13 +536,14 @@ export class PlaceModal2 {
         const sy    = body.scrollTop;
         const prog  = Math.min(1, Math.max(0, sy / travel));
         const newH  = Math.max(topbarH, fullH - sy);
-        const shift = Math.min(sy * 0.5, fullH - topbarH);
 
         heroEl.style.height = newH + 'px';
-        heroBg.style.transform = `translateY(-${shift}px)`;
+        // Parallax sin crear huecos: recorta DENTRO de la misma caja
+        // (background-size:cover garantiza que siempre está 100% cubierta)
+        heroBg.style.backgroundPosition = `center ${Math.max(20, 50 - prog * 30)}%`;
 
-        // Overlay del hero: se mueve junto con la foto y se desvanece gradual
-        heroGradient.style.transform = `translateY(-${shift}px)`;
+        // Overlay del hero: ya viaja solo (bottom:0 dentro del hero que se
+        // encoge) — solo lo desvanecemos gradualmente
         heroGradient.style.opacity = Math.max(0, 1 - prog * 1.3);
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
