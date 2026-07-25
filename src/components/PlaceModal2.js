@@ -572,14 +572,17 @@ export class PlaceModal2 {
       spacer.style.height = (travel + topbarH * 1.5) + 'px';
       heroEl.style.minHeight = '0px';
 
+      const HERO_PARALLAX = 0.75; // hero+overlay viajan más lento que el "scroll" real → efecto parallax
+
       const onScroll = () => {
         const sy    = body.scrollTop;
         const prog  = Math.min(1, Math.max(0, sy / travel));
-        const shift = Math.min(sy, travel);
+        const shift = Math.min(sy, travel);          // encogimiento del contenedor (viewport del hero)
+        const innerShift = shift * HERO_PARALLAX;    // hero-inner viaja a distinta velocidad (parallax)
         const newH  = Math.max(topbarH, fullH - sy);
 
         heroEl.style.height = newH + 'px';
-        heroInner.style.transform = `translateY(-${shift}px)`; // imagen + overlay suben juntos
+        heroInner.style.transform = `translateY(-${innerShift}px)`; // imagen + overlay suben juntos, más lento
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
@@ -587,7 +590,7 @@ export class PlaceModal2 {
         // Sin sombra ni blur en el topbar. El degradado de abajo (fade)
         // recién aparece cuando el hero+overlay ya casi terminaron de
         // colapsar arriba — no desde el arranque del scroll
-        topbarFade.style.opacity = Math.max(0, Math.min(1, (prog - 0.6) / 0.3));
+        topbarFade.style.opacity = Math.max(0, Math.min(1, (prog - 0.8) / 0.2));
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
