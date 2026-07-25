@@ -69,6 +69,12 @@ export class PlaceModal2 {
           <!-- SPACER — alto = recorrido del hero (travel); queda tapado -->
           <div id="wp-pm2-scroll-spacer"></div>
 
+          <!-- REVIEWS SUMMARY — avatares (máx 6) + cantidad de reseñas -->
+          <div id="wp-pm2-reviews-summary" style="display:none">
+            <div id="wp-pm2-reviews-avatars"></div>
+            <span id="wp-pm2-reviews-count"></span>
+          </div>
+
           <!-- CTA ROW -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row">
             <button id="wp-pm2-fuiste">
@@ -317,6 +323,27 @@ export class PlaceModal2 {
       }
 
       /* CTA ROW */
+      /* REVIEWS SUMMARY — facepile de avatares + contador */
+      #wp-pm2-reviews-summary {
+        display:flex; align-items:center; gap:8px;
+        padding:10px 16px 4px;
+      }
+      #wp-pm2-reviews-avatars {
+        display:flex; align-items:center;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-avatar {
+        width:28px; height:28px; border-radius:9999px;
+        border:2px solid #fff; background-color:#d1d5db;
+        background-size:cover; background-position:center;
+        margin-left:-8px; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; color:#6b7280;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-avatar:first-child { margin-left:0; }
+      #wp-pm2-reviews-count {
+        font-size:13px; font-weight:600; color:#374151;
+      }
+
       #wp-pm2-cta-row { gap:8px; }
       #wp-pm2-fuiste {
         flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
@@ -556,6 +583,8 @@ export class PlaceModal2 {
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
     topbarFade.style.opacity = '0';
+    const summaryElReset = this._el.querySelector('#wp-pm2-reviews-summary');
+    if (summaryElReset) summaryElReset.style.display = 'none';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
 
@@ -728,10 +757,6 @@ export class PlaceModal2 {
     }
     tagsSection.style.display = '';
 
-    // Saves (placeholder)
-    const saveCount = $('wp-pm2-save-count'); if (saveCount) saveCount.textContent = (place.saves_count || 0) + ' guardados';
-    const saveAv = $('wp-pm2-save-avatars'); if (saveAv) saveAv.innerHTML = '';
-
     // User avatar
     const user = this.getCurrentUser?.();
     const avatarEl = $('wp-pm2-user-avatar');
@@ -743,9 +768,33 @@ export class PlaceModal2 {
   }
 
   async _loadReviews(place) {
-    const listEl = this._el.querySelector('#wp-pm2-reviews-list');
+    const listEl    = this._el.querySelector('#wp-pm2-reviews-list');
+    const summaryEl = this._el.querySelector('#wp-pm2-reviews-summary');
+    const avatarsEl = this._el.querySelector('#wp-pm2-reviews-avatars');
+    const countEl   = this._el.querySelector('#wp-pm2-reviews-count');
     try {
       const reviews = await ReviewService.getForPlace(place.place_id || place.id);
+
+      // Facepile: hasta 6 avatares + contador — mismos datos, sin pegarle
+      // una segunda vez a Supabase
+      if (reviews?.length) {
+        avatarsEl.innerHTML = '';
+        reviews.slice(0, 6).forEach(r => {
+          const av = document.createElement('div');
+          av.className = 'wp-pm2-fp-avatar';
+          if (r.avatar_url) {
+            av.style.backgroundImage = `url('${r.avatar_url}')`;
+          } else {
+            av.textContent = (r.display_name || 'U').trim().charAt(0).toUpperCase();
+          }
+          avatarsEl.appendChild(av);
+        });
+        countEl.textContent = reviews.length === 1 ? '1 reseña' : `${reviews.length} reseñas`;
+        summaryEl.style.display = '';
+      } else {
+        summaryEl.style.display = 'none';
+      }
+
       if (!reviews?.length) {
         listEl.innerHTML = '<p id="wp-pm2-no-reviews">¡Sé el primero en comentar!</p>';
         return;
@@ -765,6 +814,7 @@ export class PlaceModal2 {
         listEl.appendChild(row);
       });
     } catch(e) {
+      summaryEl.style.display = 'none';
       listEl.innerHTML = '<p id="wp-pm2-no-reviews">¡Sé el primero en comentar!</p>';
     }
   }
