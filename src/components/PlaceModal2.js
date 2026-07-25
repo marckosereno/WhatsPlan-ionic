@@ -232,8 +232,7 @@ export class PlaceModal2 {
       }
       #wp-pm2-hero-bg {
         position:absolute; inset:0;
-        background-size:cover; background-position:center 50%;
-        transition:background-position 0.01s linear;
+        background-size:cover; background-position:center top;
       }
       #wp-pm2-hero-gradient {
         position:absolute; left:0; right:0; bottom:0;
@@ -511,7 +510,6 @@ export class PlaceModal2 {
 
     // Reset
     heroEl.style.height = '';
-    heroBg.style.backgroundPosition = 'center 50%';
     heroGradient.style.opacity = '';
     topbarBg.style.opacity = '0';
     nameEl.style.opacity = '';
@@ -538,9 +536,9 @@ export class PlaceModal2 {
         const newH  = Math.max(topbarH, fullH - sy);
 
         heroEl.style.height = newH + 'px';
-        // Parallax sin crear huecos: recorta DENTRO de la misma caja
-        // (background-size:cover garantiza que siempre está 100% cubierta)
-        heroBg.style.backgroundPosition = `center ${Math.max(20, 50 - prog * 30)}%`;
+        // heroBg no necesita JS: background-position:center top (CSS) hace
+        // que la foto quede pinneada arriba y se recorte desde abajo a
+        // medida que el hero se encoge → sube junto con el overlay.
 
         // Overlay del hero: ya viaja solo (bottom:0 dentro del hero que se
         // encoge) — solo lo desvanecemos gradualmente
