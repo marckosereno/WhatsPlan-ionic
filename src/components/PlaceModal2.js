@@ -325,18 +325,16 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:10px 16px 4px;
+        padding:2px 16px 4px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
       }
       #wp-pm2-reviews-avatars .wp-pm2-fp-avatar {
         width:28px; height:28px; border-radius:9999px;
-        border:2px solid #fff; background-color:#d1d5db;
-        background-size:cover; background-position:center;
-        margin-left:-8px; flex-shrink:0;
-        display:flex; align-items:center; justify-content:center;
-        font-size:11px; font-weight:700; color:#6b7280;
+        border:2px solid #fff; background:#e2e8f0;
+        object-fit:cover;
+        margin-left:-8px; flex-shrink:0; position:relative;
       }
       #wp-pm2-reviews-avatars .wp-pm2-fp-avatar:first-child { margin-left:0; }
       #wp-pm2-reviews-count {
@@ -485,10 +483,6 @@ export class PlaceModal2 {
       .wp-pm2-review-avatar {
         width:34px; height:34px; border-radius:50%; flex-shrink:0;
         background:#e5e7eb; object-fit:cover;
-      }
-      .wp-pm2-review-avatar-fallback {
-        display:flex; align-items:center; justify-content:center;
-        background:#d1d5db; color:#4b5563; font-size:13px; font-weight:700;
       }
       .wp-pm2-review-body { flex:1; }
       .wp-pm2-review-name { font-size:13px; font-weight:700; color:#0a0a0a; }
@@ -783,14 +777,17 @@ export class PlaceModal2 {
     if (typeof reviews === 'string') { try { reviews = JSON.parse(reviews); } catch(e) { reviews = []; } }
     if (!Array.isArray(reviews)) reviews = [];
 
-    // Facepile: hasta 6 avatares (Google no trae foto de perfil en los
-    // datos guardados, así que usamos la inicial del nombre) + contador
+    // Facepile: hasta 6 avatares (memoji de Tapback vía getAvatarUrl, misma
+    // función que usa PlaceModal1) + contador
     if (reviews.length) {
       avatarsEl.innerHTML = '';
-      reviews.slice(0, 6).forEach(r => {
-        const av = document.createElement('div');
+      const shown = reviews.slice(0, 6);
+      shown.forEach((r, i) => {
+        const av = document.createElement('img');
         av.className = 'wp-pm2-fp-avatar';
-        av.textContent = (r.author_name || 'U').trim().charAt(0).toUpperCase();
+        av.src = getAvatarUrl(r.author_name || 'user');
+        av.style.zIndex = shown.length - i; // el primero queda arriba, igual que PlaceModal1
+        av.onerror = () => { av.style.background = '#e2e8f0'; };
         avatarsEl.appendChild(av);
       });
       countEl.textContent = reviews.length === 1 ? '1 reseña' : `${reviews.length} reseñas`;
@@ -808,9 +805,9 @@ export class PlaceModal2 {
       const row = document.createElement('div');
       row.className = 'wp-pm2-review-row';
       const stars = r.rating ? '⭐'.repeat(Math.round(r.rating)) : '';
-      const initial = (r.author_name || 'U').trim().charAt(0).toUpperCase();
+      const photo = getAvatarUrl(r.author_name || 'user');
       row.innerHTML = `
-        <div class="wp-pm2-review-avatar wp-pm2-review-avatar-fallback">${initial}</div>
+        <img class="wp-pm2-review-avatar" src="${photo}" onerror="this.style.background='#e2e8f0'">
         <div class="wp-pm2-review-body">
           <div class="wp-pm2-review-name">${r.author_name || 'Usuario de Google'}</div>
           ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
