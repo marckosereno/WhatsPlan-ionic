@@ -220,6 +220,7 @@ export class PlaceModal2 {
         left:0; right:0; height:28px;
         background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0));
         z-index:9; pointer-events:none;
+        opacity:0; /* aparece recién cuando el hero+overlay ya está asentado */
       }
 
       #wp-pm2-back {
@@ -540,6 +541,7 @@ export class PlaceModal2 {
     const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
+    const topbarFade  = this._el.querySelector('#wp-pm2-topbar-fade');
     const nameEl      = this._el.querySelector('#wp-pm2-hero-bottom');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
 
@@ -553,6 +555,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
+    topbarFade.style.opacity = '0';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     body.scrollTop = 0;
 
@@ -581,7 +584,10 @@ export class PlaceModal2 {
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
 
-        // Sin sombra ni blur: el topbar queda limpio, sin nada agregado
+        // Sin sombra ni blur en el topbar. El degradado de abajo (fade)
+        // recién aparece cuando el hero+overlay ya casi terminaron de
+        // colapsar arriba — no desde el arranque del scroll
+        topbarFade.style.opacity = Math.max(0, Math.min(1, (prog - 0.6) / 0.3));
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
