@@ -153,7 +153,7 @@ export class PlaceModal2 {
 
           <!-- ADDRESS — misma fuente que el trigger de horarios -->
           <div id="wp-pm2-address-row" style="display:none">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#6b7280"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
             <span id="wp-pm2-address"></span>
           </div>
 
@@ -176,7 +176,7 @@ export class PlaceModal2 {
 
           <!-- REVIEWS -->
           <div id="wp-pm2-reviews-section">
-            <div class="wp-pm2-section-title">Comentarios y reseñas</div>
+            <div class="wp-pm2-section-title" id="wp-pm2-reviews-title">Comentarios y reseñas</div>
             <div id="wp-pm2-comment-input-row">
               <img id="wp-pm2-user-avatar" src="" alt="">
               <div id="wp-pm2-comment-box">
@@ -450,7 +450,7 @@ export class PlaceModal2 {
       .wp-pm2-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
         animation: wp-pm2-ai-fadein 0.4s ease both;
-        font-family:'Inter', sans-serif;
+        font-family:Avenir,'Avenir Next',sans-serif;
       }
       @keyframes wp-pm2-skeleton-shimmer {
         0%   { background-position: -200% 0; }
@@ -633,16 +633,20 @@ export class PlaceModal2 {
       /* ADDRESS — misma fuente/estilo que el trigger de horarios */
       #wp-pm2-address-row {
         display:flex; align-items:center; gap:8px;
-        padding:12px 16px; font-size:14px; color:#374151;
+        padding:14px 16px; font-size:14px; color:#374151;
       }
-      #wp-pm2-address { font-weight:500; }
+      #wp-pm2-address-row svg { flex-shrink:0; color:#6b7280; }
+      #wp-pm2-address {
+        font-weight:500; white-space:nowrap; overflow:hidden;
+        text-overflow:ellipsis; min-width:0;
+      }
 
       #wp-pm2-map-preview {
         margin:0 16px 12px; border-radius:16px; overflow:hidden;
         border:1px solid #e5e7eb; cursor:pointer; position:relative;
       }
       #wp-pm2-map-canvas {
-        height:140px; width:100%; position:relative; background:#e8e8e8;
+        height:190px; width:100%; position:relative; background:#e8e8e8;
       }
       #wp-pm2-map-canvas .maplibregl-marker { cursor:pointer; }
 
@@ -650,6 +654,9 @@ export class PlaceModal2 {
       .wp-pm2-section-title {
         font-size:15px; font-weight:800; color:#0a0a0a; padding:16px 16px 8px;
         letter-spacing:-0.2px;
+      }
+      #wp-pm2-reviews-title {
+        font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
       }
 
       /* TAGS */
@@ -718,7 +725,7 @@ export class PlaceModal2 {
       .wp-pm2-review-text {
         font-size:13px; color:#374151; margin-top:4px; line-height:1.5;
         display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
-        overflow:hidden; font-family:'Inter', sans-serif;
+        overflow:hidden; font-family:Avenir,'Avenir Next',sans-serif;
       }
       .wp-pm2-review-text.wp-pm2-expanded {
         -webkit-line-clamp:unset; overflow:visible;
@@ -743,14 +750,14 @@ export class PlaceModal2 {
         background:#0a0a0a; color:#fff; display:flex; align-items:center;
         justify-content:center; cursor:pointer; flex-shrink:0;
         -webkit-tap-highlight-color:transparent;
-        box-shadow:0 4px 20px rgba(255,255,255,0.9), 0 6px 16px rgba(0,0,0,0.18);
+        box-shadow:0 6px 16px rgba(0,0,0,0.25);
       }
       #wp-pm2-plan-btn {
         flex:1; height:48px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff; font-size:16px; font-weight:700;
         display:flex; align-items:center; justify-content:center; gap:8px;
         cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
-        box-shadow:0 4px 20px rgba(255,255,255,0.9), 0 6px 16px rgba(0,0,0,0.18);
+        box-shadow:0 6px 16px rgba(0,0,0,0.25);
       }
     `;
     document.head.appendChild(s);
@@ -1261,16 +1268,23 @@ export class PlaceModal2 {
       this._miniMap.setZoom(14);
     }
 
-    // Pin "mini-modal" del lugar — mismo markup que MapView._buildPinHtml
-    // (variante sin foto: círculo liquid-glass con el emoji de categoría)
-    const liquidBg     = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
-    const liquidShadow = '0 0 0 1.5px rgba(160,205,255,0.5),0 3px 10px rgba(100,170,255,0.22),0 1px 3px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9)';
+    // Punto pulsante azul — más simple y limpio que el pin liquid-glass
+    if (!document.getElementById('wp-pm2-pulse-style')) {
+      const st = document.createElement('style');
+      st.id = 'wp-pm2-pulse-style';
+      st.textContent = `
+        @keyframes wp-pm2-pulse-ring {
+          0%   { transform:scale(1); opacity:0.55; }
+          100% { transform:scale(2.6); opacity:0; }
+        }
+      `;
+      document.head.appendChild(st);
+    }
     const el = document.createElement('div');
-    el.style.cssText = 'position:relative;display:inline-block;overflow:visible;';
+    el.style.cssText = 'position:relative;width:18px;height:18px;display:flex;align-items:center;justify-content:center;';
     el.innerHTML = `
-      <div style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
-        <div style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;font-size:16px;">${catIcon || '📍'}</div>
-      </div>`;
+      <div style="position:absolute;width:18px;height:18px;border-radius:50%;background:#2563eb;animation:wp-pm2-pulse-ring 1.8s ease-out infinite;"></div>
+      <div style="position:relative;width:12px;height:12px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`;
 
     if (this._miniMapMarker) this._miniMapMarker.remove();
     this._miniMapMarker = new window.maplibregl.Marker({ element: el, anchor: 'center' })
@@ -1310,6 +1324,12 @@ export class PlaceModal2 {
     // (place.userRatingCount / user_ratings_total), no solo lo que trae el
     // array de reviews (Google Place Details solo da hasta 5 de muestra).
     const totalReal = place.userRatingCount || place.user_ratings_total || reviews.length;
+    const reviewsTitleEl = this._el.querySelector('#wp-pm2-reviews-title');
+    if (reviewsTitleEl) {
+      reviewsTitleEl.textContent = totalReal
+        ? `Comentarios y reseñas (${totalReal})`
+        : 'Comentarios y reseñas';
+    }
     if (reviews.length) {
       avatarsEl.innerHTML = '';
       const shown = reviews.slice(0, 3);
