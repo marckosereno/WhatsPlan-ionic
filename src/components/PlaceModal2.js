@@ -76,6 +76,24 @@ export class PlaceModal2 {
           <!-- SPACER — alto = recorrido del hero (travel); queda tapado -->
           <div id="wp-pm2-scroll-spacer"></div>
 
+          <!-- ESTUVE AQUÍ — swipe to confirm. Al deslizar hasta el final se
+               convierte en un chip que confirma la visita + permite etiquetar
+               el lugar (por eso el "+Etiquetar lugar" ya no va debajo del
+               slide de fotos: esta es la única entrada a esa función ahora) -->
+          <div id="wp-pm2-here-wrap">
+            <div id="wp-pm2-here-swipe">
+              <div id="wp-pm2-here-fill"></div>
+              <span id="wp-pm2-here-label">Desliza — Estuve aquí</span>
+              <div id="wp-pm2-here-thumb">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+            </div>
+            <div id="wp-pm2-here-chip" style="display:none">
+              <span id="wp-pm2-here-chip-text">✓ Estuviste aquí</span>
+              <button id="wp-pm2-here-chip-tag">+ Etiquetar</button>
+            </div>
+          </div>
+
           <!-- REVIEWS SUMMARY — avatares (máx 6) + cantidad de reseñas -->
           <div id="wp-pm2-reviews-summary" style="display:none">
             <div id="wp-pm2-reviews-avatars"></div>
@@ -145,10 +163,10 @@ export class PlaceModal2 {
           <!-- PHOTO STRIP -->
           <div id="wp-pm2-strip"></div>
 
-          <!-- ETIQUETAS -->
+          <!-- ETIQUETAS — el botón para agregar una ahora vive en el chip
+               "Estuve aquí" de arriba, no acá -->
           <div id="wp-pm2-tags-section" style="display:none">
             <div id="wp-pm2-tags-list"></div>
-            <button id="wp-pm2-add-tag" class="wp-pm2-pill-btn">+ Etiquetar lugar</button>
           </div>
 
           <!-- ADDRESS — misma fuente que el trigger de horarios -->
@@ -508,6 +526,52 @@ export class PlaceModal2 {
       }
 
       /* CTA ROW */
+      /* ESTUVE AQUÍ — swipe to confirm */
+      #wp-pm2-here-wrap { padding:10px 16px 4px; }
+      #wp-pm2-here-swipe {
+        position:relative; height:48px; border-radius:999px;
+        background:#f3f4f6; overflow:hidden;
+        -webkit-tap-highlight-color:transparent; touch-action:pan-y;
+      }
+      #wp-pm2-here-fill {
+        position:absolute; inset:0; width:0;
+        background:linear-gradient(90deg,#dbeafe,#bfdbfe);
+        pointer-events:none;
+      }
+      #wp-pm2-here-label {
+        position:absolute; left:0; right:0; top:0; bottom:0;
+        display:flex; align-items:center; justify-content:center;
+        font-size:14px; font-weight:700; color:#374151; letter-spacing:-0.1px;
+        pointer-events:none; user-select:none;
+      }
+      #wp-pm2-here-thumb {
+        position:absolute; left:2px; top:2px; width:44px; height:44px;
+        border-radius:50%; background:#0a0a0a; color:#fff;
+        display:flex; align-items:center; justify-content:center;
+        cursor:grab; touch-action:none;
+        box-shadow:0 2px 8px rgba(0,0,0,0.25);
+      }
+      #wp-pm2-here-swipe.wp-pm2-dragging #wp-pm2-here-thumb { cursor:grabbing; }
+      #wp-pm2-here-chip {
+        display:flex; align-items:center; gap:8px;
+        height:40px; padding:0 6px 0 14px; border-radius:999px;
+        background:#e8fdf0; border:1px solid #bbf0cf;
+        animation: wp-pm2-here-pop 0.3s ease both;
+      }
+      @keyframes wp-pm2-here-pop {
+        0%   { transform:scale(0.9); opacity:0; }
+        100% { transform:scale(1); opacity:1; }
+      }
+      #wp-pm2-here-chip-text {
+        font-size:13px; font-weight:700; color:#16a34a; flex:1;
+      }
+      #wp-pm2-here-chip-tag {
+        padding:7px 14px; border-radius:999px; border:none;
+        background:#fff; color:#16a34a; font-size:12px; font-weight:700;
+        cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+        box-shadow:0 1px 3px rgba(0,0,0,0.1);
+      }
+
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
@@ -666,7 +730,6 @@ export class PlaceModal2 {
         padding:5px 12px; border-radius:999px; border:1px solid #e5e7eb;
         font-size:12px; font-weight:600; color:#374151; background:#f9fafb;
       }
-      #wp-pm2-add-tag { margin:0 16px; }
 
       /* MENTIONS */
       #wp-pm2-mentions { padding-bottom:16px; }
@@ -769,6 +832,8 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
+    this._wireHereSwipe(el);
+
     el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => {
       console.log('[PM2] Planear visita:', this._place);
     });
@@ -801,8 +866,8 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-map-btn').addEventListener('click', () => {
       console.log('[PM2] Ver en mapa');
     });
-    el.querySelector('#wp-pm2-add-tag').addEventListener('click', () => {
-      console.log('[PM2] Etiquetar lugar');
+    el.querySelector('#wp-pm2-here-chip-tag').addEventListener('click', () => {
+      console.log('[PM2] Etiquetar lugar (desde el chip Estuve aquí)');
     });
     el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
       console.log('[PM2] Añadir comentario');
@@ -812,6 +877,64 @@ export class PlaceModal2 {
       el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.querySelector('#wp-pm2-comment-box').click();
     });
+  }
+
+  // Swipe-to-confirm "Estuve aquí". Al soltar pasado el 85% del recorrido,
+  // confirma y se convierte en el chip con la opción de etiquetar.
+  _wireHereSwipe(el) {
+    const swipe = el.querySelector('#wp-pm2-here-swipe');
+    const thumb = el.querySelector('#wp-pm2-here-thumb');
+    const fill  = el.querySelector('#wp-pm2-here-fill');
+    const label = el.querySelector('#wp-pm2-here-label');
+    const chip  = el.querySelector('#wp-pm2-here-chip');
+
+    const THUMB = 44, PAD = 2;
+    let dragging = false, startX = 0, thumbStartX = 0, maxX = 0;
+
+    const setThumbX = (x) => {
+      thumb.style.transform = `translateX(${x}px)`;
+      fill.style.width = (x + THUMB + PAD) + 'px';
+      label.style.opacity = Math.max(0, 1 - (x / maxX) * 1.6);
+    };
+
+    const reset = () => { setThumbX(0); swipe.classList.remove('wp-pm2-dragging'); };
+
+    const confirm = () => {
+      swipe.style.display = 'none';
+      chip.style.display = '';
+      this._placeVisited = true;
+      console.log('[PM2] Estuve aquí confirmado (swipe):', this._place);
+    };
+
+    const onDown = (clientX) => {
+      dragging = true;
+      maxX = swipe.clientWidth - THUMB - PAD * 2;
+      startX = clientX;
+      const current = thumb.getBoundingClientRect().left - swipe.getBoundingClientRect().left;
+      thumbStartX = Math.min(Math.max(current, 0), maxX);
+      swipe.classList.add('wp-pm2-dragging');
+    };
+    const onMove = (clientX) => {
+      if (!dragging) return;
+      const dx = clientX - startX;
+      const x = Math.min(Math.max(thumbStartX + dx, 0), maxX);
+      setThumbX(x);
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      const x = parseFloat((thumb.style.transform.match(/-?\d+\.?\d*/) || [0])[0]) || 0;
+      if (maxX > 0 && x / maxX >= 0.85) confirm();
+      else reset();
+    };
+
+    thumb.addEventListener('pointerdown', (e) => { e.preventDefault(); thumb.setPointerCapture(e.pointerId); onDown(e.clientX); });
+    thumb.addEventListener('pointermove', (e) => onMove(e.clientX));
+    thumb.addEventListener('pointerup', onUp);
+    thumb.addEventListener('pointercancel', onUp);
+
+    this._resetHereSwipe = reset;
+    this._confirmHereSwipe = confirm;
   }
 
   // ── SHOW ──────────────────────────────────────────────────────────
@@ -929,6 +1052,21 @@ export class PlaceModal2 {
   // ── POPULATE ──────────────────────────────────────────────────────
   _populate(place) {
     const $ = id => this._el.querySelector('#' + id);
+
+    // Estuve aquí — si el lugar ya viene marcado como visitado, arranca
+    // directo en modo chip; si no, en modo swipe (reseteado)
+    const swipeEl = $('wp-pm2-here-swipe');
+    const chipEl  = $('wp-pm2-here-chip');
+    const alreadyVisited = !!(place.visitedByUser || place.visited || place.userVisited);
+    this._placeVisited = alreadyVisited;
+    if (alreadyVisited) {
+      swipeEl.style.display = 'none';
+      chipEl.style.display = '';
+    } else {
+      swipeEl.style.display = '';
+      chipEl.style.display = 'none';
+      this._resetHereSwipe?.();
+    }
 
     // Name
     $('wp-pm2-name').textContent = place.name || '';
