@@ -61,7 +61,6 @@ export class PlaceModal2 {
                 <span id="wp-pm2-featured-badge" class="wp-pm2-featured-badge" style="display:none"></span>
                 <h1 id="wp-pm2-name"></h1>
                 <div id="wp-pm2-meta">
-                  <span id="wp-pm2-cat-icon"></span>
                   <span id="wp-pm2-cat"></span>
                   <span class="wp-pm2-dot">•</span>
                   <span id="wp-pm2-rating-hero"></span>
@@ -148,24 +147,26 @@ export class PlaceModal2 {
 
           <!-- ETIQUETAS -->
           <div id="wp-pm2-tags-section" style="display:none">
-            <div class="wp-pm2-section-title">Etiquetas</div>
             <div id="wp-pm2-tags-list"></div>
             <button id="wp-pm2-add-tag" class="wp-pm2-pill-btn">+ Etiquetar lugar</button>
+          </div>
+
+          <!-- ADDRESS — misma fuente que el trigger de horarios -->
+          <div id="wp-pm2-address-row" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#6b7280"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
+            <span id="wp-pm2-address"></span>
+          </div>
+
+          <!-- MAP PREVIEW — zoom 14, pin propio con el emoji de categoría -->
+          <div id="wp-pm2-map-preview">
+            <div id="wp-pm2-map-canvas"></div>
+            <div id="wp-pm2-map-pin"></div>
           </div>
 
           <!-- DESCRIPTION -->
           <div id="wp-pm2-desc-wrap" style="display:none">
             <p id="wp-pm2-desc"></p>
             <button id="wp-pm2-leer-mas" style="display:none">Leer más</button>
-          </div>
-
-          <!-- MAP PREVIEW -->
-          <div id="wp-pm2-map-preview">
-            <div id="wp-pm2-map-canvas"></div>
-            <div id="wp-pm2-map-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#1a5cf5"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
-              <span id="wp-pm2-address"></span>
-            </div>
           </div>
 
           <!-- MENCIONADO EN -->
@@ -217,6 +218,21 @@ export class PlaceModal2 {
   // ── CSS ────────────────────────────────────────────────────────────
   _injectCSS() {
     if (document.getElementById('wp-pm2-css')) return;
+
+    // Fuentes: Instrument Serif (título del hero) + Inter (descripción y reseñas)
+    if (!document.getElementById('wp-pm2-fonts')) {
+      const pre1 = document.createElement('link');
+      pre1.rel = 'preconnect'; pre1.href = 'https://fonts.googleapis.com';
+      const pre2 = document.createElement('link');
+      pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = 'anonymous';
+      const fontLink = document.createElement('link');
+      fontLink.id = 'wp-pm2-fonts'; fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap';
+      document.head.appendChild(pre1);
+      document.head.appendChild(pre2);
+      document.head.appendChild(fontLink);
+    }
+
     const s = document.createElement('style');
     s.id = 'wp-pm2-css';
     s.textContent = `
@@ -274,7 +290,7 @@ export class PlaceModal2 {
       }
       #wp-pm2-topbar-title {
         position:relative; z-index:1; margin-left:12px;
-        flex:1 1 auto; min-width:0; max-width:90%;
+        flex:1 1 auto; min-width:0; max-width:85%;
         font-size:16px; font-weight:800; color:#111;
         letter-spacing:-0.2px; opacity:0;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -358,12 +374,12 @@ export class PlaceModal2 {
         font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
         letter-spacing:-0.4px; line-height:1.2;
         max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        font-family:'Instrument Serif', serif;
       }
       #wp-pm2-meta {
         display:flex; align-items:center; gap:5px;
         font-size:13px; color:#374151; font-weight:500;
       }
-      #wp-pm2-cat-icon { font-size:15px; }
       .wp-pm2-dot { opacity:0.5; }
 
       /* BODY — ocupa TODA el content-area (incl. detrás del hero); el
@@ -435,6 +451,7 @@ export class PlaceModal2 {
       .wp-pm2-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
         animation: wp-pm2-ai-fadein 0.4s ease both;
+        font-family:'Inter', sans-serif;
       }
       @keyframes wp-pm2-skeleton-shimmer {
         0%   { background-position: -200% 0; }
@@ -447,13 +464,8 @@ export class PlaceModal2 {
         background-size:200% 100%;
         animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
       }
-      /* Skeleton genérico — aplicar a cualquier <img>/div mientras carga y
-         sacarlo con onload/onerror (mismo patrón que PlaceModal1) */
-      .wp-pm2-skel {
-        background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%) !important;
-        background-size:400% 100% !important;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite !important;
-      }
+      /* Skeleton de imágenes: se aplica 100% inline vía _skelOn/_skelOff
+         (ver JS) — evita cualquier ambigüedad de especificidad CSS */
 
       /* ROWS */
       .wp-pm2-row {
@@ -591,19 +603,33 @@ export class PlaceModal2 {
       }
 
       /* MAP PREVIEW */
-      #wp-pm2-map-preview {
-        margin:0 16px 0; border-radius:16px; overflow:hidden;
-        border:1px solid #e5e7eb; cursor:pointer;
-      }
-      #wp-pm2-map-canvas {
-        height:140px; background:#e8e8e8;
-        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23e8ede8' width='100' height='100'/%3E%3C/svg%3E");
-      }
-      #wp-pm2-map-label {
+      /* ADDRESS — misma fuente/estilo que el trigger de horarios */
+      #wp-pm2-address-row {
         display:flex; align-items:center; gap:8px;
-        padding:10px 12px; background:#fff; font-size:13px; color:#374151;
+        padding:12px 16px; font-size:14px; color:#374151;
       }
       #wp-pm2-address { font-weight:500; }
+
+      #wp-pm2-map-preview {
+        margin:0 16px 12px; border-radius:16px; overflow:hidden;
+        border:1px solid #e5e7eb; cursor:pointer; position:relative;
+      }
+      #wp-pm2-map-canvas {
+        height:140px; background:#e8e8e8; background-size:cover; background-position:center;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23e8ede8' width='100' height='100'/%3E%3C/svg%3E");
+      }
+      #wp-pm2-map-pin {
+        position:absolute; left:50%; top:50%;
+        transform:translate(-50%,-100%);
+        font-size:28px; line-height:1; pointer-events:none;
+        filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35));
+      }
+      #wp-pm2-map-pin::after {
+        content:''; position:absolute; left:50%; bottom:-3px;
+        width:6px; height:6px; border-radius:50%;
+        background:rgba(0,0,0,0.35); transform:translateX(-50%);
+        filter:blur(1px);
+      }
 
       /* SECTION TITLE */
       .wp-pm2-section-title {
@@ -677,7 +703,7 @@ export class PlaceModal2 {
       .wp-pm2-review-text {
         font-size:13px; color:#374151; margin-top:4px; line-height:1.5;
         display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
-        overflow:hidden;
+        overflow:hidden; font-family:'Inter', sans-serif;
       }
       .wp-pm2-review-text.wp-pm2-expanded {
         -webkit-line-clamp:unset; overflow:visible;
@@ -885,10 +911,9 @@ export class PlaceModal2 {
     // Name
     $('wp-pm2-name').textContent = place.name || '';
 
-    // Category + icon
+    // Category (el ícono ya no se muestra en texto — se usa más abajo como pin del mapa)
     const catIcon = place.subcategory_icon || place.category_icon || '';
     const catName = place.subcategory_label || place.category_label || place.category || '';
-    $('wp-pm2-cat-icon').textContent = catIcon;
     $('wp-pm2-cat').textContent = catName;
 
     // Featured badge — "✦ Destacado" / "✓ Verificado" / "✦ Premium", igual
@@ -920,10 +945,10 @@ export class PlaceModal2 {
     stripEl.innerHTML = '';
     photos.forEach(url => {
       const img = document.createElement('img');
-      img.className = 'wp-pm2-skel';
       img.alt = ''; img.loading = 'lazy';
-      img.onload  = () => img.classList.remove('wp-pm2-skel');
-      img.onerror = () => img.classList.remove('wp-pm2-skel');
+      this._skelOn(img);
+      img.onload  = () => this._skelOff(img);
+      img.onerror = () => this._skelOff(img);
       img.src = url;
       stripEl.appendChild(img);
     });
@@ -933,13 +958,13 @@ export class PlaceModal2 {
     if (heroBg) {
       heroBg.style.backgroundImage = '';
       if (photos.length) {
-        heroBg.classList.add('wp-pm2-skel');
+        this._skelOn(heroBg);
         const preload = new Image();
-        preload.onload  = () => { heroBg.style.backgroundImage = `url('${photos[0]}')`; heroBg.classList.remove('wp-pm2-skel'); };
-        preload.onerror = () => { heroBg.classList.remove('wp-pm2-skel'); };
+        preload.onload  = () => { heroBg.style.backgroundImage = `url('${photos[0]}')`; this._skelOff(heroBg); };
+        preload.onerror = () => { this._skelOff(heroBg); };
         preload.src = photos[0];
       } else {
-        heroBg.classList.remove('wp-pm2-skel');
+        this._skelOff(heroBg);
       }
     }
 
@@ -1019,33 +1044,36 @@ export class PlaceModal2 {
       descWrap.style.display = 'none';
     }
 
-    // Address + map
+    // Address
     const addr = place.address || place.formatted_address || '';
-    $('wp-pm2-address').textContent = addr;
+    const addrRow = $('wp-pm2-address-row');
+    if (addr) { $('wp-pm2-address').textContent = addr; addrRow.style.display = ''; }
+    else addrRow.style.display = 'none';
+
+    // Map — proxy propio (/api/google-staticmap, key server-side, zoom 14)
+    // + pin con el emoji de la categoría (catIcon, resuelto más arriba)
+    const mapCanvas = $('wp-pm2-map-canvas');
+    const mapPin = $('wp-pm2-map-pin');
     const lat = place.location?.lat || place.lat;
     const lng = place.location?.lng || place.lng;
     if (lat && lng) {
-      $('wp-pm2-map-canvas').style.backgroundImage =
-        `url('https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x200&markers=color:blue%7C${lat},${lng}&style=feature:poi%7Cvisibility:off&key=')`;
-      $('wp-pm2-map-canvas').style.backgroundSize = 'cover';
+      mapPin.textContent = catIcon || '📍';
+      mapPin.style.display = '';
+      this._skelOn(mapCanvas);
+      const w = Math.round((this._el.querySelector('#wp-pm2-map-preview')?.clientWidth || 380));
+      const mapUrl = `/api/google-staticmap?lat=${lat}&lng=${lng}&zoom=14&w=${w}&h=140`;
+      const preloadMap = new Image();
+      preloadMap.onload  = () => { mapCanvas.style.backgroundImage = `url('${mapUrl}')`; this._skelOff(mapCanvas); };
+      preloadMap.onerror = () => { this._skelOff(mapCanvas); };
+      preloadMap.src = mapUrl;
+    } else {
+      mapPin.style.display = 'none';
+      this._skelOff(mapCanvas);
+      mapCanvas.style.backgroundImage = '';
     }
 
-    // Tags
-    const tags = place.tags || place.place_tags || [];
-    const tagsSection = $('wp-pm2-tags-section');
-    const tagsList = $('wp-pm2-tags-list');
-    tagsList.innerHTML = '';
-    if (tags.length) {
-      tags.forEach(t => {
-        const tag = PLACE_TAGS.find(pt => pt.key === (t.tag_key || t));
-        if (!tag) return;
-        const span = document.createElement('span');
-        span.className = 'wp-pm2-tag-pill';
-        span.textContent = tag.emoji + ' ' + tag.label;
-        tagsList.appendChild(span);
-      });
-    }
-    tagsSection.style.display = '';
+    // Tags — vienen de Supabase (tabla place_tags), pedidas async
+    this._loadTags(place);
 
     // User avatar — misma resolución que PlaceModal1: foto real del perfil,
     // o si no tiene, memoji de Tapback generado con su nombre (nunca vacío)
@@ -1056,12 +1084,12 @@ export class PlaceModal2 {
         || user.user_metadata?.full_name
         || user.email?.split('@')[0]
         || 'Usuario';
-      avatarEl.classList.add('wp-pm2-skel');
-      avatarEl.onload  = () => avatarEl.classList.remove('wp-pm2-skel');
-      avatarEl.onerror = () => avatarEl.classList.remove('wp-pm2-skel');
+      this._skelOn(avatarEl);
+      avatarEl.onload  = () => this._skelOff(avatarEl);
+      avatarEl.onerror = () => this._skelOff(avatarEl);
       avatarEl.src = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
     } else {
-      avatarEl.classList.remove('wp-pm2-skel');
+      this._skelOff(avatarEl);
       avatarEl.src = '';
     }
 
@@ -1162,6 +1190,42 @@ export class PlaceModal2 {
   // Google que Google Place Details trajo al guardar el lugar.
   // Calcula si el lugar está abierto ahora mismo en base a regularOpeningHours
   // (mismo cálculo que PlaceModal1._isOpenNow)
+  // Skeleton a prueba de conflictos de especificidad: se setea inline con
+  // !important (máxima prioridad posible), no depende de la cascada de CSS
+  _skelOn(el) {
+    if (!el) return;
+    el.style.setProperty('background', 'linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%)', 'important');
+    el.style.setProperty('background-size', '400% 100%', 'important');
+    el.style.setProperty('animation', 'wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite', 'important');
+  }
+  _skelOff(el) {
+    if (!el) return;
+    el.style.removeProperty('background');
+    el.style.removeProperty('background-size');
+    el.style.removeProperty('animation');
+  }
+
+  // Etiquetas del lugar — Supabase (tabla place_tags), agrupadas y
+  // ordenadas por votos en PlaceTagService.getTagsForPlace()
+  async _loadTags(place) {
+    const tagsSection = this._el.querySelector('#wp-pm2-tags-section');
+    const tagsList = this._el.querySelector('#wp-pm2-tags-list');
+    tagsList.innerHTML = '';
+    tagsSection.style.display = '';
+    try {
+      const tags = await PlaceTagService.getTagsForPlace(place);
+      tagsList.innerHTML = '';
+      (tags || []).forEach(tag => {
+        const span = document.createElement('span');
+        span.className = 'wp-pm2-tag-pill';
+        span.textContent = `${tag.emoji} ${tag.label}`;
+        tagsList.appendChild(span);
+      });
+    } catch (e) {
+      // silencioso: el botón "+ Etiquetar lugar" sigue disponible igual
+    }
+  }
+
   _isOpenNow(place) {
     const oh = place.regularOpeningHours;
     if (!oh || !oh.periods || !oh.periods.length) return null;
@@ -1195,10 +1259,11 @@ export class PlaceModal2 {
       const shown = reviews.slice(0, 3);
       shown.forEach((r, i) => {
         const av = document.createElement('img');
-        av.className = 'wp-pm2-fp-avatar wp-pm2-skel';
+        av.className = 'wp-pm2-fp-avatar';
         av.style.zIndex = shown.length - i; // el primero queda arriba, igual que PlaceModal1
-        av.onload  = () => av.classList.remove('wp-pm2-skel');
-        av.onerror = () => { av.classList.remove('wp-pm2-skel'); av.style.background = '#e2e8f0'; };
+        this._skelOn(av);
+        av.onload  = () => this._skelOff(av);
+        av.onerror = () => { this._skelOff(av); av.style.background = '#e2e8f0'; };
         av.src = getAvatarUrl(r.author_name || 'user');
         avatarsEl.appendChild(av);
       });
@@ -1227,7 +1292,7 @@ export class PlaceModal2 {
       const stars = r.rating ? '⭐'.repeat(Math.round(r.rating)) : '';
       const photo = getAvatarUrl(r.author_name || 'user');
       row.innerHTML = `
-        <img class="wp-pm2-review-avatar wp-pm2-skel" src="${photo}" onload="this.classList.remove('wp-pm2-skel')" onerror="this.classList.remove('wp-pm2-skel');this.style.background='#e2e8f0'">
+        <img class="wp-pm2-review-avatar">
         <div class="wp-pm2-review-body">
           <div class="wp-pm2-review-name">${r.author_name || 'Usuario de Google'}</div>
           ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
@@ -1236,6 +1301,12 @@ export class PlaceModal2 {
           ${r.relative_time ? `<div class="wp-pm2-review-time">${r.relative_time}</div>` : ''}
         </div>`;
       listEl.appendChild(row);
+
+      const avImg = row.querySelector('.wp-pm2-review-avatar');
+      this._skelOn(avImg);
+      avImg.onload  = () => this._skelOff(avImg);
+      avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
+      avImg.src = photo;
 
       // Solo mostrar "Ver más" si el texto realmente se recorta a 6 líneas
       const textEl = row.querySelector('.wp-pm2-review-text');
