@@ -30,6 +30,14 @@ export class PlaceModal2 {
             <svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
           </button>
           <span id="wp-pm2-topbar-title"></span>
+          <div id="wp-pm2-topbar-actions">
+            <button id="wp-pm2-topbar-share" class="wp-pm2-tb-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button id="wp-pm2-topbar-more" class="wp-pm2-tb-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+          </div>
         </div>
         <!-- FADE — degradado blanco pegado debajo del topbar; el contenido
              que scrollea ahí se desvanece gradual en vez de cortarse -->
@@ -137,6 +145,13 @@ export class PlaceModal2 {
           <!-- PHOTO STRIP -->
           <div id="wp-pm2-strip"></div>
 
+          <!-- ETIQUETAS -->
+          <div id="wp-pm2-tags-section" style="display:none">
+            <div class="wp-pm2-section-title">Etiquetas</div>
+            <div id="wp-pm2-tags-list"></div>
+            <button id="wp-pm2-add-tag" class="wp-pm2-pill-btn">+ Etiquetar lugar</button>
+          </div>
+
           <!-- DESCRIPTION -->
           <div id="wp-pm2-desc-wrap" style="display:none">
             <p id="wp-pm2-desc"></p>
@@ -150,13 +165,6 @@ export class PlaceModal2 {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#1a5cf5"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
               <span id="wp-pm2-address"></span>
             </div>
-          </div>
-
-          <!-- ETIQUETAS -->
-          <div id="wp-pm2-tags-section" style="display:none">
-            <div class="wp-pm2-section-title">Etiquetas</div>
-            <div id="wp-pm2-tags-list"></div>
-            <button id="wp-pm2-add-tag" class="wp-pm2-pill-btn">+ Etiquetar lugar</button>
           </div>
 
           <!-- MENCIONADO EN -->
@@ -264,12 +272,27 @@ export class PlaceModal2 {
         transition:transform 0.15s; flex-shrink:0;
       }
       #wp-pm2-topbar-title {
-        position:absolute; left:68px; right:68px; z-index:1;
-        font-size:16px; font-weight:800; color:#111;
+        position:relative; z-index:1; margin-left:12px;
+        max-width:40%; font-size:16px; font-weight:800; color:#111;
         letter-spacing:-0.2px; opacity:0;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        text-align:center;
+        text-align:left;
       }
+      #wp-pm2-topbar-actions {
+        margin-left:auto; display:flex; align-items:center; gap:8px;
+        position:relative; z-index:1;
+      }
+      .wp-pm2-tb-btn {
+        width:40px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
+        background:rgba(255,255,255,0.88);
+        backdrop-filter:blur(16px) saturate(1.8);
+        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+        color:#111; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s;
+      }
+      .wp-pm2-tb-btn:active { transform:scale(0.92); }
 
       /* CONTENT AREA — hero (overlay) encima de body (ocupa TODO el área,
          incl. detrás del hero) */
@@ -312,6 +335,7 @@ export class PlaceModal2 {
       #wp-pm2-name {
         font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
         letter-spacing:-0.4px; line-height:1.2;
+        max-width:40%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       }
       #wp-pm2-meta {
         display:flex; align-items:center; gap:5px;
@@ -520,8 +544,8 @@ export class PlaceModal2 {
       }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
-        width:150px; height:230px; object-fit:cover;
-        border-radius:6px; flex-shrink:0; cursor:pointer;
+        width:150px; height:210px; object-fit:cover;
+        border-radius:14px; flex-shrink:0; cursor:pointer;
       }
       #wp-pm2-strip:empty { display:none; }
 
@@ -621,7 +645,19 @@ export class PlaceModal2 {
       .wp-pm2-review-body { flex:1; }
       .wp-pm2-review-name { font-size:13px; font-weight:700; color:#0a0a0a; }
       .wp-pm2-review-stars { font-size:11px; color:#f59e0b; margin-top:1px; }
-      .wp-pm2-review-text { font-size:13px; color:#374151; margin-top:4px; line-height:1.5; }
+      .wp-pm2-review-text {
+        font-size:13px; color:#374151; margin-top:4px; line-height:1.5;
+        display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
+        overflow:hidden;
+      }
+      .wp-pm2-review-text.wp-pm2-expanded {
+        -webkit-line-clamp:unset; overflow:visible;
+      }
+      .wp-pm2-review-more {
+        display:none; margin-top:4px; font-size:12px; font-weight:700;
+        color:#2563eb; background:none; border:none; padding:0;
+        cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+      }
       .wp-pm2-review-time { font-size:11px; color:#9ca3af; margin-top:2px; }
 
       /* FOOTER */
@@ -663,6 +699,12 @@ export class PlaceModal2 {
     });
     el.querySelector('#wp-pm2-share').addEventListener('click', () => {
       if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+    el.querySelector('#wp-pm2-topbar-share').addEventListener('click', () => {
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+    el.querySelector('#wp-pm2-topbar-more').addEventListener('click', () => {
+      console.log('[PM2] Más opciones (topbar)');
     });
     el.querySelector('#wp-pm2-map-preview').addEventListener('click', () => {
       const p = this._place;
@@ -713,6 +755,7 @@ export class PlaceModal2 {
     const topbarFade  = this._el.querySelector('#wp-pm2-topbar-fade');
     const nameEl      = this._el.querySelector('#wp-pm2-hero-bottom');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
+    const topbarActions = this._el.querySelector('#wp-pm2-topbar-actions');
 
     // Reset
     heroEl.style.height = '';
@@ -726,6 +769,7 @@ export class PlaceModal2 {
     topbar.style.boxShadow = '';
     topbarFade.style.opacity = '0';
     if (topbarTitle) topbarTitle.style.opacity = '0';
+    if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
 
     // hero (overlay absoluto encima del body) + hero-inner (alto FIJO fullH,
@@ -760,6 +804,11 @@ export class PlaceModal2 {
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
+        if (topbarActions) {
+          const actOpacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
+          topbarActions.style.opacity = actOpacity;
+          topbarActions.style.pointerEvents = actOpacity > 0.5 ? 'auto' : 'none';
+        }
 
         if (prog >= 1) topbar.classList.add('scrolled');
         else            topbar.classList.remove('scrolled');
@@ -1110,9 +1159,23 @@ export class PlaceModal2 {
           <div class="wp-pm2-review-name">${r.author_name || 'Usuario de Google'}</div>
           ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
           <div class="wp-pm2-review-text">${r.text || ''}</div>
+          <button class="wp-pm2-review-more">Ver más</button>
           ${r.relative_time ? `<div class="wp-pm2-review-time">${r.relative_time}</div>` : ''}
         </div>`;
       listEl.appendChild(row);
+
+      // Solo mostrar "Ver más" si el texto realmente se recorta a 6 líneas
+      const textEl = row.querySelector('.wp-pm2-review-text');
+      const moreBtn = row.querySelector('.wp-pm2-review-more');
+      requestAnimationFrame(() => {
+        if (textEl.scrollHeight > textEl.clientHeight + 1) {
+          moreBtn.style.display = 'block';
+          moreBtn.onclick = () => {
+            const expanded = textEl.classList.toggle('wp-pm2-expanded');
+            moreBtn.textContent = expanded ? 'Ver menos' : 'Ver más';
+          };
+        }
+      });
     });
   }
 
