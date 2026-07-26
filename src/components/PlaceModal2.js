@@ -58,6 +58,7 @@ export class PlaceModal2 {
               <div id="wp-pm2-hero-bg"></div>
               <div id="wp-pm2-hero-gradient"></div>
               <div id="wp-pm2-hero-bottom">
+                <span id="wp-pm2-featured-badge" class="wp-pm2-featured-badge" style="display:none"></span>
                 <h1 id="wp-pm2-name"></h1>
                 <div id="wp-pm2-meta">
                   <span id="wp-pm2-cat-icon"></span>
@@ -242,7 +243,7 @@ export class PlaceModal2 {
       /* TOPBAR */
       #wp-pm2-topbar {
         position:fixed; top:0; left:0; right:0;
-        height:calc(60px + env(safe-area-inset-top,0px));
+        height:calc(68px + env(safe-area-inset-top,0px));
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
@@ -253,7 +254,7 @@ export class PlaceModal2 {
          que llega hasta acá (translate del hero-inner). */
       #wp-pm2-topbar-fade {
         position:fixed;
-        top:calc(60px + env(safe-area-inset-top,0px));
+        top:calc(68px + env(safe-area-inset-top,0px));
         left:0; right:0; height:28px;
         background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0));
         z-index:9; pointer-events:none;
@@ -273,7 +274,8 @@ export class PlaceModal2 {
       }
       #wp-pm2-topbar-title {
         position:relative; z-index:1; margin-left:12px;
-        max-width:40%; font-size:16px; font-weight:800; color:#111;
+        flex:1 1 auto; min-width:0; max-width:90%;
+        font-size:16px; font-weight:800; color:#111;
         letter-spacing:-0.2px; opacity:0;
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         text-align:left;
@@ -331,6 +333,26 @@ export class PlaceModal2 {
       #wp-pm2-hero-bottom {
         position:absolute; bottom:0; left:0; right:0;
         padding:8px 16px 16px; z-index:3;
+      }
+      .wp-pm2-featured-badge {
+        display:inline-block; font-size:10px; font-weight:700; padding:3px 8px;
+        border-radius:9999px; white-space:nowrap; letter-spacing:0.01em;
+        margin-bottom:6px;
+      }
+      .wp-pm2-badge-featured {
+        background:linear-gradient(135deg,#fef3c7,#fde68a);
+        color:#92400e; border:1px solid rgba(253,230,138,0.6);
+        box-shadow:0 2px 6px rgba(251,191,36,0.25);
+      }
+      .wp-pm2-badge-verified {
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        color:#111111; border:1px solid rgba(180,180,180,0.6);
+        box-shadow:0 2px 6px rgba(28,28,30,0.20);
+      }
+      .wp-pm2-badge-premium {
+        background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
+        color:#6b21a8; border:1px solid rgba(216,180,254,0.6);
+        box-shadow:0 2px 6px rgba(168,85,247,0.22);
       }
       #wp-pm2-name {
         font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
@@ -424,6 +446,13 @@ export class PlaceModal2 {
         background:linear-gradient(90deg,#e8eaed 25%,#f3f4f6 50%,#e8eaed 75%);
         background-size:200% 100%;
         animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      /* Skeleton genérico — aplicar a cualquier <img>/div mientras carga y
+         sacarlo con onload/onerror (mismo patrón que PlaceModal1) */
+      .wp-pm2-skel {
+        background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%) !important;
+        background-size:400% 100% !important;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite !important;
       }
 
       /* ROWS */
@@ -862,6 +891,18 @@ export class PlaceModal2 {
     $('wp-pm2-cat-icon').textContent = catIcon;
     $('wp-pm2-cat').textContent = catName;
 
+    // Featured badge — "✦ Destacado" / "✓ Verificado" / "✦ Premium", igual
+    // que PlaceModal1 (place.featured: 'featured' | 'verified' | 'premium')
+    const featuredEl = $('wp-pm2-featured-badge');
+    if (place.featured) {
+      const labels = { premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado' };
+      featuredEl.textContent = labels[place.featured] || place.featured;
+      featuredEl.className   = `wp-pm2-featured-badge wp-pm2-badge-${place.featured}`;
+      featuredEl.style.display = '';
+    } else {
+      featuredEl.style.display = 'none';
+    }
+
     // Rating (+ total real de reseñas de Google entre paréntesis, igual que PlaceModal1)
     const rating = parseFloat(place.rating);
     const ratingCount = place.userRatingCount || place.user_ratings_total || 0;
@@ -879,13 +920,28 @@ export class PlaceModal2 {
     stripEl.innerHTML = '';
     photos.forEach(url => {
       const img = document.createElement('img');
-      img.src = url; img.alt = ''; img.loading = 'lazy';
+      img.className = 'wp-pm2-skel';
+      img.alt = ''; img.loading = 'lazy';
+      img.onload  = () => img.classList.remove('wp-pm2-skel');
+      img.onerror = () => img.classList.remove('wp-pm2-skel');
+      img.src = url;
       stripEl.appendChild(img);
     });
 
-    // Hero background — primera foto con parallax
+    // Hero background — primera foto con parallax, con skeleton mientras carga
     const heroBg = $('wp-pm2-hero-bg');
-    if (heroBg) heroBg.style.backgroundImage = photos.length ? `url('${photos[0]}')` : '';
+    if (heroBg) {
+      heroBg.style.backgroundImage = '';
+      if (photos.length) {
+        heroBg.classList.add('wp-pm2-skel');
+        const preload = new Image();
+        preload.onload  = () => { heroBg.style.backgroundImage = `url('${photos[0]}')`; heroBg.classList.remove('wp-pm2-skel'); };
+        preload.onerror = () => { heroBg.classList.remove('wp-pm2-skel'); };
+        preload.src = photos[0];
+      } else {
+        heroBg.classList.remove('wp-pm2-skel');
+      }
+    }
 
     // Topbar title
     const ttEl = $('wp-pm2-topbar-title');
@@ -991,11 +1047,23 @@ export class PlaceModal2 {
     }
     tagsSection.style.display = '';
 
-    // User avatar
+    // User avatar — misma resolución que PlaceModal1: foto real del perfil,
+    // o si no tiene, memoji de Tapback generado con su nombre (nunca vacío)
     const user = this.getCurrentUser?.();
     const avatarEl = $('wp-pm2-user-avatar');
-    if (user?.user_metadata?.avatar_url) avatarEl.src = user.user_metadata.avatar_url;
-    else avatarEl.src = '';
+    if (user) {
+      const displayName = user.user_metadata?.display_name
+        || user.user_metadata?.full_name
+        || user.email?.split('@')[0]
+        || 'Usuario';
+      avatarEl.classList.add('wp-pm2-skel');
+      avatarEl.onload  = () => avatarEl.classList.remove('wp-pm2-skel');
+      avatarEl.onerror = () => avatarEl.classList.remove('wp-pm2-skel');
+      avatarEl.src = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+    } else {
+      avatarEl.classList.remove('wp-pm2-skel');
+      avatarEl.src = '';
+    }
 
     // Reviews (async)
     this._loadReviews(place);
@@ -1127,10 +1195,11 @@ export class PlaceModal2 {
       const shown = reviews.slice(0, 3);
       shown.forEach((r, i) => {
         const av = document.createElement('img');
-        av.className = 'wp-pm2-fp-avatar';
-        av.src = getAvatarUrl(r.author_name || 'user');
+        av.className = 'wp-pm2-fp-avatar wp-pm2-skel';
         av.style.zIndex = shown.length - i; // el primero queda arriba, igual que PlaceModal1
-        av.onerror = () => { av.style.background = '#e2e8f0'; };
+        av.onload  = () => av.classList.remove('wp-pm2-skel');
+        av.onerror = () => { av.classList.remove('wp-pm2-skel'); av.style.background = '#e2e8f0'; };
+        av.src = getAvatarUrl(r.author_name || 'user');
         avatarsEl.appendChild(av);
       });
       const remaining = Math.max(0, totalReal - shown.length);
@@ -1158,7 +1227,7 @@ export class PlaceModal2 {
       const stars = r.rating ? '⭐'.repeat(Math.round(r.rating)) : '';
       const photo = getAvatarUrl(r.author_name || 'user');
       row.innerHTML = `
-        <img class="wp-pm2-review-avatar" src="${photo}" onerror="this.style.background='#e2e8f0'">
+        <img class="wp-pm2-review-avatar wp-pm2-skel" src="${photo}" onload="this.classList.remove('wp-pm2-skel')" onerror="this.classList.remove('wp-pm2-skel');this.style.background='#e2e8f0'">
         <div class="wp-pm2-review-body">
           <div class="wp-pm2-review-name">${r.author_name || 'Usuario de Google'}</div>
           ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
