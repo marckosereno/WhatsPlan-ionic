@@ -83,9 +83,9 @@ export class PlaceModal2 {
           <div id="wp-pm2-here-wrap">
             <div id="wp-pm2-here-swipe">
               <div id="wp-pm2-here-fill"></div>
-              <span id="wp-pm2-here-label">Desliza — Estuve aquí</span>
+              <span id="wp-pm2-here-label">Estuve aquí →</span>
               <div id="wp-pm2-here-thumb">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
             </div>
             <div id="wp-pm2-here-chip" style="display:none">
@@ -526,48 +526,54 @@ export class PlaceModal2 {
       }
 
       /* CTA ROW */
-      /* ESTUVE AQUÍ — swipe to confirm */
-      #wp-pm2-here-wrap { padding:10px 16px 4px; }
+      /* ESTUVE AQUÍ — swipe to confirm, tamaño chip (como Añadir reseña) */
+      #wp-pm2-here-wrap { padding:10px 16px 2px; display:flex; }
       #wp-pm2-here-swipe {
-        position:relative; height:48px; border-radius:999px;
-        background:#f3f4f6; overflow:hidden;
+        position:relative; width:190px; height:34px; border-radius:999px;
+        background:#1c1c1e; overflow:hidden;
         -webkit-tap-highlight-color:transparent; touch-action:pan-y;
       }
       #wp-pm2-here-fill {
         position:absolute; inset:0; width:0;
-        background:linear-gradient(90deg,#dbeafe,#bfdbfe);
+        background:linear-gradient(90deg,#16a34a,#22c55e);
         pointer-events:none;
       }
       #wp-pm2-here-label {
         position:absolute; left:0; right:0; top:0; bottom:0;
         display:flex; align-items:center; justify-content:center;
-        font-size:14px; font-weight:700; color:#374151; letter-spacing:-0.1px;
-        pointer-events:none; user-select:none;
+        font-size:12px; font-weight:700; color:#fff; letter-spacing:-0.1px;
+        pointer-events:none; user-select:none; white-space:nowrap;
       }
       #wp-pm2-here-thumb {
-        position:absolute; left:2px; top:2px; width:44px; height:44px;
-        border-radius:50%; background:#0a0a0a; color:#fff;
+        position:absolute; left:2px; top:2px; width:30px; height:30px;
+        border-radius:50%; background:#fff; color:#1c1c1e;
         display:flex; align-items:center; justify-content:center;
         cursor:grab; touch-action:none;
-        box-shadow:0 2px 8px rgba(0,0,0,0.25);
+        box-shadow:0 2px 6px rgba(0,0,0,0.3);
+        animation: wp-pm2-here-hint 1.8s ease-in-out infinite;
       }
-      #wp-pm2-here-swipe.wp-pm2-dragging #wp-pm2-here-thumb { cursor:grabbing; }
+      @keyframes wp-pm2-here-hint {
+        0%,100% { transform:translateX(0); }
+        50%     { transform:translateX(5px); }
+      }
+      #wp-pm2-here-swipe.wp-pm2-dragging #wp-pm2-here-thumb { animation:none; cursor:grabbing; }
       #wp-pm2-here-chip {
-        display:flex; align-items:center; gap:8px;
-        height:40px; padding:0 6px 0 14px; border-radius:999px;
+        display:inline-flex; align-items:center; gap:6px;
+        height:34px; padding:0 6px 0 12px; border-radius:999px;
         background:#e8fdf0; border:1px solid #bbf0cf;
         animation: wp-pm2-here-pop 0.3s ease both;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
       }
       @keyframes wp-pm2-here-pop {
         0%   { transform:scale(0.9); opacity:0; }
         100% { transform:scale(1); opacity:1; }
       }
       #wp-pm2-here-chip-text {
-        font-size:13px; font-weight:700; color:#16a34a; flex:1;
+        font-size:12px; font-weight:700; color:#16a34a; white-space:nowrap;
       }
       #wp-pm2-here-chip-tag {
-        padding:7px 14px; border-radius:999px; border:none;
-        background:#fff; color:#16a34a; font-size:12px; font-weight:700;
+        padding:5px 10px; border-radius:999px; border:none;
+        background:#fff; color:#16a34a; font-size:11px; font-weight:700;
         cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
         box-shadow:0 1px 3px rgba(0,0,0,0.1);
       }
@@ -575,7 +581,7 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:0 16px 12px; margin-top:-20px;
+        padding:4px 16px 12px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
@@ -888,7 +894,7 @@ export class PlaceModal2 {
     const label = el.querySelector('#wp-pm2-here-label');
     const chip  = el.querySelector('#wp-pm2-here-chip');
 
-    const THUMB = 44, PAD = 2;
+    const THUMB = 30, PAD = 2;
     let dragging = false, startX = 0, thumbStartX = 0, maxX = 0;
 
     const setThumbX = (x) => {
@@ -905,6 +911,17 @@ export class PlaceModal2 {
       this._placeVisited = true;
       console.log('[PM2] Estuve aquí confirmado (swipe):', this._place);
     };
+
+    // Tocar el chip ya confirmado lo revierte de nuevo a modo swipe (undo,
+    // por si tocaron "Estuve aquí" por error)
+    chip.addEventListener('click', (e) => {
+      if (e.target.closest('#wp-pm2-here-chip-tag')) return; // el botón de etiquetar no debe deshacer
+      chip.style.display = 'none';
+      swipe.style.display = '';
+      reset();
+      this._placeVisited = false;
+      console.log('[PM2] Estuve aquí deshecho (undo):', this._place);
+    });
 
     const onDown = (clientX) => {
       dragging = true;
