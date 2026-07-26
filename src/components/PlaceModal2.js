@@ -82,7 +82,6 @@ export class PlaceModal2 {
                slide de fotos: esta es la única entrada a esa función ahora) -->
           <div id="wp-pm2-here-wrap">
             <div id="wp-pm2-here-swipe">
-              <div id="wp-pm2-here-fill"></div>
               <span id="wp-pm2-here-label">Estuve aquí →</span>
               <div id="wp-pm2-here-thumb">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -527,26 +526,25 @@ export class PlaceModal2 {
 
       /* CTA ROW */
       /* ESTUVE AQUÍ — swipe to confirm, tamaño chip (como Añadir reseña) */
-      #wp-pm2-here-wrap { padding:10px 16px 2px; display:flex; }
+      #wp-pm2-here-wrap { padding:2px 16px 4px; display:flex; }
       #wp-pm2-here-swipe {
-        position:relative; width:190px; height:34px; border-radius:999px;
-        background:#1c1c1e; overflow:hidden;
+        position:relative; width:150px; height:36px; border-radius:999px;
+        background:linear-gradient(100deg,#3b82f6 0%,#60a5fa 30%,#a78bfa 65%,#c084fc 100%);
+        backdrop-filter:blur(12px) saturate(1.6);
+        -webkit-backdrop-filter:blur(12px) saturate(1.6);
+        overflow:hidden;
         -webkit-tap-highlight-color:transparent; touch-action:pan-y;
-      }
-      #wp-pm2-here-fill {
-        position:absolute; inset:0; width:0;
-        background:linear-gradient(90deg,#16a34a,#22c55e);
-        pointer-events:none;
       }
       #wp-pm2-here-label {
         position:absolute; left:0; right:0; top:0; bottom:0;
         display:flex; align-items:center; justify-content:center;
         font-size:12px; font-weight:700; color:#fff; letter-spacing:-0.1px;
         pointer-events:none; user-select:none; white-space:nowrap;
+        text-shadow:0 1px 3px rgba(0,0,0,0.25);
       }
       #wp-pm2-here-thumb {
-        position:absolute; left:2px; top:2px; width:30px; height:30px;
-        border-radius:50%; background:#fff; color:#1c1c1e;
+        position:absolute; left:3px; top:3px; width:30px; height:30px;
+        border-radius:50%; background:#fff; color:#4c1d95;
         display:flex; align-items:center; justify-content:center;
         cursor:grab; touch-action:none;
         box-shadow:0 2px 6px rgba(0,0,0,0.3);
@@ -890,16 +888,14 @@ export class PlaceModal2 {
   _wireHereSwipe(el) {
     const swipe = el.querySelector('#wp-pm2-here-swipe');
     const thumb = el.querySelector('#wp-pm2-here-thumb');
-    const fill  = el.querySelector('#wp-pm2-here-fill');
     const label = el.querySelector('#wp-pm2-here-label');
     const chip  = el.querySelector('#wp-pm2-here-chip');
 
-    const THUMB = 30, PAD = 2;
+    const THUMB = 30, PAD = 3;
     let dragging = false, startX = 0, thumbStartX = 0, maxX = 0;
 
     const setThumbX = (x) => {
       thumb.style.transform = `translateX(${x}px)`;
-      fill.style.width = (x + THUMB + PAD) + 'px';
       label.style.opacity = Math.max(0, 1 - (x / maxX) * 1.6);
     };
 
