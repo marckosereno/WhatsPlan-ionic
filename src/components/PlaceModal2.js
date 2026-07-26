@@ -32,7 +32,7 @@ export class PlaceModal2 {
           <span id="wp-pm2-topbar-title"></span>
           <div id="wp-pm2-topbar-actions">
             <button id="wp-pm2-topbar-share" class="wp-pm2-tb-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
             </button>
             <button id="wp-pm2-topbar-more" class="wp-pm2-tb-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
@@ -108,7 +108,7 @@ export class PlaceModal2 {
               ¿Fuiste?
             </button>
             <button id="wp-pm2-share" class="wp-pm2-icon-btn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
             </button>
           </div>
 
@@ -335,7 +335,7 @@ export class PlaceModal2 {
       #wp-pm2-name {
         font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
         letter-spacing:-0.4px; line-height:1.2;
-        max-width:40%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       }
       #wp-pm2-meta {
         display:flex; align-items:center; gap:5px;
@@ -664,19 +664,23 @@ export class PlaceModal2 {
       #wp-pm2-footer {
         display:flex; align-items:center; gap:10px;
         padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
-        border-top:1px solid #f3f4f6; background:#fff; flex-shrink:0;
+        border-top:none; background:transparent; flex-shrink:0;
+        pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
       }
+      #wp-pm2-footer > * { pointer-events:auto; }
       #wp-pm2-here-btn {
         width:48px; height:48px; border-radius:50%; border:none;
         background:#0a0a0a; color:#fff; display:flex; align-items:center;
         justify-content:center; cursor:pointer; flex-shrink:0;
         -webkit-tap-highlight-color:transparent;
+        box-shadow:0 4px 20px rgba(255,255,255,0.9), 0 6px 16px rgba(0,0,0,0.18);
       }
       #wp-pm2-plan-btn {
         flex:1; height:48px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff; font-size:16px; font-weight:700;
         display:flex; align-items:center; justify-content:center; gap:8px;
         cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+        box-shadow:0 4px 20px rgba(255,255,255,0.9), 0 6px 16px rgba(0,0,0,0.18);
       }
     `;
     document.head.appendChild(s);
