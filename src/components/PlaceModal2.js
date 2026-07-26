@@ -160,7 +160,6 @@ export class PlaceModal2 {
           <!-- MAP PREVIEW — zoom 14, pin propio con el emoji de categoría -->
           <div id="wp-pm2-map-preview">
             <div id="wp-pm2-map-canvas"></div>
-            <div id="wp-pm2-map-pin"></div>
           </div>
 
           <!-- DESCRIPTION -->
@@ -464,8 +463,36 @@ export class PlaceModal2 {
         background-size:200% 100%;
         animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
       }
-      /* Skeleton de imágenes: se aplica 100% inline vía _skelOn/_skelOff
-         (ver JS) — evita cualquier ambigüedad de especificidad CSS */
+      /* Skeleton de imágenes — sin !important: cada regla iguala/supera la
+         especificidad de la regla base del elemento que targetea, así gana
+         por cascada normal. El hero usa ::before (no toca su background-image
+         real, que lo pone JS directamente sobre el div). */
+      #wp-pm2-hero-bg.wp-pm2-skel::before {
+        content:''; position:absolute; inset:0;
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      #wp-pm2-strip img.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-avatar.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      .wp-pm2-review-avatar.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      #wp-pm2-user-avatar.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
 
       /* ROWS */
       .wp-pm2-row {
@@ -615,21 +642,9 @@ export class PlaceModal2 {
         border:1px solid #e5e7eb; cursor:pointer; position:relative;
       }
       #wp-pm2-map-canvas {
-        height:140px; background:#e8e8e8; background-size:cover; background-position:center;
-        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23e8ede8' width='100' height='100'/%3E%3C/svg%3E");
+        height:140px; width:100%; position:relative; background:#e8e8e8;
       }
-      #wp-pm2-map-pin {
-        position:absolute; left:50%; top:50%;
-        transform:translate(-50%,-100%);
-        font-size:28px; line-height:1; pointer-events:none;
-        filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35));
-      }
-      #wp-pm2-map-pin::after {
-        content:''; position:absolute; left:50%; bottom:-3px;
-        width:6px; height:6px; border-radius:50%;
-        background:rgba(0,0,0,0.35); transform:translateX(-50%);
-        filter:blur(1px);
-      }
+      #wp-pm2-map-canvas .maplibregl-marker { cursor:pointer; }
 
       /* SECTION TITLE */
       .wp-pm2-section-title {
@@ -1044,33 +1059,19 @@ export class PlaceModal2 {
       descWrap.style.display = 'none';
     }
 
-    // Address
-    const addr = place.address || place.formatted_address || '';
+    // Address — el campo real es formattedAddress (camelCase), no
+    // "address" ni "formatted_address" (por eso nunca se mostraba)
+    const addr = place.formattedAddress || place.formatted_address || place.address || '';
     const addrRow = $('wp-pm2-address-row');
     if (addr) { $('wp-pm2-address').textContent = addr; addrRow.style.display = ''; }
     else addrRow.style.display = 'none';
 
-    // Map — proxy propio (/api/google-staticmap, key server-side, zoom 14)
-    // + pin con el emoji de la categoría (catIcon, resuelto más arriba)
-    const mapCanvas = $('wp-pm2-map-canvas');
-    const mapPin = $('wp-pm2-map-pin');
+    // Map — MISMO MapLibre que usa MapView.js (ya está cargado global en la
+    // app, sin API de Google, sin archivos nuevos). Instancia liviana y
+    // no-interactiva (solo preview), con el pin "mini-modal" del lugar.
     const lat = place.location?.lat || place.lat;
     const lng = place.location?.lng || place.lng;
-    if (lat && lng) {
-      mapPin.textContent = catIcon || '📍';
-      mapPin.style.display = '';
-      this._skelOn(mapCanvas);
-      const w = Math.round((this._el.querySelector('#wp-pm2-map-preview')?.clientWidth || 380));
-      const mapUrl = `/api/google-staticmap?lat=${lat}&lng=${lng}&zoom=14&w=${w}&h=140`;
-      const preloadMap = new Image();
-      preloadMap.onload  = () => { mapCanvas.style.backgroundImage = `url('${mapUrl}')`; this._skelOff(mapCanvas); };
-      preloadMap.onerror = () => { this._skelOff(mapCanvas); };
-      preloadMap.src = mapUrl;
-    } else {
-      mapPin.style.display = 'none';
-      this._skelOff(mapCanvas);
-      mapCanvas.style.backgroundImage = '';
-    }
+    this._renderMiniMap(place, lat, lng, catIcon);
 
     // Tags — vienen de Supabase (tabla place_tags), pedidas async
     this._loadTags(place);
@@ -1192,17 +1193,18 @@ export class PlaceModal2 {
   // (mismo cálculo que PlaceModal1._isOpenNow)
   // Skeleton a prueba de conflictos de especificidad: se setea inline con
   // !important (máxima prioridad posible), no depende de la cascada de CSS
+  // Skeleton sin !important: cada imagen tiene su propia clase .wp-pm2-skel
+  // con selector de la MISMA especificidad que su regla base (ver CSS), así
+  // que gana por cascada normal, no por fuerza bruta. El hero (que es un
+  // <div> con background-image seteado por JS) usa un ::before aparte para
+  // no pisar nunca la foto real.
   _skelOn(el) {
     if (!el) return;
-    el.style.setProperty('background', 'linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%)', 'important');
-    el.style.setProperty('background-size', '400% 100%', 'important');
-    el.style.setProperty('animation', 'wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite', 'important');
+    el.classList.add('wp-pm2-skel');
   }
   _skelOff(el) {
     if (!el) return;
-    el.style.removeProperty('background');
-    el.style.removeProperty('background-size');
-    el.style.removeProperty('animation');
+    el.classList.remove('wp-pm2-skel');
   }
 
   // Etiquetas del lugar — Supabase (tabla place_tags), agrupadas y
@@ -1224,6 +1226,60 @@ export class PlaceModal2 {
     } catch (e) {
       // silencioso: el botón "+ Etiquetar lugar" sigue disponible igual
     }
+  }
+
+  // Mapa mini — mismo MapLibre que usa MapView.js (window.maplibregl, ya
+  // cargado global en index.html, mismo MAP_STYLE). Se crea UNA sola vez
+  // y se reutiliza entre lugares (solo se mueve center + marker).
+  _renderMiniMap(place, lat, lng, catIcon) {
+    const container = this._el.querySelector('#wp-pm2-map-canvas');
+    const preview = this._el.querySelector('#wp-pm2-map-preview');
+    if (!lat || !lng) { preview.style.display = 'none'; return; }
+    preview.style.display = '';
+
+    if (typeof window.maplibregl === 'undefined') {
+      // MapLibre no cargó (no debería pasar, ya está en index.html) —
+      // evitamos romper el resto de la ficha
+      return;
+    }
+
+    const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+
+    if (!this._miniMap) {
+      this._miniMap = new window.maplibregl.Map({
+        container,
+        style: MAP_STYLE,
+        center: [lng, lat],
+        zoom: 14,
+        attributionControl: false,
+        interactive: false,   // preview: sin pan/zoom/rotate, solo mostrar
+        keyboard: false,
+        renderWorldCopies: false,
+      });
+    } else {
+      this._miniMap.setCenter([lng, lat]);
+      this._miniMap.setZoom(14);
+    }
+
+    // Pin "mini-modal" del lugar — mismo markup que MapView._buildPinHtml
+    // (variante sin foto: círculo liquid-glass con el emoji de categoría)
+    const liquidBg     = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
+    const liquidShadow = '0 0 0 1.5px rgba(160,205,255,0.5),0 3px 10px rgba(100,170,255,0.22),0 1px 3px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9)';
+    const el = document.createElement('div');
+    el.style.cssText = 'position:relative;display:inline-block;overflow:visible;';
+    el.innerHTML = `
+      <div style="background:${liquidBg};box-shadow:${liquidShadow};border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+        <div style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;font-size:16px;">${catIcon || '📍'}</div>
+      </div>`;
+
+    if (this._miniMapMarker) this._miniMapMarker.remove();
+    this._miniMapMarker = new window.maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([lng, lat])
+      .addTo(this._miniMap);
+
+    // El contenedor puede medir 0 si el modal recién se está abriendo —
+    // resize() una vez que ya tiene layout real
+    requestAnimationFrame(() => requestAnimationFrame(() => this._miniMap.resize()));
   }
 
   _isOpenNow(place) {
