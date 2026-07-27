@@ -77,15 +77,11 @@ export class PlaceModal2 {
           <!-- SPACER — alto = recorrido del hero (travel); queda tapado -->
           <div id="wp-pm2-scroll-spacer"></div>
 
-          <!-- ETIQUETAR LUGAR — chip (como Añadir reseña) + scroll horizontal
-               fullwidth de chips de etiquetas. Por defecto muestra las
-               etiquetas ya aplicadas al lugar; al tocar el chip, se
-               esconden y aparecen TODAS las etiquetas disponibles para que
-               el usuario elija (se activa/desactiva cada una tocándola). -->
-          <div id="wp-pm2-tag-row" style="display:none">
-            <button id="wp-pm2-tag-toggle-btn" class="wp-pm2-pill-btn">Etiquetar lugar</button>
-            <div id="wp-pm2-tag-scroll"></div>
-          </div>
+          <!-- ETIQUETAR LUGAR — pausado por ahora (aún decidiendo dónde
+               ubicarlo). El CSS/JS sigue en el archivo (#wp-pm2-tag-row,
+               _wireTagToggle, _renderTagScroll, _loadTags) para reactivarlo
+               fácil el día que se defina su lugar — por eso no se borró,
+               solo se sacó el nodo del DOM para no dejar espacio vacío. -->
 
           <!-- REVIEWS SUMMARY — avatares (máx 6) + cantidad de reseñas -->
           <div id="wp-pm2-reviews-summary" style="display:none">
@@ -154,9 +150,11 @@ export class PlaceModal2 {
           </div>
 
           <!-- PHOTO STRIP -->
+          <div class="wp-pm2-section-heading">Fotos</div>
           <div id="wp-pm2-strip"></div>
 
-          <!-- ADDRESS — misma fuente que el trigger de horarios -->
+          <!-- ADDRESS + MAP — misma fuente que el trigger de horarios -->
+          <div class="wp-pm2-section-heading">Ubicación</div>
           <div id="wp-pm2-address-row" style="display:none">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
             <span id="wp-pm2-address"></span>
@@ -670,6 +668,7 @@ export class PlaceModal2 {
       #wp-pm2-address-row {
         display:flex; align-items:center; gap:8px;
         padding:14px 16px; font-size:14px; color:#374151;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
       }
       #wp-pm2-address-row svg { flex-shrink:0; color:#6b7280; }
       #wp-pm2-address {
@@ -699,6 +698,12 @@ export class PlaceModal2 {
       .wpr-header-row .wp-pm2-reviews-title-text {
         font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
         color:#0a0a0a; flex-shrink:0; line-height:1;
+      }
+      /* Título de sección reutilizable (Fotos, Ubicación, etc.) — mismo
+         padding y fuente que el título "Reseñas" */
+      .wp-pm2-section-heading {
+        font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+        color:#0a0a0a; line-height:1; padding:16px 16px 10px;
       }
       .wpr-header-tabs-row {
         display:flex; gap:5px; align-items:center; flex:1;
@@ -871,6 +876,27 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-map-btn').addEventListener('click', () => {
       console.log('[PM2] Ver en mapa');
     });
+    el.querySelector('#wp-pm2-address-row').addEventListener('click', () => {
+      const addrEl = el.querySelector('#wp-pm2-address');
+      const text = addrEl.textContent;
+      if (!text) return;
+      const done = () => {
+        const original = text;
+        addrEl.textContent = '¡Dirección copiada!';
+        setTimeout(() => { addrEl.textContent = original; }, 1400);
+      };
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(done);
+      } else {
+        // Fallback para webviews sin Clipboard API
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        done();
+      }
+    });
     el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
       console.log('[PM2] Añadir comentario');
     });
@@ -887,6 +913,7 @@ export class PlaceModal2 {
   // selección) — mismo scroll horizontal, solo cambia el contenido.
   _wireTagToggle(el) {
     const btn = el.querySelector('#wp-pm2-tag-toggle-btn');
+    if (!btn) return; // pausado por ahora, sin nodo en el DOM
     btn.addEventListener('click', () => {
       this._tagSelectMode = !this._tagSelectMode;
       if (!this._tagSelectMode && this._place) {
