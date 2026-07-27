@@ -2,6 +2,7 @@
 // WHATSPLAN — PlaceModal2.js  (diseño alternativo, Google Maps-inspired)
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
+import { ReviewService }               from '/src/services/ReviewService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 
 export class PlaceModal2 {
@@ -81,7 +82,7 @@ export class PlaceModal2 {
                etiquetas ya aplicadas al lugar; al tocar el chip, se
                esconden y aparecen TODAS las etiquetas disponibles para que
                el usuario elija (se activa/desactiva cada una tocándola). -->
-          <div id="wp-pm2-tag-row">
+          <div id="wp-pm2-tag-row" style="display:none">
             <button id="wp-pm2-tag-toggle-btn" class="wp-pm2-pill-btn">Etiquetar lugar</button>
             <div id="wp-pm2-tag-scroll"></div>
           </div>
@@ -180,7 +181,7 @@ export class PlaceModal2 {
 
           <!-- REVIEWS -->
           <div id="wp-pm2-reviews-section">
-            <div class="wp-pm2-section-title" id="wp-pm2-reviews-title">Comentarios y reseñas</div>
+            <div class="wpr-header-row" id="wpr-header-row"></div>
             <div id="wp-pm2-comment-input-row">
               <img id="wp-pm2-user-avatar" src="" alt="">
               <div id="wp-pm2-comment-box">
@@ -190,7 +191,8 @@ export class PlaceModal2 {
                 </button>
               </div>
             </div>
-            <div id="wp-pm2-reviews-list"><p id="wp-pm2-no-reviews">¡Sé el primero en comentar!</p></div>
+            <div id="wpr-panel-google"></div>
+            <div id="wpr-panel-community" style="display:none"></div>
           </div>
 
           <!-- BOTTOM SPACER -->
@@ -689,9 +691,50 @@ export class PlaceModal2 {
         font-size:15px; font-weight:800; color:#0a0a0a; padding:16px 16px 8px;
         letter-spacing:-0.2px;
       }
-      #wp-pm2-reviews-title {
-        font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+      /* Header con tabs de reseñas — calcado de PlaceModal1 */
+      .wpr-header-row {
+        display:flex; align-items:center; gap:10px;
+        padding:16px 16px 10px;
       }
+      .wpr-header-row .wp-pm2-reviews-title-text {
+        font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+        color:#0a0a0a; flex-shrink:0; line-height:1;
+      }
+      .wpr-header-tabs-row {
+        display:flex; gap:5px; align-items:center; flex:1;
+      }
+      .wpr-tab {
+        display:inline-flex; align-items:center; justify-content:center; gap:4px;
+        padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; font-size:11px; font-weight:600;
+        color:#6b7280; cursor:pointer; font-family:inherit;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s ease; white-space:nowrap;
+      }
+      .wpr-tab-active { background:#0a0a0a; color:#fff; border-color:#0a0a0a; }
+      .wpr-tab-count {
+        font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
+        background:rgba(0,0,0,0.08); color:#6b7280;
+      }
+      .wpr-tab-active .wpr-tab-count { background:rgba(255,255,255,0.2); color:#fff; }
+      /* Añadir reseña — naranja motivador, empujado a la derecha */
+      .wpr-tab-add {
+        margin-left:auto;
+        background:linear-gradient(135deg,#f59e0b,#f97316);
+        border-color:transparent; color:#fff !important;
+        box-shadow:0 2px 8px rgba(249,115,22,0.30);
+      }
+      .wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
+      .wpr-empty {
+        text-align:center; color:#9ca3af; font-size:13px; padding:24px 20px;
+      }
+      .wpr-see-more {
+        display:block; text-align:center;
+        font-size:12px; font-weight:600; color:#4285F4;
+        padding:12px 0 4px; text-decoration:none;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wpr-see-more:active { opacity:0.7; }
 
 
       /* MENTIONS */
@@ -737,7 +780,6 @@ export class PlaceModal2 {
         background:#6b7280; display:flex; align-items:center; justify-content:center;
         cursor:pointer; flex-shrink:0;
       }
-      #wp-pm2-no-reviews { font-size:14px; color:#9ca3af; text-align:center; padding:8px 16px 16px; }
       .wp-pm2-review-row {
         display:flex; gap:10px; padding:10px 16px;
       }
@@ -1393,7 +1435,6 @@ export class PlaceModal2 {
   }
 
   _loadReviews(place) {
-    const listEl    = this._el.querySelector('#wp-pm2-reviews-list');
     const summaryEl = this._el.querySelector('#wp-pm2-reviews-summary');
     const avatarsEl = this._el.querySelector('#wp-pm2-reviews-avatars');
     const countEl   = this._el.querySelector('#wp-pm2-reviews-count');
@@ -1404,16 +1445,7 @@ export class PlaceModal2 {
 
     // Facepile: solo 3 avatares reales (memoji de Tapback vía getAvatarUrl,
     // misma función que usa PlaceModal1) + una bolita "+N" con el resto.
-    // El contador de al lado muestra el total REAL de Google entre paréntesis
-    // (place.userRatingCount / user_ratings_total), no solo lo que trae el
-    // array de reviews (Google Place Details solo da hasta 5 de muestra).
     const totalReal = place.userRatingCount || place.user_ratings_total || reviews.length;
-    const reviewsTitleEl = this._el.querySelector('#wp-pm2-reviews-title');
-    if (reviewsTitleEl) {
-      reviewsTitleEl.textContent = totalReal
-        ? `Comentarios y reseñas (${totalReal})`
-        : 'Comentarios y reseñas';
-    }
     if (reviews.length) {
       avatarsEl.innerHTML = '';
       const shown = reviews.slice(0, 3);
@@ -1441,46 +1473,131 @@ export class PlaceModal2 {
       summaryEl.style.display = 'none';
     }
 
+    this._googleReviews = reviews;
+    this._buildReviewsHeader(place);
+    this._renderGooglePanel(place);
+    this._loadCommunityReviews(place); // async, WhatsPlan
+  }
+
+  // Header con "Reseñas" + tabs (Google / WhatsPlan) + pill "Añadir reseña",
+  // calcado de PlaceModal1 (_populateReviews → headerRow)
+  _buildReviewsHeader(place) {
+    const headerRow = this._el.querySelector('#wpr-header-row');
+    if (!headerRow) return;
+    const gCount = (this._googleReviews || []).length;
+    const cCount = (this._communityReviews || []).length;
+
+    headerRow.innerHTML = `
+      <span class="wp-pm2-reviews-title-text">Reseñas</span>
+      <div class="wpr-header-tabs-row">
+        <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
+        <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
+        <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir reseña</button>
+      </div>
+    `;
+
+    headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
+      tab.onclick = () => {
+        headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+        tab.classList.add('wpr-tab-active');
+        this._el.querySelector('#wpr-panel-google').style.display    = tab.dataset.tab === 'google'    ? '' : 'none';
+        this._el.querySelector('#wpr-panel-community').style.display = tab.dataset.tab === 'community' ? '' : 'none';
+      };
+    });
+    const addBtn = headerRow.querySelector('#wpr-add-btn');
+    if (addBtn) addBtn.onclick = () => {
+      this._el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this._el.querySelector('#wp-pm2-comment-box').click();
+    };
+  }
+
+  // Construye una tarjeta de reseña (misma estructura para Google y
+  // WhatsPlan, solo cambian los datos de entrada)
+  _buildReviewCard(name, rating, text, timeLabel, photoSeed) {
+    const row = document.createElement('div');
+    row.className = 'wp-pm2-review-row';
+    const stars = rating ? '⭐'.repeat(Math.round(rating)) : '';
+    row.innerHTML = `
+      <img class="wp-pm2-review-avatar">
+      <div class="wp-pm2-review-body">
+        <div class="wp-pm2-review-name">${name}</div>
+        ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
+        <div class="wp-pm2-review-text">${text || ''}</div>
+        <button class="wp-pm2-review-more">Ver más</button>
+        ${timeLabel ? `<div class="wp-pm2-review-time">${timeLabel}</div>` : ''}
+      </div>`;
+
+    const avImg = row.querySelector('.wp-pm2-review-avatar');
+    this._skelOn(avImg);
+    avImg.onload  = () => this._skelOff(avImg);
+    avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
+    avImg.src = photoSeed;
+
+    const textEl = row.querySelector('.wp-pm2-review-text');
+    const moreBtn = row.querySelector('.wp-pm2-review-more');
+    requestAnimationFrame(() => {
+      if (textEl.scrollHeight > textEl.clientHeight + 1) {
+        moreBtn.style.display = 'block';
+        moreBtn.onclick = () => {
+          const expanded = textEl.classList.toggle('wp-pm2-expanded');
+          moreBtn.textContent = expanded ? 'Ver menos' : 'Ver más';
+        };
+      }
+    });
+    return row;
+  }
+
+  // Panel de reseñas de Google + link "Ver todas las reseñas en Google"
+  // (misma URL que PlaceModal1: search.google.com/local/reviews)
+  _renderGooglePanel(place) {
+    const panel = this._el.querySelector('#wpr-panel-google');
+    const reviews = this._googleReviews || [];
+    panel.innerHTML = '';
     if (!reviews.length) {
-      listEl.innerHTML = '<p id="wp-pm2-no-reviews">Sin reseñas de Google todavía</p>';
+      panel.innerHTML = '<p class="wpr-empty">Sin reseñas de Google todavía</p>';
       return;
     }
-    listEl.innerHTML = '';
     reviews.slice(0, 5).forEach(r => {
-      const row = document.createElement('div');
-      row.className = 'wp-pm2-review-row';
-      const stars = r.rating ? '⭐'.repeat(Math.round(r.rating)) : '';
-      const photo = getAvatarUrl(r.author_name || 'user');
-      row.innerHTML = `
-        <img class="wp-pm2-review-avatar">
-        <div class="wp-pm2-review-body">
-          <div class="wp-pm2-review-name">${r.author_name || 'Usuario de Google'}</div>
-          ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
-          <div class="wp-pm2-review-text">${r.text || ''}</div>
-          <button class="wp-pm2-review-more">Ver más</button>
-          ${r.relative_time ? `<div class="wp-pm2-review-time">${r.relative_time}</div>` : ''}
-        </div>`;
-      listEl.appendChild(row);
-
-      const avImg = row.querySelector('.wp-pm2-review-avatar');
-      this._skelOn(avImg);
-      avImg.onload  = () => this._skelOff(avImg);
-      avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
-      avImg.src = photo;
-
-      // Solo mostrar "Ver más" si el texto realmente se recorta a 6 líneas
-      const textEl = row.querySelector('.wp-pm2-review-text');
-      const moreBtn = row.querySelector('.wp-pm2-review-more');
-      requestAnimationFrame(() => {
-        if (textEl.scrollHeight > textEl.clientHeight + 1) {
-          moreBtn.style.display = 'block';
-          moreBtn.onclick = () => {
-            const expanded = textEl.classList.toggle('wp-pm2-expanded');
-            moreBtn.textContent = expanded ? 'Ver menos' : 'Ver más';
-          };
-        }
-      });
+      panel.appendChild(this._buildReviewCard(
+        r.author_name || 'Usuario de Google',
+        r.rating, r.text, r.relative_time,
+        getAvatarUrl(r.author_name || 'user')
+      ));
     });
+    const placeId = place.place_id || place.id;
+    if (placeId) {
+      const a = document.createElement('a');
+      a.className = 'wpr-see-more';
+      a.href = `https://search.google.com/local/reviews?placeid=${placeId}`;
+      a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'Ver todas las reseñas en Google →';
+      panel.appendChild(a);
+    }
+  }
+
+  // Panel de reseñas de WhatsPlan (tabla place_reviews vía ReviewService)
+  async _loadCommunityReviews(place) {
+    const panel = this._el.querySelector('#wpr-panel-community');
+    try {
+      const reviews = await ReviewService.getForPlace(place.place_id || place.id);
+      this._communityReviews = reviews || [];
+      panel.innerHTML = '';
+      if (!this._communityReviews.length) {
+        panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
+      } else {
+        this._communityReviews.forEach(r => {
+          panel.appendChild(this._buildReviewCard(
+            r.display_name || 'Usuario',
+            r.rating, r.text, '',
+            getAvatarUrl(r.display_name || 'user')
+          ));
+        });
+      }
+    } catch (e) {
+      this._communityReviews = [];
+      panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
+    }
+    this._buildReviewsHeader(place); // refresca el conteo del tab WhatsPlan
   }
 
   isVisible() { return this._el?.classList.contains('visible'); }
