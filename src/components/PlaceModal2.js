@@ -193,8 +193,9 @@ export class PlaceModal2 {
             <div id="wpr-panel-community" style="display:none"></div>
           </div>
 
-          <!-- BOTTOM SPACER -->
-          <div style="height:32px"></div>
+          <!-- BOTTOM SPACER — deja aire para que el footer flotante no tape
+               el último contenido -->
+          <div style="height:96px"></div>
         </div><!-- /body -->
 
         </div><!-- /content-area -->
@@ -545,7 +546,7 @@ export class PlaceModal2 {
       /* REVIEWS SUMMARY — facepile de avatares + contador */
       #wp-pm2-reviews-summary {
         display:flex; align-items:center; gap:8px;
-        padding:4px 16px 12px;
+        padding:4px 16px 12px; margin-top:-28px;
       }
       #wp-pm2-reviews-avatars {
         display:flex; align-items:center;
@@ -812,9 +813,10 @@ export class PlaceModal2 {
 
       /* FOOTER */
       #wp-pm2-footer {
+        position:absolute; left:0; right:0; bottom:0; z-index:6;
         display:flex; align-items:center; gap:10px;
         padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
-        border-top:none; background:transparent; flex-shrink:0;
+        background:transparent;
         pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
       }
       #wp-pm2-footer > * { pointer-events:auto; }
@@ -823,14 +825,14 @@ export class PlaceModal2 {
         background:#0a0a0a; color:#fff; display:flex; align-items:center;
         justify-content:center; cursor:pointer; flex-shrink:0;
         -webkit-tap-highlight-color:transparent;
-        box-shadow:0 6px 16px rgba(0,0,0,0.25);
+        box-shadow:0 2px 12px rgba(255,255,255,0.5), 0 6px 16px rgba(0,0,0,0.25);
       }
       #wp-pm2-plan-btn {
         flex:1; height:48px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff; font-size:16px; font-weight:700;
         display:flex; align-items:center; justify-content:center; gap:8px;
         cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
-        box-shadow:0 6px 16px rgba(0,0,0,0.25);
+        box-shadow:0 2px 12px rgba(255,255,255,0.5), 0 6px 16px rgba(0,0,0,0.25);
       }
     `;
     document.head.appendChild(s);
