@@ -76,21 +76,14 @@ export class PlaceModal2 {
           <!-- SPACER — alto = recorrido del hero (travel); queda tapado -->
           <div id="wp-pm2-scroll-spacer"></div>
 
-          <!-- ESTUVE AQUÍ — swipe to confirm. Al deslizar hasta el final se
-               convierte en un chip que confirma la visita + permite etiquetar
-               el lugar (por eso el "+Etiquetar lugar" ya no va debajo del
-               slide de fotos: esta es la única entrada a esa función ahora) -->
-          <div id="wp-pm2-here-wrap">
-            <div id="wp-pm2-here-swipe">
-              <span id="wp-pm2-here-label">Estuve aquí →</span>
-              <div id="wp-pm2-here-thumb">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            </div>
-            <div id="wp-pm2-here-chip" style="display:none">
-              <span id="wp-pm2-here-chip-text">✓ Estuviste aquí</span>
-              <button id="wp-pm2-here-chip-tag">+ Etiquetar</button>
-            </div>
+          <!-- ETIQUETAR LUGAR — chip (como Añadir reseña) + scroll horizontal
+               fullwidth de chips de etiquetas. Por defecto muestra las
+               etiquetas ya aplicadas al lugar; al tocar el chip, se
+               esconden y aparecen TODAS las etiquetas disponibles para que
+               el usuario elija (se activa/desactiva cada una tocándola). -->
+          <div id="wp-pm2-tag-row">
+            <button id="wp-pm2-tag-toggle-btn" class="wp-pm2-pill-btn">Etiquetar lugar</button>
+            <div id="wp-pm2-tag-scroll"></div>
           </div>
 
           <!-- REVIEWS SUMMARY — avatares (máx 6) + cantidad de reseñas -->
@@ -161,12 +154,6 @@ export class PlaceModal2 {
 
           <!-- PHOTO STRIP -->
           <div id="wp-pm2-strip"></div>
-
-          <!-- ETIQUETAS — el botón para agregar una ahora vive en el chip
-               "Estuve aquí" de arriba, no acá -->
-          <div id="wp-pm2-tags-section" style="display:none">
-            <div id="wp-pm2-tags-list"></div>
-          </div>
 
           <!-- ADDRESS — misma fuente que el trigger de horarios -->
           <div id="wp-pm2-address-row" style="display:none">
@@ -525,55 +512,34 @@ export class PlaceModal2 {
       }
 
       /* CTA ROW */
-      /* ESTUVE AQUÍ — swipe to confirm, tamaño chip (como Añadir reseña) */
-      #wp-pm2-here-wrap { padding:2px 16px 4px; display:flex; }
-      #wp-pm2-here-swipe {
-        position:relative; width:150px; height:36px; border-radius:999px;
-        background:linear-gradient(100deg,#3b82f6 0%,#60a5fa 30%,#a78bfa 65%,#c084fc 100%);
-        backdrop-filter:blur(12px) saturate(1.6);
-        -webkit-backdrop-filter:blur(12px) saturate(1.6);
-        overflow:hidden;
-        -webkit-tap-highlight-color:transparent; touch-action:pan-y;
+      /* ETIQUETAR LUGAR — chip + scroll horizontal fullwidth de tags */
+      #wp-pm2-tag-row {
+        display:flex; align-items:center; gap:8px;
+        padding:6px 16px 8px;
       }
-      #wp-pm2-here-label {
-        position:absolute; left:0; right:0; top:0; bottom:0;
-        display:flex; align-items:center; justify-content:center;
-        font-size:12px; font-weight:700; color:#fff; letter-spacing:-0.1px;
-        pointer-events:none; user-select:none; white-space:nowrap;
-        text-shadow:0 1px 3px rgba(0,0,0,0.25);
+      #wp-pm2-tag-toggle-btn { flex-shrink:0; }
+      #wp-pm2-tag-toggle-btn.wp-pm2-active {
+        background:#0a0a0a; color:#fff; border-color:#0a0a0a;
       }
-      #wp-pm2-here-thumb {
-        position:absolute; left:3px; top:3px; width:30px; height:30px;
-        border-radius:50%; background:#fff; color:#4c1d95;
-        display:flex; align-items:center; justify-content:center;
-        cursor:grab; touch-action:none;
-        box-shadow:0 2px 6px rgba(0,0,0,0.3);
-        animation: wp-pm2-here-hint 1.8s ease-in-out infinite;
+      #wp-pm2-tag-scroll {
+        flex:1; min-width:0; display:flex; gap:6px;
+        overflow-x:auto; scrollbar-width:none;
       }
-      @keyframes wp-pm2-here-hint {
-        0%,100% { transform:translateX(0); }
-        50%     { transform:translateX(5px); }
+      #wp-pm2-tag-scroll::-webkit-scrollbar { display:none; }
+      .wp-pm2-tag-chip {
+        flex-shrink:0; white-space:nowrap;
+        padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb;
+        font-size:12px; font-weight:600; color:#374151; background:#f9fafb;
+        font-family:inherit;
       }
-      #wp-pm2-here-swipe.wp-pm2-dragging #wp-pm2-here-thumb { animation:none; cursor:grabbing; }
-      #wp-pm2-here-chip {
-        display:inline-flex; align-items:center; gap:6px;
-        height:34px; padding:0 6px 0 12px; border-radius:999px;
-        background:#e8fdf0; border:1px solid #bbf0cf;
-        animation: wp-pm2-here-pop 0.3s ease both;
+      /* Modo selección: chips tocables, con estado activo/inactivo */
+      button.wp-pm2-tag-chip {
         cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.1s ease;
       }
-      @keyframes wp-pm2-here-pop {
-        0%   { transform:scale(0.9); opacity:0; }
-        100% { transform:scale(1); opacity:1; }
-      }
-      #wp-pm2-here-chip-text {
-        font-size:12px; font-weight:700; color:#16a34a; white-space:nowrap;
-      }
-      #wp-pm2-here-chip-tag {
-        padding:5px 10px; border-radius:999px; border:none;
-        background:#fff; color:#16a34a; font-size:11px; font-weight:700;
-        cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
-        box-shadow:0 1px 3px rgba(0,0,0,0.1);
+      button.wp-pm2-tag-chip:active { transform:scale(0.95); }
+      button.wp-pm2-tag-chip.wp-pm2-tag-selected {
+        background:#dbeafe; border-color:#93c5fd; color:#1d4ed8;
       }
 
       /* REVIEWS SUMMARY — facepile de avatares + contador */
@@ -727,13 +693,6 @@ export class PlaceModal2 {
         font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
       }
 
-      /* TAGS */
-      #wp-pm2-tags-section { padding-bottom:12px; }
-      #wp-pm2-tags-list { display:flex; flex-wrap:wrap; gap:6px; padding:0 16px 8px; }
-      .wp-pm2-tag-pill {
-        padding:5px 12px; border-radius:999px; border:1px solid #e5e7eb;
-        font-size:12px; font-weight:600; color:#374151; background:#f9fafb;
-      }
 
       /* MENTIONS */
       #wp-pm2-mentions { padding-bottom:16px; }
@@ -836,7 +795,7 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
-    this._wireHereSwipe(el);
+    this._wireTagToggle(el);
 
     el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => {
       console.log('[PM2] Planear visita:', this._place);
@@ -870,9 +829,6 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-map-btn').addEventListener('click', () => {
       console.log('[PM2] Ver en mapa');
     });
-    el.querySelector('#wp-pm2-here-chip-tag').addEventListener('click', () => {
-      console.log('[PM2] Etiquetar lugar (desde el chip Estuve aquí)');
-    });
     el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
       console.log('[PM2] Añadir comentario');
     });
@@ -883,71 +839,20 @@ export class PlaceModal2 {
     });
   }
 
-  // Swipe-to-confirm "Estuve aquí". Al soltar pasado el 85% del recorrido,
-  // confirma y se convierte en el chip con la opción de etiquetar.
-  _wireHereSwipe(el) {
-    const swipe = el.querySelector('#wp-pm2-here-swipe');
-    const thumb = el.querySelector('#wp-pm2-here-thumb');
-    const label = el.querySelector('#wp-pm2-here-label');
-    const chip  = el.querySelector('#wp-pm2-here-chip');
-
-    const THUMB = 30, PAD = 3;
-    let dragging = false, startX = 0, thumbStartX = 0, maxX = 0;
-
-    const setThumbX = (x) => {
-      thumb.style.transform = `translateX(${x}px)`;
-      label.style.opacity = Math.max(0, 1 - (x / maxX) * 1.6);
-    };
-
-    const reset = () => { setThumbX(0); swipe.classList.remove('wp-pm2-dragging'); };
-
-    const confirm = () => {
-      swipe.style.display = 'none';
-      chip.style.display = '';
-      this._placeVisited = true;
-      console.log('[PM2] Estuve aquí confirmado (swipe):', this._place);
-    };
-
-    // Tocar el chip ya confirmado lo revierte de nuevo a modo swipe (undo,
-    // por si tocaron "Estuve aquí" por error)
-    chip.addEventListener('click', (e) => {
-      if (e.target.closest('#wp-pm2-here-chip-tag')) return; // el botón de etiquetar no debe deshacer
-      chip.style.display = 'none';
-      swipe.style.display = '';
-      reset();
-      this._placeVisited = false;
-      console.log('[PM2] Estuve aquí deshecho (undo):', this._place);
+  // Toggle del chip "Etiquetar lugar": alterna entre mostrar las etiquetas
+  // YA aplicadas al lugar (modo ver, por defecto) y mostrar TODO el catálogo
+  // de etiquetas disponibles para que el usuario elija/desmarque (modo
+  // selección) — mismo scroll horizontal, solo cambia el contenido.
+  _wireTagToggle(el) {
+    const btn = el.querySelector('#wp-pm2-tag-toggle-btn');
+    btn.addEventListener('click', () => {
+      this._tagSelectMode = !this._tagSelectMode;
+      if (!this._tagSelectMode && this._place) {
+        this._loadTags(this._place); // refresca con lo que quedó realmente aplicado
+      } else {
+        this._renderTagScroll();
+      }
     });
-
-    const onDown = (clientX) => {
-      dragging = true;
-      maxX = swipe.clientWidth - THUMB - PAD * 2;
-      startX = clientX;
-      const current = thumb.getBoundingClientRect().left - swipe.getBoundingClientRect().left;
-      thumbStartX = Math.min(Math.max(current, 0), maxX);
-      swipe.classList.add('wp-pm2-dragging');
-    };
-    const onMove = (clientX) => {
-      if (!dragging) return;
-      const dx = clientX - startX;
-      const x = Math.min(Math.max(thumbStartX + dx, 0), maxX);
-      setThumbX(x);
-    };
-    const onUp = () => {
-      if (!dragging) return;
-      dragging = false;
-      const x = parseFloat((thumb.style.transform.match(/-?\d+\.?\d*/) || [0])[0]) || 0;
-      if (maxX > 0 && x / maxX >= 0.85) confirm();
-      else reset();
-    };
-
-    thumb.addEventListener('pointerdown', (e) => { e.preventDefault(); thumb.setPointerCapture(e.pointerId); onDown(e.clientX); });
-    thumb.addEventListener('pointermove', (e) => onMove(e.clientX));
-    thumb.addEventListener('pointerup', onUp);
-    thumb.addEventListener('pointercancel', onUp);
-
-    this._resetHereSwipe = reset;
-    this._confirmHereSwipe = confirm;
   }
 
   // ── SHOW ──────────────────────────────────────────────────────────
@@ -1066,20 +971,11 @@ export class PlaceModal2 {
   _populate(place) {
     const $ = id => this._el.querySelector('#' + id);
 
-    // Estuve aquí — si el lugar ya viene marcado como visitado, arranca
-    // directo en modo chip; si no, en modo swipe (reseteado)
-    const swipeEl = $('wp-pm2-here-swipe');
-    const chipEl  = $('wp-pm2-here-chip');
-    const alreadyVisited = !!(place.visitedByUser || place.visited || place.userVisited);
-    this._placeVisited = alreadyVisited;
-    if (alreadyVisited) {
-      swipeEl.style.display = 'none';
-      chipEl.style.display = '';
-    } else {
-      swipeEl.style.display = '';
-      chipEl.style.display = 'none';
-      this._resetHereSwipe?.();
-    }
+    // Etiquetar lugar — cada ficha nueva arranca en modo "ver etiquetas"
+    // (no en modo selección)
+    this._tagSelectMode = false;
+    const toggleBtn = $('wp-pm2-tag-toggle-btn');
+    if (toggleBtn) toggleBtn.classList.remove('wp-pm2-active');
 
     // Name
     $('wp-pm2-name').textContent = place.name || '';
@@ -1368,21 +1264,58 @@ export class PlaceModal2 {
   // Etiquetas del lugar — Supabase (tabla place_tags), agrupadas y
   // ordenadas por votos en PlaceTagService.getTagsForPlace()
   async _loadTags(place) {
-    const tagsSection = this._el.querySelector('#wp-pm2-tags-section');
-    const tagsList = this._el.querySelector('#wp-pm2-tags-list');
-    tagsList.innerHTML = '';
-    tagsSection.style.display = '';
     try {
-      const tags = await PlaceTagService.getTagsForPlace(place);
-      tagsList.innerHTML = '';
-      (tags || []).forEach(tag => {
-        const span = document.createElement('span');
-        span.className = 'wp-pm2-tag-pill';
-        span.textContent = `${tag.emoji} ${tag.label}`;
-        tagsList.appendChild(span);
-      });
+      this._appliedTags = await PlaceTagService.getTagsForPlace(place);
     } catch (e) {
-      // silencioso: el botón "+ Etiquetar lugar" sigue disponible igual
+      this._appliedTags = [];
+    }
+    this._renderTagScroll();
+  }
+
+  // Pinta el scroll horizontal de etiquetas — modo ver (las ya aplicadas,
+  // de solo lectura) o modo selección (todo el catálogo, tocable para
+  // activar/desactivar cada una)
+  _renderTagScroll() {
+    const scroll = this._el.querySelector('#wp-pm2-tag-scroll');
+    const btn = this._el.querySelector('#wp-pm2-tag-toggle-btn');
+    if (!scroll || !btn) return;
+    scroll.innerHTML = '';
+
+    if (this._tagSelectMode) {
+      btn.textContent = 'Listo';
+      btn.classList.add('wp-pm2-active');
+      const appliedKeys = new Set((this._appliedTags || []).map(t => t.key));
+
+      PLACE_TAGS.forEach(tag => {
+        const b = document.createElement('button');
+        b.className = 'wp-pm2-tag-chip' + (appliedKeys.has(tag.key) ? ' wp-pm2-tag-selected' : '');
+        b.textContent = `${tag.emoji} ${tag.label}`;
+        b.addEventListener('click', async () => {
+          const user = this.getCurrentUser?.();
+          if (!user) { console.log('[PM2] Hay que iniciar sesión para etiquetar'); return; }
+          b.disabled = true;
+          try {
+            const res = await PlaceTagService.toggleTag(this._place, tag.key, user.id);
+            const nowActive = res.action === 'added';
+            b.classList.toggle('wp-pm2-tag-selected', nowActive);
+            if (nowActive) appliedKeys.add(tag.key); else appliedKeys.delete(tag.key);
+          } catch (e) {
+            console.log('[PM2] Error al etiquetar:', e.message);
+          } finally {
+            b.disabled = false;
+          }
+        });
+        scroll.appendChild(b);
+      });
+    } else {
+      btn.textContent = 'Etiquetar lugar';
+      btn.classList.remove('wp-pm2-active');
+      (this._appliedTags || []).forEach(tag => {
+        const span = document.createElement('span');
+        span.className = 'wp-pm2-tag-chip';
+        span.textContent = `${tag.emoji} ${tag.label}`;
+        scroll.appendChild(span);
+      });
     }
   }
 
