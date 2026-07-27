@@ -44,6 +44,12 @@ export class PlaceModal2 {
              que scrollea ahí se desvanece gradual en vez de cortarse -->
         <div id="wp-pm2-topbar-fade"></div>
 
+        <!-- ACTIVITY STACK — mini-fichas en abanico (fixed, no ocupa lugar
+             en el layout). Muestran actividades creadas en este lugar; si
+             no hay ninguna, invita a crear una. Se ocultan a la derecha
+             con el scroll y se restauran al volver arriba. -->
+        <div id="wp-pm2-activity-stack"></div>
+
         <!-- CONTENT AREA — hero (overlay, absolute) encima de body (absolute
              inset:0, ocupa TODA el área incl. detrás del hero). Así el
              spacer dentro del body queda tapado por el hero al inicio, sin
@@ -279,6 +285,69 @@ export class PlaceModal2 {
         background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0));
         z-index:9; pointer-events:none;
         opacity:0; /* aparece recién cuando el hero+overlay ya está asentado */
+      }
+
+      /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
+      #wp-pm2-activity-stack {
+        position:fixed;
+        top:calc(78px + env(safe-area-inset-top,0px));
+        right:14px;
+        width:92px; height:118px;
+        z-index:6; pointer-events:none;
+        transition:transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease;
+      }
+      #wp-pm2-activity-stack .wp-pm2-activity-card {
+        position:absolute; inset:0;
+        border-radius:18px; padding:10px;
+        display:flex; flex-direction:column; justify-content:space-between;
+        box-shadow:0 8px 20px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.10);
+        pointer-events:auto; cursor:pointer;
+        transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(0.4);
+        opacity:0;
+        animation: wp-pm2-activity-in 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+        animation-delay: var(--delay, 0s);
+      }
+      @keyframes wp-pm2-activity-in {
+        0%   { transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(0.4); opacity:0; }
+        60%  { opacity:1; }
+        100% { transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(1); opacity:1; }
+      }
+      .wp-pm2-activity-date {
+        display:flex; flex-direction:column; align-items:center; line-height:1;
+        background:rgba(255,255,255,0.35); border-radius:10px; padding:5px 8px;
+        align-self:flex-start; backdrop-filter:blur(4px);
+      }
+      .wp-pm2-activity-date .d { font-size:16px; font-weight:800; color:#fff; }
+      .wp-pm2-activity-date .m {
+        font-size:9px; font-weight:700; color:rgba(255,255,255,0.85);
+        text-transform:uppercase; letter-spacing:0.04em; margin-top:1px;
+      }
+      .wp-pm2-activity-title {
+        font-size:11.5px; font-weight:700; color:#fff; line-height:1.25;
+        text-shadow:0 1px 3px rgba(0,0,0,0.2);
+        display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+        overflow:hidden;
+      }
+      .wp-pm2-activity-people {
+        display:flex; align-items:center; gap:4px;
+      }
+      .wp-pm2-activity-avatar {
+        width:20px; height:20px; border-radius:50%;
+        border:1.5px solid rgba(255,255,255,0.85); object-fit:cover;
+      }
+      .wp-pm2-activity-people span {
+        font-size:10px; font-weight:700; color:rgba(255,255,255,0.9);
+      }
+      /* Estado vacío: invitación a crear actividad */
+      .wp-pm2-activity-empty {
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:6px; background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 8px,#eceef1 8px,#eceef1 16px);
+        border:1.5px dashed #c7cbd1;
+      }
+      .wp-pm2-activity-empty svg { color:#9ca3af; }
+      .wp-pm2-activity-empty span {
+        font-size:11px; font-weight:700; color:#6b7280; text-align:center;
+        text-shadow:none; -webkit-line-clamp:2;
       }
 
       #wp-pm2-back {
@@ -946,6 +1015,8 @@ export class PlaceModal2 {
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
     const topbarFade  = this._el.querySelector('#wp-pm2-topbar-fade');
+    this._activityStack = this._el.querySelector('#wp-pm2-activity-stack');
+    if (this._activityStack) { this._activityStack.style.transform = ''; this._activityStack.style.opacity = '1'; }
     const nameEl      = this._el.querySelector('#wp-pm2-hero-bottom');
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
     const topbarActions = this._el.querySelector('#wp-pm2-topbar-actions');
@@ -989,6 +1060,13 @@ export class PlaceModal2 {
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
+
+        // Activity stack: se esconde a la derecha con el scroll (fade-out
+        // rápido, como el título) y se restaura solo al volver arriba
+        if (this._activityStack) {
+          this._activityStack.style.transform = `translateX(${prog * 140}px)`;
+          this._activityStack.style.opacity = Math.max(0, 1 - prog * 2.2);
+        }
 
         // Sin sombra ni blur en el topbar. El degradado de abajo (fade)
         // recién aparece cuando el hero+overlay ya casi terminaron de
@@ -1201,6 +1279,9 @@ export class PlaceModal2 {
     // Tags — vienen de Supabase (tabla place_tags), pedidas async
     this._loadTags(place);
 
+    // Activity stack — mini-fichas en abanico (fixed, esquina superior derecha)
+    this._renderActivityStack(place);
+
     // User avatar — misma resolución que PlaceModal1: foto real del perfil,
     // o si no tiene, memoji de Tapback generado con su nombre (nunca vacío)
     const user = this.getCurrentUser?.();
@@ -1393,6 +1474,75 @@ export class PlaceModal2 {
   // Mapa mini — mismo MapLibre que usa MapView.js (window.maplibregl, ya
   // cargado global en index.html, mismo MAP_STYLE). Se crea UNA sola vez
   // y se reutiliza entre lugares (solo se mueve center + marker).
+  // Mini-fichas de actividades en este lugar, en abanico. Por ahora con
+  // datos de muestra (place.activities si existiera, si no un mock) — falta
+  // definir de dónde vienen los datos reales (ActivityService no tiene
+  // todavía un getForPlace(placeId), solo getActiveActivities() general).
+  _renderActivityStack(place) {
+    const stack = this._el.querySelector('#wp-pm2-activity-stack');
+    if (!stack) return;
+    stack.innerHTML = '';
+
+    const activities = Array.isArray(place.activities) ? place.activities.slice(0, 3) : [];
+    const GRADIENTS = [
+      'linear-gradient(145deg,#f472b6,#fb7185)', // coral/rosa
+      'linear-gradient(145deg,#fbbf24,#f59e0b)', // amarillo
+      'linear-gradient(145deg,#818cf8,#6366f1)', // azul/violeta
+    ];
+    const ROT = ['-7deg', '3deg', '9deg'];
+    const OFFSET = [
+      { tx: '6px',  ty: '2px' },
+      { tx: '-2px', ty: '-4px' },
+      { tx: '-8px', ty: '4px' },
+    ];
+
+    if (!activities.length) {
+      // Sin actividades — invita a crear una
+      const card = document.createElement('div');
+      card.className = 'wp-pm2-activity-card wp-pm2-activity-empty';
+      card.style.setProperty('--rot', '-4deg');
+      card.style.setProperty('--delay', '0.05s');
+      card.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="align-self:center;margin-top:8px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Crear actividad<br>en este lugar</span>
+      `;
+      card.addEventListener('click', () => console.log('[PM2] Crear actividad en:', place.name));
+      stack.appendChild(card);
+      return;
+    }
+
+    activities.forEach((act, i) => {
+      const d = act.scheduled_at ? new Date(act.scheduled_at) : null;
+      const day   = d ? d.getDate() : '--';
+      const month = d ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '').toUpperCase() : '';
+
+      const card = document.createElement('div');
+      card.className = 'wp-pm2-activity-card';
+      card.style.background = GRADIENTS[i % GRADIENTS.length];
+      card.style.setProperty('--rot', ROT[i % ROT.length]);
+      card.style.setProperty('--tx', OFFSET[i % OFFSET.length].tx);
+      card.style.setProperty('--ty', OFFSET[i % OFFSET.length].ty);
+      card.style.setProperty('--delay', (i * 0.08) + 's');
+      card.style.zIndex = activities.length - i;
+
+      card.innerHTML = `
+        <div class="wp-pm2-activity-date"><span class="d">${day}</span><span class="m">${month}</span></div>
+        <div class="wp-pm2-activity-title">${act.title || 'Actividad'}</div>
+        <div class="wp-pm2-activity-people">
+          <img class="wp-pm2-activity-avatar">
+          <span>${act.participant_count ? '+' + act.participant_count : ''}</span>
+        </div>
+      `;
+      const avImg = card.querySelector('.wp-pm2-activity-avatar');
+      this._skelOn(avImg);
+      avImg.onload = avImg.onerror = () => this._skelOff(avImg);
+      avImg.src = getAvatarUrl(act.creator_name || act.title || 'user');
+
+      card.addEventListener('click', () => console.log('[PM2] Ver actividad:', act));
+      stack.appendChild(card);
+    });
+  }
+
   _renderMiniMap(place, lat, lng, catIcon) {
     const container = this._el.querySelector('#wp-pm2-map-canvas');
     const preview = this._el.querySelector('#wp-pm2-map-preview');
