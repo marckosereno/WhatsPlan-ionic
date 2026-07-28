@@ -291,9 +291,10 @@ export class PlaceModal2 {
       #wp-pm2-activity-stack {
         position:fixed;
         top:calc(78px + env(safe-area-inset-top,0px));
-        right:14px;
+        right:2px;
         width:92px; height:118px;
         z-index:6; pointer-events:none;
+        transform-origin:right center;
         transition:transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease;
       }
       #wp-pm2-activity-stack .wp-pm2-activity-card {
@@ -1061,11 +1062,14 @@ export class PlaceModal2 {
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
 
-        // Activity stack: se esconde a la derecha con el scroll (fade-out
-        // rápido, como el título) y se restaura solo al volver arriba
+        // Activity stack: NO desaparece — encoge y se desliza apenas hacia
+        // el borde, quedando "asomada" (nunca menos de 0.4 de escala ni
+        // menos de 0.6 de opacidad). Se restaura solo al volver arriba.
         if (this._activityStack) {
-          this._activityStack.style.transform = `translateX(${prog * 140}px)`;
-          this._activityStack.style.opacity = Math.max(0, 1 - prog * 2.2);
+          const scale = 1 - prog * 0.6;   // hasta ~0.4
+          const tx    = prog * 46;        // se acerca al borde, no se va del todo
+          this._activityStack.style.transform = `translateX(${tx}px) scale(${scale})`;
+          this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
         }
 
         // Sin sombra ni blur en el topbar. El degradado de abajo (fade)
@@ -1489,7 +1493,7 @@ export class PlaceModal2 {
       'linear-gradient(145deg,#fbbf24,#f59e0b)', // amarillo
       'linear-gradient(145deg,#818cf8,#6366f1)', // azul/violeta
     ];
-    const ROT = ['-7deg', '3deg', '9deg'];
+    const ROT = ['-14deg', '5deg', '16deg'];
     const OFFSET = [
       { tx: '6px',  ty: '2px' },
       { tx: '-2px', ty: '-4px' },
@@ -1500,7 +1504,7 @@ export class PlaceModal2 {
       // Sin actividades — invita a crear una
       const card = document.createElement('div');
       card.className = 'wp-pm2-activity-card wp-pm2-activity-empty';
-      card.style.setProperty('--rot', '-4deg');
+      card.style.setProperty('--rot', '-8deg');
       card.style.setProperty('--delay', '0.05s');
       card.innerHTML = `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="align-self:center;margin-top:8px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
