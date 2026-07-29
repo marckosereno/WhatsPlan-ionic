@@ -1008,10 +1008,8 @@ export class PlaceModal2 {
   // → showMini() acá → tap minisnap → show() completo.
   showMini(place) {
     this._place = place;
-    // Cerrar explícitamente el minicard de MapView al abrir el minisnap —
-    // transición intencional, no depende de que algún otro listener lo
-    // cierre como efecto secundario
-    try { this.mapView?._closeMiniCard?.(); } catch (e) {}
+    // El minicard de MapView se queda abierto (no se cierra) — el minisnap
+    // aparece encima de él, no lo reemplaza
     try {
       this._showMiniSnap(place);
     } catch (e) {
@@ -1053,7 +1051,7 @@ export class PlaceModal2 {
       '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
       'border:1px solid rgba(255,255,255,0.6)',
-      'overflow:hidden', 'z-index:9200', 'opacity:0',
+      'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
       "font-family:'Instrument Serif',var(--wp-font,Avenir,sans-serif)",
       'cursor:pointer', 'box-sizing:border-box',
