@@ -459,7 +459,11 @@ try {
       window.wpApp.placeModal = placeModal;
       placeModal.mapView = mv;
 
-      // Al tocar la minicard → abrir el modal de detalles
+      // Al tocar el minicard (MapView) → según el contexto:
+      // - Búsqueda activa: abre la ficha completa directo
+      // - Mapview normal: abre el minisnap primero (tap en el minisnap
+      //   recién ahí abre la ficha completa — ver showMini/_showMiniSnap
+      //   en PlaceModal2.js)
       mv.onPlaceSelect = function(place) {
         var sb = window.wpApp && window.wpApp.searchBar;
         if (sb && sb.isActive()) {
@@ -467,10 +471,8 @@ try {
           placeModal.show(place);
           return;
         }
-        // En mapview: si el minicard YA está visible, tap en él abre la ficha
-        // Si no, MapView mostrará el minicard (flujo normal del pin)
         placeModal._fromSearch = false;
-        placeModal.show(place);
+        placeModal.showMini(place);
       };
       const subcatRow = new SubcategoryRow({
         map: mv.getMap(),
