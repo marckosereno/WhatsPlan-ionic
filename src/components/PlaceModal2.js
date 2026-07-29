@@ -1264,16 +1264,6 @@ export class PlaceModal2 {
     }));
   }
 
-  // showMini: muestra el minisnap del mapa.
-  // Al hacer tap en el minisnap, MapView llama onPlaceSelect → show()
-  showMini(place) {
-    // MapView gestiona el minisnap — al taparlo dispara onPlaceSelect
-    // que en app.js llama placeModal.show(place). No hacemos nada aquí
-    // excepto guardar el lugar para referencia.
-    this._pendingPlace = place;
-    if (this.mapView) this.mapView._showMiniCard(place);
-  }
-
   hide() {
     this._el.classList.remove('visible');
     document.body.style.overflow = '';
