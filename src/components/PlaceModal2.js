@@ -1019,6 +1019,7 @@ export class PlaceModal2 {
 
   _showMiniSnap(place) {
     const self = this;
+    this._miniSnapPlace = place; // propio, independiente de this._place (que hide() limpia)
     let ms = document.getElementById('wp-minisnap-panel');
     const isAlreadyVisible = ms && ms.style.opacity === '1';
     if (!ms) {
@@ -1053,7 +1054,7 @@ export class PlaceModal2 {
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
-      "font-family:'Instrument Serif',var(--wp-font,Avenir,sans-serif)",
+      "font-family:Avenir,'Avenir Next',sans-serif",
       'cursor:pointer', 'box-sizing:border-box',
       'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
     ].join(';');
@@ -1139,7 +1140,7 @@ export class PlaceModal2 {
     const closeBtn = ms.querySelector('#wp-ms-close-btn');
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); self._hideMiniSnap(); });
 
-    const goFull = () => { self._fromMiniSnap = true; self.show(self._place); };
+    const goFull = () => { self._fromMiniSnap = true; self.show(self._miniSnapPlace); };
     const handle = ms.querySelector('#wp-ms-handle');
     if (handle) {
       let hY = 0;
@@ -1160,6 +1161,7 @@ export class PlaceModal2 {
     ms.style.pointerEvents = 'none';
     ms.style.transition = 'opacity 0.2s ease';
     ms.style.opacity = '0';
+    this._miniSnapPlace = null;
     document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
     setTimeout(() => { if (ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
   }
