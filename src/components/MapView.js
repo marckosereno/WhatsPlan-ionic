@@ -672,20 +672,15 @@ export class MapView {
         }
         this.haptic('tap');
 
-        // ── Modo búsqueda: tap en el pin va DIRECTO a la ficha, sin
-        // pasar por el minicard (distinto del flujo normal de mapview) ──
-        const sb = window.wpApp && window.wpApp.searchBar;
-        if (sb && sb.isActive()) {
-          if (this.onPlaceSelect) this.onPlaceSelect(place);
-          return;
-        }
-
         // Antes comparaba por referencia de objeto (this.miniCardMarker ===
         // this.markers[index]), lo cual fallaba si el array de markers se
         // reconstruye (nueva búsqueda/filtro) aunque sea el mismo lugar.
         // Ahora comparamos por id estable del lugar + que el minicard siga
         // realmente abierto — así el flujo es siempre: 1er tap → minicard,
-        // 2do tap en el MISMO pin (con el minicard ya abierto) → ficha.
+        // 2do tap en el MISMO pin (con el minicard ya abierto) → onPlaceSelect.
+        // (búsqueda o mapview normal: ambos muestran el minicard primero;
+        // la diferencia entre abrir la ficha directo o pasar por el minisnap
+        // la decide onPlaceSelect en app.js según si hay búsqueda activa)
         const samePlaceId = this.miniCardPlace &&
           (this.miniCardPlace.place_id || this.miniCardPlace.id) === (place.place_id || place.id);
         if (this.miniCardMarker && samePlaceId) {
