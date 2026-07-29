@@ -519,6 +519,10 @@ export class PlaceModal2 {
         animation: wp-pm2-spark-color 2.7s ease-in-out infinite 0.8s,
                    wp-pm2-spark-scale 1.3s ease-in-out infinite 0.5s;
       }
+      @keyframes wp-pm2-dot-pulse {
+        0%,100% { opacity:1; transform:scale(1); }
+        50%     { opacity:0.5; transform:scale(0.8); }
+      }
       @keyframes wp-pm2-ai-fadein {
         from { opacity:0; transform:translateY(4px); }
         to   { opacity:1; transform:translateY(0); }
@@ -998,6 +1002,162 @@ export class PlaceModal2 {
   }
 
   // ── SHOW ──────────────────────────────────────────────────────────
+  // ── MINI SNAP — panel fijo intermedio entre el minicard de MapView y la
+  // ficha completa (porteado de PlaceModal1: showMini/_showMiniSnap). Flujo
+  // completo en mapview normal: tap pin → minicard (MapView) → tap minicard
+  // → showMini() acá → tap minisnap → show() completo.
+  showMini(place) {
+    this._place = place;
+    this._showMiniSnap(place);
+  }
+
+  _showMiniSnap(place) {
+    const self = this;
+    let ms = document.getElementById('wp-minisnap-panel');
+    const isAlreadyVisible = ms && ms.style.opacity === '1';
+    if (!ms) {
+      ms = document.createElement('div');
+      ms.id = 'wp-minisnap-panel';
+      document.body.appendChild(ms);
+    }
+
+    const name   = place.name || place.displayName || '';
+    const rating = parseFloat(place.rating) || 0;
+    const count  = place.userRatingCount || place.user_ratings_total || 0;
+    const isOpen = self._isOpenNow(place);
+    const statusTxt   = isOpen === true ? 'Abierto' : isOpen === false ? 'Cerrado' : 'Sin horario';
+
+    const photosAll = place.photosUrls || place.photos_urls || (place.photoUrl || place.photo_url ? [place.photoUrl || place.photo_url] : []);
+    const photos4 = photosAll.slice(0, 4);
+    const remaining = photosAll.length - 3;
+
+    const panelEl = document.querySelector('.map-results-panel-float');
+    const panelHeight = panelEl ? panelEl.offsetHeight : 156;
+
+    ms.style.cssText = [
+      'position:fixed',
+      'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
+      'left:12px', 'right:12px',
+      'height:' + panelHeight + 'px',
+      'border-radius:32px',
+      'background:rgba(255,255,255,0.82)',
+      'backdrop-filter:blur(24px) saturate(1.6)',
+      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
+      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
+      'border:1px solid rgba(255,255,255,0.6)',
+      'overflow:hidden', 'z-index:100', 'opacity:0',
+      'transition:opacity 0.22s ease',
+      "font-family:'Instrument Serif',var(--wp-font,Avenir,sans-serif)",
+      'cursor:pointer', 'box-sizing:border-box',
+      'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
+    ].join(';');
+
+    const avatarCount = Math.min(count || 4, 5);
+    const avatarsHtml = Array.from({ length: avatarCount }, (_, i) =>
+      `<img src="${getAvatarUrl('guest_' + i)}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i > 0 ? '-7px' : '0'};object-fit:cover;position:relative;z-index:${avatarCount - i};background:#e2e8f0">`
+    ).join('');
+
+    const glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    const dotStyle = isOpen === true
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
+      : isOpen === false
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
+      : '';
+    const badgeDot = isOpen !== null ? `<span style="${dotStyle}"></span>` : '';
+    const glassBadge = isOpen === true
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25)'
+      : isOpen === false
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20)'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18)';
+
+    const photoCardHtml = (url, isLast) => `
+      <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;">
+        <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
+        ${isLast && remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;">+${remaining - 1}</div>` : ''}
+      </div>`;
+
+    ms.innerHTML = `
+      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:20px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
+      </div>
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
+        <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
+          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+            <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+          </button>
+          <button id="wp-ms-close-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
+        ${photos4.length
+          ? photos4.map((u, i) => photoCardHtml(u, i === photos4.length - 1)).join('')
+          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:20px">📷</span></div>`}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="display:flex;align-items:center">${avatarsHtml}</div>
+          ${count > 0 ? `<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>` : `<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>`}
+        </div>
+        <button id="wp-ms-cta-btn" style="${glassBtn}">+ Detalles</button>
+      </div>`;
+
+    ms.className = 'wp-minisnap-panel';
+    document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
+
+    if (!isAlreadyVisible) {
+      ms.style.transition = 'none';
+      ms.style.opacity = '0';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ms.style.transition = 'opacity 0.22s ease';
+        ms.style.opacity = '1';
+      }));
+    } else {
+      ms.style.transition = 'none';
+      ms.style.opacity = '1';
+    }
+
+    const favBtn = ms.querySelector('#wp-ms-fav-btn');
+    if (favBtn) favBtn.onclick = (e) => {
+      e.stopPropagation();
+      favBtn.classList.toggle('active');
+      const svg = favBtn.querySelector('path');
+      const active = favBtn.classList.contains('active');
+      svg.setAttribute('fill', active ? '#ef4444' : 'none');
+      svg.setAttribute('stroke', active ? '#ef4444' : '#6b7280');
+    };
+
+    const closeBtn = ms.querySelector('#wp-ms-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); self._hideMiniSnap(); });
+
+    const goFull = () => { self._fromMiniSnap = true; self.show(self._place); };
+    const handle = ms.querySelector('#wp-ms-handle');
+    if (handle) {
+      let hY = 0;
+      handle.addEventListener('touchstart', (e) => { hY = e.touches[0].clientY; e.stopPropagation(); }, { passive: true });
+      handle.addEventListener('touchend', (e) => { e.stopPropagation(); if (hY - e.changedTouches[0].clientY > 25) goFull(); }, { passive: true });
+      handle.addEventListener('click', (e) => { e.stopPropagation(); goFull(); });
+    }
+    const cta = ms.querySelector('#wp-ms-cta-btn');
+    if (cta) cta.onclick = goFull;
+    ms.addEventListener('click', (e) => {
+      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
+    });
+  }
+
+  _hideMiniSnap() {
+    const ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) return;
+    ms.style.pointerEvents = 'none';
+    ms.style.transition = 'opacity 0.2s ease';
+    ms.style.opacity = '0';
+    document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
+    setTimeout(() => { if (ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
+  }
+
   show(place) {
     this._fromSearch = false;
     this._place = place;
