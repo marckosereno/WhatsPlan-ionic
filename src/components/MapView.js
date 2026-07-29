@@ -671,7 +671,19 @@ export class MapView {
           return;
         }
         this.haptic('tap');
-        if (this.miniCardMarker === this.markers[index]) {
+
+        // Antes comparaba por referencia de objeto (this.miniCardMarker ===
+        // this.markers[index]), lo cual fallaba si el array de markers se
+        // reconstruye (nueva búsqueda/filtro) aunque sea el mismo lugar.
+        // Ahora comparamos por id estable del lugar + que el minicard siga
+        // realmente abierto — así el flujo es siempre: 1er tap → minicard,
+        // 2do tap en el MISMO pin (con el minicard ya abierto) → onPlaceSelect.
+        // (búsqueda o mapview normal: ambos muestran el minicard primero;
+        // la diferencia entre abrir la ficha directo o pasar por el minisnap
+        // la decide onPlaceSelect en app.js según si hay búsqueda activa)
+        const samePlaceId = this.miniCardPlace &&
+          (this.miniCardPlace.place_id || this.miniCardPlace.id) === (place.place_id || place.id);
+        if (this.miniCardMarker && samePlaceId) {
           if (this.onPlaceSelect) this.onPlaceSelect(place);
           return;
         }
@@ -1057,7 +1069,21 @@ export class MapView {
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
 
-
+      if (inSearch) {
+        // En búsqueda: mismo cálculo que SearchBar.doFlyTo, respeta zoom actual
+        const topbar  = document.getElementById('topbar-right-chip');
+        const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+        const scats   = document.getElementById('wp-scats');
+        const results = document.getElementById('wp-sresults');
+        const botEl   = (scats && scats.offsetParent !== null) ? scats :
+                        (results && results.offsetParent !== null) ? results : null;
+        let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
+        botEdge = Math.max(botEdge, visibleH * 0.5);
+        const areaCenter = topEdge + (botEdge - topEdge) / 2;
+        const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
+        if (!skipMove) this.map.easeTo({ center: [lng, lat], zoom: this.map.getZoom(), duration: 400, offset: [0, offsetY] });
+        return;
+      }
 
       // Modo normal: cálculo original
       const topbar  = document.getElementById('topbar-right-chip');
