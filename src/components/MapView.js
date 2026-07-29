@@ -1069,36 +1069,24 @@ export class MapView {
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
 
-      let topEdge, botEdge;
 
-      if (inSearch) {
-        // ── Con autocompletado abierto: centrar entre las minifichas de
-        // autocompletado (wp-sresults, arriba) y los chips de subcategoría
-        // que aparecen abajo durante la búsqueda (wp-scats) ──
-        const sresults = document.getElementById('wp-sresults');
-        const sresultsRect = sresults && sresults.offsetParent !== null ? sresults.getBoundingClientRect() : null;
-        topEdge = sresultsRect && sresultsRect.bottom > 0 ? sresultsRect.bottom + 8 : 68;
 
-        const scats = document.getElementById('wp-scats');
-        const scatsRect = scats && scats.offsetParent !== null ? scats.getBoundingClientRect() : null;
-        botEdge = scatsRect && scatsRect.top > topEdge ? scatsRect.top - 8 : visibleH - 8;
-      } else {
-        // ── Sin autocompletado (mapview normal): centrar entre el chip de
-        // búsqueda del topbar y el panel de categorías/subcategorías del
-        // footer (map-results-panel) ──
-        const topbar = document.getElementById('topbar-right-chip');
-        topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
+      // Modo normal: cálculo original
+      const topbar  = document.getElementById('topbar-right-chip');
+      const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
 
-        const panel = document.querySelector('.map-results-panel-float') || document.getElementById('map-results-panel');
-        const panelRect = panel ? panel.getBoundingClientRect() : null;
-        const panelTop  = panelRect && panelRect.top > 0 && panelRect.top < visibleH ? panelRect.top : 9999;
-        const msEl      = document.getElementById('wp-minisnap-panel');
-        const msRect    = msEl ? msEl.getBoundingClientRect() : null;
-        const msTop     = msRect && msRect.top > topEdge && msRect.top < visibleH ? msRect.top : 9999;
+      const panel   = document.querySelector('.map-results-panel-float') || document.getElementById('map-results-panel');
+      let botEdge;
+      const panelRect = panel ? panel.getBoundingClientRect() : null;
+      const panelTop  = panelRect && panelRect.top > 0 && panelRect.top < visibleH ? panelRect.top : 9999;
+      const scats2    = document.getElementById('wp-scats');
+      const scatsTop  = scats2 && scats2.offsetParent !== null ? scats2.getBoundingClientRect().top : 9999;
+      const msEl      = document.getElementById('wp-minisnap-panel');
+      const msRect    = msEl ? msEl.getBoundingClientRect() : null;
+      const msTop     = msRect && msRect.top > topEdge && msRect.top < visibleH ? msRect.top : 9999;
 
-        const candidates = [panelTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
-        botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
-      }
+      const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
+      botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
       const pinTarget  = areaCenter + 35;
