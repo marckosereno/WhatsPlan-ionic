@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
+import { ActivityService }             from '/src/services/SupabaseService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 
 export class PlaceModal2 {
@@ -1284,7 +1285,7 @@ export class PlaceModal2 {
     this._loadTags(place);
 
     // Activity stack — mini-fichas en abanico (fixed, esquina superior derecha)
-    this._renderActivityStack(place);
+    this._loadPlaceActivities(place);
 
     // User avatar — misma resolución que PlaceModal1: foto real del perfil,
     // o si no tiene, memoji de Tapback generado con su nombre (nunca vacío)
@@ -1482,12 +1483,27 @@ export class PlaceModal2 {
   // datos de muestra (place.activities si existiera, si no un mock) — falta
   // definir de dónde vienen los datos reales (ActivityService no tiene
   // todavía un getForPlace(placeId), solo getActiveActivities() general).
-  _renderActivityStack(place) {
+  // Trae TODAS las actividades activas de la app (ActivityService no tiene
+  // un getForPlace propio) y filtra client-side por el place_id de esta
+  // ficha. Si falla o no hay match, cae al estado vacío (invitar a crear).
+  async _loadPlaceActivities(place) {
+    const placeId = place.place_id || place.id;
+    let matched = [];
+    try {
+      const all = await ActivityService.getActiveActivities();
+      matched = (all || []).filter(a => a.place_id && placeId && a.place_id === placeId);
+    } catch (e) {
+      matched = [];
+    }
+    this._renderActivityStack(place, matched);
+  }
+
+  _renderActivityStack(place, activitiesRaw) {
     const stack = this._el.querySelector('#wp-pm2-activity-stack');
     if (!stack) return;
     stack.innerHTML = '';
 
-    const activities = Array.isArray(place.activities) ? place.activities.slice(0, 3) : [];
+    const activities = (Array.isArray(activitiesRaw) ? activitiesRaw : []).slice(0, 3);
     const GRADIENTS = [
       'linear-gradient(145deg,#f472b6,#fb7185)', // coral/rosa
       'linear-gradient(145deg,#fbbf24,#f59e0b)', // amarillo
@@ -1519,6 +1535,8 @@ export class PlaceModal2 {
       const d = act.scheduled_at ? new Date(act.scheduled_at) : null;
       const day   = d ? d.getDate() : '--';
       const month = d ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '').toUpperCase() : '';
+      const creatorName = act.profiles?.name || 'Alguien';
+      const participantCount = Array.isArray(act.participants) ? act.participants.length : 0;
 
       const card = document.createElement('div');
       card.className = 'wp-pm2-activity-card';
@@ -1531,16 +1549,16 @@ export class PlaceModal2 {
 
       card.innerHTML = `
         <div class="wp-pm2-activity-date"><span class="d">${day}</span><span class="m">${month}</span></div>
-        <div class="wp-pm2-activity-title">${act.title || 'Actividad'}</div>
+        <div class="wp-pm2-activity-title">${act.title || act.type || 'Actividad'}</div>
         <div class="wp-pm2-activity-people">
           <img class="wp-pm2-activity-avatar">
-          <span>${act.participant_count ? '+' + act.participant_count : ''}</span>
+          <span>${participantCount ? '+' + participantCount : ''}</span>
         </div>
       `;
       const avImg = card.querySelector('.wp-pm2-activity-avatar');
       this._skelOn(avImg);
       avImg.onload = avImg.onerror = () => this._skelOff(avImg);
-      avImg.src = getAvatarUrl(act.creator_name || act.title || 'user');
+      avImg.src = act.profiles?.avatar_url || getAvatarUrl(creatorName);
 
       card.addEventListener('click', () => console.log('[PM2] Ver actividad:', act));
       stack.appendChild(card);
