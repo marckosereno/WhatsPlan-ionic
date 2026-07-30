@@ -289,23 +289,15 @@ export class PlaceModal2 {
         position:fixed;
         top:0;
         left:0; right:0;
-        /* Alto total: el del topbar (68px+safe-area) + una cola de 60px
-           para el fade-out. La franja opaca (ver mask-image) cubre el
-           topbar COMPLETO + 20px de margen antes de empezar a desvanecer
-           — con valores absolutos, no porcentajes, así funciona igual sin
-           importar el alto real del safe-area en cada dispositivo */
-        height:calc(env(safe-area-inset-top,20px) + 128px);
-        background:rgba(255,255,255,0.65);
-        backdrop-filter:blur(8px);
-        -webkit-backdrop-filter:blur(8px);
-        mask-image:linear-gradient(to bottom,
-          black 0,
-          black calc(env(safe-area-inset-top,20px) + 88px),
-          transparent 100%);
-        -webkit-mask-image:linear-gradient(to bottom,
-          black 0,
-          black calc(env(safe-area-inset-top,20px) + 88px),
-          transparent 100%);
+        /* Sin blur ni mask-image: son poco confiables en algunos WebView
+           (Android/Capacitor) y terminaban renderizando como una caja
+           sólida con borde duro en vez de desvanecerse. Un degradado
+           simple es más chico y siempre se ve suave, en cualquier lado. */
+        height:calc(env(safe-area-inset-top,20px) + 78px);
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.45) 0%,
+          rgba(255,255,255,0.25) 55%,
+          rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
         opacity:0.35; /* presente desde el arranque, en el status bar — no aparece recién con el scroll */
         transition:opacity 0.1s linear;
