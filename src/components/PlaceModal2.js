@@ -288,18 +288,16 @@ export class PlaceModal2 {
       #wp-pm2-topbar-fade {
         position:fixed;
         top:0;
-        left:0; right:0; height:calc(130px + env(safe-area-inset-top,0px));
-        /* Dim sutil, no lavado blanco sólido — el contenido se ve difuminado
-           debajo, no tapado */
-        background:rgba(255,255,255,0.55);
-        backdrop-filter:blur(18px);
-        -webkit-backdrop-filter:blur(18px);
-        /* El blur se "siente" difuminado, no como una caja dura: se
-           desvanece con un degradado de máscara, más fuerte arriba */
-        mask-image:linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
-        -webkit-mask-image:linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+        left:0; right:0;
+        /* Solo la zona real del status bar, no invade la foto */
+        height:calc(env(safe-area-inset-top,20px) + 30px);
+        background:rgba(255,255,255,0.65);
+        backdrop-filter:blur(8px);
+        -webkit-backdrop-filter:blur(8px);
+        mask-image:linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+        -webkit-mask-image:linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
         z-index:9; pointer-events:none;
-        opacity:0.4; /* presente desde el arranque, como en iOS26 — no aparece recién con el scroll */
+        opacity:0.35; /* presente desde el arranque, en el status bar — no aparece recién con el scroll */
         transition:opacity 0.1s linear;
       }
 
@@ -1224,7 +1222,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.4';
+    topbarFade.style.opacity = '0.35';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1284,7 +1282,7 @@ export class PlaceModal2 {
         // Scroll edge effect (iOS26): presente desde el arranque (0.4),
         // se intensifica con el scroll hasta taparlo del todo — crossfade
         // con el hero desvaneciéndose
-        topbarFade.style.opacity = 0.4 + prog * 0.6;
+        topbarFade.style.opacity = 0.35 + prog * 0.45;
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
