@@ -243,7 +243,7 @@ export class PlaceModal2 {
       pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = 'anonymous';
       const fontLink = document.createElement('link');
       fontLink.id = 'wp-pm2-fonts'; fontLink.rel = 'stylesheet';
-      fontLink.href = 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap';
       document.head.appendChild(pre1);
       document.head.appendChild(pre2);
       document.head.appendChild(fontLink);
@@ -552,7 +552,7 @@ export class PlaceModal2 {
       .wp-pm2-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
         animation: wp-pm2-ai-fadein 0.4s ease both;
-        font-family:Avenir,'Avenir Next',sans-serif;
+        font-family:'Inter Tight',sans-serif;
       }
       @keyframes wp-pm2-skeleton-shimmer {
         0%   { background-position: -200% 0; }
@@ -896,7 +896,7 @@ export class PlaceModal2 {
       .wp-pm2-review-text {
         font-size:13px; color:#374151; margin-top:4px; line-height:1.5;
         display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
-        overflow:hidden; font-family:Avenir,'Avenir Next',sans-serif;
+        overflow:hidden; font-family:'Inter Tight',sans-serif;
       }
       .wp-pm2-review-text.wp-pm2-expanded {
         -webkit-line-clamp:unset; overflow:visible;
@@ -1076,7 +1076,7 @@ export class PlaceModal2 {
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
-      "font-family:Avenir,'Avenir Next',sans-serif",
+      "font-family:'Inter Tight',sans-serif",
       'cursor:pointer', 'box-sizing:border-box',
       'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
     ].join(';');
