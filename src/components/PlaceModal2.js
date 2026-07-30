@@ -57,13 +57,18 @@ export class PlaceModal2 {
              espacio "de más". -->
         <div id="wp-pm2-content-area">
 
-          <!-- OVERLAY — sombra blanca que sube con el hero -->
-          <!-- HERO — viewport que se encoge; adentro, un wrapper de alto FIJO
-               (fullH) que se traslada hacia arriba. Así imagen + overlay suben
-               juntos y nunca se descubre hueco (el wrapper siempre "sobra"). -->
+          <!-- HERO — viewport que se encoge. Adentro, DOS wrappers de alto
+               FIJO (fullH) que se trasladan hacia arriba a DISTINTA
+               velocidad:
+               - hero-inner: solo la FOTO, parallax lento
+               - hero-overlay-fast: gradiente/sombra + título/rating, a la
+                 misma velocidad que el contenido real — así llegan juntos
+                 arriba y se disuelven en la sombra del topbar -->
           <div id="wp-pm2-hero">
             <div id="wp-pm2-hero-inner">
               <div id="wp-pm2-hero-bg"></div>
+            </div>
+            <div id="wp-pm2-hero-overlay-fast">
               <div id="wp-pm2-hero-gradient"></div>
               <div id="wp-pm2-hero-bottom">
                 <span id="wp-pm2-featured-badge" class="wp-pm2-featured-badge" style="display:none"></span>
@@ -406,6 +411,11 @@ export class PlaceModal2 {
       #wp-pm2-hero-inner {
         position:absolute; top:0; left:0; right:0;
         will-change:transform;
+      }
+      #wp-pm2-hero-overlay-fast {
+        position:absolute; top:0; left:0; right:0;
+        will-change:transform;
+        z-index:2;
       }
       #wp-pm2-hero-bg {
         position:absolute; inset:0;
@@ -1183,6 +1193,7 @@ export class PlaceModal2 {
     const spacer      = this._el.querySelector('#wp-pm2-scroll-spacer');
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
     const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
+    const heroOverlayFast = this._el.querySelector('#wp-pm2-hero-overlay-fast');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
     const topbarFade  = this._el.querySelector('#wp-pm2-topbar-fade');
@@ -1198,6 +1209,7 @@ export class PlaceModal2 {
     heroInner.style.height = '';
     heroInner.style.transform = '';
     heroInner.style.opacity = '';
+    heroOverlayFast.style.transform = '';
     heroGradient.style.opacity = '';
     spacer.style.height = '0px';
     nameEl.style.opacity = '';
@@ -1218,6 +1230,7 @@ export class PlaceModal2 {
       if (!fullH) return;
       const travel = fullH - topbarH;
       heroInner.style.height = fullH + 'px';
+      heroOverlayFast.style.height = fullH + 'px';
       spacer.style.height = (travel + topbarH * 1.5) + 'px';
       heroEl.style.minHeight = '0px';
 
@@ -1227,17 +1240,21 @@ export class PlaceModal2 {
         const shift = Math.min(sy, travel);
         const newH  = Math.max(topbarH, fullH - sy);
 
-        // Parallax muy lento (estilo iOS26): el hero avanza mucho más
-        // despacio que el scroll real — factor 0.22, antes iba 1:1
+        // Parallax muy lento SOLO para la foto (estilo iOS26): la imagen
+        // avanza mucho más despacio que el scroll real — factor 0.22
         const HERO_PARALLAX = 0.22;
         const innerShift = shift * HERO_PARALLAX;
 
         heroEl.style.height = newH + 'px';
-        heroInner.style.transform = `translateY(-${innerShift}px)`; // imagen + overlay suben juntos, muy lento
+        heroInner.style.transform = `translateY(-${innerShift}px)`; // SOLO la foto, lenta
+        heroInner.style.opacity   = Math.max(0, 1 - prog);          // la foto se desvanece
 
-        // Hero + overlay se van a transparente 100% de forma gradual — a la
-        // par (mismo prog), no por separado
-        heroInner.style.opacity = Math.max(0, 1 - prog);
+        // Overlay (sombra/gradiente) + título/rating: viajan a la MISMA
+        // velocidad que el contenido real (shift, 1:1 con el scroll) — no
+        // con el parallax lento de la foto. Así llegan junto con el resto
+        // del contenido hasta arriba y se disuelven en la sombra del topbar
+        heroOverlayFast.style.transform = `translateY(-${shift}px)`;
+        heroGradient.style.opacity = Math.max(0, 1 - prog * 1.3);
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
