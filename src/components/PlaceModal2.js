@@ -282,25 +282,11 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
       }
-      /* Topbar 100% transparente (estilo iOS26): no tiene fondo propio, ni
-         el del hero. El fondo detrás es #wp-pm2-topbar-fade, que sube
-         desde y=0 y hace crossfade con el hero mientras éste se desvanece. */
+      /* Topbar 100% transparente, sin excepciones: sin fondo propio, sin
+         el del hero, y sin el fade (desactivado — ver #wp-pm2-topbar-fade). */
       #wp-pm2-topbar-fade {
-        position:fixed;
-        top:0;
-        left:0; right:0;
-        /* Sin blur ni mask-image: son poco confiables en algunos WebView
-           (Android/Capacitor) y terminaban renderizando como una caja
-           sólida con borde duro en vez de desvanecerse. Un degradado
-           simple es más chico y siempre se ve suave, en cualquier lado. */
-        height:calc(env(safe-area-inset-top,20px) + 78px);
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,0.45) 0%,
-          rgba(255,255,255,0.25) 55%,
-          rgba(255,255,255,0) 100%);
-        z-index:9; pointer-events:none;
-        opacity:0.35; /* presente desde el arranque, en el status bar — no aparece recién con el scroll */
-        transition:opacity 0.1s linear;
+        display:none; /* sin fondo, sin gradiente — el topbar es 100% transparente, sin excepciones */
+      }
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
