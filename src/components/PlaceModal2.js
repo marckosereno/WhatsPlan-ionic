@@ -301,7 +301,7 @@ export class PlaceModal2 {
         z-index:9; pointer-events:none;
         /* Arranca bien transparente; JS sube la opacidad y agrega blur a
            medida que se scrollea (ver onScroll) */
-        opacity:0.35;
+        opacity:0.6;
         transition:opacity 0.05s linear;
       }
 
@@ -1226,9 +1226,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.35';
-    topbarFade.style.backdropFilter = 'blur(0px)';
-    topbarFade.style.webkitBackdropFilter = 'blur(0px)';
+    topbarFade.style.opacity = '0.6';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1291,14 +1289,10 @@ export class PlaceModal2 {
           this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
         }
 
-        // Sombra del status bar: más transparente al arranque, y a medida
-        // que se scrollea se pone menos transparente (más presente) + un
-        // ligero blur — el topbar en sí sigue sin fondo propio, esto solo
-        // cambia la INTENSIDAD del elemento fijo de atrás, nunca lo "crea"
-        // ni lo hace aparecer de la nada (ya está siempre en el DOM).
-        topbarFade.style.opacity = 0.35 + prog * 0.65;
-        topbarFade.style.backdropFilter = `blur(${prog * 6}px)`;
-        topbarFade.style.webkitBackdropFilter = `blur(${prog * 6}px)`;
+        // Sombra del status bar: más presente desde el arranque, y sube
+        // más todavía con el scroll. Sin blur — no ayudaba con la línea
+        // de corte del contenido, solo la sombra hace el trabajo.
+        topbarFade.style.opacity = Math.min(1, 0.6 + prog * 0.7);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
