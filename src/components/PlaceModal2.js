@@ -1227,6 +1227,7 @@ export class PlaceModal2 {
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
     topbarFade.style.opacity = '0.6';
+    topbarFade.style.background = '';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1290,9 +1291,15 @@ export class PlaceModal2 {
         }
 
         // Sombra del status bar: más presente desde el arranque, y sube
-        // más todavía con el scroll. Sin blur — no ayudaba con la línea
-        // de corte del contenido, solo la sombra hace el trabajo.
+        // más todavía con el scroll. Además el degradado "ocupa más
+        // blanco" — la parte sólida se extiende más abajo a medida que
+        // se scrollea, en vez de quedarse en el mismo 55% siempre.
         topbarFade.style.opacity = Math.min(1, 0.6 + prog * 0.7);
+        const whiteStop = 55 + prog * 30; // 55% en reposo → 85% con scroll completo
+        topbarFade.style.background = `linear-gradient(to bottom,
+          rgba(255,255,255,0.7) 0%,
+          rgba(255,255,255,0.3) ${whiteStop}%,
+          rgba(255,255,255,0) 100%)`;
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
