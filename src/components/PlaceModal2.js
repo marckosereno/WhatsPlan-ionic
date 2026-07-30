@@ -277,15 +277,16 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
       }
-      /* Sin blur ni scrim propio: el fondo del topbar es el hero+overlay
-         que llega hasta acá (translate del hero-inner). */
+      /* Topbar 100% transparente (estilo iOS26): no tiene fondo propio, ni
+         el del hero. El fondo detrás es #wp-pm2-topbar-fade, que sube
+         desde y=0 y hace crossfade con el hero mientras éste se desvanece. */
       #wp-pm2-topbar-fade {
         position:fixed;
-        top:calc(68px + env(safe-area-inset-top,0px));
-        left:0; right:0; height:28px;
-        background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0));
+        top:0;
+        left:0; right:0; height:calc(130px + env(safe-area-inset-top,0px));
+        background:linear-gradient(to bottom, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.98) 45%, rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
-        opacity:0; /* aparece recién cuando el hero+overlay ya está asentado */
+        opacity:0; /* crossfade con el hero: aparece a medida que el hero se desvanece */
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
@@ -1196,6 +1197,7 @@ export class PlaceModal2 {
     heroEl.style.minHeight = '';   // usar el min-height del CSS SOLO para medir fullH
     heroInner.style.height = '';
     heroInner.style.transform = '';
+    heroInner.style.opacity = '';
     heroGradient.style.opacity = '';
     spacer.style.height = '0px';
     nameEl.style.opacity = '';
@@ -1225,8 +1227,17 @@ export class PlaceModal2 {
         const shift = Math.min(sy, travel);
         const newH  = Math.max(topbarH, fullH - sy);
 
+        // Parallax muy lento (estilo iOS26): el hero avanza mucho más
+        // despacio que el scroll real — factor 0.22, antes iba 1:1
+        const HERO_PARALLAX = 0.22;
+        const innerShift = shift * HERO_PARALLAX;
+
         heroEl.style.height = newH + 'px';
-        heroInner.style.transform = `translateY(-${shift}px)`; // imagen + overlay suben juntos
+        heroInner.style.transform = `translateY(-${innerShift}px)`; // imagen + overlay suben juntos, muy lento
+
+        // Hero + overlay se van a transparente 100% de forma gradual — a la
+        // par (mismo prog), no por separado
+        heroInner.style.opacity = Math.max(0, 1 - prog);
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
@@ -1241,10 +1252,10 @@ export class PlaceModal2 {
           this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
         }
 
-        // Sin sombra ni blur en el topbar. El degradado de abajo (fade)
-        // recién aparece cuando el hero+overlay ya casi terminaron de
-        // colapsar arriba — no desde el arranque del scroll
-        topbarFade.style.opacity = Math.max(0, Math.min(1, (prog - 0.6) / 0.3));
+        // Topbar transparente de verdad: el fade de abajo hace crossfade
+        // 1:1 con el hero desvaneciéndose — sube desde el tope de la app
+        // y el contenido se pierde ahí, no en un borde duro del topbar
+        topbarFade.style.opacity = prog;
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
