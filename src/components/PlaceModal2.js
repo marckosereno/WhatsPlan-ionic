@@ -410,7 +410,7 @@ export class PlaceModal2 {
       #wp-pm2-hero {
         position:absolute; top:0; left:0; right:0; z-index:5;
         height:72vw; min-height:260px; max-height:380px;
-        overflow:hidden; background:#1a1a2e;
+        overflow:hidden; background:transparent;
         will-change:height;
       }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
