@@ -299,7 +299,10 @@ export class PlaceModal2 {
           rgba(255,255,255,0.3) 55%,
           rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
-        /* Opacidad fija — nunca se anima con el scroll. */
+        /* Arranca bien transparente; JS sube la opacidad y agrega blur a
+           medida que se scrollea (ver onScroll) */
+        opacity:0.35;
+        transition:opacity 0.05s linear;
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
@@ -1223,6 +1226,9 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
+    topbarFade.style.opacity = '0.35';
+    topbarFade.style.backdropFilter = 'blur(0px)';
+    topbarFade.style.webkitBackdropFilter = 'blur(0px)';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1285,9 +1291,14 @@ export class PlaceModal2 {
           this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
         }
 
-        // Topbar transparente SIEMPRE — la sombra del status bar
-        // (#wp-pm2-topbar-fade) tiene opacidad FIJA por CSS, no se toca
-        // acá. Por eso el topbar ya no puede "ganar" fondo con el scroll.
+        // Sombra del status bar: más transparente al arranque, y a medida
+        // que se scrollea se pone menos transparente (más presente) + un
+        // ligero blur — el topbar en sí sigue sin fondo propio, esto solo
+        // cambia la INTENSIDAD del elemento fijo de atrás, nunca lo "crea"
+        // ni lo hace aparecer de la nada (ya está siempre en el DOM).
+        topbarFade.style.opacity = 0.35 + prog * 0.65;
+        topbarFade.style.backdropFilter = `blur(${prog * 6}px)`;
+        topbarFade.style.webkitBackdropFilter = `blur(${prog * 6}px)`;
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
