@@ -288,13 +288,20 @@ export class PlaceModal2 {
       #wp-pm2-topbar-fade {
         position:fixed;
         top:0; left:0; right:0;
-        /* Confinada SOLO a la franja real del status bar — antes medía
-           78px e invadía la fila del topbar (68px). Ahora no la toca. */
-        height:env(safe-area-inset-top, 24px);
-        background:linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.5));
+        /* Altura suficiente para que el contenido se disuelva de a poco
+           al subir (no un corte de golpe) — puede pasar por encima de la
+           fila del topbar sin problema, porque lo que importa es que su
+           opacidad sea FIJA (ver abajo), no que el área sea chica. El
+           topbar en sí sigue con background:transparent siempre. */
+        height:calc(env(safe-area-inset-top, 24px) + 90px);
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.75) 0%,
+          rgba(255,255,255,0.35) 60%,
+          rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
-        /* Opacidad FIJA — antes crecía con el scroll (0.35 → 0.8), eso era
-           lo que hacía que el topbar pareciera ganar un fondo progresivo. */
+        /* Opacidad FIJA, sin transition ni animación por JS — nunca cambia
+           con el scroll. Esto es lo único que evita que el topbar "gane"
+           fondo: que este valor no se mueva, no que el elemento sea chico. */
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
