@@ -1292,10 +1292,11 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 1.6);
+        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
-        if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
+        // El título solo vive en el hero (nameEl) — ya no se duplica en
+        // el topbar en ningún punto del scroll.
         if (topbarActions) {
           const actOpacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
           topbarActions.style.opacity = actOpacity;
