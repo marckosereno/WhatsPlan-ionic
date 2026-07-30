@@ -290,7 +290,7 @@ export class PlaceModal2 {
         top:0;
         left:0; right:0;
         /* Solo la zona real del status bar, no invade la foto */
-        height:calc(env(safe-area-inset-top,20px) + 30px);
+        height:calc(env(safe-area-inset-top,20px) + 58px);
         background:rgba(255,255,255,0.65);
         backdrop-filter:blur(8px);
         -webkit-backdrop-filter:blur(8px);
@@ -1261,7 +1261,12 @@ export class PlaceModal2 {
         // con el parallax lento de la foto. Así llegan junto con el resto
         // del contenido hasta arriba y se disuelven en la sombra del topbar
         heroOverlayFast.style.transform = `translateY(-${shift}px)`;
-        heroGradient.style.opacity = Math.max(0, 1 - prog * 1.3);
+        // El overlay (gradiente blanco) NO se desvanece por opacity — así
+        // siempre hace de "puente" blanco entre la foto y el contenido de
+        // abajo. Se pierde de vista solo por posición (viaja rápido, junto
+        // con el contenido) cuando el hero termina de colapsar. Si se
+        // lo hace desaparecer por opacity antes de tiempo, queda un borde
+        // duro visible justo donde el hero recorta (overflow:hidden).
 
         // Título/rating del hero: fade-out rápido al iniciar el scroll
         nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
