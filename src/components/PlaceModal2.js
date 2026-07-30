@@ -295,13 +295,13 @@ export class PlaceModal2 {
         left:0; right:0;
         height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.7) 0%,
-          rgba(255,255,255,0.3) 55%,
+          rgba(255,255,255,0.95) 0%,
+          rgba(255,255,255,0.7) 55%,
           rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
         /* Arranca bien transparente; JS sube la opacidad y agrega blur a
            medida que se scrollea (ver onScroll) */
-        opacity:0.6;
+        opacity:0.75;
         transition:opacity 0.05s linear;
       }
 
@@ -1226,7 +1226,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.6';
+    topbarFade.style.opacity = '0.75';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1292,7 +1292,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.5 + prog * 0.9);
+        topbarFade.style.opacity = Math.min(1, 0.75 + prog * 1);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
