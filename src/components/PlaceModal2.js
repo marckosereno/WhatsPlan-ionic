@@ -1239,7 +1239,11 @@ export class PlaceModal2 {
         const sy    = body.scrollTop;
         const prog  = Math.min(1, Math.max(0, sy / travel));
         const shift = Math.min(sy, travel);
-        const newH  = Math.max(topbarH, fullH - sy);
+        // El hero colapsa hasta 0 (antes tenía un mínimo de topbarH, y esa
+        // franja remanente dejaba visible la parte blanca del gradiente
+        // ESTACIONADA detrás del topbar transparente — ese era el "fondo"
+        // que aparecía con el scroll, no el fade ni el topbar en sí)
+        const newH  = Math.max(0, fullH - sy);
 
         // Parallax muy lento SOLO para la foto (estilo iOS26): la imagen
         // avanza mucho más despacio que el scroll real — factor 0.22
