@@ -284,9 +284,17 @@ export class PlaceModal2 {
       }
       /* Topbar 100% transparente, sin excepciones: sin fondo propio, sin
          el del hero, y sin el fade (desactivado — ver #wp-pm2-topbar-fade). */
+      /* Sombra fija SOLO en la franja del status bar (arriba del todo) —
+         NO cubre la fila del topbar (back/título/share), esa queda 100%
+         transparente siempre. Opacidad constante, no se anima con el
+         scroll: está para que el contenido se difumine ahí, no para
+         aparecer/desaparecer. */
       #wp-pm2-topbar-fade {
-        display:none; /* sin fondo, sin gradiente — el topbar es 100% transparente, sin excepciones */
-      }
+        position:fixed;
+        top:0; left:0; right:0;
+        height:env(safe-area-inset-top, 24px);
+        background:linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.5));
+        z-index:9; pointer-events:none;
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
@@ -1210,7 +1218,6 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.35';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1269,13 +1276,8 @@ export class PlaceModal2 {
           this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
         }
 
-        // Topbar transparente de verdad: el fade de abajo hace crossfade
-        // 1:1 con el hero desvaneciéndose — sube desde el tope de la app
-        // y el contenido se pierde ahí, no en un borde duro del topbar
-        // Scroll edge effect (iOS26): presente desde el arranque (0.4),
-        // se intensifica con el scroll hasta taparlo del todo — crossfade
-        // con el hero desvaneciéndose
-        topbarFade.style.opacity = 0.35 + prog * 0.45;
+        // Topbar 100% transparente siempre — la sombra del status bar
+        // (#wp-pm2-topbar-fade) es fija por CSS, no se anima acá.
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
