@@ -287,22 +287,19 @@ export class PlaceModal2 {
          desde y=0 y hace crossfade con el hero mientras éste se desvanece. */
       #wp-pm2-topbar-fade {
         position:fixed;
-        /* Empieza EXACTAMENTE donde termina el topbar, nunca antes — así
-           el rectángulo del topbar (status bar + fila de back/título)
-           jamás tiene nada detrás, en reposo y en cualquier punto del
-           scroll. El bug de fondos anteriores era el hero que nunca
-           colapsaba del todo (ya arreglado en onScroll) — este fade en
-           sí siempre estuvo bien diseñado. */
-        top:calc(68px + env(safe-area-inset-top,0px));
+        /* Desde arriba del todo (y=0, status bar) hacia abajo — el hero
+           ahora colapsa hasta 0 de verdad (fix en onScroll), así que ya
+           no queda ningún remanente blanco estacionado que se sume a esto
+           y genere el "fondo" que aparecía antes. */
+        top:0;
         left:0; right:0;
-        height:64px; /* vive DEBAJO del topbar, para que el contenido se disuelva ahí */
+        height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
           rgba(255,255,255,0.7) 0%,
           rgba(255,255,255,0.3) 55%,
           rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
-        /* Opacidad fija — nunca se anima con el scroll (eso fue lo que
-           antes hacía parecer que el topbar "ganaba" fondo). */
+        /* Opacidad fija — nunca se anima con el scroll. */
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
