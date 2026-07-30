@@ -286,14 +286,23 @@ export class PlaceModal2 {
          el del hero. El fondo detrás es #wp-pm2-topbar-fade, que sube
          desde y=0 y hace crossfade con el hero mientras éste se desvanece. */
       #wp-pm2-topbar-fade {
-        /* Desactivado — cada intento de agregar una sombra/edge acá terminó
-           generando un artefacto visual distinto (línea dura, gris, banda
-           oscura). El topbar ya queda 100% transparente solo con su propio
-           background:transparent — no necesita nada detrás para cumplir
-           "topbar siempre transparente". Si en el futuro se quiere retomar
-           el efecto de disolución, mejor probarlo aislado, no como parche
-           sobre esto. */
-        display:none;
+        position:fixed;
+        /* Empieza EXACTAMENTE donde termina el topbar, nunca antes — así
+           el rectángulo del topbar (status bar + fila de back/título)
+           jamás tiene nada detrás, en reposo y en cualquier punto del
+           scroll. El bug de fondos anteriores era el hero que nunca
+           colapsaba del todo (ya arreglado en onScroll) — este fade en
+           sí siempre estuvo bien diseñado. */
+        top:calc(68px + env(safe-area-inset-top,0px));
+        left:0; right:0;
+        height:64px; /* vive DEBAJO del topbar, para que el contenido se disuelva ahí */
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.7) 0%,
+          rgba(255,255,255,0.3) 55%,
+          rgba(255,255,255,0) 100%);
+        z-index:9; pointer-events:none;
+        /* Opacidad fija — nunca se anima con el scroll (eso fue lo que
+           antes hacía parecer que el topbar "ganaba" fondo). */
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
