@@ -282,21 +282,19 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
       }
-      /* Topbar 100% transparente SIEMPRE, sin excepciones ni durante el
-         scroll: sin fondo propio, sin el del hero. La única sombra fija
-         es #wp-pm2-topbar-fade, confinada a la franja del status bar
-         (nunca a la fila del topbar en sí). */
-      /* Sombra fija SOLO en la franja del status bar (arriba del todo) —
-         NO cubre la fila del topbar (back/título/share), esa queda 100%
-         transparente siempre. Opacidad constante, no se anima con el
-         scroll: está para que el contenido se difumine ahí, no para
-         aparecer/desaparecer ni para "rellenar" el topbar. */
+      /* Topbar 100% transparente (estilo iOS26): no tiene fondo propio, ni
+         el del hero. El fondo detrás es #wp-pm2-topbar-fade, que sube
+         desde y=0 y hace crossfade con el hero mientras éste se desvanece. */
       #wp-pm2-topbar-fade {
         position:fixed;
         top:0; left:0; right:0;
+        /* Confinada SOLO a la franja real del status bar — antes medía
+           78px e invadía la fila del topbar (68px). Ahora no la toca. */
         height:env(safe-area-inset-top, 24px);
         background:linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.5));
         z-index:9; pointer-events:none;
+        /* Opacidad FIJA — antes crecía con el scroll (0.35 → 0.8), eso era
+           lo que hacía que el topbar pareciera ganar un fondo progresivo. */
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
@@ -1278,9 +1276,9 @@ export class PlaceModal2 {
           this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
         }
 
-        // Topbar 100% transparente SIEMPRE — la sombra del status bar
-        // (#wp-pm2-topbar-fade) es fija por CSS, nunca se anima acá, para
-        // que el topbar nunca "gane" un fondo con el scroll.
+        // Topbar transparente SIEMPRE — la sombra del status bar
+        // (#wp-pm2-topbar-fade) tiene opacidad FIJA por CSS, no se toca
+        // acá. Por eso el topbar ya no puede "ganar" fondo con el scroll.
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         if (topbarTitle) topbarTitle.style.opacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
