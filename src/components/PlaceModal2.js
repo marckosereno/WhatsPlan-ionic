@@ -43,7 +43,6 @@ export class PlaceModal2 {
         </div>
         <!-- FADE — degradado blanco pegado debajo del topbar; el contenido
              que scrollea ahí se desvanece gradual en vez de cortarse -->
-        <div id="wp-pm2-topbar-fade"></div>
         <div id="wp-pm2-bottom-fade"></div>
 
         <!-- ACTIVITY STACK — mini-fichas en abanico (fixed, no ocupa lugar
@@ -288,28 +287,11 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
       }
-      /* Topbar 100% transparente (estilo iOS26): no tiene fondo propio, ni
-         el del hero. El fondo detrás es #wp-pm2-topbar-fade, que sube
-         desde y=0 y hace crossfade con el hero mientras éste se desvanece. */
-      #wp-pm2-topbar-fade {
-        position:fixed;
-        /* Desde arriba del todo (y=0, status bar) hacia abajo — el hero
-           ahora colapsa hasta 0 de verdad (fix en onScroll), así que ya
-           no queda ningún remanente blanco estacionado que se sume a esto
-           y genere el "fondo" que aparecía antes. */
-        top:0;
-        left:0; right:0;
-        height:calc(env(safe-area-inset-top,20px) + 100px);
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,0.95) 0%,
-          rgba(255,255,255,0.7) 55%,
-          rgba(255,255,255,0) 100%);
-        z-index:9; pointer-events:none;
-        /* Arranca bien transparente; JS sube la opacidad y agrega blur a
-           medida que se scrollea (ver onScroll) */
-        opacity:0.4;
-        transition:opacity 0.05s linear;
-      }
+      /* Topbar 100% transparente: no tiene fondo propio. La sombra del
+         status bar ahora la da la nativa de app.css (ion-app::before, con
+         blur real vía mask-image + backdrop-filter), activada al agregar
+         body.wp-pm-open en show() — mismo mecanismo que PlaceModal1, ya
+         no hace falta duplicarla acá. */
 
       /* Sombra blanca en el borde inferior — igual que la del top pero
          invertida (blanco abajo, transparente arriba), fija (no se anima
@@ -1216,6 +1198,10 @@ export class PlaceModal2 {
     this._populate(place);
     this._el.classList.add('visible');
     document.body.style.overflow = 'hidden';
+    // Activa la sombra superior "oficial" con blur real (ion-app::before,
+    // variante body.wp-pm-open en app.css) + el blur del mapa de fondo —
+    // mismo mecanismo que usaba PlaceModal1, nunca portado hasta ahora
+    document.body.classList.add('wp-pm-open');
 
     // Ocultar el footer menu del mapview mientras la ficha está abierta
     // (tiene z-index:9995, más alto que el modal, así que quedaba encima)
@@ -1229,7 +1215,6 @@ export class PlaceModal2 {
     const heroOverlayFast = this._el.querySelector('#wp-pm2-hero-overlay-fast');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
-    const topbarFade  = this._el.querySelector('#wp-pm2-topbar-fade');
     this._activityStack = this._el.querySelector('#wp-pm2-activity-stack');
     if (this._activityStack) { this._activityStack.style.transform = ''; this._activityStack.style.opacity = '1'; }
     const nameEl      = this._el.querySelector('#wp-pm2-hero-bottom');
@@ -1248,7 +1233,6 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.4';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1314,7 +1298,8 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
+        // La sombra del status bar ahora es la nativa de app.css
+        // (body.wp-pm-open), no se anima acá.
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
@@ -1338,6 +1323,7 @@ export class PlaceModal2 {
   hide() {
     this._el.classList.remove('visible');
     document.body.style.overflow = '';
+    document.body.classList.remove('wp-pm-open');
     this._place = null;
     if (this._aiAbort) this._aiAbort();
     // Restaurar el footer menu del mapview
