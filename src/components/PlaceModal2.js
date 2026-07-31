@@ -254,7 +254,11 @@ export class PlaceModal2 {
     s.textContent = `
       #wp-pm2 {
         display:none; position:fixed; inset:0; z-index:2100;
-        font-family: var(--wp-font, 'Inter Tight', system-ui, sans-serif);
+        /* NO usar var(--wp-font) — esa variable está fijada globalmente a
+           Avenir en styles/app.css:330, así que su fallback nunca se
+           aplicaba y todo lo que hacía font-family:inherit heredaba
+           Avenir igual. Forzamos Inter Tight directo acá. */
+        font-family: 'Inter Tight', system-ui, sans-serif;
         font-weight:400;
       }
       #wp-pm2.visible { display:block; }
@@ -1132,7 +1136,7 @@ export class PlaceModal2 {
           <div style="display:flex;align-items:center">${avatarsHtml}</div>
           ${count > 0 ? `<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>` : `<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>`}
         </div>
-        <button id="wp-ms-cta-btn" style="${glassBtn}">+ Detalles</button>
+        <button id="wp-ms-cta-btn" style="${glassBtn}">Detalles →</button>
       </div>`;
 
     ms.className = 'wp-minisnap-panel';
