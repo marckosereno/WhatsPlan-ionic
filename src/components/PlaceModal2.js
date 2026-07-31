@@ -301,13 +301,13 @@ export class PlaceModal2 {
         left:0; right:0;
         height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.99) 0%,
-          rgba(255,255,255,0.9) 55%,
+          rgba(255,255,255,0.95) 0%,
+          rgba(255,255,255,0.7) 55%,
           rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
         /* Arranca bien transparente; JS sube la opacidad y agrega blur a
            medida que se scrollea (ver onScroll) */
-        opacity:0.55;
+        opacity:0.4;
         transition:opacity 0.05s linear;
       }
 
@@ -458,8 +458,8 @@ export class PlaceModal2 {
         height:60%; /* ocupa el 60% inferior del hero */
         background:linear-gradient(to bottom,
           transparent 0%,
-          rgba(255,255,255,0.45) 50%,
-          rgba(255,255,255,0.85) 100%);
+          rgba(255,255,255,0.6) 50%,
+          rgba(255,255,255,1) 100%);
         pointer-events:none;
         z-index:2;
         will-change:opacity;
@@ -1247,7 +1247,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.55';
+    topbarFade.style.opacity = '0.4';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1313,7 +1313,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.55 + prog * 2.2);
+        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
