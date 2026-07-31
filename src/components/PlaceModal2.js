@@ -44,6 +44,7 @@ export class PlaceModal2 {
         <!-- FADE — degradado blanco pegado debajo del topbar; el contenido
              que scrollea ahí se desvanece gradual en vez de cortarse -->
         <div id="wp-pm2-topbar-fade"></div>
+        <div id="wp-pm2-bottom-fade"></div>
 
         <!-- ACTIVITY STACK — mini-fichas en abanico (fixed, no ocupa lugar
              en el layout). Muestran actividades creadas en este lugar; si
@@ -300,14 +301,29 @@ export class PlaceModal2 {
         left:0; right:0;
         height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.95) 0%,
-          rgba(255,255,255,0.7) 55%,
+          rgba(255,255,255,0.99) 0%,
+          rgba(255,255,255,0.9) 55%,
           rgba(255,255,255,0) 100%);
         z-index:9; pointer-events:none;
         /* Arranca bien transparente; JS sube la opacidad y agrega blur a
            medida que se scrollea (ver onScroll) */
-        opacity:0.4;
+        opacity:0.55;
         transition:opacity 0.05s linear;
+      }
+
+      /* Sombra blanca en el borde inferior — igual que la del top pero
+         invertida (blanco abajo, transparente arriba), fija (no se anima
+         con el scroll). Vive DETRÁS de los botones flotantes del footer
+         (z-index menor) para que el contenido se pierda ahí suavemente. */
+      #wp-pm2-bottom-fade {
+        position:absolute;
+        left:0; right:0; bottom:0;
+        height:110px;
+        background:linear-gradient(to top,
+          rgba(255,255,255,0.95) 0%,
+          rgba(255,255,255,0.7) 45%,
+          rgba(255,255,255,0) 100%);
+        z-index:5; pointer-events:none;
       }
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
@@ -418,7 +434,7 @@ export class PlaceModal2 {
       /* HERO — overlay absoluto que se encoge (overflow:hidden) */
       #wp-pm2-hero {
         position:absolute; top:0; left:0; right:0; z-index:5;
-        height:72vw; min-height:260px; max-height:380px;
+        height:88vw; min-height:320px; max-height:460px;
         overflow:hidden; background:transparent;
         will-change:height;
       }
@@ -442,8 +458,8 @@ export class PlaceModal2 {
         height:60%; /* ocupa el 60% inferior del hero */
         background:linear-gradient(to bottom,
           transparent 0%,
-          rgba(255,255,255,0.6) 50%,
-          rgba(255,255,255,1) 100%);
+          rgba(255,255,255,0.45) 50%,
+          rgba(255,255,255,0.85) 100%);
         pointer-events:none;
         z-index:2;
         will-change:opacity;
@@ -927,14 +943,14 @@ export class PlaceModal2 {
         background:#0a0a0a; color:#fff; display:flex; align-items:center;
         justify-content:center; cursor:pointer; flex-shrink:0;
         -webkit-tap-highlight-color:transparent;
-        box-shadow:0 2px 12px rgba(255,255,255,0.5), 0 6px 16px rgba(0,0,0,0.25);
+        box-shadow:none;
       }
       #wp-pm2-plan-btn {
         flex:1; height:48px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff; font-size:16px; font-weight:700;
         display:flex; align-items:center; justify-content:center; gap:8px;
         cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
-        box-shadow:0 2px 12px rgba(255,255,255,0.5), 0 6px 16px rgba(0,0,0,0.25);
+        box-shadow:none;
       }
     `;
     document.head.appendChild(s);
@@ -1231,7 +1247,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.4';
+    topbarFade.style.opacity = '0.55';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1297,7 +1313,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
+        topbarFade.style.opacity = Math.min(1, 0.55 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
