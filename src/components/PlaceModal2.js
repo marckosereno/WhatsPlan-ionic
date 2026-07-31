@@ -43,6 +43,7 @@ export class PlaceModal2 {
         </div>
         <!-- FADE — degradado blanco pegado debajo del topbar; el contenido
              que scrollea ahí se desvanece gradual en vez de cortarse -->
+        <div id="wp-pm2-topbar-fade"></div>
         <div id="wp-pm2-bottom-fade"></div>
 
         <!-- ACTIVITY STACK — mini-fichas en abanico (fixed, no ocupa lugar
@@ -287,11 +288,25 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
       }
-      /* Topbar 100% transparente: no tiene fondo propio. La sombra del
-         status bar ahora la da la nativa de app.css (ion-app::before, con
-         blur real vía mask-image + backdrop-filter), activada al agregar
-         body.wp-pm-open en show() — mismo mecanismo que PlaceModal1, ya
-         no hace falta duplicarla acá. */
+      /* Topbar 100% transparente: no tiene fondo propio. La sombra usa el
+         mismo blur sutil (0.5px) + mask-image que la versión nativa de
+         app.css (ion-app::before) — acá con control propio para poder
+         reaccionar al scroll (la nativa es estática). */
+      #wp-pm2-topbar-fade {
+        position:fixed; top:0; left:0; right:0;
+        height:calc(env(safe-area-inset-top,20px) + 100px);
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.9) 0%,
+          rgba(255,255,255,0.5) 55%,
+          rgba(255,255,255,0) 100%);
+        backdrop-filter:blur(0.5px);
+        -webkit-backdrop-filter:blur(0.5px);
+        mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+        -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+        z-index:9; pointer-events:none;
+        opacity:0.4; /* JS la sube con el scroll */
+        transition:opacity 0.05s linear;
+      }
 
       /* Sombra blanca en el borde inferior — igual que la del top pero
          invertida (blanco abajo, transparente arriba), fija (no se anima
@@ -1213,6 +1228,7 @@ export class PlaceModal2 {
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
     const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
     const heroOverlayFast = this._el.querySelector('#wp-pm2-hero-overlay-fast');
+    const topbarFade = this._el.querySelector('#wp-pm2-topbar-fade');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
     const topbar      = this._el.querySelector('#wp-pm2-topbar');
     this._activityStack = this._el.querySelector('#wp-pm2-activity-stack');
@@ -1233,6 +1249,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
+    topbarFade.style.opacity = '0.4';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1298,8 +1315,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        // La sombra del status bar ahora es la nativa de app.css
-        // (body.wp-pm-open), no se anima acá.
+        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
