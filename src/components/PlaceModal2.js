@@ -452,6 +452,7 @@ export class PlaceModal2 {
       #wp-pm2-hero-bg {
         position:absolute; inset:0;
         background-size:cover; background-position:center;
+        filter:saturate(1.4);
       }
       #wp-pm2-hero-gradient {
         position:absolute; left:0; right:0; bottom:0;
