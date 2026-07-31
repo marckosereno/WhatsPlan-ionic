@@ -910,6 +910,13 @@ export class MapView {
         if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
         return null;
       }
+      // Los pines featured (anillo naranja permanente, no solo el
+      // centrado con zoom) tampoco muestran label lateral
+      if (el._place?.featured) {
+        const lbl = el.querySelector('.place-pin-label');
+        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
+        return null;
+      }
       const ll = marker.getLngLat();
       if (!bounds.contains(ll)) {
         const lbl = el.querySelector('.place-pin-label');
