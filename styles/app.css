@@ -327,7 +327,7 @@ ion-app::after {
   --vh: 1vh; /* sobreescrito por ios-fixes.js */
 
   /* ── Typography ── */
-  --wp-font: 'Avenir LT Std', Avenir, 'Avenir Next', system-ui, sans-serif;
+  --wp-font: 'Inter Tight', system-ui, sans-serif;
 
   /* ── Brand colors ── */
   --wp-blue:       #1a5cf5;
