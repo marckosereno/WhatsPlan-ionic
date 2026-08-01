@@ -225,6 +225,15 @@ export class PlaceModal2 {
         </div>
 
       </div><!-- /card -->
+
+      <!-- LIGHTBOX — carrusel de fotos a pantalla completa, con swipe -->
+      <div id="wp-pm2-lightbox">
+        <button id="wp-pm2-lb-close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div id="wp-pm2-lb-counter"></div>
+        <div id="wp-pm2-lb-track"></div>
+      </div>
     `;
     document.body.appendChild(el);
     this._el = el;
@@ -600,6 +609,44 @@ export class PlaceModal2 {
         background-size:400% 100%;
         animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
       }
+      #wp-pm2-strip img { cursor:pointer; }
+
+      /* LIGHTBOX — carrusel de fotos a pantalla completa, con swipe */
+      #wp-pm2-lightbox {
+        display:none; position:fixed; inset:0; z-index:3000;
+        background:#000;
+      }
+      #wp-pm2-lightbox.visible { display:block; }
+      #wp-pm2-lb-close {
+        position:fixed; top:calc(12px + env(safe-area-inset-top,0px)); right:12px;
+        z-index:3002; width:38px; height:38px; border-radius:50%; border:none;
+        background:rgba(255,255,255,0.16); backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+      }
+      #wp-pm2-lb-counter {
+        position:fixed; top:calc(20px + env(safe-area-inset-top,0px)); left:0; right:0;
+        z-index:3001; text-align:center;
+        font-size:13px; font-weight:700; color:#fff;
+        text-shadow:0 1px 4px rgba(0,0,0,0.5);
+        pointer-events:none;
+      }
+      #wp-pm2-lb-track {
+        display:flex; height:100%; overflow-x:auto;
+        scroll-snap-type:x mandatory; scrollbar-width:none;
+        -webkit-overflow-scrolling:touch;
+      }
+      #wp-pm2-lb-track::-webkit-scrollbar { display:none; }
+      .wp-pm2-lb-slide {
+        flex:0 0 100%; scroll-snap-align:center;
+        display:flex; align-items:center; justify-content:center;
+        height:100%;
+      }
+      .wp-pm2-lb-slide img {
+        max-width:100%; max-height:100%; object-fit:contain;
+      }
+
       #wp-pm2-reviews-avatars .wp-pm2-fp-avatar.wp-pm2-skel {
         background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
         background-size:400% 100%;
@@ -963,6 +1010,12 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
     this._wireTagToggle(el);
+
+    // Lightbox: cerrar con el botón X o tocando el fondo (no la imagen)
+    el.querySelector('#wp-pm2-lb-close').addEventListener('click', () => this._closeLightbox());
+    el.querySelector('#wp-pm2-lightbox').addEventListener('click', (e) => {
+      if (e.target.id === 'wp-pm2-lightbox') this._closeLightbox();
+    });
 
     el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => {
       console.log('[PM2] Planear visita:', this._place);
@@ -1339,6 +1392,7 @@ export class PlaceModal2 {
   }
 
   hide() {
+    this._closeLightbox();
     this._el.classList.remove('visible');
     document.body.style.overflow = '';
     document.body.classList.remove('wp-pm-open');
@@ -1399,13 +1453,15 @@ export class PlaceModal2 {
     // Photo strip
     const stripEl = $('wp-pm2-strip');
     stripEl.innerHTML = '';
-    photos.forEach(url => {
+    this._lbPhotos = photos; // para el lightbox
+    photos.forEach((url, i) => {
       const img = document.createElement('img');
       img.alt = ''; img.loading = 'lazy';
       this._skelOn(img);
       img.onload  = () => this._skelOff(img);
       img.onerror = () => this._skelOff(img);
       img.src = url;
+      img.addEventListener('click', () => this._openLightbox(i));
       stripEl.appendChild(img);
     });
 
@@ -2032,6 +2088,51 @@ export class PlaceModal2 {
       panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
     }
     this._buildReviewsHeader(place); // refresca el conteo del tab WhatsPlan
+  }
+
+  // Lightbox — carrusel de fotos a pantalla completa. Arranca en el índice
+  // de la foto que se tocó, con scroll-snap para el swipe entre fotos.
+  _openLightbox(startIndex) {
+    const photos = this._lbPhotos || [];
+    if (!photos.length) return;
+    const lb    = this._el.querySelector('#wp-pm2-lightbox');
+    const track = this._el.querySelector('#wp-pm2-lb-track');
+    const counter = this._el.querySelector('#wp-pm2-lb-counter');
+
+    track.innerHTML = '';
+    photos.forEach(url => {
+      const slide = document.createElement('div');
+      slide.className = 'wp-pm2-lb-slide';
+      const img = document.createElement('img');
+      img.src = url; img.alt = '';
+      slide.appendChild(img);
+      track.appendChild(slide);
+    });
+
+    const updateCounter = () => {
+      const i = Math.round(track.scrollLeft / track.clientWidth);
+      counter.textContent = `${Math.min(i + 1, photos.length)} / ${photos.length}`;
+    };
+    track.onscroll = () => {
+      clearTimeout(this._lbScrollTimer);
+      this._lbScrollTimer = setTimeout(updateCounter, 50);
+    };
+
+    lb.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    // Saltar directo al índice tocado, sin animación
+    requestAnimationFrame(() => {
+      track.scrollLeft = startIndex * track.clientWidth;
+      updateCounter();
+    });
+  }
+
+  _closeLightbox() {
+    const lb = this._el.querySelector('#wp-pm2-lightbox');
+    lb.classList.remove('visible');
+    document.body.style.overflow = '';
+    const track = this._el.querySelector('#wp-pm2-lb-track');
+    track.innerHTML = ''; // libera memoria de las imágenes
   }
 
   isVisible() { return this._el?.classList.contains('visible'); }
