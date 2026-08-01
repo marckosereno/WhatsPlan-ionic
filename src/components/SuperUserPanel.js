@@ -1886,8 +1886,14 @@ export class SuperUserPanel {
           dragActive = false;
           clearTimeout(pressTimer);
           pressTimer = setTimeout(() => {
-            // Se cumplió el long-press sin moverse — recién ahí arranca el drag
+            // Se cumplió el long-press sin moverse — recién ahí arranca el drag.
+            // Clave: recién ACÁ bloqueamos el scroll nativo (touch-action:none).
+            // Antes tenía pan-x desde el arranque, y el navegador tomaba
+            // cualquier movimiento horizontal como scroll antes de que
+            // nuestro preventDefault() llegara a tiempo — por eso soltaba
+            // en el mismo lugar.
             dragActive = true;
+            item.style.touchAction = 'none';
             order = items.map(it => parseInt(it.getAttribute('data-idx')));
             item.setPointerCapture(pointerId);
             item.style.zIndex = '20';
