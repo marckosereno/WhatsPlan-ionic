@@ -1,1709 +1,2038 @@
-import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
-// ====================================================================
-// WHATSPLAN — MapView.js
-// Mapa Carto Positron + Blink Light + pins + labels + landmarks
-// ====================================================================
+// ══════════════════════════════════════════════════════════════════════
+// WHATSPLAN — PlaceModal2.js  (diseño alternativo, Google Maps-inspired)
+// ══════════════════════════════════════════════════════════════════════
+import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
+import { ReviewService }               from '/src/services/ReviewService.js';
+import { ActivityService }             from '/src/services/SupabaseService.js';
+import { getAvatarUrl }                from '/src/services/AvatarService.js';
 
-import { ActivityService } from '/src/services/SupabaseService.js';
-import { LandmarkService, CustomPlaceService } from '/src/services/SuperUserService.js';
-import { getSubcategoriesMap } from '/src/services/CategoryService.js';
-
-const CENTER_LNG = -97.9504;
-const CENTER_LAT =  26.0520;
-const ZOOM       = 15;
-const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
-
-const BL_BG       = '#f0ece0';
-const BL_LAND     = '#f0ece0';
-const BL_WATER    = '#3b82f6';  // azul cielo vibrante
-const BL_PARK     = '#5cb85c';  // verde juego saturado
-const BL_BUILDING = '#ddd8cc';  // edificios más visibles
-const BL_TEXT     = '#2d2d2d';
-const BL_HALO     = 'rgba(240,237,230,0.98)';
-const BENITO_LINE = '#7c6ef7';
-const BENITO_TEXT = '#5a4fcf';
-
-// CATEGORIES se carga dinámicamente desde Supabase via app.js
-// Fallback mínimo por si no hay conexión
-const CATEGORIES = {
-  RESTAURANTS:   { icon: '🍔',  icon3d: null },
-  HEALTH:        { icon: '🩺',  icon3d: null },
-  SHOPPING:      { icon: '🛍️', icon3d: null },
-  ENTERTAINMENT: { icon: '🎈',  icon3d: null },
-  PARKS:         { icon: '🌵',  icon3d: null },
-  WORKSHOPS:     { icon: '🔧',  icon3d: null },
-};
-
-// ── Buscar icon3d de la SUBCATEGORÍA del place (fallback si no hay foto) ──
-// ── Caché de subcategorías (dinámico desde Supabase) ────────────────
-let _subcatsMapCache   = null;
-let _subcatsMapPromise = null;
-function _ensureSubcatsLoaded() {
-  if (_subcatsMapPromise) return _subcatsMapPromise;
-  _subcatsMapPromise = getSubcategoriesMap()
-    .then(map => { _subcatsMapCache = map; return map; })
-    .catch(e => {
-      console.warn('⚠️ subcategorías:', e.message);
-      _subcatsMapCache   = {};
-      _subcatsMapPromise = null; // permitir reintento (ej: Supabase aún no inicializado)
-      return {};
-    });
-  return _subcatsMapPromise;
-}
-// NOTA: no se dispara aquí — se dispara desde loadCategory(), cuando Supabase
-// ya está garantizado inicializado. Disparar al importar el módulo fallaría
-// porque MapView.js se importa antes de que app.js llame initSupabase().
-
-// Llamar después de crear/editar/eliminar subcategorías en SuperUserPanel
-export function refreshSubcatsCache() {
-  _subcatsMapCache   = null;
-  _subcatsMapPromise = null;
-  return _ensureSubcatsLoaded();
-}
-
-function getSubcatIcon3d(place, catId) {
-  const list = (_subcatsMapCache || {})[catId];
-  if (!list || !place) return null;
-  let tags = place.subcategoryTags || place.subcategory_tags || '';
-  if (typeof tags === 'string') tags = tags.split(',').map(t => t.trim()).filter(Boolean);
-  if (!Array.isArray(tags) || !tags.length) return null;
-  for (const tag of tags) {
-    const found = list.find(s => s.value.toLowerCase() === String(tag).toLowerCase());
-    if (found && found.icon3d) return found.icon3d;
-  }
-  return null;
-}
-
-function buildIconHtml(icon3dUrl, fallbackEmoji, size = 20) {
-  if (icon3dUrl) {
-    return `<img src="${icon3dUrl}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='<span style=&quot;font-size:${Math.round(size*0.9)}px&quot;>${fallbackEmoji}</span>'">`;
-  }
-  return fallbackEmoji || '💎';
-}
-
-// ── Supabase resize ──────────────────────────────────────────────────
-function supabaseResize(url, width = 80, quality = 75, mode = 'contain') {
-  if (!url || !url.includes('supabase.co')) return url;
-  if (url.includes('/render/image/')) return url;
-  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-    + `?width=${width}&quality=${quality}&resize=${mode}`;
-}
-
-function proxyPhoto(url) {
-  if (!url) return null;
-  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 80, 75, 'contain');
-  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
-}
-
-// ── Proxy de mayor resolución para el minicard (44px CSS → necesita más detalle) ──
-function proxyPhotoCard(url) {
-  if (!url) return null;
-  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 120, 85, 'contain');
-  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
-}
-
-// ── Fade-in de foto en pin ───────────────────────────────────────────
-function applyPhotoToPin(photoUrl, el) {
-  const pi = el.querySelector('.pin-inner');
-  if (!pi || pi.classList.contains('loaded')) return;
-  pi.style.background = `url('${photoUrl}') center/cover no-repeat`;
-  pi.innerHTML        = '';
-  pi.classList.remove('loading');
-  pi.classList.add('loaded');
-  // No mostrar la foto si el marcador está en modo punto (state 1) —
-  // el wrapper tiene overflow:hidden y opacity:0 en pi, respetarlo
-  const markerEl = el.closest('.place-marker-el') || el;
-  if (markerEl._wpState === 1) {
-    pi.style.opacity = '0';
-  } else {
-    pi.style.opacity = '0';
-    requestAnimationFrame(() => { pi.style.opacity = '1'; });
-  }
-}
-
-function applyErrorToPin(el) {
-  const pi = el.querySelector('.pin-inner');
-  if (!pi) return;
-  pi.classList.remove('loading');
-  pi.style.background = 'transparent';
-}
-
-// ── Minicard: si la foto falla, reemplazar con ícono (subcategoría > emoji) ──
-// Usa DOM APIs reales — evita anidar comillas/backticks en strings HTML.
-window._wpMcImgError = function(imgEl) {
-  const wrap = imgEl.parentNode;
-  if (!wrap) return;
-  const icon3d = imgEl.getAttribute('data-fb-icon') || '';
-  const emoji  = imgEl.getAttribute('data-fb-emoji') || '💎';
-  const bg     = imgEl.getAttribute('data-fb-bg') || 'rgba(0,0,0,0.05)';
-  wrap.style.animation = 'none';
-  wrap.style.background = bg;
-  wrap.innerHTML = '';
-  wrap.style.display = 'flex';
-  wrap.style.alignItems = 'center';
-  wrap.style.justifyContent = 'center';
-  if (icon3d) {
-    const img = document.createElement('img');
-    img.src = icon3d;
-    img.style.width = '26px'; img.style.height = '26px'; img.style.objectFit = 'contain';
-    img.onerror = function() { wrap.textContent = emoji; wrap.style.fontSize = '22px'; };
-    wrap.appendChild(img);
-  } else {
-    wrap.textContent = emoji;
-    wrap.style.fontSize = '22px';
-  }
-};
-
-// ── Estilos de animación landmarks ──────────────────────────────────
-function injectLandmarkStyles() {
-  if (document.getElementById('lm-styles')) return;
-  const s = document.createElement('style');
-  s.id = 'lm-styles';
-  s.textContent = `
-    @keyframes lmFloat {
-      0%,100% { transform: translateY(0px); }
-      50%      { transform: translateY(-5px); }
-    }
-    @keyframes lmPulse {
-      0%,100% { transform: scaleX(1);    opacity: 0.3; }
-      50%      { transform: scaleX(0.75); opacity: 0.15; }
-    }
-    @keyframes wp-mc-skeleton {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    .lm-wrap        { display:flex;flex-direction:column;align-items:center;cursor:pointer;overflow:visible; }
-    .lm-inner       { animation:lmFloat 3s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
-    .lm-inner-slow  { animation:lmFloat 2.6s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
-    .lm-shadow      { animation:lmPulse 3s ease-in-out infinite;border-radius:50%;background:rgba(0,0,0,0.3); }
-    .lm-shadow-slow { animation:lmPulse 2.6s ease-in-out infinite;border-radius:50%;background:rgba(0,0,0,0.25); }
-    body.map-dragging .lm-inner,
-    body.map-dragging .lm-inner-slow,
-    body.map-dragging .lm-shadow,
-    body.map-dragging .lm-shadow-slow { animation-play-state:paused; }
-  `;
-  document.head.appendChild(s);
-}
-
-// ====================================================================
-export class MapView {
-  constructor() {
-    // CATEGORIES accesible como propiedad de instancia para que app.js pueda actualizarla
-    this.CATEGORIES = {
-      RESTAURANTS:   { icon: '🍔',  icon3d: null },
-      HEALTH:        { icon: '🩺',  icon3d: null },
-      SHOPPING:      { icon: '🛍️', icon3d: null },
-      ENTERTAINMENT: { icon: '🎈',  icon3d: null },
-      PARKS:         { icon: '🌵',  icon3d: null },
-      WORKSHOPS:     { icon: '🔧',  icon3d: null },
-    };
-    this.map             = null;
-    this.markers         = [];
-    this.markerEls       = [];
-    this.allPlaces       = [];
-    this.activities      = [];
-    this.landmarkMarkers = [];
-    this.currentCatId    = null;
-    this.currentCatData  = null;
-    this.miniCardMarker  = null;
-    this.miniCardIndex   = -1;
-    this.miniCardPlace   = null;
-    this.onPlaceSelect   = null;
-    this._labelTimers    = [];
-    this._initMap();
+export class PlaceModal2 {
+  constructor(opts = {}) {
+    this.onPlaceSelect  = opts.onPlaceSelect  || null;
+    this.getCurrentUser = opts.getCurrentUser || (() => null);
+    this.proxyPhoto     = opts.proxyPhoto     || (u => u);
+    this._place         = null;
+    this._el            = null;
+    this._build();
   }
 
-  // ── Haptic — igual que PWA original ─────────────────────────────
-  haptic(type = 'tap') {
-    if (!navigator.vibrate) return;
-    const patterns = {
-      tap: 15, select: 12, snap: 25,
-      action: [30, 20, 60], longpress: [40, 30, 40], light: 10
-    };
-    navigator.vibrate(patterns[type] ?? type);
-  }
+  // ── BUILD ─────────────────────────────────────────────────────────
+  _build() {
+    if (document.getElementById('wp-pm2')) return;
+    const el = document.createElement('div');
+    el.id = 'wp-pm2';
+    el.innerHTML = `
+      <div id="wp-pm2-backdrop"></div>
+      <div id="wp-pm2-card">
 
-  // ── Init mapa ────────────────────────────────────────────────────
-  _initMap() {
-    injectLandmarkStyles();
-
-    this.map = new maplibregl.Map({
-      container:             'map-container',
-      style:                 MAP_STYLE,
-      center:                [CENTER_LNG, CENTER_LAT],
-      zoom:                  ZOOM,
-      minZoom:               12,      // no alejarse demasiado
-      maxZoom:               19,
-      maxBounds:             [        // restricción a Nuevo Progreso ±18km
-        [-98.1310, 25.9300],          // SW
-        [-97.7702, 26.1900]           // NE
-      ],
-      attributionControl:    false,
-      keyboard:              false,
-      dragRotate:            false,
-      pitchWithRotate:       false,
-      pitch:                 0,
-      renderWorldCopies:     false,   // sin copias del mundo
-      maxTileCacheSize:      20,
-      fadeDuration:          0,
-      preserveDrawingBuffer: false,
-    });
-
-    this.map.on('load', () => {
-      console.log('✅ Mapa listo');
-
-      // Placeholder transparente para iconos del sprite no disponibles
-      this.map.on('styleimagemissing', (e) => {
-        try { this.map.addImage(e.id, { width:1, height:1, data:new Uint8Array(4) }); } catch(_) {}
-      });
-
-
-
-      // Restaurar mapa al volver a la app (evita pantalla en blanco)
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          console.log('📱 App visible, refrescando mapa...');
-          setTimeout(() => {
-            try {
-              this.map.resize();
-              // Si hay una categoría seleccionada pero no hay marcadores, recargar
-              if (this.currentCatId && this.markers.length === 0) {
-                console.log('🔄 Recargando categoría tras pausa:', this.currentCatId);
-                this.loadCategory(this.currentCatId);
-              }
-            } catch(e) { console.error('Error al redimensionar mapa:', e); }
-          }, 300);
-        }
-      });
-      this._applyBlinkLight();
-      this._loadLandmarks();
-      this._loadActivities();
-
-      // Drag pause para animaciones
-      this.map.on('dragstart', () => { document.body.classList.add('map-dragging'); });
-      this.map.on('dragend', () => { document.body.classList.remove('map-dragging'); });
-
-      // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
-      const _featuredCheck = () => {
-        if (this.map.getZoom() >= 17) {
-          this._checkFeaturedNearCenter();
-        } else if (this._featuredHighlightEl) {
-          // Al hacer zoom-out por debajo de 17, limpiar highlight
-          this._clearFeaturedHighlight();
-        }
-      };
-      this.map.on('move', _featuredCheck);
-      this.map.on('zoom', _featuredCheck);
-
-      // CSS para highlight
-      if (!document.getElementById('featured-highlight-styles')) {
-        const fs = document.createElement('style');
-        fs.id = 'featured-highlight-styles';
-        fs.textContent = `
-          .marker-highlighted .place-pin-wrapper {
-            box-shadow: 0 0 0 2.5px #FF6D00, 0 0 0 5px rgba(255,109,0,0.25), 0 4px 18px rgba(255,109,0,0.35) !important;
-            transition: box-shadow 0.2s ease;
-          }
-          @keyframes featuredNameIn {
-            from { opacity:0; transform:translateX(-50%) translateY(4px); }
-            to   { opacity:1; transform:translateX(-50%) translateY(0); }
-          }
-        `;
-        document.head.appendChild(fs);
-      }
-
-      // Badge visible en zoom ≥ 15
-      let _zt = null;
-      this.map.on('zoom', () => {
-        if (_zt) return;
-        _zt = setTimeout(() => {
-          _zt = null;
-          const show = this.map.getZoom() >= 15 ? '1' : '0';
-          document.querySelectorAll('.place-act-badge').forEach(b => b.style.opacity = show);
-        }, 80);
-      });
-
-      // Labels: solo recalcular cuando el zoom cambia — no en cada pan/drag
-      // En moveend solo actualizar visibilidad de pines (dot/full/hidden)
-      this._lastLabelZoom = null;
-      this.map.on('zoomend', () => {
-        this._updatePinsByZoom();
-        this._updateLabelsProgressive();
-        this._lastLabelZoom = this.map.getZoom();
-      });
-      this.map.on('moveend', () => {
-        this._updatePinsByZoom();
-        this._updateLabelsProgressive();
-      });
-
-      // Ghost-pan fix
-      const c = this.map.getContainer();
-      c.addEventListener('touchstart', (e) => {
-        if (!e.target.closest('.maplibregl-marker')) return;
-        let moved = false;
-        const onMove = () => { moved = true; };
-        const onEnd  = () => {
-          c.removeEventListener('touchmove', onMove, { capture: true });
-          c.removeEventListener('touchend',  onEnd,  { capture: true });
-          if (!moved) e.target.dispatchEvent(new TouchEvent('touchcancel', {
-            bubbles: true, cancelable: false,
-            touches: [], targetTouches: [], changedTouches: e.changedTouches
-          }));
-        };
-        c.addEventListener('touchmove', onMove, { capture: true, passive: true });
-        c.addEventListener('touchend',  onEnd,  { capture: true, passive: true });
-      }, { passive: true, capture: true });
-    });
-
-    this.map.on('click', (e) => {
-      if (e.originalEvent.target.closest('.minicard-marker-content')) return;
-      // Si el SearchBar está activo, él maneja el cierre de minicard
-      // para poder re-aplicar highlights correctamente
-      if (window.wpApp && window.wpApp.searchBar && window.wpApp.searchBar.isActive()) {
-        window.wpApp.searchBar.onMapClick();
-        return;
-      }
-      this._closeMiniCard();
-    });
-  }
-
-  _applyBlinkLight() {
-    try {
-      const style = this.map.getStyle();
-      if (!style?.layers) return;
-      const map = this.map;
-
-      // Quitar terrain 3D si el estilo lo trae configurado
-      try { map.setTerrain(null); } catch(_){}
-
-      style.layers.forEach(layer => {
-        const id  = layer.id;
-        const idL = id.toLowerCase();
-
-        // ── Edificios 3D (building-3d, fill-extrusion) → aplanar, NO eliminar ──
-        if (layer.type === 'fill-extrusion') {
-          if (idL.includes('building')) {
-            try {
-              map.setPaintProperty(id,'fill-extrusion-height',0);
-              map.setPaintProperty(id,'fill-extrusion-base',0);
-              map.setPaintProperty(id,'fill-extrusion-color','#d8d2c4');
-              map.setPaintProperty(id,'fill-extrusion-opacity',0.85);
-            } catch(_){}
-            // Outline manual — fill-extrusion no soporta line-color nativo
-            const outlineId = id + '-wp-outline';
-            if (!map.getLayer(outlineId)) {
-              try {
-                map.addLayer({
-                  id: outlineId, type: 'line',
-                  source: layer.source, 'source-layer': layer['source-layer'],
-                  minzoom: layer.minzoom || 0,
-                  paint: { 'line-color':'#c4bdaf', 'line-opacity':0.6, 'line-width':0.5 }
-                });
-              } catch(_){}
-            }
-            return;
-          }
-          // Otras extrusiones (terrain, etc.) que no sean building → eliminar
-          try { map.removeLayer(id); } catch(_){}
-          return;
-        }
-        if (layer.type === 'hillshade') { try { map.removeLayer(id); } catch(_){} return; }
-
-        // ── Fondo ──────────────────────────────────────────────
-        if (layer.type === 'background')
-          { try { map.setPaintProperty(id,'background-color','#f2efe8'); } catch(_){} return; }
-
-        // ── Agua ────────────────────────────────────────────────
-        if (layer.type === 'fill' && (idL.includes('water') || idL.includes('ocean') || idL.includes('lake')))
-          { try { map.setPaintProperty(id,'fill-color','#5bb8f5'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
-        if (layer.type === 'line' && (idL.startsWith('water') || idL.includes('waterway') || idL.includes('river')))
-          { try { map.setPaintProperty(id,'line-color','#5bb8f5'); } catch(_){} return; }
-
-        // ── Parques / vegetación — tono suave ──────────────────
-        if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
-          { try { map.setPaintProperty(id,'fill-color','#a8d5a2'); map.setPaintProperty(id,'fill-opacity',0.65); } catch(_){} return; }
-
-        // ── Landuse / manzanas — relleno sutil tipo Apple Maps ──
-        if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
-          { try {
-              map.setPaintProperty(id,'fill-color','#e6e1d6');
-              map.setPaintProperty(id,'fill-opacity',0.5);
-              map.setLayerZoomRange(id, layer.minzoom || 0, 24); // quitar maxzoom:12 del estilo original
-            } catch(_){} return; }
-        // Boundaries administrativos — ocultar (no son manzanas)
-        if (layer.type === 'line' && idL.includes('boundary'))
-          { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
-
-        // ── Edificios fill (zoom bajo) — color + outline nativo ──
-        if (layer.type === 'fill' && idL.includes('building'))
-          { try {
-              map.setPaintProperty(id,'fill-color','#d8d2c4');
-              map.setPaintProperty(id,'fill-opacity',0.85);
-              map.setPaintProperty(id,'fill-outline-color','#c4bdaf');
-            } catch(_){} return; }
-
-        // ── Calles: casing — ocultar para look plano (sin doble sombra 3D) ──
-        if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
-          { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
-
-        // ── Calles: fill — cartoon gruesas y redondeadas ────────
-        if (layer.type === 'line' && (idL.includes('road') || idL.includes('highway') || idL.includes('street') || idL.includes('transport') || idL.includes('tunnel'))) {
-          try {
-            const isMoto = idL.includes('motor') || idL.includes('motorway');
-            const isPrim = idL.includes('primary') || idL.includes('trunk');
-            const isSec  = idL.includes('secondary') || idL.includes('tertiary');
-            map.setLayoutProperty(id,'line-cap','round');
-            map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]); }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]); }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]); }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]); }
-          } catch(_){} return;
-        }
-
-        // ── Texto ───────────────────────────────────────────────
-        if (layer.type === 'symbol') {
-          try {
-            const tt = map.getLayoutProperty(id,'text-transform');
-            if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
-
-            const isRoad   = idL.includes('road') || idL.includes('street') || idL.includes('transport') || idL.includes('highway');
-            const isWaterL = idL.includes('water');
-
-            if (isRoad) {
-              map.setLayoutProperty(id,'text-size',9);
-              map.setPaintProperty(id,'text-color','#9a9080');
-              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
-              map.setPaintProperty(id,'text-halo-width',1.2);
-            } else if (isWaterL) {
-              map.setLayoutProperty(id,'text-size',10);
-              map.setPaintProperty(id,'text-color','#2a6db5');
-              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
-            } else {
-              // Ocultar TODO lo demás: parques, ciudades (Nuevo Progreso), POIs, etc.
-              map.setPaintProperty(id,'text-opacity',0);
-              map.setPaintProperty(id,'icon-opacity',0);
-            }
-          } catch(_){}
-        }
-      });
-
-      console.log('✅ WhatsPlan gamified style aplicado');
-    } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
-  }
-
-  // ── Datos ─────────────────────────────────────────────────────────
-  async _loadActivities() {
-    try {
-      const acts = await ActivityService.getActiveActivities();
-      this.activities = acts || [];
-      this.renderActivities(this.activities, window.wpApp?.currentUser?.id);
-    } catch(e) { console.warn('⚠️ Actividades:', e.message); }
-
-    // Realtime: cualquier cambio en activities → recargar y re-renderizar
-    if (!this._activitiesSub) {
-      console.log('🔌 Suscribiendo a Realtime de activities...');
-      this._activitiesSub = ActivityService.subscribeToActivities(async (payload) => {
-        console.log('🔔 Realtime activities — evento recibido:', payload?.eventType, payload);
-        try {
-          const acts = await ActivityService.getActiveActivities();
-          this.activities = acts || [];
-          this.renderActivities(this.activities, window.wpApp?.currentUser?.id);
-        } catch(e) { console.warn('⚠️ Realtime actividades:', e.message); }
-      });
-      console.log('🔌 Suscripción registrada:', this._activitiesSub?.state || this._activitiesSub);
-    }
-  }
-
-  // ── Pines de actividad: custom points → pin propio; lugar real → badge ──
-  renderActivities(activities, currentUserId) {
-    if (this.activityMarkers) this.activityMarkers.forEach(m => m.remove());
-    this.activityMarkers = [];
-    this._refreshActivityBadges(); // badges sobre pines de lugares reales (ya existente)
-
-    if (!activities || !activities.length) return;
-
-    // Agrupar por punto custom (mismas coords ≈ misma actividad/grupo)
-    const groups = new Map();
-    activities.forEach(a => {
-      if (!a.lat || !a.lng) return;
-      if (a.place_id) return; // lugar real → ya cubierto por el badge, no crear pin custom
-      const key = `${parseFloat(a.lat).toFixed(4)},${parseFloat(a.lng).toFixed(4)}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(a);
-    });
-    if (!groups.size) return;
-
-    const R3D = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
-    const TYPE_ICONS = {
-      food: R3D+'Hamburger/3D/hamburger_3d.png', drinks: R3D+'Hot beverage/3D/hot_beverage_3d.png',
-      explore: R3D+'Rocket/3D/rocket_3d.png', hangout: R3D+'Balloon/3D/balloon_3d.png',
-      shop: R3D+'Shopping bags/3D/shopping_bags_3d.png', music: R3D+'Musical note/3D/musical_note_3d.png',
-      spa: R3D+'Person getting massage/3D/person_getting_massage_3d.png',
-      sport: R3D+'Person running/3D/person_running_3d.png', photo: R3D+'Camera with flash/3D/camera_with_flash_3d.png',
-    };
-    const TYPE_FALLBACK = { food:'🍔', drinks:'🧋', explore:'🚀', hangout:'🎈', shop:'🛍️', music:'🎵', spa:'💆', sport:'🏃', photo:'📸' };
-
-    if (!document.getElementById('wp-act-float-keyframes')) {
-      const s = document.createElement('style');
-      s.id = 'wp-act-float-keyframes';
-      s.textContent = `
-        @keyframes wpActFloat   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
-        @keyframes wpActShadow  { 0%,100% { transform: scaleX(1); opacity: 0.35; } 50% { transform: scaleX(0.55); opacity: 0.15; } }
-        .wp-act-pin    { animation: wpActFloat 2.4s ease-in-out infinite; }
-        .wp-act-shadow { animation: wpActShadow 2.4s ease-in-out infinite; }
-        body.map-dragging .wp-act-pin, body.map-dragging .wp-act-shadow { animation-play-state: paused; }
-      `;
-      document.head.appendChild(s);
-    }
-
-    groups.forEach(groupActs => {
-      const activity = groupActs[0];
-      const count    = groupActs.length;
-      const hasMine  = groupActs.some(a => a.creator_id === currentUserId);
-      const badgeBg  = hasMine ? '#1a5cf5' : '#7c5cf5';
-      const badgeTxt = count > 1 ? `${count}` : `${activity.participants?.length || 0}/${activity.max_participants || '∞'}`;
-      const fallback = TYPE_FALLBACK[activity.type] || '💎';
-      const iconUrl  = activity.icon_url || TYPE_ICONS[activity.type] || (R3D+'Balloon/3D/balloon_3d.png');
-
-      const el = document.createElement('div');
-      el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
-      el.innerHTML = `
-        <div class="wp-act-pin" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
-          <img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">
-          <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
+        <!-- WHITE OVERLAY grows upward on scroll -->
+<!-- TOPBAR -->
+        <div id="wp-pm2-topbar">
+          <button id="wp-pm2-back">
+            <svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
+          </button>
+          <span id="wp-pm2-topbar-title"></span>
+          <div id="wp-pm2-topbar-actions">
+            <button id="wp-pm2-topbar-share" class="wp-pm2-tb-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+            </button>
+            <button id="wp-pm2-topbar-more" class="wp-pm2-tb-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+          </div>
         </div>
-        <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
-      `;
+        <!-- FADE — degradado blanco pegado debajo del topbar; el contenido
+             que scrollea ahí se desvanece gradual en vez de cortarse -->
+        <div id="wp-pm2-topbar-fade"></div>
+        <div id="wp-pm2-bottom-fade"></div>
 
-      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([activity.lng, activity.lat])
-        .addTo(this.map);
+        <!-- ACTIVITY STACK — mini-fichas en abanico (fixed, no ocupa lugar
+             en el layout). Muestran actividades creadas en este lugar; si
+             no hay ninguna, invita a crear una. Se ocultan a la derecha
+             con el scroll y se restauran al volver arriba. -->
+        <div id="wp-pm2-activity-stack"></div>
 
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.dispatchEvent(new CustomEvent('wp:activity-tap', { detail: { activity, group: groupActs } }));
-      });
+        <!-- CONTENT AREA — hero (overlay, absolute) encima de body (absolute
+             inset:0, ocupa TODA el área incl. detrás del hero). Así el
+             spacer dentro del body queda tapado por el hero al inicio, sin
+             espacio "de más". -->
+        <div id="wp-pm2-content-area">
 
-      this.activityMarkers.push(marker);
-    });
+          <!-- HERO — viewport que se encoge. Adentro, DOS wrappers de alto
+               FIJO (fullH) que se trasladan hacia arriba a DISTINTA
+               velocidad:
+               - hero-inner: solo la FOTO, parallax lento
+               - hero-overlay-fast: gradiente/sombra + título/rating, a la
+                 misma velocidad que el contenido real — así llegan juntos
+                 arriba y se disuelven en la sombra del topbar -->
+          <div id="wp-pm2-hero">
+            <div id="wp-pm2-hero-inner">
+              <div id="wp-pm2-hero-bg"></div>
+            </div>
+            <div id="wp-pm2-hero-overlay-fast">
+              <div id="wp-pm2-hero-gradient"></div>
+              <div id="wp-pm2-hero-bottom">
+                <span id="wp-pm2-featured-badge" class="wp-pm2-featured-badge" style="display:none"></span>
+                <h1 id="wp-pm2-name"></h1>
+                <div id="wp-pm2-meta">
+                  <span id="wp-pm2-cat"></span>
+                  <span class="wp-pm2-dot">•</span>
+                  <span id="wp-pm2-rating-hero"></span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-    console.log(`✅ ${this.activityMarkers.length} pines de actividad en el mapa`);
+          <!-- SCROLLABLE BODY — cubre TODA el content-area (incl. detrás del
+               hero); el spacer (alto = travel) queda tapado por el hero -->
+          <div id="wp-pm2-body">
+
+          <!-- SPACER — alto = recorrido del hero (travel); queda tapado -->
+          <div id="wp-pm2-scroll-spacer"></div>
+
+          <!-- ETIQUETAR LUGAR — pausado por ahora (aún decidiendo dónde
+               ubicarlo). El CSS/JS sigue en el archivo (#wp-pm2-tag-row,
+               _wireTagToggle, _renderTagScroll, _loadTags) para reactivarlo
+               fácil el día que se defina su lugar — por eso no se borró,
+               solo se sacó el nodo del DOM para no dejar espacio vacío. -->
+
+          <!-- REVIEWS SUMMARY — avatares (máx 6) + cantidad de reseñas -->
+          <div id="wp-pm2-reviews-summary" style="display:none">
+            <div id="wp-pm2-reviews-avatars"></div>
+            <span id="wp-pm2-reviews-count"></span>
+            <button id="wp-pm2-add-review" class="wp-pm2-pill-btn">Añadir reseña</button>
+          </div>
+
+          <!-- AI DESCRIPTION — generada con IA en base a las reseñas de Google,
+               misma función que PlaceModal1 (_populateAI + /api/groq-description) -->
+          <div class="wp-pm2-ai-block" id="wp-pm2-ai-block" style="display:none">
+            <div class="wp-pm2-ai-header">
+              <svg class="wp-pm2-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path class="wp-pm2-spark wp-pm2-spark-1" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path class="wp-pm2-spark wp-pm2-spark-2" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path class="wp-pm2-spark wp-pm2-spark-3" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
+              <span class="wp-pm2-ai-badge">Descripción generada con IA</span>
+            </div>
+            <div class="wp-pm2-ai-text" id="wp-pm2-ai-text"></div>
+            <div class="wp-pm2-ai-skeleton" id="wp-pm2-ai-skeleton">
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line"></div>
+              <div class="wp-pm2-ai-sk-line" style="width:60%"></div>
+            </div>
+          </div>
+
+          <!-- CTA ROW — oculto por ahora -->
+          <div class="wp-pm2-row" id="wp-pm2-cta-row" style="display:none">
+            <button id="wp-pm2-fuiste">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              ¿Fuiste?
+            </button>
+            <button id="wp-pm2-share" class="wp-pm2-icon-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+            </button>
+          </div>
+
+          <!-- ACTION PILLS -->
+          <div id="wp-pm2-actions">
+            <button class="wp-pm2-action" id="wp-pm2-map-btn">
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg></span>
+              Ver en el mapa
+            </button>
+            <button class="wp-pm2-action" id="wp-pm2-call-btn" style="display:none">
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.84a16 16 0 0 0 6 6l.86-.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+              Llamar
+            </button>
+            <button class="wp-pm2-action" id="wp-pm2-web-btn" style="display:none">
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+              Sitio web
+            </button>
+            <button class="wp-pm2-action" id="wp-pm2-more-btn">
+              <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>
+            </button>
+          </div>
+
+          <!-- HOURS — colapsable, igual que PlaceModal1 -->
+          <div class="wp-pm2-hours-block" id="wp-pm2-hours" style="display:none">
+            <div class="wp-pm2-hours-trigger" id="wp-pm2-hours-trigger">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#6b7280"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 100-16 8 8 0 000 16zm1-8V7a1 1 0 00-2 0v5a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L13 11.586z"/></svg>
+              <span id="wp-pm2-hours-text"></span>
+              <span class="wp-pm2-hours-status" id="wp-pm2-hours-status"></span>
+              <svg class="wp-pm2-chevron" id="wp-pm2-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="wp-pm2-hours-list" id="wp-pm2-hours-list"></div>
+          </div>
+
+          <!-- PHOTO STRIP -->
+          <div class="wp-pm2-section-heading">Fotos</div>
+          <div id="wp-pm2-strip"></div>
+
+          <!-- ADDRESS + MAP — misma fuente que el trigger de horarios -->
+          <div class="wp-pm2-section-heading">Ubicación</div>
+          <div id="wp-pm2-address-row" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg>
+            <span id="wp-pm2-address"></span>
+          </div>
+
+          <!-- MAP PREVIEW — zoom 14, pin propio con el emoji de categoría -->
+          <div id="wp-pm2-map-preview">
+            <div id="wp-pm2-map-canvas"></div>
+          </div>
+
+          <!-- DESCRIPTION -->
+          <div id="wp-pm2-desc-wrap" style="display:none">
+            <p id="wp-pm2-desc"></p>
+            <button id="wp-pm2-leer-mas" style="display:none">Leer más</button>
+          </div>
+
+          <!-- MENCIONADO EN -->
+          <div id="wp-pm2-mentions" style="display:none">
+            <div class="wp-pm2-section-title">Mencionado en</div>
+            <div id="wp-pm2-mentions-list"></div>
+          </div>
+
+          <!-- REVIEWS -->
+          <div id="wp-pm2-reviews-section">
+            <div class="wpr-header-row" id="wpr-header-row"></div>
+            <div id="wp-pm2-comment-input-row">
+              <img id="wp-pm2-user-avatar" src="" alt="">
+              <div id="wp-pm2-comment-box">
+                <span>Añade un comentario...</span>
+                <button id="wp-pm2-comment-send">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 19V5M5 12l7-7 7 7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="wpr-panel-google"></div>
+            <div id="wpr-panel-community" style="display:none"></div>
+          </div>
+
+          <!-- BOTTOM SPACER — deja aire para que el footer flotante no tape
+               el último contenido -->
+          <div style="height:96px"></div>
+        </div><!-- /body -->
+
+        </div><!-- /content-area -->
+
+        <!-- BOTTOM CTA -->
+        <div id="wp-pm2-footer">
+          <button id="wp-pm2-here-btn" title="Estoy aquí">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.574 21.819a.9.9 0 0 1-1.148 0C11.071 21.567 4 14.907 4 10.364a8 8 0 1 1 16 0c0 4.543-7.071 11.203-7.426 11.455ZM9 10a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z"/></svg>
+          </button>
+          <button id="wp-pm2-plan-btn">
+            <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>
+            Planear visita
+          </button>
+        </div>
+
+      </div><!-- /card -->
+    `;
+    document.body.appendChild(el);
+    this._el = el;
+    this._injectCSS();
+    this._wireEvents();
   }
 
-  async _loadLandmarks() {
-    try { this._renderLandmarks(await LandmarkService.getAll()); }
-    catch(e) { console.warn('⚠️ Landmarks:', e.message); }
-  }
+  // ── CSS ────────────────────────────────────────────────────────────
+  _injectCSS() {
+    if (document.getElementById('wp-pm2-css')) return;
 
-  async loadCategory(menuKey) {
-    this.currentCatId   = menuKey;
-    this.currentCatData = this.CATEGORIES[menuKey] || CATEGORIES[menuKey] || CATEGORIES['RESTAURANTS'];
-    this._clearPlaceMarkers();
-    try {
-      const _t  = Date.now();
-      const [res] = await Promise.all([
-        fetch(`/api/supabase-places?category=${menuKey}`),
-        _ensureSubcatsLoaded(), // garantizar caché de íconos listo antes de renderizar pines
-      ]);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      let custom = [];
-      try { custom = await CustomPlaceService.getByCategory(menuKey); } catch(_) {}
-      this.allPlaces = [...(json.places || []), ...custom];
-      this._renderPlaceMarkers(this.allPlaces);
-      // Notificar al SearchBar que el conteo cambió
-      document.dispatchEvent(new CustomEvent('wp:placesloaded', { detail: { count: this.allPlaces.length } }));
-    } catch(e) { console.error('❌ loadCategory:', e); }
-    if (this._allLandmarks) this._renderLandmarks([]);
-  }
-
-  // ── Markers ───────────────────────────────────────────────────────
-  _clearPlaceMarkers() {
-    if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
-    this._labelTimers = [];
-    this.markers.forEach(m => m?.remove());
-    this.markers = []; this.markerEls = [];
-    // Reset visibility state
-    document.querySelectorAll('.place-marker-el').forEach(e => { e._wpVisible = undefined; });
-    this._closeMiniCard();
-  }
-
-  _renderPlaceMarkers(places) {
-    const cat        = this.currentCatData;
-    const catIcon3d  = cat?.icon3d || null;
-    const catEmoji   = cat?.icon || '💎';
-
-    const bounds = new maplibregl.LngLatBounds();
-    let hasCoords = false;
-
-    places.forEach((place, index) => {
-      const lat = place.location?.lat ?? place.lat;
-      const lng = place.location?.lng ?? place.lng;
-      if (!lat || !lng) return;
-
-      const rawPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
-      const photoUrl = proxyPhoto(rawPhoto);
-
-      // Icono de fallback (subcategoría > categoría > emoji) — se calcula SIEMPRE,
-      // así sirve de respaldo si la foto existe pero falla al cargar (ej: Google sin API key)
-      const subIcon3d = getSubcatIcon3d(place, this.currentCatId);
-      const catIcon    = buildIconHtml(subIcon3d || catIcon3d, catEmoji, 20);
-
-      const el = document.createElement('div');
-      el.className = 'place-marker-el';
-      el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
-      el._place    = place;
-      // Tier para zoom dinámico: 0=featured, 1=top rated, 2=rated, 3=all
-      el._zoomTier = place.featured ? 0
-        : (parseFloat(place.rating) >= 4.2) ? 1
-        : (parseFloat(place.rating) >= 3.5) ? 2
-        : 3;
-
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // ── Reposicionar lugares (SuperUserPanel) ──────────────
-        if (this._dragModeActive) {
-          this.haptic('select');
-          this._selectPlaceForReposition(place, el, index);
-          return;
-        }
-        this.haptic('tap');
-
-        // Antes comparaba por referencia de objeto (this.miniCardMarker ===
-        // this.markers[index]), lo cual fallaba si el array de markers se
-        // reconstruye (nueva búsqueda/filtro) aunque sea el mismo lugar.
-        // Ahora comparamos por id estable del lugar + que el minicard siga
-        // realmente abierto — así el flujo es siempre: 1er tap → minicard,
-        // 2do tap en el MISMO pin (con el minicard ya abierto) → onPlaceSelect.
-        // (búsqueda o mapview normal: ambos muestran el minicard primero;
-        // la diferencia entre abrir la ficha directo o pasar por el minisnap
-        // la decide onPlaceSelect en app.js según si hay búsqueda activa)
-        const samePlaceId = this.miniCardPlace &&
-          (this.miniCardPlace.place_id || this.miniCardPlace.id) === (place.place_id || place.id);
-        if (this.miniCardMarker && samePlaceId) {
-          if (this.onPlaceSelect) this.onPlaceSelect(place);
-          return;
-        }
-        // Mismo protocolo que autocompletado: cerrar teclado y esperar
-        const vv  = window.visualViewport;
-        const kbH = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
-        const self = this;
-        if (kbH > 50 || window._wpKeyboardWasOpen) {
-          if (document.activeElement && document.activeElement.tagName === 'INPUT') {
-            document.activeElement.blur();
-          }
-          setTimeout(function() {
-            self._showMiniCard(place, index, rawPhoto);
-          }, 150);
-        } else {
-          this._showMiniCard(place, index, rawPhoto);
-        }
-      });
-
-      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .addTo(this.map);
-
-      el._marker = marker;
-
-      // Pre-calcular modo del label una sola vez — el elemento ya está en el DOM
-      // (addTo lo insertó), invisible (opacity:0/visibility:hidden del CSS inicial),
-      // pero medible. Guardamos si necesita 1 o 2 líneas en el elemento para que
-      // _updateLabelsProgressive solo aplique, nunca mida.
-      requestAnimationFrame(() => {
-        const label = el.querySelector('.place-pin-label');
-        if (!label) return;
-        // Medir con nowrap — el label ya tiene max-width:90px del buildPinHtml
-        const prev = label.style.cssText;
-        label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
-        el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
-        label.style.cssText = prev; // restaurar estado inicial
-      });
-
-      // Foto lazy con IntersectionObserver
-      if (photoUrl) {
-        if ('IntersectionObserver' in window) {
-          const obs = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (!entry.isIntersecting) return;
-              obs.disconnect();
-              const img = new Image();
-              img.onload  = () => applyPhotoToPin(photoUrl, el);
-              img.onerror = () => applyErrorToPin(el);
-              img.src = photoUrl;
-            });
-          }, { rootMargin: '200px' });
-          obs.observe(el);
-        } else {
-          const img = new Image();
-          img.onload  = () => applyPhotoToPin(photoUrl, el);
-          img.onerror = () => applyErrorToPin(el);
-          img.src = photoUrl;
-        }
-      }
-
-      this.markerEls.push(el);
-      this.markers.push(marker);
-      bounds.extend([lng, lat]);
-      hasCoords = true;
-    });
-
-    if (hasCoords) {
-      this.map.fitBounds(bounds, {
-        padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: 15,
-        minZoom: 15
-      });
+    // Fuentes: Instrument Serif (título del hero) + Inter (descripción y reseñas)
+    if (!document.getElementById('wp-pm2-fonts')) {
+      const pre1 = document.createElement('link');
+      pre1.rel = 'preconnect'; pre1.href = 'https://fonts.googleapis.com';
+      const pre2 = document.createElement('link');
+      pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = 'anonymous';
+      const fontLink = document.createElement('link');
+      fontLink.id = 'wp-pm2-fonts'; fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap';
+      document.head.appendChild(pre1);
+      document.head.appendChild(pre2);
+      document.head.appendChild(fontLink);
     }
-    this._refreshActivityBadges();
-    // Asignar zoom threshold fijo por pin (una vez) y aplicar
-    this._assignZoomThresholds();
-    this._updatePinsByZoom();
-    // Re-aplicar tras fitBounds (el zoom puede cambiar)
-    this.map.once('moveend', () => {
-      this._updatePinsByZoom();
-      this._updateLabelsProgressive();
-    });
+
+    const s = document.createElement('style');
+    s.id = 'wp-pm2-css';
+    s.textContent = `
+      #wp-pm2 {
+        display:none; position:fixed; inset:0; z-index:2100;
+        /* NO usar var(--wp-font) — esa variable está fijada globalmente a
+           Avenir en styles/app.css:330, así que su fallback nunca se
+           aplicaba y todo lo que hacía font-family:inherit heredaba
+           Avenir igual. Forzamos Inter Tight directo acá. */
+        font-family: 'Inter Tight', system-ui, sans-serif;
+        font-weight:400;
+      }
+      #wp-pm2.visible { display:block; }
+      #wp-pm2-backdrop {
+        position:absolute; inset:0; background:rgba(0,0,0,0.4);
+      }
+      #wp-pm2-card {
+        position:absolute; inset:0;
+        background:#fff;
+        display:flex; flex-direction:column;
+        overflow:hidden;
+        transform:translateY(100%);
+        transition:transform 0.38s cubic-bezier(0.32,0.72,0,1);
+      }
+      #wp-pm2-card > #wp-pm2-topbar { position:absolute; }
+      #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
+
+      /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
+      /* TOPBAR */
+      #wp-pm2-topbar {
+        position:fixed; top:0; left:0; right:0;
+        height:calc(68px + env(safe-area-inset-top,0px));
+        padding-top:env(safe-area-inset-top,0px);
+        display:flex; align-items:center;
+        padding-left:12px; padding-right:12px;
+        z-index:10; background:transparent;
+        overflow:hidden;
+      }
+      /* Topbar 100% transparente: no tiene fondo propio. La sombra usa el
+         mismo blur sutil (0.5px) + mask-image que la versión nativa de
+         app.css (ion-app::before) — acá con control propio para poder
+         reaccionar al scroll (la nativa es estática). */
+      #wp-pm2-topbar-fade {
+        position:fixed; top:0; left:0; right:0;
+        height:calc(env(safe-area-inset-top,20px) + 100px);
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.9) 0%,
+          rgba(255,255,255,0.5) 55%,
+          rgba(255,255,255,0) 100%);
+        backdrop-filter:blur(0.5px);
+        -webkit-backdrop-filter:blur(0.5px);
+        mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+        -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+        z-index:9; pointer-events:none;
+        opacity:0.4; /* JS la sube con el scroll */
+        transition:opacity 0.05s linear;
+      }
+
+      /* Sombra blanca en el borde inferior — igual que la del top pero
+         invertida (blanco abajo, transparente arriba), fija (no se anima
+         con el scroll). Vive DETRÁS de los botones flotantes del footer
+         (z-index menor) para que el contenido se pierda ahí suavemente. */
+      #wp-pm2-bottom-fade {
+        position:absolute;
+        left:0; right:0; bottom:0;
+        height:110px;
+        background:linear-gradient(to top,
+          rgba(255,255,255,0.95) 0%,
+          rgba(255,255,255,0.7) 45%,
+          rgba(255,255,255,0) 100%);
+        z-index:5; pointer-events:none;
+      }
+
+      /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
+      #wp-pm2-activity-stack {
+        position:fixed;
+        top:calc(78px + env(safe-area-inset-top,0px));
+        right:2px;
+        width:92px; height:118px;
+        z-index:6; pointer-events:none;
+        transform-origin:right center;
+        transition:transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease;
+      }
+      #wp-pm2-activity-stack .wp-pm2-activity-card {
+        position:absolute; inset:0;
+        border-radius:18px; padding:10px;
+        display:flex; flex-direction:column; justify-content:space-between;
+        box-shadow:0 8px 20px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.10);
+        pointer-events:auto; cursor:pointer;
+        transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(0.4);
+        opacity:0;
+        animation: wp-pm2-activity-in 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+        animation-delay: var(--delay, 0s);
+      }
+      @keyframes wp-pm2-activity-in {
+        0%   { transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(0.4); opacity:0; }
+        60%  { opacity:1; }
+        100% { transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(1); opacity:1; }
+      }
+      .wp-pm2-activity-date {
+        display:flex; flex-direction:column; align-items:center; line-height:1;
+        background:rgba(255,255,255,0.35); border-radius:10px; padding:5px 8px;
+        align-self:flex-start; backdrop-filter:blur(4px);
+      }
+      .wp-pm2-activity-date .d { font-size:16px; font-weight:800; color:#fff; }
+      .wp-pm2-activity-date .m {
+        font-size:9px; font-weight:700; color:rgba(255,255,255,0.85);
+        text-transform:uppercase; letter-spacing:0.04em; margin-top:1px;
+      }
+      .wp-pm2-activity-title {
+        font-size:11.5px; font-weight:700; color:#fff; line-height:1.25;
+        text-shadow:0 1px 3px rgba(0,0,0,0.2);
+        display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+        overflow:hidden;
+      }
+      .wp-pm2-activity-people {
+        display:flex; align-items:center; gap:4px;
+      }
+      .wp-pm2-activity-avatar {
+        width:20px; height:20px; border-radius:50%;
+        border:1.5px solid rgba(255,255,255,0.85); object-fit:cover;
+      }
+      .wp-pm2-activity-people span {
+        font-size:10px; font-weight:700; color:rgba(255,255,255,0.9);
+      }
+      /* Estado vacío: invitación a crear actividad */
+      .wp-pm2-activity-empty {
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:6px; background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 8px,#eceef1 8px,#eceef1 16px);
+        border:1.5px dashed #c7cbd1;
+      }
+      .wp-pm2-activity-empty svg { color:#9ca3af; }
+      .wp-pm2-activity-empty span {
+        font-size:11px; font-weight:700; color:#6b7280; text-align:center;
+        text-shadow:none; -webkit-line-clamp:2;
+      }
+
+      #wp-pm2-back {
+        position:relative; z-index:1;
+        width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
+        background:rgba(255,255,255,0.88);
+        backdrop-filter:blur(16px) saturate(1.8);
+        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+        color:#111; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s; flex-shrink:0;
+      }
+      #wp-pm2-topbar-title {
+        position:relative; z-index:1; margin-left:12px;
+        flex:1 1 auto; min-width:0; max-width:85%;
+        font-size:16px; font-weight:800; color:#111;
+        letter-spacing:-0.2px; opacity:0;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        text-align:left;
+      }
+      #wp-pm2-topbar-actions {
+        margin-left:auto; display:flex; align-items:center; gap:8px;
+        position:relative; z-index:1;
+      }
+      .wp-pm2-tb-btn {
+        width:40px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
+        background:rgba(255,255,255,0.88);
+        backdrop-filter:blur(16px) saturate(1.8);
+        -webkit-backdrop-filter:blur(16px) saturate(1.8);
+        box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+        color:#111; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s;
+      }
+      .wp-pm2-tb-btn:active { transform:scale(0.92); }
+
+      /* CONTENT AREA — hero (overlay) encima de body (ocupa TODO el área,
+         incl. detrás del hero) */
+      #wp-pm2-content-area {
+        position:relative; flex:1; overflow:hidden;
+      }
+
+      /* HERO — overlay absoluto que se encoge (overflow:hidden) */
+      #wp-pm2-hero {
+        position:absolute; top:0; left:0; right:0; z-index:5;
+        height:88vw; min-height:320px; max-height:460px;
+        overflow:hidden; background:transparent;
+        will-change:height;
+      }
+      /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
+         arriba. Imagen + gradiente + título viven aquí y suben juntos. */
+      #wp-pm2-hero-inner {
+        position:absolute; top:0; left:0; right:0;
+        will-change:transform;
+      }
+      #wp-pm2-hero-overlay-fast {
+        position:absolute; top:0; left:0; right:0;
+        will-change:transform;
+        z-index:2;
+      }
+      #wp-pm2-hero-bg {
+        position:absolute; inset:0;
+        background-size:cover; background-position:center;
+        filter:saturate(1.4);
+      }
+      #wp-pm2-hero-gradient {
+        position:absolute; left:0; right:0; bottom:0;
+        height:60%; /* ocupa el 60% inferior del hero */
+        background:linear-gradient(to bottom,
+          transparent 0%,
+          rgba(255,255,255,0.6) 50%,
+          rgba(255,255,255,1) 100%);
+        pointer-events:none;
+        z-index:2;
+        will-change:opacity;
+      }
+      #wp-pm2-hero-bottom {
+        position:absolute; bottom:0; left:0; right:0;
+        padding:8px 16px 16px; z-index:3;
+      }
+      .wp-pm2-featured-badge {
+        display:inline-block; font-size:10px; font-weight:700; padding:3px 8px;
+        border-radius:9999px; white-space:nowrap; letter-spacing:0.01em;
+        margin-bottom:6px;
+      }
+      .wp-pm2-badge-featured {
+        background:linear-gradient(135deg,#fef3c7,#fde68a);
+        color:#92400e; border:1px solid rgba(253,230,138,0.6);
+        box-shadow:0 2px 6px rgba(251,191,36,0.25);
+      }
+      .wp-pm2-badge-verified {
+        background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        color:#111111; border:1px solid rgba(180,180,180,0.6);
+        box-shadow:0 2px 6px rgba(28,28,30,0.20);
+      }
+      .wp-pm2-badge-premium {
+        background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
+        color:#6b21a8; border:1px solid rgba(216,180,254,0.6);
+        box-shadow:0 2px 6px rgba(168,85,247,0.22);
+      }
+      #wp-pm2-name {
+        font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
+        letter-spacing:-0.4px; line-height:1.2;
+        max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        font-family:'Instrument Serif', serif;
+      }
+      #wp-pm2-meta {
+        display:flex; align-items:center; gap:5px;
+        font-size:13px; color:#374151; font-weight:500;
+      }
+      .wp-pm2-dot { opacity:0.5; }
+
+      /* BODY — ocupa TODA el content-area (incl. detrás del hero); el
+         spacer de adentro queda tapado por el hero mientras esté grande */
+      #wp-pm2-body {
+        position:absolute; inset:0; z-index:1;
+        overflow-y:auto; overscroll-behavior:contain;
+        -webkit-overflow-scrolling:touch;
+        background:#fff;
+      }
+      #wp-pm2-scroll-spacer {
+        width:100%; height:0; /* alto real (=travel) seteado por JS */
+      }
+
+      /* AI DESCRIPTION */
+      .wp-pm2-ai-block {
+        margin:4px 16px 12px; padding:0; background:transparent; border:none;
+        display:flex; flex-direction:column; gap:8px;
+      }
+      .wp-pm2-ai-header { display:flex; align-items:center; gap:8px; }
+      .wp-pm2-ai-icon {
+        flex-shrink:0; color:#1c1c1e; transition:color 0.3s ease;
+        filter:drop-shadow(0 0 6px rgba(28,28,30,0.4));
+        overflow:visible;
+      }
+      .wp-pm2-ai-badge {
+        font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+        color:#000; background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+        border:1px solid rgba(180,180,180,0.5); padding:3px 9px; border-radius:999px;
+        font-family:inherit; box-shadow:0 2px 6px rgba(28,28,30,0.15);
+      }
+      @keyframes wp-pm2-ai-pulse {
+        0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+        50%  { color:#818cf8; filter:drop-shadow(0 0 10px rgba(129,140,248,0.7)); }
+        100% { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+      }
+      .wp-pm2-ai-pulse { animation: wp-pm2-ai-pulse 1.4s ease-in-out infinite; }
+      /* Cada sparkle tiene SU PROPIO color cíclico + SU PROPIO pulse, con
+         distinta duración/delay — se ven "vivos" e independientes, no
+         parpadeando todos al unísono */
+      .wp-pm2-spark { transform-box:fill-box; transform-origin:center; }
+      @keyframes wp-pm2-spark-color {
+        0%   { fill:#60a5fa; }
+        25%  { fill:#a78bfa; }
+        50%  { fill:#f472b6; }
+        75%  { fill:#fb923c; }
+        100% { fill:#60a5fa; }
+      }
+      @keyframes wp-pm2-spark-scale {
+        0%,100% { transform:scale(1); opacity:0.85; }
+        50%     { transform:scale(1.1); opacity:1; }
+      }
+      .wp-pm2-ai-pulse .wp-pm2-spark-1 {
+        animation: wp-pm2-spark-color 2.4s ease-in-out infinite,
+                   wp-pm2-spark-scale 1.1s ease-in-out infinite;
+      }
+      .wp-pm2-ai-pulse .wp-pm2-spark-2 {
+        animation: wp-pm2-spark-color 3.1s ease-in-out infinite 0.4s,
+                   wp-pm2-spark-scale 1.6s ease-in-out infinite 0.2s;
+      }
+      .wp-pm2-ai-pulse .wp-pm2-spark-3 {
+        animation: wp-pm2-spark-color 2.7s ease-in-out infinite 0.8s,
+                   wp-pm2-spark-scale 1.3s ease-in-out infinite 0.5s;
+      }
+      @keyframes wp-pm2-dot-pulse {
+        0%,100% { opacity:1; transform:scale(1); }
+        50%     { opacity:0.5; transform:scale(0.8); }
+      }
+      @keyframes wp-pm2-ai-fadein {
+        from { opacity:0; transform:translateY(4px); }
+        to   { opacity:1; transform:translateY(0); }
+      }
+      .wp-pm2-ai-text {
+        font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
+        animation: wp-pm2-ai-fadein 0.4s ease both;
+        font-family:'Inter Tight',sans-serif;
+      }
+      @keyframes wp-pm2-skeleton-shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position:  200% 0; }
+      }
+      .wp-pm2-ai-skeleton { display:flex; flex-direction:column; gap:8px; }
+      .wp-pm2-ai-sk-line {
+        height:12px; border-radius:6px; width:100%;
+        background:linear-gradient(90deg,#e8eaed 25%,#f3f4f6 50%,#e8eaed 75%);
+        background-size:200% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      /* Skeleton de imágenes — sin !important: cada regla iguala/supera la
+         especificidad de la regla base del elemento que targetea, así gana
+         por cascada normal. El hero usa ::before (no toca su background-image
+         real, que lo pone JS directamente sobre el div). */
+      #wp-pm2-hero-bg.wp-pm2-skel::before {
+        content:''; position:absolute; inset:0;
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      #wp-pm2-strip img.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-avatar.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      .wp-pm2-review-avatar.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+      #wp-pm2-user-avatar.wp-pm2-skel {
+        background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+        background-size:400% 100%;
+        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+      }
+
+      /* ROWS */
+      .wp-pm2-row {
+        display:flex; align-items:center; gap:10px;
+        padding:12px 16px;
+      }
+      .wp-pm2-pill-btn {
+        display:inline-flex; align-items:center; gap:5px;
+        padding:7px 14px; border-radius:999px; border:1.5px solid #e5e7eb;
+        background:#fff; font-size:13px; font-weight:600; color:#374151;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        font-family:inherit;
+      }
+
+      /* CTA ROW */
+      /* ETIQUETAR LUGAR — chip + scroll horizontal fullwidth de tags */
+      #wp-pm2-tag-row {
+        display:flex; align-items:center; gap:8px;
+        padding:6px 16px 8px;
+      }
+      #wp-pm2-tag-toggle-btn { flex-shrink:0; }
+      #wp-pm2-tag-toggle-btn.wp-pm2-active {
+        background:#0a0a0a; color:#fff; border-color:#0a0a0a;
+      }
+      #wp-pm2-tag-scroll {
+        flex:1; min-width:0; display:flex; gap:6px;
+        overflow-x:auto; scrollbar-width:none;
+      }
+      #wp-pm2-tag-scroll::-webkit-scrollbar { display:none; }
+      .wp-pm2-tag-chip {
+        flex-shrink:0; white-space:nowrap;
+        padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb;
+        font-size:12px; font-weight:600; color:#374151; background:#f9fafb;
+        font-family:inherit;
+      }
+      /* Modo selección: chips tocables, con estado activo/inactivo */
+      button.wp-pm2-tag-chip {
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.1s ease;
+      }
+      button.wp-pm2-tag-chip:active { transform:scale(0.95); }
+      button.wp-pm2-tag-chip.wp-pm2-tag-selected {
+        background:#dbeafe; border-color:#93c5fd; color:#1d4ed8;
+      }
+
+      /* REVIEWS SUMMARY — facepile de avatares + contador */
+      #wp-pm2-reviews-summary {
+        display:flex; align-items:center; gap:8px;
+        padding:4px 16px 12px; margin-top:-28px;
+      }
+      #wp-pm2-reviews-avatars {
+        display:flex; align-items:center;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-avatar {
+        width:28px; height:28px; border-radius:9999px;
+        border:2px solid #fff; background:#e2e8f0;
+        object-fit:cover;
+        margin-left:-8px; flex-shrink:0; position:relative;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-more {
+        width:28px; height:28px; border-radius:9999px;
+        border:2px solid #fff; background:#374151;
+        margin-left:-8px; flex-shrink:0; position:relative;
+        display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; color:#fff;
+      }
+      #wp-pm2-reviews-avatars .wp-pm2-fp-avatar:first-child { margin-left:0; }
+      #wp-pm2-reviews-count {
+        font-size:13px; font-weight:600; color:#374151;
+      }
+      #wp-pm2-add-review {
+        margin-left:auto; padding:6px 12px; font-size:12px; flex-shrink:0;
+      }
+
+      #wp-pm2-cta-row { gap:8px; }
+      #wp-pm2-fuiste {
+        flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+        height:42px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff; font-size:15px; font-weight:700;
+        cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-icon-btn {
+        width:42px; height:42px; border-radius:50%; border:1.5px solid #e5e7eb;
+        background:#fff; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; color:#374151; -webkit-tap-highlight-color:transparent; flex-shrink:0;
+      }
+
+      /* ACTION PILLS */
+      #wp-pm2-actions {
+        display:flex; gap:10px; padding:14px 16px; overflow-x:auto;
+        scrollbar-width:none;
+      }
+      #wp-pm2-actions::-webkit-scrollbar { display:none; }
+      .wp-pm2-action {
+        display:inline-flex; align-items:center; gap:8px;
+        padding:8px 16px 8px 8px; border-radius:999px; border:none;
+        background:#fff; font-size:13px; font-weight:700; color:#1f2937;
+        cursor:pointer; white-space:nowrap; flex-shrink:0; font-family:inherit;
+        -webkit-tap-highlight-color:transparent;
+        box-shadow:0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+        transition:transform 0.12s ease, box-shadow 0.12s ease;
+      }
+      .wp-pm2-action:active { transform:scale(0.96); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+      .wp-pm2-action-icon {
+        width:26px; height:26px; border-radius:50%; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+      }
+      #wp-pm2-map-btn .wp-pm2-action-icon  { background:#dbeafe; color:#2563eb; }
+      #wp-pm2-call-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
+      #wp-pm2-web-btn .wp-pm2-action-icon  { background:#ede9fe; color:#7c3aed; }
+      #wp-pm2-more-btn { padding:8px; }
+      #wp-pm2-more-btn .wp-pm2-action-icon { background:#f3f4f6; color:#4b5563; }
+
+      /* HOURS — colapsable */
+      .wp-pm2-hours-trigger {
+        display:flex; align-items:center; gap:8px;
+        padding:12px 16px; cursor:pointer; font-size:14px; color:#374151;
+        -webkit-tap-highlight-color:transparent;
+      }
+      #wp-pm2-hours-text { flex:1; font-weight:500; }
+      .wp-pm2-hours-status {
+        font-size:12px; font-weight:600; padding:2px 8px; border-radius:9999px;
+      }
+      .wp-pm2-hours-status.wp-pm2-open   { background:#e8fdf0; color:#16a34a; }
+      .wp-pm2-hours-status.wp-pm2-closed { background:#fff1f0; color:#ef4444; }
+      .wp-pm2-chevron { transition:transform 0.25s ease; flex-shrink:0; }
+      .wp-pm2-hours-list {
+        max-height:0; overflow:hidden;
+        transition:max-height 0.3s ease;
+        padding:0 16px;
+      }
+      .wp-pm2-hours-list.expanded { max-height:300px; padding-bottom:8px; }
+      .wp-pm2-hours-row {
+        display:flex; justify-content:space-between;
+        padding:6px 0; font-size:13px; color:#9ca3af;
+        border-bottom:0.5px solid #e5e5ea;
+      }
+      .wp-pm2-hours-row:last-child { border-bottom:none; }
+      .wp-pm2-hours-day { min-width:90px; }
+      .wp-pm2-hours-today .wp-pm2-hours-day,
+      .wp-pm2-hours-today .wp-pm2-hours-time { color:#0a0a0a; font-weight:600; }
+
+      /* PHOTO STRIP */
+      #wp-pm2-strip {
+        display:flex; gap:6px; padding:14px 18px;
+        overflow-x:auto; scrollbar-width:none;
+      }
+      #wp-pm2-strip::-webkit-scrollbar { display:none; }
+      #wp-pm2-strip img {
+        width:150px; height:210px; object-fit:cover;
+        border-radius:14px; flex-shrink:0; cursor:pointer;
+      }
+      #wp-pm2-strip:empty { display:none; }
+
+      /* DESCRIPTION */
+      #wp-pm2-desc-wrap { padding:14px 16px; }
+      #wp-pm2-desc {
+        margin:0; font-size:14px; line-height:1.6; color:#374151;
+        display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+      }
+      #wp-pm2-desc.expanded { display:block; }
+      #wp-pm2-leer-mas {
+        margin-top:6px; font-size:13px; font-weight:700; color:#1a5cf5;
+        border:none; background:none; padding:0; cursor:pointer; font-family:inherit;
+      }
+
+      /* MAP PREVIEW */
+      /* ADDRESS — misma fuente/estilo que el trigger de horarios */
+      #wp-pm2-address-row {
+        display:flex; align-items:center; gap:8px;
+        padding:14px 16px; font-size:14px; color:#374151;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+      }
+      #wp-pm2-address-row svg { flex-shrink:0; color:#6b7280; }
+      #wp-pm2-address {
+        font-weight:500; white-space:nowrap; overflow:hidden;
+        text-overflow:ellipsis; min-width:0;
+      }
+
+      #wp-pm2-map-preview {
+        margin:0 16px 12px; border-radius:16px; overflow:hidden;
+        border:1px solid #e5e7eb; cursor:pointer; position:relative;
+      }
+      #wp-pm2-map-canvas {
+        height:190px; width:100%; position:relative; background:#e8e8e8;
+      }
+      #wp-pm2-map-canvas .maplibregl-marker { cursor:pointer; }
+
+      /* SECTION TITLE */
+      .wp-pm2-section-title {
+        font-size:15px; font-weight:800; color:#0a0a0a; padding:16px 16px 8px;
+        letter-spacing:-0.2px;
+      }
+      /* Header con tabs de reseñas — calcado de PlaceModal1 */
+      .wpr-header-row {
+        display:flex; align-items:center; gap:10px;
+        padding:16px 16px 10px;
+      }
+      .wpr-header-row .wp-pm2-reviews-title-text {
+        font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+        color:#0a0a0a; flex-shrink:0; line-height:1;
+      }
+      /* Título de sección reutilizable (Fotos, Ubicación, etc.) — mismo
+         padding y fuente que el título "Reseñas" */
+      .wp-pm2-section-heading {
+        font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+        color:#0a0a0a; line-height:1; padding:16px 16px 10px;
+      }
+      .wpr-header-tabs-row {
+        display:flex; gap:5px; align-items:center; flex:1;
+      }
+      .wpr-tab {
+        display:inline-flex; align-items:center; justify-content:center; gap:4px;
+        padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f4f4f6; font-size:11px; font-weight:600;
+        color:#6b7280; cursor:pointer; font-family:inherit;
+        -webkit-tap-highlight-color:transparent;
+        transition:all 0.15s ease; white-space:nowrap;
+      }
+      .wpr-tab-active { background:#0a0a0a; color:#fff; border-color:#0a0a0a; }
+      .wpr-tab-count {
+        font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
+        background:rgba(0,0,0,0.08); color:#6b7280;
+      }
+      .wpr-tab-active .wpr-tab-count { background:rgba(255,255,255,0.2); color:#fff; }
+      /* Añadir reseña — naranja motivador, empujado a la derecha */
+      .wpr-tab-add {
+        margin-left:auto;
+        background:linear-gradient(135deg,#f59e0b,#f97316);
+        border-color:transparent; color:#fff !important;
+        box-shadow:0 2px 8px rgba(249,115,22,0.30);
+      }
+      .wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
+      .wpr-empty {
+        text-align:center; color:#9ca3af; font-size:13px; padding:24px 20px;
+      }
+      .wpr-see-more {
+        display:block; text-align:center;
+        font-size:12px; font-weight:600; color:#4285F4;
+        padding:12px 0 4px; text-decoration:none;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wpr-see-more:active { opacity:0.7; }
+
+
+      /* MENTIONS */
+      #wp-pm2-mentions { padding-bottom:16px; }
+      #wp-pm2-mentions-list {
+        display:flex; gap:8px; padding:0 16px; overflow-x:auto; scrollbar-width:none;
+      }
+      #wp-pm2-mentions-list::-webkit-scrollbar { display:none; }
+      .wp-pm2-mention-card {
+        width:130px; height:160px; border-radius:12px; flex-shrink:0;
+        overflow:hidden; position:relative; cursor:pointer; background:#e5e7eb;
+      }
+      .wp-pm2-mention-card img { width:100%; height:100%; object-fit:cover; }
+      .wp-pm2-mention-label {
+        position:absolute; bottom:0; left:0; right:0;
+        padding:6px 8px; background:linear-gradient(transparent, rgba(0,0,0,0.7));
+        font-size:10px; color:#fff; font-weight:600;
+      }
+      .wp-pm2-mention-icon {
+        position:absolute; bottom:6px; left:6px;
+        width:18px; height:18px; background:rgba(0,0,0,0.5);
+        border-radius:50%; display:flex; align-items:center; justify-content:center;
+        font-size:10px;
+      }
+
+      /* REVIEWS */
+      #wp-pm2-reviews-section { padding-bottom:8px; }
+      #wp-pm2-comment-input-row {
+        display:flex; align-items:center; gap:10px;
+        padding:8px 16px 12px;
+      }
+      #wp-pm2-user-avatar {
+        width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0;
+        background:#e5e7eb;
+      }
+      #wp-pm2-comment-box {
+        flex:1; display:flex; align-items:center; justify-content:space-between;
+        background:#f3f4f6; border-radius:999px; padding:10px 8px 10px 16px;
+        font-size:14px; color:#9ca3af; cursor:pointer;
+      }
+      #wp-pm2-comment-send {
+        width:30px; height:30px; border-radius:50%; border:none;
+        background:#6b7280; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; flex-shrink:0;
+      }
+      .wp-pm2-review-row {
+        display:flex; gap:10px; padding:10px 16px;
+      }
+      .wp-pm2-review-avatar {
+        width:34px; height:34px; border-radius:50%; flex-shrink:0;
+        background:#e5e7eb; object-fit:cover;
+      }
+      .wp-pm2-review-body { flex:1; }
+      .wp-pm2-review-name { font-size:13px; font-weight:700; color:#0a0a0a; }
+      .wp-pm2-review-stars { font-size:11px; color:#f59e0b; margin-top:1px; }
+      .wp-pm2-review-text {
+        font-size:13px; color:#374151; margin-top:4px; line-height:1.5; font-weight:400;
+        display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
+        overflow:hidden; font-family:'Inter Tight',sans-serif;
+      }
+      .wp-pm2-review-text.wp-pm2-expanded {
+        -webkit-line-clamp:unset; overflow:visible;
+      }
+      .wp-pm2-review-more {
+        display:none; margin-top:4px; font-size:12px; font-weight:700;
+        color:#2563eb; background:none; border:none; padding:0;
+        cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-review-time { font-size:11px; color:#9ca3af; margin-top:2px; }
+
+      /* FOOTER */
+      #wp-pm2-footer {
+        position:absolute; left:0; right:0; bottom:0; z-index:6;
+        display:flex; align-items:center; gap:10px;
+        padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+        background:transparent;
+        pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
+      }
+      #wp-pm2-footer > * { pointer-events:auto; }
+      #wp-pm2-here-btn {
+        width:48px; height:48px; border-radius:50%; border:none;
+        background:#0a0a0a; color:#fff; display:flex; align-items:center;
+        justify-content:center; cursor:pointer; flex-shrink:0;
+        -webkit-tap-highlight-color:transparent;
+        box-shadow:none;
+      }
+      #wp-pm2-plan-btn {
+        flex:1; height:48px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff; font-size:16px; font-weight:700;
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+        box-shadow:none;
+      }
+    `;
+    document.head.appendChild(s);
   }
 
-  // ── HTML del pin — con label igual que PWA original ───────────────
+  // ── WIRE EVENTS ────────────────────────────────────────────────────
+  _wireEvents() {
+    const el = this._el;
+    el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
+    el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
+    this._wireTagToggle(el);
 
-
-  // ── Pre-calcular zoom threshold por distancia mínima entre pines ──────
-  _assignZoomThresholds() {
-    const levels = [
-      { zoom: 13, minDist: 0.0025 },
-      { zoom: 14, minDist: 0.0012 },
-      { zoom: 15, minDist: 0.0006 },
-      { zoom: 16, minDist: 0.0003 },
-      { zoom: 17, minDist: 0.00015 },
-    ];
-
-    const all = this.markerEls.map((el, i) => ({
-      el, m: this.markers[i],
-      prio: el._zoomTier ?? 3
-    })).filter(x => x.m);
-    all.sort((a, b) => a.prio - b.prio);
-
-    const assigned = new Set();
-
-    levels.forEach(({ zoom, minDist }) => {
-      const placed = [];
-      assigned.forEach(el => { if (el._m) placed.push(el._m.getLngLat()); });
-
-      all.forEach(({ el, m }) => {
-        if (assigned.has(el)) return;
-        const ll = m.getLngLat();
-        const tooClose = placed.some(p => {
-          const dx = p.lng - ll.lng, dy = p.lat - ll.lat;
-          return Math.sqrt(dx*dx + dy*dy) < minDist;
-        });
-        if (!tooClose) {
-          el._showAtZoom = zoom;
-          el._m = m;
-          assigned.add(el);
-          placed.push(ll);
-        }
-      });
+    el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => {
+      console.log('[PM2] Planear visita:', this._place);
     });
-
-    // Pines que no cupieron en ningún nivel → visibles en zoom 18
-    // TODOS los pines deben aparecer — ninguno se oculta permanentemente
-    this.markerEls.forEach(el => {
-      if (!assigned.has(el)) el._showAtZoom = 18;
+    el.querySelector('#wp-pm2-here-btn').addEventListener('click', () => {
+      console.log('[PM2] Estoy aquí:', this._place);
     });
-  }
-
-  // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
-  _updatePinsByZoom() {
-    const zoom = Math.floor(this.map.getZoom());
-    this.markerEls.forEach(el => {
-      if (!el) return;
-      const threshold = el._showAtZoom ?? 13;
-      // 3 estados: 0=oculto, 1=punto celeste (1 zoom antes), 2=pin completo
-      const state = zoom >= threshold ? 2 : zoom >= threshold - 1 ? 1 : 0;
-      if (state === el._wpState) return;
-      el._wpState   = state;
-      el._wpVisible = state === 2;
-
-      const wrapper = el.querySelector('.place-pin-wrapper');
-
-      if (state === 2) {
-        el.style.visibility    = 'visible';
-        el.style.pointerEvents = '';
-        el.style.transition    = 'opacity 0.35s ease';
-        el.style.opacity       = '1';
-        if (wrapper) {
-          wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
-          wrapper.style.width = ''; wrapper.style.height = ''; wrapper.style.padding = '';
-          wrapper.style.overflow = '';
-          const inner = wrapper.querySelector('.pin-inner');
-          if (inner) inner.style.opacity = '';
-          wrapper.querySelectorAll('img').forEach(img => { img.style.opacity = ''; });
-        }
-
-      } else if (state === 1) {
-        el.style.visibility    = 'visible';
-        el.style.pointerEvents = 'none';
-        el.style.transition    = 'none';
-        el.style.opacity       = '1';
-        if (wrapper) {
-          wrapper.style.transition = 'none';
-          wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
-          wrapper.style.overflow = 'hidden';
-          const inner = wrapper.querySelector('.pin-inner');
-          if (inner) inner.style.opacity = '0';
-          wrapper.querySelectorAll('img').forEach(img => { img.style.opacity = '0'; });
-        }
-
+    el.querySelector('#wp-pm2-fuiste').addEventListener('click', () => {
+      console.log('[PM2] ¿Fuiste?:', this._place);
+    });
+    el.querySelector('#wp-pm2-share').addEventListener('click', () => {
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+    el.querySelector('#wp-pm2-topbar-share').addEventListener('click', () => {
+      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
+    });
+    el.querySelector('#wp-pm2-topbar-more').addEventListener('click', () => {
+      console.log('[PM2] Más opciones (topbar)');
+    });
+    el.querySelector('#wp-pm2-map-preview').addEventListener('click', () => {
+      const p = this._place;
+      if (!p) return;
+      const lat = p.location?.lat || p.lat;
+      const lng = p.location?.lng || p.lng;
+      if (lat && lng) window.open(`https://maps.google.com?q=${lat},${lng}`, '_blank');
+    });
+    el.querySelector('#wp-pm2-leer-mas').addEventListener('click', () => {
+      el.querySelector('#wp-pm2-desc').classList.add('expanded');
+      el.querySelector('#wp-pm2-leer-mas').style.display = 'none';
+    });
+    el.querySelector('#wp-pm2-map-btn').addEventListener('click', () => {
+      console.log('[PM2] Ver en mapa');
+    });
+    el.querySelector('#wp-pm2-address-row').addEventListener('click', () => {
+      const addrEl = el.querySelector('#wp-pm2-address');
+      const text = addrEl.textContent;
+      if (!text) return;
+      const done = () => {
+        const original = text;
+        addrEl.textContent = '¡Dirección copiada!';
+        setTimeout(() => { addrEl.textContent = original; }, 1400);
+      };
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(done);
       } else {
-        el.style.transition    = 'none';
-        el.style.opacity       = '0';
-        el.style.visibility    = 'hidden';
-        el.style.pointerEvents = 'none';
+        // Fallback para webviews sin Clipboard API
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        done();
+      }
+    });
+    el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
+      console.log('[PM2] Añadir comentario');
+    });
+    el.querySelector('#wp-pm2-add-review').addEventListener('click', () => {
+      // Reutiliza el mismo flujo de "Añade un comentario..." que ya existe
+      el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.querySelector('#wp-pm2-comment-box').click();
+    });
+  }
+
+  // Toggle del chip "Etiquetar lugar": alterna entre mostrar las etiquetas
+  // YA aplicadas al lugar (modo ver, por defecto) y mostrar TODO el catálogo
+  // de etiquetas disponibles para que el usuario elija/desmarque (modo
+  // selección) — mismo scroll horizontal, solo cambia el contenido.
+  _wireTagToggle(el) {
+    const btn = el.querySelector('#wp-pm2-tag-toggle-btn');
+    if (!btn) return; // pausado por ahora, sin nodo en el DOM
+    btn.addEventListener('click', () => {
+      this._tagSelectMode = !this._tagSelectMode;
+      if (!this._tagSelectMode && this._place) {
+        this._loadTags(this._place); // refresca con lo que quedó realmente aplicado
+      } else {
+        this._renderTagScroll();
       }
     });
   }
 
-  // ── Labels dinámicos por zoom + posición izquierda/derecha ──────────
-  _updateLabelsProgressive() {
-    if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
-    this._labelTimers = [];
+  // ── SHOW ──────────────────────────────────────────────────────────
+  // ── MINI SNAP — panel fijo intermedio entre el minicard de MapView y la
+  // ficha completa (porteado de PlaceModal1: showMini/_showMiniSnap). Flujo
+  // completo en mapview normal: tap pin → minicard (MapView) → tap minicard
+  // → showMini() acá → tap minisnap → show() completo.
+  showMini(place) {
+    this._place = place;
+    // El minicard de MapView se queda abierto (no se cierra) — el minisnap
+    // aparece encima de él, no lo reemplaza
+    try {
+      this._showMiniSnap(place);
+    } catch (e) {
+      console.error('[PM2] Error al abrir el minisnap:', e);
+    }
+  }
 
-    const zoom    = this.map.getZoom();
-    const bounds  = this.map.getBounds();
-    const screenW = this.map.getContainer().offsetWidth;
+  _showMiniSnap(place) {
+    const self = this;
+    this._miniSnapPlace = place; // propio, independiente de this._place (que hide() limpia)
+    let ms = document.getElementById('wp-minisnap-panel');
+    const isAlreadyVisible = ms && ms.style.opacity === '1';
+    if (!ms) {
+      ms = document.createElement('div');
+      ms.id = 'wp-minisnap-panel';
+      document.body.appendChild(ms);
+    }
 
-    // Ocultar todo si zoom < 16
-    if (zoom < 16) {
-      document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-        l.style.opacity = '0'; l.style.visibility = 'hidden';
-      });
+    const name   = place.name || place.displayName || '';
+    const rating = parseFloat(place.rating) || 0;
+    const count  = place.userRatingCount || place.user_ratings_total || 0;
+    const isOpen = self._isOpenNow(place);
+    const statusTxt   = isOpen === true ? 'Abierto' : isOpen === false ? 'Cerrado' : 'Sin horario';
+
+    const photosAll = place.photosUrls || place.photos_urls || (place.photoUrl || place.photo_url ? [place.photoUrl || place.photo_url] : []);
+    const photos4 = photosAll.slice(0, 4);
+    const remaining = photosAll.length - 3;
+
+    const panelEl = document.querySelector('.map-results-panel-float');
+    const panelHeight = panelEl ? panelEl.offsetHeight : 156;
+
+    ms.style.cssText = [
+      'position:fixed',
+      'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
+      'left:12px', 'right:12px',
+      'height:' + panelHeight + 'px',
+      'border-radius:32px',
+      'background:rgba(255,255,255,0.82)',
+      'backdrop-filter:blur(24px) saturate(1.6)',
+      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
+      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
+      'border:1px solid rgba(255,255,255,0.6)',
+      'overflow:hidden', 'z-index:2000', 'opacity:0',
+      'transition:opacity 0.22s ease',
+      "font-family:'Inter Tight',sans-serif; font-weight:400;",
+      'cursor:pointer', 'box-sizing:border-box',
+      'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
+    ].join(';');
+
+    const avatarCount = Math.min(count || 4, 5);
+    const avatarsHtml = Array.from({ length: avatarCount }, (_, i) =>
+      `<img src="${getAvatarUrl('guest_' + i)}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i > 0 ? '-7px' : '0'};object-fit:cover;position:relative;z-index:${avatarCount - i};background:#e2e8f0">`
+    ).join('');
+
+    const glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    const dotStyle = isOpen === true
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
+      : isOpen === false
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
+      : '';
+    const badgeDot = isOpen !== null ? `<span style="${dotStyle}"></span>` : '';
+    const glassBadge = isOpen === true
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25)'
+      : isOpen === false
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20)'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18)';
+
+    const photoCardHtml = (url, isLast) => `
+      <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;">
+        <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
+        ${isLast && remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;">+${remaining - 1}</div>` : ''}
+      </div>`;
+
+    ms.innerHTML = `
+      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:20px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
+        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
+      </div>
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
+        <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
+          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+            <svg viewBox="0 0 512 512" width="14" height="14"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+          </button>
+          <button id="wp-ms-close-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
+        ${photos4.length
+          ? photos4.map((u, i) => photoCardHtml(u, i === photos4.length - 1)).join('')
+          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:20px">📷</span></div>`}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="display:flex;align-items:center">${avatarsHtml}</div>
+          ${count > 0 ? `<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>` : `<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>`}
+        </div>
+        <button id="wp-ms-cta-btn" style="${glassBtn}">Detalles →</button>
+      </div>`;
+
+    ms.className = 'wp-minisnap-panel';
+    document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
+
+    if (!isAlreadyVisible) {
+      ms.style.transition = 'none';
+      ms.style.opacity = '0';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ms.style.transition = 'opacity 0.22s ease';
+        ms.style.opacity = '1';
+      }));
+    } else {
+      ms.style.transition = 'none';
+      ms.style.opacity = '1';
+    }
+
+    const favBtn = ms.querySelector('#wp-ms-fav-btn');
+    if (favBtn) favBtn.onclick = (e) => {
+      e.stopPropagation();
+      favBtn.classList.toggle('active');
+      const svg = favBtn.querySelector('path');
+      const active = favBtn.classList.contains('active');
+      svg.setAttribute('fill', active ? '#ef4444' : 'none');
+      svg.setAttribute('stroke', active ? '#ef4444' : '#6b7280');
+    };
+
+    const closeBtn = ms.querySelector('#wp-ms-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); self._hideMiniSnap(); });
+
+    const goFull = () => { self._fromMiniSnap = true; self.show(self._miniSnapPlace); };
+    const handle = ms.querySelector('#wp-ms-handle');
+    if (handle) {
+      let hY = 0;
+      handle.addEventListener('touchstart', (e) => { hY = e.touches[0].clientY; e.stopPropagation(); }, { passive: true });
+      handle.addEventListener('touchend', (e) => { e.stopPropagation(); if (hY - e.changedTouches[0].clientY > 25) goFull(); }, { passive: true });
+      handle.addEventListener('click', (e) => { e.stopPropagation(); goFull(); });
+    }
+    const cta = ms.querySelector('#wp-ms-cta-btn');
+    if (cta) cta.onclick = goFull;
+    ms.addEventListener('click', (e) => {
+      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
+    });
+  }
+
+  _hideMiniSnap() {
+    const ms = document.getElementById('wp-minisnap-panel');
+    if (!ms) return;
+    ms.style.pointerEvents = 'none';
+    ms.style.transition = 'opacity 0.2s ease';
+    ms.style.opacity = '0';
+    this._miniSnapPlace = null;
+    document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
+    setTimeout(() => { if (ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
+  }
+
+  show(place) {
+    this._fromSearch = false;
+    this._place = place;
+    this._populate(place);
+    this._el.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    // Activa la sombra superior "oficial" con blur real (ion-app::before,
+    // variante body.wp-pm-open en app.css) + el blur del mapa de fondo —
+    // mismo mecanismo que usaba PlaceModal1, nunca portado hasta ahora
+    document.body.classList.add('wp-pm-open');
+
+    // Ocultar el footer menu del mapview mientras la ficha está abierta
+    // (tiene z-index:9995, más alto que el modal, así que quedaba encima)
+    const footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) footerMenu.style.display = 'none';
+
+    const body        = this._el.querySelector('#wp-pm2-body');
+    const spacer      = this._el.querySelector('#wp-pm2-scroll-spacer');
+    const heroEl      = this._el.querySelector('#wp-pm2-hero');
+    const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
+    const heroOverlayFast = this._el.querySelector('#wp-pm2-hero-overlay-fast');
+    const topbarFade = this._el.querySelector('#wp-pm2-topbar-fade');
+    const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
+    const topbar      = this._el.querySelector('#wp-pm2-topbar');
+    this._activityStack = this._el.querySelector('#wp-pm2-activity-stack');
+    if (this._activityStack) { this._activityStack.style.transform = ''; this._activityStack.style.opacity = '1'; }
+    const nameEl      = this._el.querySelector('#wp-pm2-hero-bottom');
+    const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
+    const topbarActions = this._el.querySelector('#wp-pm2-topbar-actions');
+
+    // Reset
+    heroEl.style.height = '';
+    heroEl.style.minHeight = '';   // usar el min-height del CSS SOLO para medir fullH
+    heroInner.style.height = '';
+    heroInner.style.transform = '';
+    heroInner.style.opacity = '';
+    heroOverlayFast.style.transform = '';
+    heroGradient.style.opacity = '';
+    spacer.style.height = '0px';
+    nameEl.style.opacity = '';
+    topbar.classList.remove('scrolled');
+    topbar.style.boxShadow = '';
+    topbarFade.style.opacity = '0.4';
+    if (topbarTitle) topbarTitle.style.opacity = '0';
+    if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
+    body.scrollTop = 0;
+
+    // hero (overlay absoluto encima del body) + hero-inner (alto FIJO fullH,
+    // translateY) — imagen+overlay suben juntos, sin huecos. El spacer al
+    // inicio del body mide `travel` (chico, no fullH) para que el hero lo
+    // termine de tapar justo cuando colapsa del todo.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const topbarH = topbar.offsetHeight;
+      const fullH   = heroEl.offsetHeight;   // con min-height:260px del CSS todavía activo
+      if (!fullH) return;
+      const travel = fullH - topbarH;
+      heroInner.style.height = fullH + 'px';
+      heroOverlayFast.style.height = fullH + 'px';
+      spacer.style.height = (travel + topbarH * 1.5) + 'px';
+      heroEl.style.minHeight = '0px';
+
+      const onScroll = () => {
+        const sy    = body.scrollTop;
+        const prog  = Math.min(1, Math.max(0, sy / travel));
+        const shift = Math.min(sy, travel);
+        // El hero colapsa hasta 0 (antes tenía un mínimo de topbarH, y esa
+        // franja remanente dejaba visible la parte blanca del gradiente
+        // ESTACIONADA detrás del topbar transparente — ese era el "fondo"
+        // que aparecía con el scroll, no el fade ni el topbar en sí)
+        const newH  = Math.max(0, fullH - sy);
+
+        // Parallax muy lento SOLO para la foto (estilo iOS26): la imagen
+        // avanza mucho más despacio que el scroll real — factor 0.22
+        const HERO_PARALLAX = 0.22;
+        const innerShift = shift * HERO_PARALLAX;
+
+        heroEl.style.height = newH + 'px';
+        heroInner.style.transform = `translateY(-${innerShift}px)`; // SOLO la foto, lenta
+        heroInner.style.opacity   = Math.max(0, 1 - prog);          // la foto se desvanece
+
+        // Overlay (sombra/gradiente) + título/rating: viajan a la MISMA
+        // velocidad que el contenido real (shift, 1:1 con el scroll) — no
+        // con el parallax lento de la foto. Así llegan junto con el resto
+        // del contenido hasta arriba y se disuelven en la sombra del topbar
+        heroOverlayFast.style.transform = `translateY(-${shift}px)`;
+        // El overlay (gradiente blanco) NO se desvanece por opacity — así
+        // siempre hace de "puente" blanco entre la foto y el contenido de
+        // abajo. Se pierde de vista solo por posición (viaja rápido, junto
+        // con el contenido) cuando el hero termina de colapsar. Si se
+        // lo hace desaparecer por opacity antes de tiempo, queda un borde
+        // duro visible justo donde el hero recorta (overflow:hidden).
+
+        // Título/rating del hero: fade-out rápido al iniciar el scroll
+        nameEl.style.opacity = Math.max(0, 1 - prog * 2.2);
+
+        // Activity stack: NO desaparece — encoge y se desliza apenas hacia
+        // el borde, quedando "asomada" (nunca menos de 0.4 de escala ni
+        // menos de 0.6 de opacidad). Se restaura solo al volver arriba.
+        if (this._activityStack) {
+          const scale = 1 - prog * 0.6;   // hasta ~0.4
+          const tx    = prog * 46;        // se acerca al borde, no se va del todo
+          this._activityStack.style.transform = `translateX(${tx}px) scale(${scale})`;
+          this._activityStack.style.opacity = Math.max(0.6, 1 - prog * 0.5);
+        }
+
+        // Sombra del status bar: a medida que el contenido llega arriba
+        // (scroll avanza), se pone cada vez menos transparente — el
+        // contenido detrás queda cada vez más tapado/blanco.
+        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
+
+        // Título centrado del topbar aparece cuando el hero ya casi terminó
+        // El título solo vive en el hero (nameEl) — ya no se duplica en
+        // el topbar en ningún punto del scroll.
+        if (topbarActions) {
+          const actOpacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
+          topbarActions.style.opacity = actOpacity;
+          topbarActions.style.pointerEvents = actOpacity > 0.5 ? 'auto' : 'none';
+        }
+
+        if (prog >= 1) topbar.classList.add('scrolled');
+        else            topbar.classList.remove('scrolled');
+      };
+
+      if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = onScroll;
+      body.addEventListener('scroll', onScroll, { passive: true });
+    }));
+  }
+
+  hide() {
+    this._el.classList.remove('visible');
+    document.body.style.overflow = '';
+    document.body.classList.remove('wp-pm-open');
+    this._place = null;
+    if (this._aiAbort) this._aiAbort();
+    // Restaurar el footer menu del mapview
+    const footerMenu = document.getElementById('wp-footer-menu');
+    if (footerMenu) footerMenu.style.display = '';
+    const body = this._el.querySelector('#wp-pm2-body');
+    if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+    this._scrollHandler = null;
+    // Reset topbar
+    this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
+  }
+
+  // ── POPULATE ──────────────────────────────────────────────────────
+  _populate(place) {
+    const $ = id => this._el.querySelector('#' + id);
+
+    // Etiquetar lugar — cada ficha nueva arranca en modo "ver etiquetas"
+    // (no en modo selección)
+    this._tagSelectMode = false;
+    const toggleBtn = $('wp-pm2-tag-toggle-btn');
+    if (toggleBtn) toggleBtn.classList.remove('wp-pm2-active');
+
+    // Name
+    $('wp-pm2-name').textContent = place.name || '';
+
+    // Category (el ícono ya no se muestra en texto — se usa más abajo como pin del mapa)
+    const catIcon = place.subcategory_icon || place.category_icon || '';
+    const catName = place.subcategory_label || place.category_label || place.category || '';
+    $('wp-pm2-cat').textContent = catName;
+
+    // Featured badge — "✦ Destacado" / "✓ Verificado" / "✦ Premium", igual
+    // que PlaceModal1 (place.featured: 'featured' | 'verified' | 'premium')
+    const featuredEl = $('wp-pm2-featured-badge');
+    if (place.featured) {
+      const labels = { premium:'✦ Premium', featured:'✦ Destacado', verified:'✓ Verificado' };
+      featuredEl.textContent = labels[place.featured] || place.featured;
+      featuredEl.className   = `wp-pm2-featured-badge wp-pm2-badge-${place.featured}`;
+      featuredEl.style.display = '';
+    } else {
+      featuredEl.style.display = 'none';
+    }
+
+    // Rating (+ total real de reseñas de Google entre paréntesis, igual que PlaceModal1)
+    const rating = parseFloat(place.rating);
+    const ratingCount = place.userRatingCount || place.user_ratings_total || 0;
+    $('wp-pm2-rating-hero').textContent = rating
+      ? '⭐ ' + rating.toFixed(1) + (ratingCount ? ` (${ratingCount})` : '')
+      : '';
+
+    // Photos array (used for hero bg + strip)
+    const firstPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
+    const rawPhotos = place.photosUrls || (firstPhoto ? [firstPhoto] : []);
+    const photos = rawPhotos.slice(0, 6).map(u => this.proxyPhoto(u)).filter(Boolean);
+
+    // Photo strip
+    const stripEl = $('wp-pm2-strip');
+    stripEl.innerHTML = '';
+    photos.forEach(url => {
+      const img = document.createElement('img');
+      img.alt = ''; img.loading = 'lazy';
+      this._skelOn(img);
+      img.onload  = () => this._skelOff(img);
+      img.onerror = () => this._skelOff(img);
+      img.src = url;
+      stripEl.appendChild(img);
+    });
+
+    // Hero background — primera foto con parallax, con skeleton mientras carga
+    const heroBg = $('wp-pm2-hero-bg');
+    if (heroBg) {
+      heroBg.style.backgroundImage = '';
+      if (photos.length) {
+        this._skelOn(heroBg);
+        const preload = new Image();
+        preload.onload  = () => { heroBg.style.backgroundImage = `url('${photos[0]}')`; this._skelOff(heroBg); };
+        preload.onerror = () => { this._skelOff(heroBg); };
+        preload.src = photos[0];
+      } else {
+        this._skelOff(heroBg);
+      }
+    }
+
+    // Topbar title
+    const ttEl = $('wp-pm2-topbar-title');
+    if (ttEl) ttEl.textContent = place.name || '';
+
+    // Phone
+    const phone = place.phone || place.phone_number;
+    const callBtn = $('wp-pm2-call-btn');
+    if (phone) { callBtn.style.display = ''; callBtn.onclick = () => window.open('tel:' + phone); }
+    else callBtn.style.display = 'none';
+
+    // Website
+    const web = place.website;
+    const webBtn = $('wp-pm2-web-btn');
+    if (web) { webBtn.style.display = ''; webBtn.onclick = () => window.open(web, '_blank'); }
+    else webBtn.style.display = 'none';
+
+    // Hours — colapsable, igual que PlaceModal1
+    const hoursRaw = place.openingHoursText || place.opening_hours || place.hours;
+    const hoursBlock = $('wp-pm2-hours');
+    if (hoursRaw && typeof hoursRaw === 'object') {
+      hoursBlock.style.display = '';
+      const DAY_ORDER  = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      const DAY_LABELS = { monday:'Lunes', tuesday:'Martes', wednesday:'Miércoles', thursday:'Jueves', friday:'Viernes', saturday:'Sábado', sunday:'Domingo' };
+      const todayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
+
+      $('wp-pm2-hours-text').textContent = `Hoy: ${hoursRaw[todayKey] || 'Sin horario'}`;
+
+      const isOpen = this._isOpenNow(place);
+      const statusEl = $('wp-pm2-hours-status');
+      if (isOpen === true)       { statusEl.textContent = 'Abierto'; statusEl.className = 'wp-pm2-hours-status wp-pm2-open'; }
+      else if (isOpen === false) { statusEl.textContent = 'Cerrado'; statusEl.className = 'wp-pm2-hours-status wp-pm2-closed'; }
+      else                       { statusEl.textContent = ''; statusEl.className = 'wp-pm2-hours-status'; }
+
+      const list = $('wp-pm2-hours-list');
+      list.innerHTML = DAY_ORDER.map(d =>
+        `<div class="wp-pm2-hours-row${d === todayKey ? ' wp-pm2-hours-today' : ''}">
+          <span class="wp-pm2-hours-day">${DAY_LABELS[d]}</span>
+          <span class="wp-pm2-hours-time">${hoursRaw[d] || 'Cerrado'}</span>
+        </div>`
+      ).join('');
+      list.classList.remove('expanded');
+
+      const trigger = $('wp-pm2-hours-trigger');
+      const chevron = $('wp-pm2-chevron');
+      let expanded = false;
+      trigger.onclick = () => {
+        expanded = !expanded;
+        list.classList.toggle('expanded', expanded);
+        chevron.style.transform = expanded ? 'rotate(180deg)' : '';
+      };
+    } else if (typeof hoursRaw === 'string' && hoursRaw) {
+      hoursBlock.style.display = '';
+      $('wp-pm2-hours-text').textContent = hoursRaw;
+      $('wp-pm2-hours-status').textContent = '';
+      $('wp-pm2-hours-list').innerHTML = '';
+      $('wp-pm2-hours-trigger').onclick = null;
+    } else {
+      hoursBlock.style.display = 'none';
+    }
+
+    // Description
+    const desc = place.ai_description || place.description;
+    const descWrap = $('wp-pm2-desc-wrap');
+    if (desc) {
+      descWrap.style.display = '';
+      const descEl = $('wp-pm2-desc');
+      descEl.textContent = desc;
+      descEl.classList.remove('expanded');
+      const leer = $('wp-pm2-leer-mas');
+      setTimeout(() => {
+        leer.style.display = descEl.scrollHeight > descEl.clientHeight + 4 ? '' : 'none';
+      }, 50);
+    } else {
+      descWrap.style.display = 'none';
+    }
+
+    // Address — el campo real es formattedAddress (camelCase), no
+    // "address" ni "formatted_address" (por eso nunca se mostraba)
+    const addr = place.formattedAddress || place.formatted_address || place.address || '';
+    const addrRow = $('wp-pm2-address-row');
+    if (addr) { $('wp-pm2-address').textContent = addr; addrRow.style.display = ''; }
+    else addrRow.style.display = 'none';
+
+    // Map — MISMO MapLibre que usa MapView.js (ya está cargado global en la
+    // app, sin API de Google, sin archivos nuevos). Instancia liviana y
+    // no-interactiva (solo preview), con el pin "mini-modal" del lugar.
+    const lat = place.location?.lat || place.lat;
+    const lng = place.location?.lng || place.lng;
+    this._renderMiniMap(place, lat, lng, catIcon);
+
+    // Tags — vienen de Supabase (tabla place_tags), pedidas async
+    this._loadTags(place);
+
+    // Activity stack — mini-fichas en abanico (fixed, esquina superior derecha)
+    this._loadPlaceActivities(place);
+
+    // User avatar — misma resolución que PlaceModal1: foto real del perfil,
+    // o si no tiene, memoji de Tapback generado con su nombre (nunca vacío)
+    const user = this.getCurrentUser?.();
+    const avatarEl = $('wp-pm2-user-avatar');
+    if (user) {
+      const displayName = user.user_metadata?.display_name
+        || user.user_metadata?.full_name
+        || user.email?.split('@')[0]
+        || 'Usuario';
+      this._skelOn(avatarEl);
+      avatarEl.onload  = () => this._skelOff(avatarEl);
+      avatarEl.onerror = () => this._skelOff(avatarEl);
+      avatarEl.src = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+    } else {
+      this._skelOff(avatarEl);
+      avatarEl.src = '';
+    }
+
+    // Reviews (async)
+    this._loadReviews(place);
+
+    // Descripción generada con IA (misma función que PlaceModal1)
+    this._populateAI(place);
+  }
+
+  // Descripción generada con IA — misma lógica que PlaceModal1._populateAI:
+  // 1) si el place ya trae `ai_descriptions` (guardadas en Supabase), muestra
+  //    una al azar de inmediato; 2) si no, pide una nueva a
+  //    /api/groq-description (que arma el prompt en base a place.reviews)
+  _populateAI(place) {
+    const block    = this._el.querySelector('#wp-pm2-ai-block');
+    const textEl   = this._el.querySelector('#wp-pm2-ai-text');
+    const skelEl   = this._el.querySelector('#wp-pm2-ai-skeleton');
+    const icon     = this._el.querySelector('.wp-pm2-ai-icon');
+    if (!block || !textEl) return;
+
+    if (this._aiAbort) this._aiAbort();
+    this._aiAbort = null;
+
+    const placeId = place.place_id || place.id;
+    if (!placeId) { block.style.display = 'none'; return; }
+
+    // Skeleton de 6 renglones visible DESDE EL ARRANQUE — el texto real
+    // aparece arriba recién cuando termina de cargar/generarse
+    block.style.display = '';
+    textEl.textContent  = '';
+    textEl.style.display = 'none';
+    skelEl.style.display = '';
+
+    const showText = (desc, animate) => {
+      skelEl.style.display = 'none';
+      textEl.style.display = '';
+      if (animate) {
+        if (icon) icon.classList.add('wp-pm2-ai-pulse');
+        return this._typewrite(textEl, desc, null, () => {
+          if (icon) icon.classList.remove('wp-pm2-ai-pulse');
+        });
+      }
+      this._typewrite(textEl, desc);
+      return null;
+    };
+
+    const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
+    if (existing.length > 0) {
+      const desc = existing[Math.floor(Math.random() * existing.length)];
+      showText(desc, false);
       return;
     }
 
-    const lvl     = zoom >= 17 ? 'full' : zoom >= 16.5 ? 'mid' : 'small';
-    const opacity = lvl === 'full' ? '1' : lvl === 'mid' ? '0.88' : '0.72';
-    // Máximo de labels en pantalla según zoom — evita el amontonamiento
-    const MAX_LABELS = lvl === 'full' ? 12 : lvl === 'mid' ? 8 : 5;
+    let aborted = false;
+    let cancelTypewrite = null;
+    this._aiAbort = () => {
+      aborted = true;
+      if (cancelTypewrite) cancelTypewrite();
+      block.style.display = 'none';
+      textEl.textContent  = '';
+      if (icon) icon.classList.remove('wp-pm2-ai-pulse');
+    };
 
-    const center = this.map.getCenter();
-    const els = Array.from(document.querySelectorAll('.place-marker-el'));
-
-    const candidates = els.map(el => {
-      const idx = this.markerEls.indexOf(el);
-      if (idx === -1) return null;
-      const marker = this.markers[idx];
-      if (!marker) return null;
-      // No mostrar label si el pin está en modo punto o invisible
-      if (!el._wpVisible) {
-        const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
-        return null;
-      }
-      if (el.classList.contains('featured-highlight')) {
-        const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
-        return null;
-      }
-      // Los pines featured (anillo naranja permanente, no solo el
-      // centrado con zoom) tampoco muestran label lateral
-      if (el._place?.featured) {
-        const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
-        return null;
-      }
-      const ll = marker.getLngLat();
-      if (!bounds.contains(ll)) {
-        const lbl = el.querySelector('.place-pin-label');
-        if (lbl) { lbl.style.opacity = '0'; lbl.style.visibility = 'hidden'; }
-        return null;
-      }
-      // Posición en pantalla — recalculada cada vez para que left/right sea dinámico
-      const pt   = this.map.project(ll);
-      const side = pt.x > screenW / 2 ? 'left' : 'right';
-      const dx   = ll.lng - center.lng, dy = ll.lat - center.lat;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      const place    = el._place || {};
-      const featured = place.featured ? 0 : 1;
-      const rating   = -(parseFloat(place.rating) || 0);
-      return { el, dist, side, pt, priority: featured * 1000 + rating * 10 + dist };
-    }).filter(Boolean).sort((a, b) => a.priority - b.priority);
-
-    // Ocultar labels de los que no entran
-    candidates.forEach((item, i) => {
-      const lbl = item.el.querySelector('.place-pin-label');
-      if (lbl && i >= MAX_LABELS) {
-        lbl.style.opacity     = '0';
-        lbl.style.visibility  = 'hidden';
-        item._labelHidden = true;
-      }
-    });
-
-    const visible = candidates.slice(0, MAX_LABELS);
-
-    visible.forEach(({ el, side }, i) => {
-      const label = el.querySelector('.place-pin-label');
-      if (!label) return;
-
-      const pinW = el.querySelector('.place-pin-wrapper, .pin-dot')?.offsetWidth || 20;
-      if (side === 'right') {
-        label.style.left      = (pinW + 6) + 'px';
-        label.style.right     = 'auto';
-        label.style.transform = 'translateY(-50%)';
-        label.style.textAlign = 'left';
-      } else {
-        label.style.left      = 'auto';
-        label.style.right     = (pinW + 6) + 'px';
-        label.style.transform = 'translateY(-50%)';
-        label.style.textAlign = 'right';
-      }
-
-      // Aplicar modo pre-calculado — sin medir, sin setTimeout, sin parpadeo
-      if (el._labelMultiline) {
-        label.style.whiteSpace      = 'normal';
-        label.style.display         = '-webkit-box';
-        label.style.webkitLineClamp = '2';
-        label.style.webkitBoxOrient = 'vertical';
-        label.style.textOverflow    = '';
-      } else {
-        label.style.whiteSpace   = 'nowrap';
-        label.style.display      = 'block';
-        label.style.textOverflow = 'ellipsis';
-      }
-      label.style.overflow    = 'hidden';
-      label.style.fontSize    = '12px';
-      label.style.maxWidth    = '90px';
-      label.style.visibility  = 'visible';
-      label.style.transition  = 'opacity 0.22s ease';
-      label.style.opacity     = opacity;
-    });
+    fetch(`/api/groq-description?place_id=${encodeURIComponent(placeId)}`)
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (aborted) return;
+        if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
+        cancelTypewrite = showText(data.description, true);
+      })
+      .catch(() => { if (!aborted) block.style.display = 'none'; });
   }
 
-  // ── MiniCard ──────────────────────────────────────────────────────
-  _showMiniCard(place, index, rawPhoto, skipMove = false) {
-    this._closeMiniCard();
-    this.miniCardPlace  = place;
-    this.miniCardMarker = this.markers[index];
-    this.miniCardIndex  = index;
-    this.haptic('tap');
-
-    const marker = this.markers[index];
-    if (!marker) return;
-    const wrapper = marker.getElement();
-    if (!wrapper) return;
-
-    const photoUrl  = proxyPhotoCard(rawPhoto);
-    const rating    = place.rating ? `⭐ ${Number(place.rating).toFixed(1)}` : '';
-    const address   = (place.formattedAddress || place.formatted_address || place.vicinity || '').substring(0, 32);
-    const hasAct    = this._activityCount(place) > 0;
-    const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
-    const cat       = this.currentCatData;
-
-    // Guardar HTML del pin — solo si no hay uno ya guardado
-    // (evita sobreescribir con minicard si la animación de salida está en curso)
-    if (wrapper._savedPinHTML === undefined) {
-      wrapper._savedPinHTML = wrapper.innerHTML;
-    }
-    wrapper.style.width    = 'auto';
-    wrapper.style.height   = 'auto';
-    wrapper.style.overflow = 'visible';
-    wrapper.style.zIndex   = '9999';
-
-    wrapper.style.marginTop = '-45px';
-
-    // Icono de fallback — se calcula SIEMPRE (sirve si no hay foto o si la foto falla)
-    const mcSubIcon3d = getSubcatIcon3d(place, this.currentCatId);
-    const mcIcon3d    = mcSubIcon3d || cat?.icon3d || '';
-    const mcEmoji     = cat?.icon || '💎';
-    const mcIconInner = mcIcon3d
-      ? `<img src="${mcIcon3d}" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='${mcEmoji}'">`
-      : mcEmoji;
-    const mcFallbackHtml = `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${mcIconInner}</div>`;
-
-    // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2
-    wrapper.innerHTML = `<div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Inter Tight',system-ui,sans-serif;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
-      ${photoUrl
-        ? `<div class="wp-mc-photo-wrap" style="width:44px;height:44px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
-            <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
-          </div>`
-        : `<div style="width:44px;height:44px;border-radius:9px;background:${cardGrad};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;">${mcIconInner}</div>`}
-      <div style="flex:1;min-width:0;overflow:hidden;">
-        <div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">${place.name}</div>
-        ${rating  ? `<div style="font-size:12px;color:#f59e0b;margin-top:1px;line-height:1.3;">${rating}</div>` : ''}
-        ${address ? `<div style="font-size:11px;color:#9ca3af;margin-top:1px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${address}</div>` : ''}
-      </div>
-      <div style="width:28px;height:28px;border-radius:50%;background:#e5e5e5;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#9ca3af;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-    </div>`;
-
-    const card = wrapper.querySelector('.minicard-marker-content');
-    if (card) {
-      animateMinicardIn(card);
-      const pulse = () => {
-        card.style.transform = 'scale(0.93)';
-        setTimeout(() => { card.style.transform = ''; }, 150);
-      };
-      let tx = 0, ty = 0;
-      card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; pulse(); }, { passive: true });
-      card.addEventListener('touchend', e => {
-        if (Math.abs(e.changedTouches[0].clientX - tx) > 8 || Math.abs(e.changedTouches[0].clientY - ty) > 8) return;
-        e.stopPropagation(); e.preventDefault();
-        this.haptic('select');
-        if (this.onPlaceSelect) this.onPlaceSelect(place);
-      });
-      card.addEventListener('click', e => {
-        e.stopPropagation();
-        pulse();
-        this.haptic('select');
-        if (this.onPlaceSelect) this.onPlaceSelect(place);
-      });
-    }
-
-    const lat = place.location?.lat ?? place.lat;
-    const lng = place.location?.lng ?? place.lng;
-    if (lat && lng) {
-      const vv      = window.visualViewport;
-      const canvasH = this.map.getCanvas().clientHeight;
-      const vvH     = vv ? vv.height : canvasH;
-      const visibleH = Math.min(vvH, canvasH);
-
-      const inSearch = document.body.classList.contains('wp-search-active') ||
-                       !!(document.getElementById('wps-inner'));
-
-      if (inSearch) {
-        // En búsqueda: mismo cálculo que SearchBar.doFlyTo, respeta zoom actual
-        const topbar  = document.getElementById('topbar-right-chip');
-        const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-        const scats   = document.getElementById('wp-scats');
-        const results = document.getElementById('wp-sresults');
-        const botEl   = (scats && scats.offsetParent !== null) ? scats :
-                        (results && results.offsetParent !== null) ? results : null;
-        let botEdge   = botEl ? botEl.getBoundingClientRect().top - 8 : visibleH;
-        botEdge = Math.max(botEdge, visibleH * 0.5);
-        const areaCenter = topEdge + (botEdge - topEdge) / 2;
-        const offsetY    = Math.round(areaCenter + 45 - canvasH / 2);
-        if (!skipMove) this.map.easeTo({ center: [lng, lat], zoom: this.map.getZoom(), duration: 400, offset: [0, offsetY] });
-        return;
-      }
-
-      // Modo normal: cálculo original
-      const topbar  = document.getElementById('topbar-right-chip');
-      const topEdge = topbar ? topbar.getBoundingClientRect().bottom + 8 : 68;
-
-      const panel   = document.querySelector('.map-results-panel-float') || document.getElementById('map-results-panel');
-      let botEdge;
-      const panelRect = panel ? panel.getBoundingClientRect() : null;
-      const panelTop  = panelRect && panelRect.top > 0 && panelRect.top < visibleH ? panelRect.top : 9999;
-      const scats2    = document.getElementById('wp-scats');
-      const scatsTop  = scats2 && scats2.offsetParent !== null ? scats2.getBoundingClientRect().top : 9999;
-      const msEl      = document.getElementById('wp-minisnap-panel');
-      const msRect    = msEl ? msEl.getBoundingClientRect() : null;
-      const msTop     = msRect && msRect.top > topEdge && msRect.top < visibleH ? msRect.top : 9999;
-
-      const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
-      botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
-
-      const areaCenter = topEdge + (botEdge - topEdge) / 2;
-      const pinTarget  = areaCenter + 35;
-      const offsetY    = Math.round(pinTarget - canvasH / 2);
-
-      if (!skipMove) this.map.easeTo({ center: [lng, lat], duration: 300, offset: [0, offsetY] });
-    }
+  _typewrite(el, text, onStart, onDone) {
+    el.textContent = '';
+    let i = 0;
+    let cancelled = false;
+    let timer = null;
+    const step = () => {
+      if (cancelled) return;
+      if (i < text.length) {
+        el.textContent += text[i++];
+        timer = setTimeout(step, 16);
+      } else if (onDone) onDone();
+    };
+    if (onStart) onStart();
+    timer = setTimeout(step, 16);
+    return function cancel() {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }
 
-  _closeMiniCard() {
-    if (!this.miniCardMarker) return;
-    // Capturar wrapper y limpiar estado YA — antes de cualquier animación
-    // Así _showMiniCard puede pisar miniCardMarker sin race condition
-    const wrapper = this.miniCardMarker.getElement();
-    this.miniCardMarker  = null;
-    this.miniCardIndex   = -1;
-    this.miniCardPlace   = null;
-    this._miniCardPinRoot  = null;
-    this._miniCardMarkerEl = null;
+  // Google Reviews — vienen embebidas en el propio `place.reviews` (columna
+  // JSONB de Supabase, cargada por /api/supabase-places al listar lugares),
+  // así que no hace falta ningún fetch acá: son las mismas reseñas de
+  // Google que Google Place Details trajo al guardar el lugar.
+  // Calcula si el lugar está abierto ahora mismo en base a regularOpeningHours
+  // (mismo cálculo que PlaceModal1._isOpenNow)
+  // Skeleton a prueba de conflictos de especificidad: se setea inline con
+  // !important (máxima prioridad posible), no depende de la cascada de CSS
+  // Skeleton sin !important: cada imagen tiene su propia clase .wp-pm2-skel
+  // con selector de la MISMA especificidad que su regla base (ver CSS), así
+  // que gana por cascada normal, no por fuerza bruta. El hero (que es un
+  // <div> con background-image seteado por JS) usa un ::before aparte para
+  // no pisar nunca la foto real.
+  _skelOn(el) {
+    if (!el) return;
+    el.classList.add('wp-pm2-skel');
+  }
+  _skelOff(el) {
+    if (!el) return;
+    el.classList.remove('wp-pm2-skel');
+  }
 
-    const card = wrapper && wrapper.querySelector('.minicard-marker-content');
-    if (card) {
-      // Animación de salida — restaurar pin al terminar
-      const self = this;
-      animateMinicardOut(card, function() {
-        self._restorePin(wrapper);
+  // Etiquetas del lugar — Supabase (tabla place_tags), agrupadas y
+  // ordenadas por votos en PlaceTagService.getTagsForPlace()
+  async _loadTags(place) {
+    try {
+      this._appliedTags = await PlaceTagService.getTagsForPlace(place);
+    } catch (e) {
+      this._appliedTags = [];
+    }
+    this._renderTagScroll();
+  }
+
+  // Pinta el scroll horizontal de etiquetas — modo ver (las ya aplicadas,
+  // de solo lectura) o modo selección (todo el catálogo, tocable para
+  // activar/desactivar cada una)
+  _renderTagScroll() {
+    const scroll = this._el.querySelector('#wp-pm2-tag-scroll');
+    const btn = this._el.querySelector('#wp-pm2-tag-toggle-btn');
+    if (!scroll || !btn) return;
+    scroll.innerHTML = '';
+
+    if (this._tagSelectMode) {
+      btn.textContent = 'Listo';
+      btn.classList.add('wp-pm2-active');
+      const appliedKeys = new Set((this._appliedTags || []).map(t => t.key));
+
+      PLACE_TAGS.forEach(tag => {
+        const b = document.createElement('button');
+        b.className = 'wp-pm2-tag-chip' + (appliedKeys.has(tag.key) ? ' wp-pm2-tag-selected' : '');
+        b.textContent = `${tag.emoji} ${tag.label}`;
+        b.addEventListener('click', async () => {
+          const user = this.getCurrentUser?.();
+          if (!user) { console.log('[PM2] Hay que iniciar sesión para etiquetar'); return; }
+          b.disabled = true;
+          try {
+            const res = await PlaceTagService.toggleTag(this._place, tag.key, user.id);
+            const nowActive = res.action === 'added';
+            b.classList.toggle('wp-pm2-tag-selected', nowActive);
+            if (nowActive) appliedKeys.add(tag.key); else appliedKeys.delete(tag.key);
+          } catch (e) {
+            console.log('[PM2] Error al etiquetar:', e.message);
+          } finally {
+            b.disabled = false;
+          }
+        });
+        scroll.appendChild(b);
       });
     } else {
-      this._restorePin(wrapper);
-    }
-  }
-
-  _restorePin(wrapper) {
-    if (wrapper && wrapper._savedPinHTML !== undefined) {
-      wrapper.style.width     = '44px';
-      wrapper.style.height    = '44px';
-      wrapper.style.overflow  = 'visible';
-      wrapper.style.zIndex    = '';
-      wrapper.style.marginTop = '';
-      wrapper.innerHTML = wrapper._savedPinHTML;
-      delete wrapper._savedPinHTML;
-      const z = this.map ? this.map.getZoom() : 0;
-      wrapper.querySelectorAll('.place-act-badge').forEach(function(b) {
-        b.style.opacity = z >= 15 ? '1' : '0';
+      btn.textContent = 'Etiquetar lugar';
+      btn.classList.remove('wp-pm2-active');
+      (this._appliedTags || []).forEach(tag => {
+        const span = document.createElement('span');
+        span.className = 'wp-pm2-tag-chip';
+        span.textContent = `${tag.emoji} ${tag.label}`;
+        scroll.appendChild(span);
       });
     }
-    // Estado ya limpiado en _closeMiniCard — no tocar aquí
   }
 
-  // ── Actividades ───────────────────────────────────────────────────
-  _activityCount(place) {
-    const pName = (place.name || '').toLowerCase().trim();
-    const pId   = (place.place_id || place.placeId || '').toLowerCase();
-    return this.activities.filter(a => {
-      const aName = (a.place_name || '').toLowerCase().trim();
-      const aId   = (a.place_id  || '').toLowerCase();
-      return (pId && aId === pId) || (pName && aName === pName);
-    }).length;
-  }
-
-  _refreshActivityBadges() {
-    this.markerEls.forEach((el, i) => {
-      const place = this.allPlaces[i]; if (!place) return;
-      const count = this._activityCount(place);
-      let badge = el.querySelector('.place-act-badge');
-      if (count > 0) {
-        if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
-        badge.textContent = count; badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
-      } else if (badge) badge.remove();
-    });
-  }
-
-  updateActivities(activities) { this.activities = activities; this._refreshActivityBadges(); }
-
-  // ── Landmarks ─────────────────────────────────────────────────────
-  _renderLandmarks(items) {
-    if (items && items.length) this._allLandmarks = items;
-    const cat = this.currentCatId;
-    const filtered = (this._allLandmarks || []).filter(item => {
-      if (!item.visible_in_categories || !item.visible_in_categories.length) return true;
-      if (!cat) return true;
-      return item.visible_in_categories.includes(cat);
-    });
-    items = filtered;
-    this.landmarkMarkers.forEach(m => m.remove());
-    this.landmarkMarkers = [];
-
-    items.forEach(item => {
-      if (!item.lat || !item.lng) return;
-      const sizeMap  = { mini: 18, normal: 26, destacado: 46 };
-      const fontSize = sizeMap[item.size] || 32;
-      const borderColor = item.border_color || null;
-      const color    = item.color || '#00bcd4';
-
-      const el = document.createElement('div');
-      el.className = 'lm-wrap';
-
-      if (item.type === 'sticker') {
-        const inner    = document.createElement('div');
-        inner.className = 'lm-inner-slow';
-        const strokeColor = borderColor || '#ffffff';
-        const strokeW  = Math.round(Math.max(4, fontSize * 0.16));
-        const pad      = Math.round(fontSize * 0.1);
-        const totalSize = fontSize + pad * 2;
-
-        const stickerWrap = document.createElement('div');
-        stickerWrap.style.cssText = `position:relative;display:inline-flex;align-items:center;justify-content:center;width:${totalSize}px;height:${totalSize}px;user-select:none;`;
-
-        if (item.icon_url) {
-          const imgEl = new Image();
-          imgEl.crossOrigin = 'anonymous';
-          imgEl.onload = () => {
-            const dpr  = Math.min(window.devicePixelRatio || 1, 2);
-            const strokeW = Math.round(Math.max(4, fontSize * 0.16));
-
-            // ── Respetar aspect ratio de la imagen ──────────────────
-            const natW = imgEl.naturalWidth  || 1;
-            const natH = imgEl.naturalHeight || 1;
-            const ratio = natW / natH;
-            // Ajustar dimensiones manteniendo el área visual ≈ totalSize²
-            let drawW, drawH;
-            if (ratio >= 1) {
-              drawW = totalSize;
-              drawH = Math.round(totalSize / ratio);
-            } else {
-              drawH = totalSize;
-              drawW = Math.round(totalSize * ratio);
-            }
-
-            const pad2 = Math.ceil(strokeW * dpr * 2);
-            const cvW  = drawW * dpr + pad2 * 2;
-            const cvH  = drawH * dpr + pad2 * 2;
-            const cvs  = document.createElement('canvas');
-            cvs.width  = cvW; cvs.height = cvH;
-            const ctx  = cvs.getContext('2d');
-
-            const cx = pad2, cy = pad2;
-            const sz = { w: drawW * dpr, h: drawH * dpr };
-            const bsz = { w: sz.w + strokeW * dpr * 2, h: sz.h + strokeW * dpr * 2 };
-            const bx = cx - strokeW * dpr, by = cy - strokeW * dpr;
-
-            // Stroke / borde
-            ctx.drawImage(imgEl, bx, by, bsz.w, bsz.h);
-            ctx.globalCompositeOperation = 'source-atop';
-            ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cvW, cvH);
-            ctx.globalCompositeOperation = 'source-over';
-            // Imagen original
-            ctx.drawImage(imgEl, cx, cy, sz.w, sz.h);
-
-            const out = document.createElement('img');
-            out.src = cvs.toDataURL('image/png');
-            out.style.cssText = `width:${drawW + strokeW * 2}px;height:${drawH + strokeW * 2}px;display:block;`;
-            stickerWrap.style.width  = `${drawW + strokeW * 2}px`;
-            stickerWrap.style.height = `${drawH + strokeW * 2}px`;
-            stickerWrap.appendChild(out);
-          };
-          imgEl.onerror = () => {
-            const fb = document.createElement('div');
-            fb.style.cssText = `width:${totalSize}px;height:${totalSize}px;background:rgba(0,0,0,0.1);border-radius:8px;`;
-            stickerWrap.appendChild(fb);
-          };
-          imgEl.src = item.icon_url;
-        } else {
-          const dpr  = Math.min(window.devicePixelRatio || 1, 2);
-          const pad2 = Math.ceil(strokeW * dpr * 2);
-          const cs   = totalSize * dpr + pad2 * 2;
-          const cx   = cs / 2, cy = cs / 2;
-          const cvs  = document.createElement('canvas');
-          cvs.width = cs; cvs.height = cs;
-          const ctx  = cvs.getContext('2d');
-          const fontPx  = fontSize * dpr;
-          const offsets = strokeW * dpr;
-          ctx.font = `${fontPx + offsets * 2}px serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(item.emoji || '⭐', cx, cy);
-          ctx.globalCompositeOperation = 'source-atop';
-          ctx.fillStyle = strokeColor; ctx.fillRect(0, 0, cs, cs);
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.font = `${fontPx}px serif`;
-          ctx.fillText(item.emoji || '⭐', cx, cy);
-          const img = document.createElement('img');
-          img.src = cvs.toDataURL('image/png');
-          img.style.cssText = `width:${totalSize}px;height:${totalSize}px;display:block;`;
-          stickerWrap.appendChild(img);
-        }
-
-        const shadow = document.createElement('div');
-        shadow.className = 'lm-shadow-slow';
-        shadow.style.cssText = 'width:20px;height:6px;margin-top:3px;';
-
-        const iconCol = document.createElement('div');
-        iconCol.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
-        iconCol.appendChild(stickerWrap);
-        iconCol.appendChild(shadow);
-        inner.appendChild(iconCol);
-        el.appendChild(inner);
-
-        if (item.title && item.show_label !== false) {
-          const seed  = item.id ? item.id.charCodeAt(0) % 600 : Math.random() * 600;
-          const label = document.createElement('div');
-          label.className = 'lm-label lm-sticker-label';
-          label.textContent = item.title;
-          label.style.cssText = [
-            'position:absolute', 'left:calc(100% + 3px)', 'top:50%',
-            'transform:translateY(-60%)', 'white-space:nowrap',
-            'background:rgba(10,10,20,0.78)', 'color:#fff',
-            'font-size:9px', 'font-weight:700',
-            "font-family:'Inter Tight',system-ui,sans-serif",
-            'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
-            'opacity:1', `transition:opacity 0.4s ease ${seed}ms`,
-            'max-width:90px', 'overflow:hidden', 'text-overflow:ellipsis',
-            'border:1px solid rgba(255,255,255,0.12)',
-            'backdrop-filter:blur(4px)', '-webkit-backdrop-filter:blur(4px)',
-          ].join(';');
-          inner.style.position = 'relative';
-          inner.appendChild(label);
-          el.style.overflow = 'visible';
-        }
-
-      } else {
-        // Landmark normal
-        const pinSize = 42;
-        const inner   = document.createElement('div');
-        inner.className = 'lm-inner';
-        inner.style.cssText = 'gap:3px;';
-
-        const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:\'Inter Tight\',system-ui,sans-serif;';
-        label.textContent = item.title || '';
-
-        const borderStyle = borderColor
-          ? `box-shadow:0 0 0 3px ${borderColor},0 4px 12px rgba(0,0,0,0.3);`
-          : `box-shadow:0 0 0 2px ${color}66,0 4px 12px rgba(0,0,0,0.3);`;
-        const pin = document.createElement('div');
-        pin.style.cssText = `width:${pinSize}px;height:${pinSize}px;border-radius:50%;background:linear-gradient(145deg,${color}dd 0%,${color} 50%,${color}99 100%);border:3px solid white;${borderStyle}display:flex;align-items:center;justify-content:center;font-size:20px;`;
-        pin.textContent = item.emoji || '📍';
-
-        const shadow = document.createElement('div');
-        shadow.className = 'lm-shadow';
-        shadow.style.cssText = 'width:24px;height:8px;margin-top:3px;';
-
-        inner.appendChild(label);
-        inner.appendChild(pin);
-        inner.appendChild(shadow);
-        el.appendChild(inner);
-      }
-
-      if (item.description) el.title = item.description;
-
-      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([item.lng, item.lat])
-        .addTo(this.map);
-      this.landmarkMarkers.push(marker);
-    });
-
-    console.log('✅ Landmarks renderizados:', items.length);
-  }
-
-  // ── Featured Highlight — igual que el original ─────────────────────
-  _clearFeaturedHighlight() {
-    document.querySelectorAll('.place-marker-el.featured-highlight').forEach(el => {
-      el.classList.remove('featured-highlight');
-      const wrapper = el.querySelector('.place-pin-wrapper');
-      const nameEl  = el.querySelector('.pin-featured-name');
-      const shadow  = el.querySelector('.pin-featured-shadow');
-      const badge   = el.querySelector('.pin-featured-badge');
-      if (wrapper) {
-        wrapper.style.transform = '';
-        wrapper.style.boxShadow = wrapper.dataset.liquidShadow || wrapper._liquidShadow || '';
-      }
-      if (nameEl)  nameEl.remove();
-      if (shadow)  shadow.remove();
-      if (badge) {
-        badge.style.display = 'flex';
-        const place = el._place;
-        if (place?.featured) {
-          const bg   = place.featured==='verified'?'#059669':place.featured==='premium'?'#2563eb':'rgba(0,0,0,0.65)';
-          const icon = place.featured==='verified'?'✓':'⭐';
-          badge.style.background = bg; badge.innerHTML = icon;
-        }
-      }
-      const lbl = el.querySelector('.place-pin-label');
-      if (lbl) { lbl.style.opacity = ''; lbl.style.pointerEvents = ''; }
-    });
-    this._featuredHighlightEl = null;
-  }
-
-  _checkFeaturedNearCenter() {
-    const container = this.map.getContainer();
-    const cx = container.offsetWidth / 2;
-    const cy = container.offsetHeight / 2;
-    const ENTER = 100, EXIT = 180;
-    let closest = null, closestDist = Infinity;
-    document.querySelectorAll('.place-marker-el').forEach(el => {
-      const place = el._place;
-      if (!place?.featured) return;
-      const marker = el._marker;
-      if (!marker) return;
-      const pt   = this.map.project(marker.getLngLat());
-      const dist = Math.sqrt(Math.pow(pt.x-cx,2) + Math.pow(pt.y-cy,2));
-      if (dist < ENTER && dist < closestDist) { closestDist = dist; closest = { el, place }; }
-    });
-    if (closest && closest.el === this._featuredHighlightEl) return;
-    if (!closest && this._featuredHighlightEl) {
-      const pm = this._featuredHighlightEl._marker;
-      if (pm) {
-        const pt = this.map.project(pm.getLngLat());
-        if (Math.sqrt(Math.pow(pt.x-cx,2)+Math.pow(pt.y-cy,2)) < EXIT) return;
-      }
+  // Mapa mini — mismo MapLibre que usa MapView.js (window.maplibregl, ya
+  // cargado global en index.html, mismo MAP_STYLE). Se crea UNA sola vez
+  // y se reutiliza entre lugares (solo se mueve center + marker).
+  // Mini-fichas de actividades en este lugar, en abanico. Por ahora con
+  // datos de muestra (place.activities si existiera, si no un mock) — falta
+  // definir de dónde vienen los datos reales (ActivityService no tiene
+  // todavía un getForPlace(placeId), solo getActiveActivities() general).
+  // Trae TODAS las actividades activas de la app (ActivityService no tiene
+  // un getForPlace propio) y filtra client-side por el place_id de esta
+  // ficha. Si falla o no hay match, cae al estado vacío (invitar a crear).
+  async _loadPlaceActivities(place) {
+    const placeId = place.place_id || place.id;
+    let matched = [];
+    try {
+      const all = await ActivityService.getActiveActivities();
+      matched = (all || []).filter(a => a.place_id && placeId && a.place_id === placeId);
+    } catch (e) {
+      matched = [];
     }
-    this._clearFeaturedHighlight();
-    if (!closest) return;
-    this._featuredHighlightEl = closest.el;
-    closest.el.classList.add('featured-highlight');
-    const fb  = closest.el.querySelector('.pin-featured-badge');
-    const lbl = closest.el.querySelector('.place-pin-label');
-    if (fb)  fb.style.display  = 'none';
-    if (lbl) { lbl.style.opacity = '0'; lbl.style.pointerEvents = 'none'; }
-    if (navigator.vibrate) navigator.vibrate(40);
-    const wrapper = closest.el.querySelector('.place-pin-wrapper');
-    if (wrapper) {
-      wrapper.style.transition = 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)';
-      wrapper.style.transform  = 'scale(1.35) translateY(-6px)';
-    }
-    const root = closest.el.querySelector('.place-pin-root');
-    if (root && !root.querySelector('.pin-featured-shadow')) {
-      const shadow = document.createElement('div');
-      shadow.className = 'pin-featured-shadow';
-      shadow.style.cssText = 'position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;';
-      root.appendChild(shadow);
-    }
-    if (root && !root.querySelector('.pin-featured-name')) {
-      const badge  = closest.place.featured==='verified'?'✅ Verificado':closest.place.featured==='premium'?'💎 Premium':'⭐ Destacado';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'pin-featured-name';
-      nameEl.style.cssText = 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
-      nameEl.innerHTML =
-        '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:\'Inter Tight\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
-        closest.place.name + '</div>' +
-        '<div style="font-size:9px;font-weight:700;background:' +
-        (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)') +
-        ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
-      root.appendChild(nameEl);
-    }
+    this._renderActivityStack(place, matched);
   }
 
-  // ── Reposicionar lugares (SuperUserPanel) ───────────────────────────
-  enableDragMode(onMoved) {
-    this._dragModeActive = true;
-    this._dragModeCallback = onMoved || null;
-    this._dragSelectedPlace = null;
-    this._dragSelectedEl = null;
+  _renderActivityStack(place, activitiesRaw) {
+    const stack = this._el.querySelector('#wp-pm2-activity-stack');
+    if (!stack) return;
+    stack.innerHTML = '';
 
-    // Banner visual
-    let banner = document.getElementById('wp-reposition-banner');
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'wp-reposition-banner';
-      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
-      banner.innerHTML = `<span id="wp-reposition-text">🎯 Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
-      document.body.appendChild(banner);
-      document.getElementById('wp-reposition-cancel').addEventListener('click', () => this.disableDragMode());
-    }
-    banner.style.display = 'flex';
+    const activities = (Array.isArray(activitiesRaw) ? activitiesRaw : []).slice(0, 3);
+    const GRADIENTS = [
+      'linear-gradient(145deg,#f472b6,#fb7185)', // coral/rosa
+      'linear-gradient(145deg,#fbbf24,#f59e0b)', // amarillo
+      'linear-gradient(145deg,#818cf8,#6366f1)', // azul/violeta
+    ];
+    const ROT = ['-14deg', '5deg', '16deg'];
+    const OFFSET = [
+      { tx: '6px',  ty: '2px' },
+      { tx: '-2px', ty: '-4px' },
+      { tx: '-8px', ty: '4px' },
+    ];
 
-    this.map.getCanvas().style.cursor = 'crosshair';
-  }
-
-  disableDragMode() {
-    this._dragModeActive = false;
-    this._dragModeCallback = null;
-    this._dragSelectedPlace = null;
-    if (this._dragSelectedEl) {
-      this._dragSelectedEl.style.outline = '';
-      this._dragSelectedEl.style.filter  = '';
-      this._dragSelectedEl = null;
-    }
-    const banner = document.getElementById('wp-reposition-banner');
-    if (banner) banner.style.display = 'none';
-    this.map.getCanvas().style.cursor = '';
-    if (this._dragMapClickHandler) {
-      this.map.off('click', this._dragMapClickHandler);
-      this._dragMapClickHandler = null;
-    }
-  }
-
-  _selectPlaceForReposition(place, el, index) {
-    // Deseleccionar anterior
-    if (this._dragSelectedEl) {
-      this._dragSelectedEl.style.outline = '';
-      this._dragSelectedEl.style.filter  = '';
-    }
-    this._dragSelectedPlace = place;
-    this._dragSelectedEl    = el;
-    this._dragSelectedIndex = index;
-
-    // Resaltar visualmente el pin seleccionado
-    el.style.outline = '3px solid #f59e0b';
-    el.style.outlineOffset = '2px';
-    el.style.filter = 'drop-shadow(0 0 8px rgba(245,158,11,0.7))';
-
-    const txt = document.getElementById('wp-reposition-text');
-    if (txt) txt.textContent = `📍 "${place.name}" — toca el mapa para moverlo`;
-
-    // Listener en el mapa: el próximo click mueve el lugar
-    if (this._dragMapClickHandler) this.map.off('click', this._dragMapClickHandler);
-    this._dragMapClickHandler = (e) => {
-      this._moveSelectedPlace(e.lngLat.lat, e.lngLat.lng);
-    };
-    this.map.once('click', this._dragMapClickHandler);
-  }
-
-  _moveSelectedPlace(lat, lng) {
-    const place = this._dragSelectedPlace;
-    const el    = this._dragSelectedEl;
-    if (!place || !el) return;
-
-    // Actualizar visualmente el marker de inmediato
-    const marker = el._marker;
-    if (marker) marker.setLngLat([lng, lat]);
-    place.lat = lat; place.lng = lng;
-    if (place.location) { place.location.lat = lat; place.location.lng = lng; }
-
-    this.haptic('snap');
-    el.style.outline = '';
-    el.style.filter  = '';
-    this._dragSelectedEl = null;
-    this._dragSelectedPlace = null;
-
-    const txt = document.getElementById('wp-reposition-text');
-    if (txt) txt.textContent = '🎯 Toca un lugar para moverlo';
-
-    if (this._dragModeCallback) {
-      this._dragModeCallback(place, lat, lng);
-    }
-  }
-
-  // ── Pick mode: elegir lugar para una actividad (tap en mapa) ────────
-  enablePickMode(onPickCallback) {
-    document.getElementById('activity-popup')?.remove();
-    this.pickModeActive   = true;
-    this.pickModeCallback = onPickCallback;
-    document.body.classList.add('pick-mode');
-    this.map.getCanvas().style.cursor = 'crosshair';
-
-    // Ocultar UI: panel resultados, chips de subcategoría, topbar
-    const panel = document.querySelector('.map-results-panel-float');
-    if (panel) panel.style.transform = 'translateY(100%)';
-    const scats = document.getElementById('wp-scats');
-    if (scats) { scats.style.opacity = '0'; scats.style.pointerEvents = 'none'; }
-    ['topbar-auth-btn', 'topbar-notif-btn', 'topbar-right-chip'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
-    });
-
-    // Mostrar labels de los pines para identificar lugares mientras se elige
-    this._updateLabelsProgressive();
-
-    // Click en el mapa (fuera de un pin) → punto personalizado
-    this._pickHandled = false;
-    this._pickMapClickHandler = (e) => {
-      if (this._pickHandled) return;
-      const { lat, lng } = e.lngLat;
-      this._placePickPin(lng, lat);
-      this.map.flyTo({ center: [lng, lat], duration: 350 });
-      if (onPickCallback) onPickCallback({ name: null, lat, lng, customPoint: true });
-    };
-    this.map.on('click', this._pickMapClickHandler);
-
-    // Click en un pin existente → ese lugar real
-    this._pickMarkerHandlers = [];
-    this.markerEls.forEach((el, index) => {
-      const place = this.allPlaces[index];
-      if (!place || !el) return;
-      const handler = (e) => {
-        e.stopPropagation();
-        this._pickHandled = true;
-        setTimeout(() => { this._pickHandled = false; }, 300);
-        const lat = place.location?.lat ?? place.lat;
-        const lng = place.location?.lng ?? place.lng;
-        this._placePickPin(lng, lat);
-        this.map.flyTo({ center: [lng, lat], duration: 350 });
-        if (onPickCallback) onPickCallback({
-          name: place.name, lat, lng,
-          place_id: place.place_id || place.placeId
-        });
-      };
-      el.addEventListener('click', handler, { capture: true });
-      this._pickMarkerHandlers.push({ el, handler });
-    });
-
-    console.log('🎯 Pick mode activado');
-  }
-
-  // ── Pin visual fijo en el punto exacto donde se hizo tap ────────────
-  _placePickPin(lng, lat) {
-    if (this._pickPinMarker) {
-      this._pickPinMarker.setLngLat([lng, lat]);
+    if (!activities.length) {
+      // Sin actividades — invita a crear una
+      const card = document.createElement('div');
+      card.className = 'wp-pm2-activity-card wp-pm2-activity-empty';
+      card.style.setProperty('--rot', '-8deg');
+      card.style.setProperty('--delay', '0.05s');
+      card.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="align-self:center;margin-top:8px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Crear actividad<br>en este lugar</span>
+      `;
+      card.addEventListener('click', () => console.log('[PM2] Crear actividad en:', place.name));
+      stack.appendChild(card);
       return;
     }
-    const el = document.createElement('div');
-    el.style.cssText = 'width:36px;height:48px;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;';
-    el.innerHTML = `
-      <svg width="36" height="48" viewBox="0 0 36 48" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.3));">
-        <path d="M18 0C8 0 0 8 0 18c0 13 18 30 18 30s18-17 18-30C36 8 28 0 18 0z" fill="#1a5cf5"/>
-        <circle cx="18" cy="18" r="7" fill="white"/>
-      </svg>`;
-    this._pickPinMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-      .setLngLat([lng, lat])
-      .addTo(this.map);
+
+    activities.forEach((act, i) => {
+      const d = act.scheduled_at ? new Date(act.scheduled_at) : null;
+      const day   = d ? d.getDate() : '--';
+      const month = d ? d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '').toUpperCase() : '';
+      const creatorName = act.profiles?.name || 'Alguien';
+      const participantCount = Array.isArray(act.participants) ? act.participants.length : 0;
+
+      const card = document.createElement('div');
+      card.className = 'wp-pm2-activity-card';
+      card.style.background = GRADIENTS[i % GRADIENTS.length];
+      card.style.setProperty('--rot', ROT[i % ROT.length]);
+      card.style.setProperty('--tx', OFFSET[i % OFFSET.length].tx);
+      card.style.setProperty('--ty', OFFSET[i % OFFSET.length].ty);
+      card.style.setProperty('--delay', (i * 0.08) + 's');
+      card.style.zIndex = activities.length - i;
+
+      card.innerHTML = `
+        <div class="wp-pm2-activity-date"><span class="d">${day}</span><span class="m">${month}</span></div>
+        <div class="wp-pm2-activity-title">${act.title || act.type || 'Actividad'}</div>
+        <div class="wp-pm2-activity-people">
+          <img class="wp-pm2-activity-avatar">
+          <span>${participantCount ? '+' + participantCount : ''}</span>
+        </div>
+      `;
+      const avImg = card.querySelector('.wp-pm2-activity-avatar');
+      this._skelOn(avImg);
+      avImg.onload = avImg.onerror = () => this._skelOff(avImg);
+      avImg.src = act.profiles?.avatar_url || getAvatarUrl(creatorName);
+
+      card.addEventListener('click', () => console.log('[PM2] Ver actividad:', act));
+      stack.appendChild(card);
+    });
   }
 
-  _removePickPin() {
-    if (this._pickPinMarker) { this._pickPinMarker.remove(); this._pickPinMarker = null; }
-  }
+  _renderMiniMap(place, lat, lng, catIcon) {
+    const container = this._el.querySelector('#wp-pm2-map-canvas');
+    const preview = this._el.querySelector('#wp-pm2-map-preview');
+    if (!lat || !lng) { preview.style.display = 'none'; return; }
+    preview.style.display = '';
 
-  disablePickMode() {
-    this.pickModeActive   = false;
-    this.pickModeCallback = null;
-    document.body.classList.remove('pick-mode');
-    this.map.getCanvas().style.cursor = '';
-
-    const panel = document.querySelector('.map-results-panel-float');
-    if (panel) panel.style.transform = '';
-    const scats = document.getElementById('wp-scats');
-    if (scats) { scats.style.opacity = ''; scats.style.pointerEvents = ''; }
-    ['topbar-auth-btn', 'topbar-notif-btn', 'topbar-right-chip'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; }
-    });
-
-    // Ocultar labels de pines (vuelven a su comportamiento normal por zoom)
-    document.querySelectorAll('.place-marker-el .place-pin-label').forEach(l => {
-      l.style.opacity = '0'; l.style.display = 'none';
-    });
-
-    if (this._pickMapClickHandler) {
-      this.map.off('click', this._pickMapClickHandler);
-      this._pickMapClickHandler = null;
+    if (typeof window.maplibregl === 'undefined') {
+      // MapLibre no cargó (no debería pasar, ya está en index.html) —
+      // evitamos romper el resto de la ficha
+      return;
     }
-    if (this._pickMarkerHandlers) {
-      this._pickMarkerHandlers.forEach(({ el, handler }) => {
-        el.removeEventListener('click', handler, { capture: true });
+
+    const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+
+    if (!this._miniMap) {
+      this._miniMap = new window.maplibregl.Map({
+        container,
+        style: MAP_STYLE,
+        center: [lng, lat],
+        zoom: 14,
+        attributionControl: false,
+        interactive: false,   // preview: sin pan/zoom/rotate, solo mostrar
+        keyboard: false,
+        renderWorldCopies: false,
       });
-      this._pickMarkerHandlers = [];
+    } else {
+      this._miniMap.setCenter([lng, lat]);
+      this._miniMap.setZoom(14);
     }
-    this._removePickPin();
-    console.log('🎯 Pick mode desactivado');
+
+    // Punto pulsante azul — más simple y limpio que el pin liquid-glass
+    if (!document.getElementById('wp-pm2-pulse-style')) {
+      const st = document.createElement('style');
+      st.id = 'wp-pm2-pulse-style';
+      st.textContent = `
+        @keyframes wp-pm2-pulse-ring {
+          0%   { transform:scale(1); opacity:0.55; }
+          100% { transform:scale(2.6); opacity:0; }
+        }
+      `;
+      document.head.appendChild(st);
+    }
+    const el = document.createElement('div');
+    el.style.cssText = 'position:relative;width:18px;height:18px;display:flex;align-items:center;justify-content:center;';
+    el.innerHTML = `
+      <div style="position:absolute;width:18px;height:18px;border-radius:50%;background:#2563eb;animation:wp-pm2-pulse-ring 1.8s ease-out infinite;"></div>
+      <div style="position:relative;width:12px;height:12px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`;
+
+    if (this._miniMapMarker) this._miniMapMarker.remove();
+    this._miniMapMarker = new window.maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([lng, lat])
+      .addTo(this._miniMap);
+
+    // El contenedor puede medir 0 si el modal recién se está abriendo —
+    // resize() una vez que ya tiene layout real
+    requestAnimationFrame(() => requestAnimationFrame(() => this._miniMap.resize()));
   }
 
-  flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
-  getMap() { return this.map; }
+  _isOpenNow(place) {
+    const oh = place.regularOpeningHours;
+    if (!oh || !oh.periods || !oh.periods.length) return null;
+    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+    return oh.periods.some(p => {
+      if (!p.open || !p.close || p.open.day !== day) return false;
+      const o = p.open.hour * 60 + (p.open.minute || 0);
+      const c = p.close.hour * 60 + (p.close.minute || 0);
+      return mins >= o && mins < c;
+    });
+  }
+
+  _loadReviews(place) {
+    const summaryEl = this._el.querySelector('#wp-pm2-reviews-summary');
+    const avatarsEl = this._el.querySelector('#wp-pm2-reviews-avatars');
+    const countEl   = this._el.querySelector('#wp-pm2-reviews-count');
+
+    let reviews = place.reviews;
+    if (typeof reviews === 'string') { try { reviews = JSON.parse(reviews); } catch(e) { reviews = []; } }
+    if (!Array.isArray(reviews)) reviews = [];
+
+    // Facepile: solo 3 avatares reales (memoji de Tapback vía getAvatarUrl,
+    // misma función que usa PlaceModal1) + una bolita "+N" con el resto.
+    const totalReal = place.userRatingCount || place.user_ratings_total || reviews.length;
+    if (reviews.length) {
+      avatarsEl.innerHTML = '';
+      const shown = reviews.slice(0, 3);
+      shown.forEach((r, i) => {
+        const av = document.createElement('img');
+        av.className = 'wp-pm2-fp-avatar';
+        av.style.zIndex = shown.length - i; // el primero queda arriba, igual que PlaceModal1
+        this._skelOn(av);
+        av.onload  = () => this._skelOff(av);
+        av.onerror = () => { this._skelOff(av); av.style.background = '#e2e8f0'; };
+        av.src = getAvatarUrl(r.author_name || 'user');
+        avatarsEl.appendChild(av);
+      });
+      const remaining = Math.max(0, totalReal - shown.length);
+      if (remaining > 0) {
+        const more = document.createElement('div');
+        more.className = 'wp-pm2-fp-more';
+        more.textContent = '+' + (remaining > 99 ? '99' : remaining);
+        more.style.zIndex = 0;
+        avatarsEl.appendChild(more);
+      }
+      countEl.textContent = `(${totalReal} reseñas)`;
+      summaryEl.style.display = '';
+    } else {
+      summaryEl.style.display = 'none';
+    }
+
+    this._googleReviews = reviews;
+    this._buildReviewsHeader(place);
+    this._renderGooglePanel(place);
+    this._loadCommunityReviews(place); // async, WhatsPlan
+  }
+
+  // Header con "Reseñas" + tabs (Google / WhatsPlan) + pill "Añadir reseña",
+  // calcado de PlaceModal1 (_populateReviews → headerRow)
+  _buildReviewsHeader(place) {
+    const headerRow = this._el.querySelector('#wpr-header-row');
+    if (!headerRow) return;
+    const gCount = (this._googleReviews || []).length;
+    const cCount = (this._communityReviews || []).length;
+
+    headerRow.innerHTML = `
+      <span class="wp-pm2-reviews-title-text">Reseñas</span>
+      <div class="wpr-header-tabs-row">
+        <button class="wpr-tab wpr-tab-active" data-tab="google">Google <span class="wpr-tab-count">${gCount}</span></button>
+        <button class="wpr-tab" data-tab="community">WhatsPlan <span class="wpr-tab-count">${cCount}</span></button>
+        <button class="wpr-tab wpr-tab-add" id="wpr-add-btn">✦ Añadir reseña</button>
+      </div>
+    `;
+
+    headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(tab => {
+      tab.onclick = () => {
+        headerRow.querySelectorAll('.wpr-tab[data-tab]').forEach(t => t.classList.remove('wpr-tab-active'));
+        tab.classList.add('wpr-tab-active');
+        this._el.querySelector('#wpr-panel-google').style.display    = tab.dataset.tab === 'google'    ? '' : 'none';
+        this._el.querySelector('#wpr-panel-community').style.display = tab.dataset.tab === 'community' ? '' : 'none';
+      };
+    });
+    const addBtn = headerRow.querySelector('#wpr-add-btn');
+    if (addBtn) addBtn.onclick = () => {
+      this._el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this._el.querySelector('#wp-pm2-comment-box').click();
+    };
+  }
+
+  // Construye una tarjeta de reseña (misma estructura para Google y
+  // WhatsPlan, solo cambian los datos de entrada)
+  _buildReviewCard(name, rating, text, timeLabel, photoSeed) {
+    const row = document.createElement('div');
+    row.className = 'wp-pm2-review-row';
+    const stars = rating ? '⭐'.repeat(Math.round(rating)) : '';
+    row.innerHTML = `
+      <img class="wp-pm2-review-avatar">
+      <div class="wp-pm2-review-body">
+        <div class="wp-pm2-review-name">${name}</div>
+        ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
+        <div class="wp-pm2-review-text">${text || ''}</div>
+        <button class="wp-pm2-review-more">Ver más</button>
+        ${timeLabel ? `<div class="wp-pm2-review-time">${timeLabel}</div>` : ''}
+      </div>`;
+
+    const avImg = row.querySelector('.wp-pm2-review-avatar');
+    this._skelOn(avImg);
+    avImg.onload  = () => this._skelOff(avImg);
+    avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
+    avImg.src = photoSeed;
+
+    const textEl = row.querySelector('.wp-pm2-review-text');
+    const moreBtn = row.querySelector('.wp-pm2-review-more');
+    requestAnimationFrame(() => {
+      if (textEl.scrollHeight > textEl.clientHeight + 1) {
+        moreBtn.style.display = 'block';
+        moreBtn.onclick = () => {
+          const expanded = textEl.classList.toggle('wp-pm2-expanded');
+          moreBtn.textContent = expanded ? 'Ver menos' : 'Ver más';
+        };
+      }
+    });
+    return row;
+  }
+
+  // Panel de reseñas de Google + link "Ver todas las reseñas en Google"
+  // (misma URL que PlaceModal1: search.google.com/local/reviews)
+  _renderGooglePanel(place) {
+    const panel = this._el.querySelector('#wpr-panel-google');
+    const reviews = this._googleReviews || [];
+    panel.innerHTML = '';
+    if (!reviews.length) {
+      panel.innerHTML = '<p class="wpr-empty">Sin reseñas de Google todavía</p>';
+      return;
+    }
+    reviews.slice(0, 5).forEach(r => {
+      panel.appendChild(this._buildReviewCard(
+        r.author_name || 'Usuario de Google',
+        r.rating, r.text, r.relative_time,
+        getAvatarUrl(r.author_name || 'user')
+      ));
+    });
+    const placeId = place.place_id || place.id;
+    if (placeId) {
+      const a = document.createElement('a');
+      a.className = 'wpr-see-more';
+      a.href = `https://search.google.com/local/reviews?placeid=${placeId}`;
+      a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'Ver todas las reseñas en Google →';
+      panel.appendChild(a);
+    }
+  }
+
+  // Panel de reseñas de WhatsPlan (tabla place_reviews vía ReviewService)
+  async _loadCommunityReviews(place) {
+    const panel = this._el.querySelector('#wpr-panel-community');
+    try {
+      const reviews = await ReviewService.getForPlace(place.place_id || place.id);
+      this._communityReviews = reviews || [];
+      panel.innerHTML = '';
+      if (!this._communityReviews.length) {
+        panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
+      } else {
+        this._communityReviews.forEach(r => {
+          panel.appendChild(this._buildReviewCard(
+            r.display_name || 'Usuario',
+            r.rating, r.text, '',
+            getAvatarUrl(r.display_name || 'user')
+          ));
+        });
+      }
+    } catch (e) {
+      this._communityReviews = [];
+      panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
+    }
+    this._buildReviewsHeader(place); // refresca el conteo del tab WhatsPlan
+  }
+
+  isVisible() { return this._el?.classList.contains('visible'); }
 }
 
-// PATCH: _buildPinHtml — foto con borde liquid celestial 3D + Roboto
-MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
-  const rawName   = place.name || '';
-  // Si el nombre viene en TODAS MAYÚSCULAS, convertirlo a Title Case.
-  // CSS text-transform:capitalize solo funciona en textos que ya tienen minúsculas.
-  const isAllCaps = rawName === rawName.toUpperCase() && /[A-ZÁÉÍÓÚÑa-záéíóúñ]{2,}/.test(rawName);
-  const shortName = isAllCaps
-    ? rawName.toLowerCase().replace(/(?:^|\s|['"([\-])\S/g, c => c.toUpperCase())
-    : rawName;
-  const isFeat    = !!place.featured;
-  const featType  = typeof place.featured === 'string' ? place.featured : '';
-
-  const featHtml  = '';  // Sin badge en el pin
-  const pulseHtml = isFeat ? '<div class="pin-pulse"></div>' : '';
-
-  const liquidBg     = 'linear-gradient(145deg,rgba(255,255,255,1) 0%,rgba(210,235,255,0.95) 40%,rgba(180,215,255,0.88) 65%,rgba(255,255,255,0.98) 100%)';
-  const liquidShadow = '0 0 0 1.5px rgba(160,205,255,0.5),0 3px 10px rgba(100,170,255,0.22),0 1px 3px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9)';
-  const featShadow   = '0 0 0 2.5px #FF6D00,0 0 0 4.5px rgba(255,109,0,0.2),0 3px 10px rgba(255,109,0,0.3),inset 0 1px 0 rgba(255,255,255,0.9)';
-  const activeShadow = isFeat ? featShadow : liquidShadow;
-
-  // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:var(--wp-font),system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
-
-  if (photoUrl) {
-    // data-liquid-shadow: para restaurar después del highlight
-    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div class="place-pin-rel">${featHtml}${pulseHtml}
-        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;padding:1.5px;display:flex;align-items:center;justify-content:center;">
-          <div class="pin-inner loading" data-photo="${photoUrl}" style="border-radius:50%;overflow:hidden;">${catIcon}</div>
-        </div>
-      </div>
-      ${labelHtml}
-    </div>`;
-  }
-
-  // ── Sin foto: mostrar el icono (subcategoría > categoría > emoji) dentro del pin ──
-  return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-    <div class="place-pin-rel">${featHtml}${pulseHtml}
-      <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
-        <div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">${catIcon}</div>
-      </div>
-    </div>
-    ${labelHtml}
-  </div>`;
-};
+export { PlaceModal2 as PlaceModal };
