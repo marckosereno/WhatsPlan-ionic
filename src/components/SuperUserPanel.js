@@ -1659,7 +1659,7 @@ export class SuperUserPanel {
     // Renderizar galería de fotos — arrastrables para reordenar
     const renderGalleryItems = (photos) =>
       photos.map((url, i) =>
-        '<div class="su-gal-item" data-idx="' + i + '" style="position:relative;width:80px;height:80px;flex-shrink:0;touch-action:pan-x;">' +
+        '<div class="su-gal-item" data-idx="' + i + '" style="position:relative;width:80px;height:80px;flex-shrink:0;touch-action:none;">' +
           '<img src="' + url + '" draggable="false" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:' + (i === 0 ? '2px solid #00bcd4' : '1.5px solid rgba(255,255,255,0.1)') + ';pointer-events:none;">' +
           (i === 0 ? '<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;color:#fff;background:rgba(0,188,212,0.8);border-radius:0 0 8px 8px;padding:1px 0;pointer-events:none;">PRINCIPAL</div>' : '') +
           '<button class="su-gal-del" data-idx="' + i + '" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;z-index:2;">✕</button>' +
@@ -1865,37 +1865,34 @@ export class SuperUserPanel {
       });
 
       // ── Drag para reordenar (mouse y touch, via pointer events) ──────
-      // Se activa recién con long-press (450ms quieto) — así el scroll
-      // horizontal normal de la galería sigue funcionando sin interferencia.
+      // Se activa recién con long-press (450ms quieto). Todo el manejo
+      // (scroll horizontal ANTES del long-press, drag DESPUÉS) es manual
+      // acá mismo — cambiar touch-action a mitad de un gesto táctil no es
+      // confiable entre navegadores, así que directamente no dependemos
+      // de eso: touch-action:none siempre, y el scroll lo hacemos nosotros
+      // moviendo galEl.scrollLeft a mano mientras se espera el long-press.
       const galEl = document.getElementById('su-pf-gallery');
       const items = Array.from(galEl.querySelectorAll('.su-gal-item'));
       if (!items.length) return;
       const STEP = items[0].offsetWidth + 8; // ancho del thumbnail + gap real (8px)
       const LONG_PRESS_MS = 450;
       const MOVE_CANCEL_PX = 8; // si se mueve más que esto antes del timer, es scroll, no drag
-      let dragItem = null, dragOrigIdx = null, startX = 0, startY = 0, order = null;
-      let pressTimer = null, dragActive = false, pointerId = null;
+      let dragItem = null, dragOrigIdx = null, startX = 0, startY = 0, lastX = 0, order = null;
+      let pressTimer = null, dragActive = false, scrolling = false;
 
       items.forEach(item => {
         item.addEventListener('pointerdown', (e) => {
           if (e.target.closest('.su-gal-del')) return;
           dragItem = item;
           dragOrigIdx = parseInt(item.getAttribute('data-idx'));
-          startX = e.clientX; startY = e.clientY;
-          pointerId = e.pointerId;
-          dragActive = false;
+          startX = e.clientX; startY = e.clientY; lastX = e.clientX;
+          dragActive = false; scrolling = false;
+          item.setPointerCapture(e.pointerId);
           clearTimeout(pressTimer);
           pressTimer = setTimeout(() => {
-            // Se cumplió el long-press sin moverse — recién ahí arranca el drag.
-            // Clave: recién ACÁ bloqueamos el scroll nativo (touch-action:none).
-            // Antes tenía pan-x desde el arranque, y el navegador tomaba
-            // cualquier movimiento horizontal como scroll antes de que
-            // nuestro preventDefault() llegara a tiempo — por eso soltaba
-            // en el mismo lugar.
+            if (scrolling) return; // ya se decidió que esto era scroll, no drag
             dragActive = true;
-            item.style.touchAction = 'none';
             order = items.map(it => parseInt(it.getAttribute('data-idx')));
-            item.setPointerCapture(pointerId);
             item.style.zIndex = '20';
             item.style.transition = 'none';
             item.style.boxShadow = '0 10px 24px rgba(0,0,0,0.45)';
@@ -1906,16 +1903,24 @@ export class SuperUserPanel {
 
         item.addEventListener('pointermove', (e) => {
           if (dragItem !== item) return;
+
           if (!dragActive) {
-            // Todavía no se activó el drag — si se movió, era un scroll:
-            // cancelar el long-press y dejar que el navegador scrollee normal
             const moved = Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY);
             if (moved > MOVE_CANCEL_PX) {
+              // Se movió antes de completar el long-press → es scroll, no
+              // drag. Cancelamos el timer y scrolleamos NOSOTROS a mano
+              // (touch-action:none bloquea el scroll nativo del navegador)
               clearTimeout(pressTimer);
-              dragItem = null;
+              scrolling = true;
+            }
+            if (scrolling) {
+              e.preventDefault();
+              galEl.scrollLeft -= (e.clientX - lastX);
+              lastX = e.clientX;
             }
             return;
           }
+
           e.preventDefault();
           const dx = e.clientX - startX;
           item.style.transform = `translateX(${dx}px) scale(1.06)`;
@@ -1951,7 +1956,8 @@ export class SuperUserPanel {
             photos.push(...newPhotos);
             _refreshGallery();
           }
-          dragItem = null; dragOrigIdx = null; order = null; dragActive = false;
+          dragItem = null; dragOrigIdx = null; order = null;
+          dragActive = false; scrolling = false;
         };
         item.addEventListener('pointerup', endDrag);
         item.addEventListener('pointercancel', endDrag);
