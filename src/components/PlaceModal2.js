@@ -287,6 +287,7 @@ export class PlaceModal2 {
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
         overflow:hidden;
+        font-family:'Inter Tight',sans-serif;
       }
       /* Topbar 100% transparente: no tiene fondo propio. La sombra usa el
          mismo blur sutil (0.5px) + mask-image que la versión nativa de
@@ -934,6 +935,7 @@ export class PlaceModal2 {
         padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
         background:transparent;
         pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
+        font-family:'Inter Tight',sans-serif;
       }
       #wp-pm2-footer > * { pointer-events:auto; }
       #wp-pm2-here-btn {
