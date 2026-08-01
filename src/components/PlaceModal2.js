@@ -36,8 +36,8 @@ export class PlaceModal2 {
             <button id="wp-pm2-topbar-share" class="wp-pm2-tb-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
             </button>
-            <button id="wp-pm2-topbar-more" class="wp-pm2-icon-only-btn">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.0002 13.3C8.71817 13.3 9.3002 12.7179 9.3002 12C9.3002 11.282 8.71817 10.7 8.0002 10.7C7.28223 10.7 6.7002 11.282 6.7002 12C6.7002 12.7179 7.28223 13.3 8.0002 13.3ZM16.0002 13.3C16.7182 13.3 17.3002 12.7179 17.3002 12C17.3002 11.282 16.7182 10.7 16.0002 10.7C15.2822 10.7 14.7002 11.282 14.7002 12C14.7002 12.7179 15.2822 13.3 16.0002 13.3ZM12.0002 13.3C12.7182 13.3 13.3002 12.7179 13.3002 12C13.3002 11.282 12.7182 10.7 12.0002 10.7C11.2822 10.7 10.7002 11.282 10.7002 12C10.7002 12.7179 11.2822 13.3 12.0002 13.3Z"/></svg>
+            <button id="wp-pm2-topbar-more" class="wp-pm2-tb-btn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.0002 13.3C8.71817 13.3 9.3002 12.7179 9.3002 12C9.3002 11.282 8.71817 10.7 8.0002 10.7C7.28223 10.7 6.7002 11.282 6.7002 12C6.7002 12.7179 7.28223 13.3 8.0002 13.3ZM16.0002 13.3C16.7182 13.3 17.3002 12.7179 17.3002 12C17.3002 11.282 16.7182 10.7 16.0002 10.7C15.2822 10.7 14.7002 11.282 14.7002 12C14.7002 12.7179 15.2822 13.3 16.0002 13.3ZM12.0002 13.3C12.7182 13.3 13.3002 12.7179 13.3002 12C13.3002 11.282 12.7182 10.7 12.0002 10.7C11.2822 10.7 10.7002 11.282 10.7002 12C10.7002 12.7179 11.2822 13.3 12.0002 13.3Z"/></svg>
             </button>
           </div>
         </div>
@@ -431,16 +431,6 @@ export class PlaceModal2 {
         transition:transform 0.15s;
       }
       .wp-pm2-tb-btn:active { transform:scale(0.92); }
-      /* Íconos que ya traen su propio círculo dibujado adentro — sin
-         container/fondo propio, solo el hitbox para el click */
-      .wp-pm2-icon-only-btn {
-        width:34px; height:34px; border:none; background:transparent;
-        display:flex; align-items:center; justify-content:center;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-        flex-shrink:0; padding:0; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.18));
-        transition:transform 0.15s;
-      }
-      .wp-pm2-icon-only-btn:active { transform:scale(0.92); }
 
       /* CONTENT AREA — hero (overlay) encima de body (ocupa TODO el área,
          incl. detrás del hero) */
@@ -1196,12 +1186,12 @@ export class PlaceModal2 {
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:4px">
-          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.18));">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 16.5C12 16.5 7.5 13.8 7.5 10.6C7.5 8.9 8.85 7.6 10.5 7.6C11.4 7.6 12 8.1 12 8.6C12 8.1 12.6 7.6 13.5 7.6C15.15 7.6 16.5 8.9 16.5 10.6C16.5 13.8 12 16.5 12 16.5Z"/></svg>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
+          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 16.5C12 16.5 7.5 13.8 7.5 10.6C7.5 8.9 8.85 7.6 10.5 7.6C11.4 7.6 12 8.1 12 8.6C12 8.1 12.6 7.6 13.5 7.6C15.15 7.6 16.5 8.9 16.5 10.6C16.5 13.8 12 16.5 12 16.5Z"/></svg>
           </button>
-          <button id="wp-ms-close-btn" style="width:32px;height:32px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.18));">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.29289 8.29289C8.68342 7.90237 9.31658 7.90237 9.70711 8.29289L12 10.5858L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L13.4142 12L15.7071 14.2929C16.0976 14.6834 16.0976 15.3166 15.7071 15.7071C15.3166 16.0976 14.6834 16.0976 14.2929 15.7071L12 13.4142L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L10.5858 12L8.29289 9.70711C7.90237 9.31658 7.90237 8.68342 8.29289 8.29289Z"/></svg>
+          <button id="wp-ms-close-btn" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.29289 8.29289C8.68342 7.90237 9.31658 7.90237 9.70711 8.29289L12 10.5858L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L13.4142 12L15.7071 14.2929C16.0976 14.6834 16.0976 15.3166 15.7071 15.7071C15.3166 16.0976 14.6834 16.0976 14.2929 15.7071L12 13.4142L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L10.5858 12L8.29289 9.70711C7.90237 9.31658 7.90237 8.68342 8.29289 8.29289Z"/></svg>
           </button>
         </div>
       </div>
