@@ -1663,6 +1663,12 @@ export class SuperUserPanel {
           '<img src="' + url + '" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:' + (i === 0 ? '2px solid #00bcd4' : '1.5px solid rgba(255,255,255,0.1)') + ';">' +
           (i === 0 ? '<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;color:#fff;background:rgba(0,188,212,0.8);border-radius:0 0 8px 8px;padding:1px 0;">PRINCIPAL</div>' : '') +
           '<button class="su-gal-del" data-idx="' + i + '" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;">✕</button>' +
+          // Reordenar: mover la foto una posición hacia la izquierda/derecha
+          // (deshabilitado en los extremos donde no aplica)
+          '<div style="position:absolute;top:-5px;left:-5px;display:flex;gap:2px;">' +
+            '<button class="su-gal-move" data-idx="' + i + '" data-dir="-1" ' + (i === 0 ? 'disabled' : '') + ' style="width:18px;height:18px;border-radius:50%;background:' + (i === 0 ? 'rgba(255,255,255,0.15)' : '#1a1a2e') + ';border:1px solid rgba(255,255,255,0.25);color:' + (i === 0 ? 'rgba(255,255,255,0.3)' : '#fff') + ';font-size:10px;cursor:' + (i === 0 ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">‹</button>' +
+            '<button class="su-gal-move" data-idx="' + i + '" data-dir="1" ' + (i === photos.length - 1 ? 'disabled' : '') + ' style="width:18px;height:18px;border-radius:50%;background:' + (i === photos.length - 1 ? 'rgba(255,255,255,0.15)' : '#1a1a2e') + ';border:1px solid rgba(255,255,255,0.25);color:' + (i === photos.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff') + ';font-size:10px;cursor:' + (i === photos.length - 1 ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">›</button>' +
+          '</div>' +
         '</div>'
       ).join('');
 
@@ -1851,6 +1857,19 @@ export class SuperUserPanel {
           e.stopPropagation();
           const idx = parseInt(btn.getAttribute('data-idx'));
           photos.splice(idx, 1);
+          _refreshGallery();
+        });
+      });
+      // Reordenar foto — swap con la vecina izquierda/derecha
+      document.querySelectorAll('.su-gal-move').forEach(btn => {
+        if (btn.disabled) return;
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const idx = parseInt(btn.getAttribute('data-idx'));
+          const dir = parseInt(btn.getAttribute('data-dir'));
+          const target = idx + dir;
+          if (target < 0 || target >= photos.length) return;
+          [photos[idx], photos[target]] = [photos[target], photos[idx]];
           _refreshGallery();
         });
       });
