@@ -1656,18 +1656,17 @@ export class SuperUserPanel {
             return '<button type="button" class="su-subcat-tag' + (isOn ? ' on' : '') + '" data-val="' + s.value + '" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid ' + (isOn ? '#00bcd4' : 'rgba(255,255,255,0.15)') + ';background:' + (isOn ? 'rgba(0,188,212,0.2)' : 'rgba(255,255,255,0.05)') + ';color:' + (isOn ? '#67e8f9' : '#9ca3af') + ';transition:all 0.15s;">' + (s.emoji ? s.emoji + ' ' : '') + (s.label_es || s.value) + '</button>';
           }).join('');
 
-    // Renderizar galería de fotos
+    // Renderizar galería de fotos — arrastrables para reordenar
     const renderGalleryItems = (photos) =>
       photos.map((url, i) =>
-        '<div class="su-gal-item" data-idx="' + i + '" style="position:relative;width:80px;height:80px;flex-shrink:0;">' +
-          '<img src="' + url + '" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:' + (i === 0 ? '2px solid #00bcd4' : '1.5px solid rgba(255,255,255,0.1)') + ';">' +
-          (i === 0 ? '<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;color:#fff;background:rgba(0,188,212,0.8);border-radius:0 0 8px 8px;padding:1px 0;">PRINCIPAL</div>' : '') +
-          '<button class="su-gal-del" data-idx="' + i + '" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;">✕</button>' +
-          // Reordenar: mover la foto una posición hacia la izquierda/derecha
-          // (deshabilitado en los extremos donde no aplica)
-          '<div style="position:absolute;top:-5px;left:-5px;display:flex;gap:2px;">' +
-            '<button class="su-gal-move" data-idx="' + i + '" data-dir="-1" ' + (i === 0 ? 'disabled' : '') + ' style="width:18px;height:18px;border-radius:50%;background:' + (i === 0 ? 'rgba(255,255,255,0.15)' : '#1a1a2e') + ';border:1px solid rgba(255,255,255,0.25);color:' + (i === 0 ? 'rgba(255,255,255,0.3)' : '#fff') + ';font-size:10px;cursor:' + (i === 0 ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">‹</button>' +
-            '<button class="su-gal-move" data-idx="' + i + '" data-dir="1" ' + (i === photos.length - 1 ? 'disabled' : '') + ' style="width:18px;height:18px;border-radius:50%;background:' + (i === photos.length - 1 ? 'rgba(255,255,255,0.15)' : '#1a1a2e') + ';border:1px solid rgba(255,255,255,0.25);color:' + (i === photos.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff') + ';font-size:10px;cursor:' + (i === photos.length - 1 ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">›</button>' +
+        '<div class="su-gal-item" data-idx="' + i + '" style="position:relative;width:80px;height:80px;flex-shrink:0;touch-action:none;">' +
+          '<img src="' + url + '" draggable="false" style="width:80px;height:80px;border-radius:10px;object-fit:cover;border:' + (i === 0 ? '2px solid #00bcd4' : '1.5px solid rgba(255,255,255,0.1)') + ';pointer-events:none;">' +
+          (i === 0 ? '<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;color:#fff;background:rgba(0,188,212,0.8);border-radius:0 0 8px 8px;padding:1px 0;pointer-events:none;">PRINCIPAL</div>' : '') +
+          '<button class="su-gal-del" data-idx="' + i + '" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;z-index:2;">✕</button>' +
+          // Handle de drag — todo el thumbnail es arrastrable, esto es solo
+          // la pista visual de que se puede mover
+          '<div class="su-gal-handle" style="position:absolute;top:-5px;left:-5px;width:18px;height:18px;border-radius:50%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.25);color:#9ca3af;display:flex;align-items:center;justify-content:center;pointer-events:none;">' +
+            '<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="6" r="1.8"/><circle cx="16" cy="6" r="1.8"/><circle cx="8" cy="12" r="1.8"/><circle cx="16" cy="12" r="1.8"/><circle cx="8" cy="18" r="1.8"/><circle cx="16" cy="18" r="1.8"/></svg>' +
           '</div>' +
         '</div>'
       ).join('');
@@ -1860,22 +1859,68 @@ export class SuperUserPanel {
           _refreshGallery();
         });
       });
-      // Reordenar foto — swap con la vecina izquierda/derecha
-      document.querySelectorAll('.su-gal-move').forEach(btn => {
-        if (btn.disabled) return;
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.getAttribute('data-idx'));
-          const dir = parseInt(btn.getAttribute('data-dir'));
-          const target = idx + dir;
-          if (target < 0 || target >= photos.length) return;
-          [photos[idx], photos[target]] = [photos[target], photos[idx]];
-          _refreshGallery();
-        });
-      });
       // Botón añadir
       document.getElementById('su-gal-add-btn')?.addEventListener('click', () => {
         document.getElementById('su-gal-add-panel').style.display = 'flex';
+      });
+
+      // ── Drag para reordenar (mouse y touch, via pointer events) ──────
+      const galEl = document.getElementById('su-pf-gallery');
+      const items = Array.from(galEl.querySelectorAll('.su-gal-item'));
+      if (!items.length) return;
+      const STEP = items[0].offsetWidth + 8; // ancho del thumbnail + gap real (8px)
+      let dragItem = null, dragOrigIdx = null, startX = 0, order = null;
+
+      items.forEach(item => {
+        item.addEventListener('pointerdown', (e) => {
+          if (e.target.closest('.su-gal-del')) return;
+          dragItem = item;
+          dragOrigIdx = parseInt(item.getAttribute('data-idx'));
+          startX = e.clientX;
+          order = items.map(it => parseInt(it.getAttribute('data-idx')));
+          item.setPointerCapture(e.pointerId);
+          item.style.zIndex = '20';
+          item.style.transition = 'none';
+          item.style.boxShadow = '0 10px 24px rgba(0,0,0,0.45)';
+        });
+
+        item.addEventListener('pointermove', (e) => {
+          if (dragItem !== item) return;
+          const dx = e.clientX - startX;
+          item.style.transform = `translateX(${dx}px) scale(1.06)`;
+
+          const fromPos = order.indexOf(dragOrigIdx);
+          let toPos = Math.round(fromPos + dx / STEP);
+          toPos = Math.max(0, Math.min(items.length - 1, toPos));
+          if (toPos !== fromPos) {
+            order.splice(fromPos, 1);
+            order.splice(toPos, 0, dragOrigIdx);
+          }
+          // Correr a los demás thumbnails a su nueva posición visual
+          items.forEach(it => {
+            if (it === dragItem) return;
+            const origIdx = parseInt(it.getAttribute('data-idx'));
+            const pos = order.indexOf(origIdx);
+            const offset = (pos - origIdx) * STEP;
+            it.style.transition = 'transform 0.15s ease';
+            it.style.transform = `translateX(${offset}px)`;
+          });
+        });
+
+        const endDrag = () => {
+          if (dragItem !== item) return;
+          item.style.zIndex = '';
+          item.style.boxShadow = '';
+          // "order" tiene los índices originales en el nuevo orden visual
+          // — reconstruir el array real de fotos a partir de eso
+          const newPhotos = order.map(origIdx => photos[origIdx]);
+          photos.length = 0;
+          photos.push(...newPhotos);
+          dragItem = null; dragOrigIdx = null; order = null;
+          _refreshGallery();
+        };
+        item.addEventListener('pointerup', endDrag);
+        item.addEventListener('pointercancel', endDrag);
       });
     }
     _bindGalleryEvents();
