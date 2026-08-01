@@ -1448,7 +1448,7 @@ export class PlaceModal2 {
     // Photos array (used for hero bg + strip)
     const firstPhoto = place.photoUrl || place.photo_url || place.photosUrls?.[0] || null;
     const rawPhotos = place.photosUrls || (firstPhoto ? [firstPhoto] : []);
-    const photos = rawPhotos.slice(0, 6).map(u => this.proxyPhoto(u)).filter(Boolean);
+    const photos = rawPhotos.map(u => this.proxyPhoto(u)).filter(Boolean);
 
     // Photo strip
     const stripEl = $('wp-pm2-strip');
