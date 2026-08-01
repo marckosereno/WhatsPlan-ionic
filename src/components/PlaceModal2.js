@@ -29,15 +29,15 @@ export class PlaceModal2 {
 <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
           <button id="wp-pm2-back">
-            <svg width="18" height="18" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="244 400 100 256 244 112" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/><line x1="120" y1="256" x2="412" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px"/></svg>
+            <svg width="16" height="16" viewBox="0 0 32.75 32.75" fill="#000000" xmlns="http://www.w3.org/2000/svg"><path d="M32.75,16.377c0,2.209-1.791,4-4,4H12.646l3.754,4.42c1.431,1.684,1.224,4.207-0.46,5.638 c-0.752,0.64-1.672,0.95-2.587,0.95c-1.134,0-2.26-0.479-3.051-1.41l-9.351-11.01c-1.268-1.492-1.268-3.687,0-5.178l9.351-11.01 c1.431-1.684,3.954-1.89,5.638-0.459s1.891,3.954,0.46,5.638l-3.754,4.42H28.75C30.959,12.376,32.75,14.167,32.75,16.377z"/></svg>
           </button>
           <span id="wp-pm2-topbar-title"></span>
           <div id="wp-pm2-topbar-actions">
             <button id="wp-pm2-topbar-share" class="wp-pm2-tb-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
             </button>
-            <button id="wp-pm2-topbar-more" class="wp-pm2-tb-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            <button id="wp-pm2-topbar-more" class="wp-pm2-icon-only-btn">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.0002 13.3C8.71817 13.3 9.3002 12.7179 9.3002 12C9.3002 11.282 8.71817 10.7 8.0002 10.7C7.28223 10.7 6.7002 11.282 6.7002 12C6.7002 12.7179 7.28223 13.3 8.0002 13.3ZM16.0002 13.3C16.7182 13.3 17.3002 12.7179 17.3002 12C17.3002 11.282 16.7182 10.7 16.0002 10.7C15.2822 10.7 14.7002 11.282 14.7002 12C14.7002 12.7179 15.2822 13.3 16.0002 13.3ZM12.0002 13.3C12.7182 13.3 13.3002 12.7179 13.3002 12C13.3002 11.282 12.7182 10.7 12.0002 10.7C11.2822 10.7 10.7002 11.282 10.7002 12C10.7002 12.7179 11.2822 13.3 12.0002 13.3Z"/></svg>
             </button>
           </div>
         </div>
@@ -431,6 +431,16 @@ export class PlaceModal2 {
         transition:transform 0.15s;
       }
       .wp-pm2-tb-btn:active { transform:scale(0.92); }
+      /* Íconos que ya traen su propio círculo dibujado adentro — sin
+         container/fondo propio, solo el hitbox para el click */
+      .wp-pm2-icon-only-btn {
+        width:34px; height:34px; border:none; background:transparent;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        flex-shrink:0; padding:0; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.18));
+        transition:transform 0.15s;
+      }
+      .wp-pm2-icon-only-btn:active { transform:scale(0.92); }
 
       /* CONTENT AREA — hero (overlay) encima de body (ocupa TODO el área,
          incl. detrás del hero) */
@@ -1185,13 +1195,13 @@ export class PlaceModal2 {
       </div>
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:6px">
-          <button id="wp-ms-fav-btn" style="width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.92);box-shadow:0 4px 14px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-            <svg viewBox="0 0 512 512" width="16" height="16"><path d="M256,448a32,32,0,0,1-18-5.57c-78.59-53.35-112.62-89.93-131.39-112.8-40-48.75-59.15-98.8-58.61-153C48.63,114.52,98.46,64,159.08,64c44.08,0,74.61,24.83,92.39,45.51a6,6,0,0,0,9.06,0C278.31,88.81,308.84,64,352.92,64,413.54,64,463.37,114.52,464,176.64c.54,54.21-18.63,104.26-58.61,153-18.77,22.87-52.8,59.45-131.39,112.8A32,32,0,0,1,256,448Z" fill="none" stroke="#6b7280" stroke-width="40"/></svg>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:4px">
+          <button id="wp-ms-fav-btn" style="width:32px;height:32px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.18));">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM12 16.5C12 16.5 7.5 13.8 7.5 10.6C7.5 8.9 8.85 7.6 10.5 7.6C11.4 7.6 12 8.1 12 8.6C12 8.1 12.6 7.6 13.5 7.6C15.15 7.6 16.5 8.9 16.5 10.6C16.5 13.8 12 16.5 12 16.5Z"/></svg>
           </button>
-          <button id="wp-ms-close-btn" style="width:40px;height:40px;border-radius:50%;border:none;background:linear-gradient(135deg,#ff5a5f,#d0143c);box-shadow:0 4px 14px rgba(208,20,60,0.35);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <button id="wp-ms-close-btn" style="width:32px;height:32px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.18));">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.29289 8.29289C8.68342 7.90237 9.31658 7.90237 9.70711 8.29289L12 10.5858L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L13.4142 12L15.7071 14.2929C16.0976 14.6834 16.0976 15.3166 15.7071 15.7071C15.3166 16.0976 14.6834 16.0976 14.2929 15.7071L12 13.4142L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L10.5858 12L8.29289 9.70711C7.90237 9.31658 7.90237 8.68342 8.29289 8.29289Z"/></svg>
           </button>
         </div>
       </div>
@@ -1229,8 +1239,7 @@ export class PlaceModal2 {
       favBtn.classList.toggle('active');
       const svg = favBtn.querySelector('path');
       const active = favBtn.classList.contains('active');
-      svg.setAttribute('fill', active ? '#ef4444' : 'none');
-      svg.setAttribute('stroke', active ? '#ef4444' : '#6b7280');
+      svg.setAttribute('fill', active ? '#ef4444' : '#000000');
     };
 
     const closeBtn = ms.querySelector('#wp-ms-close-btn');
