@@ -96,6 +96,10 @@ try {
         dineIn:                    r.dine_in,
         takeout:                   r.takeout,
         delivery:                  r.delivery,
+        pinStyle:                  r.pin_style || 'photo', // 'photo' | 'sticker'
+        pinEmoji:                  r.pin_emoji || null,
+        pinIconUrl:                r.pin_icon_url || null,
+        pinSize:                   r.pin_size || 'normal', // 'mini' | 'normal' | 'grande'
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
