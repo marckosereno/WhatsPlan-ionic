@@ -812,7 +812,18 @@ export class PlaceModal2 {
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
         width:150px; height:210px; object-fit:cover;
-        border-radius:14px; flex-shrink:0; cursor:pointer;
+        border-radius:0; flex-shrink:0; cursor:pointer;
+      }
+      /* Solo los bordes EXTERNOS del strip quedan bien redondeados —
+         izquierdo de la primera foto, derecho de la última — como si
+         todo el slide fuera una sola píldora continua */
+      #wp-pm2-strip img:first-child {
+        border-top-left-radius:14px;
+        border-bottom-left-radius:14px;
+      }
+      #wp-pm2-strip img:last-child {
+        border-top-right-radius:14px;
+        border-bottom-right-radius:14px;
       }
       #wp-pm2-strip:empty { display:none; }
 
