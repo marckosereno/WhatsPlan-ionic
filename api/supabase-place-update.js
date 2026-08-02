@@ -45,6 +45,10 @@ export default async function handler(req, res) {
     if (body.description        != null) fields.description             = body.description || null;
     if (body.opening_hours      != null) fields.opening_hours           = body.opening_hours || null;
     if (body.featured           != null) fields.featured                = body.featured || null;
+    if (body.pin_style          != null) fields.pin_style               = body.pin_style || null;
+    if (body.pin_emoji          != null) fields.pin_emoji                = body.pin_emoji || null;
+    if (body.pin_icon_url       != null) fields.pin_icon_url            = body.pin_icon_url || null;
+    if (body.pin_size           != null) fields.pin_size                = body.pin_size || null;
 
     if (body.photos_urls != null) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
