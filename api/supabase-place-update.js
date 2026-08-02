@@ -25,36 +25,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'place_id es requerido' });
     }
 
-    // Construir solo los campos que vienen en el body
+    // Construir solo los campos que vienen en el body.
+    // OJO: se usa "'campo' in body" (no "!= null") a propósito — el frontend
+    // manda explícitamente null cuando el usuario quiere LIMPIAR un campo
+    // (ej: sacar "Destacado"), y con "!= null" ese null se ignoraba, dejando
+    // el valor viejo pegado en la base. "in" sí distingue bien "no vino en
+    // el body" de "vino explícitamente como null".
     const fields = { updated_at: new Date().toISOString() };
 
-    if (body.place_name         != null) fields.place_name              = body.place_name;
-    if (body.category           != null) fields.category                = body.category;
-    if (body.lat                != null) fields.lat                     = parseFloat(body.lat);
-    if (body.lng                != null) fields.lng                     = parseFloat(body.lng);
-    if (body.formatted_address  != null) fields.formatted_address       = body.formatted_address;
-    if (body.rating             != null) fields.rating                  = body.rating ? parseFloat(body.rating) : null;
-    if (body.photo_url          != null) fields.photo_url               = body.photo_url || null;
-    if (body.website            != null) fields.website                 = body.website || null;
-    if (body.types              != null) fields.types                   = body.types || null;
-    if (body.hidden             != null) fields.hidden                  = Boolean(body.hidden);
-    if (body.phone              != null) fields.formatted_phone_number  = body.phone || null;
-    if (body.user_ratings_total != null) fields.user_ratings_total      = body.user_ratings_total ? parseInt(body.user_ratings_total) : null;
-    if (body.reviews            != null) fields.reviews                 = body.reviews?.length ? body.reviews : null;
-    if (body.editorial_summary  != null) fields.editorial_summary       = body.editorial_summary || null;
-    if (body.description        != null) fields.description             = body.description || null;
-    if (body.opening_hours      != null) fields.opening_hours           = body.opening_hours || null;
-    if (body.featured           != null) fields.featured                = body.featured || null;
-    if (body.pin_style          != null) fields.pin_style               = body.pin_style || null;
-    if (body.pin_emoji          != null) fields.pin_emoji                = body.pin_emoji || null;
-    if (body.pin_icon_url       != null) fields.pin_icon_url            = body.pin_icon_url || null;
-    if (body.pin_size           != null) fields.pin_size                = body.pin_size || null;
+    if ('place_name'         in body) fields.place_name              = body.place_name;
+    if ('category'           in body) fields.category                = body.category;
+    if ('lat'                in body) fields.lat                     = parseFloat(body.lat);
+    if ('lng'                in body) fields.lng                     = parseFloat(body.lng);
+    if ('formatted_address'  in body) fields.formatted_address       = body.formatted_address;
+    if ('rating'             in body) fields.rating                  = body.rating ? parseFloat(body.rating) : null;
+    if ('photo_url'          in body) fields.photo_url               = body.photo_url || null;
+    if ('website'            in body) fields.website                 = body.website || null;
+    if ('types'              in body) fields.types                   = body.types || null;
+    if ('hidden'             in body) fields.hidden                  = Boolean(body.hidden);
+    if ('phone'              in body) fields.formatted_phone_number  = body.phone || null;
+    if ('user_ratings_total' in body) fields.user_ratings_total      = body.user_ratings_total ? parseInt(body.user_ratings_total) : null;
+    if ('reviews'            in body) fields.reviews                 = body.reviews?.length ? body.reviews : null;
+    if ('editorial_summary'  in body) fields.editorial_summary       = body.editorial_summary || null;
+    if ('description'        in body) fields.description             = body.description || null;
+    if ('opening_hours'      in body) fields.opening_hours           = body.opening_hours || null;
+    if ('featured'           in body) fields.featured                = body.featured || null;
+    if ('pin_style'          in body) fields.pin_style               = body.pin_style || null;
+    if ('pin_emoji'          in body) fields.pin_emoji                = body.pin_emoji || null;
+    if ('pin_icon_url'       in body) fields.pin_icon_url            = body.pin_icon_url || null;
+    if ('pin_size'           in body) fields.pin_size                = body.pin_size || null;
 
-    if (body.photos_urls != null) {
+    if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
     }
 
-    if (body.subcategory_tags != null) {
+    if ('subcategory_tags' in body) {
       const arr = Array.isArray(body.subcategory_tags)
         ? body.subcategory_tags
         : (body.subcategory_tags || '').split(',').map(s => s.trim()).filter(Boolean);
