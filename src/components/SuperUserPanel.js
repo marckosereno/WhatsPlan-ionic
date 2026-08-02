@@ -1522,6 +1522,10 @@ export class SuperUserPanel {
       reviews:           place.reviews || [],
       opening_hours:     place.openingHours || null,
       featured:          place.featured || null,
+      pin_style:         place.pinStyle || 'photo',
+      pin_emoji:         place.pinEmoji || '',
+      pin_icon_url:      place.pinIconUrl || '',
+      pin_size:          place.pinSize || 'normal',
     };
   }
 
@@ -1788,7 +1792,9 @@ export class SuperUserPanel {
 
           '<div id="su-pin-sticker-panel" style="display:none;flex-direction:column;gap:8px;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;">' +
             '<div style="display:flex;align-items:center;gap:12px;">' +
-              '<div id="su-pin-preview" style="flex-shrink:0;border-radius:50%;background:linear-gradient(145deg,#00bcd4dd,#00bcd4);border:3px solid white;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>' +
+              '<div id="su-pin-preview-bg" style="flex-shrink:0;width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,#374151,#1f2937);display:flex;align-items:center;justify-content:center;">' +
+                '<div id="su-pin-preview" style="display:flex;align-items:center;justify-content:center;"></div>' +
+              '</div>' +
               '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
                 '<div style="font-size:10px;color:#6b7280;">Vista previa del pin</div>' +
                 '<div style="display:flex;gap:4px;">' +
@@ -2012,19 +2018,12 @@ export class SuperUserPanel {
       const emoji = document.getElementById('su-pin-emoji-input').value.trim();
       const iconUrl = document.getElementById('su-pin-icon-url-hidden').value;
       const px = PIN_SIZE_MAP[size] || 34;
-      const total = px + Math.round(px * 0.35);
+      const outlineW = Math.max(1.5, Math.round(px * 0.045));
       const preview = document.getElementById('su-pin-preview');
-      preview.style.width = total + 'px';
-      preview.style.height = total + 'px';
-      preview.style.fontSize = Math.round(px * 0.6) + 'px';
       if (iconUrl) {
-        preview.style.backgroundImage = 'url(' + iconUrl + ')';
-        preview.style.backgroundSize = 'cover';
-        preview.style.backgroundPosition = 'center';
-        preview.textContent = '';
+        preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 #fff) drop-shadow(-' + outlineW + 'px 0 0 #fff) drop-shadow(0 ' + outlineW + 'px 0 #fff) drop-shadow(0 -' + outlineW + 'px 0 #fff) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
       } else {
-        preview.style.backgroundImage = 'none';
-        preview.textContent = emoji || '📍';
+        preview.innerHTML = '<div style="font-size:' + px + 'px;line-height:1;text-shadow:-' + outlineW + 'px -' + outlineW + 'px 0 #fff,' + outlineW + 'px -' + outlineW + 'px 0 #fff,-' + outlineW + 'px ' + outlineW + 'px 0 #fff,' + outlineW + 'px ' + outlineW + 'px 0 #fff,0 3px 6px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
       }
     };
 
