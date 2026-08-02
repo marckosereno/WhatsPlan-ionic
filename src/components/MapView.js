@@ -1688,16 +1688,20 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   // ── Pin tipo emoji/sticker (elegido en SuperUserPanel) — tiene
   // prioridad sobre la foto si el lugar está configurado así ──
   if (place.pinStyle === 'sticker' && (place.pinEmoji || place.pinIconUrl)) {
-    const STICKER_SIZE_MAP = { mini: 24, normal: 34, grande: 50 };
+    // Estilo landmark real: SIN círculo de fondo ni badge — el emoji/imagen
+    // flota directo, con un contorno blanco (drop-shadow apilado) que
+    // simula el efecto sticker, igual que los landmarks del mapa.
+    const STICKER_SIZE_MAP = { mini: 22, normal: 34, grande: 52 };
     const pinPx = STICKER_SIZE_MAP[place.pinSize] || STICKER_SIZE_MAP.normal;
+    const outlineW = Math.max(1.5, Math.round(pinPx * 0.045));
+
     const innerContent = place.pinIconUrl
-      ? `<div style="width:100%;height:100%;background-image:url('${place.pinIconUrl}');background-size:cover;background-position:center;border-radius:50%;"></div>`
-      : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:${Math.round(pinPx * 0.58)}px;line-height:1;">${place.pinEmoji}</div>`;
+      ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 #fff) drop-shadow(-${outlineW}px 0 0 #fff) drop-shadow(0 ${outlineW}px 0 #fff) drop-shadow(0 -${outlineW}px 0 #fff) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`
+      : `<div style="font-size:${pinPx}px;line-height:1;text-shadow:-${outlineW}px -${outlineW}px 0 #fff,${outlineW}px -${outlineW}px 0 #fff,-${outlineW}px ${outlineW}px 0 #fff,${outlineW}px ${outlineW}px 0 #fff,0 3px 6px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
+
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
-      <div class="place-pin-rel">${featHtml}${pulseHtml}
-        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:${pinPx}px;height:${pinPx}px;display:flex;align-items:center;justify-content:center;">
-          ${innerContent}
-        </div>
+      <div class="place-pin-rel" style="display:flex;align-items:center;justify-content:center;width:${pinPx}px;height:${pinPx}px;">
+        ${innerContent}
       </div>
       ${labelHtml}
     </div>`;
