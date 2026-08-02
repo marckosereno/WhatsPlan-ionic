@@ -1777,6 +1777,45 @@ export class SuperUserPanel {
           '<input id="su-pf-photos-json" type="hidden">' +
         '</div>' +
 
+        // ── PIN EN EL MAPA — foto (default) o emoji/sticker con 3 tamaños ──
+        '<div style="display:flex;flex-direction:column;gap:6px;">' +
+          '<div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Pin en el mapa</div>' +
+          '<div style="display:flex;gap:6px;">' +
+            '<button type="button" id="su-pin-mode-photo" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(0,188,212,0.5);background:rgba(0,188,212,0.18);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;">🖼️ Foto</button>' +
+            '<button type="button" id="su-pin-mode-sticker" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">😀 Emoji / Sticker</button>' +
+          '</div>' +
+          '<input id="su-pin-style-hidden" type="hidden" value="' + (prefill?.pin_style || 'photo') + '">' +
+
+          '<div id="su-pin-sticker-panel" style="display:none;flex-direction:column;gap:8px;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;">' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<div id="su-pin-preview" style="flex-shrink:0;border-radius:50%;background:linear-gradient(145deg,#00bcd4dd,#00bcd4);border:3px solid white;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>' +
+              '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+                '<div style="font-size:10px;color:#6b7280;">Vista previa del pin</div>' +
+                '<div style="display:flex;gap:4px;">' +
+                  '<button type="button" class="su-pin-size-btn" data-size="mini" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Mini</button>' +
+                  '<button type="button" class="su-pin-size-btn" data-size="normal" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Normal</button>' +
+                  '<button type="button" class="su-pin-size-btn" data-size="grande" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<input id="su-pin-size-hidden" type="hidden" value="' + (prefill?.pin_size || 'normal') + '">' +
+
+            '<div style="display:flex;flex-wrap:wrap;gap:5px;">' +
+              ['🌮','🍔','🍕','🌭','🍺','☕','🍦','🎉','🛍️','💇','🦷','🌳','⚽','🎬','🏨','💊','🐾','🎨'].map(em =>
+                '<button type="button" class="su-pin-emoji-quick" data-emoji="' + em + '" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + em + '</button>'
+              ).join('') +
+            '</div>' +
+            '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + (prefill?.pin_emoji || '') + '">' +
+
+            '<div style="height:1px;background:rgba(255,255,255,0.08);margin:2px 0;"></div>' +
+            '<label id="su-pin-sticker-file-label" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;background:rgba(255,255,255,0.05);border:1.5px dashed rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-size:11px;color:#9ca3af;">' +
+              '<span>🖼️ ' + (prefill?.pin_icon_url ? 'Cambiar sticker propio' : 'O subí tu propio sticker/imagen') + '</span>' +
+              '<input id="su-pin-sticker-file" type="file" accept="image/*" style="display:none;">' +
+            '</label>' +
+            '<input id="su-pin-icon-url-hidden" type="hidden" value="' + (prefill?.pin_icon_url || '') + '">' +
+          '</div>' +
+        '</div>' +
+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
           '<input id="su-pf-lat" class="su-input" placeholder="Latitud *" type="number" step="any" value="' + (prefill?.lat || '') + '">' +
           '<input id="su-pf-lng" class="su-input" placeholder="Longitud *" type="number" step="any" value="' + (prefill?.lng || '') + '">' +
@@ -1965,6 +2004,134 @@ export class SuperUserPanel {
     }
     _bindGalleryEvents();
 
+    // ── PIN EN EL MAPA — toggle foto/sticker, emoji, tamaño, preview ──
+    const PIN_SIZE_MAP = { mini: 22, normal: 34, grande: 52 };
+
+    const _updatePinPreview = () => {
+      const size = document.getElementById('su-pin-size-hidden').value || 'normal';
+      const emoji = document.getElementById('su-pin-emoji-input').value.trim();
+      const iconUrl = document.getElementById('su-pin-icon-url-hidden').value;
+      const px = PIN_SIZE_MAP[size] || 34;
+      const total = px + Math.round(px * 0.35);
+      const preview = document.getElementById('su-pin-preview');
+      preview.style.width = total + 'px';
+      preview.style.height = total + 'px';
+      preview.style.fontSize = Math.round(px * 0.6) + 'px';
+      if (iconUrl) {
+        preview.style.backgroundImage = 'url(' + iconUrl + ')';
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+        preview.textContent = '';
+      } else {
+        preview.style.backgroundImage = 'none';
+        preview.textContent = emoji || '📍';
+      }
+    };
+
+    // Toggle modo Foto / Sticker
+    const pinModePhotoBtn   = document.getElementById('su-pin-mode-photo');
+    const pinModeStickerBtn = document.getElementById('su-pin-mode-sticker');
+    const pinStickerPanel   = document.getElementById('su-pin-sticker-panel');
+    const _setPinMode = (mode) => {
+      document.getElementById('su-pin-style-hidden').value = mode;
+      const isSticker = mode === 'sticker';
+      pinStickerPanel.style.display = isSticker ? 'flex' : 'none';
+      pinModePhotoBtn.style.background   = isSticker ? 'transparent' : 'rgba(0,188,212,0.18)';
+      pinModePhotoBtn.style.borderColor  = isSticker ? 'rgba(255,255,255,0.12)' : 'rgba(0,188,212,0.5)';
+      pinModePhotoBtn.style.color        = isSticker ? '#9ca3af' : '#67e8f9';
+      pinModeStickerBtn.style.background = isSticker ? 'rgba(0,188,212,0.18)' : 'transparent';
+      pinModeStickerBtn.style.borderColor= isSticker ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)';
+      pinModeStickerBtn.style.color      = isSticker ? '#67e8f9' : '#9ca3af';
+      if (isSticker) _updatePinPreview();
+    };
+    pinModePhotoBtn.addEventListener('click', () => _setPinMode('photo'));
+    pinModeStickerBtn.addEventListener('click', () => _setPinMode('sticker'));
+    _setPinMode(document.getElementById('su-pin-style-hidden').value || 'photo');
+
+    // Tamaño mini/normal/grande
+    const pinSizeBtns = document.querySelectorAll('.su-pin-size-btn');
+    const _setPinSize = (size) => {
+      document.getElementById('su-pin-size-hidden').value = size;
+      pinSizeBtns.forEach(b => {
+        const active = b.getAttribute('data-size') === size;
+        b.style.background = active ? 'rgba(0,188,212,0.25)' : 'transparent';
+        b.style.color       = active ? '#67e8f9' : '#9ca3af';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)';
+      });
+      _updatePinPreview();
+    };
+    pinSizeBtns.forEach(btn => btn.addEventListener('click', () => _setPinSize(btn.getAttribute('data-size'))));
+    _setPinSize(document.getElementById('su-pin-size-hidden').value || 'normal');
+
+    // Emoji rápido (grid) y emoji manual (input)
+    document.querySelectorAll('.su-pin-emoji-quick').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('su-pin-emoji-input').value = btn.getAttribute('data-emoji');
+        document.getElementById('su-pin-icon-url-hidden').value = ''; // elegir emoji descarta el sticker custom
+        _updatePinPreview();
+      });
+    });
+    document.getElementById('su-pin-emoji-input').addEventListener('input', () => {
+      document.getElementById('su-pin-icon-url-hidden').value = ''; // escribir emoji descarta el sticker custom
+      _updatePinPreview();
+    });
+
+    // Subir sticker/imagen propia — mismo mecanismo (comprimir + Supabase Storage)
+    document.getElementById('su-pin-sticker-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { alert('Solo imágenes.'); return; }
+      if (file.size > 10 * 1024 * 1024) { alert('Imagen demasiado grande (máx 10 MB).'); return; }
+
+      const label = document.getElementById('su-pin-sticker-file-label');
+      const origHtml = label.innerHTML;
+      label.style.opacity = '0.5';
+      label.querySelector('span').textContent = '⏳ Subiendo...';
+
+      const compressImage = (f) => new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(f);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const MAX = 300; // los stickers son chicos, no hace falta más resolución
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else       { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(resolve, 'image/png', 0.9); // png para conservar transparencia si la tiene
+        };
+        img.src = url;
+      });
+
+      try {
+        const compressed = await compressImage(file);
+        const { getSupabase } = await import('/src/services/SupabaseService.js');
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Supabase no inicializado');
+
+        const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.png';
+        const { error } = await supabase.storage
+          .from('place-photos')
+          .upload(path, compressed, { contentType: 'image/png', upsert: false });
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
+        document.getElementById('su-pin-icon-url-hidden').value = urlData.publicUrl;
+        document.getElementById('su-pin-emoji-input').value = ''; // subir sticker descarta el emoji
+        _updatePinPreview();
+      } catch (err) {
+        alert('Error al subir el sticker: ' + err.message);
+      } finally {
+        label.style.opacity = '';
+        label.innerHTML = origHtml;
+        e.target.value = '';
+      }
+    });
+
     // ── Galería add-panel: tabs ────────────────────────────────
     window._suGalTab = (tab) => {
       const isUpload = tab === 'upload';
@@ -2078,6 +2245,10 @@ export class SuperUserPanel {
         })(),
         editorial_summary:  prefill?.editorial_summary || '',
         types:              prefill?.types || '',
+        pin_style:          document.getElementById('su-pin-style-hidden').value || 'photo',
+        pin_emoji:          document.getElementById('su-pin-emoji-input').value.trim() || '',
+        pin_icon_url:       document.getElementById('su-pin-icon-url-hidden').value || '',
+        pin_size:           document.getElementById('su-pin-size-hidden').value || 'normal',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2128,6 +2299,10 @@ export class SuperUserPanel {
           })(),
           types:              prefill?.types || '',
           featured:           document.getElementById('su-pf-featured').value || null,
+          pin_style:          document.getElementById('su-pin-style-hidden').value || 'photo',
+          pin_emoji:          document.getElementById('su-pin-emoji-input').value.trim() || null,
+          pin_icon_url:       document.getElementById('su-pin-icon-url-hidden').value || null,
+          pin_size:           document.getElementById('su-pin-size-hidden').value || 'normal',
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
