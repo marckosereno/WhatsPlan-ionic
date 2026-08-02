@@ -1466,7 +1466,7 @@ export class MapView {
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'wp-reposition-banner';
-      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
+      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:\'Inter Tight\',system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
       banner.innerHTML = `<span id="wp-reposition-text">🎯 Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
       document.body.appendChild(banner);
       document.getElementById('wp-reposition-cancel').addEventListener('click', () => this.disableDragMode());
@@ -1683,7 +1683,25 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:var(--wp-font),system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Inter Tight',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+
+  // ── Pin tipo emoji/sticker (elegido en SuperUserPanel) — tiene
+  // prioridad sobre la foto si el lugar está configurado así ──
+  if (place.pinStyle === 'sticker' && (place.pinEmoji || place.pinIconUrl)) {
+    const STICKER_SIZE_MAP = { mini: 24, normal: 34, grande: 50 };
+    const pinPx = STICKER_SIZE_MAP[place.pinSize] || STICKER_SIZE_MAP.normal;
+    const innerContent = place.pinIconUrl
+      ? `<div style="width:100%;height:100%;background-image:url('${place.pinIconUrl}');background-size:cover;background-position:center;border-radius:50%;"></div>`
+      : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:${Math.round(pinPx * 0.58)}px;line-height:1;">${place.pinEmoji}</div>`;
+    return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
+      <div class="place-pin-rel">${featHtml}${pulseHtml}
+        <div class="place-pin-wrapper" data-liquid-shadow="${activeShadow}" style="background:${liquidBg};box-shadow:${activeShadow};border-radius:50%;width:${pinPx}px;height:${pinPx}px;display:flex;align-items:center;justify-content:center;">
+          ${innerContent}
+        </div>
+      </div>
+      ${labelHtml}
+    </div>`;
+  }
 
   if (photoUrl) {
     // data-liquid-shadow: para restaurar después del highlight
