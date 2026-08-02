@@ -19,6 +19,7 @@ export default async function handler(req, res) {
       phone, website, photo_url, photos_urls,
       rating, user_ratings_total, place_id, subcategory_tags, types,
       reviews, editorial_summary, opening_hours, description, featured, hidden,
+      pin_style, pin_emoji, pin_icon_url, pin_size,
     } = req.body;
 
     if (!place_name || !category || !lat || !lng) {
@@ -49,6 +50,10 @@ export default async function handler(req, res) {
       featured:                   featured || null, // string: 'featured', 'verified', 'premium'
       hidden:                     hidden === true || hidden === 'true' || false,
       business_status:            'OPERATIONAL',
+      pin_style:                  pin_style || null,   // 'photo' | 'sticker'
+      pin_emoji:                  pin_emoji || null,
+      pin_icon_url:               pin_icon_url || null, // sticker/imagen custom
+      pin_size:                   pin_size || 'normal', // 'mini' | 'normal' | 'grande'
     };
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/places`, {
