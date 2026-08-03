@@ -1815,7 +1815,7 @@ export class SuperUserPanel {
               '</div>' +
               '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
                 '<div style="font-size:10px;color:#6b7280;">Grosor del contorno (px)</div>' +
-                '<input id="su-pin-stroke-width" type="number" min="1" max="8" step="0.5" value="' + (prefill?.pin_stroke_width || '2') + '" class="su-input" style="height:32px;padding:0 8px;">' +
+                '<input id="su-pin-stroke-width" type="number" min="0" max="8" step="0.5" value="' + (prefill?.pin_stroke_width ?? '2') + '" class="su-input" style="height:32px;padding:0 8px;">' +
               '</div>' +
             '</div>' +
 
@@ -2031,14 +2031,33 @@ export class SuperUserPanel {
       const emoji = document.getElementById('su-pin-emoji-input').value.trim();
       const iconUrl = document.getElementById('su-pin-icon-url-hidden').value;
       const strokeColor = document.getElementById('su-pin-stroke-color').value || '#ffffff';
-      const outlineW = parseFloat(document.getElementById('su-pin-stroke-width').value) || 2;
+      const outlineWRaw = parseFloat(document.getElementById('su-pin-stroke-width').value);
+      const outlineW = isNaN(outlineWRaw) ? 2 : outlineWRaw;
+      const noStroke = outlineW === 0;
       const diag = +(outlineW * 0.7071).toFixed(2);
       const px = PIN_SIZE_MAP[size] || 22;
       const preview = document.getElementById('su-pin-preview');
+
       if (iconUrl) {
-        preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
+        if (noStroke) {
+          preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.35));">';
+        } else {
+          preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
+        }
+      } else if (noStroke) {
+        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:0 3px 5px rgba(0,0,0,0.35);">' + (emoji || '📍') + '</div>';
       } else {
-        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;-webkit-text-stroke:' + outlineW + 'px ' + strokeColor + ';paint-order:stroke fill;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.25));">' + (emoji || '📍') + '</div>';
+        // Apilado de 12 puntos (cada 30°) — mismo criterio que MapView.js,
+        // -webkit-text-stroke no se aplica a emoji a color en la mayoría
+        // de navegadores, así que usamos el apilado que sí funciona
+        const N = 12;
+        const stack = Array.from({ length: N }, (_, i) => {
+          const angle = (i / N) * 2 * Math.PI;
+          const x = +(Math.cos(angle) * outlineW).toFixed(2);
+          const y = +(Math.sin(angle) * outlineW).toFixed(2);
+          return x + 'px ' + y + 'px 0 ' + strokeColor;
+        }).join(',');
+        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:' + stack + ',0 3px 5px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
       }
     };
 
