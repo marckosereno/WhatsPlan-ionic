@@ -1697,10 +1697,18 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // se eligió nada, blanco y un grosor base un poco más marcado que antes
     const strokeColor = place.pinStrokeColor || '#ffffff';
     const outlineW = place.pinStrokeWidth ? parseFloat(place.pinStrokeWidth) : Math.max(2, Math.round(pinPx * 0.075));
+    const diag = +(outlineW * 0.7071).toFixed(2); // offset diagonal (cos 45°) para que el grosor se sienta parejo
 
     const innerContent = place.pinIconUrl
-      ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`
-      : `<div style="font-size:${pinPx}px;line-height:1;text-shadow:-${outlineW}px -${outlineW}px 0 ${strokeColor},${outlineW}px -${outlineW}px 0 ${strokeColor},-${outlineW}px ${outlineW}px 0 ${strokeColor},${outlineW}px ${outlineW}px 0 ${strokeColor},0 3px 6px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
+      // 8 direcciones (4 cardinales + 4 diagonales) — con solo 4 quedaban
+      // huecos en las esquinas del glifo, se veía "con picos" en grosores
+      // más grandes
+      ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`
+      // font-family con la pila de fuentes de emoji NATIVAS del sistema —
+      // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
+      // cae a un fallback que puede rendear distinto al que se ve en el
+      // teclado al elegirlo
+      : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${pinPx}px;line-height:1;text-shadow:${outlineW}px 0 0 ${strokeColor},-${outlineW}px 0 0 ${strokeColor},0 ${outlineW}px 0 ${strokeColor},0 -${outlineW}px 0 ${strokeColor},${diag}px ${diag}px 0 ${strokeColor},-${diag}px ${diag}px 0 ${strokeColor},${diag}px -${diag}px 0 ${strokeColor},-${diag}px -${diag}px 0 ${strokeColor},0 3px 6px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
 
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div class="place-pin-rel" style="display:flex;align-items:center;justify-content:center;width:${pinPx}px;height:${pinPx}px;">
