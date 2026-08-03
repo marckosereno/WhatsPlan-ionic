@@ -1693,29 +1693,44 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // simula el efecto sticker, igual que los landmarks del mapa.
     const STICKER_SIZE_MAP = { mini: 16, normal: 22, grande: 34 };
     const pinPx = STICKER_SIZE_MAP[place.pinSize] || STICKER_SIZE_MAP.normal;
-    // Color y grosor del contorno son configurables (SuperUserPanel); si no
-    // se eligió nada, blanco y un grosor base un poco más marcado que antes
+    // Color y grosor del contorno son configurables (SuperUserPanel). Si
+    // pinStrokeWidth es explícitamente 0, el usuario eligió NO tener
+    // contorno — se muestra el emoji solo con la sombra de profundidad,
+    // sin el apilado de color.
     const strokeColor = place.pinStrokeColor || '#ffffff';
-    const outlineW = place.pinStrokeWidth ? parseFloat(place.pinStrokeWidth) : Math.max(2, Math.round(pinPx * 0.075));
-    const diag = +(outlineW * 0.7071).toFixed(2); // offset diagonal (cos 45°) para que el grosor se sienta parejo
+    const hasExplicitWidth = place.pinStrokeWidth !== undefined && place.pinStrokeWidth !== null && place.pinStrokeWidth !== '';
+    const outlineW = hasExplicitWidth ? parseFloat(place.pinStrokeWidth) : Math.max(2, Math.round(pinPx * 0.075));
+    const noStroke = outlineW === 0;
+    const diag = +(outlineW * 0.7071).toFixed(2); // offset diagonal (cos 45°) — usado en el stroke de imagen custom
+
+    // Contorno por apilado de copias — es la técnica que SÍ funciona con
+    // emoji a color (-webkit-text-stroke no tiene efecto en glifos
+    // bitmap/COLR en la mayoría de navegadores). Para que no se vea "con
+    // picos" en formas alargadas/diagonales, usamos 12 puntos repartidos
+    // cada 30° (en vez de solo 8 a 45°) — cuantos más puntos, más redondo
+    // y menos facetado se ve el contorno.
+    const STROKE_POINTS = 12;
+    const emojiShadowStack = Array.from({ length: STROKE_POINTS }, (_, i) => {
+      const angle = (i / STROKE_POINTS) * 2 * Math.PI;
+      const x = +(Math.cos(angle) * outlineW).toFixed(2);
+      const y = +(Math.sin(angle) * outlineW).toFixed(2);
+      return `${x}px ${y}px 0 ${strokeColor}`;
+    }).join(',');
 
     const innerContent = place.pinIconUrl
       // 8 direcciones (4 cardinales + 4 diagonales) — con solo 4 quedaban
       // huecos en las esquinas del glifo, se veía "con picos" en grosores
-      // más grandes
-      ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`
+      // más grandes. noStroke: sin apilado, solo la sombra de profundidad.
+      ? (noStroke
+          ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.35));">`
+          : `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`)
       // font-family con la pila de fuentes de emoji NATIVAS del sistema —
       // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
       // cae a un fallback que puede rendear distinto al que se ve en el
       // teclado al elegirlo
-      // -webkit-text-stroke traza el CONTORNO REAL del glifo (como un
-      // stroke de SVG), no apila copias desplazadas — por eso no distorsiona
-      // emojis alargados/diagonales como sí pasaba con el text-shadow
-      // apilado. font-family con la pila de emoji NATIVOS del sistema —
-      // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
-      // cae a un fallback que puede rendear distinto al que se ve en el
-      // teclado al elegirlo.
-      : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${pinPx}px;line-height:1;-webkit-text-stroke:${outlineW}px ${strokeColor};paint-order:stroke fill;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.25));">${place.pinEmoji}</div>`;
+      : noStroke
+        ? `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${pinPx}px;line-height:1;text-shadow:0 3px 5px rgba(0,0,0,0.35);">${place.pinEmoji}</div>`
+        : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${pinPx}px;line-height:1;text-shadow:${emojiShadowStack},0 3px 5px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
 
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div class="place-pin-rel" style="display:flex;align-items:center;justify-content:center;width:${pinPx}px;height:${pinPx}px;">
