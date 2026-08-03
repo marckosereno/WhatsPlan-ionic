@@ -1708,7 +1708,14 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
       // cae a un fallback que puede rendear distinto al que se ve en el
       // teclado al elegirlo
-      : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${pinPx}px;line-height:1;text-shadow:${outlineW}px 0 0 ${strokeColor},-${outlineW}px 0 0 ${strokeColor},0 ${outlineW}px 0 ${strokeColor},0 -${outlineW}px 0 ${strokeColor},${diag}px ${diag}px 0 ${strokeColor},-${diag}px ${diag}px 0 ${strokeColor},${diag}px -${diag}px 0 ${strokeColor},-${diag}px -${diag}px 0 ${strokeColor},0 3px 6px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
+      // -webkit-text-stroke traza el CONTORNO REAL del glifo (como un
+      // stroke de SVG), no apila copias desplazadas — por eso no distorsiona
+      // emojis alargados/diagonales como sí pasaba con el text-shadow
+      // apilado. font-family con la pila de emoji NATIVOS del sistema —
+      // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
+      // cae a un fallback que puede rendear distinto al que se ve en el
+      // teclado al elegirlo.
+      : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${pinPx}px;line-height:1;-webkit-text-stroke:${outlineW}px ${strokeColor};paint-order:stroke fill;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.25));">${place.pinEmoji}</div>`;
 
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div class="place-pin-rel" style="display:flex;align-items:center;justify-content:center;width:${pinPx}px;height:${pinPx}px;">
