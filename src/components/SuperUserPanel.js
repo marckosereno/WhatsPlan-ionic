@@ -2038,7 +2038,7 @@ export class SuperUserPanel {
       if (iconUrl) {
         preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
       } else {
-        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:' + outlineW + 'px 0 0 ' + strokeColor + ',-' + outlineW + 'px 0 0 ' + strokeColor + ',0 ' + outlineW + 'px 0 ' + strokeColor + ',0 -' + outlineW + 'px 0 ' + strokeColor + ',' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ',-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ',' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ',-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ',0 3px 6px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
+        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;-webkit-text-stroke:' + outlineW + 'px ' + strokeColor + ';paint-order:stroke fill;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.25));">' + (emoji || '📍') + '</div>';
       }
     };
 
