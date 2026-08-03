@@ -2032,12 +2032,13 @@ export class SuperUserPanel {
       const iconUrl = document.getElementById('su-pin-icon-url-hidden').value;
       const strokeColor = document.getElementById('su-pin-stroke-color').value || '#ffffff';
       const outlineW = parseFloat(document.getElementById('su-pin-stroke-width').value) || 2;
+      const diag = +(outlineW * 0.7071).toFixed(2);
       const px = PIN_SIZE_MAP[size] || 22;
       const preview = document.getElementById('su-pin-preview');
       if (iconUrl) {
-        preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
+        preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
       } else {
-        preview.innerHTML = '<div style="font-size:' + px + 'px;line-height:1;text-shadow:-' + outlineW + 'px -' + outlineW + 'px 0 ' + strokeColor + ',' + outlineW + 'px -' + outlineW + 'px 0 ' + strokeColor + ',-' + outlineW + 'px ' + outlineW + 'px 0 ' + strokeColor + ',' + outlineW + 'px ' + outlineW + 'px 0 ' + strokeColor + ',0 3px 6px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
+        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:' + outlineW + 'px 0 0 ' + strokeColor + ',-' + outlineW + 'px 0 0 ' + strokeColor + ',0 ' + outlineW + 'px 0 ' + strokeColor + ',0 -' + outlineW + 'px 0 ' + strokeColor + ',' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ',-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ',' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ',-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ',0 3px 6px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
       }
     };
 
