@@ -1526,6 +1526,8 @@ export class SuperUserPanel {
       pin_emoji:         place.pinEmoji || '',
       pin_icon_url:      place.pinIconUrl || '',
       pin_size:          place.pinSize || 'normal',
+      pin_stroke_color:  place.pinStrokeColor || '',
+      pin_stroke_width:  place.pinStrokeWidth || '',
     };
   }
 
@@ -1806,6 +1808,17 @@ export class SuperUserPanel {
             '</div>' +
             '<input id="su-pin-size-hidden" type="hidden" value="' + (prefill?.pin_size || 'normal') + '">' +
 
+            '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+              '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+                '<div style="font-size:10px;color:#6b7280;">Color del contorno</div>' +
+                '<input id="su-pin-stroke-color" type="color" value="' + (prefill?.pin_stroke_color || '#ffffff') + '" style="width:100%;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;cursor:pointer;padding:2px;">' +
+              '</div>' +
+              '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+                '<div style="font-size:10px;color:#6b7280;">Grosor del contorno (px)</div>' +
+                '<input id="su-pin-stroke-width" type="number" min="1" max="8" step="0.5" value="' + (prefill?.pin_stroke_width || '2') + '" class="su-input" style="height:32px;padding:0 8px;">' +
+              '</div>' +
+            '</div>' +
+
             '<div style="display:flex;flex-wrap:wrap;gap:5px;">' +
               ['🌮','🍔','🍕','🌭','🍺','☕','🍦','🎉','🛍️','💇','🦷','🌳','⚽','🎬','🏨','💊','🐾','🎨'].map(em =>
                 '<button type="button" class="su-pin-emoji-quick" data-emoji="' + em + '" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + em + '</button>'
@@ -2011,21 +2024,25 @@ export class SuperUserPanel {
     _bindGalleryEvents();
 
     // ── PIN EN EL MAPA — toggle foto/sticker, emoji, tamaño, preview ──
-    const PIN_SIZE_MAP = { mini: 22, normal: 34, grande: 52 };
+    const PIN_SIZE_MAP = { mini: 16, normal: 22, grande: 34 };
 
     const _updatePinPreview = () => {
       const size = document.getElementById('su-pin-size-hidden').value || 'normal';
       const emoji = document.getElementById('su-pin-emoji-input').value.trim();
       const iconUrl = document.getElementById('su-pin-icon-url-hidden').value;
-      const px = PIN_SIZE_MAP[size] || 34;
-      const outlineW = Math.max(1.5, Math.round(px * 0.045));
+      const strokeColor = document.getElementById('su-pin-stroke-color').value || '#ffffff';
+      const outlineW = parseFloat(document.getElementById('su-pin-stroke-width').value) || 2;
+      const px = PIN_SIZE_MAP[size] || 22;
       const preview = document.getElementById('su-pin-preview');
       if (iconUrl) {
-        preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 #fff) drop-shadow(-' + outlineW + 'px 0 0 #fff) drop-shadow(0 ' + outlineW + 'px 0 #fff) drop-shadow(0 -' + outlineW + 'px 0 #fff) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
+        preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
       } else {
-        preview.innerHTML = '<div style="font-size:' + px + 'px;line-height:1;text-shadow:-' + outlineW + 'px -' + outlineW + 'px 0 #fff,' + outlineW + 'px -' + outlineW + 'px 0 #fff,-' + outlineW + 'px ' + outlineW + 'px 0 #fff,' + outlineW + 'px ' + outlineW + 'px 0 #fff,0 3px 6px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
+        preview.innerHTML = '<div style="font-size:' + px + 'px;line-height:1;text-shadow:-' + outlineW + 'px -' + outlineW + 'px 0 ' + strokeColor + ',' + outlineW + 'px -' + outlineW + 'px 0 ' + strokeColor + ',-' + outlineW + 'px ' + outlineW + 'px 0 ' + strokeColor + ',' + outlineW + 'px ' + outlineW + 'px 0 ' + strokeColor + ',0 3px 6px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
       }
     };
+
+    document.getElementById('su-pin-stroke-color').addEventListener('input', _updatePinPreview);
+    document.getElementById('su-pin-stroke-width').addEventListener('input', _updatePinPreview);
 
     // Toggle modo Foto / Sticker
     const pinModePhotoBtn   = document.getElementById('su-pin-mode-photo');
@@ -2248,6 +2265,8 @@ export class SuperUserPanel {
         pin_emoji:          document.getElementById('su-pin-emoji-input').value.trim() || '',
         pin_icon_url:       document.getElementById('su-pin-icon-url-hidden').value || '',
         pin_size:           document.getElementById('su-pin-size-hidden').value || 'normal',
+        pin_stroke_color:   document.getElementById('su-pin-stroke-color').value || '',
+        pin_stroke_width:   document.getElementById('su-pin-stroke-width').value || '',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2302,6 +2321,8 @@ export class SuperUserPanel {
           pin_emoji:          document.getElementById('su-pin-emoji-input').value.trim() || null,
           pin_icon_url:       document.getElementById('su-pin-icon-url-hidden').value || null,
           pin_size:           document.getElementById('su-pin-size-hidden').value || 'normal',
+          pin_stroke_color:   document.getElementById('su-pin-stroke-color').value || null,
+          pin_stroke_width:   document.getElementById('su-pin-stroke-width').value || null,
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
