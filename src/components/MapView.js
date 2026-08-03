@@ -1691,13 +1691,16 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // Estilo landmark real: SIN círculo de fondo ni badge — el emoji/imagen
     // flota directo, con un contorno blanco (drop-shadow apilado) que
     // simula el efecto sticker, igual que los landmarks del mapa.
-    const STICKER_SIZE_MAP = { mini: 22, normal: 34, grande: 52 };
+    const STICKER_SIZE_MAP = { mini: 16, normal: 22, grande: 34 };
     const pinPx = STICKER_SIZE_MAP[place.pinSize] || STICKER_SIZE_MAP.normal;
-    const outlineW = Math.max(1.5, Math.round(pinPx * 0.045));
+    // Color y grosor del contorno son configurables (SuperUserPanel); si no
+    // se eligió nada, blanco y un grosor base un poco más marcado que antes
+    const strokeColor = place.pinStrokeColor || '#ffffff';
+    const outlineW = place.pinStrokeWidth ? parseFloat(place.pinStrokeWidth) : Math.max(2, Math.round(pinPx * 0.075));
 
     const innerContent = place.pinIconUrl
-      ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 #fff) drop-shadow(-${outlineW}px 0 0 #fff) drop-shadow(0 ${outlineW}px 0 #fff) drop-shadow(0 -${outlineW}px 0 #fff) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`
-      : `<div style="font-size:${pinPx}px;line-height:1;text-shadow:-${outlineW}px -${outlineW}px 0 #fff,${outlineW}px -${outlineW}px 0 #fff,-${outlineW}px ${outlineW}px 0 #fff,${outlineW}px ${outlineW}px 0 #fff,0 3px 6px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
+      ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`
+      : `<div style="font-size:${pinPx}px;line-height:1;text-shadow:-${outlineW}px -${outlineW}px 0 ${strokeColor},${outlineW}px -${outlineW}px 0 ${strokeColor},-${outlineW}px ${outlineW}px 0 ${strokeColor},${outlineW}px ${outlineW}px 0 ${strokeColor},0 3px 6px rgba(0,0,0,0.25);">${place.pinEmoji}</div>`;
 
     return `<div class="place-pin-root" style="position:relative;display:inline-block;overflow:visible;">
       <div class="place-pin-rel" style="display:flex;align-items:center;justify-content:center;width:${pinPx}px;height:${pinPx}px;">
