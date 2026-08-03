@@ -54,6 +54,8 @@ export default async function handler(req, res) {
     if ('pin_emoji'          in body) fields.pin_emoji                = body.pin_emoji || null;
     if ('pin_icon_url'       in body) fields.pin_icon_url            = body.pin_icon_url || null;
     if ('pin_size'           in body) fields.pin_size                = body.pin_size || null;
+    if ('pin_stroke_color'   in body) fields.pin_stroke_color        = body.pin_stroke_color || null;
+    if ('pin_stroke_width'   in body) fields.pin_stroke_width        = body.pin_stroke_width ? parseFloat(body.pin_stroke_width) : null;
 
     if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
