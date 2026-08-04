@@ -1621,6 +1621,17 @@ export class SuperUserPanel {
   async _openPlaceForm(prefill, editingPlaceId = null) {
     document.getElementById('su-place-form-modal')?.remove();
 
+    // Escapa valores antes de meterlos en atributos HTML (value="...", etc).
+    // Sin esto, un nombre con comillas (" o ') rompe el atributo a la mitad
+    // y el input queda con el value vacío/corrupto — eso era el bug del
+    // título que se "borraba" al reabrir un lugar guardado con comillas.
+    const _esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
     // Cargar categorías y subcategorías de Supabase
     let cats = [], allSubcats = [];
     try {
@@ -1684,7 +1695,7 @@ export class SuperUserPanel {
           '<button id="su-pf-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;">✕</button>' +
         '</div>' +
 
-        '<input id="su-pf-name"    class="su-input" placeholder="Nombre del lugar *" value="' + (prefill?.name || '') + '">' +
+        '<input id="su-pf-name"    class="su-input" placeholder="Nombre del lugar *" value="' + _esc(prefill?.name) + '">' +
         '<select id="su-pf-cat" class="su-input" style="background:#0d0d1a;color:#fff;">' +
           '<option value="">-- Categoría *</option>' + catOptions +
         '</select>' +
@@ -1698,18 +1709,18 @@ export class SuperUserPanel {
           '<input id="su-pf-tags-hidden" type="hidden" value="' + initTags.join(',') + '">' +
         '</div>' +
 
-        '<input id="su-pf-address" class="su-input" placeholder="Dirección" value="' + (prefill?.formatted_address || '') + '">' +
-        '<input id="su-pf-phone"   class="su-input" placeholder="Teléfono" value="' + (prefill?.phone || '') + '">' +
-        '<input id="su-pf-website" class="su-input" placeholder="Website" value="' + (prefill?.website || '') + '">' +
+        '<input id="su-pf-address" class="su-input" placeholder="Dirección" value="' + _esc(prefill?.formatted_address) + '">' +
+        '<input id="su-pf-phone"   class="su-input" placeholder="Teléfono" value="' + _esc(prefill?.phone) + '">' +
+        '<input id="su-pf-website" class="su-input" placeholder="Website" value="' + _esc(prefill?.website) + '">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-          '<input id="su-pf-rating" class="su-input" placeholder="Rating (ej: 4.5)" type="number" step="0.1" min="0" max="5" value="' + (prefill?.rating || '') + '">' +
+          '<input id="su-pf-rating" class="su-input" placeholder="Rating (ej: 4.5)" type="number" step="0.1" min="0" max="5" value="' + _esc(prefill?.rating) + '">' +
           '<input id="su-pf-reviews-count" class="su-input" placeholder="Nº reseñas" type="number" min="0" value="' + (prefill?.user_ratings_total || '') + '">' +
         '</div>' +
 
         // ── Descripción del lugar ──────────────────────────────
         '<div style="display:flex;flex-direction:column;gap:6px;">' +
           '<div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Descripción <span style="font-weight:400;text-transform:none;font-size:10px;">(se auto-rellena desde Google)</span></div>' +
-          '<textarea id="su-pf-description" class="su-input" rows="3" placeholder="Breve descripción del lugar..." style="resize:vertical;min-height:64px;font-size:13px;">' + (prefill?.description || '') + '</textarea>' +
+          '<textarea id="su-pf-description" class="su-input" rows="3" placeholder="Breve descripción del lugar..." style="resize:vertical;min-height:64px;font-size:13px;">' + _esc(prefill?.description) + '</textarea>' +
         '</div>' +
 
         // ── Reseñas (read-only preview) ────────────────────────
@@ -1824,20 +1835,20 @@ export class SuperUserPanel {
                 '<button type="button" class="su-pin-emoji-quick" data-emoji="' + em + '" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + em + '</button>'
               ).join('') +
             '</div>' +
-            '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + (prefill?.pin_emoji || '') + '">' +
+            '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
             '<div style="height:1px;background:rgba(255,255,255,0.08);margin:2px 0;"></div>' +
             '<label id="su-pin-sticker-file-label" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;background:rgba(255,255,255,0.05);border:1.5px dashed rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-size:11px;color:#9ca3af;">' +
               '<span>🖼️ ' + (prefill?.pin_icon_url ? 'Cambiar sticker propio' : 'O subí tu propio sticker/imagen') + '</span>' +
               '<input id="su-pin-sticker-file" type="file" accept="image/*" style="display:none;">' +
             '</label>' +
-            '<input id="su-pin-icon-url-hidden" type="hidden" value="' + (prefill?.pin_icon_url || '') + '">' +
+            '<input id="su-pin-icon-url-hidden" type="hidden" value="' + _esc(prefill?.pin_icon_url) + '">' +
           '</div>' +
         '</div>' +
 
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-          '<input id="su-pf-lat" class="su-input" placeholder="Latitud *" type="number" step="any" value="' + (prefill?.lat || '') + '">' +
-          '<input id="su-pf-lng" class="su-input" placeholder="Longitud *" type="number" step="any" value="' + (prefill?.lng || '') + '">' +
+          '<input id="su-pf-lat" class="su-input" placeholder="Latitud *" type="number" step="any" value="' + _esc(prefill?.lat) + '">' +
+          '<input id="su-pf-lng" class="su-input" placeholder="Longitud *" type="number" step="any" value="' + _esc(prefill?.lng) + '">' +
         '</div>' +
         '<button id="su-pf-pick-coords" class="su-btn su-btn-cyan" style="padding:10px;font-size:13px;">🗺️ Tomar coordenadas del mapa</button>' +
 
