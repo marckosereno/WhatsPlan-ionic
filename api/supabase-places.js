@@ -101,7 +101,7 @@ try {
         pinIconUrl:                r.pin_icon_url || null,
         pinSize:                   r.pin_size || 'normal', // 'mini' | 'normal' | 'grande'
         pinStrokeColor:            r.pin_stroke_color || null,
-        pinStrokeWidth:            r.pin_stroke_width || null,
+        pinStrokeWidth:            r.pin_stroke_width ?? null,
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
