@@ -1527,7 +1527,7 @@ export class SuperUserPanel {
       pin_icon_url:      place.pinIconUrl || '',
       pin_size:          place.pinSize || 'normal',
       pin_stroke_color:  place.pinStrokeColor || '',
-      pin_stroke_width:  place.pinStrokeWidth || '',
+      pin_stroke_width:  place.pinStrokeWidth ?? '',
     };
   }
 
