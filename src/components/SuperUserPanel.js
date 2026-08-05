@@ -1799,7 +1799,8 @@ export class SuperUserPanel {
           '<div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Pin en el mapa</div>' +
           '<div style="display:flex;gap:6px;">' +
             '<button type="button" id="su-pin-mode-photo" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(0,188,212,0.5);background:rgba(0,188,212,0.18);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;">🖼️ Foto</button>' +
-            '<button type="button" id="su-pin-mode-sticker" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">😀 Emoji / Sticker</button>' +
+            '<button type="button" id="su-pin-mode-sticker" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">😀 Sticker</button>' +
+            '<button type="button" id="su-pin-mode-bubble" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">💬 Globo</button>' +
           '</div>' +
           '<input id="su-pin-style-hidden" type="hidden" value="' + (prefill?.pin_style || 'photo') + '">' +
 
@@ -1810,16 +1811,17 @@ export class SuperUserPanel {
               '</div>' +
               '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
                 '<div style="font-size:10px;color:#6b7280;">Vista previa del pin</div>' +
-                '<div style="display:flex;gap:4px;">' +
+                '<div id="su-pin-size-row" style="display:flex;gap:4px;">' +
                   '<button type="button" class="su-pin-size-btn" data-size="mini" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Mini</button>' +
                   '<button type="button" class="su-pin-size-btn" data-size="normal" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Normal</button>' +
                   '<button type="button" class="su-pin-size-btn" data-size="grande" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>' +
                 '</div>' +
+                '<div id="su-pin-bubble-hint" style="display:none;font-size:10px;color:#6b7280;">El globo muestra el ícono + el nombre del lugar, tamaño fijo.</div>' +
               '</div>' +
             '</div>' +
             '<input id="su-pin-size-hidden" type="hidden" value="' + (prefill?.pin_size || 'normal') + '">' +
 
-            '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+            '<div id="su-pin-stroke-row" style="display:flex;gap:8px;align-items:flex-end;">' +
               '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
                 '<div style="font-size:10px;color:#6b7280;">Color del contorno</div>' +
                 '<input id="su-pin-stroke-color" type="color" value="' + (prefill?.pin_stroke_color || '#ffffff') + '" style="width:100%;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;cursor:pointer;padding:2px;">' +
@@ -2078,21 +2080,34 @@ export class SuperUserPanel {
     // Toggle modo Foto / Sticker
     const pinModePhotoBtn   = document.getElementById('su-pin-mode-photo');
     const pinModeStickerBtn = document.getElementById('su-pin-mode-sticker');
+    const pinModeBubbleBtn  = document.getElementById('su-pin-mode-bubble');
     const pinStickerPanel   = document.getElementById('su-pin-sticker-panel');
+    const pinSizeRow        = document.getElementById('su-pin-size-row');
+    const pinStrokeRow      = document.getElementById('su-pin-stroke-row');
+    const pinBubbleHint     = document.getElementById('su-pin-bubble-hint');
+
+    const _paintPinModeBtn = (btn, active) => {
+      btn.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+      btn.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+      btn.style.color       = active ? '#67e8f9'              : '#9ca3af';
+    };
     const _setPinMode = (mode) => {
       document.getElementById('su-pin-style-hidden').value = mode;
-      const isSticker = mode === 'sticker';
-      pinStickerPanel.style.display = isSticker ? 'flex' : 'none';
-      pinModePhotoBtn.style.background   = isSticker ? 'transparent' : 'rgba(0,188,212,0.18)';
-      pinModePhotoBtn.style.borderColor  = isSticker ? 'rgba(255,255,255,0.12)' : 'rgba(0,188,212,0.5)';
-      pinModePhotoBtn.style.color        = isSticker ? '#9ca3af' : '#67e8f9';
-      pinModeStickerBtn.style.background = isSticker ? 'rgba(0,188,212,0.18)' : 'transparent';
-      pinModeStickerBtn.style.borderColor= isSticker ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)';
-      pinModeStickerBtn.style.color      = isSticker ? '#67e8f9' : '#9ca3af';
-      if (isSticker) _updatePinPreview();
+      const showPanel = mode === 'sticker' || mode === 'bubble';
+      pinStickerPanel.style.display = showPanel ? 'flex' : 'none';
+      _paintPinModeBtn(pinModePhotoBtn,   mode === 'photo');
+      _paintPinModeBtn(pinModeStickerBtn, mode === 'sticker');
+      _paintPinModeBtn(pinModeBubbleBtn,  mode === 'bubble');
+      // El globo tiene tamaño fijo (icono + nombre) y no usa contorno de
+      // color — oculta esos controles, solo quedan visibles emoji/sticker
+      pinSizeRow.style.display   = mode === 'bubble' ? 'none' : 'flex';
+      pinStrokeRow.style.display = mode === 'bubble' ? 'none' : 'flex';
+      pinBubbleHint.style.display = mode === 'bubble' ? 'block' : 'none';
+      if (showPanel) _updatePinPreview();
     };
     pinModePhotoBtn.addEventListener('click', () => _setPinMode('photo'));
     pinModeStickerBtn.addEventListener('click', () => _setPinMode('sticker'));
+    pinModeBubbleBtn.addEventListener('click', () => _setPinMode('bubble'));
     _setPinMode(document.getElementById('su-pin-style-hidden').value || 'photo');
 
     // Tamaño mini/normal/grande
