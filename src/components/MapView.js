@@ -1687,6 +1687,30 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
   // ── Pin tipo emoji/sticker (elegido en SuperUserPanel) — tiene
   // prioridad sobre la foto si el lugar está configurado así ──
+  // ── Pin tipo "globo" (speech bubble) — reemplaza el pin completo.
+  // Reutiliza el mismo emoji/sticker elegido en "Pin en el mapa", con el
+  // nombre del lugar al lado, en una píldora blanca con colita apuntando
+  // al punto exacto. anchor sigue siendo 'center' (no se toca la creación
+  // del marker) — el truco es que la "caja" que reporta el marker es solo
+  // la colita, y la píldora crece hacia arriba desde ahí con position:absolute,
+  // mismo patrón que ya usan los labels de los demás pines.
+  if (place.pinStyle === 'bubble' && (place.pinEmoji || place.pinIconUrl)) {
+    const iconHtml = place.pinIconUrl
+      ? `<img src="${place.pinIconUrl}" style="width:18px;height:18px;object-fit:contain;border-radius:4px;flex-shrink:0;">`
+      : `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:16px;line-height:1;flex-shrink:0;">${place.pinEmoji}</span>`;
+    const name = (place.name || place.displayName || '').trim();
+
+    return `<div class="place-pin-root" style="position:relative;width:10px;height:10px;overflow:visible;">
+      <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 12px 6px 8px;box-shadow:0 4px 14px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.12);white-space:nowrap;">
+          ${iconHtml}
+          <span style="font-size:13px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">${name}</span>
+        </div>
+        <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fff;margin-top:-1px;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.08));"></div>
+      </div>
+    </div>`;
+  }
+
   if (place.pinStyle === 'sticker' && (place.pinEmoji || place.pinIconUrl)) {
     // Estilo landmark real: SIN círculo de fondo ni badge — el emoji/imagen
     // flota directo, con un contorno blanco (drop-shadow apilado) que
