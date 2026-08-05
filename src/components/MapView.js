@@ -310,6 +310,16 @@ export class MapView {
             from { opacity:0; transform:translateX(-50%) translateY(4px); }
             to   { opacity:1; transform:translateX(-50%) translateY(0); }
           }
+          @keyframes pinBubblePulseIn {
+            0%   { transform:scale(0.3); opacity:0; }
+            55%  { transform:scale(1.12); opacity:1; }
+            80%  { transform:scale(0.94); }
+            100% { transform:scale(1); }
+          }
+          .place-pin-bubble-inner.pin-bubble-pop {
+            animation: pinBubblePulseIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+            transform-origin: bottom center;
+          }
         `;
         document.head.appendChild(fs);
       }
@@ -831,12 +841,20 @@ export class MapView {
       el._wpVisible = state === 2;
 
       const wrapper = el.querySelector('.place-pin-wrapper');
+      const bubbleInner = el.querySelector('.place-pin-bubble-inner');
 
       if (state === 2) {
         el.style.visibility    = 'visible';
         el.style.pointerEvents = '';
         el.style.transition    = 'opacity 0.35s ease';
         el.style.opacity       = '1';
+        if (bubbleInner) {
+          // Pines tipo globo: no fade genérico, entran con un pulso
+          // (scale con rebote), no de golpe
+          bubbleInner.classList.remove('pin-bubble-pop');
+          void bubbleInner.offsetWidth; // fuerza reflow para poder re-disparar la animación
+          bubbleInner.classList.add('pin-bubble-pop');
+        }
         if (wrapper) {
           wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
           wrapper.style.width = ''; wrapper.style.height = ''; wrapper.style.padding = '';
@@ -1696,17 +1714,19 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   // mismo patrón que ya usan los labels de los demás pines.
   if (place.pinStyle === 'bubble' && (place.pinEmoji || place.pinIconUrl)) {
     const iconHtml = place.pinIconUrl
-      ? `<img src="${place.pinIconUrl}" style="width:18px;height:18px;object-fit:contain;border-radius:4px;flex-shrink:0;">`
-      : `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:16px;line-height:1;flex-shrink:0;">${place.pinEmoji}</span>`;
+      ? `<img src="${place.pinIconUrl}" style="width:12px;height:12px;object-fit:contain;border-radius:3px;flex-shrink:0;">`
+      : `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:11px;line-height:1;flex-shrink:0;">${place.pinEmoji}</span>`;
     const name = (place.name || place.displayName || '').trim();
 
-    return `<div class="place-pin-root" style="position:relative;width:10px;height:10px;overflow:visible;">
+    // .place-pin-bubble-inner: la clase que engancha la animación de
+    // entrada tipo "pulse" en _updatePinsByZoom (en vez del fade genérico)
+    return `<div class="place-pin-root" style="position:relative;width:8px;height:8px;overflow:visible;">
       <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
-        <div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 12px 6px 8px;box-shadow:0 4px 14px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.12);white-space:nowrap;">
+        <div class="place-pin-bubble-inner" style="display:flex;align-items:center;gap:4px;background:#fff;border-radius:999px;padding:4px 8px 4px 6px;box-shadow:0 3px 10px rgba(0,0,0,0.22),0 1px 2px rgba(0,0,0,0.12);white-space:nowrap;">
           ${iconHtml}
-          <span style="font-size:13px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">${name}</span>
+          <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
         </div>
-        <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fff;margin-top:-1px;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.08));"></div>
+        <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #fff;margin-top:-1px;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,0.08));"></div>
       </div>
     </div>`;
   }
