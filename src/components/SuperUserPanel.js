@@ -196,6 +196,20 @@ export class SuperUserPanel {
             </label>
             <span class="su-label" style="margin:0;">Mostrar etiqueta en mapa</span>
           </div>
+          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+              <div class="su-label" style="margin:0;">Color de la etiqueta</div>
+              <input id="su-field-label-color" type="color" value="#0a0a14" style="width:100%;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;cursor:pointer;padding:2px;">
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+              <div class="su-label" style="margin:0;">Lado</div>
+              <div style="display:flex;gap:4px;">
+                <button type="button" class="su-label-side-btn active" data-side="right" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(0,188,212,0.5);background:rgba(0,188,212,0.18);color:#67e8f9;font-size:11px;cursor:pointer;">Derecha →</button>
+                <button type="button" class="su-label-side-btn" data-side="left" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:11px;cursor:pointer;">← Izquierda</button>
+              </div>
+            </div>
+          </div>
+          <input id="su-field-label-side-hidden" type="hidden" value="right">
           <div class="su-label">Visible en categorías</div>
           <div id="su-cat-chips-row" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
           <div class="su-label">Tamaño</div>
@@ -226,6 +240,7 @@ export class SuperUserPanel {
     this._buildColorRow();
 
     this._buildSizeRow();
+    this._buildLabelSideRow();
     this._buildBorderRow();
 
     document.getElementById('su-form-close').addEventListener('click', () => this._closeForm());
@@ -322,6 +337,25 @@ export class SuperUserPanel {
       btn.addEventListener('click', () => {
         row.querySelectorAll('.su-size-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+      });
+    });
+  }
+
+  _buildLabelSideRow() {
+    const btns = document.querySelectorAll('.su-label-side-btn');
+    if (!btns.length) return;
+    const hidden = document.getElementById('su-field-label-side-hidden');
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const side = btn.dataset.side;
+        hidden.value = side;
+        btns.forEach(b => {
+          const active = b === btn;
+          b.classList.toggle('active', active);
+          b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+          b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+          b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+        });
       });
     });
   }
@@ -498,6 +532,8 @@ export class SuperUserPanel {
 
       const size = document.querySelector('#su-size-row .su-size-btn.active')?.dataset.size || 'normal';
       const borderColorVal = document.querySelector('#su-border-row .su-color-btn.active')?.dataset.borderColor || null;
+      const labelColorVal = document.getElementById('su-field-label-color')?.value || null;
+      const labelSideVal  = document.getElementById('su-field-label-side-hidden')?.value || 'right';
 
       const isEdit = !!this._editingId;
       await LandmarkService[isEdit ? 'update' : 'create']({
@@ -507,6 +543,8 @@ export class SuperUserPanel {
         icon_url: iconUrl || null,
         show_label: showLabel,
         visible_in_categories: visibleInCats,
+        label_color: labelColorVal,
+        label_side: labelSideVal,
       });
 
       this._closeForm();
@@ -604,6 +642,19 @@ export class SuperUserPanel {
       if (customEl) customEl.value = item.emoji || '';
       if (labelEl) labelEl.value = (item.title !== item.emoji ? item.title : '') || '';
       if (showLabelEl) showLabelEl.checked = item.show_label !== false;
+      // Color y lado de la etiqueta
+      const labelColorEl = document.getElementById('su-field-label-color');
+      if (labelColorEl) labelColorEl.value = item.label_color || '#0a0a14';
+      const side = item.label_side === 'left' ? 'left' : 'right';
+      const sideHidden = document.getElementById('su-field-label-side-hidden');
+      if (sideHidden) sideHidden.value = side;
+      document.querySelectorAll('.su-label-side-btn').forEach(b => {
+        const active = b.dataset.side === side;
+        b.classList.toggle('active', active);
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
       // Si tiene PNG, mostrar preview
       if (item.icon_url) {
         this._pngDataUrl = item.icon_url;
