@@ -25,14 +25,16 @@ export const LandmarkService = {
 
   async create({ type = 'landmark', lat, lng, title, description, emoji, icon_url,
                  color = '#00bcd4', size = 'normal', border_color = null,
-                 show_label = true, visible_in_categories = null }) {
+                 show_label = true, visible_in_categories = null,
+                 label_color = null, label_side = 'right' }) {
     const sb = getSupabase();
     const { data: { user } } = await sb.auth.getUser();
     if (!isSuperUser(user?.id)) throw new Error('Sin permisos de superusuario');
     const { data, error } = await sb
       .from('map_landmarks')
       .insert({ type, lat, lng, title, description, emoji, icon_url, color, size,
-                border_color, show_label, visible_in_categories, created_by: user.id })
+                border_color, show_label, visible_in_categories, created_by: user.id,
+                label_color, label_side })
       .select()
       .single();
     if (error) throw error;
