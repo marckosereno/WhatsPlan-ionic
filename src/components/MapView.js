@@ -1328,10 +1328,14 @@ export class MapView {
           const label = document.createElement('div');
           label.className = 'lm-label lm-sticker-label';
           label.textContent = item.title;
+          // label_side: 'right' (default, comportamiento de siempre) | 'left'
+          const isLeft = item.label_side === 'left';
+          const sidePos = isLeft ? 'right:calc(100% + 3px)' : 'left:calc(100% + 3px)';
+          const labelBg = item.label_color || 'rgba(10,10,20,0.78)';
           label.style.cssText = [
-            'position:absolute', 'left:calc(100% + 3px)', 'top:50%',
+            'position:absolute', sidePos, 'top:50%',
             'transform:translateY(-60%)', 'white-space:nowrap',
-            'background:rgba(10,10,20,0.78)', 'color:#fff',
+            `background:${labelBg}`, 'color:#fff',
             'font-size:9px', 'font-weight:700',
             "font-family:'Inter Tight',system-ui,sans-serif",
             'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
@@ -1722,11 +1726,11 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // entrada tipo "pulse" en _updatePinsByZoom (en vez del fade genérico)
     return `<div class="place-pin-root" style="position:relative;width:8px;height:8px;overflow:visible;">
       <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
-        <div class="place-pin-bubble-inner" style="display:flex;align-items:center;gap:4px;background:#fff;border-radius:999px;padding:4px 8px 4px 6px;box-shadow:0 3px 10px rgba(0,0,0,0.22),0 1px 2px rgba(0,0,0,0.12);white-space:nowrap;">
+        <div class="place-pin-bubble-inner" style="display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:0 4px 10px rgba(0,0,0,0.20),0 1.5px 3px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.95),inset 0 -1.5px 2px rgba(0,0,0,0.06);border:0.5px solid rgba(0,0,0,0.04);white-space:nowrap;">
           ${iconHtml}
           <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
         </div>
-        <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #fff;margin-top:-1px;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,0.08));"></div>
+        <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #f2f3f5;margin-top:-1px;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,0.1));"></div>
       </div>
     </div>`;
   }
