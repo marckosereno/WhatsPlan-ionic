@@ -842,6 +842,8 @@ export class MapView {
 
       const wrapper = el.querySelector('.place-pin-wrapper');
       const bubbleInner = el.querySelector('.place-pin-bubble-inner');
+      const bubbleDot   = el.querySelector('.place-pin-bubble-dot');
+      const bubbleStack = el.querySelector('.place-pin-bubble-stack');
 
       if (state === 2) {
         el.style.visibility    = 'visible';
@@ -850,7 +852,11 @@ export class MapView {
         el.style.opacity       = '1';
         if (bubbleInner) {
           // Pines tipo globo: no fade genérico, entran con un pulso
-          // (scale con rebote), no de golpe
+          // (scale con rebote), no de golpe — y aparecen ARRIBA de donde
+          // estaba el punto celeste (el punto se esconde, el globo crece
+          // desde ese mismo punto de anclaje hacia arriba)
+          if (bubbleDot) bubbleDot.style.display = 'none';
+          if (bubbleStack) bubbleStack.style.display = 'flex';
           bubbleInner.classList.remove('pin-bubble-pop');
           void bubbleInner.offsetWidth; // fuerza reflow para poder re-disparar la animación
           bubbleInner.classList.add('pin-bubble-pop');
@@ -869,6 +875,12 @@ export class MapView {
         el.style.pointerEvents = 'none';
         el.style.transition    = 'none';
         el.style.opacity       = '1';
+        if (bubbleDot) {
+          // Globo: mismo estado "punto" que los pines circulares, pero con
+          // su propio punto celeste (el globo no tiene .place-pin-wrapper)
+          bubbleDot.style.display = 'block';
+          if (bubbleStack) bubbleStack.style.display = 'none';
+        }
         if (wrapper) {
           wrapper.style.transition = 'none';
           wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
@@ -1393,12 +1405,16 @@ export class MapView {
     document.querySelectorAll('.place-marker-el.featured-highlight').forEach(el => {
       el.classList.remove('featured-highlight');
       const wrapper = el.querySelector('.place-pin-wrapper');
+      const bubbleStack = el.querySelector('.place-pin-bubble-stack');
       const nameEl  = el.querySelector('.pin-featured-name');
       const shadow  = el.querySelector('.pin-featured-shadow');
       const badge   = el.querySelector('.pin-featured-badge');
       if (wrapper) {
         wrapper.style.transform = '';
         wrapper.style.boxShadow = wrapper.dataset.liquidShadow || wrapper._liquidShadow || '';
+      }
+      if (bubbleStack) {
+        bubbleStack.style.transform = 'translateX(-50%)';
       }
       if (nameEl)  nameEl.remove();
       if (shadow)  shadow.remove();
@@ -1449,10 +1465,20 @@ export class MapView {
     if (fb)  fb.style.display  = 'none';
     if (lbl) { lbl.style.opacity = '0'; lbl.style.pointerEvents = 'none'; }
     if (navigator.vibrate) navigator.vibrate(40);
+
+    const isBubble = closest.place.pinStyle === 'bubble';
     const wrapper = closest.el.querySelector('.place-pin-wrapper');
+    const bubbleStack = closest.el.querySelector('.place-pin-bubble-stack');
     if (wrapper) {
       wrapper.style.transition = 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)';
       wrapper.style.transform  = 'scale(1.35) translateY(-6px)';
+    }
+    if (bubbleStack) {
+      // El globo entero (píldora + colita) hace el mismo pulso/zoom que
+      // los pines circulares — así se siente flotando, coherente con la
+      // sombra de abajo
+      bubbleStack.style.transition = 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)';
+      bubbleStack.style.transform  = 'translateX(-50%) scale(1.18) translateY(-4px)';
     }
     const root = closest.el.querySelector('.place-pin-root');
     if (root && !root.querySelector('.pin-featured-shadow')) {
@@ -1463,15 +1489,22 @@ export class MapView {
     }
     if (root && !root.querySelector('.pin-featured-name')) {
       const badge  = closest.place.featured==='verified'?'✅ Verificado':closest.place.featured==='premium'?'💎 Premium':'⭐ Destacado';
+      const badgeBg = closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)';
       const nameEl = document.createElement('div');
       nameEl.className = 'pin-featured-name';
-      nameEl.style.cssText = 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
-      nameEl.innerHTML =
-        '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:\'Inter Tight\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
-        closest.place.name + '</div>' +
-        '<div style="font-size:9px;font-weight:700;background:' +
-        (closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)') +
-        ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
+      // Globo: el nombre YA se ve adentro de la píldora — mostrar el mismo
+      // texto de vuelta arriba (con stroke) queda redundante, así que acá
+      // solo va el badge, y bien más arriba para no pisar el globo (que
+      // encima ahora crece con el pulso)
+      nameEl.style.cssText = isBubble
+        ? 'position:absolute;bottom:calc(100% + 26px);left:50%;transform:translateX(-50%);pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;'
+        : 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
+      nameEl.innerHTML = isBubble
+        ? '<div style="font-size:9px;font-weight:700;background:' + badgeBg + ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>'
+        : '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:\'Inter Tight\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
+          closest.place.name + '</div>' +
+          '<div style="font-size:9px;font-weight:700;background:' + badgeBg +
+          ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
       root.appendChild(nameEl);
     }
   }
@@ -1724,8 +1757,13 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
     // .place-pin-bubble-inner: la clase que engancha la animación de
     // entrada tipo "pulse" en _updatePinsByZoom (en vez del fade genérico)
+    // .place-pin-bubble-dot: el punto celeste que se muestra ANTES de que
+    // aparezca el globo (mismo mecanismo del "punto" que ya tienen los
+    // pines circulares, pero el globo no tiene .place-pin-wrapper así que
+    // necesita su propio elemento)
     return `<div class="place-pin-root" style="position:relative;width:8px;height:8px;overflow:visible;">
-      <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
+      <div class="place-pin-bubble-dot" style="position:absolute;bottom:0;left:50%;transform:translate(-50%,50%);width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8fd8ff,#1a8cff 65%,#0a5fc2);box-shadow:0 0 0 2.5px rgba(255,255,255,0.9),0 2px 5px rgba(10,95,194,0.45);display:none;"></div>
+      <div class="place-pin-bubble-stack" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
         <div class="place-pin-bubble-inner" style="display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:0 4px 10px rgba(0,0,0,0.20),0 1.5px 3px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.95),inset 0 -1.5px 2px rgba(0,0,0,0.06);border:0.5px solid rgba(0,0,0,0.04);white-space:nowrap;">
           ${iconHtml}
           <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
