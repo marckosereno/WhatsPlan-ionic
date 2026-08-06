@@ -842,7 +842,6 @@ export class MapView {
 
       const wrapper = el.querySelector('.place-pin-wrapper');
       const bubbleInner = el.querySelector('.place-pin-bubble-inner');
-      const bubbleDot   = el.querySelector('.place-pin-bubble-dot');
       const bubbleStack = el.querySelector('.place-pin-bubble-stack');
 
       if (state === 2) {
@@ -852,10 +851,9 @@ export class MapView {
         el.style.opacity       = '1';
         if (bubbleInner) {
           // Pines tipo globo: no fade genérico, entran con un pulso
-          // (scale con rebote), no de golpe — y aparecen ARRIBA de donde
-          // estaba el punto celeste (el punto se esconde, el globo crece
-          // desde ese mismo punto de anclaje hacia arriba)
-          if (bubbleDot) bubbleDot.style.display = 'none';
+          // (scale con rebote), no de golpe. El punto celeste NO se
+          // esconde — se queda ahí siempre como referencia/sombra del
+          // globo, que crece arriba de él
           if (bubbleStack) bubbleStack.style.display = 'flex';
           bubbleInner.classList.remove('pin-bubble-pop');
           void bubbleInner.offsetWidth; // fuerza reflow para poder re-disparar la animación
@@ -875,12 +873,9 @@ export class MapView {
         el.style.pointerEvents = 'none';
         el.style.transition    = 'none';
         el.style.opacity       = '1';
-        if (bubbleDot) {
-          // Globo: mismo estado "punto" que los pines circulares, pero con
-          // su propio punto celeste (el globo no tiene .place-pin-wrapper)
-          bubbleDot.style.display = 'block';
-          if (bubbleStack) bubbleStack.style.display = 'none';
-        }
+        // El punto celeste ya está visible por default (es fijo, ver
+        // comentario arriba) — acá solo hay que esconder el globo
+        if (bubbleStack) bubbleStack.style.display = 'none';
         if (wrapper) {
           wrapper.style.transition = 'none';
           wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
@@ -1762,7 +1757,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // pines circulares, pero el globo no tiene .place-pin-wrapper así que
     // necesita su propio elemento)
     return `<div class="place-pin-root" style="position:relative;width:8px;height:8px;overflow:visible;">
-      <div class="place-pin-bubble-dot" style="position:absolute;bottom:0;left:50%;transform:translate(-50%,50%);width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8fd8ff,#1a8cff 65%,#0a5fc2);box-shadow:0 0 0 2.5px rgba(255,255,255,0.9),0 2px 5px rgba(10,95,194,0.45);display:none;"></div>
+      <div class="place-pin-bubble-dot" style="position:absolute;bottom:0;left:50%;transform:translate(-50%,50%);width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8fd8ff,#1a8cff 65%,#0a5fc2);box-shadow:0 1.5px 3px rgba(10,95,194,0.4);"></div>
       <div class="place-pin-bubble-stack" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
         <div class="place-pin-bubble-inner" style="display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:0 4px 10px rgba(0,0,0,0.20),0 1.5px 3px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.95),inset 0 -1.5px 2px rgba(0,0,0,0.06);border:0.5px solid rgba(0,0,0,0.04);white-space:nowrap;">
           ${iconHtml}
