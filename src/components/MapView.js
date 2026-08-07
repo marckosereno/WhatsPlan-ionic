@@ -1776,8 +1776,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // necesita su propio elemento)
     return `<div class="place-pin-root" style="position:relative;width:8px;height:8px;overflow:visible;">
       <div class="place-pin-bubble-dot" style="position:absolute;bottom:0;left:50%;transform:translate(-50%,50%);width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8fd8ff,#1a8cff 65%,#0a5fc2);box-shadow:0 1.5px 3px rgba(10,95,194,0.4);display:none;"></div>
-      <div class="place-pin-bubble-stack" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;">
-        <div class="place-pin-bubble-inner" style="position:relative;z-index:0;display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:0 4px 10px rgba(0,0,0,0.20),0 1.5px 3px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.95),inset 0 -1.5px 2px rgba(0,0,0,0.06);white-space:nowrap;">
+      <div class="place-pin-bubble-stack" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 4px rgba(0,0,0,0.22)) drop-shadow(0 1px 2px rgba(0,0,0,0.14));">
+        <div class="place-pin-bubble-inner" style="position:relative;z-index:0;display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.95),inset 0 -1.5px 2px rgba(0,0,0,0.06);white-space:nowrap;">
           ${iconHtml}
           <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
         </div>
