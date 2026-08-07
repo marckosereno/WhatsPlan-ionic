@@ -1,5 +1,5 @@
 import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
-// ====================================================================
+// ==================================================================
 // WHATSPLAN — MapView.js
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
 // ====================================================================
