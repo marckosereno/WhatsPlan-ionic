@@ -1765,7 +1765,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
           ${iconHtml}
           <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
         </div>
-        <div style="position:relative;z-index:1;width:7px;height:7px;background:linear-gradient(135deg,#ffffff 0%,#f2f3f5 100%);transform:rotate(45deg);margin-top:-4.5px;box-shadow:1.5px 1.5px 2px rgba(0,0,0,0.08);"></div>
+        <div style="position:relative;z-index:1;width:7px;height:7px;background:linear-gradient(135deg,#ffffff 0%,#f2f3f5 100%);transform:rotate(45deg);margin-top:-1.5px;box-shadow:1.5px 1.5px 2px rgba(0,0,0,0.08);"></div>
       </div>
     </div>`;
   }
