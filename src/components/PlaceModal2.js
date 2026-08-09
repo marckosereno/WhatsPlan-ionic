@@ -1197,12 +1197,12 @@ export class PlaceModal2 {
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:4px;background:#eef0f2;border-radius:999px;height:34px;padding:0 4px;overflow:hidden;">
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:4px;background:#eef0f2;border-radius:999px;height:34px;padding:0 6px;overflow:hidden;">
           <button id="wp-ms-fav-btn" style="width:26px;height:26px;border-radius:50%;border:none;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 4 15.5 4 9.5C4 6.7 6.2 4.5 9 4.5C10.5 4.5 11.5 5.2 12 6C12.5 5.2 13.5 4.5 15 4.5C17.8 4.5 20 6.7 20 9.5C20 15.5 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.36129 3.46995C6.03579 3.16081 6.76287 3 7.50002 3C8.23718 3 8.96425 3.16081 9.63875 3.46995C10.3129 3.77893 10.9185 4.22861 11.4239 4.78788C11.7322 5.12902 12.2678 5.12902 12.5761 4.78788C13.5979 3.65726 15.0068 3.00001 16.5 3.00001C17.9932 3.00001 19.4021 3.65726 20.4239 4.78788C21.4427 5.91515 22 7.42425 22 8.9792C22 10.5342 21.4427 12.0433 20.4239 13.1705L14.2257 20.0287C13.0346 21.3467 10.9654 21.3467 9.77429 20.0287L3.57613 13.1705C3.07086 12.6115 2.67474 11.9531 2.40602 11.2353C2.13731 10.5175 2 9.75113 2 8.9792C2 8.20728 2.13731 7.44094 2.40602 6.72315C2.67474 6.00531 3.07086 5.34694 3.57613 4.78788C4.08157 4.22861 4.68716 3.77893 5.36129 3.46995Z" fill="currentColor"/></svg>
           </button>
           <button id="wp-ms-close-btn" style="width:26px;height:26px;border-radius:50%;border:none;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M16 16L12 12M12 12L8 8M12 12L16 8M12 12L8 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -1240,8 +1240,8 @@ export class PlaceModal2 {
       favBtn.classList.toggle('active');
       const svg = favBtn.querySelector('path');
       const active = favBtn.classList.contains('active');
-      svg.setAttribute('fill', active ? '#ef4444' : 'none');
-      svg.setAttribute('stroke', active ? '#ef4444' : 'currentColor');
+      svg.setAttribute('fill', active ? '#ef4444' : 'currentColor');
+      favBtn.style.color = active ? '#ef4444' : '#374151';
     };
 
     const closeBtn = ms.querySelector('#wp-ms-close-btn');
