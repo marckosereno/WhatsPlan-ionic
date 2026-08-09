@@ -128,14 +128,18 @@ function _buildOpeningHours(hoursObj) {
   Object.entries(hoursObj).forEach(function([day, text]) {
     const dayNum = dayMap[day];
     if (dayNum === undefined || !text || text === 'Cerrado' || text === 'Closed') return;
-    const match = text.match(/(\d+):(\d+)\s*(AM|PM).*?(\d+):(\d+)\s*(AM|PM)/i);
+    // Acepta "AM"/"PM" con o sin puntos (a.m., p.m., AM, PM...) — el
+    // placeholder del formulario sugiere el formato con puntos, y el
+    // regex viejo (solo "AM|PM" sin puntos) nunca lo matcheaba, dejando
+    // el día sin período y rompiendo el cálculo de abierto/cerrado
+    const match = text.match(/(\d+):(\d+)\s*([AP])\.?M\.?.*?(\d+):(\d+)\s*([AP])\.?M\.?/i);
     if (!match) return;
     let oh = parseInt(match[1]), om = parseInt(match[2]), oa = match[3].toUpperCase();
     let ch = parseInt(match[4]), cm = parseInt(match[5]), ca = match[6].toUpperCase();
-    if (oa === 'PM' && oh !== 12) oh += 12;
-    if (oa === 'AM' && oh === 12) oh = 0;
-    if (ca === 'PM' && ch !== 12) ch += 12;
-    if (ca === 'AM' && ch === 12) ch = 0;
+    if (oa === 'P' && oh !== 12) oh += 12;
+    if (oa === 'A' && oh === 12) oh = 0;
+    if (ca === 'P' && ch !== 12) ch += 12;
+    if (ca === 'A' && ch === 12) ch = 0;
     periods.push({ open: { day: dayNum, hour: oh, minute: om }, close: { day: dayNum, hour: ch, minute: cm } });
   });
   return periods.length > 0 ? { periods } : null;
