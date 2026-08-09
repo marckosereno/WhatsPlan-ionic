@@ -1571,7 +1571,7 @@ export class SuperUserPanel {
       description:       place.description || place.editorialSummary || '',
       editorial_summary: place.editorialSummary || '',
       reviews:           place.reviews || [],
-      opening_hours:     place.openingHours || null,
+      opening_hours:     place.openingHoursText || null,
       featured:          place.featured || null,
       pin_style:         place.pinStyle || 'photo',
       pin_emoji:         place.pinEmoji || '',
