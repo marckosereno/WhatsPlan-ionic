@@ -1582,8 +1582,9 @@ export class SuperUserPanel {
       pin_badge_color:   place.pinBadgeColor || '',
       pin_event_mode:    place.pinEventMode || false,
       pin_event_label:   place.pinEventLabel || '',
-      pin_event_badge_style: place.pinEventBadgeStyle || 'icon',
-      pin_event_photo_shape: place.pinEventPhotoShape || 'portrait',
+      pin_badge_style:   place.pinBadgeStyle || 'icon',
+      pin_show_stacked_photos: !!place.pinShowStackedPhotos,
+      pin_photo_stack_shape: place.pinPhotoStackShape || 'portrait',
       pin_badge_shape:   place.pinBadgeShape || 'circle',
       pin_photo_stack_size: place.pinPhotoStackSize || 'med',
     };
@@ -1906,26 +1907,28 @@ export class SuperUserPanel {
                 ).join('') +
               '</div>' +
               '<input id="su-pin-badge-color-hidden" type="hidden" value="' + (prefill?.pin_badge_color || '#f97316') + '">' +
-              '<div style="font-size:10px;color:#6b7280;">Forma del pin (aplica con o sin evento)</div>' +
+              '<div style="font-size:10px;color:#6b7280;">Forma del pin</div>' +
               '<div id="su-pin-badge-shape-row" style="display:flex;gap:6px;">' +
                 '<button type="button" class="su-pin-badge-shape-btn" data-val="circle" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Círculo</button>' +
                 '<button type="button" class="su-pin-badge-shape-btn" data-val="square" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">◻️ Cuadrado</button>' +
               '</div>' +
               '<input id="su-pin-badge-shape-hidden" type="hidden" value="' + (prefill?.pin_badge_shape === 'square' ? 'square' : 'circle') + '">' +
-              '<div style="display:flex;align-items:center;gap:8px;margin-top:2px;">' +
+              '<div style="font-size:10px;color:#6b7280;">Estilo del pin</div>' +
+              '<div id="su-pin-badge-style-row" style="display:flex;gap:6px;">' +
+                '<button type="button" class="su-pin-badge-style-btn" data-val="icon" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🔶 Ícono</button>' +
+                '<button type="button" class="su-pin-badge-style-btn" data-val="dot" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Solo punto</button>' +
+              '</div>' +
+              '<input id="su-pin-badge-style-hidden" type="hidden" value="' + (prefill?.pin_badge_style === 'dot' ? 'dot' : 'icon') + '">' +
+
+              '<div style="height:1px;background:rgba(255,255,255,0.08);margin:4px 0;"></div>' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
                 '<label class="su-toggle-wrap">' +
-                  '<input type="checkbox" id="su-pin-event-mode"' + (prefill?.pin_event_mode ? ' checked' : '') + '>' +
+                  '<input type="checkbox" id="su-pin-show-photos"' + (prefill?.pin_show_stacked_photos ? ' checked' : '') + '>' +
                   '<span class="su-toggle-slider"></span>' +
                 '</label>' +
-                '<span class="su-label" style="margin:0;">Modo evento (collage de fotos + etiqueta de tiempo)</span>' +
+                '<span class="su-label" style="margin:0;">Mostrar fotos apiladas (independiente del pin y del evento)</span>' +
               '</div>' +
-              '<input id="su-pin-event-label" class="su-input" placeholder="ej: NOW UNTIL 9:30 PM" style="display:' + (prefill?.pin_event_mode ? 'block' : 'none') + ';font-size:12px;" value="' + _esc(prefill?.pin_event_label) + '">' +
-              '<div id="su-pin-event-photos-row" style="display:' + (prefill?.pin_event_mode ? 'flex' : 'none') + ';flex-direction:column;gap:8px;">' +
-                '<div style="font-size:10px;color:#6b7280;">Las fotos apiladas se ven siempre que el lugar tenga fotos — esto solo elige qué acompaña al punto de anclaje:</div>' +
-                '<div style="display:flex;gap:6px;">' +
-                  '<button type="button" class="su-pin-event-photos-btn" data-val="icon" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🔶 Ícono</button>' +
-                  '<button type="button" class="su-pin-event-photos-btn" data-val="dot" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Solo punto</button>' +
-                '</div>' +
+              '<div id="su-pin-photos-config-row" style="display:' + (prefill?.pin_show_stacked_photos ? 'flex' : 'none') + ';flex-direction:column;gap:8px;">' +
                 '<div style="font-size:10px;color:#6b7280;">Forma de las fotos apiladas</div>' +
                 '<div style="display:flex;gap:6px;">' +
                   '<button type="button" class="su-pin-photo-shape-btn" data-val="portrait" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">▯ Portrait</button>' +
@@ -1938,9 +1941,18 @@ export class SuperUserPanel {
                   '<button type="button" class="su-pin-photo-size-btn" data-val="grande" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>' +
                 '</div>' +
               '</div>' +
-              '<input id="su-pin-event-photos-hidden" type="hidden" value="' + (prefill?.pin_event_badge_style === 'dot' ? 'dot' : 'icon') + '">' +
-              '<input id="su-pin-photo-shape-hidden" type="hidden" value="' + (prefill?.pin_event_photo_shape === 'square' ? 'square' : 'portrait') + '">' +
+              '<input id="su-pin-photo-shape-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_shape === 'square' ? 'square' : 'portrait') + '">' +
               '<input id="su-pin-photo-size-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_size || 'med') + '">' +
+
+              '<div style="height:1px;background:rgba(255,255,255,0.08);margin:4px 0;"></div>' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<label class="su-toggle-wrap">' +
+                  '<input type="checkbox" id="su-pin-event-mode"' + (prefill?.pin_event_mode ? ' checked' : '') + '>' +
+                  '<span class="su-toggle-slider"></span>' +
+                '</label>' +
+                '<span class="su-label" style="margin:0;">Modo evento (solo agrega etiqueta de fecha/hora — no afecta las fotos)</span>' +
+              '</div>' +
+              '<input id="su-pin-event-label" class="su-input" placeholder="ej: NOW UNTIL 9:30 PM" style="display:' + (prefill?.pin_event_mode ? 'block' : 'none') + ';font-size:12px;" value="' + _esc(prefill?.pin_event_label) + '">' +
             '</div>' +
             '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
@@ -2198,35 +2210,41 @@ export class SuperUserPanel {
     });
     _paintBadgeColorBtns();
 
-    // Modo evento (Social) — muestra/oculta el input de etiqueta de tiempo
-    // y el toggle de fotos apiladas vs solo punto
+    // Modo evento (Social) — SOLO muestra/oculta el input de etiqueta de
+    // fecha/hora. Ya no toca nada relacionado a fotos ni al pin.
     const eventModeCheckbox = document.getElementById('su-pin-event-mode');
     const eventLabelInput = document.getElementById('su-pin-event-label');
-    const eventPhotosRow = document.getElementById('su-pin-event-photos-row');
     eventModeCheckbox.addEventListener('change', () => {
       eventLabelInput.style.display = eventModeCheckbox.checked ? 'block' : 'none';
-      eventPhotosRow.style.display = eventModeCheckbox.checked ? 'flex' : 'none';
     });
 
-    // Badge del anchor (ícono o solo punto) — las fotos apiladas se ven
-    // siempre que haya fotos, sea cual sea esta elección
-    const eventPhotosBtns = document.querySelectorAll('.su-pin-event-photos-btn');
-    const eventPhotosHidden = document.getElementById('su-pin-event-photos-hidden');
-    const _paintEventPhotosBtns = () => {
-      eventPhotosBtns.forEach(b => {
-        const active = b.dataset.val === eventPhotosHidden.value;
+    // Estilo del pin (ícono o solo punto) — independiente del evento y de
+    // las fotos, siempre visible
+    const badgeStyleBtns = document.querySelectorAll('.su-pin-badge-style-btn');
+    const badgeStyleHidden = document.getElementById('su-pin-badge-style-hidden');
+    const _paintBadgeStyleBtns = () => {
+      badgeStyleBtns.forEach(b => {
+        const active = b.dataset.val === badgeStyleHidden.value;
         b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
         b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
         b.style.color       = active ? '#67e8f9'              : '#9ca3af';
       });
     };
-    eventPhotosBtns.forEach(btn => {
+    badgeStyleBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        eventPhotosHidden.value = btn.dataset.val;
-        _paintEventPhotosBtns();
+        badgeStyleHidden.value = btn.dataset.val;
+        _paintBadgeStyleBtns();
       });
     });
-    _paintEventPhotosBtns();
+    _paintBadgeStyleBtns();
+
+    // Mostrar fotos apiladas — checkbox independiente, no depende del
+    // modo evento ni del estilo del pin
+    const showPhotosCheckbox = document.getElementById('su-pin-show-photos');
+    const photosConfigRow = document.getElementById('su-pin-photos-config-row');
+    showPhotosCheckbox.addEventListener('change', () => {
+      photosConfigRow.style.display = showPhotosCheckbox.checked ? 'flex' : 'none';
+    });
 
     // Forma de las fotos apiladas: portrait o square
     const photoShapeBtns = document.querySelectorAll('.su-pin-photo-shape-btn');
@@ -2533,8 +2551,9 @@ export class SuperUserPanel {
         pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || '',
         pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
         pin_event_label:    document.getElementById('su-pin-event-label')?.value || '',
-        pin_event_badge_style: document.getElementById('su-pin-event-photos-hidden')?.value || 'icon',
-        pin_event_photo_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
+        pin_badge_style:    document.getElementById('su-pin-badge-style-hidden')?.value || 'icon',
+        pin_show_stacked_photos: document.getElementById('su-pin-show-photos')?.checked || false,
+        pin_photo_stack_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
         pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
         pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
       };
@@ -2596,8 +2615,9 @@ export class SuperUserPanel {
           pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || null,
           pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
           pin_event_label:    document.getElementById('su-pin-event-label')?.value || null,
-          pin_event_badge_style: document.getElementById('su-pin-event-photos-hidden')?.value || 'icon',
-          pin_event_photo_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
+          pin_badge_style:    document.getElementById('su-pin-badge-style-hidden')?.value || 'icon',
+          pin_show_stacked_photos: document.getElementById('su-pin-show-photos')?.checked || false,
+          pin_photo_stack_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
           pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
           pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
           ...(isEdit
