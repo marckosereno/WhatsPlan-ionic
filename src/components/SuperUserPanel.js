@@ -1579,6 +1579,9 @@ export class SuperUserPanel {
       pin_size:          place.pinSize || 'normal',
       pin_stroke_color:  place.pinStrokeColor || '',
       pin_stroke_width:  place.pinStrokeWidth ?? '',
+      pin_badge_color:   place.pinBadgeColor || '',
+      pin_event_mode:    place.pinEventMode || false,
+      pin_event_label:   place.pinEventLabel || '',
     };
   }
 
@@ -1852,6 +1855,7 @@ export class SuperUserPanel {
             '<button type="button" id="su-pin-mode-photo" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(0,188,212,0.5);background:rgba(0,188,212,0.18);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;">🖼️ Foto</button>' +
             '<button type="button" id="su-pin-mode-sticker" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">😀 Sticker</button>' +
             '<button type="button" id="su-pin-mode-bubble" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">💬 Globo</button>' +
+            '<button type="button" id="su-pin-mode-social" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">🎨 Social</button>' +
           '</div>' +
           '<input id="su-pin-style-hidden" type="hidden" value="' + (prefill?.pin_style || 'photo') + '">' +
 
@@ -1887,6 +1891,25 @@ export class SuperUserPanel {
               ['🌮','🍔','🍕','🌭','🍺','☕','🍦','🎉','🛍️','💇','🦷','🌳','⚽','🎬','🏨','💊','🐾','🎨'].map(em =>
                 '<button type="button" class="su-pin-emoji-quick" data-emoji="' + em + '" style="width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + em + '</button>'
               ).join('') +
+            '</div>' +
+
+            '<div id="su-pin-social-row" style="display:none;flex-direction:column;gap:8px;">' +
+              '<div style="height:1px;background:rgba(255,255,255,0.08);margin:2px 0;"></div>' +
+              '<div style="font-size:10px;color:#6b7280;">Color del badge (hasta 6 por categoría — elegí el que le corresponda a esta subcategoría)</div>' +
+              '<div id="su-pin-badge-color-row" style="display:flex;gap:6px;">' +
+                ['#f97316','#8b5cf6','#ec4899','#10b981','#3b82f6','#eab308'].map(c =>
+                  '<button type="button" class="su-pin-badge-color-btn" data-color="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ';border:2px solid transparent;cursor:pointer;padding:0;"></button>'
+                ).join('') +
+              '</div>' +
+              '<input id="su-pin-badge-color-hidden" type="hidden" value="' + (prefill?.pin_badge_color || '#f97316') + '">' +
+              '<div style="display:flex;align-items:center;gap:8px;margin-top:2px;">' +
+                '<label class="su-toggle-wrap">' +
+                  '<input type="checkbox" id="su-pin-event-mode"' + (prefill?.pin_event_mode ? ' checked' : '') + '>' +
+                  '<span class="su-toggle-slider"></span>' +
+                '</label>' +
+                '<span class="su-label" style="margin:0;">Modo evento (collage de fotos + etiqueta de tiempo)</span>' +
+              '</div>' +
+              '<input id="su-pin-event-label" class="su-input" placeholder="ej: NOW UNTIL 9:30 PM" style="display:' + (prefill?.pin_event_mode ? 'block' : 'none') + ';font-size:12px;" value="' + _esc(prefill?.pin_event_label) + '">' +
             '</div>' +
             '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
@@ -2126,16 +2149,42 @@ export class SuperUserPanel {
     };
 
     document.getElementById('su-pin-stroke-color').addEventListener('input', _updatePinPreview);
+
+    // Color del badge (modo Social) — 6 presets
+    const badgeColorBtns = document.querySelectorAll('.su-pin-badge-color-btn');
+    const badgeColorHidden = document.getElementById('su-pin-badge-color-hidden');
+    const _paintBadgeColorBtns = () => {
+      badgeColorBtns.forEach(b => {
+        b.style.border = b.dataset.color === badgeColorHidden.value ? '2px solid #fff' : '2px solid transparent';
+        b.style.boxShadow = b.dataset.color === badgeColorHidden.value ? '0 0 0 2px ' + b.dataset.color : 'none';
+      });
+    };
+    badgeColorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        badgeColorHidden.value = btn.dataset.color;
+        _paintBadgeColorBtns();
+      });
+    });
+    _paintBadgeColorBtns();
+
+    // Modo evento (Social) — muestra/oculta el input de etiqueta de tiempo
+    const eventModeCheckbox = document.getElementById('su-pin-event-mode');
+    const eventLabelInput = document.getElementById('su-pin-event-label');
+    eventModeCheckbox.addEventListener('change', () => {
+      eventLabelInput.style.display = eventModeCheckbox.checked ? 'block' : 'none';
+    });
     document.getElementById('su-pin-stroke-width').addEventListener('input', _updatePinPreview);
 
-    // Toggle modo Foto / Sticker
+    // Toggle modo Foto / Sticker / Globo / Social
     const pinModePhotoBtn   = document.getElementById('su-pin-mode-photo');
     const pinModeStickerBtn = document.getElementById('su-pin-mode-sticker');
     const pinModeBubbleBtn  = document.getElementById('su-pin-mode-bubble');
+    const pinModeSocialBtn  = document.getElementById('su-pin-mode-social');
     const pinStickerPanel   = document.getElementById('su-pin-sticker-panel');
     const pinSizeRow        = document.getElementById('su-pin-size-row');
     const pinStrokeRow      = document.getElementById('su-pin-stroke-row');
     const pinBubbleHint     = document.getElementById('su-pin-bubble-hint');
+    const pinSocialRow      = document.getElementById('su-pin-social-row');
 
     const _paintPinModeBtn = (btn, active) => {
       btn.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
@@ -2144,21 +2193,25 @@ export class SuperUserPanel {
     };
     const _setPinMode = (mode) => {
       document.getElementById('su-pin-style-hidden').value = mode;
-      const showPanel = mode === 'sticker' || mode === 'bubble';
+      const showPanel = mode === 'sticker' || mode === 'bubble' || mode === 'social';
       pinStickerPanel.style.display = showPanel ? 'flex' : 'none';
       _paintPinModeBtn(pinModePhotoBtn,   mode === 'photo');
       _paintPinModeBtn(pinModeStickerBtn, mode === 'sticker');
       _paintPinModeBtn(pinModeBubbleBtn,  mode === 'bubble');
+      _paintPinModeBtn(pinModeSocialBtn,  mode === 'social');
       // El globo tiene tamaño fijo (icono + nombre) y no usa contorno de
-      // color — oculta esos controles, solo quedan visibles emoji/sticker
-      pinSizeRow.style.display   = mode === 'bubble' ? 'none' : 'flex';
-      pinStrokeRow.style.display = mode === 'bubble' ? 'none' : 'flex';
+      // color — oculta esos controles, solo quedan visibles emoji/sticker.
+      // Social tampoco usa tamaño/contorno — usa su propio color de badge.
+      pinSizeRow.style.display   = (mode === 'bubble' || mode === 'social') ? 'none' : 'flex';
+      pinStrokeRow.style.display = (mode === 'bubble' || mode === 'social') ? 'none' : 'flex';
       pinBubbleHint.style.display = mode === 'bubble' ? 'block' : 'none';
+      pinSocialRow.style.display = mode === 'social' ? 'flex' : 'none';
       if (showPanel) _updatePinPreview();
     };
     pinModePhotoBtn.addEventListener('click', () => _setPinMode('photo'));
     pinModeStickerBtn.addEventListener('click', () => _setPinMode('sticker'));
     pinModeBubbleBtn.addEventListener('click', () => _setPinMode('bubble'));
+    pinModeSocialBtn.addEventListener('click', () => _setPinMode('social'));
     _setPinMode(document.getElementById('su-pin-style-hidden').value || 'photo');
 
     // Tamaño mini/normal/grande
@@ -2364,6 +2417,9 @@ export class SuperUserPanel {
         pin_size:           document.getElementById('su-pin-size-hidden').value || 'normal',
         pin_stroke_color:   document.getElementById('su-pin-stroke-color').value || '',
         pin_stroke_width:   document.getElementById('su-pin-stroke-width').value || '',
+        pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || '',
+        pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
+        pin_event_label:    document.getElementById('su-pin-event-label')?.value || '',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2420,6 +2476,9 @@ export class SuperUserPanel {
           pin_size:           document.getElementById('su-pin-size-hidden').value || 'normal',
           pin_stroke_color:   document.getElementById('su-pin-stroke-color').value || null,
           pin_stroke_width:   document.getElementById('su-pin-stroke-width').value || null,
+          pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || null,
+          pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
+          pin_event_label:    document.getElementById('su-pin-event-label')?.value || null,
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
