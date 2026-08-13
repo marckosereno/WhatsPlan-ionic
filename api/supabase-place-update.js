@@ -56,6 +56,9 @@ export default async function handler(req, res) {
     if ('pin_size'           in body) fields.pin_size                = body.pin_size || null;
     if ('pin_stroke_color'   in body) fields.pin_stroke_color        = body.pin_stroke_color || null;
     if ('pin_stroke_width'   in body) fields.pin_stroke_width        = body.pin_stroke_width ? parseFloat(body.pin_stroke_width) : null;
+    if ('pin_badge_color'    in body) fields.pin_badge_color         = body.pin_badge_color || null;
+    if ('pin_event_mode'     in body) fields.pin_event_mode          = Boolean(body.pin_event_mode);
+    if ('pin_event_label'    in body) fields.pin_event_label         = body.pin_event_label || null;
 
     if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
