@@ -105,8 +105,9 @@ try {
         pinBadgeColor:             r.pin_badge_color || null,
         pinEventMode:              r.pin_event_mode || false,
         pinEventLabel:             r.pin_event_label || null,
-        pinEventBadgeStyle:        r.pin_event_badge_style || 'icon',
-        pinEventPhotoShape:        r.pin_event_photo_shape || 'portrait',
+        pinBadgeStyle:             r.pin_badge_style || 'icon',
+        pinShowStackedPhotos:      !!r.pin_show_stacked_photos,
+        pinPhotoStackShape:        r.pin_photo_stack_shape || 'portrait',
         pinBadgeShape:             r.pin_badge_shape || 'circle',
         pinPhotoStackSize:         r.pin_photo_stack_size || 'med',
       };
