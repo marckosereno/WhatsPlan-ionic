@@ -1584,6 +1584,8 @@ export class SuperUserPanel {
       pin_event_label:   place.pinEventLabel || '',
       pin_event_badge_style: place.pinEventBadgeStyle || 'icon',
       pin_event_photo_shape: place.pinEventPhotoShape || 'portrait',
+      pin_badge_shape:   place.pinBadgeShape || 'circle',
+      pin_photo_stack_size: place.pinPhotoStackSize || 'med',
     };
   }
 
@@ -1904,6 +1906,12 @@ export class SuperUserPanel {
                 ).join('') +
               '</div>' +
               '<input id="su-pin-badge-color-hidden" type="hidden" value="' + (prefill?.pin_badge_color || '#f97316') + '">' +
+              '<div style="font-size:10px;color:#6b7280;">Forma del pin (aplica con o sin evento)</div>' +
+              '<div id="su-pin-badge-shape-row" style="display:flex;gap:6px;">' +
+                '<button type="button" class="su-pin-badge-shape-btn" data-val="circle" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Círculo</button>' +
+                '<button type="button" class="su-pin-badge-shape-btn" data-val="square" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">◻️ Cuadrado</button>' +
+              '</div>' +
+              '<input id="su-pin-badge-shape-hidden" type="hidden" value="' + (prefill?.pin_badge_shape === 'square' ? 'square' : 'circle') + '">' +
               '<div style="display:flex;align-items:center;gap:8px;margin-top:2px;">' +
                 '<label class="su-toggle-wrap">' +
                   '<input type="checkbox" id="su-pin-event-mode"' + (prefill?.pin_event_mode ? ' checked' : '') + '>' +
@@ -1923,9 +1931,16 @@ export class SuperUserPanel {
                   '<button type="button" class="su-pin-photo-shape-btn" data-val="portrait" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">▯ Portrait</button>' +
                   '<button type="button" class="su-pin-photo-shape-btn" data-val="square" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">▢ Square</button>' +
                 '</div>' +
+                '<div style="font-size:10px;color:#6b7280;">Tamaño de las fotos apiladas (independiente del tamaño del pin)</div>' +
+                '<div style="display:flex;gap:6px;">' +
+                  '<button type="button" class="su-pin-photo-size-btn" data-val="chico" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Chico</button>' +
+                  '<button type="button" class="su-pin-photo-size-btn" data-val="med" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Mediano</button>' +
+                  '<button type="button" class="su-pin-photo-size-btn" data-val="grande" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>' +
+                '</div>' +
               '</div>' +
               '<input id="su-pin-event-photos-hidden" type="hidden" value="' + (prefill?.pin_event_badge_style === 'dot' ? 'dot' : 'icon') + '">' +
               '<input id="su-pin-photo-shape-hidden" type="hidden" value="' + (prefill?.pin_event_photo_shape === 'square' ? 'square' : 'portrait') + '">' +
+              '<input id="su-pin-photo-size-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_size || 'med') + '">' +
             '</div>' +
             '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
@@ -2231,6 +2246,46 @@ export class SuperUserPanel {
       });
     });
     _paintPhotoShapeBtns();
+
+    // Tamaño de las fotos apiladas — chico/med/grande, independiente del
+    // tamaño del pin (que usa su-pin-size-hidden)
+    const photoSizeBtns = document.querySelectorAll('.su-pin-photo-size-btn');
+    const photoSizeHidden = document.getElementById('su-pin-photo-size-hidden');
+    const _paintPhotoSizeBtns = () => {
+      photoSizeBtns.forEach(b => {
+        const active = b.dataset.val === photoSizeHidden.value;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    photoSizeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        photoSizeHidden.value = btn.dataset.val;
+        _paintPhotoSizeBtns();
+      });
+    });
+    _paintPhotoSizeBtns();
+
+    // Forma del pin — círculo o cuadrado, aplica con o sin evento
+    const badgeShapeBtns = document.querySelectorAll('.su-pin-badge-shape-btn');
+    const badgeShapeHidden = document.getElementById('su-pin-badge-shape-hidden');
+    const _paintBadgeShapeBtns = () => {
+      badgeShapeBtns.forEach(b => {
+        const active = b.dataset.val === badgeShapeHidden.value;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    badgeShapeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        badgeShapeHidden.value = btn.dataset.val;
+        _paintBadgeShapeBtns();
+      });
+    });
+    _paintBadgeShapeBtns();
+
     document.getElementById('su-pin-stroke-width').addEventListener('input', _updatePinPreview);
 
     // Toggle modo Foto / Sticker / Globo / Social
@@ -2480,6 +2535,8 @@ export class SuperUserPanel {
         pin_event_label:    document.getElementById('su-pin-event-label')?.value || '',
         pin_event_badge_style: document.getElementById('su-pin-event-photos-hidden')?.value || 'icon',
         pin_event_photo_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
+        pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
+        pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2541,6 +2598,8 @@ export class SuperUserPanel {
           pin_event_label:    document.getElementById('su-pin-event-label')?.value || null,
           pin_event_badge_style: document.getElementById('su-pin-event-photos-hidden')?.value || 'icon',
           pin_event_photo_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
+          pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
+          pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
