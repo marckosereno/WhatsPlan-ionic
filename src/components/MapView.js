@@ -1787,29 +1787,44 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   if (place.pinStyle === 'social') {
     const badgeColor = place.pinBadgeColor || '#f97316';
     const isEvent = !!place.pinEventMode;
+    // Ícono siempre en blanco (silueta) — mismo tratamiento sea emoji,
+    // imagen propia, o el ícono de categoría de fallback
     const badgeIcon = place.pinIconUrl
-      ? `<img src="${place.pinIconUrl}" style="width:18px;height:18px;object-fit:contain;border-radius:4px;">`
+      ? `<img src="${place.pinIconUrl}" style="width:13px;height:13px;object-fit:contain;filter:brightness(0) invert(1);">`
       : place.pinEmoji
-        ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:17px;line-height:1;">${place.pinEmoji}</span>`
-        : `<div style="width:16px;height:16px;filter:brightness(0) invert(1);">${catIcon}</div>`;
+        ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:13px;line-height:1;filter:brightness(0) invert(1);">${place.pinEmoji}</span>`
+        : `<div style="width:13px;height:13px;filter:brightness(0) invert(1);">${catIcon}</div>`;
 
-    // Modo evento: collage de hasta 3 fotos en abanico, detrás del badge
+    // Evento: opción A) fotos apiladas en portrait chico, opción B) solo
+    // un punto blanco con borde — configurable con pinEventShowPhotos
+    const showEventPhotos = place.pinEventShowPhotos !== false; // default true
     const photosForFan = (place.photosUrls || []).slice(0, 3);
-    const eventFanHtml = isEvent && photosForFan.length
-      ? photosForFan.map((url, i) => {
-          const rot = [-14, 5, 16][i] || 0;
-          const z = 3 - i;
-          return `<img src="${url}" style="position:absolute;top:-26px;left:-18px;width:38px;height:38px;object-fit:cover;border-radius:8px;border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
-        }).join('')
-      : '';
 
-    const badgeHtml = `
-      <div style="position:relative;width:40px;height:40px;">
-        ${eventFanHtml}
-        <div style="position:relative;z-index:4;width:40px;height:40px;border-radius:50%;background:${badgeColor};border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;">
+    let badgeHtml;
+    if (isEvent && showEventPhotos && photosForFan.length) {
+      const fanHtml = photosForFan.map((url, i) => {
+        const rot = [-10, 4, 12][i] || 0;
+        const z = 3 - i;
+        return `<img src="${url}" style="position:absolute;top:-16px;left:-11px;width:20px;height:26px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
+      }).join('');
+      // Badge cuadrado (no círculo) para el modo evento, más chico
+      badgeHtml = `
+        <div style="position:relative;width:24px;height:24px;">
+          ${fanHtml}
+          <div style="position:relative;z-index:4;width:24px;height:24px;border-radius:6px;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+            ${badgeIcon}
+          </div>
+        </div>`;
+    } else if (isEvent) {
+      // Opción B: solo un punto blanco con borde de color, sin fotos ni ícono
+      badgeHtml = `<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:2.5px solid ${badgeColor};box-shadow:0 2px 5px rgba(0,0,0,0.25);"></div>`;
+    } else {
+      // Badge redondo normal — más chico, sin borde blanco
+      badgeHtml = `
+        <div style="width:26px;height:26px;border-radius:50%;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
           ${badgeIcon}
-        </div>
-      </div>`;
+        </div>`;
+    }
 
     // Avatares de actividad activa — gancho para cuando MapView traiga ese
     // dato agregado por lugar (hoy solo vive dentro de la ficha). Si
@@ -1818,7 +1833,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     const avatars = (place.activeAvatars || []).slice(0, 3);
     const avatarsHtml = avatars.length
       ? `<div style="display:flex;margin-top:2px;">
-          ${avatars.map((url, i) => `<img src="${url}" style="width:16px;height:16px;border-radius:50%;border:1.5px solid #fff;object-fit:cover;margin-left:${i === 0 ? 0 : -6}px;box-shadow:0 1px 2px rgba(0,0,0,0.2);">`).join('')}
+          ${avatars.map((url, i) => `<img src="${url}" style="width:14px;height:14px;border-radius:50%;border:1.5px solid #fff;object-fit:cover;margin-left:${i === 0 ? 0 : -5}px;box-shadow:0 1px 2px rgba(0,0,0,0.2);">`).join('')}
         </div>`
       : '';
 
