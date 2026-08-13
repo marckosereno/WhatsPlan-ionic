@@ -1734,6 +1734,20 @@ export class MapView {
 }
 
 // PATCH: _buildPinHtml — foto con borde liquid celestial 3D + Roboto
+// Mismo cálculo que PlaceModal2._isOpenNow — lo necesita el pin 'social'
+// para mostrar el estado (Abierto/Cerrado) en la línea de metadata.
+function _isPlaceOpenNow(place) {
+  const oh = place.regularOpeningHours;
+  if (!oh || !oh.periods || !oh.periods.length) return null;
+  const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  return oh.periods.some(p => {
+    if (!p.open || !p.close || p.open.day !== day) return false;
+    const o = p.open.hour * 60 + (p.open.minute || 0);
+    const c = p.close.hour * 60 + (p.close.minute || 0);
+    return mins >= o && mins < c;
+  });
+}
+
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const rawName   = place.name || '';
   // Si el nombre viene en TODAS MAYÚSCULAS, convertirlo a Title Case.
@@ -1765,6 +1779,76 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   // del marker) — el truco es que la "caja" que reporta el marker es solo
   // la colita, y la píldora crece hacia arriba desde ahí con position:absolute,
   // mismo patrón que ya usan los labels de los demás pines.
+  // ── Pin tipo "social" — badge circular de color sólido + label debajo
+  // con metadata (rating · categoría · abierto/cerrado). Modo evento:
+  // reemplaza el badge por un mini-collage de fotos en abanico + pill de
+  // tiempo en vez de la metadata normal. Gancho para avatares de actividad
+  // activa (place.activeAvatars) para cuando ese dato esté disponible.
+  if (place.pinStyle === 'social') {
+    const badgeColor = place.pinBadgeColor || '#f97316';
+    const isEvent = !!place.pinEventMode;
+    const badgeIcon = place.pinIconUrl
+      ? `<img src="${place.pinIconUrl}" style="width:18px;height:18px;object-fit:contain;border-radius:4px;">`
+      : place.pinEmoji
+        ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:17px;line-height:1;">${place.pinEmoji}</span>`
+        : `<div style="width:16px;height:16px;filter:brightness(0) invert(1);">${catIcon}</div>`;
+
+    // Modo evento: collage de hasta 3 fotos en abanico, detrás del badge
+    const photosForFan = (place.photosUrls || []).slice(0, 3);
+    const eventFanHtml = isEvent && photosForFan.length
+      ? photosForFan.map((url, i) => {
+          const rot = [-14, 5, 16][i] || 0;
+          const z = 3 - i;
+          return `<img src="${url}" style="position:absolute;top:-26px;left:-18px;width:38px;height:38px;object-fit:cover;border-radius:8px;border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
+        }).join('')
+      : '';
+
+    const badgeHtml = `
+      <div style="position:relative;width:40px;height:40px;">
+        ${eventFanHtml}
+        <div style="position:relative;z-index:4;width:40px;height:40px;border-radius:50%;background:${badgeColor};border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;">
+          ${badgeIcon}
+        </div>
+      </div>`;
+
+    // Avatares de actividad activa — gancho para cuando MapView traiga ese
+    // dato agregado por lugar (hoy solo vive dentro de la ficha). Si
+    // place.activeAvatars no está poblado, esto simplemente no renderiza
+    // nada, sin romper el resto del pin.
+    const avatars = (place.activeAvatars || []).slice(0, 3);
+    const avatarsHtml = avatars.length
+      ? `<div style="display:flex;margin-top:2px;">
+          ${avatars.map((url, i) => `<img src="${url}" style="width:16px;height:16px;border-radius:50%;border:1.5px solid #fff;object-fit:cover;margin-left:${i === 0 ? 0 : -6}px;box-shadow:0 1px 2px rgba(0,0,0,0.2);">`).join('')}
+        </div>`
+      : '';
+
+    // Metadata: rating · categoría · abierto/cerrado (o la etiqueta de
+    // tiempo del evento, en modo evento)
+    let metaHtml;
+    if (isEvent) {
+      const evLabel = place.pinEventLabel || 'Evento activo';
+      metaHtml = `<div style="font-size:9px;font-weight:700;color:#ec4899;">${evLabel}</div>`;
+    } else {
+      const parts = [];
+      if (place.rating) parts.push(`★ ${Number(place.rating).toFixed(1)}`);
+      if (place.primaryType || place.category) parts.push((place.primaryType || place.category));
+      const openState = _isPlaceOpenNow(place);
+      const metaText = parts.join(' · ');
+      metaHtml = `<div style="font-size:9px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
+    }
+
+    const name = (place.name || place.displayName || '').trim();
+
+    return `<div class="place-pin-root" style="position:relative;display:flex;flex-direction:column;align-items:center;overflow:visible;">
+      ${badgeHtml}
+      ${avatarsHtml}
+      <div style="margin-top:2px;text-align:center;max-width:120px;">
+        <div style="font-size:11px;font-weight:800;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+        ${metaHtml}
+      </div>
+    </div>`;
+  }
+
   if (place.pinStyle === 'bubble' && (place.pinEmoji || place.pinIconUrl)) {
     const iconHtml = place.pinIconUrl
       ? `<img src="${place.pinIconUrl}" style="width:12px;height:12px;object-fit:contain;border-radius:3px;flex-shrink:0;">`
