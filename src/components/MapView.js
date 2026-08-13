@@ -1788,16 +1788,24 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     const badgeColor = place.pinBadgeColor || '#f97316';
     const isEvent = !!place.pinEventMode;
 
-    // 3 tamaños de pin — "grande" es lo que teníamos, chico/med escalan
-    // hacia abajo. Aplica al badge redondo, al badge cuadrado de evento,
-    // al punto, y a las fotos apiladas (que además tienen su propio
-    // formato portrait/square, independiente del tamaño).
-    const SIZE_MAP = {
-      chico:  { round: 15, square: 14, dot: 8,  photoPortraitW: 11, photoPortraitH: 15, photoSquare: 13, icon: 8  },
-      med:    { round: 18, square: 17, dot: 10, photoPortraitW: 14, photoPortraitH: 18, photoSquare: 16, icon: 10 },
-      grande: { round: 22, square: 20, dot: 12, photoPortraitW: 17, photoPortraitH: 22, photoSquare: 20, icon: 13 },
+    // Tamaño del PIN (badge/punto) — independiente del tamaño de las fotos
+    // apiladas. Un escalón más chico que antes: lo que antes era "chico"
+    // ahora es el "mediano".
+    const BADGE_SIZE_MAP = {
+      chico:  { round: 11, square: 10, dot: 6,  icon: 6 },
+      med:    { round: 15, square: 14, dot: 8,  icon: 8 },
+      grande: { round: 18, square: 17, dot: 10, icon: 9 },
     };
-    const sz = SIZE_MAP[place.pinSize] || SIZE_MAP.grande;
+    const sz = BADGE_SIZE_MAP[place.pinSize] || BADGE_SIZE_MAP.med;
+
+    // Tamaño de las FOTOS APILADAS — selector propio, independiente del
+    // tamaño del pin (pinPhotoStackSize, no pinSize)
+    const PHOTO_SIZE_MAP = {
+      chico:  { portraitW: 9,  portraitH: 12, square: 10 },
+      med:    { portraitW: 12, portraitH: 16, square: 14 },
+      grande: { portraitW: 15, portraitH: 20, square: 18 },
+    };
+    const psz = PHOTO_SIZE_MAP[place.pinPhotoStackSize] || PHOTO_SIZE_MAP.med;
 
     // Ícono siempre en blanco (silueta) — mismo tratamiento sea emoji,
     // imagen propia, o el ícono de categoría de fallback
@@ -1807,15 +1815,15 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
         ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${sz.icon}px;line-height:1;filter:brightness(0) invert(1);">${place.pinEmoji}</span>`
         : `<div style="width:${sz.icon}px;height:${sz.icon}px;filter:brightness(0) invert(1);">${catIcon}</div>`;
 
-    // El "badge" (ícono cuadrado o punto) es independiente de si las fotos
-    // se muestran — pinEventBadgeStyle: 'icon' | 'dot'. Las fotos apiladas
-    // se ven siempre que haya evento + fotos, sea cual sea esta elección.
+    // Forma del pin (círculo/cuadrado) — elección independiente de si es
+    // evento o no. pinBadgeShape: 'circle' (default) | 'square'
+    const isSquareShape = place.pinBadgeShape === 'square';
     const useDot = isEvent && place.pinEventBadgeStyle === 'dot';
     const photoShape = place.pinEventPhotoShape === 'square' ? 'square' : 'portrait';
     const photosForFan = isEvent ? (place.photosUrls || []).slice(0, 3) : [];
 
-    const photoW = photoShape === 'square' ? sz.photoSquare : sz.photoPortraitW;
-    const photoH = photoShape === 'square' ? sz.photoSquare : sz.photoPortraitH;
+    const photoW = photoShape === 'square' ? psz.square : psz.portraitW;
+    const photoH = photoShape === 'square' ? psz.square : psz.portraitH;
     const fanHtml = photosForFan.length
       ? photosForFan.map((url, i) => {
           const rot = [-10, 4, 12][i] || 0;
@@ -1828,26 +1836,22 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     let anchorHtml;
     if (useDot) {
       anchorHtml = `<div style="width:${sz.dot}px;height:${sz.dot}px;border-radius:50%;background:#fff;border:2.5px solid ${badgeColor};box-shadow:0 2px 5px rgba(0,0,0,0.25);"></div>`;
-    } else if (isEvent) {
-      // Badge cuadrado (no círculo) para el modo evento
-      anchorHtml = `
-        <div style="position:relative;width:${sz.square}px;height:${sz.square}px;">
-          <div style="position:relative;z-index:4;width:${sz.square}px;height:${sz.square}px;border-radius:6px;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-            ${badgeIcon}
-          </div>
-        </div>`;
     } else {
-      // Badge redondo normal — sin borde blanco
+      // Badge normal — círculo o cuadrado según pinBadgeShape, aplica
+      // tanto en evento como fuera de evento
+      const badgeSize = isSquareShape ? sz.square : sz.round;
+      const radius = isSquareShape ? '6px' : '50%';
       anchorHtml = `
-        <div style="width:${sz.round}px;height:${sz.round}px;border-radius:50%;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+        <div style="width:${badgeSize}px;height:${badgeSize}px;border-radius:${radius};background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
           ${badgeIcon}
         </div>`;
     }
 
     // Las fotos apiladas van SIEMPRE detrás/arriba del anchor cuando hay
-    // evento + fotos, sin importar si el anchor es ícono o punto
+    // evento + fotos, sin importar si el anchor es ícono/punto o su forma
+    const anchorBoxSize = useDot ? sz.dot : (isSquareShape ? sz.square : sz.round);
     const badgeHtml = fanHtml
-      ? `<div style="position:relative;width:${sz.square}px;height:${sz.square}px;">${fanHtml}${anchorHtml}</div>`
+      ? `<div style="position:relative;width:${anchorBoxSize}px;height:${anchorBoxSize}px;">${fanHtml}<div style="position:relative;z-index:4;">${anchorHtml}</div></div>`
       : anchorHtml;
 
     // Avatares de actividad activa — gancho para cuando MapView traiga ese
