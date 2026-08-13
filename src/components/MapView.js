@@ -1787,44 +1787,68 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   if (place.pinStyle === 'social') {
     const badgeColor = place.pinBadgeColor || '#f97316';
     const isEvent = !!place.pinEventMode;
+
+    // 3 tamaños de pin — "grande" es lo que teníamos, chico/med escalan
+    // hacia abajo. Aplica al badge redondo, al badge cuadrado de evento,
+    // al punto, y a las fotos apiladas (que además tienen su propio
+    // formato portrait/square, independiente del tamaño).
+    const SIZE_MAP = {
+      chico:  { round: 15, square: 14, dot: 8,  photoPortraitW: 11, photoPortraitH: 15, photoSquare: 13, icon: 8  },
+      med:    { round: 18, square: 17, dot: 10, photoPortraitW: 14, photoPortraitH: 18, photoSquare: 16, icon: 10 },
+      grande: { round: 22, square: 20, dot: 12, photoPortraitW: 17, photoPortraitH: 22, photoSquare: 20, icon: 13 },
+    };
+    const sz = SIZE_MAP[place.pinSize] || SIZE_MAP.grande;
+
     // Ícono siempre en blanco (silueta) — mismo tratamiento sea emoji,
     // imagen propia, o el ícono de categoría de fallback
     const badgeIcon = place.pinIconUrl
-      ? `<img src="${place.pinIconUrl}" style="width:13px;height:13px;object-fit:contain;filter:brightness(0) invert(1);">`
+      ? `<img src="${place.pinIconUrl}" style="width:${sz.icon}px;height:${sz.icon}px;object-fit:contain;filter:brightness(0) invert(1);">`
       : place.pinEmoji
-        ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:13px;line-height:1;filter:brightness(0) invert(1);">${place.pinEmoji}</span>`
-        : `<div style="width:13px;height:13px;filter:brightness(0) invert(1);">${catIcon}</div>`;
+        ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${sz.icon}px;line-height:1;filter:brightness(0) invert(1);">${place.pinEmoji}</span>`
+        : `<div style="width:${sz.icon}px;height:${sz.icon}px;filter:brightness(0) invert(1);">${catIcon}</div>`;
 
-    // Evento: opción A) fotos apiladas en portrait chico, opción B) solo
-    // un punto blanco con borde — configurable con pinEventShowPhotos
-    const showEventPhotos = place.pinEventShowPhotos !== false; // default true
-    const photosForFan = (place.photosUrls || []).slice(0, 3);
+    // El "badge" (ícono cuadrado o punto) es independiente de si las fotos
+    // se muestran — pinEventBadgeStyle: 'icon' | 'dot'. Las fotos apiladas
+    // se ven siempre que haya evento + fotos, sea cual sea esta elección.
+    const useDot = isEvent && place.pinEventBadgeStyle === 'dot';
+    const photoShape = place.pinEventPhotoShape === 'square' ? 'square' : 'portrait';
+    const photosForFan = isEvent ? (place.photosUrls || []).slice(0, 3) : [];
 
-    let badgeHtml;
-    if (isEvent && showEventPhotos && photosForFan.length) {
-      const fanHtml = photosForFan.map((url, i) => {
-        const rot = [-10, 4, 12][i] || 0;
-        const z = 3 - i;
-        return `<img src="${url}" style="position:absolute;top:-16px;left:-11px;width:20px;height:26px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
-      }).join('');
-      // Badge cuadrado (no círculo) para el modo evento, más chico
-      badgeHtml = `
-        <div style="position:relative;width:24px;height:24px;">
-          ${fanHtml}
-          <div style="position:relative;z-index:4;width:24px;height:24px;border-radius:6px;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+    const photoW = photoShape === 'square' ? sz.photoSquare : sz.photoPortraitW;
+    const photoH = photoShape === 'square' ? sz.photoSquare : sz.photoPortraitH;
+    const fanHtml = photosForFan.length
+      ? photosForFan.map((url, i) => {
+          const rot = [-10, 4, 12][i] || 0;
+          const z = 3 - i;
+          const offTop = photoH * 0.65, offLeft = photoW * 0.55;
+          return `<img src="${url}" style="position:absolute;top:-${offTop}px;left:-${offLeft}px;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
+        }).join('')
+      : '';
+
+    let anchorHtml;
+    if (useDot) {
+      anchorHtml = `<div style="width:${sz.dot}px;height:${sz.dot}px;border-radius:50%;background:#fff;border:2.5px solid ${badgeColor};box-shadow:0 2px 5px rgba(0,0,0,0.25);"></div>`;
+    } else if (isEvent) {
+      // Badge cuadrado (no círculo) para el modo evento
+      anchorHtml = `
+        <div style="position:relative;width:${sz.square}px;height:${sz.square}px;">
+          <div style="position:relative;z-index:4;width:${sz.square}px;height:${sz.square}px;border-radius:6px;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
             ${badgeIcon}
           </div>
         </div>`;
-    } else if (isEvent) {
-      // Opción B: solo un punto blanco con borde de color, sin fotos ni ícono
-      badgeHtml = `<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:2.5px solid ${badgeColor};box-shadow:0 2px 5px rgba(0,0,0,0.25);"></div>`;
     } else {
-      // Badge redondo normal — más chico, sin borde blanco
-      badgeHtml = `
-        <div style="width:26px;height:26px;border-radius:50%;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+      // Badge redondo normal — sin borde blanco
+      anchorHtml = `
+        <div style="width:${sz.round}px;height:${sz.round}px;border-radius:50%;background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
           ${badgeIcon}
         </div>`;
     }
+
+    // Las fotos apiladas van SIEMPRE detrás/arriba del anchor cuando hay
+    // evento + fotos, sin importar si el anchor es ícono o punto
+    const badgeHtml = fanHtml
+      ? `<div style="position:relative;width:${sz.square}px;height:${sz.square}px;">${fanHtml}${anchorHtml}</div>`
+      : anchorHtml;
 
     // Avatares de actividad activa — gancho para cuando MapView traiga ese
     // dato agregado por lugar (hoy solo vive dentro de la ficha). Si
@@ -1842,23 +1866,25 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     let metaHtml;
     if (isEvent) {
       const evLabel = place.pinEventLabel || 'Evento activo';
-      metaHtml = `<div style="font-size:9px;font-weight:700;color:#ec4899;">${evLabel}</div>`;
+      metaHtml = `<div style="font-size:9px;font-weight:700;color:#ec4899;line-height:1.15;">${evLabel}</div>`;
     } else {
       const parts = [];
       if (place.rating) parts.push(`★ ${Number(place.rating).toFixed(1)}`);
       if (place.primaryType || place.category) parts.push((place.primaryType || place.category));
       const openState = _isPlaceOpenNow(place);
       const metaText = parts.join(' · ');
-      metaHtml = `<div style="font-size:9px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
+      metaHtml = `<div style="font-size:9px;line-height:1.15;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
     }
 
     const name = (place.name || place.displayName || '').trim();
 
+    // line-height ajustado: el título queda pegado a la metadata, no con
+    // el espaciado suelto que tenía antes
     return `<div class="place-pin-root" style="position:relative;display:flex;flex-direction:column;align-items:center;overflow:visible;">
       ${badgeHtml}
       ${avatarsHtml}
-      <div style="margin-top:2px;text-align:center;max-width:120px;">
-        <div style="font-size:11px;font-weight:800;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+      <div style="margin-top:1px;text-align:center;max-width:120px;">
+        <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
         ${metaHtml}
       </div>
     </div>`;
