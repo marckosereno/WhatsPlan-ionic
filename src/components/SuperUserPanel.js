@@ -1582,6 +1582,7 @@ export class SuperUserPanel {
       pin_badge_color:   place.pinBadgeColor || '',
       pin_event_mode:    place.pinEventMode || false,
       pin_event_label:   place.pinEventLabel || '',
+      pin_event_show_photos: place.pinEventShowPhotos !== false,
     };
   }
 
@@ -1910,6 +1911,11 @@ export class SuperUserPanel {
                 '<span class="su-label" style="margin:0;">Modo evento (collage de fotos + etiqueta de tiempo)</span>' +
               '</div>' +
               '<input id="su-pin-event-label" class="su-input" placeholder="ej: NOW UNTIL 9:30 PM" style="display:' + (prefill?.pin_event_mode ? 'block' : 'none') + ';font-size:12px;" value="' + _esc(prefill?.pin_event_label) + '">' +
+              '<div id="su-pin-event-photos-row" style="display:' + (prefill?.pin_event_mode ? 'flex' : 'none') + ';gap:6px;">' +
+                '<button type="button" class="su-pin-event-photos-btn" data-val="true" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">📸 Fotos apiladas</button>' +
+                '<button type="button" class="su-pin-event-photos-btn" data-val="false" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Solo punto</button>' +
+              '</div>' +
+              '<input id="su-pin-event-photos-hidden" type="hidden" value="' + (prefill?.pin_event_show_photos === false ? 'false' : 'true') + '">' +
             '</div>' +
             '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
@@ -2168,11 +2174,33 @@ export class SuperUserPanel {
     _paintBadgeColorBtns();
 
     // Modo evento (Social) — muestra/oculta el input de etiqueta de tiempo
+    // y el toggle de fotos apiladas vs solo punto
     const eventModeCheckbox = document.getElementById('su-pin-event-mode');
     const eventLabelInput = document.getElementById('su-pin-event-label');
+    const eventPhotosRow = document.getElementById('su-pin-event-photos-row');
     eventModeCheckbox.addEventListener('change', () => {
       eventLabelInput.style.display = eventModeCheckbox.checked ? 'block' : 'none';
+      eventPhotosRow.style.display = eventModeCheckbox.checked ? 'flex' : 'none';
     });
+
+    // Fotos apiladas vs solo punto blanco (modo evento)
+    const eventPhotosBtns = document.querySelectorAll('.su-pin-event-photos-btn');
+    const eventPhotosHidden = document.getElementById('su-pin-event-photos-hidden');
+    const _paintEventPhotosBtns = () => {
+      eventPhotosBtns.forEach(b => {
+        const active = b.dataset.val === eventPhotosHidden.value;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    eventPhotosBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        eventPhotosHidden.value = btn.dataset.val;
+        _paintEventPhotosBtns();
+      });
+    });
+    _paintEventPhotosBtns();
     document.getElementById('su-pin-stroke-width').addEventListener('input', _updatePinPreview);
 
     // Toggle modo Foto / Sticker / Globo / Social
@@ -2420,6 +2448,7 @@ export class SuperUserPanel {
         pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || '',
         pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
         pin_event_label:    document.getElementById('su-pin-event-label')?.value || '',
+        pin_event_show_photos: document.getElementById('su-pin-event-photos-hidden')?.value !== 'false',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2479,6 +2508,7 @@ export class SuperUserPanel {
           pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || null,
           pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
           pin_event_label:    document.getElementById('su-pin-event-label')?.value || null,
+          pin_event_show_photos: document.getElementById('su-pin-event-photos-hidden')?.value !== 'false',
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
