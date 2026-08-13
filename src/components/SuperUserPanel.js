@@ -1582,7 +1582,8 @@ export class SuperUserPanel {
       pin_badge_color:   place.pinBadgeColor || '',
       pin_event_mode:    place.pinEventMode || false,
       pin_event_label:   place.pinEventLabel || '',
-      pin_event_show_photos: place.pinEventShowPhotos !== false,
+      pin_event_badge_style: place.pinEventBadgeStyle || 'icon',
+      pin_event_photo_shape: place.pinEventPhotoShape || 'portrait',
     };
   }
 
@@ -1911,11 +1912,20 @@ export class SuperUserPanel {
                 '<span class="su-label" style="margin:0;">Modo evento (collage de fotos + etiqueta de tiempo)</span>' +
               '</div>' +
               '<input id="su-pin-event-label" class="su-input" placeholder="ej: NOW UNTIL 9:30 PM" style="display:' + (prefill?.pin_event_mode ? 'block' : 'none') + ';font-size:12px;" value="' + _esc(prefill?.pin_event_label) + '">' +
-              '<div id="su-pin-event-photos-row" style="display:' + (prefill?.pin_event_mode ? 'flex' : 'none') + ';gap:6px;">' +
-                '<button type="button" class="su-pin-event-photos-btn" data-val="true" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">📸 Fotos apiladas</button>' +
-                '<button type="button" class="su-pin-event-photos-btn" data-val="false" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Solo punto</button>' +
+              '<div id="su-pin-event-photos-row" style="display:' + (prefill?.pin_event_mode ? 'flex' : 'none') + ';flex-direction:column;gap:8px;">' +
+                '<div style="font-size:10px;color:#6b7280;">Las fotos apiladas se ven siempre que el lugar tenga fotos — esto solo elige qué acompaña al punto de anclaje:</div>' +
+                '<div style="display:flex;gap:6px;">' +
+                  '<button type="button" class="su-pin-event-photos-btn" data-val="icon" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🔶 Ícono</button>' +
+                  '<button type="button" class="su-pin-event-photos-btn" data-val="dot" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Solo punto</button>' +
+                '</div>' +
+                '<div style="font-size:10px;color:#6b7280;">Forma de las fotos apiladas</div>' +
+                '<div style="display:flex;gap:6px;">' +
+                  '<button type="button" class="su-pin-photo-shape-btn" data-val="portrait" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">▯ Portrait</button>' +
+                  '<button type="button" class="su-pin-photo-shape-btn" data-val="square" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">▢ Square</button>' +
+                '</div>' +
               '</div>' +
-              '<input id="su-pin-event-photos-hidden" type="hidden" value="' + (prefill?.pin_event_show_photos === false ? 'false' : 'true') + '">' +
+              '<input id="su-pin-event-photos-hidden" type="hidden" value="' + (prefill?.pin_event_badge_style === 'dot' ? 'dot' : 'icon') + '">' +
+              '<input id="su-pin-photo-shape-hidden" type="hidden" value="' + (prefill?.pin_event_photo_shape === 'square' ? 'square' : 'portrait') + '">' +
             '</div>' +
             '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
@@ -2183,7 +2193,8 @@ export class SuperUserPanel {
       eventPhotosRow.style.display = eventModeCheckbox.checked ? 'flex' : 'none';
     });
 
-    // Fotos apiladas vs solo punto blanco (modo evento)
+    // Badge del anchor (ícono o solo punto) — las fotos apiladas se ven
+    // siempre que haya fotos, sea cual sea esta elección
     const eventPhotosBtns = document.querySelectorAll('.su-pin-event-photos-btn');
     const eventPhotosHidden = document.getElementById('su-pin-event-photos-hidden');
     const _paintEventPhotosBtns = () => {
@@ -2201,6 +2212,25 @@ export class SuperUserPanel {
       });
     });
     _paintEventPhotosBtns();
+
+    // Forma de las fotos apiladas: portrait o square
+    const photoShapeBtns = document.querySelectorAll('.su-pin-photo-shape-btn');
+    const photoShapeHidden = document.getElementById('su-pin-photo-shape-hidden');
+    const _paintPhotoShapeBtns = () => {
+      photoShapeBtns.forEach(b => {
+        const active = b.dataset.val === photoShapeHidden.value;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    photoShapeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        photoShapeHidden.value = btn.dataset.val;
+        _paintPhotoShapeBtns();
+      });
+    });
+    _paintPhotoShapeBtns();
     document.getElementById('su-pin-stroke-width').addEventListener('input', _updatePinPreview);
 
     // Toggle modo Foto / Sticker / Globo / Social
@@ -2230,7 +2260,7 @@ export class SuperUserPanel {
       // El globo tiene tamaño fijo (icono + nombre) y no usa contorno de
       // color — oculta esos controles, solo quedan visibles emoji/sticker.
       // Social tampoco usa tamaño/contorno — usa su propio color de badge.
-      pinSizeRow.style.display   = (mode === 'bubble' || mode === 'social') ? 'none' : 'flex';
+      pinSizeRow.style.display   = mode === 'bubble' ? 'none' : 'flex';
       pinStrokeRow.style.display = (mode === 'bubble' || mode === 'social') ? 'none' : 'flex';
       pinBubbleHint.style.display = mode === 'bubble' ? 'block' : 'none';
       pinSocialRow.style.display = mode === 'social' ? 'flex' : 'none';
@@ -2448,7 +2478,8 @@ export class SuperUserPanel {
         pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || '',
         pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
         pin_event_label:    document.getElementById('su-pin-event-label')?.value || '',
-        pin_event_show_photos: document.getElementById('su-pin-event-photos-hidden')?.value !== 'false',
+        pin_event_badge_style: document.getElementById('su-pin-event-photos-hidden')?.value || 'icon',
+        pin_event_photo_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2508,7 +2539,8 @@ export class SuperUserPanel {
           pin_badge_color:    document.getElementById('su-pin-badge-color-hidden')?.value || null,
           pin_event_mode:     document.getElementById('su-pin-event-mode')?.checked || false,
           pin_event_label:    document.getElementById('su-pin-event-label')?.value || null,
-          pin_event_show_photos: document.getElementById('su-pin-event-photos-hidden')?.value !== 'false',
+          pin_event_badge_style: document.getElementById('su-pin-event-photos-hidden')?.value || 'icon',
+          pin_event_photo_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
