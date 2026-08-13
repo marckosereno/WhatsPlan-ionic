@@ -102,6 +102,9 @@ try {
         pinSize:                   r.pin_size || 'normal', // 'mini' | 'normal' | 'grande'
         pinStrokeColor:            r.pin_stroke_color || null,
         pinStrokeWidth:            r.pin_stroke_width ?? null,
+        pinBadgeColor:             r.pin_badge_color || null,
+        pinEventMode:              r.pin_event_mode || false,
+        pinEventLabel:             r.pin_event_label || null,
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
