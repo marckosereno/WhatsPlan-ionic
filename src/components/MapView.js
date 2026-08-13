@@ -316,7 +316,7 @@ export class MapView {
             80%  { transform:scale(0.94); }
             100% { transform:scale(1); }
           }
-          .place-pin-bubble-inner.pin-bubble-pop {
+          .pin-bubble-pop {
             animation: pinBubblePulseIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
             transform-origin: bottom center;
           }
@@ -863,6 +863,8 @@ export class MapView {
       const bubbleInner = el.querySelector('.place-pin-bubble-inner');
       const bubbleStack = el.querySelector('.place-pin-bubble-stack');
       const bubbleDot   = el.querySelector('.place-pin-bubble-dot');
+      const socialBody  = el.querySelector('.place-pin-social-body');
+      const socialZoomDot = el.querySelector('.place-pin-social-zoomdot');
 
       if (state === 2) {
         el.style.visibility    = 'visible';
@@ -878,6 +880,15 @@ export class MapView {
           bubbleInner.classList.remove('pin-bubble-pop');
           void bubbleInner.offsetWidth; // fuerza reflow para poder re-disparar la animación
           bubbleInner.classList.add('pin-bubble-pop');
+        }
+        if (socialBody) {
+          // Pin social: mismo criterio — punto de color se esconde, pin
+          // completo aparece con pulso (scale con rebote)
+          if (socialZoomDot) socialZoomDot.style.display = 'none';
+          socialBody.style.display = 'flex';
+          socialBody.classList.remove('pin-bubble-pop');
+          void socialBody.offsetWidth;
+          socialBody.classList.add('pin-bubble-pop');
         }
         if (wrapper) {
           wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
@@ -897,6 +908,10 @@ export class MapView {
         // su propio punto celeste (el globo no tiene .place-pin-wrapper)
         if (bubbleDot) bubbleDot.style.display = 'block';
         if (bubbleStack) bubbleStack.style.display = 'none';
+        // Pin social: punto con el MISMO color que el badge elegido (no
+        // celeste genérico) — el pin social tampoco tiene .place-pin-wrapper
+        if (socialZoomDot) socialZoomDot.style.display = 'block';
+        if (socialBody) socialBody.style.display = 'none';
         if (wrapper) {
           wrapper.style.transition = 'none';
           wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
@@ -1786,11 +1801,12 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   // activa (place.activeAvatars) para cuando ese dato esté disponible.
   if (place.pinStyle === 'social') {
     const badgeColor = place.pinBadgeColor || '#f97316';
+    // Modo evento AHORA solo controla si aparece la etiqueta de fecha/hora
+    // en la metadata — ya no condiciona nada más (ni fotos, ni el badge)
     const isEvent = !!place.pinEventMode;
 
     // Tamaño del PIN (badge/punto) — independiente del tamaño de las fotos
-    // apiladas. Un escalón más chico que antes: lo que antes era "chico"
-    // ahora es el "mediano".
+    // apiladas.
     const BADGE_SIZE_MAP = {
       chico:  { round: 11, square: 10, dot: 6,  icon: 6 },
       med:    { round: 15, square: 14, dot: 8,  icon: 8 },
@@ -1798,8 +1814,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     };
     const sz = BADGE_SIZE_MAP[place.pinSize] || BADGE_SIZE_MAP.med;
 
-    // Tamaño de las FOTOS APILADAS — selector propio, independiente del
-    // tamaño del pin (pinPhotoStackSize, no pinSize)
+    // Tamaño y forma de las FOTOS APILADAS — selectores propios,
+    // totalmente independientes del pin y del modo evento
     const PHOTO_SIZE_MAP = {
       chico:  { portraitW: 9,  portraitH: 12, square: 10 },
       med:    { portraitW: 12, portraitH: 16, square: 14 },
@@ -1815,30 +1831,37 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
         ? `<span style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${sz.icon}px;line-height:1;filter:brightness(0) invert(1);">${place.pinEmoji}</span>`
         : `<div style="width:${sz.icon}px;height:${sz.icon}px;filter:brightness(0) invert(1);">${catIcon}</div>`;
 
-    // Forma del pin (círculo/cuadrado) — elección independiente de si es
-    // evento o no. pinBadgeShape: 'circle' (default) | 'square'
+    // ── Las 3 piezas, cada una con su propio control, sin depender entre sí ──
+    // 1) Forma/estilo del PIN: pinBadgeStyle 'icon' (ícono, círculo o
+    //    cuadrado según pinBadgeShape) | 'dot' (solo punto) — nunca depende
+    //    de si es evento o no.
+    const useDot = place.pinBadgeStyle === 'dot';
     const isSquareShape = place.pinBadgeShape === 'square';
-    const useDot = isEvent && place.pinEventBadgeStyle === 'dot';
-    const photoShape = place.pinEventPhotoShape === 'square' ? 'square' : 'portrait';
-    const photosForFan = isEvent ? (place.photosUrls || []).slice(0, 3) : [];
+
+    // 2) Fotos apiladas: pinShowStackedPhotos — opción propia, YA NO
+    //    depende de pinEventMode. Se muestran si el toggle está activo Y
+    //    el lugar tiene fotos, en cualquier combinación con el pin.
+    const showPhotos = !!place.pinShowStackedPhotos;
+    const photoShape = place.pinPhotoStackShape === 'square' ? 'square' : 'portrait';
+    const photosForFan = showPhotos ? (place.photosUrls || []).slice(0, 3) : [];
 
     const photoW = photoShape === 'square' ? psz.square : psz.portraitW;
     const photoH = photoShape === 'square' ? psz.square : psz.portraitH;
     const fanHtml = photosForFan.length
       ? photosForFan.map((url, i) => {
           const rot = [-10, 4, 12][i] || 0;
-          const z = 3 - i;
+          const z = 1 + i; // fotos: z-index bajo, el pin/punto siempre va encima
           const offTop = photoH * 0.65, offLeft = photoW * 0.55;
           return `<img src="${url}" style="position:absolute;top:-${offTop}px;left:-${offLeft}px;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
         }).join('')
       : '';
 
+    // 3) El anchor (ícono o punto) — SIEMPRE encima de las fotos si ambas
+    //    están activas (z-index explícito, más alto que cualquier foto)
     let anchorHtml;
     if (useDot) {
       anchorHtml = `<div style="width:${sz.dot}px;height:${sz.dot}px;border-radius:50%;background:#fff;border:2.5px solid ${badgeColor};box-shadow:0 2px 5px rgba(0,0,0,0.25);"></div>`;
     } else {
-      // Badge normal — círculo o cuadrado según pinBadgeShape, aplica
-      // tanto en evento como fuera de evento
       const badgeSize = isSquareShape ? sz.square : sz.round;
       const radius = isSquareShape ? '6px' : '50%';
       anchorHtml = `
@@ -1847,12 +1870,10 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
         </div>`;
     }
 
-    // Las fotos apiladas van SIEMPRE detrás/arriba del anchor cuando hay
-    // evento + fotos, sin importar si el anchor es ícono/punto o su forma
     const anchorBoxSize = useDot ? sz.dot : (isSquareShape ? sz.square : sz.round);
     const badgeHtml = fanHtml
-      ? `<div style="position:relative;width:${anchorBoxSize}px;height:${anchorBoxSize}px;">${fanHtml}<div style="position:relative;z-index:4;">${anchorHtml}</div></div>`
-      : anchorHtml;
+      ? `<div class="place-pin-social-content" style="position:relative;width:${anchorBoxSize}px;height:${anchorBoxSize}px;">${fanHtml}<div style="position:relative;z-index:10;">${anchorHtml}</div></div>`
+      : `<div class="place-pin-social-content">${anchorHtml}</div>`;
 
     // Avatares de actividad activa — gancho para cuando MapView traiga ese
     // dato agregado por lugar (hoy solo vive dentro de la ficha). Si
@@ -1866,7 +1887,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       : '';
 
     // Metadata: rating · categoría · abierto/cerrado (o la etiqueta de
-    // tiempo del evento, en modo evento)
+    // tiempo, si el modo evento está activo — independiente de las fotos)
     let metaHtml;
     if (isEvent) {
       const evLabel = place.pinEventLabel || 'Evento activo';
@@ -1882,14 +1903,23 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
     const name = (place.name || place.displayName || '').trim();
 
+    // Punto de pre-visualización por zoom — mismo mecanismo que ya usan
+    // los pines circulares y el globo: antes de tener zoom suficiente se
+    // ve solo un punto (acá con el MISMO color de badge elegido), y al
+    // acercarse aparece el pin completo con un efecto pulse.
+    const zoomDotHtml = `<div class="place-pin-social-zoomdot" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:${badgeColor};box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 2px 4px rgba(0,0,0,0.3);display:none;"></div>`;
+
     // line-height ajustado: el título queda pegado a la metadata, no con
     // el espaciado suelto que tenía antes
-    return `<div class="place-pin-root" style="position:relative;display:flex;flex-direction:column;align-items:center;overflow:visible;">
-      ${badgeHtml}
-      ${avatarsHtml}
-      <div style="margin-top:1px;text-align:center;max-width:120px;">
-        <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
-        ${metaHtml}
+    return `<div class="place-pin-root place-pin-social-root" style="position:relative;display:flex;flex-direction:column;align-items:center;overflow:visible;">
+      ${zoomDotHtml}
+      <div class="place-pin-social-body" style="display:flex;flex-direction:column;align-items:center;">
+        ${badgeHtml}
+        ${avatarsHtml}
+        <div style="margin-top:1px;text-align:center;max-width:120px;">
+          <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+          ${metaHtml}
+        </div>
       </div>
     </div>`;
   }
