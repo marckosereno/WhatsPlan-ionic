@@ -21,6 +21,7 @@ export default async function handler(req, res) {
       reviews, editorial_summary, opening_hours, description, featured, hidden,
       pin_style, pin_emoji, pin_icon_url, pin_size,
       pin_stroke_color, pin_stroke_width,
+      pin_badge_color, pin_event_mode, pin_event_label,
     } = req.body;
 
     if (!place_name || !category || !lat || !lng) {
@@ -57,6 +58,9 @@ export default async function handler(req, res) {
       pin_size:                   pin_size || 'normal', // 'mini' | 'normal' | 'grande'
       pin_stroke_color:           pin_stroke_color || null,
       pin_stroke_width:           pin_stroke_width ? parseFloat(pin_stroke_width) : null,
+      pin_badge_color:            pin_badge_color || null,
+      pin_event_mode:             Boolean(pin_event_mode),
+      pin_event_label:            pin_event_label || null,
     };
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/places`, {
