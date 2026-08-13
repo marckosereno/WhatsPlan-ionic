@@ -1814,22 +1814,23 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
     // Tamaño del PIN (badge/punto) — independiente del tamaño de las fotos
     // apiladas. OJO: el selector de tamaño (su-pin-size-btn) es compartido
-    // con sticker/globo y manda 'mini'/'normal'/'grande' — antes acá
-    // esperábamos 'chico'/'med'/'grande', así que "mini" y "normal" nunca
-    // matcheaban y siempre caían al fallback.
+    // con sticker/globo y manda 'mini'/'normal'/'grande'. Escala corrida:
+    // el "mediano" de antes ahora es "mini", el "grande" de antes ahora es
+    // "normal" (mediano), y se agregó un nuevo "grande" más grande.
     const BADGE_SIZE_MAP = {
-      mini:   { round: 11, square: 10, dot: 6,  icon: 6 },
-      normal: { round: 15, square: 14, dot: 8,  icon: 8 },
-      grande: { round: 18, square: 17, dot: 10, icon: 9 },
+      mini:   { round: 15, square: 14, dot: 8,  icon: 8  },
+      normal: { round: 18, square: 17, dot: 10, icon: 9  },
+      grande: { round: 23, square: 22, dot: 13, icon: 12 },
     };
     const sz = BADGE_SIZE_MAP[place.pinSize] || BADGE_SIZE_MAP.normal;
 
     // Tamaño y forma de las FOTOS APILADAS — selectores propios,
-    // totalmente independientes del pin y del modo evento
+    // totalmente independientes del pin y del modo evento. Agrandadas un
+    // poco en los 3 tamaños.
     const PHOTO_SIZE_MAP = {
-      chico:  { portraitW: 9,  portraitH: 12, square: 10 },
-      med:    { portraitW: 12, portraitH: 16, square: 14 },
-      grande: { portraitW: 15, portraitH: 20, square: 18 },
+      chico:  { portraitW: 12, portraitH: 16, square: 13 },
+      med:    { portraitW: 16, portraitH: 21, square: 18 },
+      grande: { portraitW: 20, portraitH: 26, square: 23 },
     };
     const psz = PHOTO_SIZE_MAP[place.pinPhotoStackSize] || PHOTO_SIZE_MAP.med;
 
