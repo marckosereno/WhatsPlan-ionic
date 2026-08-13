@@ -107,6 +107,8 @@ try {
         pinEventLabel:             r.pin_event_label || null,
         pinEventBadgeStyle:        r.pin_event_badge_style || 'icon',
         pinEventPhotoShape:        r.pin_event_photo_shape || 'portrait',
+        pinBadgeShape:             r.pin_badge_shape || 'circle',
+        pinPhotoStackSize:         r.pin_photo_stack_size || 'med',
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
