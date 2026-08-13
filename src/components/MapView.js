@@ -874,21 +874,28 @@ export class MapView {
         if (bubbleInner) {
           // Pines tipo globo: no fade genérico, entran con un pulso
           // (scale con rebote), no de golpe — y el punto celeste se
-          // esconde en cuanto aparece el globo completo
+          // esconde en cuanto aparece el globo completo. Delay aleatorio
+          // por pin para que no aparezcan todos exactamente a la vez.
           if (bubbleDot) bubbleDot.style.display = 'none';
           if (bubbleStack) bubbleStack.style.display = 'flex';
           bubbleInner.classList.remove('pin-bubble-pop');
-          void bubbleInner.offsetWidth; // fuerza reflow para poder re-disparar la animación
-          bubbleInner.classList.add('pin-bubble-pop');
+          const bDelay = Math.random() * 260;
+          setTimeout(() => {
+            void bubbleInner.offsetWidth; // fuerza reflow para poder re-disparar la animación
+            bubbleInner.classList.add('pin-bubble-pop');
+          }, bDelay);
         }
         if (socialBody) {
           // Pin social: mismo criterio — punto de color se esconde, pin
-          // completo aparece con pulso (scale con rebote)
+          // completo aparece con pulso escalonado (no todos a la vez)
           if (socialZoomDot) socialZoomDot.style.display = 'none';
           socialBody.style.display = 'flex';
           socialBody.classList.remove('pin-bubble-pop');
-          void socialBody.offsetWidth;
-          socialBody.classList.add('pin-bubble-pop');
+          const sDelay = Math.random() * 260;
+          setTimeout(() => {
+            void socialBody.offsetWidth;
+            socialBody.classList.add('pin-bubble-pop');
+          }, sDelay);
         }
         if (wrapper) {
           wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
@@ -1806,13 +1813,16 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     const isEvent = !!place.pinEventMode;
 
     // Tamaño del PIN (badge/punto) — independiente del tamaño de las fotos
-    // apiladas.
+    // apiladas. OJO: el selector de tamaño (su-pin-size-btn) es compartido
+    // con sticker/globo y manda 'mini'/'normal'/'grande' — antes acá
+    // esperábamos 'chico'/'med'/'grande', así que "mini" y "normal" nunca
+    // matcheaban y siempre caían al fallback.
     const BADGE_SIZE_MAP = {
-      chico:  { round: 11, square: 10, dot: 6,  icon: 6 },
-      med:    { round: 15, square: 14, dot: 8,  icon: 8 },
+      mini:   { round: 11, square: 10, dot: 6,  icon: 6 },
+      normal: { round: 15, square: 14, dot: 8,  icon: 8 },
       grande: { round: 18, square: 17, dot: 10, icon: 9 },
     };
-    const sz = BADGE_SIZE_MAP[place.pinSize] || BADGE_SIZE_MAP.med;
+    const sz = BADGE_SIZE_MAP[place.pinSize] || BADGE_SIZE_MAP.normal;
 
     // Tamaño y forma de las FOTOS APILADAS — selectores propios,
     // totalmente independientes del pin y del modo evento
@@ -1907,7 +1917,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // los pines circulares y el globo: antes de tener zoom suficiente se
     // ve solo un punto (acá con el MISMO color de badge elegido), y al
     // acercarse aparece el pin completo con un efecto pulse.
-    const zoomDotHtml = `<div class="place-pin-social-zoomdot" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:${badgeColor};box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 2px 4px rgba(0,0,0,0.3);display:none;"></div>`;
+    const zoomDotHtml = `<div class="place-pin-social-zoomdot" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:${badgeColor};box-shadow:0 0 0 1.5px rgba(255,255,255,0.9),0 1.5px 3px rgba(0,0,0,0.3);display:none;"></div>`;
 
     // line-height ajustado: el título queda pegado a la metadata, no con
     // el espaciado suelto que tenía antes
