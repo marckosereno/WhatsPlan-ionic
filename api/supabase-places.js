@@ -105,7 +105,8 @@ try {
         pinBadgeColor:             r.pin_badge_color || null,
         pinEventMode:              r.pin_event_mode || false,
         pinEventLabel:             r.pin_event_label || null,
-        pinEventShowPhotos:        r.pin_event_show_photos !== false,
+        pinEventBadgeStyle:        r.pin_event_badge_style || 'icon',
+        pinEventPhotoShape:        r.pin_event_photo_shape || 'portrait',
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
