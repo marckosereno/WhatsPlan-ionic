@@ -59,7 +59,8 @@ export default async function handler(req, res) {
     if ('pin_badge_color'    in body) fields.pin_badge_color         = body.pin_badge_color || null;
     if ('pin_event_mode'     in body) fields.pin_event_mode          = Boolean(body.pin_event_mode);
     if ('pin_event_label'    in body) fields.pin_event_label         = body.pin_event_label || null;
-    if ('pin_event_show_photos' in body) fields.pin_event_show_photos = Boolean(body.pin_event_show_photos);
+    if ('pin_event_badge_style' in body) fields.pin_event_badge_style = body.pin_event_badge_style || null;
+    if ('pin_event_photo_shape' in body) fields.pin_event_photo_shape = body.pin_event_photo_shape || null;
 
     if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
