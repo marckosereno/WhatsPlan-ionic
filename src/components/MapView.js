@@ -1858,12 +1858,16 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
     const photoW = photoShape === 'square' ? psz.square : psz.portraitW;
     const photoH = photoShape === 'square' ? psz.square : psz.portraitH;
+    // Las fotos se posicionan desde un punto de anclaje FIJO (centro del
+    // contenedor, vía top/left 50% + transform), no desde el borde de un
+    // contenedor que cambia de tamaño con el badge — así el tamaño del
+    // pin/punto ya no corre la posición de las fotos.
     const fanHtml = photosForFan.length
       ? photosForFan.map((url, i) => {
           const rot = [-10, 4, 12][i] || 0;
           const z = 1 + i; // fotos: z-index bajo, el pin/punto siempre va encima
-          const offTop = photoH * 0.65, offLeft = photoW * 0.55;
-          return `<img src="${url}" style="position:absolute;top:-${offTop}px;left:-${offLeft}px;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:rotate(${rot}deg);z-index:${z};">`;
+          const offX = photoW * 0.55, offY = photoH * 0.65;
+          return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(calc(-50% - ${offX}px),calc(-50% - ${offY}px)) rotate(${rot}deg);z-index:${z};">`;
         }).join('')
       : '';
 
@@ -1881,6 +1885,10 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
         </div>`;
     }
 
+    // Contenedor del anchor: SIEMPRE del tamaño del badge/punto (para que
+    // el layout del pin en sí se vea bien), pero las fotos ya no dependen
+    // de este tamaño — se anclan al centro exacto vía position:absolute
+    // con top/left 50%, invariante sea cual sea este tamaño.
     const anchorBoxSize = useDot ? sz.dot : (isSquareShape ? sz.square : sz.round);
     const badgeHtml = fanHtml
       ? `<div class="place-pin-social-content" style="position:relative;width:${anchorBoxSize}px;height:${anchorBoxSize}px;">${fanHtml}<div style="position:relative;z-index:10;">${anchorHtml}</div></div>`
@@ -1898,18 +1906,22 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       : '';
 
     // Metadata: rating · categoría · abierto/cerrado (o la etiqueta de
-    // tiempo, si el modo evento está activo — independiente de las fotos)
-    let metaHtml;
-    if (isEvent) {
-      const evLabel = place.pinEventLabel || 'Evento activo';
-      metaHtml = `<div style="font-size:9px;font-weight:700;color:#ec4899;line-height:1.15;">${evLabel}</div>`;
-    } else {
-      const parts = [];
-      if (place.rating) parts.push(`★ ${Number(place.rating).toFixed(1)}`);
-      if (place.primaryType || place.category) parts.push((place.primaryType || place.category));
-      const openState = _isPlaceOpenNow(place);
-      const metaText = parts.join(' · ');
-      metaHtml = `<div style="font-size:9px;line-height:1.15;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
+    // tiempo, si el modo evento está activo) — con opción de ocultarla
+    // por completo (pinShowMetaText)
+    const showMetaText = place.pinShowMetaText !== false; // default true
+    let metaHtml = '';
+    if (showMetaText) {
+      if (isEvent) {
+        const evLabel = place.pinEventLabel || 'Evento activo';
+        metaHtml = `<div style="font-size:9px;font-weight:700;color:#ec4899;line-height:1.15;">${evLabel}</div>`;
+      } else {
+        const parts = [];
+        if (place.rating) parts.push(`★ ${Number(place.rating).toFixed(1)}`);
+        if (place.primaryType || place.category) parts.push((place.primaryType || place.category));
+        const openState = _isPlaceOpenNow(place);
+        const metaText = parts.join(' · ');
+        metaHtml = `<div style="font-size:9px;line-height:1.15;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
+      }
     }
 
     const name = (place.name || place.displayName || '').trim();
@@ -1920,17 +1932,27 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // acercarse aparece el pin completo con un efecto pulse.
     const zoomDotHtml = `<div class="place-pin-social-zoomdot" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:${badgeColor};box-shadow:0 0 0 1.5px rgba(255,255,255,0.9),0 1.5px 3px rgba(0,0,0,0.3);display:none;"></div>`;
 
+    // Posición del label — abajo (default), izquierda o derecha del pin
+    const labelPos = place.pinLabelPosition === 'left' || place.pinLabelPosition === 'right'
+      ? place.pinLabelPosition : 'below';
+    const textAlign = labelPos === 'below' ? 'center' : (labelPos === 'left' ? 'right' : 'left');
+    const textBlockHtml = `<div style="text-align:${textAlign};max-width:120px;${labelPos !== 'below' ? 'margin:0 6px;' : 'margin-top:1px;'}">
+      <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+      ${metaHtml}
+    </div>`;
+
     // line-height ajustado: el título queda pegado a la metadata, no con
-    // el espaciado suelto que tenía antes
+    // el espaciado suelto que tenía antes. Con label a un costado, el
+    // body pasa a flex-direction:row (o row-reverse para "izquierda").
+    const bodyDirection = labelPos === 'left' ? 'row-reverse' : labelPos === 'right' ? 'row' : 'column';
+    const bodyContent = labelPos === 'below'
+      ? `${badgeHtml}${avatarsHtml}${textBlockHtml}`
+      : `<div style="display:flex;flex-direction:column;align-items:center;">${badgeHtml}${avatarsHtml}</div>${textBlockHtml}`;
+
     return `<div class="place-pin-root place-pin-social-root" style="position:relative;display:flex;flex-direction:column;align-items:center;overflow:visible;">
       ${zoomDotHtml}
-      <div class="place-pin-social-body" style="display:flex;flex-direction:column;align-items:center;">
-        ${badgeHtml}
-        ${avatarsHtml}
-        <div style="margin-top:1px;text-align:center;max-width:120px;">
-          <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
-          ${metaHtml}
-        </div>
+      <div class="place-pin-social-body" style="display:flex;flex-direction:${bodyDirection};align-items:center;">
+        ${bodyContent}
       </div>
     </div>`;
   }
