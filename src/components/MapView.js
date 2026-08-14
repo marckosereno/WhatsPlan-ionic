@@ -1925,7 +1925,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
         if (place.primaryType || place.category) parts.push((place.primaryType || place.category));
         const openState = _isPlaceOpenNow(place);
         const metaText = parts.join(' · ');
-        metaHtml = `<div style="font-size:9px;line-height:1.15;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
+        metaHtml = `<div style="font-size:9px;line-height:1.15;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
       }
     }
 
@@ -1959,9 +1959,10 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // El badge se posiciona absoluto centrado exacto en ese punto fijo.
     // El texto/avatares se posicionan absolutos, offsetteados desde el
     // badge (no al revés) — así el badge nunca se mueve del lugar real,
-    // pase lo que pase con el texto.
-    const halfBadge = anchorBoxSize / 2;
-    const gap = 4;
+    // pase lo que pase con el texto. Redondeado a entero (Math.round) para
+    // que no haya diferencias de sub-píxel entre distintos niveles de zoom.
+    const halfBadge = Math.round(anchorBoxSize / 2);
+    const gap = 7;
     let extraHtml = '';
     if (avatarsHtml || textBlockHtml) {
       const extraInner = `${avatarsHtml}${textBlockHtml}`;
