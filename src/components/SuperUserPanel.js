@@ -1587,6 +1587,8 @@ export class SuperUserPanel {
       pin_photo_stack_shape: place.pinPhotoStackShape || 'portrait',
       pin_badge_shape:   place.pinBadgeShape || 'circle',
       pin_photo_stack_size: place.pinPhotoStackSize || 'med',
+      pin_label_position: place.pinLabelPosition || 'below',
+      pin_show_meta_text: place.pinShowMetaText !== false,
     };
   }
 
@@ -1953,6 +1955,22 @@ export class SuperUserPanel {
                 '<span class="su-label" style="margin:0;">Modo evento (solo agrega etiqueta de fecha/hora — no afecta las fotos)</span>' +
               '</div>' +
               '<input id="su-pin-event-label" class="su-input" placeholder="ej: NOW UNTIL 9:30 PM" style="display:' + (prefill?.pin_event_mode ? 'block' : 'none') + ';font-size:12px;" value="' + _esc(prefill?.pin_event_label) + '">' +
+
+              '<div style="height:1px;background:rgba(255,255,255,0.08);margin:4px 0;"></div>' +
+              '<div style="font-size:10px;color:#6b7280;">Posición del texto (nombre + metadata) respecto al pin</div>' +
+              '<div id="su-pin-label-pos-row" style="display:flex;gap:6px;">' +
+                '<button type="button" class="su-pin-label-pos-btn" data-val="below" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⬇️ Abajo</button>' +
+                '<button type="button" class="su-pin-label-pos-btn" data-val="left" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⬅️ Izquierda</button>' +
+                '<button type="button" class="su-pin-label-pos-btn" data-val="right" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">➡️ Derecha</button>' +
+              '</div>' +
+              '<input id="su-pin-label-pos-hidden" type="hidden" value="' + (prefill?.pin_label_position || 'below') + '">' +
+              '<div style="display:flex;align-items:center;gap:8px;margin-top:2px;">' +
+                '<label class="su-toggle-wrap">' +
+                  '<input type="checkbox" id="su-pin-show-meta"' + (prefill?.pin_show_meta_text !== false ? ' checked' : '') + '>' +
+                  '<span class="su-toggle-slider"></span>' +
+                '</label>' +
+                '<span class="su-label" style="margin:0;">Mostrar texto debajo del nombre (rating/categoría/abierto o la fecha del evento)</span>' +
+              '</div>' +
             '</div>' +
             '<input id="su-pin-emoji-input" class="su-input" placeholder="O escribí/pegá cualquier emoji" style="font-size:14px;" value="' + _esc(prefill?.pin_emoji) + '">' +
 
@@ -2217,6 +2235,28 @@ export class SuperUserPanel {
     eventModeCheckbox.addEventListener('change', () => {
       eventLabelInput.style.display = eventModeCheckbox.checked ? 'block' : 'none';
     });
+
+    // Mostrar/ocultar el texto de metadata debajo del nombre — no necesita
+    // wiring extra más allá de leer el checkbox al guardar
+
+    // Posición del label: abajo / izquierda / derecha
+    const labelPosBtns = document.querySelectorAll('.su-pin-label-pos-btn');
+    const labelPosHidden = document.getElementById('su-pin-label-pos-hidden');
+    const _paintLabelPosBtns = () => {
+      labelPosBtns.forEach(b => {
+        const active = b.dataset.val === labelPosHidden.value;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    labelPosBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        labelPosHidden.value = btn.dataset.val;
+        _paintLabelPosBtns();
+      });
+    });
+    _paintLabelPosBtns();
 
     // Estilo del pin (ícono o solo punto) — independiente del evento y de
     // las fotos, siempre visible
@@ -2556,6 +2596,8 @@ export class SuperUserPanel {
         pin_photo_stack_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
         pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
         pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
+        pin_label_position: document.getElementById('su-pin-label-pos-hidden')?.value || 'below',
+        pin_show_meta_text: document.getElementById('su-pin-show-meta')?.checked ?? true,
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -2620,6 +2662,8 @@ export class SuperUserPanel {
           pin_photo_stack_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
           pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
           pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
+          pin_label_position: document.getElementById('su-pin-label-pos-hidden')?.value || 'below',
+          pin_show_meta_text: document.getElementById('su-pin-show-meta')?.checked ?? true,
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
