@@ -64,6 +64,8 @@ export default async function handler(req, res) {
     if ('pin_photo_stack_shape' in body) fields.pin_photo_stack_shape  = body.pin_photo_stack_shape || null;
     if ('pin_badge_shape'       in body) fields.pin_badge_shape        = body.pin_badge_shape || null;
     if ('pin_photo_stack_size'  in body) fields.pin_photo_stack_size   = body.pin_photo_stack_size || null;
+    if ('pin_label_position'    in body) fields.pin_label_position     = body.pin_label_position || null;
+    if ('pin_show_meta_text'    in body) fields.pin_show_meta_text     = Boolean(body.pin_show_meta_text);
 
     if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
