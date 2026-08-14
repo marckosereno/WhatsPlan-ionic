@@ -110,6 +110,8 @@ try {
         pinPhotoStackShape:        r.pin_photo_stack_shape || 'portrait',
         pinBadgeShape:             r.pin_badge_shape || 'circle',
         pinPhotoStackSize:         r.pin_photo_stack_size || 'med',
+        pinLabelPosition:          r.pin_label_position || 'below',
+        pinShowMetaText:           r.pin_show_meta_text !== false,
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
 
