@@ -864,6 +864,7 @@ export class MapView {
       const bubbleStack = el.querySelector('.place-pin-bubble-stack');
       const bubbleDot   = el.querySelector('.place-pin-bubble-dot');
       const socialBody  = el.querySelector('.place-pin-social-body');
+      const socialExtra = el.querySelector('.place-pin-social-extra');
       const socialZoomDot = el.querySelector('.place-pin-social-zoomdot');
 
       if (state === 2) {
@@ -887,9 +888,12 @@ export class MapView {
         }
         if (socialBody) {
           // Pin social: mismo criterio — punto de color se esconde, pin
-          // completo aparece con pulso escalonado (no todos a la vez)
+          // completo aparece con pulso escalonado (no todos a la vez).
+          // El label (hermano del badge, no hijo) se muestra al mismo
+          // tiempo.
           if (socialZoomDot) socialZoomDot.style.display = 'none';
-          socialBody.style.display = 'flex';
+          socialBody.style.display = 'block';
+          if (socialExtra) socialExtra.style.display = 'flex';
           socialBody.classList.remove('pin-bubble-pop');
           const sDelay = Math.random() * 260;
           setTimeout(() => {
@@ -919,6 +923,7 @@ export class MapView {
         // celeste genérico) — el pin social tampoco tiene .place-pin-wrapper
         if (socialZoomDot) socialZoomDot.style.display = 'block';
         if (socialBody) socialBody.style.display = 'none';
+        if (socialExtra) socialExtra.style.display = 'none';
         if (wrapper) {
           wrapper.style.transition = 'none';
           wrapper.style.width = '7px'; wrapper.style.height = '7px'; wrapper.style.padding = '0';
@@ -1942,23 +1947,46 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     </div>`;
 
     // ── ARQUITECTURA DE ANCLAJE ──────────────────────────────────────
-    // Mismo patrón que usan los pines de foto/sticker (probado, sin
-    // reportes de desalineación en toda la app): la caja del marker
-    // envuelve el ícono + el label juntos, sin forzar una cajita de
-    // anclaje diminuta con cálculos de offset — esos cálculos se
-    // rompían en combinaciones puntuales (con/sin fotos, con/sin
-    // avatares, distintos tamaños de badge) y generaban más
-    // desalineación de la que resolvían.
-    const bodyDirection = labelPos === 'left' ? 'row-reverse' : labelPos === 'right' ? 'row' : 'column';
-    const bodyContent = labelPos === 'below'
-      ? `${badgeHtml}${avatarsHtml}${textBlockHtml}`
-      : `<div style="display:flex;flex-direction:column;align-items:center;">${badgeHtml}${avatarsHtml}</div>${textBlockHtml}`;
+    // El pin (badge) tiene que quedar exactamente en la coordenada real,
+    // invariante al zoom. MapLibre con anchor:'center' centra la CAJA
+    // COMPLETA del marker — si esa caja incluye el badge y el label
+    // juntos (como en el layout flex), el "centro" real no es el badge
+    // sino un punto intermedio, y ese desfase se nota más mientras más
+    // lejos hace zoom-out.
+    //
+    // Fix: el ROOT es una cajita fija de 2x2px — su centro nunca cambia.
+    // El badge se centra ahí. El label se posiciona con `transform`
+    // puro (nunca con left/right en %, que se calculan sobre el ANCHO
+    // DEL PADRE — acá el padre mide 2px, así que cualquier % ahí da
+    // resultados frágiles). `translate()` en cambio siempre se calcula
+    // sobre el tamaño del PROPIO elemento, así que es seguro combinarlo
+    // con un offset fijo en píxeles (halfBadge + gap) sin depender del
+    // padre para nada.
+    const halfBadge = Math.round(anchorBoxSize / 2);
+    const gap = 7;
+    const offset = halfBadge + gap;
 
-    return `<div class="place-pin-root place-pin-social-root" style="position:relative;display:flex;flex-direction:column;align-items:center;overflow:visible;">
+    let extraTransform;
+    if (labelPos === 'below') {
+      extraTransform = `translate(-50%, ${offset}px)`;
+    } else if (labelPos === 'right') {
+      extraTransform = `translate(${offset}px, -50%)`;
+    } else {
+      extraTransform = `translate(calc(-100% - ${offset}px), -50%)`;
+    }
+
+    let extraHtml = '';
+    if (avatarsHtml || textBlockHtml) {
+      const alignItems = labelPos === 'below' ? 'center' : labelPos === 'right' ? 'flex-start' : 'flex-end';
+      extraHtml = `<div class="place-pin-social-extra" style="position:absolute;top:50%;left:50%;transform:${extraTransform};display:flex;flex-direction:column;align-items:${alignItems};">${avatarsHtml}${textBlockHtml}</div>`;
+    }
+
+    return `<div class="place-pin-root place-pin-social-root" style="position:relative;width:2px;height:2px;overflow:visible;">
       ${zoomDotHtml}
-      <div class="place-pin-social-body" style="display:flex;flex-direction:${bodyDirection};align-items:center;gap:7px;">
-        ${bodyContent}
+      <div class="place-pin-social-body" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+        ${badgeHtml}
       </div>
+      ${extraHtml}
     </div>`;
   }
 
