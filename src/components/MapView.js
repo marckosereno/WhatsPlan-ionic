@@ -864,6 +864,7 @@ export class MapView {
       const bubbleStack = el.querySelector('.place-pin-bubble-stack');
       const bubbleDot   = el.querySelector('.place-pin-bubble-dot');
       const socialBody  = el.querySelector('.place-pin-social-body');
+      const socialPop   = el.querySelector('.place-pin-social-pop');
       const socialExtra = el.querySelector('.place-pin-social-extra');
       const socialZoomDot = el.querySelector('.place-pin-social-zoomdot');
 
@@ -894,12 +895,20 @@ export class MapView {
           if (socialZoomDot) socialZoomDot.style.display = 'none';
           socialBody.style.display = 'block';
           if (socialExtra) socialExtra.style.display = 'flex';
-          socialBody.classList.remove('pin-bubble-pop');
-          const sDelay = Math.random() * 260;
-          setTimeout(() => {
-            void socialBody.offsetWidth;
-            socialBody.classList.add('pin-bubble-pop');
-          }, sDelay);
+          // La animación de pulso se aplica al div interno (.place-pin-social-pop),
+          // NUNCA a socialBody: socialBody tiene el transform:translate(-50%,-50%)
+          // inline que lo mantiene centrado en la coordenada real, y la animación
+          // (que define su propio `transform:scale(...)` en el keyframe) pisaría
+          // ese translate — con fill-mode:both, para siempre — corriendo el badge
+          // del centro apenas termina el pulso.
+          if (socialPop) {
+            socialPop.classList.remove('pin-bubble-pop');
+            const sDelay = Math.random() * 260;
+            setTimeout(() => {
+              void socialPop.offsetWidth;
+              socialPop.classList.add('pin-bubble-pop');
+            }, sDelay);
+          }
         }
         if (wrapper) {
           wrapper.style.transition = 'width 0.3s ease, height 0.3s ease, padding 0.3s ease';
@@ -1984,7 +1993,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     return `<div class="place-pin-root place-pin-social-root" style="position:relative;width:2px;height:2px;overflow:visible;">
       ${zoomDotHtml}
       <div class="place-pin-social-body" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
-        ${badgeHtml}
+        <div class="place-pin-social-pop">${badgeHtml}</div>
       </div>
       ${extraHtml}
     </div>`;
