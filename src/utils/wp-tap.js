@@ -13,6 +13,8 @@ const SELECTORS = [
   '#topbar-search-btn',
   '#topbar-messages-btn',
   '#topbar-auth-btn',
+  '#wp-ms-fav-btn',
+  '#wp-ms-close-btn',
 ];
 
 function applyPulse(el) {
