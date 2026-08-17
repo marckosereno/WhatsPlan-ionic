@@ -480,7 +480,7 @@ export class SubcategoryRow {
         border-color: #dc2626 !important;
       }
 
-      /* Chips de subcategoría — estilo nativo */
+      /* Chips de subcategoría — estilo nativo, plano (sin relieve 3D) */
       .subcategory-footer-chip {
         display: inline-flex; align-items: center;
         height: 32px; padding: 0 14px;
@@ -493,27 +493,16 @@ export class SubcategoryRow {
         color: #374151; white-space: nowrap; cursor: pointer;
         transition: all 0.18s cubic-bezier(0.34,1.2,0.64,1); flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
-        box-shadow:
-          0 3px 10px rgba(0,0,0,0.08),
-          0 1px 3px rgba(0,0,0,0.05),
-          inset 0 1.5px 0 rgba(255,255,255,1),
-          inset 0 -1px 0 rgba(0,0,0,0.04);
         backdrop-filter: blur(12px) saturate(1.6);
         -webkit-backdrop-filter: blur(12px) saturate(1.6);
       }
       .subcategory-footer-chip:active {
         transform: scale(0.94);
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
       }
       .subcategory-footer-chip.active {
         background: linear-gradient(150deg, #4a74f5 0%, #1a5cf5 60%, #1540cc 100%);
         border-color: rgba(74,116,245,0.3);
         color: white; font-weight: 700;
-        box-shadow:
-          0 2px 8px rgba(26,92,245,0.25),
-          inset 0 1.5px 0 rgba(255,255,255,0.26),
-          inset 0 -1px 0 rgba(0,0,0,0.12);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.10);
       }
 
       /* Chip de carga */
