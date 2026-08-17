@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════
 // WHATSPLAN — PlaceModal2.js  (diseño alternativo, Google Maps-inspired)
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
