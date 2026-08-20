@@ -108,6 +108,7 @@ try {
         pinBadgeStyle:             r.pin_badge_style || 'icon',
         pinShowStackedPhotos:      !!r.pin_show_stacked_photos,
         pinPhotoStackShape:        r.pin_photo_stack_shape || 'portrait',
+        pinPhotoStackStyle:        r.pin_photo_stack_style || 'fan',
         pinBadgeShape:             r.pin_badge_shape || 'circle',
         pinPhotoStackSize:         r.pin_photo_stack_size || 'med',
         pinLabelPosition:          r.pin_label_position || 'below',
