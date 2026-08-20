@@ -1935,8 +1935,8 @@ export class SuperUserPanel {
                 '<div style="font-size:10px;color:#6b7280;">Diseño del stack</div>' +
                 '<div style="display:flex;gap:6px;">' +
                   '<button type="button" class="su-pin-photo-style-btn" data-val="fan" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🎴 Abanico</button>' +
-                  '<button type="button" class="su-pin-photo-style-btn" data-val="cascade" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🗂️ Cascada</button>' +
-                  '<button type="button" class="su-pin-photo-style-btn" data-val="cluster" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🪐 Cluster</button>' +
+                  '<button type="button" class="su-pin-photo-style-btn" data-val="fan-center" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🦚 Centrado</button>' +
+                  '<button type="button" class="su-pin-photo-style-btn" data-val="fan-drift" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🃏 Cascada</button>' +
                 '</div>' +
                 '<div style="font-size:10px;color:#6b7280;">Forma de las fotos apiladas</div>' +
                 '<div style="display:flex;gap:6px;">' +
@@ -1950,7 +1950,7 @@ export class SuperUserPanel {
                   '<button type="button" class="su-pin-photo-size-btn" data-val="grande" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>' +
                 '</div>' +
               '</div>' +
-              '<input id="su-pin-photo-style-hidden" type="hidden" value="' + (['cascade','cluster'].includes(prefill?.pin_photo_stack_style) ? prefill.pin_photo_stack_style : 'fan') + '">' +
+              '<input id="su-pin-photo-style-hidden" type="hidden" value="' + (['fan-center','fan-drift'].includes(prefill?.pin_photo_stack_style) ? prefill.pin_photo_stack_style : 'fan') + '">' +
               '<input id="su-pin-photo-shape-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_shape === 'square' ? 'square' : 'portrait') + '">' +
               '<input id="su-pin-photo-size-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_size || 'med') + '">' +
 
