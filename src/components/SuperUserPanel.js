@@ -1584,6 +1584,7 @@ export class SuperUserPanel {
       pin_event_label:   place.pinEventLabel || '',
       pin_badge_style:   place.pinBadgeStyle || 'icon',
       pin_show_stacked_photos: !!place.pinShowStackedPhotos,
+      pin_photo_stack_style: place.pinPhotoStackStyle || 'fan',
       pin_photo_stack_shape: place.pinPhotoStackShape || 'portrait',
       pin_badge_shape:   place.pinBadgeShape || 'circle',
       pin_photo_stack_size: place.pinPhotoStackSize || 'med',
@@ -1931,6 +1932,12 @@ export class SuperUserPanel {
                 '<span class="su-label" style="margin:0;">Mostrar fotos apiladas (independiente del pin y del evento)</span>' +
               '</div>' +
               '<div id="su-pin-photos-config-row" style="display:' + (prefill?.pin_show_stacked_photos ? 'flex' : 'none') + ';flex-direction:column;gap:8px;">' +
+                '<div style="font-size:10px;color:#6b7280;">Diseño del stack</div>' +
+                '<div style="display:flex;gap:6px;">' +
+                  '<button type="button" class="su-pin-photo-style-btn" data-val="fan" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🎴 Abanico</button>' +
+                  '<button type="button" class="su-pin-photo-style-btn" data-val="cascade" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🗂️ Cascada</button>' +
+                  '<button type="button" class="su-pin-photo-style-btn" data-val="cluster" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🪐 Cluster</button>' +
+                '</div>' +
                 '<div style="font-size:10px;color:#6b7280;">Forma de las fotos apiladas</div>' +
                 '<div style="display:flex;gap:6px;">' +
                   '<button type="button" class="su-pin-photo-shape-btn" data-val="portrait" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">▯ Portrait</button>' +
@@ -1943,6 +1950,7 @@ export class SuperUserPanel {
                   '<button type="button" class="su-pin-photo-size-btn" data-val="grande" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>' +
                 '</div>' +
               '</div>' +
+              '<input id="su-pin-photo-style-hidden" type="hidden" value="' + (['cascade','cluster'].includes(prefill?.pin_photo_stack_style) ? prefill.pin_photo_stack_style : 'fan') + '">' +
               '<input id="su-pin-photo-shape-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_shape === 'square' ? 'square' : 'portrait') + '">' +
               '<input id="su-pin-photo-size-hidden" type="hidden" value="' + (prefill?.pin_photo_stack_size || 'med') + '">' +
 
@@ -2286,6 +2294,25 @@ export class SuperUserPanel {
       photosConfigRow.style.display = showPhotosCheckbox.checked ? 'flex' : 'none';
     });
 
+    // Diseño del stack de fotos: abanico (fan) | cascada | cluster
+    const photoStyleBtns = document.querySelectorAll('.su-pin-photo-style-btn');
+    const photoStyleHidden = document.getElementById('su-pin-photo-style-hidden');
+    const _paintPhotoStyleBtns = () => {
+      photoStyleBtns.forEach(b => {
+        const active = b.dataset.val === photoStyleHidden.value;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    photoStyleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        photoStyleHidden.value = btn.dataset.val;
+        _paintPhotoStyleBtns();
+      });
+    });
+    _paintPhotoStyleBtns();
+
     // Forma de las fotos apiladas: portrait o square
     const photoShapeBtns = document.querySelectorAll('.su-pin-photo-shape-btn');
     const photoShapeHidden = document.getElementById('su-pin-photo-shape-hidden');
@@ -2593,6 +2620,7 @@ export class SuperUserPanel {
         pin_event_label:    document.getElementById('su-pin-event-label')?.value || '',
         pin_badge_style:    document.getElementById('su-pin-badge-style-hidden')?.value || 'icon',
         pin_show_stacked_photos: document.getElementById('su-pin-show-photos')?.checked || false,
+        pin_photo_stack_style: document.getElementById('su-pin-photo-style-hidden')?.value || 'fan',
         pin_photo_stack_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
         pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
         pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
@@ -2659,6 +2687,7 @@ export class SuperUserPanel {
           pin_event_label:    document.getElementById('su-pin-event-label')?.value || null,
           pin_badge_style:    document.getElementById('su-pin-badge-style-hidden')?.value || 'icon',
           pin_show_stacked_photos: document.getElementById('su-pin-show-photos')?.checked || false,
+          pin_photo_stack_style: document.getElementById('su-pin-photo-style-hidden')?.value || 'fan',
           pin_photo_stack_shape: document.getElementById('su-pin-photo-shape-hidden')?.value || 'portrait',
           pin_badge_shape:    document.getElementById('su-pin-badge-shape-hidden')?.value || 'circle',
           pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
