@@ -1784,6 +1784,64 @@ function _isPlaceOpenNow(place) {
   });
 }
 
+// ── Fotos apiladas del pin "social" — 3 variantes de diseño ─────────
+// Las 3 reciben las mismas fotos (photosForFan[0] = foto principal,
+// SIEMPRE la de más adelante/arriba del stack, mayor z-index) y el
+// mismo tamaño de foto (photoW/photoH) — solo cambia el arreglo visual.
+//
+// 'fan'     (default, la que ya existía): abanico rotado. Antes la
+//            última foto del array (índice 2) terminaba arriba por un
+//            bug de z-index — ahora el índice 0 siempre es la principal.
+// 'cascade': mazo en cascada sin rotación, cada foto detrás se asoma
+//            un poco hacia abajo-derecha (look tipo "pila de tarjetas").
+// 'cluster': foto principal grande y las otras 2 como mini-satélites
+//            circulares superpuestos en la esquina inferior — look tipo
+//            "collage" en vez de mazo.
+function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
+  const n = photos.length;
+  if (!n) return '';
+
+  if (style === 'cascade') {
+    // Sin rotación: cada foto detrás (índice mayor) se desplaza un poco
+    // más hacia abajo-derecha y baja de z-index. La principal (índice 0)
+    // queda arriba a la izquierda del mazo, sin desplazamiento.
+    const step = Math.round(photoW * 0.22);
+    return photos.map((url, i) => {
+      const z = n - i; // principal = mayor z-index
+      const off = step * i;
+      return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:5px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(calc(-50% + ${off}px),calc(-50% + ${off}px));z-index:${z};">`;
+    }).join('');
+  }
+
+  if (style === 'cluster') {
+    // Principal centrada y sin rotar; las siguientes (máx. 2) como
+    // mini-satélites circulares superpuestos en la esquina inferior
+    // derecha de la principal.
+    const mainW = photoW, mainH = photoH;
+    const satSize = Math.round(Math.min(photoW, photoH) * 0.62);
+    const main = `<img src="${photos[0]}" style="position:absolute;top:50%;left:50%;width:${mainW}px;height:${mainH}px;object-fit:cover;border-radius:5px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(-50%,-50%);z-index:${n};">`;
+    const sats = photos.slice(1, 3).map((url, i) => {
+      const angle = i === 0 ? 18 : 58; // grados, sentido horario desde abajo-derecha del centro
+      const dist = Math.max(mainW, mainH) * 0.42;
+      const rad = angle * Math.PI / 180;
+      const dx = Math.round(Math.cos(rad) * dist);
+      const dy = Math.round(Math.sin(rad) * dist);
+      const z = n - 1 - i;
+      return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${satSize}px;height:${satSize}px;object-fit:cover;border-radius:50%;border:1.5px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px));z-index:${z};">`;
+    }).join('');
+    return main + sats;
+  }
+
+  // 'fan' — diseño original, con la principal (índice 0) ahora arriba.
+  const rotsArr = [-10, 4, 12]; // mismos ángulos de siempre, por slot visual
+  const offX = photoW * 0.55, offY = photoH * 0.65;
+  return photos.map((url, i) => {
+    const rot = rotsArr[n - 1 - i] ?? 0; // slot visual: la principal usa el ángulo del slot "de adelante"
+    const z = n - i; // principal (i=0) = mayor z-index
+    return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(calc(-50% - ${offX}px),calc(-50% - ${offY}px)) rotate(${rot}deg);z-index:${z};">`;
+  }).join('');
+}
+
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const rawName   = place.name || '';
   // Si el nombre viene en TODAS MAYÚSCULAS, convertirlo a Title Case.
@@ -1872,17 +1930,16 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
 
     const photoW = photoShape === 'square' ? psz.square : psz.portraitW;
     const photoH = photoShape === 'square' ? psz.square : psz.portraitH;
+    // Estilo del stack: 'fan' (default) | 'cascade' | 'cluster'
+    const stackStyle = place.pinPhotoStackStyle === 'cascade' ? 'cascade'
+      : place.pinPhotoStackStyle === 'cluster' ? 'cluster'
+      : 'fan';
     // Las fotos se posicionan desde un punto de anclaje FIJO (centro del
     // contenedor, vía top/left 50% + transform), no desde el borde de un
     // contenedor que cambia de tamaño con el badge — así el tamaño del
     // pin/punto ya no corre la posición de las fotos.
     const fanHtml = photosForFan.length
-      ? photosForFan.map((url, i) => {
-          const rot = [-10, 4, 12][i] || 0;
-          const z = 1 + i; // fotos: z-index bajo, el pin/punto siempre va encima
-          const offX = photoW * 0.55, offY = photoH * 0.65;
-          return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(calc(-50% - ${offX}px),calc(-50% - ${offY}px)) rotate(${rot}deg);z-index:${z};">`;
-        }).join('')
+      ? _buildPinPhotoStackHtml(photosForFan, photoW, photoH, stackStyle)
       : '';
 
     // 3) El anchor (ícono o punto) — SIEMPRE encima de las fotos si ambas
