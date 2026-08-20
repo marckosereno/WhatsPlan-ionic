@@ -1224,8 +1224,19 @@ export class MapView {
 
   _restorePin(wrapper) {
     if (wrapper && wrapper._savedPinHTML !== undefined) {
-      wrapper.style.width     = '44px';
-      wrapper.style.height    = '44px';
+      // El wrapper del marker (.place-marker-el) NUNCA tiene ancho/alto fijo
+      // por CSS — se auto-dimensiona según su contenido (2x2px para el pin
+      // "social", ~29px para el clásico, etc). Forzar '44px' acá (como
+      // estaba antes) dejaba el wrapper con ese tamaño fijo PARA SIEMPRE
+      // después de cerrar el minicard, sin importar el tamaño real del pin
+      // restaurado. Como MapLibre centra la caja completa del wrapper
+      // (anchor:'center') y el contenido no siempre queda perfectamente
+      // centrado dentro de una caja más grande de lo que le corresponde,
+      // esto corría el pin (visible sobre todo en vertical) cada vez que
+      // se abría y cerraba el minicard. Reset a '' para que vuelva a
+      // auto-dimensionarse exactamente como antes de abrir el minicard.
+      wrapper.style.width     = '';
+      wrapper.style.height    = '';
       wrapper.style.overflow  = 'visible';
       wrapper.style.zIndex    = '';
       wrapper.style.marginTop = '';
@@ -1785,54 +1796,59 @@ function _isPlaceOpenNow(place) {
 }
 
 // ── Fotos apiladas del pin "social" — 3 variantes de diseño ─────────
-// Las 3 reciben las mismas fotos (photosForFan[0] = foto principal,
-// SIEMPRE la de más adelante/arriba del stack, mayor z-index) y el
-// mismo tamaño de foto (photoW/photoH) — solo cambia el arreglo visual.
+// Todas reciben las mismas fotos (photos[0] = foto principal, SIEMPRE
+// la de más adelante/arriba del stack, mayor z-index) y el mismo
+// tamaño de foto (photoW/photoH) — solo cambia el arreglo visual.
 //
-// 'fan'     (default, la que ya existía): abanico rotado. Antes la
-//            última foto del array (índice 2) terminaba arriba por un
-//            bug de z-index — ahora el índice 0 siempre es la principal.
-// 'cascade': mazo en cascada sin rotación, cada foto detrás se asoma
-//            un poco hacia abajo-derecha (look tipo "pila de tarjetas").
-// 'cluster': foto principal grande y las otras 2 como mini-satélites
-//            circulares superpuestos en la esquina inferior — look tipo
-//            "collage" en vez de mazo.
+// 'fan'        (la que ya existía, sin cambios de diseño): abanico
+//               rotado con offset fijo. Antes la última foto del array
+//               terminaba arriba por un bug de z-index — ahora el
+//               índice 0 siempre es la principal.
+// 'fan-center': abanico simétrico tipo "pavo real" — la principal queda
+//               derecha/centrada y arriba de todo, flanqueada por las
+//               otras 2 inclinadas en espejo hacia cada lado, todas
+//               pivotando desde el mismo punto de la base (como un
+//               mazo de cartas sostenido con la mano).
+// 'fan-drift':  abanico direccional tipo "cascada de cartas repartidas"
+//               — la principal va apenas inclinada y adelante, las
+//               siguientes se asoman cada vez más hacia un costado y
+//               más atrás (menor z-index), mismo pivote en la base.
 function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
   const n = photos.length;
   if (!n) return '';
 
-  if (style === 'cascade') {
-    // Sin rotación: cada foto detrás (índice mayor) se desplaza un poco
-    // más hacia abajo-derecha y baja de z-index. La principal (índice 0)
-    // queda arriba a la izquierda del mazo, sin desplazamiento.
-    const step = Math.round(photoW * 0.22);
-    return photos.map((url, i) => {
-      const z = n - i; // principal = mayor z-index
-      const off = step * i;
-      return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:5px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(calc(-50% + ${off}px),calc(-50% + ${off}px));z-index:${z};">`;
-    }).join('');
+  // 'fan-center' y 'fan-drift' comparten la técnica de pivote: cada
+  // foto se ancla por su borde inferior-centro exactamente en el mismo
+  // punto (el centro del pin) y rota desde ahí (transform-origin:50% 100%),
+  // así que el abanico converge en un único punto en vez de desplazarse
+  // con un offset fijo — el mismo efecto visual que un mazo de cartas
+  // sostenido y abierto con la mano.
+  const buildPivotFan = (angles) => photos.map((url, i) => {
+    const z = n - i; // principal (i=0) = mayor z-index, siempre arriba
+    const rot = angles[i] ?? 0;
+    return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:5px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform-origin:50% 100%;transform:translate(-50%,-100%) rotate(${rot}deg);z-index:${z};">`;
+  }).join('');
+
+  if (style === 'fan-center') {
+    // Ángulos simétricos alrededor de 0°, ordenados de menor a mayor
+    // ángulo absoluto — así la principal (índice 0) siempre recibe el
+    // slot más centrado/prominente (el de menor inclinación).
+    const spread = n === 2 ? 15 : 17;
+    const raw = Array.from({ length: n }, (_, k) => Math.round((k - (n - 1) / 2) * spread));
+    const angles = raw.slice().sort((a, b) => Math.abs(a) - Math.abs(b));
+    return buildPivotFan(angles);
   }
 
-  if (style === 'cluster') {
-    // Principal centrada y sin rotar; las siguientes (máx. 2) como
-    // mini-satélites circulares superpuestos en la esquina inferior
-    // derecha de la principal.
-    const mainW = photoW, mainH = photoH;
-    const satSize = Math.round(Math.min(photoW, photoH) * 0.62);
-    const main = `<img src="${photos[0]}" style="position:absolute;top:50%;left:50%;width:${mainW}px;height:${mainH}px;object-fit:cover;border-radius:5px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(-50%,-50%);z-index:${n};">`;
-    const sats = photos.slice(1, 3).map((url, i) => {
-      const angle = i === 0 ? 18 : 58; // grados, sentido horario desde abajo-derecha del centro
-      const dist = Math.max(mainW, mainH) * 0.42;
-      const rad = angle * Math.PI / 180;
-      const dx = Math.round(Math.cos(rad) * dist);
-      const dy = Math.round(Math.sin(rad) * dist);
-      const z = n - 1 - i;
-      return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${satSize}px;height:${satSize}px;object-fit:cover;border-radius:50%;border:1.5px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px));z-index:${z};">`;
-    }).join('');
-    return main + sats;
+  if (style === 'fan-drift') {
+    // La principal (índice 0) va apenas inclinada; cada foto detrás
+    // suma inclinación hacia el mismo lado, como cartas repartidas en
+    // cascada hacia un costado.
+    const start = -8, step = 14;
+    const angles = Array.from({ length: n }, (_, k) => start + k * step);
+    return buildPivotFan(angles);
   }
 
-  // 'fan' — diseño original, con la principal (índice 0) ahora arriba.
+  // 'fan' — diseño original (offset fijo en vez de pivote), sin cambios.
   const rotsArr = [-10, 4, 12]; // mismos ángulos de siempre, por slot visual
   const offX = photoW * 0.55, offY = photoH * 0.65;
   return photos.map((url, i) => {
@@ -1931,8 +1947,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     const photoW = photoShape === 'square' ? psz.square : psz.portraitW;
     const photoH = photoShape === 'square' ? psz.square : psz.portraitH;
     // Estilo del stack: 'fan' (default) | 'cascade' | 'cluster'
-    const stackStyle = place.pinPhotoStackStyle === 'cascade' ? 'cascade'
-      : place.pinPhotoStackStyle === 'cluster' ? 'cluster'
+    const stackStyle = place.pinPhotoStackStyle === 'fan-center' ? 'fan-center'
+      : place.pinPhotoStackStyle === 'fan-drift' ? 'fan-drift'
       : 'fan';
     // Las fotos se posicionan desde un punto de anclaje FIJO (centro del
     // contenedor, vía top/left 50% + transform), no desde el borde de un
