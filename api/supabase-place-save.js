@@ -23,6 +23,7 @@ export default async function handler(req, res) {
       pin_stroke_color, pin_stroke_width,
       pin_badge_color, pin_event_mode, pin_event_label,
       pin_badge_style, pin_show_stacked_photos, pin_photo_stack_shape,
+      pin_photo_stack_style,
       pin_badge_shape, pin_photo_stack_size,
       pin_label_position, pin_show_meta_text,
     } = req.body;
@@ -67,6 +68,7 @@ export default async function handler(req, res) {
       pin_badge_style:            pin_badge_style || 'icon',
       pin_show_stacked_photos:    Boolean(pin_show_stacked_photos),
       pin_photo_stack_shape:      pin_photo_stack_shape || 'portrait',
+      pin_photo_stack_style:      pin_photo_stack_style || 'fan',
       pin_badge_shape:            pin_badge_shape || 'circle',
       pin_photo_stack_size:       pin_photo_stack_size || 'med',
       pin_label_position:         pin_label_position || 'below',
