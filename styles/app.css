@@ -131,7 +131,7 @@ ion-app::after {
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px 12px;
+  padding: 8px 12px 2px;
   width: 100%;
   box-sizing: border-box;
   min-height: 28px;
