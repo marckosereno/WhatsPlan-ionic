@@ -1114,7 +1114,7 @@ export class MapView {
     // Este div NO lleva el translateY de -45px (a diferencia de la
     // burbuja del minicard, ver abajo), así que queda exactamente en el
     // punto real mientras la burbuja "flota" arriba de él.
-    const mcShadowDotHtml = `<div class="wp-mc-shadow-dot" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:#111;box-shadow:0 0 0 2px rgba(255,255,255,0.9),0 2px 5px rgba(0,0,0,0.35);z-index:1;"></div>`;
+    const mcShadowDotHtml = `<div class="wp-mc-shadow-dot" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;z-index:1;"></div>`;
 
     // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2.
     // Se envuelve en .wp-mc-card-lift, que es quien ahora lleva el
