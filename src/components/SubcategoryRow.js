@@ -504,20 +504,22 @@ export class SubcategoryRow {
         border-color: rgba(74,116,245,0.3);
         color: white; font-weight: 700;
       }
-      /* Badge con el total de lugares — solo visible en el chip activo */
+      /* Badge con el total de lugares — esquina superior derecha del chip
+         activo, estilo notificación (no empuja el contenido del chip). */
+      .subcategory-footer-chip { position: relative; }
       .subcat-chip-badge {
+        position: absolute; top: -6px; right: -6px;
         display: inline-flex; align-items: center; justify-content: center;
-        min-width: 17px; height: 17px; padding: 0 5px; margin-left: 6px;
+        min-width: 17px; height: 17px; padding: 0 4px;
         border-radius: 999px; font-size: 10px; font-weight: 800;
-        background: rgba(0,0,0,0.08); color: #4b5563;
+        background: #111827; color: #fff;
+        border: 1.5px solid #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.28);
         transform: scale(0); transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
-        vertical-align: middle;
+        z-index: 2; pointer-events: none;
       }
       .subcat-chip-badge:empty { display: none; }
       .subcat-chip-badge.show { transform: scale(1); }
-      .subcategory-footer-chip.active .subcat-chip-badge {
-        background: rgba(255,255,255,0.28); color: #fff;
-      }
 
       /* Chip de carga */
       .hm-loading-chip {
