@@ -197,9 +197,29 @@ function mountSuperPanel(mv) {
 function filterBySubcat(mv, subcatValue) {
   const counter = document.getElementById('map-results-count');
 
+  // Badge de total en el chip activo — el chip ya tiene la clase .active
+  // puesta por SubcategoryRow ANTES de llamar onSubcatSelect/filterBySubcat,
+  // así que alcanza con leerla acá. El resto de los chips se limpian para
+  // que solo el activo muestre número.
+  const setSubcatBadge = (count) => {
+    document.querySelectorAll('.subcategory-footer-chip').forEach(chip => {
+      const badge = chip.querySelector('.subcat-chip-badge');
+      if (!badge) return;
+      if (chip.classList.contains('active')) {
+        badge.textContent = String(count);
+        requestAnimationFrame(() => badge.classList.add('show'));
+      } else {
+        badge.classList.remove('show');
+        badge.textContent = '';
+      }
+    });
+  };
+
   if (!subcatValue || subcatValue === 'all') {
     mv.markerEls.forEach(el => el.style.display = '');
-    if (counter) counter.textContent = `${mv.allPlaces.length} lugares`;
+    const total = mv.allPlaces.length;
+    if (counter) counter.textContent = `${total} lugares`;
+    setSubcatBadge(total);
     return;
   }
 
@@ -216,6 +236,7 @@ function filterBySubcat(mv, subcatValue) {
   });
 
   if (counter) counter.textContent = `${visible} lugares`;
+  setSubcatBadge(visible);
   console.log(`🔍 Subcat "${subcatValue}": ${visible} lugares`);
 }
 
