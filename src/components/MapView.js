@@ -1096,6 +1096,17 @@ export class MapView {
     wrapper.style.overflow = 'visible';
     wrapper.style.zIndex   = '9999';
 
+    // El wrapper ENTERO se desplaza -45px (margin, no transform en un hijo)
+    // para que la burbuja "flote" arriba del punto real. Es clave que sea
+    // el wrapper completo el que se mueva: un transform en un div hijo deja
+    // la caja natural del wrapper (la que usan tanto MapLibre para el
+    // anchor:'center' como el navegador para detectar taps) parada en el
+    // punto real, vacía pero SIGUE SIENDO CLICKEABLE ahí — eso generaba una
+    // zona fantasma donde tocar el mapa "vacío" abría la ficha como si se
+    // tocara el pin. Con margin-top en el wrapper, su caja clickeable se
+    // mueve junto con lo que se ve — no queda ninguna zona vacía clickeable.
+    wrapper.style.marginTop = '-45px';
+
     // Icono de fallback — se calcula SIEMPRE (sirve si no hay foto o si la foto falla)
     const mcSubIcon3d = getSubcatIcon3d(place, this.currentCatId);
     const mcIcon3d    = mcSubIcon3d || cat?.icon3d || '';
@@ -1105,26 +1116,17 @@ export class MapView {
       : mcEmoji;
     const mcFallbackHtml = `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${mcIconInner}</div>`;
 
-    // Punto negro de "sombra" — marca el punto real del pin (el que usa
-    // MapLibre para el anchor:'center'). Antes, al abrir el minicard, el
-    // pin (con foto/stack/badge) desaparecía por completo y no quedaba
-    // ninguna referencia visual de dónde está el lugar en el mapa —
-    // sobre todo notorio en pines con fotos apiladas, que son los más
-    // grandes/vistosos y por ende los que más "se sienten" al ocultarse.
-    // Este div NO lleva el translateY de -45px (a diferencia de la
-    // burbuja del minicard, ver abajo), así que queda exactamente en el
-    // punto real mientras la burbuja "flota" arriba de él.
-    const mcShadowDotHtml = `<div class="wp-mc-shadow-dot" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;z-index:1;"></div>`;
+    // Punto negro de "sombra" — marca el punto real del pin. Como ahora es
+    // el WRAPPER el que se desplaza -45px (ver arriba), este punto —que
+    // vive dentro del mismo wrapper y por default quedaría centrado ahí
+    // también— lleva el offset CONTRARIO (+45px) para terminar visualmente
+    // en el punto real de nuevo, mientras la burbuja queda arriba.
+    // pointer-events:none: es puramente decorativo, nunca debe interceptar
+    // taps (si el usuario toca justo ahí, el tap debe pasar al mapa).
+    const mcShadowDotHtml = `<div class="wp-mc-shadow-dot" style="position:absolute;left:50%;top:calc(50% + 45px);transform:translate(-50%,-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;z-index:1;"></div>`;
 
-    // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2.
-    // Se envuelve en .wp-mc-card-lift, que es quien ahora lleva el
-    // desplazamiento hacia arriba (antes era un marginTop en `wrapper`
-    // completo). Al ser un `transform` sobre un hijo en flujo normal —
-    // y no un margin en el propio `wrapper` — el tamaño natural que
-    // MapLibre lee de `wrapper` para centrar el marker en el punto real
-    // no se ve afectado por el desplazamiento visual de la burbuja.
-    wrapper.innerHTML = `${mcShadowDotHtml}<div class="wp-mc-card-lift" style="position:relative;transform:translateY(-45px);z-index:2;">
-    <div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Inter Tight',system-ui,sans-serif;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
+    // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2
+    wrapper.innerHTML = `${mcShadowDotHtml}<div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Inter Tight',system-ui,sans-serif;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
       ${photoUrl
         ? `<div class="wp-mc-photo-wrap" style="width:44px;height:44px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
             <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
@@ -1138,7 +1140,6 @@ export class MapView {
       <div style="width:28px;height:28px;border-radius:50%;background:#e5e5e5;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#9ca3af;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-    </div>
     </div>`;
 
     const card = wrapper.querySelector('.minicard-marker-content');
