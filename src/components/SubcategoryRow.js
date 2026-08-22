@@ -396,14 +396,12 @@ export class SubcategoryRow {
         e.stopPropagation();
         this._footerEl.querySelectorAll('.subcategory-footer-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
-        // Si el chip tocado no está completamente visible en el scroll
-        // horizontal (típico cuando se toca uno de los últimos, parcialmente
-        // tapado por el borde del contenedor), lo traemos a la vista — así
-        // el badge con el total que le acabamos de poner arriba-derecha
-        // también queda visible, no cortado por el borde del scroll.
+        // Centrado en el scroll horizontal (no solo "lo mínimo para que se
+        // vea") — así el chip tocado queda a la vista sin importar si está
+        // cerca del borde izquierdo o derecho del contenedor.
         // block:'nearest' evita que además intente hacer scroll vertical
         // de la página (scrollIntoView por default también mueve el eje Y).
-        chip.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+        chip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         this.currentSubcat = chip.dataset.val;
         if (this.onSubcatSelect) this.onSubcatSelect(chip.dataset.val);
       });
