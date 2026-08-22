@@ -373,7 +373,7 @@ export class SubcategoryRow {
     const todosBtn = document.createElement('button');
     todosBtn.className = 'subcategory-footer-chip' + (allActive ? ' active' : '');
     todosBtn.dataset.val = 'all';
-    todosBtn.textContent = 'Todos';
+    todosBtn.innerHTML = '<span class="subcat-chip-label">Todos</span><span class="subcat-chip-badge"></span>';
     this._footerEl.appendChild(todosBtn);
 
     items.forEach((s, i) => {
@@ -384,7 +384,7 @@ export class SubcategoryRow {
       const icon = s.icon3d
         ? '<img src="' + s.icon3d + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px" onerror="this.style.display=\'none\'">'
         : '<span style="margin-right:3px">' + s.emoji + '</span>';
-      btn.innerHTML = icon + s.label;
+      btn.innerHTML = icon + '<span class="subcat-chip-label">' + s.label + '</span><span class="subcat-chip-badge"></span>';
       this._footerEl.appendChild(btn);
     });
 
@@ -503,6 +503,20 @@ export class SubcategoryRow {
         background: linear-gradient(150deg, #4a74f5 0%, #1a5cf5 60%, #1540cc 100%);
         border-color: rgba(74,116,245,0.3);
         color: white; font-weight: 700;
+      }
+      /* Badge con el total de lugares — solo visible en el chip activo */
+      .subcat-chip-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 17px; height: 17px; padding: 0 5px; margin-left: 6px;
+        border-radius: 999px; font-size: 10px; font-weight: 800;
+        background: rgba(0,0,0,0.08); color: #4b5563;
+        transform: scale(0); transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        vertical-align: middle;
+      }
+      .subcat-chip-badge:empty { display: none; }
+      .subcat-chip-badge.show { transform: scale(1); }
+      .subcategory-footer-chip.active .subcat-chip-badge {
+        background: rgba(255,255,255,0.28); color: #fff;
       }
 
       /* Chip de carga */
