@@ -183,6 +183,38 @@ function injectLandmarkStyles() {
     body.map-dragging .lm-inner-slow,
     body.map-dragging .lm-shadow,
     body.map-dragging .lm-shadow-slow { animation-play-state:paused; }
+
+    /* ── Animación al hacer drag en el mapa ──────────────────────────
+       1) Pines: se achican y bajan opacidad mientras se arrastra, y
+          vuelven a su tamaño con un rebote (spring) al soltar.
+       2) UI flotante (topbar, panel de categorías, botones laterales,
+          footer menu): baja opacidad durante el drag para enfocar la
+          atención en el mapa, sin competir visualmente con el pan.
+       El transform de escala va en el HIJO DIRECTO de .place-marker-el
+       (nunca en .place-marker-el mismo): MapLibre posiciona el marker
+       con su propio transform inline en .place-marker-el, y cualquier
+       transform puesto ahí por CSS quedaría pisado por ese inline —
+       aplicándolo al hijo evitamos el conflicto. */
+    .place-marker-el > * {
+      transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease-out;
+    }
+    body.map-dragging .place-marker-el > * {
+      transform: scale(0.82);
+      opacity: 0.55;
+      transition: transform 0.18s ease-out, opacity 0.15s ease-out;
+    }
+    #map-results-panel, #topbar, #wp-side-panel-top, #wp-side-panel-bottom, #wp-footer-menu {
+      transition: opacity 0.3s ease-out;
+    }
+    body.map-dragging #map-results-panel,
+    body.map-dragging #topbar,
+    body.map-dragging #wp-side-panel-top,
+    body.map-dragging #wp-side-panel-bottom,
+    body.map-dragging #wp-footer-menu {
+      opacity: 0.45 !important;
+      transition: opacity 0.18s ease-out;
+      pointer-events: none;
+    }
   `;
   document.head.appendChild(s);
 }
