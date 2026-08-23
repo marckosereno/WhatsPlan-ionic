@@ -1,4 +1,4 @@
-// ====================================================================
+// ===================================================================
 // WHATSPLAN — /api/supabase-clusters.js
 // GET  /api/supabase-clusters                 → lista todos los clusters
 // POST /api/supabase-clusters  { action:'save',   ... }  → crea/actualiza
