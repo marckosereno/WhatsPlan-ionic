@@ -185,35 +185,23 @@ function injectLandmarkStyles() {
     body.map-dragging .lm-shadow-slow { animation-play-state:paused; }
 
     /* ── Animación al hacer drag en el mapa ──────────────────────────
-       1) Pines: se achican y bajan opacidad mientras se arrastra, y
-          vuelven a su tamaño con un rebote (spring) al soltar.
-       2) UI flotante (topbar, panel de categorías, botones laterales,
-          footer menu): baja opacidad durante el drag para enfocar la
-          atención en el mapa, sin competir visualmente con el pan.
-       El transform de escala va en el HIJO DIRECTO de .place-marker-el
-       (nunca en .place-marker-el mismo): MapLibre posiciona el marker
-       con su propio transform inline en .place-marker-el, y cualquier
-       transform puesto ahí por CSS quedaría pisado por ese inline —
-       aplicándolo al hijo evitamos el conflicto. */
+       Pines: se achican mientras se arrastra (sin opacity — solo escala)
+       y vuelven a su tamaño con un rebote (spring) al soltar. Además,
+       durante el drag se les aplica un leve "parallax": se atrasan un
+       poco respecto al movimiento real del mapa (ver --wp-parallax-x/y,
+       calculado en _initMap en cada evento 'drag'), dando sensación de
+       profundidad/capas en vez de que todo se mueva como un bloque rígido.
+       El transform va en el HIJO DIRECTO de .place-marker-el (nunca en
+       .place-marker-el mismo): MapLibre posiciona el marker con su
+       propio transform inline ahí, y cualquier transform puesto por CSS
+       quedaría pisado por ese inline — aplicándolo al hijo evitamos el
+       conflicto. */
     .place-marker-el > * {
-      transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease-out;
+      transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
     }
     body.map-dragging .place-marker-el > * {
-      transform: scale(0.82);
-      opacity: 0.55;
-      transition: transform 0.18s ease-out, opacity 0.15s ease-out;
-    }
-    #map-results-panel, #topbar, #wp-side-panel-top, #wp-side-panel-bottom, #wp-footer-menu {
-      transition: opacity 0.3s ease-out;
-    }
-    body.map-dragging #map-results-panel,
-    body.map-dragging #topbar,
-    body.map-dragging #wp-side-panel-top,
-    body.map-dragging #wp-side-panel-bottom,
-    body.map-dragging #wp-footer-menu {
-      opacity: 0.45 !important;
-      transition: opacity 0.18s ease-out;
-      pointer-events: none;
+      transform: scale(0.82) translate(var(--wp-parallax-x, 0px), var(--wp-parallax-y, 0px));
+      transition: transform 0.05s linear;
     }
   `;
   document.head.appendChild(s);
@@ -314,8 +302,34 @@ export class MapView {
       this._loadActivities();
 
       // Drag pause para animaciones
-      this.map.on('dragstart', () => { document.body.classList.add('map-dragging'); });
-      this.map.on('dragend', () => { document.body.classList.remove('map-dragging'); });
+      // Parallax de pines durante el drag: se calcula cuánto se movió en
+      // pantalla el punto donde estaba el centro al empezar el drag
+      // (proyectando ESE lnglat fijo contra la cámara actual en cada
+      // frame), y se aplica una fracción de ese desplazamiento —en
+      // sentido contrario— a los pines vía CSS custom properties. Con
+      // PARALLAX_LAG=0.15, los pines "solo avanzan" un 85% de lo que
+      // avanza el mapa, dando sensación de profundidad/capas.
+      const PARALLAX_LAG = 0.15;
+      let _dragStartCenter = null, _dragStartPx = null;
+      this.map.on('dragstart', () => {
+        document.body.classList.add('map-dragging');
+        _dragStartCenter = this.map.getCenter();
+        _dragStartPx     = this.map.project(_dragStartCenter);
+      });
+      this.map.on('drag', () => {
+        if (!_dragStartCenter) return;
+        const nowPx = this.map.project(_dragStartCenter);
+        const dx = nowPx.x - _dragStartPx.x;
+        const dy = nowPx.y - _dragStartPx.y;
+        document.documentElement.style.setProperty('--wp-parallax-x', (-dx * PARALLAX_LAG).toFixed(1) + 'px');
+        document.documentElement.style.setProperty('--wp-parallax-y', (-dy * PARALLAX_LAG).toFixed(1) + 'px');
+      });
+      this.map.on('dragend', () => {
+        document.body.classList.remove('map-dragging');
+        _dragStartCenter = null; _dragStartPx = null;
+        document.documentElement.style.setProperty('--wp-parallax-x', '0px');
+        document.documentElement.style.setProperty('--wp-parallax-y', '0px');
+      });
 
       // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
       const _featuredCheck = () => {
