@@ -55,11 +55,16 @@ export class SuperUserPanel {
     this._buildForm();
     this._buildListPanel();
     this._buildCategoriesPanel();
+    // Long-press sobre un sticker de cluster (en MapView) → abre este panel
+    this.mapView.onClusterCustomize = (group, existingCluster) => {
+      this._openClusterCustomizePanel(group, existingCluster);
+    };
   }
 
   unmount() {
-    ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal']
+    ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal','su-cluster-modal']
       .forEach(id => document.getElementById(id)?.remove());
+    this.mapView.onClusterCustomize = null;
   }
 
   // ── FAB: botón redondo ⚙️ para abrir panel ─────────────────
@@ -696,6 +701,196 @@ export class SuperUserPanel {
       this.callbacks.onLandmarksUpdated?.(items);
     } catch (err) {
       console.error('Error recargando landmarks:', err);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // CLUSTERS DE PINES (calles con negocios amontonados) — panel de
+  // personalización, abierto por MapView vía longpress sobre un sticker
+  // de cluster (this.mapView.onClusterCustomize, seteado en mount()).
+  // ══════════════════════════════════════════════════════════
+
+  _openClusterCustomizePanel(group, existingCluster) {
+    document.getElementById('su-cluster-modal')?.remove();
+
+    const isEdit = !!existingCluster;
+    const def = existingCluster || {
+      label: '', stickerEmoji: '', stickerImageUrl: '',
+      stackStyle: 'fan-drift', badgeColor: '#1a5cf5',
+      borderColor: '#ffffff', borderWidth: 2, pinSize: 'med',
+    };
+
+    // El grupo detectado por MapView (auto o ya-personalizado) es la lista
+    // de partida; el SuperUser puede destildar cualquiera antes de guardar.
+    const groupPlaces = group.map(({ el }) => el._place);
+
+    const modal = document.createElement('div');
+    modal.id = 'su-cluster-modal';
+    modal.className = 'su-modal-overlay';
+    modal.innerHTML = `
+      <div class="su-modal-box" style="max-width:380px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <span style="font-size:15px;font-weight:700;color:#e5e7eb;">${isEdit ? '✏️ Editar' : '✨ Personalizar'} cluster</span>
+          <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto;">
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Etiqueta (opcional — ej. "PLACE OF POWER")</div>
+            <input id="su-cluster-label" type="text" maxlength="40" value="${(def.label || '').replace(/"/g, '&quot;')}" placeholder="Sin etiqueta"
+              style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:13px;box-sizing:border-box;">
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Sticker (emoji sobre el cluster, opcional)</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input id="su-cluster-sticker" type="text" maxlength="4" value="${def.stickerEmoji || ''}" placeholder="🌮"
+                style="width:56px;padding:9px;text-align:center;font-size:18px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;">
+              <span style="font-size:11px;color:#6b7280;">o pegá un emoji cualquiera</span>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Diseño del stack</div>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="su-cl-style-btn" data-val="fan" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🎴 Abanico</button>
+              <button type="button" class="su-cl-style-btn" data-val="fan-center" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🦚 Centrado</button>
+              <button type="button" class="su-cl-style-btn" data-val="fan-drift" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🃏 Cascada</button>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Tamaño del pin</div>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="su-cl-size-btn" data-val="chico" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Chico</button>
+              <button type="button" class="su-cl-size-btn" data-val="med" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Mediano</button>
+              <button type="button" class="su-cl-size-btn" data-val="grande" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color de borde</div>
+            <div id="su-cluster-border-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color del badge "+N"</div>
+            <div id="su-cluster-badge-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
+            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
+          </div>
+
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          ${isEdit ? `<button type="button" id="su-cluster-delete" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;">Quitar personalización</button>` : ''}
+          <button type="button" id="su-cluster-save" style="flex:1;padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a5cf5,#1540cc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    // Estilo/diseño: toggles simples (mismo patrón que el resto del panel)
+    const paintToggleRow = (selector, activeVal) => {
+      modal.querySelectorAll(selector).forEach(b => {
+        const active = b.dataset.val === activeVal;
+        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
+      });
+    };
+    let curStyle = def.stackStyle || 'fan-drift';
+    let curSize  = def.pinSize || 'med';
+    paintToggleRow('.su-cl-style-btn', curStyle);
+    paintToggleRow('.su-cl-size-btn', curSize);
+    modal.querySelectorAll('.su-cl-style-btn').forEach(b => b.addEventListener('click', () => { curStyle = b.dataset.val; paintToggleRow('.su-cl-style-btn', curStyle); }));
+    modal.querySelectorAll('.su-cl-size-btn').forEach(b => b.addEventListener('click', () => { curSize = b.dataset.val; paintToggleRow('.su-cl-size-btn', curSize); }));
+
+    // Colores de borde y de badge — mismos presets que ya usa el resto del panel
+    let curBorderColor = def.borderColor || '#ffffff';
+    let curBadgeColor  = def.badgeColor  || '#1a5cf5';
+    const paintColorRow = (row, colors, curVal, onPick) => {
+      row.innerHTML = '';
+      colors.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.style.cssText = `width:26px;height:26px;border-radius:50%;background:${c};border:2px solid ${c === curVal ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;`;
+        b.addEventListener('click', () => { onPick(c); paintColorRow(row, colors, c, onPick); });
+        row.appendChild(b);
+      });
+    };
+    const BORDER_PRESET = ['#ffffff', '#111827', '#f59e0b', '#ef4444', '#1a5cf5', '#10b981'];
+    const BADGE_PRESET  = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
+    paintColorRow(modal.querySelector('#su-cluster-border-row'), BORDER_PRESET, curBorderColor, c => curBorderColor = c);
+    paintColorRow(modal.querySelector('#su-cluster-badge-row'), BADGE_PRESET, curBadgeColor, c => curBadgeColor = c);
+
+    // Lista de lugares — checkboxes, todos tildados por default
+    const included = new Set(groupPlaces.map(p => p.place_id || p.id));
+    const listEl = modal.querySelector('#su-cluster-places-list');
+    groupPlaces.forEach(p => {
+      const pid = p.place_id || p.id;
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;color:#d1d5db;cursor:pointer;';
+      row.innerHTML = `<input type="checkbox" checked style="accent-color:#1a5cf5;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || pid}</span>`;
+      row.querySelector('input').addEventListener('change', (e) => {
+        if (e.target.checked) included.add(pid); else included.delete(pid);
+      });
+      listEl.appendChild(row);
+    });
+
+    modal.querySelector('#su-cluster-close').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    modal.querySelector('#su-cluster-save').addEventListener('click', async () => {
+      const place_ids = Array.from(included);
+      if (place_ids.length < 1) { alert('Tildá al menos un lugar'); return; }
+      const btn = modal.querySelector('#su-cluster-save');
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        const res = await fetch('/api/supabase-cluster-save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: existingCluster?.id,
+            label: modal.querySelector('#su-cluster-label').value.trim(),
+            sticker_emoji: modal.querySelector('#su-cluster-sticker').value.trim(),
+            sticker_image_url: def.stickerImageUrl || null,
+            stack_style: curStyle,
+            badge_color: curBadgeColor,
+            border_color: curBorderColor,
+            border_width: def.borderWidth ?? 2,
+            pin_size: curSize,
+            place_ids,
+          }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        modal.remove();
+        await this.mapView.reloadPinClusters();
+      } catch (err) {
+        alert('Error guardando el cluster: ' + err.message);
+        btn.disabled = false; btn.textContent = 'Guardar';
+      }
+    });
+
+    if (isEdit) {
+      modal.querySelector('#su-cluster-delete').addEventListener('click', async () => {
+        if (!confirm('¿Quitar la personalización de este cluster? Los lugares vuelven al agrupamiento automático.')) return;
+        try {
+          await fetch('/api/supabase-cluster-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: existingCluster.id }),
+          });
+          modal.remove();
+          await this.mapView.reloadPinClusters();
+        } catch (err) {
+          alert('Error quitando el cluster: ' + err.message);
+        }
+      });
     }
   }
 
@@ -3027,6 +3222,24 @@ export class SuperUserPanel {
       .su-toggle-slider:before { content:""; position:absolute; width:15px; height:15px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
       .su-toggle-wrap input:checked + .su-toggle-slider { background:#00bcd4; }
       .su-toggle-wrap input:checked + .su-toggle-slider:before { transform:translateX(17px); }
+
+      /* ── Modal genérico (usado por el panel de clusters) ── */
+      .su-modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 99998;
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+      }
+      .su-modal-box {
+        width: 100%;
+        background: #14141c;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+      }
     `;
     document.head.appendChild(style);
   }
