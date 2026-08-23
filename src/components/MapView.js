@@ -203,6 +203,62 @@ function injectLandmarkStyles() {
       transform: scale(0.82) translate(var(--wp-parallax-x, 0px), var(--wp-parallax-y, 0px));
       transition: transform 0.05s linear;
     }
+
+    /* ── Carrusel expandido de cluster (pantalla completa) ──────────── */
+    .wp-ce-wrap {
+      position: fixed; inset: 0; z-index: 99999;
+      display: flex; flex-direction: column;
+      opacity: 0; transition: opacity 0.22s ease-out;
+    }
+    .wp-ce-wrap.wp-ce-in { opacity: 1; }
+    .wp-ce-bg {
+      position: absolute; inset: -20px; /* margen extra para que el scale/translate del parallax nunca deje ver el borde */
+      backdrop-filter: blur(26px) brightness(0.55) saturate(1.15);
+      -webkit-backdrop-filter: blur(26px) brightness(0.55) saturate(1.15);
+      background: rgba(10,10,14,0.28);
+      transition: transform 0.05s linear;
+      pointer-events: none;
+    }
+    .wp-ce-header {
+      position: relative; z-index: 2; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: calc(env(safe-area-inset-top, 0px) + 14px) 18px 12px;
+    }
+    .wp-ce-count { color: #fff; font-weight: 700; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+    .wp-ce-close {
+      width: 36px; height: 36px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.18); backdrop-filter: blur(10px);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .wp-ce-carousel {
+      position: relative; z-index: 2; flex: 1;
+      display: flex; align-items: center;
+      overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .wp-ce-carousel::-webkit-scrollbar { display: none; }
+    .wp-ce-card {
+      flex-shrink: 0; scroll-snap-align: center;
+      height: 320px; border-radius: 22px; overflow: hidden;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.35);
+      cursor: pointer; transition: transform 0.05s linear, opacity 0.05s linear;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wp-ce-card-photo {
+      position: relative; width: 100%; height: 100%;
+      background-size: cover; background-position: center;
+      display: flex; align-items: flex-end;
+    }
+    .wp-ce-card-fade {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.15) 45%, transparent 70%);
+    }
+    .wp-ce-card-text { position: relative; z-index: 1; padding: 16px; color: #fff; }
+    .wp-ce-card-rating { font-size: 12px; font-weight: 700; color: #fbbf24; margin-bottom: 3px; }
+    .wp-ce-card-name { font-size: 17px; font-weight: 800; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,0.35); }
   `;
   document.head.appendChild(s);
 }
@@ -222,6 +278,7 @@ export class MapView {
     this.map             = null;
     this.markers         = [];
     this.markerEls       = [];
+    this.clusterMarkers  = []; // pines "amontonados" agrupados en un solo sticker
     this.allPlaces       = [];
     this.activities      = [];
     this.landmarkMarkers = [];
@@ -333,6 +390,7 @@ export class MapView {
 
       // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
       const _featuredCheck = () => {
+        if (this._clusterExpandEl) return; // idem: no tocar nada mientras el carrusel mueve la cámara
         if (this.map.getZoom() >= 17) {
           this._checkFeaturedNearCenter();
         } else if (this._featuredHighlightEl) {
@@ -404,13 +462,17 @@ export class MapView {
       // En moveend solo actualizar visibilidad de pines (dot/full/hidden)
       this._lastLabelZoom = null;
       this.map.on('zoomend', () => {
+        if (this._clusterExpandEl) return; // el carrusel expandido mueve la cámara solo — no recalcular nada mientras está abierto
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
+        this._updateClusters();
         this._lastLabelZoom = this.map.getZoom();
       });
       this.map.on('moveend', () => {
+        if (this._clusterExpandEl) return;
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
+        this._updateClusters();
       });
 
       // Ghost-pan fix
@@ -701,6 +763,7 @@ export class MapView {
     this._labelTimers = [];
     this.markers.forEach(m => m?.remove());
     this.markers = []; this.markerEls = [];
+    this._clearClusters();
     // Reset visibility state
     document.querySelectorAll('.place-marker-el').forEach(e => { e._wpVisible = undefined; });
     this._closeMiniCard();
@@ -837,10 +900,12 @@ export class MapView {
     // Asignar zoom threshold fijo por pin (una vez) y aplicar
     this._assignZoomThresholds();
     this._updatePinsByZoom();
+    this._updateClusters();
     // Re-aplicar tras fitBounds (el zoom puede cambiar)
     this.map.once('moveend', () => {
       this._updatePinsByZoom();
       this._updateLabelsProgressive();
+      this._updateClusters();
     });
   }
 
@@ -995,6 +1060,228 @@ export class MapView {
         el.style.pointerEvents = 'none';
       }
     });
+  }
+
+  // ── Clusters de pines "amontonados" (calles con muchos negocios pegados) ──
+  // Fase 1: agrupa por cercanía EN PANTALLA (no en grados fijos — así el
+  // agrupamiento se adapta solo al zoom, sin números mágicos por nivel) los
+  // pines que ya están visibles según _updatePinsByZoom, y a partir de 3
+  // pines juntos los reemplaza por un solo "sticker" de fotos apiladas
+  // (mismo diseño 'fan-drift' que ya armamos para el stack del pin social),
+  // con un badge "+N" con el total del grupo. Por debajo de zoom 17.2 se
+  // desarma solo, dejando ver los pines individuales normalmente — a esa
+  // altura ya hay espacio de sobra entre ellos.
+  _clearClusters() {
+    this.clusterMarkers.forEach(m => m?.remove());
+    this.clusterMarkers = [];
+  }
+
+  _updateClusters() {
+    this._clearClusters();
+
+    // Restaurar SIEMPRE primero los pines que un agrupamiento anterior
+    // haya ocultado — si no, un pin que quedó escondido en una pasada
+    // podía no volver a mostrarse nunca si el siguiente cálculo ya no lo
+    // agrupaba (o si se hizo zoom-in de golpe por encima del umbral).
+    this.markerEls.forEach(el => {
+      if (el._clusterHiddenDisplay !== undefined) {
+        el.style.display = el._clusterHiddenDisplay;
+        el.style.pointerEvents = '';
+        delete el._clusterHiddenDisplay;
+      }
+    });
+
+    if (this.map.getZoom() >= 17.2) return; // ya hay espacio, no agrupar
+
+    const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar
+    const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster
+
+    const candidates = this.markerEls
+      .filter(el => el.style.display !== 'none' && el.style.visibility !== 'hidden' && el._place)
+      .map(el => {
+        const ll = el._marker.getLngLat();
+        return { el, ll, px: this.map.project(ll) };
+      });
+
+    const used = new Set();
+    const groups = [];
+    candidates.forEach(item => {
+      if (used.has(item.el)) return;
+      const group = [item];
+      used.add(item.el);
+      candidates.forEach(other => {
+        if (used.has(other.el)) return;
+        const dx = other.px.x - item.px.x, dy = other.px.y - item.px.y;
+        if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_PX) {
+          group.push(other);
+          used.add(other.el);
+        }
+      });
+      groups.push(group);
+    });
+
+    groups.filter(g => g.length >= MIN_GROUP).forEach(group => {
+      // Ocultar los pines individuales del grupo (sin tocar su display
+      // original guardado por _updatePinsByZoom, para poder restaurarlo
+      // tal cual apenas se desarme el cluster)
+      group.forEach(({ el }) => {
+        el._clusterHiddenDisplay = el.style.display;
+        el.style.display = 'none';
+        el.style.pointerEvents = 'none';
+      });
+
+      const centerLat = group.reduce((s, g) => s + g.ll.lat, 0) / group.length;
+      const centerLng = group.reduce((s, g) => s + g.ll.lng, 0) / group.length;
+      const photos = group
+        .map(({ el }) => proxyPhoto(el._place.photoUrl || el._place.photo_url || el._place.photosUrls?.[0] || null))
+        .filter(Boolean)
+        .slice(0, 3);
+
+      const stackHtml = photos.length
+        ? _buildPinPhotoStackHtml(photos, 34, 34, 'fan-drift')
+        : '';
+
+      const el = document.createElement('div');
+      el.className = 'place-cluster-el';
+      el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+      el.innerHTML = `
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;">
+          ${stackHtml}
+          <div style="position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#111827;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.28);z-index:10;">+${group.length}</div>
+        </div>`;
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.haptic('tap');
+        this._openClusterExpand(group);
+      });
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([centerLng, centerLat])
+        .addTo(this.map);
+
+      this.clusterMarkers.push(marker);
+    });
+  }
+
+  // ── Carrusel expandido del cluster (pantalla completa, mapa de fondo) ──
+  // Se abre a pantalla completa sobre el mapa real (blureado/oscurecido con
+  // backdrop-filter — no es una captura, es el mapa vivo, así que sigue
+  // reaccionando cuando lo paneamos). Un carrusel de tarjetas (scroll-snap
+  // nativo) con una por lugar del cluster; mientras se desliza, el mapa de
+  // fondo va paneando en vivo interpolando entre las coordenadas de la
+  // tarjeta anterior y la siguiente según el progreso exacto del scroll
+  // (no solo "salta" al soltar) — eso es lo que marca la ubicación real de
+  // cada lugar a medida que se recorre el stack. Tap en una tarjeta = abre
+  // la ficha completa de ese lugar (mismo _closeClusterExpand + onPlaceSelect
+  // que usa el resto de la app).
+  _openClusterExpand(group) {
+    if (this._clusterExpandEl) this._closeClusterExpand();
+
+    // Guardamos cámara original para restaurarla al cerrar sin dejar el
+    // mapa "pegado" en el lugar que se estaba mirando dentro del carrusel.
+    this._clusterExpandOrigCamera = { center: this.map.getCenter(), zoom: this.map.getZoom() };
+
+    const CARD_W = 240, CARD_GAP = 16;
+    const wrap = document.createElement('div');
+    wrap.className = 'wp-ce-wrap';
+    wrap.innerHTML = `
+      <div class="wp-ce-bg"></div>
+      <div class="wp-ce-header">
+        <div class="wp-ce-count">${group.length} lugares</div>
+        <button type="button" class="wp-ce-close" aria-label="Cerrar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="wp-ce-carousel" style="padding:0 calc(50% - ${CARD_W / 2}px);gap:${CARD_GAP}px;">
+        ${group.map(({ el: markerEl }) => {
+          const place = markerEl._place;
+          const photo = proxyPhoto(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
+          const rating = place.rating ? `★ ${Number(place.rating).toFixed(1)}` : '';
+          return `<div class="wp-ce-card" style="width:${CARD_W}px;">
+            <div class="wp-ce-card-photo" style="${photo ? `background-image:url('${photo}')` : 'background:linear-gradient(160deg,#e5e7eb,#d1d5db)'}">
+              <div class="wp-ce-card-fade"></div>
+              <div class="wp-ce-card-text">
+                ${rating ? `<div class="wp-ce-card-rating">${rating}</div>` : ''}
+                <div class="wp-ce-card-name">${place.name || ''}</div>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    document.body.appendChild(wrap);
+    this._clusterExpandEl = wrap;
+    document.body.style.overflow = 'hidden';
+
+    const carousel = wrap.querySelector('.wp-ce-carousel');
+    const bg       = wrap.querySelector('.wp-ce-bg');
+    const cards    = Array.from(wrap.querySelectorAll('.wp-ce-card'));
+    const step     = CARD_W + CARD_GAP;
+
+    const lerp = (a, b, t) => a + (b - a) * t;
+
+    let raf = null;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const idx  = carousel.scrollLeft / step;
+        const i0   = Math.max(0, Math.min(group.length - 1, Math.floor(idx)));
+        const i1   = Math.min(group.length - 1, i0 + 1);
+        const frac = Math.min(1, Math.max(0, idx - i0));
+
+        // Parallax real: el mapa de fondo interpola en vivo entre el punto
+        // del lugar i0 y el i1 según el progreso exacto del scroll — no
+        // espera a que la tarjeta "encaje" para saltar.
+        const a = group[i0].ll, b = group[i1].ll;
+        this.map.jumpTo({ center: [lerp(a.lng, b.lng, frac), lerp(a.lat, b.lat, frac)] });
+
+        // Además, un pequeño desfasce del fondo respecto al scroll (mismo
+        // lenguaje que el parallax del drag del mapa) para que no se
+        // sienta como un bloque rígido pegado 1:1 al carrusel.
+        bg.style.transform = `translateX(${(-carousel.scrollLeft * 0.04).toFixed(1)}px) scale(1.06)`;
+
+        // Escala/opacidad por cercanía al centro — la tarjeta activa
+        // resalta, las de al lado se achican levemente.
+        cards.forEach((card, i) => {
+          const dist = Math.abs(i - idx);
+          const scale = Math.max(0.86, 1 - dist * 0.14);
+          const op    = Math.max(0.55, 1 - dist * 0.35);
+          card.style.transform = `scale(${scale.toFixed(3)})`;
+          card.style.opacity   = op.toFixed(2);
+        });
+      });
+    };
+    carousel.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    cards.forEach((card, i) => {
+      card.addEventListener('click', () => {
+        const place = group[i].el._place;
+        this._closeClusterExpand(/* restoreCamera */ false);
+        if (this.onPlaceSelect) this.onPlaceSelect(place);
+      });
+    });
+
+    wrap.querySelector('.wp-ce-close').addEventListener('click', () => this._closeClusterExpand());
+
+    this._clusterExpandCleanup = () => carousel.removeEventListener('scroll', onScroll);
+
+    requestAnimationFrame(() => wrap.classList.add('wp-ce-in'));
+  }
+
+  _closeClusterExpand(restoreCamera = true) {
+    if (!this._clusterExpandEl) return;
+    if (this._clusterExpandCleanup) this._clusterExpandCleanup();
+    const wrap = this._clusterExpandEl;
+    this._clusterExpandEl = null;
+    document.body.style.overflow = '';
+    wrap.classList.remove('wp-ce-in');
+    setTimeout(() => wrap.remove(), 220);
+    if (restoreCamera && this._clusterExpandOrigCamera) {
+      this.map.easeTo({ center: this._clusterExpandOrigCamera.center, zoom: this._clusterExpandOrigCamera.zoom, duration: 350 });
+    }
+    this._clusterExpandOrigCamera = null;
   }
 
   // ── Labels dinámicos por zoom + posición izquierda/derecha ──────────
