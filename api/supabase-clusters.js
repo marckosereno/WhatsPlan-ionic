@@ -1,4 +1,4 @@
-// ===================================================================
+// ====================================================================
 // WHATSPLAN — /api/supabase-clusters.js
 // GET  /api/supabase-clusters                 → lista todos los clusters
 // POST /api/supabase-clusters  { action:'save',   ... }  → crea/actualiza
@@ -24,43 +24,30 @@ async function listClusters(res) {
   const rows = await response.json();
 
   const clusters = rows.map(r => ({
-    id:               r.id,
-    label:            r.label || '',
-    stickerEmoji:     r.sticker_emoji || '',
-    stickerImageUrl:  r.sticker_image_url || '',
-    stackStyle:       r.stack_style || 'fan-drift',
-    badgeColor:       r.badge_color || '#1a5cf5',
-    borderColor:      r.border_color || '#ffffff',
-    borderWidth:      r.border_width ?? 2,
-    pinSize:          r.pin_size || 'med',
-    placeIds:         r.place_ids || [],
+    id:          r.id,
+    stackStyle:  r.stack_style || 'fan-drift',
+    layers:      Array.isArray(r.layers) ? r.layers : [],
+    placeIds:    r.place_ids || [],
   }));
 
   return res.status(200).json({ success: true, clusters });
 }
 
 async function saveCluster(body, res) {
-  const {
-    id, label, sticker_emoji, sticker_image_url,
-    stack_style, badge_color, border_color, border_width,
-    pin_size, place_ids,
-  } = body;
+  const { id, stack_style, layers, place_ids } = body;
 
   if (!Array.isArray(place_ids) || place_ids.length < 1) {
     return res.status(400).json({ success: false, message: 'place_ids es requerido (mínimo 1 lugar)' });
   }
+  if (!Array.isArray(layers)) {
+    return res.status(400).json({ success: false, message: 'layers debe ser un array' });
+  }
 
   const record = {
-    label:             label || null,
-    sticker_emoji:     sticker_emoji || null,
-    sticker_image_url: sticker_image_url || null,
-    stack_style:       stack_style || 'fan-drift',
-    badge_color:       badge_color || '#1a5cf5',
-    border_color:      border_color || '#ffffff',
-    border_width:      border_width != null ? parseInt(border_width, 10) : 2,
-    pin_size:          pin_size || 'med',
+    stack_style: stack_style || 'fan-drift',
+    layers,
     place_ids,
-    updated_at:        new Date().toISOString(),
+    updated_at:  new Date().toISOString(),
   };
 
   const isUpdate = !!id;
