@@ -850,10 +850,11 @@ export class SuperUserPanel {
       const btn = modal.querySelector('#su-cluster-save');
       btn.disabled = true; btn.textContent = 'Guardando...';
       try {
-        const res = await fetch('/api/supabase-cluster-save', {
+        const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            action: 'save',
             id: existingCluster?.id,
             label: modal.querySelector('#su-cluster-label').value.trim(),
             sticker_emoji: modal.querySelector('#su-cluster-sticker').value.trim(),
@@ -880,10 +881,10 @@ export class SuperUserPanel {
       modal.querySelector('#su-cluster-delete').addEventListener('click', async () => {
         if (!confirm('¿Quitar la personalización de este cluster? Los lugares vuelven al agrupamiento automático.')) return;
         try {
-          await fetch('/api/supabase-cluster-delete', {
+          await fetch('/api/supabase-clusters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: existingCluster.id }),
+            body: JSON.stringify({ action: 'delete', id: existingCluster.id }),
           });
           modal.remove();
           await this.mapView.reloadPinClusters();
