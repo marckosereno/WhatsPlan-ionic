@@ -12,6 +12,83 @@ import {
   reorderCategories, reorderSubcategories,
   invalidateCache
 } from '/src/services/CategoryService.js';
+import { getClusterLayerPreset } from '/src/components/MapView.js';
+
+// Tipos de capa disponibles para el editor de clusters + metadata visual
+const CLUSTER_LAYER_TYPES = [
+  { type: 'label',       icon: '🏷️', label: 'Etiqueta' },
+  { type: 'avatars',     icon: '👥', label: 'Avatares' },
+  { type: 'place_stack', icon: '📸', label: 'Lugar (stack)' },
+  { type: 'event_stack', icon: '📅', label: 'Lugar con evento' },
+  { type: 'sticker',     icon: '✨', label: 'Sticker' },
+];
+
+// Campos propios de cada tipo de capa (además de los comunes de posición,
+// ver CLUSTER_LAYER_COMMON_FIELDS más abajo). `kind` determina qué input
+// se genera: text | color | range | select | checkbox | placeSelect.
+const CLUSTER_LAYER_FIELDS = {
+  label: [
+    { key: 'text', label: 'Texto', kind: 'text' },
+    { key: 'fontSize', label: 'Tamaño texto', kind: 'range', min: 8, max: 20, step: 1 },
+    { key: 'color', label: 'Color texto', kind: 'color' },
+    { key: 'bgColor', label: 'Color fondo', kind: 'color' },
+    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 20, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
+  ],
+  avatars: [
+    { key: 'size', label: 'Tamaño', kind: 'range', min: 12, max: 32, step: 1 },
+    { key: 'maxCount', label: 'Máx. avatares', kind: 'range', min: 1, max: 5, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 4, step: 0.5 },
+  ],
+  place_stack: [
+    { key: 'placeIndex', label: 'Lugar', kind: 'placeSelect' },
+    { key: 'size', label: 'Tamaño', kind: 'range', min: 20, max: 100, step: 1 },
+    { key: 'stackStyle', label: 'Diseño del stack', kind: 'select', options: [['fan', 'Abanico'], ['fan-center', 'Centrado'], ['fan-drift', 'Cascada']] },
+    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 40, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
+    { key: 'showBadge', label: 'Mostrar badge del total', kind: 'checkbox' },
+    { key: 'badgeColor', label: 'Color badge', kind: 'color' },
+  ],
+  event_stack: [
+    { key: 'size', label: 'Tamaño', kind: 'range', min: 20, max: 100, step: 1 },
+    { key: 'stackStyle', label: 'Diseño del stack', kind: 'select', options: [['fan', 'Abanico'], ['fan-center', 'Centrado'], ['fan-drift', 'Cascada']] },
+    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 40, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
+    { key: 'ribbonText', label: 'Texto del cintillo', kind: 'text' },
+    { key: 'ribbonColor', label: 'Color del cintillo', kind: 'color' },
+  ],
+  sticker: [
+    { key: 'emoji', label: 'Emoji', kind: 'text' },
+    { key: 'imageUrl', label: 'Imagen custom (URL)', kind: 'text' },
+    { key: 'size', label: 'Tamaño', kind: 'range', min: 16, max: 90, step: 1 },
+    { key: 'strokeColor', label: 'Color stroke', kind: 'color' },
+    { key: 'strokeWidth', label: 'Grosor stroke', kind: 'range', min: 0, max: 6, step: 0.5 },
+    { key: 'borderRadius', label: 'Border radius (solo imagen)', kind: 'range', min: 0, max: 40, step: 1 },
+  ],
+};
+
+// Comunes a TODAS las capas — dónde y cómo se ancla dentro del pin.
+const CLUSTER_LAYER_COMMON_FIELDS = [
+  { key: 'anchor', label: 'Posición', kind: 'select', options: [['center', 'Centro'], ['left', 'Izquierda'], ['right', 'Derecha'], ['top', 'Arriba'], ['bottom', 'Abajo'], ['top-left', 'Arriba-Izq'], ['top-right', 'Arriba-Der'], ['bottom-left', 'Abajo-Izq'], ['bottom-right', 'Abajo-Der']] },
+  { key: 'offsetX', label: 'Ajuste X', kind: 'range', min: -80, max: 80, step: 1 },
+  { key: 'offsetY', label: 'Ajuste Y', kind: 'range', min: -80, max: 80, step: 1 },
+  { key: 'rotation', label: 'Giro', kind: 'range', min: -45, max: 45, step: 1 },
+];
+
+function _newClusterLayer(type) {
+  const base = { type, anchor: 'center', offsetX: 0, offsetY: 0, rotation: 0, zIndex: 5 };
+  if (type === 'label') return { ...base, text: '', fontSize: 10, color: '#ffffff', bgColor: '#111111', borderRadius: 6, borderColor: '', borderWidth: 0 };
+  if (type === 'avatars') return { ...base, size: 18, maxCount: 3, borderColor: '#ffffff', borderWidth: 1.5 };
+  if (type === 'place_stack') return { ...base, placeIndex: 0, size: 50, stackStyle: 'fan-drift', borderRadius: 8, borderColor: '#ffffff', borderWidth: 1.5, showBadge: false, badgeColor: '#111827' };
+  if (type === 'event_stack') return { ...base, size: 32, stackStyle: 'fan-drift', borderRadius: 7, borderColor: '#ffffff', borderWidth: 1.5, ribbonText: '📅 EVENTO', ribbonColor: '#ef4444' };
+  if (type === 'sticker') return { ...base, emoji: '', imageUrl: '', size: 44, strokeColor: '#ffffff', strokeWidth: 2, borderRadius: 0 };
+  return base;
+}
+
 
 const STICKER_PRESETS = [
   { emoji: '⭐', label: 'Destacado' },
@@ -714,122 +791,85 @@ export class SuperUserPanel {
     document.getElementById('su-cluster-modal')?.remove();
 
     const isEdit = !!existingCluster;
-    const def = existingCluster || {
-      label: '', stickerEmoji: '', stickerImageUrl: '',
-      stackStyle: 'fan-drift', badgeColor: '#1a5cf5',
-      borderColor: '#ffffff', borderWidth: 2, pinSize: 'med',
-    };
+    // Deep clone — nunca mutar el objeto original hasta guardar.
+    let layers = isEdit && existingCluster.layers?.length
+      ? JSON.parse(JSON.stringify(existingCluster.layers))
+      : getClusterLayerPreset('fan-drift');
+    let curPresetStyle = existingCluster?.stackStyle || 'fan-drift';
 
-    // El grupo detectado por MapView (auto o ya-personalizado) es la lista
-    // de partida; el SuperUser puede destildar cualquiera antes de guardar.
     const groupPlaces = group.map(({ el }) => el._place);
+    const included = new Set(groupPlaces.map(p => p.place_id || p.id));
 
     const modal = document.createElement('div');
     modal.id = 'su-cluster-modal';
     modal.className = 'su-modal-overlay';
     modal.innerHTML = `
-      <div class="su-modal-box" style="max-width:380px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="su-modal-box" style="max-width:420px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <span style="font-size:15px;font-weight:700;color:#e5e7eb;">${isEdit ? '✏️ Editar' : '✨ Personalizar'} cluster</span>
           <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto;">
+        <div style="display:flex;flex-direction:column;gap:12px;max-height:72vh;overflow-y:auto;">
 
           <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Etiqueta (opcional — ej. "PLACE OF POWER")</div>
-            <input id="su-cluster-label" type="text" maxlength="40" value="${(def.label || '').replace(/"/g, '&quot;')}" placeholder="Sin etiqueta"
-              style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:13px;box-sizing:border-box;">
-          </div>
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Sticker (emoji sobre el cluster, opcional)</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input id="su-cluster-sticker" type="text" maxlength="4" value="${def.stickerEmoji || ''}" placeholder="🌮"
-                style="width:56px;padding:9px;text-align:center;font-size:18px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;">
-              <span style="font-size:11px;color:#6b7280;">o pegá un emoji cualquiera</span>
-            </div>
-          </div>
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Diseño del stack</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Diseño base (carga un set de capas precargado — se puede seguir editando después)</div>
             <div style="display:flex;gap:6px;">
-              <button type="button" class="su-cl-style-btn" data-val="fan" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🎴 Abanico</button>
-              <button type="button" class="su-cl-style-btn" data-val="fan-center" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🦚 Centrado</button>
-              <button type="button" class="su-cl-style-btn" data-val="fan-drift" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🃏 Cascada</button>
+              <button type="button" class="su-cl-preset-btn" data-val="fan" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🎴 Apilado</button>
+              <button type="button" class="su-cl-preset-btn" data-val="fan-center" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🦚 Centrado</button>
+              <button type="button" class="su-cl-preset-btn" data-val="fan-drift" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🃏 Abanico</button>
             </div>
           </div>
 
           <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Tamaño del pin</div>
-            <div style="display:flex;gap:6px;">
-              <button type="button" class="su-cl-size-btn" data-val="chico" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Chico</button>
-              <button type="button" class="su-cl-size-btn" data-val="med" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Mediano</button>
-              <button type="button" class="su-cl-size-btn" data-val="grande" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Grande</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+              <div style="font-size:10px;color:#6b7280;">Capas (${layers.length})</div>
+              <div style="display:flex;gap:4px;">
+                <select id="su-cluster-add-type" style="font-size:10px;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;">
+                  ${CLUSTER_LAYER_TYPES.map(t => `<option value="${t.type}">${t.icon} ${t.label}</option>`).join('')}
+                </select>
+                <button type="button" id="su-cluster-add-layer" style="font-size:10px;padding:3px 9px;border-radius:5px;border:none;background:#1a5cf5;color:#fff;font-weight:700;cursor:pointer;">+ Agregar</button>
+              </div>
             </div>
-          </div>
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color del stroke del sticker</div>
-            <div id="su-cluster-border-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
-          </div>
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color del badge "+N"</div>
-            <div id="su-cluster-badge-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+            <div id="su-cluster-layers-list" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
 
           <div>
             <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
-            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
+            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
           </div>
 
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:16px;">
+        <div style="display:flex;gap:8px;margin-top:14px;">
           ${isEdit ? `<button type="button" id="su-cluster-delete" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;">Quitar personalización</button>` : ''}
           <button type="button" id="su-cluster-save" style="flex:1;padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a5cf5,#1540cc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>
         </div>
       </div>`;
     document.body.appendChild(modal);
 
-    // Estilo/diseño: toggles simples (mismo patrón que el resto del panel)
-    const paintToggleRow = (selector, activeVal) => {
-      modal.querySelectorAll(selector).forEach(b => {
-        const active = b.dataset.val === activeVal;
+    // ── Preset picker ──────────────────────────────────────────
+    const paintPresetBtns = () => {
+      modal.querySelectorAll('.su-cl-preset-btn').forEach(b => {
+        const active = b.dataset.val === curPresetStyle;
         b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
         b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
         b.style.color       = active ? '#67e8f9'              : '#9ca3af';
       });
     };
-    let curStyle = def.stackStyle || 'fan-drift';
-    let curSize  = def.pinSize || 'med';
-    paintToggleRow('.su-cl-style-btn', curStyle);
-    paintToggleRow('.su-cl-size-btn', curSize);
-    modal.querySelectorAll('.su-cl-style-btn').forEach(b => b.addEventListener('click', () => { curStyle = b.dataset.val; paintToggleRow('.su-cl-style-btn', curStyle); }));
-    modal.querySelectorAll('.su-cl-size-btn').forEach(b => b.addEventListener('click', () => { curSize = b.dataset.val; paintToggleRow('.su-cl-size-btn', curSize); }));
-
-    // Colores de borde y de badge — mismos presets que ya usa el resto del panel
-    let curBorderColor = def.borderColor || '#ffffff';
-    let curBadgeColor  = def.badgeColor  || '#1a5cf5';
-    const paintColorRow = (row, colors, curVal, onPick) => {
-      row.innerHTML = '';
-      colors.forEach(c => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.style.cssText = `width:26px;height:26px;border-radius:50%;background:${c};border:2px solid ${c === curVal ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;`;
-        b.addEventListener('click', () => { onPick(c); paintColorRow(row, colors, c, onPick); });
-        row.appendChild(b);
+    paintPresetBtns();
+    modal.querySelectorAll('.su-cl-preset-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        if (!confirm('Esto reemplaza todas las capas actuales por el preset "' + b.textContent.trim() + '". ¿Seguir?')) return;
+        curPresetStyle = b.dataset.val;
+        layers = getClusterLayerPreset(curPresetStyle);
+        paintPresetBtns();
+        renderLayersList();
       });
-    };
-    const BORDER_PRESET = ['#ffffff', '#111827', '#f59e0b', '#ef4444', '#1a5cf5', '#10b981'];
-    const BADGE_PRESET  = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
-    paintColorRow(modal.querySelector('#su-cluster-border-row'), BORDER_PRESET, curBorderColor, c => curBorderColor = c);
-    paintColorRow(modal.querySelector('#su-cluster-badge-row'), BADGE_PRESET, curBadgeColor, c => curBadgeColor = c);
+    });
 
-    // Lista de lugares — checkboxes, todos tildados por default
-    const included = new Set(groupPlaces.map(p => p.place_id || p.id));
-    const listEl = modal.querySelector('#su-cluster-places-list');
+    // ── Lista de lugares (checkboxes) ──────────────────────────
+    const placesListEl = modal.querySelector('#su-cluster-places-list');
     groupPlaces.forEach(p => {
       const pid = p.place_id || p.id;
       const row = document.createElement('label');
@@ -838,7 +878,90 @@ export class SuperUserPanel {
       row.querySelector('input').addEventListener('change', (e) => {
         if (e.target.checked) included.add(pid); else included.delete(pid);
       });
-      listEl.appendChild(row);
+      placesListEl.appendChild(row);
+    });
+
+    // ── Generador de un input según el field schema ────────────
+    const buildFieldInput = (layer, field) => {
+      const val = layer[field.key];
+      const id = `su-cl-field-${field.key}-${Math.random().toString(36).slice(2, 7)}`;
+      let controlHtml = '';
+
+      if (field.kind === 'text') {
+        controlHtml = `<input id="${id}" type="text" value="${(val ?? '').toString().replace(/"/g, '&quot;')}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;">`;
+      } else if (field.kind === 'color') {
+        controlHtml = `<input id="${id}" type="color" value="${val || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;">`;
+      } else if (field.kind === 'range') {
+        controlHtml = `<div style="display:flex;align-items:center;gap:6px;">
+          <input id="${id}" type="range" min="${field.min}" max="${field.max}" step="${field.step || 1}" value="${val ?? field.min}" style="flex:1;accent-color:#1a5cf5;">
+          <span id="${id}-val" style="font-size:10px;color:#9ca3af;min-width:26px;text-align:right;">${val ?? field.min}</span>
+        </div>`;
+      } else if (field.kind === 'select') {
+        controlHtml = `<select id="${id}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:12px;">
+          ${field.options.map(([v, l]) => `<option value="${v}" ${v === val ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>`;
+      } else if (field.kind === 'checkbox') {
+        controlHtml = `<input id="${id}" type="checkbox" ${val ? 'checked' : ''} style="accent-color:#1a5cf5;width:16px;height:16px;">`;
+      } else if (field.kind === 'placeSelect') {
+        controlHtml = `<select id="${id}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:12px;">
+          ${groupPlaces.map((p, i) => `<option value="${i}" ${i === val ? 'selected' : ''}>${p.name || ('Lugar ' + (i + 1))}</option>`).join('')}
+        </select>`;
+      }
+
+      return { id, html: `<div><div style="font-size:9.5px;color:#6b7280;margin-bottom:3px;">${field.label}</div>${controlHtml}</div>` };
+    };
+
+    const wireFieldInput = (fieldMeta, field, layer) => {
+      const el = modal.querySelector('#' + fieldMeta.id);
+      if (!el) return;
+      const apply = () => {
+        if (field.kind === 'checkbox') layer[field.key] = el.checked;
+        else if (field.kind === 'range') {
+          layer[field.key] = parseFloat(el.value);
+          const span = modal.querySelector('#' + fieldMeta.id + '-val');
+          if (span) span.textContent = el.value;
+        } else if (field.kind === 'placeSelect') layer[field.key] = parseInt(el.value, 10);
+        else layer[field.key] = el.value;
+      };
+      el.addEventListener('input', apply);
+      el.addEventListener('change', apply);
+    };
+
+    // ── Renderiza la lista completa de capas ────────────────────
+    const listEl = modal.querySelector('#su-cluster-layers-list');
+    function renderLayersList() {
+      listEl.innerHTML = '';
+      layers.forEach((layer, idx) => {
+        const meta = CLUSTER_LAYER_TYPES.find(t => t.type === layer.type) || { icon: '❔', label: layer.type };
+        const fields = [...(CLUSTER_LAYER_FIELDS[layer.type] || []), ...CLUSTER_LAYER_COMMON_FIELDS];
+        const fieldMetas = fields.map(f => buildFieldInput(layer, f));
+
+        const details = document.createElement('details');
+        details.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;';
+        details.innerHTML = `
+          <summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#d1d5db;font-weight:600;">
+            <span>${meta.icon} ${meta.label}</span>
+            <button type="button" class="su-cl-remove-layer" data-idx="${idx}" style="background:rgba(239,68,68,0.15);border:none;color:#f87171;font-size:10px;padding:2px 7px;border-radius:5px;cursor:pointer;">Quitar</button>
+          </summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+            ${fieldMetas.map(f => f.html).join('')}
+          </div>`;
+        listEl.appendChild(details);
+
+        fieldMetas.forEach((fm, i) => wireFieldInput(fm, fields[i], layer));
+        details.querySelector('.su-cl-remove-layer').addEventListener('click', (e) => {
+          e.preventDefault();
+          layers.splice(idx, 1);
+          renderLayersList();
+        });
+      });
+    }
+    renderLayersList();
+
+    modal.querySelector('#su-cluster-add-layer').addEventListener('click', () => {
+      const type = modal.querySelector('#su-cluster-add-type').value;
+      layers.push(_newClusterLayer(type));
+      renderLayersList();
     });
 
     modal.querySelector('#su-cluster-close').addEventListener('click', () => modal.remove());
@@ -856,14 +979,8 @@ export class SuperUserPanel {
           body: JSON.stringify({
             action: 'save',
             id: existingCluster?.id,
-            label: modal.querySelector('#su-cluster-label').value.trim(),
-            sticker_emoji: modal.querySelector('#su-cluster-sticker').value.trim(),
-            sticker_image_url: def.stickerImageUrl || null,
-            stack_style: curStyle,
-            badge_color: curBadgeColor,
-            border_color: curBorderColor,
-            border_width: def.borderWidth ?? 2,
-            pin_size: curSize,
+            stack_style: curPresetStyle,
+            layers,
             place_ids,
           }),
         });
