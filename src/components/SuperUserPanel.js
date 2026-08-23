@@ -770,7 +770,7 @@ export class SuperUserPanel {
           </div>
 
           <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color de borde</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color del stroke del sticker</div>
             <div id="su-cluster-border-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
           </div>
 
