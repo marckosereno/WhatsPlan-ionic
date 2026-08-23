@@ -1162,45 +1162,100 @@ export class MapView {
     groups.filter(g => g.length >= MIN_GROUP).forEach(group => this._renderClusterMarker(group, null));
   }
 
-  // ── HTML del sticker de un cluster — comparte diseño entre el
-  // clustering automático (customDef=null → valores por default) y los
-  // clusters personalizados por el SuperUser (customDef con label,
-  // sticker, estilo de stack, tamaño, borde y color de badge propios). ──
+  // Stack de fotos de UN lugar puntual (no una foto por lugar del grupo,
+  // sino las fotos PROPIAS de ese lugar) — usado para armar cada una de
+  // las "tarjetas" que se componen dentro del sticker del cluster.
+  _buildOnePlaceStackHtml(place, boxSize, style) {
+    if (!place) return '';
+    const raw = place.photosUrls || place.photos_urls || [place.photoUrl || place.photo_url];
+    const photos = (raw || []).filter(Boolean).map(proxyPhoto).filter(Boolean).slice(0, 3);
+    if (!photos.length) return '';
+    const photoSize = Math.round(boxSize * 0.62);
+    return _buildPinPhotoStackHtml(photos, photoSize, photoSize, style);
+  }
+
+  // ── HTML del sticker de un cluster ──────────────────────────────
+  // Composición en capas tipo "Moments" (varias tarjetas-stack de
+  // distintos lugares del grupo, un sticker decorativo, avatares de
+  // actividad activa y la etiqueta) en vez de un solo ícono circular.
+  // No hay ningún borde/anillo alrededor de todo el conjunto — el "pin"
+  // en sí son los propios lugares-stack, no un contenedor genérico.
+  // customDef=null (clustering automático) → solo la tarjeta principal +
+  // badge, sin sticker/etiqueta/decoración (esas son curadas a mano).
   _buildClusterStickerHtml(group, customDef) {
-    const sizeMap  = { chico: 44, med: 56, grande: 68 };
-    const boxSize  = sizeMap[customDef?.pinSize] || 56;
-    const photoSize = Math.round(boxSize * 0.6);
-    const style     = customDef?.stackStyle || 'fan-drift';
+    const sizeMap = {
+      chico:  { main: 50, sec: 36, back: 28, sticker: 40 },
+      med:    { main: 62, sec: 44, back: 32, sticker: 50 },
+      grande: { main: 74, sec: 52, back: 38, sticker: 60 },
+    };
+    const S = sizeMap[customDef?.pinSize] || sizeMap.med;
+    const style      = customDef?.stackStyle || 'fan-drift';
     const badgeColor = customDef?.badgeColor || '#111827';
 
-    const photos = group
-      .map(({ el }) => proxyPhoto(el._place.photoUrl || el._place.photo_url || el._place.photosUrls?.[0] || null))
-      .filter(Boolean)
-      .slice(0, 3);
-    const stackHtml = photos.length ? _buildPinPhotoStackHtml(photos, photoSize, photoSize, style) : '';
+    const places = group.map(({ el }) => el._place);
+    const mainPlace      = places[0];
+    const secondaryPlace = places[1] || null;
+    const eventEntry     = group.find(({ el }) => el._place?.pinEventMode && el._place !== mainPlace);
+    const eventPlace     = eventEntry ? eventEntry.el._place : null;
+    let avatars = [];
+    for (const p of places) {
+      if (Array.isArray(p.activeAvatars) && p.activeAvatars.length) { avatars = p.activeAvatars.slice(0, 3); break; }
+    }
 
-    const borderHtml = customDef
-      ? `<div style="position:absolute;inset:-3px;border-radius:50%;border:${customDef.borderWidth ?? 2}px solid ${customDef.borderColor || '#fff'};box-shadow:0 3px 8px rgba(0,0,0,0.25);pointer-events:none;"></div>`
-      : '';
+    const parts = [];
 
-    const stickerHtml = customDef?.stickerImageUrl
-      ? `<img src="${customDef.stickerImageUrl}" style="position:absolute;top:-11px;left:-11px;width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.32));z-index:11;">`
-      : customDef?.stickerEmoji
-      ? `<div style="position:absolute;top:-13px;left:-11px;font-size:22px;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.32));z-index:11;">${customDef.stickerEmoji}</div>`
-      : '';
+    // 1) Más atrás, a la izquierda: un lugar-stack del grupo que tiene un
+    // evento/actividad activa (si hay alguno) — chico, con su cintillo.
+    if (eventPlace) {
+      const stack = this._buildOnePlaceStackHtml(eventPlace, S.back, style);
+      if (stack) parts.push(`
+        <div style="position:absolute;left:0;top:8px;width:${S.back}px;height:${S.back}px;z-index:1;filter:brightness(0.92);">
+          ${stack}
+          <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;font-size:6.5px;font-weight:800;letter-spacing:0.2px;padding:1.5px 4px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.3);">EVENTO</div>
+        </div>`);
+    }
 
-    const labelHtml = customDef?.label
-      ? `<div style="position:absolute;left:50%;bottom:calc(100% + 7px);transform:translateX(-50%);white-space:nowrap;background:#111;color:#fff;font-size:10px;font-weight:800;letter-spacing:0.3px;text-transform:uppercase;padding:4px 9px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:12;">${customDef.label}</div>`
-      : '';
+    // 2) Detrás del sticker/principal: otro lugar-stack del grupo, con
+    // otro tamaño y posición (a la derecha, más arriba).
+    if (secondaryPlace) {
+      const stack = this._buildOnePlaceStackHtml(secondaryPlace, S.sec, style);
+      if (stack) parts.push(`<div style="position:absolute;right:-2px;top:0;width:${S.sec}px;height:${S.sec}px;z-index:2;">${stack}</div>`);
+    }
 
-    return `
-      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:${boxSize}px;height:${boxSize}px;">
-        ${labelHtml}
-        ${borderHtml}
-        ${stackHtml}
-        ${stickerHtml}
-        <div style="position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:${badgeColor};color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.28);z-index:10;">+${group.length}</div>
-      </div>`;
+    // 3) Sticker decorativo (emoji o imagen personalizada) — con su propio
+    // stroke/contorno (reutiliza borderColor/borderWidth del cluster, ya
+    // no como anillo sino como el contorno del sticker en sí).
+    const strokeColor = customDef?.borderColor || '#ffffff';
+    const strokeWidth  = customDef?.borderWidth ?? 2;
+    let stickerHtml = '';
+    if (customDef?.stickerImageUrl) {
+      stickerHtml = `<img src="${customDef.stickerImageUrl}" style="width:${S.sticker}px;height:${S.sticker}px;object-fit:contain;filter:drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 3px 5px rgba(0,0,0,0.32));">`;
+    } else if (customDef?.stickerEmoji) {
+      stickerHtml = `<div style="font-size:${S.sticker}px;line-height:1;-webkit-text-stroke:${strokeWidth}px ${strokeColor};filter:drop-shadow(0 3px 5px rgba(0,0,0,0.32));">${customDef.stickerEmoji}</div>`;
+    }
+    if (stickerHtml) parts.push(`<div style="position:absolute;right:2px;top:-14px;z-index:3;">${stickerHtml}</div>`);
+
+    // 4) Principal: el lugar-stack más grande, al frente — con el badge
+    // del total pegado a su esquina (no a la del conjunto entero).
+    const mainStack = this._buildOnePlaceStackHtml(mainPlace, S.main, style);
+    parts.push(`
+      <div style="position:absolute;left:6px;bottom:0;width:${S.main}px;height:${S.main}px;z-index:4;">
+        ${mainStack}
+        <div style="position:absolute;top:-6px;right:-11px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:${badgeColor};color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.28);z-index:6;">+${group.length}</div>
+      </div>`);
+
+    // 5) Avatares de actividad activa — a la izquierda, superpuestos.
+    if (avatars.length) {
+      const avEls = avatars.map((a, i) => `<img src="${a}" style="position:absolute;left:${i * 11}px;top:0;width:18px;height:18px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);z-index:${7 + i};">`).join('');
+      parts.push(`<div style="position:absolute;left:-10px;bottom:8px;width:${avatars.length * 11 + 18}px;height:18px;z-index:7;">${avEls}</div>`);
+    }
+
+    // 6) Etiqueta — a la derecha del conjunto.
+    if (customDef?.label) {
+      parts.push(`<div style="position:absolute;left:calc(100% - 2px);bottom:${Math.round(S.main * 0.32)}px;white-space:nowrap;background:#111;color:#fff;font-size:9.5px;font-weight:800;letter-spacing:0.3px;text-transform:uppercase;padding:3.5px 8px;border-radius:5px;box-shadow:0 2px 5px rgba(0,0,0,0.3);z-index:8;">${customDef.label}</div>`);
+    }
+
+    return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:110px;">${parts.join('')}</div>`;
   }
 
   // Crea el marker del cluster (personalizado o automático) con doble gesto:
