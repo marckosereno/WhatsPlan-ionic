@@ -2312,15 +2312,10 @@ const CLUSTER_CARD_SLOTS = [
 ];
 export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
 
-const CLUSTER_STICKER_ANCHORS = {
-  'top-left':     { left: '4%',   top: '2%' },
-  'top-right':    { left: '92%',  top: '2%' },
-  'left':         { left: '2%',   top: '52%' },
-  'right':        { left: '94%',  top: '48%' },
-  'bottom-left':  { left: '10%',  top: '92%' },
-  'bottom-right': { left: '88%',  top: '88%' },
-};
-
+// data-card-idx / data-sticker-idx quedan siempre en el HTML (no solo en
+// el editor) — no hacen nada en el mapa real, pero le permiten al panel
+// de edición enganchar el drag directo sobre CADA elemento sin duplicar
+// esta función. Mismo criterio: una sola fuente de verdad para el dibujo.
 export function _buildClusterStickerHtml(group, customDef) {
   const BASE_W = 46, BASE_H = 60; // tamaño base portrait (16:21, igual ratio que el pin individual)
   const cardsOverride = customDef?.cards || [];
@@ -2347,34 +2342,52 @@ export function _buildClusterStickerHtml(group, customDef) {
       ? `background-image:url('${photo}');background-size:cover;background-position:center;`
       : `background:linear-gradient(160deg,#d1d5db,#9ca3af);`;
 
-    return `<div style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:9px;${bg}border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};"></div>`;
+    // pointer-events:auto explícito — el CONTENEDOR grande de todo el
+    // cluster va con pointer-events:none (ver el return final), así que
+    // sin este auto acá la tarjeta ni siquiera sería tappeable.
+    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:9px;${bg}border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;"></div>`;
   }).join('');
 
-  const stickersHtml = (customDef?.stickers || []).map(s => {
-    const a = CLUSTER_STICKER_ANCHORS[s.anchor] || CLUSTER_STICKER_ANCHORS['top-left'];
+  const stickersHtml = (customDef?.stickers || []).map((s, i) => {
     const size = s.size || 26;
-    const stroke = s.strokeColor || '#ffffff';
+    const strokeColor = s.strokeColor || '#ffffff';
+    const strokeWidth = s.strokeWidth ?? 2;
+    const dx = s.dx ?? 0, dy = s.dy ?? 0;
     const inner = s.imageUrl
-      ? `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 0 2px ${stroke}) drop-shadow(0 2px 4px rgba(0,0,0,0.3));">`
+      ? `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 2px 4px rgba(0,0,0,0.32));">`
       : s.emoji
-      ? `<div style="font-size:${size}px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${s.emoji}</div>`
+      ? `<div style="font-size:${size}px;line-height:1;-webkit-text-stroke:${strokeWidth}px ${strokeColor};filter:drop-shadow(0 2px 4px rgba(0,0,0,0.32));">${s.emoji}</div>`
       : '';
     if (!inner) return '';
-    return `<div style="position:absolute;left:${a.left};top:${a.top};transform:translate(-50%,-50%) rotate(${s.rotation || 0}deg);z-index:9;">${inner}</div>`;
+    return `<div data-sticker-idx="${i}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${s.rotation || 0}deg);z-index:20;pointer-events:auto;">${inner}</div>`;
   }).join('');
 
   const badgeColor = customDef?.badgeColor || '#111827';
-  const badgeHtml = `<div style="position:absolute;right:-6px;top:2px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:${badgeColor};color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:10;">+${group.length}</div>`;
+  const badgeHtml = `<div data-badge style="position:absolute;right:-6px;top:2px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:${badgeColor};color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:30;pointer-events:auto;">+${group.length}</div>`;
 
   let labelHtml = '';
-  if (customDef?.label?.text) {
-    const lines = customDef.label.text.split('\n').filter(Boolean).slice(0, 2);
-    labelHtml = `<div style="position:absolute;left:6px;bottom:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;z-index:11;">` +
-      lines.map(line => `<div style="background:#1e1b8f;color:#fff;font-size:10px;font-weight:800;letter-spacing:0.2px;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${line}</div>`).join('') +
+  const lbl = customDef?.label;
+  if (lbl?.text) {
+    const lines = lbl.text.split('\n').filter(Boolean).slice(0, 2);
+    const bgColor = lbl.bgColor || '#1e1b8f';
+    const textColor = lbl.textColor || '#ffffff';
+    const fontSize = lbl.fontSize || 10;
+    const padY = lbl.paddingY ?? 3, padX = lbl.paddingX ?? 8;
+    const radius = lbl.borderRadius ?? 4;
+    labelHtml = `<div data-label style="position:absolute;left:6px;bottom:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;z-index:25;pointer-events:auto;">` +
+      lines.map(line => `<div style="background:${bgColor};color:${textColor};font-size:${fontSize}px;font-weight:800;letter-spacing:0.2px;text-transform:uppercase;padding:${padY}px ${padX}px;border-radius:${radius}px;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${line}</div>`).join('') +
       `</div>`;
   }
 
-  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;">${cardsHtml}${stickersHtml}${badgeHtml}${labelHtml}</div>`;
+  // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
+  // hay tarjetas/stickers desplazados afuera) pero es puramente un marco
+  // de posicionamiento — sin este none, CUALQUIER toque dentro de esa
+  // caja entera (incluyendo el espacio vacío/transparente entre tarjetas)
+  // quedaba capturado por este elemento y burbujeaba como si se hubiera
+  // tocado el cluster. Cada pieza visible (tarjeta/sticker/badge/label)
+  // reactiva pointer-events:auto por separado arriba — así solo lo que
+  // realmente se VE es tappeable, nada más.
+  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;pointer-events:none;">${cardsHtml}${stickersHtml}${badgeHtml}${labelHtml}</div>`;
 }
 
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
