@@ -279,6 +279,9 @@ export class MapView {
     this.markers         = [];
     this.markerEls       = [];
     this.clusterMarkers  = []; // pines "amontonados" agrupados en un solo sticker
+    this.pinClusters     = null; // clusters personalizados (SuperUser) — null = aún no cargados
+    this.onClusterCustomize = null; // callback (group, existingClusterOrNull) — lo asigna SuperUserPanel al hacer long-press
+    this._cancelActiveClusterPress = null; // cancela un long-press de cluster pendiente si arranca un drag real del mapa
     this.allPlaces       = [];
     this.activities      = [];
     this.landmarkMarkers = [];
@@ -372,6 +375,16 @@ export class MapView {
         document.body.classList.add('map-dragging');
         _dragStartCenter = this.map.getCenter();
         _dragStartPx     = this.map.project(_dragStartCenter);
+        // Si el drag del mapa arrancó justo encima de un sticker de
+        // cluster, el pointermove local de ese elemento puede no llegar a
+        // dispararse (MapLibre se queda con el gesto táctil primero) — el
+        // timer de long-press quedaba corriendo igual y terminaba abriendo
+        // el panel de personalización a mitad de un simple pan del mapa.
+        // Esta es la señal confiable de "sí hay un drag real en curso".
+        if (this._cancelActiveClusterPress) {
+          this._cancelActiveClusterPress();
+          this._cancelActiveClusterPress = null;
+        }
       });
       this.map.on('drag', () => {
         if (!_dragStartCenter) return;
@@ -735,6 +748,25 @@ export class MapView {
     catch(e) { console.warn('⚠️ Landmarks:', e.message); }
   }
 
+  // Clusters de pines personalizados por el SuperUser (tarjetas/stickers/
+  // etiqueta fijos para un grupo curado de lugares — ver _updateClusters).
+  // Se cachea en this.pinClusters; reloadPinClusters() lo refresca después
+  // de guardar/borrar uno desde el panel.
+  async _loadPinClusters() {
+    try {
+      const res  = await fetch('/api/supabase-clusters');
+      const json = await res.json();
+      this.pinClusters = json.success ? (json.clusters || []) : [];
+    } catch (e) {
+      console.warn('⚠️ pin_clusters:', e.message);
+      this.pinClusters = this.pinClusters || [];
+    }
+  }
+  async reloadPinClusters() {
+    await this._loadPinClusters();
+    this._updateClusters();
+  }
+
   async loadCategory(menuKey) {
     this.currentCatId   = menuKey;
     this.currentCatData = this.CATEGORIES[menuKey] || CATEGORIES[menuKey] || CATEGORIES['RESTAURANTS'];
@@ -744,6 +776,7 @@ export class MapView {
       const [res] = await Promise.all([
         fetch(`/api/supabase-places?category=${menuKey}`),
         _ensureSubcatsLoaded(), // garantizar caché de íconos listo antes de renderizar pines
+        this.pinClusters ? Promise.resolve() : this._loadPinClusters(), // solo la 1ra vez
       ]);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
@@ -1093,8 +1126,8 @@ export class MapView {
 
     if (this.map.getZoom() >= 17.2) return; // ya hay espacio, no agrupar
 
-    const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar
-    const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster
+    const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar (auto)
+    const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster (auto)
 
     const candidates = this.markerEls
       .filter(el => el.style.display !== 'none' && el.style.visibility !== 'hidden' && el._place)
@@ -1103,65 +1136,100 @@ export class MapView {
         return { el, ll, px: this.map.project(ll) };
       });
 
-    const used = new Set();
+    const usedEls = new Set();
+
+    // 1) Clusters PERSONALIZADOS por el SuperUser — fijos por place_id,
+    // sin importar la distancia real entre ellos (curados a mano). Se
+    // renderizan sin importar cuántos lugares tengan — el MIN_GROUP de
+    // abajo solo aplica al clustering automático.
+    (this.pinClusters || []).forEach(customDef => {
+      const members = candidates.filter(c =>
+        !usedEls.has(c.el) && (customDef.placeIds || []).includes(c.el._place.place_id || c.el._place.id)
+      );
+      if (!members.length) return;
+      members.forEach(m => usedEls.add(m.el));
+      this._renderClusterMarker(members, customDef);
+    });
+
+    // 2) Clustering automático por cercanía en pantalla para el resto
+    const remaining = candidates.filter(c => !usedEls.has(c.el));
+    const usedAuto = new Set();
     const groups = [];
-    candidates.forEach(item => {
-      if (used.has(item.el)) return;
+    remaining.forEach(item => {
+      if (usedAuto.has(item.el)) return;
       const group = [item];
-      used.add(item.el);
-      candidates.forEach(other => {
-        if (used.has(other.el)) return;
+      usedAuto.add(item.el);
+      remaining.forEach(other => {
+        if (usedAuto.has(other.el)) return;
         const dx = other.px.x - item.px.x, dy = other.px.y - item.px.y;
         if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_PX) {
           group.push(other);
-          used.add(other.el);
+          usedAuto.add(other.el);
         }
       });
       groups.push(group);
     });
 
-    groups.filter(g => g.length >= MIN_GROUP).forEach(group => {
-      // Ocultar los pines individuales del grupo (sin tocar su display
-      // original guardado por _updatePinsByZoom, para poder restaurarlo
-      // tal cual apenas se desarme el cluster)
-      group.forEach(({ el }) => {
-        el._clusterHiddenDisplay = el.style.display;
-        el.style.display = 'none';
-        el.style.pointerEvents = 'none';
-      });
+    groups.filter(g => g.length >= MIN_GROUP).forEach(group => this._renderClusterMarker(group, null));
+  }
 
-      const centerLat = group.reduce((s, g) => s + g.ll.lat, 0) / group.length;
-      const centerLng = group.reduce((s, g) => s + g.ll.lng, 0) / group.length;
-      const photos = group
-        .map(({ el }) => proxyPhoto(el._place.photoUrl || el._place.photo_url || el._place.photosUrls?.[0] || null))
-        .filter(Boolean)
-        .slice(0, 3);
+  // Crea el marker del cluster (personalizado o automático) con doble
+  // gesto: tap normal → abre el carrusel expandido (_openClusterExpand);
+  // long-press (solo si SuperUserPanel dejó seteado this.onClusterCustomize)
+  // → abre el panel de personalización, pasando el grupo actual y la
+  // definición existente (o null si es la primera vez que se personaliza).
+  _renderClusterMarker(group, customDef) {
+    const centerLat = group.reduce((s, g) => s + g.ll.lat, 0) / group.length;
+    const centerLng = group.reduce((s, g) => s + g.ll.lng, 0) / group.length;
 
-      const stackHtml = photos.length
-        ? _buildPinPhotoStackHtml(photos, 34, 34, 'fan-drift')
-        : '';
-
-      const el = document.createElement('div');
-      el.className = 'place-cluster-el';
-      el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
-      el.innerHTML = `
-        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;">
-          ${stackHtml}
-          <div style="position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#111827;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.28);z-index:10;">+${group.length}</div>
-        </div>`;
-
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.haptic('tap');
-        this._openClusterExpand(group);
-      });
-
-      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([centerLng, centerLat])
-        .addTo(this.map);
-
-      this.clusterMarkers.push(marker);
+    group.forEach(({ el }) => {
+      el._clusterHiddenDisplay = el.style.display;
+      el.style.display = 'none';
+      el.style.pointerEvents = 'none';
     });
+
+    const el = document.createElement('div');
+    el.className = 'place-cluster-el';
+    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+    el.innerHTML = _buildClusterStickerHtml(group, customDef);
+
+    let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
+    el.addEventListener('pointerdown', (e) => {
+      longPressFired = false;
+      startX = e.clientX; startY = e.clientY;
+      pressTimer = setTimeout(() => {
+        longPressFired = true;
+        this._cancelActiveClusterPress = null;
+        if (this.onClusterCustomize) {
+          this.haptic('longpress');
+          this.onClusterCustomize(group, customDef || null);
+        }
+      }, 550);
+      this._cancelActiveClusterPress = clearPress; // ver map.on('dragstart') — cancela si arranca un drag real del mapa
+    });
+    const clearPress = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      if (this._cancelActiveClusterPress === clearPress) this._cancelActiveClusterPress = null;
+    };
+    el.addEventListener('pointermove', (e) => {
+      if (pressTimer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) clearPress();
+    });
+    el.addEventListener('pointerup', clearPress);
+    el.addEventListener('pointercancel', clearPress);
+    el.addEventListener('pointerleave', clearPress);
+
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (longPressFired) { longPressFired = false; return; } // el long-press ya actuó, no abrir el carrusel también
+      this.haptic('tap');
+      this._openClusterExpand(group);
+    });
+
+    const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([centerLng, centerLat])
+      .addTo(this.map);
+
+    this.clusterMarkers.push(marker);
   }
 
   // ── Carrusel expandido del cluster (pantalla completa, mapa de fondo) ──
@@ -2207,6 +2275,106 @@ function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
     const z = n - i; // principal (i=0) = mayor z-index
     return `<img src="${url}" style="position:absolute;top:50%;left:50%;width:${photoW}px;height:${photoH}px;object-fit:cover;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.25);transform:translate(calc(-50% - ${offX}px),calc(-50% - ${offY}px)) rotate(${rot}deg);z-index:${z};">`;
   }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// STICKER DE CLUSTER — composición de tarjetas dispersas, tipo el mapa
+// de "Moments" (una tarjeta por lugar, rotadas/tamaños distintos, más
+// stickers decorativos y una etiqueta) en vez de un ícono con anillo.
+//
+// Modelo de datos GUARDADO (pin_clusters, columnas nuevas):
+//   cards:    [{ placeId, shape:'portrait'|'square', rotation, scale,
+//                dx, dy }]  — override opcional por lugar; si un lugar
+//                             del grupo no tiene entrada acá, se usa el
+//                             slot automático (CLUSTER_CARD_SLOTS) según
+//                             su posición en el grupo.
+//   stickers: [{ emoji|imageUrl, anchor, size, rotation, strokeColor }]
+//   label:    { text, anchor } — texto puede traer "\n" para 2 líneas,
+//                                 cada una en su propia píldora (como el
+//                                 "CALLE / DE LOS AGACHADOS" de referencia)
+//   badgeColor
+//
+// Todo opcional — un cluster SIN personalizar (customDef=null, o recién
+// creado) ya se ve bien solo con los slots automáticos.
+// ════════════════════════════════════════════════════════════════════
+
+// Slots de posición/tamaño/rotación para hasta 6 tarjetas visibles,
+// pensados para que la última (índice 4, la más grande) quede "al
+// frente" — mismo espíritu disperso que la referencia de Moments.
+// dx/dy en px desde el centro del pin; scale multiplica el tamaño base.
+const CLUSTER_CARD_SLOTS = [
+  { dx: -30, dy: -4,  rot: -4, scale: 0.74, z: 1 },
+  { dx: 10,  dy: -22, rot: 3,  scale: 0.98, z: 2 },
+  { dx: -16, dy: 10,  rot: -7, scale: 0.86, z: 3 },
+  { dx: 30,  dy: 6,   rot: 6,  scale: 0.80, z: 4 },
+  { dx: -8,  dy: 28,  rot: -1, scale: 1.06, z: 6 }, // principal (recibe la etiqueta)
+  { dx: 34,  dy: 30,  rot: 7,  scale: 0.66, z: 5 },
+];
+export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
+
+const CLUSTER_STICKER_ANCHORS = {
+  'top-left':     { left: '4%',   top: '2%' },
+  'top-right':    { left: '92%',  top: '2%' },
+  'left':         { left: '2%',   top: '52%' },
+  'right':        { left: '94%',  top: '48%' },
+  'bottom-left':  { left: '10%',  top: '92%' },
+  'bottom-right': { left: '88%',  top: '88%' },
+};
+
+export function _buildClusterStickerHtml(group, customDef) {
+  const BASE_W = 46, BASE_H = 60; // tamaño base portrait (16:21, igual ratio que el pin individual)
+  const cardsOverride = customDef?.cards || [];
+  const shown = group.slice(0, CLUSTER_MAX_CARDS);
+
+  const cardsHtml = shown.map(({ el }, i) => {
+    const place = el._place;
+    const pid = place.place_id || place.id;
+    const override = cardsOverride.find(c => c.placeId === pid);
+    const slot = CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1];
+
+    const shape = override?.shape || 'portrait';
+    const scale = override?.scale ?? slot.scale;
+    const rot   = override?.rotation ?? slot.rot;
+    const dx    = override?.dx ?? slot.dx;
+    const dy    = override?.dy ?? slot.dy;
+    const z     = slot.z;
+
+    const h = BASE_H * scale;
+    const w = shape === 'square' ? h : BASE_W * scale;
+
+    const photo = proxyPhoto(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
+    const bg = photo
+      ? `background-image:url('${photo}');background-size:cover;background-position:center;`
+      : `background:linear-gradient(160deg,#d1d5db,#9ca3af);`;
+
+    return `<div style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:9px;${bg}border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};"></div>`;
+  }).join('');
+
+  const stickersHtml = (customDef?.stickers || []).map(s => {
+    const a = CLUSTER_STICKER_ANCHORS[s.anchor] || CLUSTER_STICKER_ANCHORS['top-left'];
+    const size = s.size || 26;
+    const stroke = s.strokeColor || '#ffffff';
+    const inner = s.imageUrl
+      ? `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 0 2px ${stroke}) drop-shadow(0 2px 4px rgba(0,0,0,0.3));">`
+      : s.emoji
+      ? `<div style="font-size:${size}px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${s.emoji}</div>`
+      : '';
+    if (!inner) return '';
+    return `<div style="position:absolute;left:${a.left};top:${a.top};transform:translate(-50%,-50%) rotate(${s.rotation || 0}deg);z-index:9;">${inner}</div>`;
+  }).join('');
+
+  const badgeColor = customDef?.badgeColor || '#111827';
+  const badgeHtml = `<div style="position:absolute;right:-6px;top:2px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:${badgeColor};color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:10;">+${group.length}</div>`;
+
+  let labelHtml = '';
+  if (customDef?.label?.text) {
+    const lines = customDef.label.text.split('\n').filter(Boolean).slice(0, 2);
+    labelHtml = `<div style="position:absolute;left:6px;bottom:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;z-index:11;">` +
+      lines.map(line => `<div style="background:#1e1b8f;color:#fff;font-size:10px;font-weight:800;letter-spacing:0.2px;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${line}</div>`).join('') +
+      `</div>`;
+  }
+
+  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;">${cardsHtml}${stickersHtml}${badgeHtml}${labelHtml}</div>`;
 }
 
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
