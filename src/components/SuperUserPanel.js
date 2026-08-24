@@ -12,6 +12,7 @@ import {
   reorderCategories, reorderSubcategories,
   invalidateCache
 } from '/src/services/CategoryService.js';
+import { _buildClusterStickerHtml, CLUSTER_MAX_CARDS } from '/src/components/MapView.js';
 
 const STICKER_PRESETS = [
   { emoji: '⭐', label: 'Destacado' },
@@ -55,11 +56,16 @@ export class SuperUserPanel {
     this._buildForm();
     this._buildListPanel();
     this._buildCategoriesPanel();
+    // Long-press sobre un sticker de cluster (en MapView) → abre este panel
+    this.mapView.onClusterCustomize = (group, existingCluster) => {
+      this._openClusterCustomizePanel(group, existingCluster);
+    };
   }
 
   unmount() {
-    ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal']
+    ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal','su-cluster-modal']
       .forEach(id => document.getElementById(id)?.remove());
+    this.mapView.onClusterCustomize = null;
   }
 
   // ── FAB: botón redondo ⚙️ para abrir panel ─────────────────
@@ -698,6 +704,269 @@ export class SuperUserPanel {
       console.error('Error recargando landmarks:', err);
     }
   }
+  // ══════════════════════════════════════════════════════════
+  // CLUSTERS DE PINES (calles con negocios amontonados) — panel abierto
+  // por MapView vía long-press sobre un sticker de cluster. A propósito
+  // NO usa drag en vivo sobre el mapa (eso venía dando problemas) —
+  // controles de campo (sliders/inputs) + una preview que se re-renderiza
+  // con la MISMA función que dibuja el pin real (_buildClusterStickerHtml
+  // importada de MapView.js), así el preview es fiel sin duplicar lógica.
+  // ══════════════════════════════════════════════════════════
+
+  _openClusterCustomizePanel(group, existingCluster) {
+    document.getElementById('su-cluster-modal')?.remove();
+
+    const isEdit = !!existingCluster;
+    const groupPlaces = group.map(({ el }) => el._place);
+    const included = new Set(groupPlaces.map(p => p.place_id || p.id));
+
+    // Estado editable (clon — nunca mutar existingCluster hasta guardar)
+    let cards = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
+    let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
+    let labelText = existingCluster?.label?.text || '';
+    let badgeColor = existingCluster?.badgeColor || '#111827';
+
+    const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
+
+    const modal = document.createElement('div');
+    modal.id = 'su-cluster-modal';
+    modal.className = 'su-modal-overlay';
+    modal.innerHTML = `
+      <div class="su-modal-box" style="max-width:400px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:15px;font-weight:700;color:#e5e7eb;">${isEdit ? '✏️ Editar' : '✨ Personalizar'} cluster</span>
+          <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
+        </div>
+
+        <div id="su-cluster-preview" style="position:relative;width:100%;height:170px;background:repeating-conic-gradient(#20202c 0% 25%, #17171f 0% 50%) 50% / 16px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);margin-bottom:12px;overflow:visible;"></div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;max-height:44vh;overflow-y:auto;">
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Etiqueta (opcional — Enter para 2da línea, ej. "CALLE" / "DE LOS AGACHADOS")</div>
+            <textarea id="su-cluster-label" rows="2" placeholder="Sin etiqueta" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;resize:none;font-family:inherit;">${labelText}</textarea>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color del badge "+N"</div>
+            <div id="su-cluster-badge-row" style="display:flex;gap:8px;"></div>
+          </div>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+              <div style="font-size:10px;color:#6b7280;">Tarjetas (una por lugar, hasta ${CLUSTER_MAX_CARDS})</div>
+            </div>
+            <div id="su-cluster-cards-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+              <div style="font-size:10px;color:#6b7280;">Stickers decorativos</div>
+              <button type="button" id="su-cluster-add-sticker" style="font-size:10px;padding:3px 9px;border-radius:5px;border:none;background:#1a5cf5;color:#fff;font-weight:700;cursor:pointer;">+ Agregar</button>
+            </div>
+            <div id="su-cluster-stickers-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
+            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:120px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
+          </div>
+
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          ${isEdit ? `<button type="button" id="su-cluster-delete" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Quitar personalización</button>` : ''}
+          <button type="button" id="su-cluster-save" style="flex:1;padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a5cf5,#1540cc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const previewEl = modal.querySelector('#su-cluster-preview');
+
+    const currentCustomDef = () => ({ cards, stickers, label: { text: labelText }, badgeColor });
+
+    const renderPreview = () => {
+      previewEl.innerHTML = _buildClusterStickerHtml(group, currentCustomDef())
+        .replace('width:150px;height:120px;', 'width:150px;height:120px;transform-origin:top left;transform:translate(-50%,-50%) scale(1.9);left:50%;top:50%;');
+    };
+
+    // ── Color del badge ──────────────────────────────────────
+    const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
+    const badgeRow = modal.querySelector('#su-cluster-badge-row');
+    const paintBadgeRow = () => {
+      badgeRow.innerHTML = '';
+      BADGE_PRESET.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.style.cssText = `width:26px;height:26px;border-radius:50%;background:${c};border:2px solid ${c === badgeColor ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;`;
+        b.addEventListener('click', () => { badgeColor = c; paintBadgeRow(); renderPreview(); });
+        badgeRow.appendChild(b);
+      });
+    };
+    paintBadgeRow();
+
+    // ── Tarjetas (una fila de controles por lugar mostrado) ───
+    const cardsListEl = modal.querySelector('#su-cluster-cards-list');
+    const getCardOverride = (pid) => {
+      let c = cards.find(c => c.placeId === pid);
+      if (!c) { c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0 }; cards.push(c); }
+      return c;
+    };
+    shownPlaces.forEach((place, i) => {
+      const pid = place.place_id || place.id;
+      const row = document.createElement('div');
+      row.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;';
+      row.innerHTML = `
+        <div style="font-size:11px;color:#d1d5db;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${i + 1}. ${place.name || pid}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div>
+            <div style="font-size:9px;color:#6b7280;">Forma</div>
+            <select class="su-cl-shape" style="width:100%;padding:5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:11px;">
+              <option value="portrait">Portrait</option>
+              <option value="square">Square</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:9px;color:#6b7280;">Tamaño</div>
+            <input class="su-cl-scale" type="range" min="0.4" max="1.4" step="0.02" style="width:100%;accent-color:#1a5cf5;">
+          </div>
+          <div>
+            <div style="font-size:9px;color:#6b7280;">Giro</div>
+            <input class="su-cl-rot" type="range" min="-30" max="30" step="1" style="width:100%;accent-color:#1a5cf5;">
+          </div>
+          <div>
+            <div style="font-size:9px;color:#6b7280;">Posición X / Y</div>
+            <div style="display:flex;gap:4px;">
+              <input class="su-cl-dx" type="range" min="-50" max="50" step="1" style="width:50%;accent-color:#1a5cf5;">
+              <input class="su-cl-dy" type="range" min="-50" max="50" step="1" style="width:50%;accent-color:#1a5cf5;">
+            </div>
+          </div>
+        </div>`;
+      cardsListEl.appendChild(row);
+
+      const ov = getCardOverride(pid);
+      const shapeEl = row.querySelector('.su-cl-shape');
+      const scaleEl = row.querySelector('.su-cl-scale');
+      const rotEl   = row.querySelector('.su-cl-rot');
+      const dxEl    = row.querySelector('.su-cl-dx');
+      const dyEl    = row.querySelector('.su-cl-dy');
+      shapeEl.value = ov.shape; scaleEl.value = ov.scale; rotEl.value = ov.rotation; dxEl.value = ov.dx; dyEl.value = ov.dy;
+
+      const apply = () => {
+        ov.shape = shapeEl.value;
+        ov.scale = parseFloat(scaleEl.value);
+        ov.rotation = parseFloat(rotEl.value);
+        ov.dx = parseFloat(dxEl.value);
+        ov.dy = parseFloat(dyEl.value);
+        renderPreview();
+      };
+      [shapeEl, scaleEl, rotEl, dxEl, dyEl].forEach(el => { el.addEventListener('input', apply); el.addEventListener('change', apply); });
+    });
+
+    // ── Stickers ───────────────────────────────────────────────
+    const stickersListEl = modal.querySelector('#su-cluster-stickers-list');
+    const ANCHOR_OPTS = [['top-left','Arriba-Izq'],['top-right','Arriba-Der'],['left','Izquierda'],['right','Derecha'],['bottom-left','Abajo-Izq'],['bottom-right','Abajo-Der']];
+    const renderStickers = () => {
+      stickersListEl.innerHTML = '';
+      stickers.forEach((s, idx) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;';
+        row.innerHTML = `
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="su-cl-st-emoji" type="text" maxlength="4" placeholder="🌮" value="${s.emoji || ''}" style="width:52px;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;">
+            <select class="su-cl-st-anchor" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:11px;">
+              ${ANCHOR_OPTS.map(([v,l]) => `<option value="${v}" ${v===s.anchor?'selected':''}>${l}</option>`).join('')}
+            </select>
+            <button type="button" class="su-cl-st-remove" style="background:rgba(239,68,68,0.15);border:none;color:#f87171;font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer;">×</button>
+          </div>
+          <div>
+            <div style="font-size:9px;color:#6b7280;">Tamaño</div>
+            <input class="su-cl-st-size" type="range" min="14" max="46" step="1" value="${s.size || 26}" style="width:100%;accent-color:#1a5cf5;">
+          </div>`;
+        stickersListEl.appendChild(row);
+
+        const emojiEl = row.querySelector('.su-cl-st-emoji');
+        const anchorEl = row.querySelector('.su-cl-st-anchor');
+        const sizeEl = row.querySelector('.su-cl-st-size');
+        const apply = () => { s.emoji = emojiEl.value; s.anchor = anchorEl.value; s.size = parseInt(sizeEl.value, 10); renderPreview(); };
+        [emojiEl, anchorEl, sizeEl].forEach(el => { el.addEventListener('input', apply); el.addEventListener('change', apply); });
+        row.querySelector('.su-cl-st-remove').addEventListener('click', () => { stickers.splice(idx, 1); renderStickers(); renderPreview(); });
+      });
+    };
+    renderStickers();
+    modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
+      stickers.push({ emoji: '✨', anchor: 'top-left', size: 26, rotation: 0 });
+      renderStickers();
+      renderPreview();
+    });
+
+    // ── Etiqueta ─────────────────────────────────────────────
+    modal.querySelector('#su-cluster-label').addEventListener('input', (e) => { labelText = e.target.value; renderPreview(); });
+
+    // ── Lista de lugares (checkboxes) ──────────────────────────
+    const placesListEl = modal.querySelector('#su-cluster-places-list');
+    groupPlaces.forEach(p => {
+      const pid = p.place_id || p.id;
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;color:#d1d5db;cursor:pointer;';
+      row.innerHTML = `<input type="checkbox" checked style="accent-color:#1a5cf5;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || pid}</span>`;
+      row.querySelector('input').addEventListener('change', (e) => {
+        if (e.target.checked) included.add(pid); else included.delete(pid);
+      });
+      placesListEl.appendChild(row);
+    });
+
+    modal.querySelector('#su-cluster-close').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    modal.querySelector('#su-cluster-save').addEventListener('click', async () => {
+      const place_ids = Array.from(included);
+      if (place_ids.length < 1) { alert('Tildá al menos un lugar'); return; }
+      const btn = modal.querySelector('#su-cluster-save');
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        const res = await fetch('/api/supabase-clusters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: existingCluster?.id,
+            place_ids,
+            cards,
+            stickers,
+            label_text: labelText || null,
+            badge_color: badgeColor,
+          }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        modal.remove();
+        await this.mapView.reloadPinClusters();
+      } catch (err) {
+        alert('Error guardando el cluster: ' + err.message);
+        btn.disabled = false; btn.textContent = 'Guardar';
+      }
+    });
+
+    if (isEdit) {
+      modal.querySelector('#su-cluster-delete').addEventListener('click', async () => {
+        if (!confirm('¿Quitar la personalización de este cluster? Los lugares vuelven al agrupamiento automático.')) return;
+        try {
+          await fetch('/api/supabase-clusters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', id: existingCluster.id }),
+          });
+          modal.remove();
+          await this.mapView.reloadPinClusters();
+        } catch (err) {
+          alert('Error quitando el cluster: ' + err.message);
+        }
+      });
+    }
+
+    renderPreview();
+  }
+
 
   // ══════════════════════════════════════════════════════════
   // CATEGORÍAS
@@ -3027,6 +3296,17 @@ export class SuperUserPanel {
       .su-toggle-slider:before { content:""; position:absolute; width:15px; height:15px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
       .su-toggle-wrap input:checked + .su-toggle-slider { background:#00bcd4; }
       .su-toggle-wrap input:checked + .su-toggle-slider:before { transform:translateX(17px); }
+
+      /* ── Modal genérico (usado por el panel de clusters) ── */
+      .su-modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99998;
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+      }
+      .su-modal-box {
+        width: 100%; background: #14141c; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        font-family: 'Uni Sans Bold Regular', sans-serif;
+      }
     `;
     document.head.appendChild(style);
   }
