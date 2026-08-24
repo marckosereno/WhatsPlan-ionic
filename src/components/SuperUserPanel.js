@@ -723,10 +723,14 @@ export class SuperUserPanel {
     // Estado editable (clon — nunca mutar existingCluster hasta guardar)
     let cards = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
     let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
-    let labelText = existingCluster?.label?.text || '';
+    let label = isEdit && existingCluster.label
+      ? { text: '', bgColor: '#1e1b8f', textColor: '#ffffff', fontSize: 10, paddingX: 8, paddingY: 3, borderRadius: 4, ...existingCluster.label }
+      : { text: '', bgColor: '#1e1b8f', textColor: '#ffffff', fontSize: 10, paddingX: 8, paddingY: 3, borderRadius: 4 };
     let badgeColor = existingCluster?.badgeColor || '#111827';
 
     const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
+    // sel = qué está seleccionado ahora mismo en el preview: {kind:'card'|'sticker', idx} | null
+    let sel = null;
 
     const modal = document.createElement('div');
     modal.id = 'su-cluster-modal';
@@ -738,13 +742,30 @@ export class SuperUserPanel {
           <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
 
-        <div id="su-cluster-preview" style="position:relative;width:100%;height:170px;background:repeating-conic-gradient(#20202c 0% 25%, #17171f 0% 50%) 50% / 16px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);margin-bottom:12px;overflow:visible;"></div>
+        <div style="font-size:9.5px;color:#6b7280;margin-bottom:6px;">Vista a tamaño real · tocá una tarjeta o sticker para seleccionarlo, arrastrá para moverlo</div>
+        <div id="su-cluster-preview" style="position:relative;width:100%;height:260px;background:repeating-conic-gradient(#20202c 0% 25%, #17171f 0% 50%) 50% / 16px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);margin-bottom:10px;overflow:hidden;touch-action:none;"></div>
 
-        <div style="display:flex;flex-direction:column;gap:12px;max-height:44vh;overflow-y:auto;">
+        <div id="su-cluster-sel-props" style="display:none;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.25);border-radius:10px;padding:10px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span id="su-cluster-sel-title" style="font-size:11px;font-weight:700;color:#67e8f9;"></span>
+            <button type="button" id="su-cluster-sel-deselect" style="background:none;border:none;color:#9ca3af;font-size:11px;cursor:pointer;">Listo</button>
+          </div>
+          <div id="su-cluster-sel-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;max-height:34vh;overflow-y:auto;">
 
           <div>
             <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Etiqueta (opcional — Enter para 2da línea, ej. "CALLE" / "DE LOS AGACHADOS")</div>
-            <textarea id="su-cluster-label" rows="2" placeholder="Sin etiqueta" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;resize:none;font-family:inherit;">${labelText}</textarea>
+            <textarea id="su-cluster-label-text" rows="2" placeholder="Sin etiqueta" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;resize:none;font-family:inherit;margin-bottom:8px;">${label.text}</textarea>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div><div style="font-size:9px;color:#6b7280;">Color de fondo</div><input id="su-cluster-label-bg" type="color" value="${label.bgColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
+              <div><div style="font-size:9px;color:#6b7280;">Color de texto</div><input id="su-cluster-label-color" type="color" value="${label.textColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
+              <div><div style="font-size:9px;color:#6b7280;">Tamaño texto</div><input id="su-cluster-label-fontsize" type="range" min="7" max="18" step="1" value="${label.fontSize}" style="width:100%;accent-color:#1a5cf5;"></div>
+              <div><div style="font-size:9px;color:#6b7280;">Border radius</div><input id="su-cluster-label-radius" type="range" min="0" max="16" step="1" value="${label.borderRadius}" style="width:100%;accent-color:#1a5cf5;"></div>
+              <div><div style="font-size:9px;color:#6b7280;">Padding horizontal</div><input id="su-cluster-label-padx" type="range" min="2" max="20" step="1" value="${label.paddingX}" style="width:100%;accent-color:#1a5cf5;"></div>
+              <div><div style="font-size:9px;color:#6b7280;">Padding vertical</div><input id="su-cluster-label-pady" type="range" min="1" max="12" step="1" value="${label.paddingY}" style="width:100%;accent-color:#1a5cf5;"></div>
+            </div>
           </div>
 
           <div>
@@ -754,9 +775,9 @@ export class SuperUserPanel {
 
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              <div style="font-size:10px;color:#6b7280;">Tarjetas (una por lugar, hasta ${CLUSTER_MAX_CARDS})</div>
+              <div style="font-size:10px;color:#6b7280;">Tarjetas (${shownPlaces.length} de ${groupPlaces.length} lugares)</div>
             </div>
-            <div id="su-cluster-cards-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div id="su-cluster-cards-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
           </div>
 
           <div>
@@ -764,12 +785,12 @@ export class SuperUserPanel {
               <div style="font-size:10px;color:#6b7280;">Stickers decorativos</div>
               <button type="button" id="su-cluster-add-sticker" style="font-size:10px;padding:3px 9px;border-radius:5px;border:none;background:#1a5cf5;color:#fff;font-weight:700;cursor:pointer;">+ Agregar</button>
             </div>
-            <div id="su-cluster-stickers-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div id="su-cluster-stickers-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
           </div>
 
           <div>
             <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
-            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:120px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
+            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
           </div>
 
         </div>
@@ -783,12 +804,168 @@ export class SuperUserPanel {
 
     const previewEl = modal.querySelector('#su-cluster-preview');
 
-    const currentCustomDef = () => ({ cards, stickers, label: { text: labelText }, badgeColor });
+    // ── Preview REAL (scale=1) + interactivo ────────────────────
+    // Usa _buildClusterStickerHtml (la MISMA función del mapa real) para
+    // el contenido — acá solo agregamos el drag encima de los elementos
+    // que ya trae etiquetados (data-card-idx / data-sticker-idx). El
+    // contenedor grande sigue con pointer-events:none (heredado del HTML
+    // que devuelve la función) y cada pieza visible con pointer-events:
+    // auto — mismo mecanismo que evita el toque fantasma en el mapa real.
+    const currentCustomDef = () => ({ cards, stickers, label: label.text ? label : null, badgeColor });
 
-    const renderPreview = () => {
-      previewEl.innerHTML = _buildClusterStickerHtml(group, currentCustomDef())
-        .replace('width:150px;height:120px;', 'width:150px;height:120px;transform-origin:top left;transform:translate(-50%,-50%) scale(1.9);left:50%;top:50%;');
+    function renderPreview() {
+      previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, currentCustomDef())}</div>`;
+      const wrap = previewEl.firstElementChild.firstElementChild; // el div 150x120 que devuelve la función
+      // Centrar ese div (pensado para posicionarse sobre un pivote de
+      // mapa) dentro de la caja de preview, dejando aire para lo que se
+      // salga del recuadro base de 150x120 (tarjetas/stickers movidos).
+      wrap.style.left = '50%'; wrap.style.top = '50%';
+
+      wrap.querySelectorAll('[data-card-idx]').forEach(node => {
+        const idx = parseInt(node.dataset.cardIdx, 10);
+        wireDrag(node, 'card', idx, shownPlaces[idx]);
+        if (sel && sel.kind === 'card' && sel.idx === idx) node.style.outline = '2px dashed #67e8f9';
+      });
+      wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
+        const idx = parseInt(node.dataset.stickerIdx, 10);
+        wireDrag(node, 'sticker', idx, stickers[idx]);
+        if (sel && sel.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
+      });
+    }
+
+    const getCardOverride = (pid) => {
+      let c = cards.find(c => c.placeId === pid);
+      if (!c) { c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0 }; cards.push(c); }
+      return c;
     };
+
+    function wireDrag(node, kind, idx, dataObj) {
+      let dragging = false, sx = 0, sy = 0, startDx = 0, startDy = 0, moved = false;
+      node.style.cursor = 'grab';
+      node.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        select(kind, idx);
+        dragging = true; moved = false;
+        node.setPointerCapture(e.pointerId);
+        sx = e.clientX; sy = e.clientY;
+        const obj = kind === 'card' ? getCardOverride(dataObj.el._place.place_id || dataObj.el._place.id) : dataObj;
+        startDx = obj.dx || 0; startDy = obj.dy || 0;
+      });
+      node.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - sx, dy = e.clientY - sy; // scale=1: px de pantalla = unidades reales
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
+        const obj = kind === 'card' ? getCardOverride(dataObj.el._place.place_id || dataObj.el._place.id) : dataObj;
+        obj.dx = Math.round(startDx + dx);
+        obj.dy = Math.round(startDy + dy);
+        // Reposición liviana en vivo (sin regenerar contenido — evita
+        // destruir el nodo que el usuario tiene agarrado a mitad del
+        // gesto, que fue justo lo que rompía el editor anterior).
+        node.style.transform = `translate(calc(-50% + ${obj.dx}px),calc(-50% + ${obj.dy}px)) rotate(${obj.rotation || 0}deg)`;
+      });
+      const endDrag = (e) => {
+        if (!dragging) return;
+        dragging = false;
+        try { node.releasePointerCapture(e.pointerId); } catch (_) {}
+        if (moved) { renderPreview(); renderSelProps(); }
+      };
+      node.addEventListener('pointerup', endDrag);
+      node.addEventListener('pointercancel', endDrag);
+    }
+
+    function select(kind, idx) {
+      sel = { kind, idx };
+      renderPreview();
+      renderSelProps();
+    }
+
+    // ── Panel de propiedades de lo seleccionado ─────────────────
+    const selWrap = modal.querySelector('#su-cluster-sel-props');
+    const selTitle = modal.querySelector('#su-cluster-sel-title');
+    const selFields = modal.querySelector('#su-cluster-sel-fields');
+    function renderSelProps() {
+      if (!sel) { selWrap.style.display = 'none'; return; }
+      selWrap.style.display = 'block';
+
+      if (sel.kind === 'card') {
+        const place = shownPlaces[sel.idx];
+        const pid = place.place_id || place.id;
+        const ov = getCardOverride(pid);
+        selTitle.textContent = `📸 ${place.name || pid}`;
+        selFields.innerHTML = `
+          <div><div style="font-size:9px;color:#6b7280;">Forma</div>
+            <select id="scf-shape" style="width:100%;padding:5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:11px;">
+              <option value="portrait" ${ov.shape==='portrait'?'selected':''}>Portrait</option>
+              <option value="square" ${ov.shape==='square'?'selected':''}>Square</option>
+            </select></div>
+          <div><div style="font-size:9px;color:#6b7280;">Tamaño</div><input id="scf-scale" type="range" min="0.4" max="1.5" step="0.02" value="${ov.scale}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Giro</div><input id="scf-rot" type="range" min="-40" max="40" step="1" value="${ov.rotation}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-reset" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">↺ Posición automática</button></div>`;
+        modal.querySelector('#scf-shape').addEventListener('change', (e) => { ov.shape = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-scale').addEventListener('input', (e) => { ov.scale = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-rot').addEventListener('input', (e) => { ov.rotation = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-reset').addEventListener('click', () => {
+          const i = cards.findIndex(c => c.placeId === pid);
+          if (i >= 0) cards.splice(i, 1);
+          renderPreview(); renderSelProps(); renderCardChips();
+        });
+      } else {
+        const s = stickers[sel.idx];
+        if (!s) { sel = null; selWrap.style.display = 'none'; return; }
+        selTitle.textContent = '✨ Sticker';
+        selFields.innerHTML = `
+          <div><div style="font-size:9px;color:#6b7280;">Emoji</div><input id="scf-emoji" type="text" maxlength="4" value="${s.emoji || ''}" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Tamaño</div><input id="scf-size" type="range" min="14" max="54" step="1" value="${s.size || 26}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Giro</div><input id="scf-srot" type="range" min="-45" max="45" step="1" value="${s.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Color de stroke</div><input id="scf-stroke" type="color" value="${s.strokeColor || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Grosor de stroke</div><input id="scf-strokew" type="range" min="0" max="6" step="0.5" value="${s.strokeWidth ?? 2}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
+        modal.querySelector('#scf-emoji').addEventListener('input', (e) => { s.emoji = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-size').addEventListener('input', (e) => { s.size = parseInt(e.target.value, 10); renderPreview(); });
+        modal.querySelector('#scf-srot').addEventListener('input', (e) => { s.rotation = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-stroke').addEventListener('input', (e) => { s.strokeColor = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-strokew').addEventListener('input', (e) => { s.strokeWidth = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-remove').addEventListener('click', () => {
+          stickers.splice(sel.idx, 1);
+          sel = null;
+          renderPreview(); renderSelProps(); renderStickerChips();
+        });
+      }
+    }
+    modal.querySelector('#su-cluster-sel-deselect').addEventListener('click', () => { sel = null; renderPreview(); renderSelProps(); });
+
+    // ── Chips (listas debajo — atajo para seleccionar sin buscar en el preview) ──
+    const cardChipsEl = modal.querySelector('#su-cluster-cards-chips');
+    function renderCardChips() {
+      cardChipsEl.innerHTML = '';
+      shownPlaces.forEach((place, i) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        const active = sel && sel.kind === 'card' && sel.idx === i;
+        chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:10.5px;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+        chip.textContent = `📸 ${place.name || i + 1}`;
+        chip.addEventListener('click', () => select('card', i));
+        cardChipsEl.appendChild(chip);
+      });
+    }
+    const stickerChipsEl = modal.querySelector('#su-cluster-stickers-chips');
+    function renderStickerChips() {
+      stickerChipsEl.innerHTML = '';
+      stickers.forEach((s, i) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        const active = sel && sel.kind === 'sticker' && sel.idx === i;
+        chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:12px;cursor:pointer;`;
+        chip.textContent = s.emoji || '✨';
+        chip.addEventListener('click', () => select('sticker', i));
+        stickerChipsEl.appendChild(chip);
+      });
+    }
+    modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
+      stickers.push({ emoji: '✨', dx: 0, dy: 0, size: 26, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2 });
+      select('sticker', stickers.length - 1);
+      renderStickerChips();
+    });
 
     // ── Color del badge ──────────────────────────────────────
     const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
@@ -805,103 +982,14 @@ export class SuperUserPanel {
     };
     paintBadgeRow();
 
-    // ── Tarjetas (una fila de controles por lugar mostrado) ───
-    const cardsListEl = modal.querySelector('#su-cluster-cards-list');
-    const getCardOverride = (pid) => {
-      let c = cards.find(c => c.placeId === pid);
-      if (!c) { c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0 }; cards.push(c); }
-      return c;
-    };
-    shownPlaces.forEach((place, i) => {
-      const pid = place.place_id || place.id;
-      const row = document.createElement('div');
-      row.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;';
-      row.innerHTML = `
-        <div style="font-size:11px;color:#d1d5db;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${i + 1}. ${place.name || pid}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-          <div>
-            <div style="font-size:9px;color:#6b7280;">Forma</div>
-            <select class="su-cl-shape" style="width:100%;padding:5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:11px;">
-              <option value="portrait">Portrait</option>
-              <option value="square">Square</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:9px;color:#6b7280;">Tamaño</div>
-            <input class="su-cl-scale" type="range" min="0.4" max="1.4" step="0.02" style="width:100%;accent-color:#1a5cf5;">
-          </div>
-          <div>
-            <div style="font-size:9px;color:#6b7280;">Giro</div>
-            <input class="su-cl-rot" type="range" min="-30" max="30" step="1" style="width:100%;accent-color:#1a5cf5;">
-          </div>
-          <div>
-            <div style="font-size:9px;color:#6b7280;">Posición X / Y</div>
-            <div style="display:flex;gap:4px;">
-              <input class="su-cl-dx" type="range" min="-50" max="50" step="1" style="width:50%;accent-color:#1a5cf5;">
-              <input class="su-cl-dy" type="range" min="-50" max="50" step="1" style="width:50%;accent-color:#1a5cf5;">
-            </div>
-          </div>
-        </div>`;
-      cardsListEl.appendChild(row);
-
-      const ov = getCardOverride(pid);
-      const shapeEl = row.querySelector('.su-cl-shape');
-      const scaleEl = row.querySelector('.su-cl-scale');
-      const rotEl   = row.querySelector('.su-cl-rot');
-      const dxEl    = row.querySelector('.su-cl-dx');
-      const dyEl    = row.querySelector('.su-cl-dy');
-      shapeEl.value = ov.shape; scaleEl.value = ov.scale; rotEl.value = ov.rotation; dxEl.value = ov.dx; dyEl.value = ov.dy;
-
-      const apply = () => {
-        ov.shape = shapeEl.value;
-        ov.scale = parseFloat(scaleEl.value);
-        ov.rotation = parseFloat(rotEl.value);
-        ov.dx = parseFloat(dxEl.value);
-        ov.dy = parseFloat(dyEl.value);
-        renderPreview();
-      };
-      [shapeEl, scaleEl, rotEl, dxEl, dyEl].forEach(el => { el.addEventListener('input', apply); el.addEventListener('change', apply); });
-    });
-
-    // ── Stickers ───────────────────────────────────────────────
-    const stickersListEl = modal.querySelector('#su-cluster-stickers-list');
-    const ANCHOR_OPTS = [['top-left','Arriba-Izq'],['top-right','Arriba-Der'],['left','Izquierda'],['right','Derecha'],['bottom-left','Abajo-Izq'],['bottom-right','Abajo-Der']];
-    const renderStickers = () => {
-      stickersListEl.innerHTML = '';
-      stickers.forEach((s, idx) => {
-        const row = document.createElement('div');
-        row.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;';
-        row.innerHTML = `
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input class="su-cl-st-emoji" type="text" maxlength="4" placeholder="🌮" value="${s.emoji || ''}" style="width:52px;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;">
-            <select class="su-cl-st-anchor" style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:11px;">
-              ${ANCHOR_OPTS.map(([v,l]) => `<option value="${v}" ${v===s.anchor?'selected':''}>${l}</option>`).join('')}
-            </select>
-            <button type="button" class="su-cl-st-remove" style="background:rgba(239,68,68,0.15);border:none;color:#f87171;font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer;">×</button>
-          </div>
-          <div>
-            <div style="font-size:9px;color:#6b7280;">Tamaño</div>
-            <input class="su-cl-st-size" type="range" min="14" max="46" step="1" value="${s.size || 26}" style="width:100%;accent-color:#1a5cf5;">
-          </div>`;
-        stickersListEl.appendChild(row);
-
-        const emojiEl = row.querySelector('.su-cl-st-emoji');
-        const anchorEl = row.querySelector('.su-cl-st-anchor');
-        const sizeEl = row.querySelector('.su-cl-st-size');
-        const apply = () => { s.emoji = emojiEl.value; s.anchor = anchorEl.value; s.size = parseInt(sizeEl.value, 10); renderPreview(); };
-        [emojiEl, anchorEl, sizeEl].forEach(el => { el.addEventListener('input', apply); el.addEventListener('change', apply); });
-        row.querySelector('.su-cl-st-remove').addEventListener('click', () => { stickers.splice(idx, 1); renderStickers(); renderPreview(); });
-      });
-    };
-    renderStickers();
-    modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
-      stickers.push({ emoji: '✨', anchor: 'top-left', size: 26, rotation: 0 });
-      renderStickers();
-      renderPreview();
-    });
-
     // ── Etiqueta ─────────────────────────────────────────────
-    modal.querySelector('#su-cluster-label').addEventListener('input', (e) => { labelText = e.target.value; renderPreview(); });
+    modal.querySelector('#su-cluster-label-text').addEventListener('input', (e) => { label.text = e.target.value; renderPreview(); });
+    modal.querySelector('#su-cluster-label-bg').addEventListener('input', (e) => { label.bgColor = e.target.value; renderPreview(); });
+    modal.querySelector('#su-cluster-label-color').addEventListener('input', (e) => { label.textColor = e.target.value; renderPreview(); });
+    modal.querySelector('#su-cluster-label-fontsize').addEventListener('input', (e) => { label.fontSize = parseFloat(e.target.value); renderPreview(); });
+    modal.querySelector('#su-cluster-label-radius').addEventListener('input', (e) => { label.borderRadius = parseFloat(e.target.value); renderPreview(); });
+    modal.querySelector('#su-cluster-label-padx').addEventListener('input', (e) => { label.paddingX = parseFloat(e.target.value); renderPreview(); });
+    modal.querySelector('#su-cluster-label-pady').addEventListener('input', (e) => { label.paddingY = parseFloat(e.target.value); renderPreview(); });
 
     // ── Lista de lugares (checkboxes) ──────────────────────────
     const placesListEl = modal.querySelector('#su-cluster-places-list');
@@ -933,7 +1021,7 @@ export class SuperUserPanel {
             place_ids,
             cards,
             stickers,
-            label_text: labelText || null,
+            label: label.text ? label : null,
             badge_color: badgeColor,
           }),
         });
@@ -964,8 +1052,11 @@ export class SuperUserPanel {
       });
     }
 
+    renderCardChips();
+    renderStickerChips();
     renderPreview();
   }
+
 
 
   // ══════════════════════════════════════════════════════════
