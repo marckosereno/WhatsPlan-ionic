@@ -723,6 +723,7 @@ export class SuperUserPanel {
   // ══════════════════════════════════════════════════════════
 
   _openClusterCustomizePanel(group, existingCluster) {
+    console.log('[CLUSTER] abriendo panel. existingCluster=', JSON.parse(JSON.stringify(existingCluster || null)));
     document.getElementById('su-cluster-modal')?.remove();
 
     const isEdit = !!existingCluster;
@@ -836,8 +837,11 @@ export class SuperUserPanel {
 
     // ── Preview + gesto (1 dedo mover, 2 dedos pinch escalar+girar) ──
     function renderPreview() {
-      previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, currentCustomDef())}</div>`;
+      const cd = currentCustomDef();
+      console.log('[CLUSTER] renderPreview() — stickers actuales:', JSON.stringify(cd.stickers), '| sel=', JSON.stringify(sel));
+      previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, cd)}</div>`;
       const wrap = previewEl.firstElementChild.firstElementChild;
+      console.log('[CLUSTER] nodos [data-sticker-idx] renderizados en el DOM:', wrap.querySelectorAll('[data-sticker-idx]').length);
       wrap.querySelectorAll('[data-card-idx]').forEach(node => {
         const idx = parseInt(node.dataset.cardIdx, 10);
         if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
@@ -1044,7 +1048,11 @@ export class SuperUserPanel {
           <div><div style="font-size:9px;color:#6b7280;">Color de stroke</div><input id="scf-stroke" type="color" value="${s.strokeColor || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de stroke</div><input id="scf-strokew" type="range" min="0" max="6" step="0.5" value="${s.strokeWidth ?? 2}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
-        modal.querySelector('#scf-emoji').addEventListener('input', (e) => { s.emoji = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-emoji').addEventListener('input', (e) => {
+          s.emoji = e.target.value;
+          console.log('[CLUSTER] emoji input → s.emoji=', s.emoji, '| stickers[sel.idx] es el mismo objeto:', s === stickers[sel.idx]);
+          renderPreview();
+        });
         modal.querySelector('#scf-size').addEventListener('input', (e) => { s.size = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-srot').addEventListener('input', (e) => { s.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-stroke').addEventListener('input', (e) => { s.strokeColor = e.target.value; renderPreview(); });
@@ -1096,6 +1104,7 @@ export class SuperUserPanel {
     }
     modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
       stickers.push({ emoji: '✨', dx: 0, dy: 0, size: 26, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2, z: 20 + stickers.length });
+      console.log('[CLUSTER] +Agregar sticker → stickers ahora:', JSON.stringify(stickers));
       select('sticker', stickers.length - 1);
       renderPreview();
       renderStickerChips();
@@ -1123,17 +1132,21 @@ export class SuperUserPanel {
       if (place_ids.length < 1) { alert('Tildá al menos un lugar'); return; }
       const btn = modal.querySelector('#su-cluster-save');
       btn.disabled = true; btn.textContent = 'Guardando...';
+      const payload = { id: existingCluster?.id, place_ids, cards, stickers, badge };
+      console.log('[CLUSTER] Guardando — body enviado:', JSON.stringify(payload));
       try {
         const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: existingCluster?.id, place_ids, cards, stickers, badge }),
+          body: JSON.stringify(payload),
         });
         const json = await res.json();
+        console.log('[CLUSTER] Respuesta del servidor:', JSON.stringify(json));
         if (!json.success) throw new Error(json.message);
         modal.remove();
         await this.mapView.reloadPinClusters();
       } catch (err) {
+        console.error('[CLUSTER] Error guardando:', err);
         alert('Error guardando el cluster: ' + err.message);
         btn.disabled = false; btn.textContent = 'Guardar';
       }
