@@ -812,7 +812,7 @@ export class SuperUserPanel {
     // cluster (tarjetas + stickers + badge), sin reordenar arrays.
     const allZValues = () => {
       const zs = [];
-      shownPlaces.forEach(({ el }) => { const ov = cards.find(c => c.placeId === (el._place.place_id || el._place.id)); zs.push(ov ? ov.z : 1); });
+      shownPlaces.forEach(place => { const ov = cards.find(c => c.placeId === (place.place_id || place.id)); zs.push(ov ? ov.z : 1); });
       stickers.forEach(s => zs.push(s.z ?? 20));
       zs.push(badge.z ?? 30);
       return zs;
@@ -826,95 +826,115 @@ export class SuperUserPanel {
       const wrap = previewEl.firstElementChild.firstElementChild;
       wrap.querySelectorAll('[data-card-idx]').forEach(node => {
         const idx = parseInt(node.dataset.cardIdx, 10);
-        const pid = shownPlaces[idx].place_id || shownPlaces[idx].id;
-        wireGesture(node, getCardOverride(pid), 'card', idx, node);
         if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
       });
       wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
         const idx = parseInt(node.dataset.stickerIdx, 10);
-        wireGesture(node, stickers[idx], 'sticker', idx, node);
         if (sel?.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
       });
       const badgeNode = wrap.querySelector('[data-badge]');
-      if (badgeNode) {
-        wireGesture(badgeNode, badge, 'badge', 0, badgeNode);
-        if (sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
+      if (badgeNode && sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
+    }
+
+    // Resuelve a qué (kind, idx, obj) corresponde un nodo del preview.
+    function resolveNode(node) {
+      if (!node) return null;
+      if (node.dataset.cardIdx !== undefined) {
+        const idx = parseInt(node.dataset.cardIdx, 10);
+        const place = shownPlaces[idx];
+        return { kind: 'card', idx, obj: getCardOverride(place.place_id || place.id) };
       }
+      if (node.dataset.stickerIdx !== undefined) {
+        const idx = parseInt(node.dataset.stickerIdx, 10);
+        return { kind: 'sticker', idx, obj: stickers[idx] };
+      }
+      if (node.hasAttribute('data-badge')) return { kind: 'badge', idx: 0, obj: badge };
+      return null;
     }
 
-    // Gesto unificado: pointerdown/move/up con Map de punteros activos.
-    // 1 puntero → drag (mueve dx/dy). 2 punteros → pinch: la distancia
-    // entre los dos dedos controla el tamaño, el ángulo entre ellos
-    // controla el giro — igual que cualquier editor de fotos real.
-    // Durante el gesto solo se toca el `transform` del nodo (liviano, no
-    // regenera contenido — así nunca se destruye el elemento que el
-    // usuario tiene agarrado). El re-render completo pasa recién cuando
-    // se levanta el último dedo.
-    function wireGesture(node, obj, kind, idx) {
-      const pts = new Map();
-      let mode = null, start = null;
-      const isSticker = kind === 'sticker';
-      const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-      const angle = (a, b) => Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-      const baseTransform = () => `translate(calc(-50% + ${obj.dx || 0}px),calc(-50% + ${obj.dy || 0}px)) rotate(${obj.rotation || 0}deg)`;
-      const metric = () => isSticker ? (obj.size ?? 26) : (obj.scale ?? 1);
+    // Gesto unificado A NIVEL DEL CONTENEDOR (previewEl), no por elemento:
+    // el primer dedo tiene que tocar una tarjeta/sticker/badge para
+    // "agarrarlo" — desde ahí, el SEGUNDO dedo puede caer en cualquier
+    // parte del preview (no hace falta que toque el mismo elemento
+    // chiquito, que es prácticamente imposible en un pellizco real) y
+    // pasa a controlar tamaño+giro de lo que ya está agarrado. 1 dedo =
+    // mover, 2 dedos = pellizco (distancia entre ellos = tamaño, ángulo
+    // entre ellos = giro), igual que cualquier editor de fotos real.
+    // Durante el gesto solo se toca el `transform` del nodo activo
+    // (liviano, no regenera contenido); el re-render completo pasa
+    // recién cuando se levanta el último dedo.
+    let activeNode = null, activeObj = null, activeKind = null;
+    const pts = new Map();
+    let mode = null, start = null;
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const angle = (a, b) => Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+    const baseTransform = () => `translate(calc(-50% + ${activeObj.dx || 0}px),calc(-50% + ${activeObj.dy || 0}px)) rotate(${activeObj.rotation || 0}deg)`;
+    const metric = () => activeKind === 'sticker' ? (activeObj.size ?? 26) : (activeObj.scale ?? 1);
 
-      node.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        select(kind, idx, node);
-        node.setPointerCapture(e.pointerId);
-        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (pts.size === 1) {
-          mode = 'drag';
-          start = { dx: obj.dx || 0, dy: obj.dy || 0, p: [...pts.values()][0] };
-        } else if (pts.size === 2) {
-          const [a, b] = [...pts.values()];
-          mode = 'pinch';
-          start = { dist: dist(a, b) || 1, angle: angle(a, b), metric: metric(), rotation: obj.rotation || 0 };
-        }
-      });
-      node.addEventListener('pointermove', (e) => {
-        if (!pts.has(e.pointerId)) return;
-        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (mode === 'drag' && pts.size === 1) {
-          const p = [...pts.values()][0];
-          obj.dx = Math.round(start.dx + (p.x - start.p.x));
-          obj.dy = Math.round(start.dy + (p.y - start.p.y));
-          node.style.transform = baseTransform();
-        } else if (mode === 'pinch' && pts.size === 2) {
-          const [a, b] = [...pts.values()];
-          const d = dist(a, b) || 1;
-          const ratio = d / start.dist;
-          const newMetric = start.metric * ratio;
-          if (isSticker) obj.size = Math.max(12, Math.min(90, Math.round(newMetric)));
-          else obj.scale = Math.max(0.35, Math.min(2.2, newMetric));
-          obj.rotation = Math.round(start.rotation + (angle(a, b) - start.angle));
-          // Preview en vivo: mueve+gira real (transform puro); el tamaño
-          // real (cambia ancho/alto, contenido) se aplica al soltar —
-          // mientras tanto un scale() visual da el feedback del pinch.
-          const visualRatio = metric() / start.metric;
-          node.style.transform = baseTransform() + ` scale(${visualRatio})`;
-        }
-      });
-      const release = (e) => {
-        if (!pts.has(e.pointerId)) return;
-        pts.delete(e.pointerId);
-        try { node.releasePointerCapture(e.pointerId); } catch (_) {}
-        if (pts.size === 0) {
-          mode = null;
-          renderPreview();
-          renderSelProps();
-        } else if (pts.size === 1) {
-          // pasó de pinch a un solo dedo sin soltar del todo: retoma el
-          // drag desde la posición actual, sin saltos.
-          mode = 'drag';
-          const p = [...pts.values()][0];
-          start = { dx: obj.dx || 0, dy: obj.dy || 0, p };
-        }
-      };
-      node.addEventListener('pointerup', release);
-      node.addEventListener('pointercancel', release);
-    }
+    previewEl.addEventListener('pointerdown', (e) => {
+      const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge]');
+      if (pts.size === 0) {
+        if (!targetNode) return; // tocó el fondo vacío — no arranca nada
+        const r = resolveNode(targetNode);
+        if (!r) return;
+        activeNode = targetNode; activeObj = r.obj; activeKind = r.kind;
+        select(r.kind, r.idx, targetNode);
+      }
+      if (!activeNode) return;
+      e.preventDefault();
+      previewEl.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) {
+        mode = 'drag';
+        start = { dx: activeObj.dx || 0, dy: activeObj.dy || 0, p: [...pts.values()][0] };
+      } else if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        mode = 'pinch';
+        start = { dist: dist(a, b) || 1, angle: angle(a, b), metric: metric(), rotation: activeObj.rotation || 0 };
+      }
+    });
+    previewEl.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId) || !activeNode) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (mode === 'drag' && pts.size === 1) {
+        const p = [...pts.values()][0];
+        activeObj.dx = Math.round(start.dx + (p.x - start.p.x));
+        activeObj.dy = Math.round(start.dy + (p.y - start.p.y));
+        activeNode.style.transform = baseTransform();
+      } else if (mode === 'pinch' && pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        const d = dist(a, b) || 1;
+        const ratio = d / start.dist;
+        const newMetric = start.metric * ratio;
+        if (activeKind === 'sticker') activeObj.size = Math.max(12, Math.min(90, Math.round(newMetric)));
+        else activeObj.scale = Math.max(0.35, Math.min(2.2, newMetric));
+        activeObj.rotation = Math.round(start.rotation + (angle(a, b) - start.angle));
+        // Preview en vivo: mueve+gira real (transform puro); el tamaño
+        // real (cambia ancho/alto, contenido) se aplica al soltar —
+        // mientras tanto un scale() visual da el feedback del pinch.
+        const visualRatio = metric() / start.metric;
+        activeNode.style.transform = baseTransform() + ` scale(${visualRatio})`;
+      }
+    });
+    const releasePointer = (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.delete(e.pointerId);
+      try { previewEl.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (pts.size === 0) {
+        mode = null;
+        const hadActive = !!activeNode;
+        activeNode = null; activeObj = null; activeKind = null;
+        if (hadActive) { renderPreview(); renderSelProps(); }
+      } else if (pts.size === 1 && activeObj) {
+        // pasó de pellizco a un solo dedo sin soltar del todo: retoma el
+        // drag desde la posición actual, sin saltos.
+        mode = 'drag';
+        const p = [...pts.values()][0];
+        start = { dx: activeObj.dx || 0, dy: activeObj.dy || 0, p };
+      }
+    };
+    previewEl.addEventListener('pointerup', releasePointer);
+    previewEl.addEventListener('pointercancel', releasePointer);
 
     function select(kind, idx, node) {
       sel = { kind, idx };
@@ -3431,9 +3451,11 @@ export class SuperUserPanel {
         display: flex; align-items: center; justify-content: center; padding: 20px;
       }
       .su-modal-box {
-        width: 100%; background: #14141c; border: 1px solid rgba(255,255,255,0.1);
+        width: 100%; max-height: 90vh; overflow-y: auto;
+        background: #14141c; border: 1px solid rgba(255,255,255,0.1);
         border-radius: 16px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         font-family: 'Uni Sans Bold Regular', sans-serif;
+        box-sizing: border-box;
       }
     `;
     document.head.appendChild(style);
