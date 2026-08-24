@@ -24,7 +24,7 @@ async function listClusters(res) {
     placeIds:   r.place_ids || [],
     cards:      Array.isArray(r.cards) ? r.cards : [],
     stickers:   Array.isArray(r.stickers) ? r.stickers : [],
-    label:      r.label_text ? { text: r.label_text } : null,
+    label:      r.label && typeof r.label === 'object' ? r.label : null,
     badgeColor: r.badge_color || '#111827',
   }));
 
@@ -32,7 +32,7 @@ async function listClusters(res) {
 }
 
 async function saveCluster(body, res) {
-  const { id, place_ids, cards, stickers, label_text, badge_color } = body;
+  const { id, place_ids, cards, stickers, label, badge_color } = body;
 
   if (!Array.isArray(place_ids) || place_ids.length < 1) {
     return res.status(400).json({ success: false, message: 'place_ids es requerido (mínimo 1 lugar)' });
@@ -42,7 +42,7 @@ async function saveCluster(body, res) {
     place_ids,
     cards:       Array.isArray(cards) ? cards : [],
     stickers:    Array.isArray(stickers) ? stickers : [],
-    label_text:  label_text || null,
+    label:       label && label.text ? label : null,
     badge_color: badge_color || '#111827',
     updated_at:  new Date().toISOString(),
   };
