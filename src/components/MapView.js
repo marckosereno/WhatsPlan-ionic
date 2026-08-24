@@ -204,6 +204,9 @@ function injectLandmarkStyles() {
       transition: transform 0.05s linear;
     }
 
+    /* ── Edición WYSIWYG de cluster en vivo sobre el mapa (SuperUser) ── */
+    .place-cluster-el * { user-select: none; -webkit-user-select: none; }
+
     /* ── Carrusel expandido de cluster (pantalla completa) ──────────── */
     .wp-ce-wrap {
       position: fixed; inset: 0; z-index: 99999;
@@ -280,8 +283,19 @@ export class MapView {
     this.markerEls       = [];
     this.clusterMarkers  = []; // pines "amontonados" agrupados en un solo sticker
     this.pinClusters     = null; // clusters personalizados (SuperUser) — null = aún no cargados
-    this.onClusterCustomize = null; // callback (group, existingClusterOrNull) — lo asigna SuperUserPanel
     this._cancelActiveClusterPress = null; // cancela un long-press de cluster pendiente si arranca un drag real del mapa
+    // ── Edición WYSIWYG de clusters en vivo sobre el mapa (SuperUser) ──
+    // clusterEditEnabled + los 4 callbacks de red los setea SuperUserPanel
+    // en mount()/unmount(); MapView es dueño de TODA la UI de edición
+    // (arrastrar/redimensionar/girar directo sobre el pin real + el panel
+    // flotante de propiedades) porque necesita tocar el marker real del
+    // mapa — SuperUserPanel solo habilita la función y hace los fetch.
+    this.clusterEditEnabled       = false;
+    this.onClusterSaveRequest     = null; // async ({id, stack_style, layers, place_ids}) => {success,...}
+    this.onClusterDeleteRequest   = null; // async (id) => {success,...}
+    this.onClusterSavePresetRequest = null; // async (name, layers) => {success, preset}
+    this.fetchClusterPresets      = null; // async () => [{id,name,layers}]
+    this._clusterEditSession      = null;
     this.allPlaces       = [];
     this.activities      = [];
     this.landmarkMarkers = [];
@@ -1112,6 +1126,7 @@ export class MapView {
   }
 
   _updateClusters() {
+    if (this._clusterEditSession) return; // no tocar nada mientras se edita un cluster en vivo
     this._clearClusters();
 
     // Restaurar SIEMPRE primero los pines que un agrupamiento anterior
@@ -1178,9 +1193,9 @@ export class MapView {
 
   // Crea el marker del cluster (personalizado o automático) con doble gesto:
   // tap normal → abre el carrusel expandido (_openClusterExpand); long-press
-  // (solo hace algo si SuperUserPanel dejó seteado this.onClusterCustomize)
-  // → abre el panel de personalización, pasando el grupo actual y la
-  // definición existente (o null si es la primera vez que se personaliza).
+  // (solo si SuperUserPanel dejó this.clusterEditEnabled=true) → convierte
+  // ESTE MISMO elemento del mapa en editable en vivo (_enterClusterEditMode),
+  // en su posición y zoom reales — no un popup ni un canvas aparte.
   _renderClusterMarker(group, customDef) {
     const centerLat = group.reduce((s, g) => s + g.ll.lat, 0) / group.length;
     const centerLng = group.reduce((s, g) => s + g.ll.lng, 0) / group.length;
@@ -1203,9 +1218,9 @@ export class MapView {
       pressTimer = setTimeout(() => {
         longPressFired = true;
         this._cancelActiveClusterPress = null;
-        if (this.onClusterCustomize) {
+        if (this.clusterEditEnabled) {
           this.haptic('longpress');
-          this.onClusterCustomize(group, customDef || null);
+          this._enterClusterEditMode(group, customDef || null, el);
         }
       }, 550);
       this._cancelActiveClusterPress = clearPress; // ver map.on('dragstart') más arriba
@@ -1233,6 +1248,444 @@ export class MapView {
       .addTo(this.map);
 
     this.clusterMarkers.push(marker);
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // EDICIÓN WYSIWYG DE CLUSTERS EN VIVO SOBRE EL MAPA (SuperUser)
+  // ════════════════════════════════════════════════════════════════════
+  // Al hacer long-press sobre un sticker de cluster, ESE MISMO elemento
+  // del mapa (ya posicionado por MapLibre en su lugar y zoom reales) pasa
+  // a modo edición: sus capas se vuelven arrastrables/redimensionables/
+  // rotables directo ahí — no hay canvas aparte ni popup con una copia
+  // escalada. Un panel flotante docked abajo de la pantalla maneja lo que
+  // no es espacial (color, texto, forma, borde) de la capa seleccionada,
+  // más el picker de presets y guardar/cancelar.
+  //
+  // Mientras se edita, se deshabilita la interacción del MAPA (pan/zoom)
+  // poniendo pointer-events:none en su contenedor — y se lo devuelve
+  // explícitamente solo al marker que se está editando (pointer-events
+  // hijo en 'auto' pisa el 'none' del padre, así el resto del mapa queda
+  // bloqueado sin necesidad de un overlay/blocker aparte).
+
+  _enterClusterEditMode(group, customDef, markerEl) {
+    if (this._clusterEditSession) return; // ya hay una edición en curso
+    if (!this.clusterEditEnabled) return;
+
+    const layers = (customDef?.layers && customDef.layers.length)
+      ? JSON.parse(JSON.stringify(customDef.layers))
+      : getClusterLayerPreset(customDef?.stackStyle);
+
+    this._clusterEditSession = {
+      group, customDef, markerEl,
+      layers,
+      curPresetStyle: customDef?.stackStyle || 'fan-drift',
+      selectedIdx: layers.length ? 0 : null,
+      savedPresets: [],
+    };
+
+    this.map.dragPan.disable();
+    this.map.scrollZoom.disable();
+    this.map.doubleClickZoom.disable();
+    if (this.map.touchZoomRotate) this.map.touchZoomRotate.disable();
+    this.map.getContainer().style.pointerEvents = 'none';
+    markerEl.style.pointerEvents = 'auto';
+    markerEl.style.zIndex = '999999';
+
+    this._renderClusterEditCanvas();
+    this._buildClusterEditToolbar();
+
+    if (this.fetchClusterPresets) {
+      this.fetchClusterPresets().then(presets => {
+        if (!this._clusterEditSession) return; // se cerró mientras cargaba
+        this._clusterEditSession.savedPresets = presets || [];
+        this._renderClusterEditPresetRow();
+      }).catch(() => {});
+    }
+  }
+
+  _exitClusterEditMode() {
+    if (!this._clusterEditSession) return;
+    this.map.dragPan.enable();
+    this.map.scrollZoom.enable();
+    this.map.doubleClickZoom.enable();
+    if (this.map.touchZoomRotate) this.map.touchZoomRotate.enable();
+    this.map.getContainer().style.pointerEvents = '';
+    document.getElementById('wp-cluster-edit-toolbar')?.remove();
+    this._clusterEditSession = null;
+    this._updateClusters(); // reconstruye todo desde cero (limpio, con los datos guardados si se guardó)
+  }
+
+  // Dibuja las capas interactivas DENTRO del marker real (scale=1: tamaño
+  // y posición REALES del mapa — WYSIWYG de verdad, no una previsualización
+  // aparte). Se llama de nuevo cada vez que cambia la lista de capas
+  // (agregar/quitar/cambiar preset) o al soltar un drag/resize/rotate.
+  _renderClusterEditCanvas() {
+    const s = this._clusterEditSession;
+    if (!s) return;
+    const { markerEl, layers, group } = s;
+    markerEl.innerHTML = '';
+    layers.forEach((layer, idx) => {
+      const html = _renderClusterLayerHtml(layer, group, 1);
+      if (!html) return;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const node = tmp.firstElementChild;
+      if (!node) return;
+      node.dataset.idx = idx;
+      node.style.cursor = 'grab';
+      node.style.touchAction = 'none';
+      if (idx === s.selectedIdx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '3px'; node.style.borderRadius = '4px'; }
+      markerEl.appendChild(node);
+      this._wireClusterEditLayerPointer(node, layer, idx);
+    });
+    if (s.selectedIdx != null && layers[s.selectedIdx]) this._wireClusterEditHandles(s.selectedIdx);
+  }
+
+  _updateClusterEditNodePosition(node, layer) {
+    const pos = getClusterLayerAnchorPos(layer, 1);
+    node.style.left = pos.left; node.style.top = pos.top;
+    node.style.transform = pos.transform; node.style.zIndex = pos.zIndex;
+  }
+
+  _wireClusterEditLayerPointer(node, layer, idx) {
+    let dragging = false, sx = 0, sy = 0, startOX = 0, startOY = 0, moved = false;
+    node.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      const s = this._clusterEditSession; if (!s) return;
+      if (s.selectedIdx !== idx) {
+        s.selectedIdx = idx;
+        this._renderClusterEditCanvas();
+        this._renderClusterEditChips();
+        this._renderClusterEditProps();
+      }
+      dragging = true; moved = false;
+      node.setPointerCapture(e.pointerId);
+      sx = e.clientX; sy = e.clientY;
+      startOX = layer.offsetX || 0; startOY = layer.offsetY || 0;
+    });
+    node.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy; // scale=1 en el mapa real: px de pantalla = unidades reales
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
+      layer.offsetX = Math.round(startOX + dx);
+      layer.offsetY = Math.round(startOY + dy);
+      this._updateClusterEditNodePosition(node, layer);
+    });
+    const endDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      try { node.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (moved) { this._renderClusterEditCanvas(); this._renderClusterEditProps(); }
+    };
+    node.addEventListener('pointerup', endDrag);
+    node.addEventListener('pointercancel', endDrag);
+  }
+
+  _wireClusterEditHandles(idx) {
+    const s = this._clusterEditSession; if (!s) return;
+    const layer = s.layers[idx];
+    const node = s.markerEl.querySelector(`[data-idx="${idx}"]`);
+    if (!node || !layer) return;
+    const markerRect = s.markerEl.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.style.cssText = `position:absolute;width:20px;height:20px;border-radius:50%;background:#1a5cf5;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.45);cursor:nwse-resize;left:${nodeRect.right - markerRect.left - 10}px;top:${nodeRect.bottom - markerRect.top - 10}px;z-index:999;touch-action:none;pointer-events:auto;`;
+    s.markerEl.appendChild(resizeHandle);
+
+    const cx = (nodeRect.left + nodeRect.right) / 2 - markerRect.left;
+    const topY = nodeRect.top - markerRect.top;
+    const line = document.createElement('div');
+    line.style.cssText = `position:absolute;left:${cx}px;top:${topY - 22}px;width:1px;height:22px;background:rgba(255,255,255,0.5);z-index:998;pointer-events:none;`;
+    s.markerEl.appendChild(line);
+
+    const rotateHandle = document.createElement('div');
+    rotateHandle.style.cssText = `position:absolute;width:18px;height:18px;border-radius:50%;background:#f59e0b;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.45);cursor:grab;left:${cx - 9}px;top:${topY - 31}px;z-index:999;touch-action:none;pointer-events:auto;`;
+    s.markerEl.appendChild(rotateHandle);
+
+    resizeHandle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      resizeHandle.setPointerCapture(e.pointerId);
+      const startSize = layer.size ?? 44;
+      const sx = e.clientX, sy = e.clientY;
+      let pendingSize = startSize;
+      const onMove = (e2) => {
+        const delta = ((e2.clientX - sx) + (e2.clientY - sy)) / 2;
+        pendingSize = Math.max(10, Math.min(200, Math.round(startSize + delta)));
+        // Preview liviano (scale visual, no regenera contenido) — el
+        // tamaño real se aplica al soltar. Evita destruir la manija a
+        // mitad del gesto.
+        const pos = getClusterLayerAnchorPos(layer, 1);
+        node.style.transform = pos.transform + ` scale(${(pendingSize / startSize).toFixed(3)})`;
+      };
+      const onUp = (e2) => {
+        try { resizeHandle.releasePointerCapture(e2.pointerId); } catch (_) {}
+        resizeHandle.removeEventListener('pointermove', onMove);
+        resizeHandle.removeEventListener('pointerup', onUp);
+        layer.size = pendingSize;
+        this._renderClusterEditCanvas();
+        this._renderClusterEditProps();
+      };
+      resizeHandle.addEventListener('pointermove', onMove);
+      resizeHandle.addEventListener('pointerup', onUp);
+    });
+
+    rotateHandle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      rotateHandle.setPointerCapture(e.pointerId);
+      const onMove = (e2) => {
+        const r = node.getBoundingClientRect();
+        const ccx = r.left + r.width / 2, ccy = r.top + r.height / 2;
+        const angle = Math.atan2(e2.clientY - ccy, e2.clientX - ccx) * 180 / Math.PI;
+        layer.rotation = Math.round(angle + 90);
+        this._updateClusterEditNodePosition(node, layer);
+      };
+      const onUp = (e2) => {
+        try { rotateHandle.releasePointerCapture(e2.pointerId); } catch (_) {}
+        rotateHandle.removeEventListener('pointermove', onMove);
+        rotateHandle.removeEventListener('pointerup', onUp);
+        this._renderClusterEditCanvas();
+        this._renderClusterEditProps();
+      };
+      rotateHandle.addEventListener('pointermove', onMove);
+      rotateHandle.addEventListener('pointerup', onUp);
+    });
+  }
+
+  // ── Panel flotante (docked abajo) ───────────────────────────────────
+  _buildClusterEditToolbar() {
+    const s = this._clusterEditSession; if (!s) return;
+    document.getElementById('wp-cluster-edit-toolbar')?.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = 'wp-cluster-edit-toolbar';
+    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:100000;background:rgba(20,20,28,0.96);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,0.1);padding:12px 14px calc(env(safe-area-inset-bottom,0px) + 12px);max-height:54vh;overflow-y:auto;box-shadow:0 -8px 30px rgba(0,0,0,0.45);font-family:inherit;';
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:700;color:#e5e7eb;">✨ Editando cluster (${s.group.length} lugares)</span>
+        <button type="button" id="wp-ce-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div style="font-size:9.5px;color:#6b7280;margin-bottom:10px;">Arrastrá cualquier elemento directo en el mapa · manija azul = tamaño · manija naranja = giro</div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Diseño base</div>
+        <div id="wp-ce-preset-row" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <div id="wp-ce-layers-count" style="font-size:10px;color:#6b7280;">Capas (${s.layers.length})</div>
+          <div style="display:flex;gap:4px;">
+            <select id="wp-ce-add-type" style="font-size:10px;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;">
+              ${CLUSTER_LAYER_TYPES.map(t => `<option value="${t.type}">${t.icon} ${t.label}</option>`).join('')}
+            </select>
+            <button type="button" id="wp-ce-add-layer" style="font-size:10px;padding:3px 9px;border-radius:5px;border:none;background:#1a5cf5;color:#fff;font-weight:700;cursor:pointer;">+</button>
+          </div>
+        </div>
+        <div id="wp-ce-chips-row" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      </div>
+
+      <div id="wp-ce-props-wrap" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <div style="font-size:10px;color:#6b7280;">Propiedades de la capa seleccionada</div>
+          <button type="button" id="wp-ce-remove-selected" style="font-size:10px;padding:3px 8px;border-radius:5px;border:none;background:rgba(239,68,68,0.15);color:#f87171;cursor:pointer;">Quitar capa</button>
+        </div>
+        <div id="wp-ce-props" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="wp-ce-save-preset" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(0,188,212,0.35);background:rgba(0,188,212,0.12);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 Preset</button>
+        ${s.customDef ? `<button type="button" id="wp-ce-delete" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Quitar personalización</button>` : ''}
+        <button type="button" id="wp-ce-cancel" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button type="button" id="wp-ce-save" style="flex:1;padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a5cf5,#1540cc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>
+      </div>`;
+    document.body.appendChild(wrap);
+
+    wrap.querySelector('#wp-ce-close').addEventListener('click', () => this._exitClusterEditMode());
+    wrap.querySelector('#wp-ce-cancel').addEventListener('click', () => this._exitClusterEditMode());
+
+    wrap.querySelector('#wp-ce-add-layer').addEventListener('click', () => {
+      const type = wrap.querySelector('#wp-ce-add-type').value;
+      s.layers.push(_newClusterLayer(type));
+      s.selectedIdx = s.layers.length - 1;
+      this._renderClusterEditCanvas();
+      this._renderClusterEditChips();
+      this._renderClusterEditProps();
+      document.getElementById('wp-ce-layers-count').textContent = `Capas (${s.layers.length})`;
+    });
+
+    wrap.querySelector('#wp-ce-remove-selected').addEventListener('click', () => {
+      if (s.selectedIdx == null) return;
+      s.layers.splice(s.selectedIdx, 1);
+      s.selectedIdx = s.layers.length ? Math.min(s.selectedIdx, s.layers.length - 1) : null;
+      this._renderClusterEditCanvas();
+      this._renderClusterEditChips();
+      this._renderClusterEditProps();
+      document.getElementById('wp-ce-layers-count').textContent = `Capas (${s.layers.length})`;
+    });
+
+    wrap.querySelector('#wp-ce-save-preset').addEventListener('click', async () => {
+      const name = prompt('Nombre del preset (para reusarlo en otros clusters):');
+      if (!name || !name.trim()) return;
+      if (!this.onClusterSavePresetRequest) return;
+      try {
+        const json = await this.onClusterSavePresetRequest(name.trim(), s.layers);
+        if (!json.success) throw new Error(json.message);
+        s.savedPresets.unshift({ id: json.preset?.id || Date.now(), name: name.trim(), layers: s.layers });
+        this._renderClusterEditPresetRow();
+        alert('Preset guardado.');
+      } catch (err) {
+        alert('Error guardando el preset: ' + err.message);
+      }
+    });
+
+    wrap.querySelector('#wp-ce-save').addEventListener('click', async () => {
+      if (!this.onClusterSaveRequest) { this._exitClusterEditMode(); return; }
+      const place_ids = s.group.map(({ el }) => el._place.place_id || el._place.id);
+      const btn = wrap.querySelector('#wp-ce-save');
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        const json = await this.onClusterSaveRequest({
+          id: s.customDef?.id,
+          stack_style: s.curPresetStyle,
+          layers: s.layers,
+          place_ids,
+        });
+        if (!json.success) throw new Error(json.message);
+        await this.reloadPinClusters();
+        this._exitClusterEditMode();
+      } catch (err) {
+        alert('Error guardando el cluster: ' + err.message);
+        btn.disabled = false; btn.textContent = 'Guardar';
+      }
+    });
+
+    if (s.customDef) {
+      wrap.querySelector('#wp-ce-delete').addEventListener('click', async () => {
+        if (!confirm('¿Quitar la personalización de este cluster? Los lugares vuelven al agrupamiento automático.')) return;
+        if (!this.onClusterDeleteRequest) return;
+        try {
+          await this.onClusterDeleteRequest(s.customDef.id);
+          await this.reloadPinClusters();
+          this._exitClusterEditMode();
+        } catch (err) {
+          alert('Error quitando el cluster: ' + err.message);
+        }
+      });
+    }
+
+    this._renderClusterEditPresetRow();
+    this._renderClusterEditChips();
+    this._renderClusterEditProps();
+  }
+
+  _renderClusterEditPresetRow() {
+    const s = this._clusterEditSession; if (!s) return;
+    const row = document.getElementById('wp-ce-preset-row'); if (!row) return;
+    const BASE = [
+      { key: 'fan', label: '🎴 Apilado' },
+      { key: 'fan-center', label: '🦚 Centrado' },
+      { key: 'fan-drift', label: '🃏 Abanico' },
+    ];
+    row.innerHTML = '';
+    [...BASE, ...s.savedPresets.map(p => ({ key: 'saved:' + p.id, label: '⭐ ' + p.name, layers: p.layers }))].forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      const active = p.key === s.curPresetStyle;
+      b.style.cssText = `padding:7px 10px;border-radius:6px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:10px;cursor:pointer;`;
+      b.textContent = p.label;
+      b.addEventListener('click', () => {
+        if (!confirm('Esto reemplaza todas las capas actuales por "' + p.label + '". ¿Seguir?')) return;
+        s.curPresetStyle = p.key;
+        s.layers = p.layers ? JSON.parse(JSON.stringify(p.layers)) : getClusterLayerPreset(p.key);
+        s.selectedIdx = s.layers.length ? 0 : null;
+        this._renderClusterEditCanvas();
+        this._renderClusterEditPresetRow();
+        this._renderClusterEditChips();
+        this._renderClusterEditProps();
+        const countEl = document.getElementById('wp-ce-layers-count');
+        if (countEl) countEl.textContent = `Capas (${s.layers.length})`;
+      });
+      row.appendChild(b);
+    });
+  }
+
+  _renderClusterEditChips() {
+    const s = this._clusterEditSession; if (!s) return;
+    const row = document.getElementById('wp-ce-chips-row'); if (!row) return;
+    row.innerHTML = '';
+    s.layers.forEach((layer, idx) => {
+      const meta = CLUSTER_LAYER_TYPES.find(t => t.type === layer.type) || { icon: '❔', label: layer.type };
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      const active = idx === s.selectedIdx;
+      chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:10.5px;cursor:pointer;white-space:nowrap;`;
+      chip.textContent = `${meta.icon} ${meta.label}`;
+      chip.addEventListener('click', () => {
+        s.selectedIdx = idx;
+        this._renderClusterEditCanvas();
+        this._renderClusterEditChips();
+        this._renderClusterEditProps();
+      });
+      row.appendChild(chip);
+    });
+  }
+
+  _renderClusterEditProps() {
+    const s = this._clusterEditSession; if (!s) return;
+    const wrap = document.getElementById('wp-ce-props-wrap');
+    const propsEl = document.getElementById('wp-ce-props');
+    if (!wrap || !propsEl) return;
+
+    if (s.selectedIdx == null || !s.layers[s.selectedIdx]) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    const layer = s.layers[s.selectedIdx];
+    const fields = [...(CLUSTER_LAYER_FIELDS[layer.type] || []), ...CLUSTER_LAYER_COMMON_FIELDS];
+
+    const buildFieldInput = (field) => {
+      const val = layer[field.key];
+      const id = `wp-ce-field-${field.key}-${Math.random().toString(36).slice(2, 7)}`;
+      let controlHtml = '';
+      if (field.kind === 'text') {
+        controlHtml = `<input id="${id}" type="text" value="${(val ?? '').toString().replace(/"/g, '&quot;')}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;">`;
+      } else if (field.kind === 'color') {
+        controlHtml = `<input id="${id}" type="color" value="${val || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;">`;
+      } else if (field.kind === 'range') {
+        controlHtml = `<div style="display:flex;align-items:center;gap:6px;">
+          <input id="${id}" type="range" min="${field.min}" max="${field.max}" step="${field.step || 1}" value="${val ?? field.min}" style="flex:1;accent-color:#1a5cf5;">
+          <span id="${id}-val" style="font-size:10px;color:#9ca3af;min-width:26px;text-align:right;">${val ?? field.min}</span>
+        </div>`;
+      } else if (field.kind === 'select') {
+        controlHtml = `<select id="${id}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:12px;">
+          ${field.options.map(([v, l]) => `<option value="${v}" ${v === val ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>`;
+      } else if (field.kind === 'checkbox') {
+        controlHtml = `<input id="${id}" type="checkbox" ${val ? 'checked' : ''} style="accent-color:#1a5cf5;width:16px;height:16px;">`;
+      } else if (field.kind === 'placeSelect') {
+        controlHtml = `<select id="${id}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:12px;">
+          ${s.group.map(({ el }, i) => `<option value="${i}" ${i === val ? 'selected' : ''}>${el._place.name || ('Lugar ' + (i + 1))}</option>`).join('')}
+        </select>`;
+      }
+      return { id, html: `<div><div style="font-size:9.5px;color:#6b7280;margin-bottom:3px;">${field.label}</div>${controlHtml}</div>` };
+    };
+
+    const metas = fields.map(f => buildFieldInput(f));
+    propsEl.innerHTML = metas.map(m => m.html).join('');
+
+    metas.forEach((meta, i) => {
+      const field = fields[i];
+      const el = document.getElementById(meta.id);
+      if (!el) return;
+      const apply = () => {
+        if (field.kind === 'checkbox') layer[field.key] = el.checked;
+        else if (field.kind === 'range') { layer[field.key] = parseFloat(el.value); const span = document.getElementById(meta.id + '-val'); if (span) span.textContent = el.value; }
+        else if (field.kind === 'placeSelect') layer[field.key] = parseInt(el.value, 10);
+        else layer[field.key] = el.value;
+        this._renderClusterEditCanvas();
+      };
+      el.addEventListener('input', apply);
+      el.addEventListener('change', apply);
+    });
   }
 
   // ── Carrusel expandido del cluster (pantalla completa, mapa de fondo) ──
@@ -2298,7 +2751,92 @@ function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
 // Props comunes a toda capa: size, anchor, offsetX, offsetY, rotation,
 // zIndex, borderColor, borderWidth, borderRadius (los últimos 3 no
 // aplican a 'avatars' del mismo modo — ver _renderClusterLayerHtml).
+//
+// Todo lo que sigue (tipos + field schemas + fábrica de capa nueva) vive
+// ACÁ y no en SuperUserPanel.js a propósito: la edición ahora ocurre en
+// vivo sobre el marker real del mapa (ver _enterClusterEditMode más
+// arriba), y MapView es quien arma esa UI — SuperUserPanel solo habilita
+// la función y hace los fetch a Supabase.
 // ════════════════════════════════════════════════════════════════════
+
+// Tipos de capa disponibles + metadata visual (ícono/label para los chips)
+const CLUSTER_LAYER_TYPES = [
+  { type: 'label',       icon: '🏷️', label: 'Etiqueta' },
+  { type: 'avatars',     icon: '👥', label: 'Avatares' },
+  { type: 'place_stack', icon: '📸', label: 'Lugar (stack)' },
+  { type: 'event_stack', icon: '📅', label: 'Lugar con evento' },
+  { type: 'sticker',     icon: '✨', label: 'Sticker' },
+];
+
+// Campos propios de cada tipo (además de los comunes de posición/anclaje
+// — ver CLUSTER_LAYER_COMMON_FIELDS). `kind` determina qué input genera
+// el panel: text | color | range | select | checkbox | placeSelect.
+const CLUSTER_LAYER_FIELDS = {
+  label: [
+    { key: 'text', label: 'Texto', kind: 'text' },
+    { key: 'fontSize', label: 'Tamaño texto', kind: 'range', min: 8, max: 20, step: 1 },
+    { key: 'color', label: 'Color texto', kind: 'color' },
+    { key: 'bgColor', label: 'Color fondo', kind: 'color' },
+    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 20, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
+  ],
+  avatars: [
+    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 12, max: 32, step: 1 },
+    { key: 'maxCount', label: 'Máx. avatares', kind: 'range', min: 1, max: 5, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 4, step: 0.5 },
+  ],
+  place_stack: [
+    { key: 'placeIndex', label: 'Lugar', kind: 'placeSelect' },
+    { key: 'shape', label: 'Forma', kind: 'select', options: [['portrait', 'Portrait'], ['square', 'Square']] },
+    { key: 'stackStyle', label: 'Diseño del stack', kind: 'select', options: [['fan', 'Abanico'], ['fan-center', 'Centrado'], ['fan-drift', 'Cascada']] },
+    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 20, max: 120, step: 1 },
+    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 40, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
+    { key: 'showBadge', label: 'Mostrar badge del total', kind: 'checkbox' },
+    { key: 'badgeColor', label: 'Color badge', kind: 'color' },
+  ],
+  event_stack: [
+    { key: 'shape', label: 'Forma', kind: 'select', options: [['portrait', 'Portrait'], ['square', 'Square']] },
+    { key: 'stackStyle', label: 'Diseño del stack', kind: 'select', options: [['fan', 'Abanico'], ['fan-center', 'Centrado'], ['fan-drift', 'Cascada']] },
+    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 20, max: 120, step: 1 },
+    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 40, step: 1 },
+    { key: 'borderColor', label: 'Color borde', kind: 'color' },
+    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
+    { key: 'ribbonText', label: 'Texto del cintillo', kind: 'text' },
+    { key: 'ribbonColor', label: 'Color del cintillo', kind: 'color' },
+  ],
+  sticker: [
+    { key: 'emoji', label: 'Emoji', kind: 'text' },
+    { key: 'imageUrl', label: 'Imagen custom (URL)', kind: 'text' },
+    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 16, max: 130, step: 1 },
+    { key: 'strokeColor', label: 'Color stroke', kind: 'color' },
+    { key: 'strokeWidth', label: 'Grosor stroke', kind: 'range', min: 0, max: 6, step: 0.5 },
+    { key: 'borderRadius', label: 'Border radius (solo imagen)', kind: 'range', min: 0, max: 40, step: 1 },
+  ],
+};
+
+// Comunes a TODAS las capas — solo el anclaje (el punto desde el que
+// arranca la posición). offsetX/offsetY/rotation/size NO viven acá: se
+// controlan directo arrastrando/con las manijas sobre el pin real en el
+// mapa — es el punto central de que esto sea WYSIWYG. Quedan disponibles
+// como número preciso dentro de cada tipo (ver 'size' arriba) para
+// ajustes finos.
+const CLUSTER_LAYER_COMMON_FIELDS = [
+  { key: 'anchor', label: 'Punto de anclaje', kind: 'select', options: [['center', 'Centro'], ['left', 'Izquierda'], ['right', 'Derecha'], ['top', 'Arriba'], ['bottom', 'Abajo'], ['top-left', 'Arriba-Izq'], ['top-right', 'Arriba-Der'], ['bottom-left', 'Abajo-Izq'], ['bottom-right', 'Abajo-Der']] },
+];
+
+function _newClusterLayer(type) {
+  const base = { type, anchor: 'center', offsetX: 0, offsetY: 0, rotation: 0, zIndex: 5 };
+  if (type === 'label') return { ...base, text: '', fontSize: 10, color: '#ffffff', bgColor: '#111111', borderRadius: 6, borderColor: '', borderWidth: 0 };
+  if (type === 'avatars') return { ...base, size: 18, maxCount: 3, borderColor: '#ffffff', borderWidth: 1.5 };
+  if (type === 'place_stack') return { ...base, placeIndex: 0, size: 50, shape: 'portrait', stackStyle: 'fan-drift', borderRadius: 8, borderColor: '#ffffff', borderWidth: 1.5, showBadge: false, badgeColor: '#111827' };
+  if (type === 'event_stack') return { ...base, size: 32, shape: 'portrait', stackStyle: 'fan-drift', borderRadius: 7, borderColor: '#ffffff', borderWidth: 1.5, ribbonText: '📅 EVENTO', ribbonColor: '#ef4444' };
+  if (type === 'sticker') return { ...base, emoji: '', imageUrl: '', size: 44, strokeColor: '#ffffff', strokeWidth: 2, borderRadius: 0 };
+  return base;
+}
 
 export const CLUSTER_LAYER_ANCHORS = {
   'center':        { left: '50%',  top: '50%',  ox: 0.5, oy: 0.5 },
