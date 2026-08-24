@@ -281,6 +281,7 @@ export class MapView {
     this.clusterMarkers  = []; // pines "amontonados" agrupados en un solo sticker
     this.pinClusters     = null; // clusters personalizados (SuperUser) — null = aún no cargados
     this.onClusterCustomize = null; // callback (group, existingClusterOrNull) — lo asigna SuperUserPanel
+    this._cancelActiveClusterPress = null; // cancela un long-press de cluster pendiente si arranca un drag real del mapa
     this.allPlaces       = [];
     this.activities      = [];
     this.landmarkMarkers = [];
@@ -374,6 +375,18 @@ export class MapView {
         document.body.classList.add('map-dragging');
         _dragStartCenter = this.map.getCenter();
         _dragStartPx     = this.map.project(_dragStartCenter);
+        // Si el drag del mapa arrancó justo encima de un sticker de
+        // cluster, nuestro propio pointermove local en ese elemento puede
+        // no llegar a dispararse (MapLibre se queda con el gesto táctil
+        // primero) — el timer de long-press quedaba corriendo igual y
+        // terminaba abriendo el panel de personalización a mitad de un
+        // simple pan del mapa. Esta es la señal confiable de "sí hay un
+        // drag real en curso", así que cancela cualquier long-press
+        // pendiente sin importar si el pointermove local llegó o no.
+        if (this._cancelActiveClusterPress) {
+          this._cancelActiveClusterPress();
+          this._cancelActiveClusterPress = null;
+        }
       });
       this.map.on('drag', () => {
         if (!_dragStartCenter) return;
@@ -1189,13 +1202,18 @@ export class MapView {
       startX = e.clientX; startY = e.clientY;
       pressTimer = setTimeout(() => {
         longPressFired = true;
+        this._cancelActiveClusterPress = null;
         if (this.onClusterCustomize) {
           this.haptic('longpress');
           this.onClusterCustomize(group, customDef || null);
         }
       }, 550);
+      this._cancelActiveClusterPress = clearPress; // ver map.on('dragstart') más arriba
     });
-    const clearPress = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+    const clearPress = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      if (this._cancelActiveClusterPress === clearPress) this._cancelActiveClusterPress = null;
+    };
     el.addEventListener('pointermove', (e) => {
       if (pressTimer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) clearPress();
     });
@@ -2282,7 +2300,7 @@ function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
 // aplican a 'avatars' del mismo modo — ver _renderClusterLayerHtml).
 // ════════════════════════════════════════════════════════════════════
 
-const CLUSTER_LAYER_ANCHORS = {
+export const CLUSTER_LAYER_ANCHORS = {
   'center':        { left: '50%',  top: '50%',  ox: 0.5, oy: 0.5 },
   'left':          { left: '0%',   top: '50%',  ox: 0,   oy: 0.5 },
   'right':         { left: '100%', top: '50%',  ox: 1,   oy: 0.5 },
@@ -2302,31 +2320,49 @@ const CLUSTER_LAYER_ANCHORS = {
 export function getClusterLayerPreset(name) {
   const style = ['fan', 'fan-center', 'fan-drift'].includes(name) ? name : 'fan-drift';
   return [
-    { type: 'event_stack', size: 30, stackStyle: style, anchor: 'left', offsetX: -2, offsetY: -18, rotation: -6, borderRadius: 7, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 1, ribbonText: '📅 EVENTO', ribbonColor: '#ef4444' },
-    { type: 'place_stack', placeIndex: 1, size: 44, stackStyle: style, anchor: 'right', offsetX: 6, offsetY: -30, rotation: 4, borderRadius: 8, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 2, showBadge: false, badgeColor: '#111827' },
+    { type: 'event_stack', size: 30, shape: 'portrait', stackStyle: style, anchor: 'left', offsetX: -2, offsetY: -18, rotation: -6, borderRadius: 7, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 1, ribbonText: '📅 EVENTO', ribbonColor: '#ef4444' },
+    { type: 'place_stack', placeIndex: 1, size: 44, shape: 'portrait', stackStyle: style, anchor: 'right', offsetX: 6, offsetY: -30, rotation: 4, borderRadius: 8, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 2, showBadge: false, badgeColor: '#111827' },
     { type: 'sticker', emoji: '', imageUrl: '', size: 46, anchor: 'right', offsetX: 4, offsetY: -58, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2, borderRadius: 0, zIndex: 3 },
-    { type: 'place_stack', placeIndex: 0, size: 62, stackStyle: style, anchor: 'left', offsetX: 8, offsetY: 0, rotation: 0, borderRadius: 9, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 4, showBadge: true, badgeColor: '#111827' },
+    { type: 'place_stack', placeIndex: 0, size: 62, shape: 'portrait', stackStyle: style, anchor: 'left', offsetX: 8, offsetY: 0, rotation: 0, borderRadius: 9, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 4, showBadge: true, badgeColor: '#111827' },
     { type: 'avatars', size: 18, maxCount: 3, anchor: 'left', offsetX: -10, offsetY: 8, borderColor: '#ffffff', borderWidth: 1.5, zIndex: 7 },
     { type: 'label', text: '', fontSize: 9.5, color: '#ffffff', bgColor: '#111111', anchor: 'right', offsetX: 4, offsetY: 20, rotation: 0, borderRadius: 5, borderColor: '', borderWidth: 0, zIndex: 8 },
   ];
+}
+
+// Posición/transform de una capa — SEPARADO del contenido a propósito:
+// tanto el pin real en el mapa (scale=1) como el canvas WYSIWYG del panel
+// de SuperUser (scale>1, para poder arrastrar cómodo) usan EXACTAMENTE
+// esta misma cuenta, así lo que se ve en el editor es 1:1 lo que se ve
+// en el mapa — nunca dos implementaciones que se puedan desincronizar.
+export function getClusterLayerAnchorPos(layer, scale = 1) {
+  const A = CLUSTER_LAYER_ANCHORS[layer.anchor] || CLUSTER_LAYER_ANCHORS.center;
+  return {
+    left: A.left,
+    top: A.top,
+    transform: `translate(${-A.ox * 100}%,${-A.oy * 100}%) translate(${(layer.offsetX || 0) * scale}px,${(layer.offsetY || 0) * scale}px) rotate(${layer.rotation || 0}deg)`,
+    zIndex: layer.zIndex ?? 1,
+  };
 }
 
 // Renderiza UNA capa a HTML. Devuelve '' si la capa no tiene nada que
 // mostrar (ej. sticker sin emoji/imagen, avatars sin actividad activa,
 // event_stack sin ningún lugar en evento) — así los presets pueden
 // incluir capas "apagadas" por default sin ensuciar el pin.
-function _renderClusterLayerHtml(layer, group) {
-  const A = CLUSTER_LAYER_ANCHORS[layer.anchor] || CLUSTER_LAYER_ANCHORS.center;
-  const size = layer.size ?? 44;
-  const posStyle = `position:absolute;left:${A.left};top:${A.top};transform:translate(${-A.ox * 100}%,${-A.oy * 100}%) translate(${layer.offsetX || 0}px,${layer.offsetY || 0}px) rotate(${layer.rotation || 0}deg);z-index:${layer.zIndex ?? 1};`;
+// `scale` escala tanto la posición como el tamaño del contenido — usado
+// por el canvas WYSIWYG del panel (ver nota arriba).
+export function _renderClusterLayerHtml(layer, group, scale = 1) {
+  const pos = getClusterLayerAnchorPos(layer, scale);
+  const posStyle = `position:absolute;left:${pos.left};top:${pos.top};transform:${pos.transform};z-index:${pos.zIndex};`;
+  const size = (layer.size ?? 44) * scale;
   const places = group.map(({ el }) => el._place);
 
   let inner = '';
 
   if (layer.type === 'label') {
     if (!layer.text) return '';
-    const border = layer.borderWidth ? `border:${layer.borderWidth}px solid ${layer.borderColor || '#fff'};` : '';
-    inner = `<div style="white-space:nowrap;background:${layer.bgColor || '#111'};color:${layer.color || '#fff'};font-size:${layer.fontSize || 10}px;font-weight:800;letter-spacing:0.3px;text-transform:uppercase;padding:${Math.round((layer.fontSize || 10) * 0.5)}px ${Math.round((layer.fontSize || 10) * 0.9)}px;border-radius:${layer.borderRadius ?? 6}px;${border}box-shadow:0 2px 6px rgba(0,0,0,0.3);">${layer.text}</div>`;
+    const fontSize = (layer.fontSize || 10) * scale;
+    const border = layer.borderWidth ? `border:${layer.borderWidth * scale}px solid ${layer.borderColor || '#fff'};` : '';
+    inner = `<div style="white-space:nowrap;background:${layer.bgColor || '#111'};color:${layer.color || '#fff'};font-size:${fontSize}px;font-weight:800;letter-spacing:0.3px;text-transform:uppercase;padding:${Math.round(fontSize * 0.5)}px ${Math.round(fontSize * 0.9)}px;border-radius:${(layer.borderRadius ?? 6) * scale}px;${border}box-shadow:0 2px 6px rgba(0,0,0,0.3);">${layer.text}</div>`;
 
   } else if (layer.type === 'avatars') {
     let avatars = [];
@@ -2335,7 +2371,7 @@ function _renderClusterLayerHtml(layer, group) {
     const list = avatars.slice(0, layer.maxCount || 3);
     const step = size * 0.62;
     inner = `<div style="position:relative;width:${list.length * step + size * 0.4}px;height:${size}px;">` +
-      list.map((a, i) => `<img src="${a}" style="position:absolute;left:${i * step}px;top:0;width:${size}px;height:${size}px;border-radius:50%;border:${layer.borderWidth ?? 1.5}px solid ${layer.borderColor || '#fff'};box-shadow:0 1px 3px rgba(0,0,0,0.3);">`).join('') +
+      list.map((a, i) => `<img src="${a}" style="position:absolute;left:${i * step}px;top:0;width:${size}px;height:${size}px;border-radius:50%;border:${(layer.borderWidth ?? 1.5) * scale}px solid ${layer.borderColor || '#fff'};box-shadow:0 1px 3px rgba(0,0,0,0.3);">`).join('') +
       `</div>`;
 
   } else if (layer.type === 'place_stack' || layer.type === 'event_stack') {
@@ -2347,22 +2383,22 @@ function _renderClusterLayerHtml(layer, group) {
       place = places[layer.placeIndex ?? 0];
       if (!place) return '';
     }
-    const stackHtml = MapView.prototype._buildOnePlaceStackHtml.call(null, place, size, layer.stackStyle || 'fan-drift');
+    const stackHtml = MapView.prototype._buildOnePlaceStackHtml.call(null, place, size, layer.stackStyle || 'fan-drift', layer.shape || 'portrait');
     if (!stackHtml) return '';
-    const ring = layer.borderWidth ? `border:${layer.borderWidth}px solid ${layer.borderColor || '#fff'};` : '';
+    const ring = layer.borderWidth ? `border:${layer.borderWidth * scale}px solid ${layer.borderColor || '#fff'};` : '';
     const ribbon = layer.type === 'event_stack'
-      ? `<div style="position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:${layer.ribbonColor || '#ef4444'};color:#fff;font-size:6.5px;font-weight:800;padding:1.5px 4px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.3);">${layer.ribbonText || '📅 EVENTO'}</div>`
+      ? `<div style="position:absolute;top:${-7 * scale}px;left:50%;transform:translateX(-50%);background:${layer.ribbonColor || '#ef4444'};color:#fff;font-size:${6.5 * scale}px;font-weight:800;padding:${1.5 * scale}px ${4 * scale}px;border-radius:${4 * scale}px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.3);">${layer.ribbonText || '📅 EVENTO'}</div>`
       : '';
     const badge = layer.showBadge
-      ? `<div style="position:absolute;top:-6px;right:-11px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:${layer.badgeColor || '#111827'};color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.28);">+${group.length}</div>`
+      ? `<div style="position:absolute;top:${-6 * scale}px;right:${-11 * scale}px;min-width:${19 * scale}px;height:${19 * scale}px;padding:0 ${5 * scale}px;border-radius:999px;background:${layer.badgeColor || '#111827'};color:#fff;font-size:${10.5 * scale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:${2 * scale}px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.28);">+${group.length}</div>`
       : '';
-    inner = `<div style="position:relative;width:${size}px;height:${size}px;border-radius:${layer.borderRadius ?? 8}px;overflow:visible;${ring}">${stackHtml}${ribbon}${badge}</div>`;
+    inner = `<div style="position:relative;width:${size}px;height:${size}px;border-radius:${(layer.borderRadius ?? 8) * scale}px;overflow:visible;${ring}">${stackHtml}${ribbon}${badge}</div>`;
 
   } else if (layer.type === 'sticker') {
     if (layer.imageUrl) {
-      inner = `<img src="${layer.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:${layer.borderRadius ?? 0}px;filter:drop-shadow(0 0 ${layer.strokeWidth ?? 2}px ${layer.strokeColor || '#fff'}) drop-shadow(0 0 ${layer.strokeWidth ?? 2}px ${layer.strokeColor || '#fff'}) drop-shadow(0 3px 5px rgba(0,0,0,0.32));">`;
+      inner = `<img src="${layer.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:${(layer.borderRadius ?? 0) * scale}px;filter:drop-shadow(0 0 ${(layer.strokeWidth ?? 2) * scale}px ${layer.strokeColor || '#fff'}) drop-shadow(0 0 ${(layer.strokeWidth ?? 2) * scale}px ${layer.strokeColor || '#fff'}) drop-shadow(0 3px 5px rgba(0,0,0,0.32));">`;
     } else if (layer.emoji) {
-      inner = `<div style="font-size:${size}px;line-height:1;-webkit-text-stroke:${layer.strokeWidth ?? 2}px ${layer.strokeColor || '#fff'};filter:drop-shadow(0 3px 5px rgba(0,0,0,0.32));">${layer.emoji}</div>`;
+      inner = `<div style="font-size:${size}px;line-height:1;-webkit-text-stroke:${(layer.strokeWidth ?? 2) * scale}px ${layer.strokeColor || '#fff'};filter:drop-shadow(0 3px 5px rgba(0,0,0,0.32));">${layer.emoji}</div>`;
     } else {
       return '';
     }
@@ -2373,20 +2409,25 @@ function _renderClusterLayerHtml(layer, group) {
   return `<div style="${posStyle}">${inner}</div>`;
 }
 
-MapView.prototype._buildOnePlaceStackHtml = function(place, boxSize, style) {
+// boxSize = tamaño "de referencia" del stack (lo que controla la capa vía
+// `size`); shape decide si las fotos individuales dentro del stack salen
+// cuadradas o portrait (misma proporción 16:21 que usa el pin individual).
+MapView.prototype._buildOnePlaceStackHtml = function(place, boxSize, style, shape = 'portrait') {
   if (!place) return '';
   const raw = place.photosUrls || place.photos_urls || [place.photoUrl || place.photo_url];
   const photos = (raw || []).filter(Boolean).map(proxyPhoto).filter(Boolean).slice(0, 3);
   if (!photos.length) return '';
-  const photoSize = Math.round(boxSize * 0.62);
-  return _buildPinPhotoStackHtml(photos, photoSize, photoSize, style);
+  const PORTRAIT_RATIO = 16 / 21; // mismo ratio que psz portrait del pin individual
+  const photoH = boxSize * 0.62;
+  const photoW = shape === 'square' ? photoH : photoH * PORTRAIT_RATIO;
+  return _buildPinPhotoStackHtml(photos, photoW, photoH, style);
 };
 
 MapView.prototype._buildClusterStickerHtml = function(group, customDef) {
   const layers = (customDef?.layers && customDef.layers.length)
     ? customDef.layers
     : getClusterLayerPreset(customDef?.stackStyle);
-  const html = layers.map(l => _renderClusterLayerHtml(l, group)).join('');
+  const html = layers.map(l => _renderClusterLayerHtml(l, group, 1)).join('');
   return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:170px;height:130px;">${html}</div>`;
 };
 
