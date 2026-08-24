@@ -731,7 +731,7 @@ export class SuperUserPanel {
 
     let cards    = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
     let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
-    let badge    = isEdit && existingCluster.badge ? JSON.parse(JSON.stringify(existingCluster.badge)) : { dx: 60, dy: -46, scale: 1, color: '#111827', z: 30 };
+    let badge    = isEdit && existingCluster.badge ? JSON.parse(JSON.stringify(existingCluster.badge)) : { dx: 34, dy: -28, scale: 1, color: '#111827', z: 30 };
 
     const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
     let sel = null; // {kind:'card'|'sticker'|'badge', idx}
@@ -826,18 +826,18 @@ export class SuperUserPanel {
       const wrap = previewEl.firstElementChild.firstElementChild;
       wrap.querySelectorAll('[data-card-idx]').forEach(node => {
         const idx = parseInt(node.dataset.cardIdx, 10);
-        const pid = shownPlaces[idx].el._place.place_id || shownPlaces[idx].el._place.id;
-        wireGesture(node, getCardOverride(pid), 'card', idx);
+        const pid = shownPlaces[idx].place_id || shownPlaces[idx].id;
+        wireGesture(node, getCardOverride(pid), 'card', idx, node);
         if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
       });
       wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
         const idx = parseInt(node.dataset.stickerIdx, 10);
-        wireGesture(node, stickers[idx], 'sticker', idx);
+        wireGesture(node, stickers[idx], 'sticker', idx, node);
         if (sel?.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
       });
       const badgeNode = wrap.querySelector('[data-badge]');
       if (badgeNode) {
-        wireGesture(badgeNode, badge, 'badge', 0);
+        wireGesture(badgeNode, badge, 'badge', 0, badgeNode);
         if (sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
       }
     }
@@ -861,7 +861,7 @@ export class SuperUserPanel {
 
       node.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        select(kind, idx);
+        select(kind, idx, node);
         node.setPointerCapture(e.pointerId);
         pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (pts.size === 1) {
@@ -916,11 +916,21 @@ export class SuperUserPanel {
       node.addEventListener('pointercancel', release);
     }
 
-    function select(kind, idx) {
+    function select(kind, idx, node) {
       sel = { kind, idx };
-      renderPreview();
+      // A propósito NO llama a renderPreview() acá: esto se ejecuta desde
+      // adentro de un pointerdown (ver wireGesture), y reconstruir el DOM
+      // del preview en ese momento destruiría el nodo recién tocado antes
+      // de que setPointerCapture() alcance a agarrarlo — el gesto se corta
+      // a la mitad. Solo togglea el outline directo sobre los nodos que
+      // ya están en pantalla.
+      previewEl.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge]').forEach(n => {
+        n.style.outline = ''; n.style.outlineOffset = '';
+      });
+      if (node) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
       renderSelProps();
-      renderCardChips(); renderStickerChips();
+      renderCardChips();
+      renderStickerChips();
     }
 
     // ── Propiedades mínimas de lo seleccionado ──────────────────
@@ -932,7 +942,7 @@ export class SuperUserPanel {
     modal.querySelector('#su-cluster-sel-deselect').addEventListener('click', () => { sel = null; renderPreview(); renderSelProps(); renderCardChips(); renderStickerChips(); });
 
     function currentSelObj() {
-      if (sel.kind === 'card') { const place = shownPlaces[sel.idx]; return getCardOverride(place.el._place.place_id || place.el._place.id); }
+      if (sel.kind === 'card') { const place = shownPlaces[sel.idx]; return getCardOverride(place.place_id || place.id); }
       if (sel.kind === 'sticker') return stickers[sel.idx];
       return badge;
     }
@@ -942,7 +952,7 @@ export class SuperUserPanel {
       selWrap.style.display = 'block';
 
       if (sel.kind === 'card') {
-        const place = shownPlaces[sel.idx].el._place;
+        const place = shownPlaces[sel.idx];
         const ov = getCardOverride(place.place_id || place.id);
         selTitle.textContent = `📸 ${place.name || ''}`;
         selFields.innerHTML = `
@@ -998,8 +1008,8 @@ export class SuperUserPanel {
         chip.type = 'button';
         const active = sel?.kind === 'card' && sel.idx === i;
         chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:10.5px;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
-        chip.textContent = `📸 ${place.el._place.name || i + 1}`;
-        chip.addEventListener('click', () => select('card', i));
+        chip.textContent = `📸 ${place.name || i + 1}`;
+        chip.addEventListener('click', () => { select('card', i); renderPreview(); });
         cardChipsEl.appendChild(chip);
       });
     }
@@ -1012,16 +1022,17 @@ export class SuperUserPanel {
         const active = sel?.kind === 'sticker' && sel.idx === i;
         chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:12px;cursor:pointer;`;
         chip.textContent = s.emoji || '✨';
-        chip.addEventListener('click', () => select('sticker', i));
+        chip.addEventListener('click', () => { select('sticker', i); renderPreview(); });
         stickerChipsEl.appendChild(chip);
       });
     }
     modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
       stickers.push({ emoji: '✨', dx: 0, dy: 0, size: 26, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2, z: 20 + stickers.length });
       select('sticker', stickers.length - 1);
+      renderPreview();
       renderStickerChips();
     });
-    modal.querySelector('#su-cluster-badge-chip').addEventListener('click', () => select('badge', 0));
+    modal.querySelector('#su-cluster-badge-chip').addEventListener('click', () => { select('badge', 0); renderPreview(); });
 
     // ── Lugares incluidos ────────────────────────────────────────
     const placesListEl = modal.querySelector('#su-cluster-places-list');
