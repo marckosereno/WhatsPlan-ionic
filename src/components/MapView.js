@@ -757,6 +757,7 @@ export class MapView {
       const res  = await fetch('/api/supabase-clusters');
       const json = await res.json();
       this.pinClusters = json.success ? (json.clusters || []) : [];
+      console.log('[CLUSTER] _loadPinClusters() — recibidos del servidor:', JSON.stringify(this.pinClusters));
     } catch (e) {
       console.warn('⚠️ pin_clusters:', e.message);
       this.pinClusters = this.pinClusters || [];
