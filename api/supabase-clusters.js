@@ -63,7 +63,19 @@ async function saveCluster(body, res) {
   if (!response.ok) throw new Error(`Supabase error ${response.status}: ${await response.text()}`);
 
   const data = await response.json();
-  return res.status(200).json({ success: true, cluster: data[0] || data });
+  // Si Supabase devuelve 200 pero con un array VACÍO, la fila no se
+  // actualizó de verdad — típicamente porque Row Level Security bloqueó
+  // el UPDATE/INSERT (con `Prefer: return=representation`, RLS filtra
+  // filas que la policy no deja ver, y el 200 no es garantía de que
+  // haya escrito nada). Sin este chequeo, el cliente pensaba "guardado
+  // con éxito" aunque en la base no había cambiado nada.
+  if (!Array.isArray(data) || data.length === 0) {
+    return res.status(500).json({
+      success: false,
+      message: 'Supabase no devolvió ninguna fila — probablemente Row Level Security está bloqueando el guardado. Revisá que SUPABASE_SERVICE_ROLE_KEY esté bien configurada (esa key ignora RLS), o agregá una policy de escritura a pin_clusters.',
+    });
+  }
+  return res.status(200).json({ success: true, cluster: data[0] });
 }
 
 async function deleteCluster(body, res) {
