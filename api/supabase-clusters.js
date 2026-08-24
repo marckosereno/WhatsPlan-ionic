@@ -20,19 +20,18 @@ async function listClusters(res) {
   const rows = await response.json();
 
   const clusters = rows.map(r => ({
-    id:         r.id,
-    placeIds:   r.place_ids || [],
-    cards:      Array.isArray(r.cards) ? r.cards : [],
-    stickers:   Array.isArray(r.stickers) ? r.stickers : [],
-    label:      r.label && typeof r.label === 'object' ? r.label : null,
-    badgeColor: r.badge_color || '#111827',
+    id:       r.id,
+    placeIds: r.place_ids || [],
+    cards:    Array.isArray(r.cards) ? r.cards : [],
+    stickers: Array.isArray(r.stickers) ? r.stickers : [],
+    badge:    r.badge && typeof r.badge === 'object' ? r.badge : null,
   }));
 
   return res.status(200).json({ success: true, clusters });
 }
 
 async function saveCluster(body, res) {
-  const { id, place_ids, cards, stickers, label, badge_color } = body;
+  const { id, place_ids, cards, stickers, badge } = body;
 
   if (!Array.isArray(place_ids) || place_ids.length < 1) {
     return res.status(400).json({ success: false, message: 'place_ids es requerido (mínimo 1 lugar)' });
@@ -40,11 +39,10 @@ async function saveCluster(body, res) {
 
   const record = {
     place_ids,
-    cards:       Array.isArray(cards) ? cards : [],
-    stickers:    Array.isArray(stickers) ? stickers : [],
-    label:       label && label.text ? label : null,
-    badge_color: badge_color || '#111827',
-    updated_at:  new Date().toISOString(),
+    cards:      Array.isArray(cards) ? cards : [],
+    stickers:   Array.isArray(stickers) ? stickers : [],
+    badge:      badge && typeof badge === 'object' ? badge : null,
+    updated_at: new Date().toISOString(),
   };
 
   const isUpdate = !!id;
