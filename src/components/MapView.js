@@ -2280,42 +2280,41 @@ function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
 // ════════════════════════════════════════════════════════════════════
 // STICKER DE CLUSTER — composición de tarjetas dispersas, tipo el mapa
 // de "Moments" (una tarjeta por lugar, rotadas/tamaños distintos, más
-// stickers decorativos y una etiqueta) en vez de un ícono con anillo.
+// stickers decorativos) en vez de un ícono con anillo.
 //
-// Modelo de datos GUARDADO (pin_clusters, columnas nuevas):
+// Modelo de datos GUARDADO (pin_clusters):
 //   cards:    [{ placeId, shape:'portrait'|'square', rotation, scale,
-//                dx, dy }]  — override opcional por lugar; si un lugar
-//                             del grupo no tiene entrada acá, se usa el
-//                             slot automático (CLUSTER_CARD_SLOTS) según
-//                             su posición en el grupo.
-//   stickers: [{ emoji|imageUrl, anchor, size, rotation, strokeColor }]
-//   label:    { text, anchor } — texto puede traer "\n" para 2 líneas,
-//                                 cada una en su propia píldora (como el
-//                                 "CALLE / DE LOS AGACHADOS" de referencia)
-//   badgeColor
+//                dx, dy, borderColor, borderWidth, borderRadius, z }]
+//             override opcional por lugar; si un lugar del grupo no
+//             tiene entrada acá, se usa el slot automático
+//             (CLUSTER_CARD_SLOTS) según su posición en el grupo.
+//   stickers: [{ emoji|imageUrl, dx, dy, size, rotation, strokeColor,
+//                strokeWidth, z }]
+//   badge:    { dx, dy, scale, color, z }
 //
-// Todo opcional — un cluster SIN personalizar (customDef=null, o recién
-// creado) ya se ve bien solo con los slots automáticos.
+// `z` es el orden de apilado — "traer al frente"/"enviar atrás" en el
+// panel solo tocan este número (máximo/mínimo global +1/-1), no hace
+// falta reordenar arrays. Todo opcional — un cluster sin personalizar
+// (customDef=null) ya se ve bien solo con los slots automáticos.
 // ════════════════════════════════════════════════════════════════════
 
-// Slots de posición/tamaño/rotación para hasta 6 tarjetas visibles,
-// pensados para que la última (índice 4, la más grande) quede "al
-// frente" — mismo espíritu disperso que la referencia de Moments.
-// dx/dy en px desde el centro del pin; scale multiplica el tamaño base.
+// Slots de posición/tamaño/rotación/z para hasta 6 tarjetas visibles —
+// mismo espíritu disperso que la referencia de Moments. dx/dy en px
+// desde el centro del pin; scale multiplica el tamaño base.
 const CLUSTER_CARD_SLOTS = [
   { dx: -30, dy: -4,  rot: -4, scale: 0.74, z: 1 },
   { dx: 10,  dy: -22, rot: 3,  scale: 0.98, z: 2 },
   { dx: -16, dy: 10,  rot: -7, scale: 0.86, z: 3 },
   { dx: 30,  dy: 6,   rot: 6,  scale: 0.80, z: 4 },
-  { dx: -8,  dy: 28,  rot: -1, scale: 1.06, z: 6 }, // principal (recibe la etiqueta)
+  { dx: -8,  dy: 28,  rot: -1, scale: 1.06, z: 6 }, // principal, más grande
   { dx: 34,  dy: 30,  rot: 7,  scale: 0.66, z: 5 },
 ];
 export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
 
-// data-card-idx / data-sticker-idx quedan siempre en el HTML (no solo en
-// el editor) — no hacen nada en el mapa real, pero le permiten al panel
-// de edición enganchar el drag directo sobre CADA elemento sin duplicar
-// esta función. Mismo criterio: una sola fuente de verdad para el dibujo.
+// data-card-idx / data-sticker-idx / data-badge quedan siempre en el
+// HTML (no solo en el editor) — no hacen nada en el mapa real, pero le
+// permiten al panel de edición enganchar el gesto directo sobre CADA
+// elemento sin duplicar esta función. Una sola fuente de verdad.
 export function _buildClusterStickerHtml(group, customDef) {
   const BASE_W = 46, BASE_H = 60; // tamaño base portrait (16:21, igual ratio que el pin individual)
   const cardsOverride = customDef?.cards || [];
@@ -2332,7 +2331,10 @@ export function _buildClusterStickerHtml(group, customDef) {
     const rot   = override?.rotation ?? slot.rot;
     const dx    = override?.dx ?? slot.dx;
     const dy    = override?.dy ?? slot.dy;
-    const z     = slot.z;
+    const z     = override?.z ?? slot.z;
+    const borderColor  = override?.borderColor  ?? '#ffffff';
+    const borderWidth  = override?.borderWidth  ?? 2;
+    const borderRadius = override?.borderRadius ?? 9;
 
     const h = BASE_H * scale;
     const w = shape === 'square' ? h : BASE_W * scale;
@@ -2345,7 +2347,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     // pointer-events:auto explícito — el CONTENEDOR grande de todo el
     // cluster va con pointer-events:none (ver el return final), así que
     // sin este auto acá la tarjeta ni siquiera sería tappeable.
-    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:9px;${bg}border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;"></div>`;
+    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:${borderRadius}px;${bg}border:${borderWidth}px solid ${borderColor};box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;touch-action:none;"></div>`;
   }).join('');
 
   const stickersHtml = (customDef?.stickers || []).map((s, i) => {
@@ -2353,42 +2355,35 @@ export function _buildClusterStickerHtml(group, customDef) {
     const strokeColor = s.strokeColor || '#ffffff';
     const strokeWidth = s.strokeWidth ?? 2;
     const dx = s.dx ?? 0, dy = s.dy ?? 0;
+    const z = s.z ?? (20 + i);
     const inner = s.imageUrl
       ? `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 2px 4px rgba(0,0,0,0.32));">`
       : s.emoji
       ? `<div style="font-size:${size}px;line-height:1;-webkit-text-stroke:${strokeWidth}px ${strokeColor};filter:drop-shadow(0 2px 4px rgba(0,0,0,0.32));">${s.emoji}</div>`
       : '';
     if (!inner) return '';
-    return `<div data-sticker-idx="${i}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${s.rotation || 0}deg);z-index:20;pointer-events:auto;">${inner}</div>`;
+    return `<div data-sticker-idx="${i}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${s.rotation || 0}deg);z-index:${z};pointer-events:auto;touch-action:none;">${inner}</div>`;
   }).join('');
 
-  const badgeColor = customDef?.badgeColor || '#111827';
-  const badgeHtml = `<div data-badge style="position:absolute;right:-6px;top:2px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:${badgeColor};color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:30;pointer-events:auto;">+${group.length}</div>`;
-
-  let labelHtml = '';
-  const lbl = customDef?.label;
-  if (lbl?.text) {
-    const lines = lbl.text.split('\n').filter(Boolean).slice(0, 2);
-    const bgColor = lbl.bgColor || '#1e1b8f';
-    const textColor = lbl.textColor || '#ffffff';
-    const fontSize = lbl.fontSize || 10;
-    const padY = lbl.paddingY ?? 3, padX = lbl.paddingX ?? 8;
-    const radius = lbl.borderRadius ?? 4;
-    labelHtml = `<div data-label style="position:absolute;left:6px;bottom:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;z-index:25;pointer-events:auto;">` +
-      lines.map(line => `<div style="background:${bgColor};color:${textColor};font-size:${fontSize}px;font-weight:800;letter-spacing:0.2px;text-transform:uppercase;padding:${padY}px ${padX}px;border-radius:${radius}px;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${line}</div>`).join('') +
-      `</div>`;
-  }
+  const badge = customDef?.badge || {};
+  const bColor = badge.color || '#111827';
+  const bScale = badge.scale ?? 1;
+  const bDx = badge.dx ?? 60, bDy = badge.dy ?? -46; // default: esquina superior-derecha del conjunto
+  const bZ = badge.z ?? 30;
+  const bSize = 22 * bScale;
+  const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px));z-index:${bZ};pointer-events:auto;touch-action:none;">+${group.length}</div>`;
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
   // hay tarjetas/stickers desplazados afuera) pero es puramente un marco
   // de posicionamiento — sin este none, CUALQUIER toque dentro de esa
   // caja entera (incluyendo el espacio vacío/transparente entre tarjetas)
   // quedaba capturado por este elemento y burbujeaba como si se hubiera
-  // tocado el cluster. Cada pieza visible (tarjeta/sticker/badge/label)
+  // tocado el cluster. Cada pieza visible (tarjeta/sticker/badge)
   // reactiva pointer-events:auto por separado arriba — así solo lo que
   // realmente se VE es tappeable, nada más.
-  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;pointer-events:none;">${cardsHtml}${stickersHtml}${badgeHtml}${labelHtml}</div>`;
+  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;pointer-events:none;">${cardsHtml}${stickersHtml}${badgeHtml}</div>`;
 }
+
 
 MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const rawName   = place.name || '';
