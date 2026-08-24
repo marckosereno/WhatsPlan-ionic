@@ -2368,7 +2368,7 @@ export function _buildClusterStickerHtml(group, customDef) {
   const badge = customDef?.badge || {};
   const bColor = badge.color || '#111827';
   const bScale = badge.scale ?? 1;
-  const bDx = badge.dx ?? 60, bDy = badge.dy ?? -46; // default: esquina superior-derecha del conjunto
+  const bDx = badge.dx ?? 34, bDy = badge.dy ?? -28; // default: esquina superior-derecha, pegado al cluster
   const bZ = badge.z ?? 30;
   const bSize = 22 * bScale;
   const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px));z-index:${bZ};pointer-events:auto;touch-action:none;">+${group.length}</div>`;
