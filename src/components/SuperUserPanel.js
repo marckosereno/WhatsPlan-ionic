@@ -12,87 +12,6 @@ import {
   reorderCategories, reorderSubcategories,
   invalidateCache
 } from '/src/services/CategoryService.js';
-import { getClusterLayerPreset, getClusterLayerAnchorPos, _renderClusterLayerHtml } from '/src/components/MapView.js';
-
-// Tipos de capa disponibles para el editor de clusters + metadata visual
-const CLUSTER_LAYER_TYPES = [
-  { type: 'label',       icon: '🏷️', label: 'Etiqueta' },
-  { type: 'avatars',     icon: '👥', label: 'Avatares' },
-  { type: 'place_stack', icon: '📸', label: 'Lugar (stack)' },
-  { type: 'event_stack', icon: '📅', label: 'Lugar con evento' },
-  { type: 'sticker',     icon: '✨', label: 'Sticker' },
-];
-
-// Campos propios de cada tipo de capa (además de los comunes de posición,
-// ver CLUSTER_LAYER_COMMON_FIELDS más abajo). `kind` determina qué input
-// se genera: text | color | range | select | checkbox | placeSelect.
-const CLUSTER_LAYER_FIELDS = {
-  label: [
-    { key: 'text', label: 'Texto', kind: 'text' },
-    { key: 'fontSize', label: 'Tamaño texto', kind: 'range', min: 8, max: 20, step: 1 },
-    { key: 'color', label: 'Color texto', kind: 'color' },
-    { key: 'bgColor', label: 'Color fondo', kind: 'color' },
-    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 20, step: 1 },
-    { key: 'borderColor', label: 'Color borde', kind: 'color' },
-    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
-  ],
-  avatars: [
-    { key: 'size', label: 'Tamaño', kind: 'range', min: 12, max: 32, step: 1 },
-    { key: 'maxCount', label: 'Máx. avatares', kind: 'range', min: 1, max: 5, step: 1 },
-    { key: 'borderColor', label: 'Color borde', kind: 'color' },
-    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 4, step: 0.5 },
-  ],
-  place_stack: [
-    { key: 'placeIndex', label: 'Lugar', kind: 'placeSelect' },
-    { key: 'shape', label: 'Forma', kind: 'select', options: [['portrait', 'Portrait'], ['square', 'Square']] },
-    { key: 'stackStyle', label: 'Diseño del stack', kind: 'select', options: [['fan', 'Abanico'], ['fan-center', 'Centrado'], ['fan-drift', 'Cascada']] },
-    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 20, max: 120, step: 1 },
-    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 40, step: 1 },
-    { key: 'borderColor', label: 'Color borde', kind: 'color' },
-    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
-    { key: 'showBadge', label: 'Mostrar badge del total', kind: 'checkbox' },
-    { key: 'badgeColor', label: 'Color badge', kind: 'color' },
-  ],
-  event_stack: [
-    { key: 'shape', label: 'Forma', kind: 'select', options: [['portrait', 'Portrait'], ['square', 'Square']] },
-    { key: 'stackStyle', label: 'Diseño del stack', kind: 'select', options: [['fan', 'Abanico'], ['fan-center', 'Centrado'], ['fan-drift', 'Cascada']] },
-    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 20, max: 120, step: 1 },
-    { key: 'borderRadius', label: 'Border radius', kind: 'range', min: 0, max: 40, step: 1 },
-    { key: 'borderColor', label: 'Color borde', kind: 'color' },
-    { key: 'borderWidth', label: 'Grosor borde', kind: 'range', min: 0, max: 6, step: 1 },
-    { key: 'ribbonText', label: 'Texto del cintillo', kind: 'text' },
-    { key: 'ribbonColor', label: 'Color del cintillo', kind: 'color' },
-  ],
-  sticker: [
-    { key: 'emoji', label: 'Emoji', kind: 'text' },
-    { key: 'imageUrl', label: 'Imagen custom (URL)', kind: 'text' },
-    { key: 'size', label: 'Tamaño (preciso)', kind: 'range', min: 16, max: 130, step: 1 },
-    { key: 'strokeColor', label: 'Color stroke', kind: 'color' },
-    { key: 'strokeWidth', label: 'Grosor stroke', kind: 'range', min: 0, max: 6, step: 0.5 },
-    { key: 'borderRadius', label: 'Border radius (solo imagen)', kind: 'range', min: 0, max: 40, step: 1 },
-  ],
-};
-
-// Comunes a TODAS las capas — solo el anclaje (el punto desde el que
-// arranca la posición). offsetX/offsetY/rotation/size ya NO viven acá:
-// se controlan directo en el canvas (arrastrar = mover, esquina = tamaño,
-// manija de arriba = girar) — es el punto central de que esto sea WYSIWYG
-// en vez de sliders a ciegas. Quedan disponibles como número preciso
-// dentro de cada tipo (ver 'size' arriba) para ajustes finos.
-const CLUSTER_LAYER_COMMON_FIELDS = [
-  { key: 'anchor', label: 'Punto de anclaje', kind: 'select', options: [['center', 'Centro'], ['left', 'Izquierda'], ['right', 'Derecha'], ['top', 'Arriba'], ['bottom', 'Abajo'], ['top-left', 'Arriba-Izq'], ['top-right', 'Arriba-Der'], ['bottom-left', 'Abajo-Izq'], ['bottom-right', 'Abajo-Der']] },
-];
-
-function _newClusterLayer(type) {
-  const base = { type, anchor: 'center', offsetX: 0, offsetY: 0, rotation: 0, zIndex: 5 };
-  if (type === 'label') return { ...base, text: '', fontSize: 10, color: '#ffffff', bgColor: '#111111', borderRadius: 6, borderColor: '', borderWidth: 0 };
-  if (type === 'avatars') return { ...base, size: 18, maxCount: 3, borderColor: '#ffffff', borderWidth: 1.5 };
-  if (type === 'place_stack') return { ...base, placeIndex: 0, size: 50, shape: 'portrait', stackStyle: 'fan-drift', borderRadius: 8, borderColor: '#ffffff', borderWidth: 1.5, showBadge: false, badgeColor: '#111827' };
-  if (type === 'event_stack') return { ...base, size: 32, shape: 'portrait', stackStyle: 'fan-drift', borderRadius: 7, borderColor: '#ffffff', borderWidth: 1.5, ribbonText: '📅 EVENTO', ribbonColor: '#ef4444' };
-  if (type === 'sticker') return { ...base, emoji: '', imageUrl: '', size: 44, strokeColor: '#ffffff', strokeWidth: 2, borderRadius: 0 };
-  return base;
-}
-
 
 const STICKER_PRESETS = [
   { emoji: '⭐', label: 'Destacado' },
@@ -136,16 +55,52 @@ export class SuperUserPanel {
     this._buildForm();
     this._buildListPanel();
     this._buildCategoriesPanel();
-    // Long-press sobre un sticker de cluster (en MapView) → abre este panel
-    this.mapView.onClusterCustomize = (group, existingCluster) => {
-      this._openClusterCustomizePanel(group, existingCluster);
+    // Habilita el long-press sobre un sticker de cluster en MapView — la
+    // UI de edición en sí (arrastrar/redimensionar/girar sobre el pin
+    // real, el panel flotante) vive ENTERA en MapView.js porque necesita
+    // tocar el marker real del mapa. Acá solo prendemos la función y le
+    // damos los 4 callbacks de red (fetch a Supabase).
+    this.mapView.clusterEditEnabled = true;
+    this.mapView.onClusterSaveRequest = async ({ id, stack_style, layers, place_ids }) => {
+      const res = await fetch('/api/supabase-clusters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', id, stack_style, layers, place_ids }),
+      });
+      return res.json();
+    };
+    this.mapView.onClusterDeleteRequest = async (id) => {
+      const res = await fetch('/api/supabase-clusters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+      return res.json();
+    };
+    this.mapView.onClusterSavePresetRequest = async (name, layers) => {
+      const res = await fetch('/api/supabase-clusters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'savePreset', name, layers }),
+      });
+      return res.json();
+    };
+    this.mapView.fetchClusterPresets = async () => {
+      const res = await fetch('/api/supabase-clusters?presets=1');
+      const json = await res.json();
+      return json.success ? json.presets : [];
     };
   }
 
   unmount() {
-    ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal','su-cluster-modal']
+    ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal']
       .forEach(id => document.getElementById(id)?.remove());
-    this.mapView.onClusterCustomize = null;
+    this.mapView.clusterEditEnabled = false;
+    this.mapView.onClusterSaveRequest = null;
+    this.mapView.onClusterDeleteRequest = null;
+    this.mapView.onClusterSavePresetRequest = null;
+    this.mapView.fetchClusterPresets = null;
+    if (this.mapView._clusterEditSession) this.mapView._exitClusterEditMode();
   }
 
   // ── FAB: botón redondo ⚙️ para abrir panel ─────────────────
@@ -786,442 +741,12 @@ export class SuperUserPanel {
   }
 
   // ══════════════════════════════════════════════════════════
-  // CLUSTERS DE PINES (calles con negocios amontonados) — panel de
-  // personalización, abierto por MapView vía longpress sobre un sticker
-  // de cluster (this.mapView.onClusterCustomize, seteado en mount()).
+  // CLUSTERS DE PINES (calles con negocios amontonados) — la edición en
+  // sí (long-press → arrastrar/redimensionar/girar en vivo sobre el pin
+  // real del mapa) vive ENTERA en MapView.js (_enterClusterEditMode y
+  // alrededores). Acá en mount()/unmount() solo se habilita la función y
+  // se le dan los 4 callbacks de red — ver arriba.
   // ══════════════════════════════════════════════════════════
-
-  _openClusterCustomizePanel(group, existingCluster) {
-    document.getElementById('su-cluster-modal')?.remove();
-
-    const isEdit = !!existingCluster;
-    // Deep clone — nunca mutar el objeto original hasta guardar.
-    let layers = isEdit && existingCluster.layers?.length
-      ? JSON.parse(JSON.stringify(existingCluster.layers))
-      : getClusterLayerPreset('fan-drift');
-    let curPresetStyle = existingCluster?.stackStyle || 'fan-drift';
-    let selectedIdx = layers.length ? 0 : null;
-
-    const groupPlaces = group.map(({ el }) => el._place);
-    const included = new Set(groupPlaces.map(p => p.place_id || p.id));
-
-    const CANVAS_SCALE = 2; // el mismo composite del mapa (170x130) mostrado al doble, para poder tocar/arrastrar cómodo
-    const CANVAS_W = 170 * CANVAS_SCALE, CANVAS_H = 130 * CANVAS_SCALE;
-
-    const modal = document.createElement('div');
-    modal.id = 'su-cluster-modal';
-    modal.className = 'su-modal-overlay';
-    modal.innerHTML = `
-      <div class="su-modal-box" style="max-width:${CANVAS_W + 40}px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:15px;font-weight:700;color:#e5e7eb;">${isEdit ? '✏️ Editar' : '✨ Personalizar'} cluster</span>
-          <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
-        </div>
-
-        <div style="font-size:9.5px;color:#6b7280;margin-bottom:6px;">Arrastrá una capa para moverla · manija azul = tamaño · manija naranja = giro</div>
-        <div id="su-cluster-canvas" style="position:relative;width:${CANVAS_W}px;height:${CANVAS_H}px;margin:0 auto 12px;background:
-          repeating-conic-gradient(#20202c 0% 25%, #17171f 0% 50%) 50% / 16px 16px;
-          border-radius:12px;border:1px solid rgba(255,255,255,0.1);overflow:visible;touch-action:none;"></div>
-
-        <div style="display:flex;flex-direction:column;gap:12px;max-height:38vh;overflow-y:auto;">
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Diseño base</div>
-            <div id="su-cluster-preset-row" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-          </div>
-
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              <div style="font-size:10px;color:#6b7280;">Capas (${layers.length}) — tocá una para seleccionarla</div>
-              <div style="display:flex;gap:4px;">
-                <select id="su-cluster-add-type" style="font-size:10px;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;">
-                  ${CLUSTER_LAYER_TYPES.map(t => `<option value="${t.type}">${t.icon} ${t.label}</option>`).join('')}
-                </select>
-                <button type="button" id="su-cluster-add-layer" style="font-size:10px;padding:3px 9px;border-radius:5px;border:none;background:#1a5cf5;color:#fff;font-weight:700;cursor:pointer;">+</button>
-              </div>
-            </div>
-            <div id="su-cluster-chips-row" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-          </div>
-
-          <div id="su-cluster-props-wrap">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              <div style="font-size:10px;color:#6b7280;">Propiedades de la capa seleccionada</div>
-              <button type="button" id="su-cluster-remove-selected" style="font-size:10px;padding:3px 8px;border-radius:5px;border:none;background:rgba(239,68,68,0.15);color:#f87171;cursor:pointer;">Quitar capa</button>
-            </div>
-            <div id="su-cluster-props" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
-          </div>
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
-            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:120px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
-          </div>
-
-        </div>
-
-        <div style="display:flex;gap:8px;margin-top:14px;">
-          <button type="button" id="su-cluster-save-preset" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(0,188,212,0.35);background:rgba(0,188,212,0.12);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 Guardar preset</button>
-          ${isEdit ? `<button type="button" id="su-cluster-delete" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;">Quitar personalización</button>` : ''}
-          <button type="button" id="su-cluster-save" style="flex:1;padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a5cf5,#1540cc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-
-    const canvas = modal.querySelector('#su-cluster-canvas');
-
-    // ── Canvas WYSIWYG ───────────────────────────────────────────
-    // Usa _renderClusterLayerHtml — EXACTAMENTE la misma función que
-    // dibuja el pin real en el mapa (con scale=2 para poder tocar cómodo)
-    // — nunca una reimplementación aparte que se pueda desincronizar.
-    let rafPending = false;
-    const scheduleFullRender = () => {
-      if (rafPending) return;
-      rafPending = true;
-      requestAnimationFrame(() => { rafPending = false; renderCanvas(); });
-    };
-
-    const updateNodePosition = (node, layer) => {
-      const pos = getClusterLayerAnchorPos(layer, CANVAS_SCALE);
-      node.style.left = pos.left; node.style.top = pos.top;
-      node.style.transform = pos.transform; node.style.zIndex = pos.zIndex;
-    };
-
-    const wireLayerPointer = (node, layer, idx) => {
-      let dragging = false, sx = 0, sy = 0, startOX = 0, startOY = 0, moved = false;
-      node.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        if (selectedIdx !== idx) { selectedIdx = idx; scheduleFullRender(); renderChips(); renderProps(); }
-        dragging = true; moved = false;
-        node.setPointerCapture(e.pointerId);
-        sx = e.clientX; sy = e.clientY;
-        startOX = layer.offsetX || 0; startOY = layer.offsetY || 0;
-      });
-      node.addEventListener('pointermove', (e) => {
-        if (!dragging) return;
-        const dx = (e.clientX - sx) / CANVAS_SCALE, dy = (e.clientY - sy) / CANVAS_SCALE;
-        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
-        layer.offsetX = Math.round(startOX + dx);
-        layer.offsetY = Math.round(startOY + dy);
-        updateNodePosition(node, layer); // liviano: solo posición, no regenera contenido
-      });
-      const endDrag = (e) => {
-        if (!dragging) return;
-        dragging = false;
-        try { node.releasePointerCapture(e.pointerId); } catch (_) {}
-        if (moved) { scheduleFullRender(); renderProps(); } // recién acá reubicamos las manijas
-      };
-      node.addEventListener('pointerup', endDrag);
-      node.addEventListener('pointercancel', endDrag);
-    };
-
-    const wireHandles = (idx) => {
-      const layer = layers[idx];
-      const node = canvas.querySelector(`[data-idx="${idx}"]`);
-      if (!node || !layer) return;
-      const canvasRect = canvas.getBoundingClientRect();
-      const nodeRect = node.getBoundingClientRect();
-
-      const resizeHandle = document.createElement('div');
-      resizeHandle.style.cssText = `position:absolute;width:16px;height:16px;border-radius:50%;background:#1a5cf5;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:nwse-resize;left:${nodeRect.right - canvasRect.left - 8}px;top:${nodeRect.bottom - canvasRect.top - 8}px;z-index:999;touch-action:none;`;
-      canvas.appendChild(resizeHandle);
-
-      const cx = (nodeRect.left + nodeRect.right) / 2 - canvasRect.left;
-      const topY = nodeRect.top - canvasRect.top;
-      const line = document.createElement('div');
-      line.style.cssText = `position:absolute;left:${cx}px;top:${topY - 20}px;width:1px;height:20px;background:rgba(255,255,255,0.35);z-index:998;pointer-events:none;`;
-      canvas.appendChild(line);
-
-      const rotateHandle = document.createElement('div');
-      rotateHandle.style.cssText = `position:absolute;width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:grab;left:${cx - 7}px;top:${topY - 27}px;z-index:999;touch-action:none;`;
-      canvas.appendChild(rotateHandle);
-
-      resizeHandle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        resizeHandle.setPointerCapture(e.pointerId);
-        const startSize = layer.size ?? 44;
-        const sx = e.clientX, sy = e.clientY;
-        let pendingSize = startSize;
-        const onMove = (e2) => {
-          const delta = ((e2.clientX - sx) + (e2.clientY - sy)) / 2 / CANVAS_SCALE;
-          pendingSize = Math.max(10, Math.min(160, Math.round(startSize + delta)));
-          // Preview liviano: escala visual sin regenerar contenido — el
-          // tamaño real (que sí cambia el contenido, ej. fotos del stack)
-          // se aplica recién al soltar, para no destruir la manija a
-          // mitad del gesto (ver comentario grande más abajo).
-          const pos = getClusterLayerAnchorPos(layer, CANVAS_SCALE);
-          node.style.transform = pos.transform + ` scale(${(pendingSize / startSize).toFixed(3)})`;
-        };
-        const onUp = (e2) => {
-          try { resizeHandle.releasePointerCapture(e2.pointerId); } catch (_) {}
-          resizeHandle.removeEventListener('pointermove', onMove);
-          resizeHandle.removeEventListener('pointerup', onUp);
-          layer.size = pendingSize;
-          scheduleFullRender();
-          renderProps();
-        };
-        resizeHandle.addEventListener('pointermove', onMove);
-        resizeHandle.addEventListener('pointerup', onUp);
-      });
-
-      rotateHandle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        rotateHandle.setPointerCapture(e.pointerId);
-        const onMove = (e2) => {
-          const r = node.getBoundingClientRect();
-          const ccx = r.left + r.width / 2, ccy = r.top + r.height / 2;
-          const angle = Math.atan2(e2.clientY - ccy, e2.clientX - ccx) * 180 / Math.PI;
-          layer.rotation = Math.round(angle + 90);
-          updateNodePosition(node, layer);
-        };
-        const onUp = (e2) => {
-          try { rotateHandle.releasePointerCapture(e2.pointerId); } catch (_) {}
-          rotateHandle.removeEventListener('pointermove', onMove);
-          rotateHandle.removeEventListener('pointerup', onUp);
-          scheduleFullRender();
-          renderProps();
-        };
-        rotateHandle.addEventListener('pointermove', onMove);
-        rotateHandle.addEventListener('pointerup', onUp);
-      });
-    };
-
-    // IMPORTANTE: renderCanvas() hace canvas.innerHTML='' y reconstruye
-    // todo — por eso NUNCA se llama en medio de un drag/resize/rotate (eso
-    // destruiría el elemento que el usuario tiene agarrado, cortando el
-    // gesto a la mitad). Durante el gesto se muta el DOM directamente
-    // (posición o un scale() de preview); recién al soltar (pointerup) se
-    // pide un renderCanvas() completo, que ahí sí es seguro.
-    function renderCanvas() {
-      canvas.innerHTML = '';
-      layers.forEach((layer, idx) => {
-        const html = _renderClusterLayerHtml(layer, group, CANVAS_SCALE);
-        if (!html) return;
-        const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        const node = tmp.firstElementChild;
-        if (!node) return;
-        node.dataset.idx = idx;
-        node.style.cursor = 'grab';
-        if (idx === selectedIdx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '3px'; node.style.borderRadius = '4px'; }
-        canvas.appendChild(node);
-        wireLayerPointer(node, layer, idx);
-      });
-      if (selectedIdx != null && layers[selectedIdx]) wireHandles(selectedIdx);
-    }
-    canvas.addEventListener('pointerdown', () => { selectedIdx = null; scheduleFullRender(); renderChips(); renderProps(); });
-
-    // ── Preset picker (3 base + guardados) ──────────────────────
-    const presetRow = modal.querySelector('#su-cluster-preset-row');
-    const BASE_PRESETS = [
-      { key: 'fan', label: '🎴 Apilado' },
-      { key: 'fan-center', label: '🦚 Centrado' },
-      { key: 'fan-drift', label: '🃏 Abanico' },
-    ];
-    let savedPresets = [];
-    const paintPresetBtns = () => {
-      presetRow.querySelectorAll('button').forEach(b => {
-        const active = b.dataset.presetKey === curPresetStyle;
-        b.style.background  = active ? 'rgba(0,188,212,0.18)' : 'transparent';
-        b.style.borderColor = active ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
-        b.style.color       = active ? '#67e8f9'              : '#9ca3af';
-      });
-    };
-    const renderPresetRow = () => {
-      presetRow.innerHTML = '';
-      [...BASE_PRESETS, ...savedPresets.map(p => ({ key: 'saved:' + p.id, label: '⭐ ' + p.name, layers: p.layers }))].forEach(p => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.dataset.presetKey = p.key;
-        b.textContent = p.label;
-        b.style.cssText = 'padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;';
-        b.addEventListener('click', () => {
-          if (!confirm('Esto reemplaza todas las capas actuales por "' + p.label + '". ¿Seguir?')) return;
-          curPresetStyle = p.key;
-          layers = p.layers ? JSON.parse(JSON.stringify(p.layers)) : getClusterLayerPreset(p.key);
-          selectedIdx = layers.length ? 0 : null;
-          paintPresetBtns(); renderChips(); renderProps(); scheduleFullRender();
-        });
-        presetRow.appendChild(b);
-      });
-      paintPresetBtns();
-    };
-    renderPresetRow();
-    fetch('/api/supabase-clusters?presets=1').then(r => r.json()).then(json => {
-      if (json.success) { savedPresets = json.presets || []; renderPresetRow(); }
-    }).catch(() => {});
-
-    // ── Chips de capas ───────────────────────────────────────────
-    const chipsRow = modal.querySelector('#su-cluster-chips-row');
-    function renderChips() {
-      chipsRow.innerHTML = '';
-      layers.forEach((layer, idx) => {
-        const meta = CLUSTER_LAYER_TYPES.find(t => t.type === layer.type) || { icon: '❔', label: layer.type };
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        const active = idx === selectedIdx;
-        chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:10.5px;cursor:pointer;white-space:nowrap;`;
-        chip.textContent = `${meta.icon} ${meta.label}`;
-        chip.addEventListener('click', () => { selectedIdx = idx; renderChips(); renderProps(); scheduleFullRender(); });
-        chipsRow.appendChild(chip);
-      });
-    }
-
-    // ── Panel de propiedades (solo la capa seleccionada) ─────────
-    const propsEl = modal.querySelector('#su-cluster-props');
-    const propsWrap = modal.querySelector('#su-cluster-props-wrap');
-    const buildFieldInput = (layer, field) => {
-      const val = layer[field.key];
-      const id = `su-cl-field-${field.key}-${Math.random().toString(36).slice(2, 7)}`;
-      let controlHtml = '';
-      if (field.kind === 'text') {
-        controlHtml = `<input id="${id}" type="text" value="${(val ?? '').toString().replace(/"/g, '&quot;')}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;">`;
-      } else if (field.kind === 'color') {
-        controlHtml = `<input id="${id}" type="color" value="${val || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;">`;
-      } else if (field.kind === 'range') {
-        controlHtml = `<div style="display:flex;align-items:center;gap:6px;">
-          <input id="${id}" type="range" min="${field.min}" max="${field.max}" step="${field.step || 1}" value="${val ?? field.min}" style="flex:1;accent-color:#1a5cf5;">
-          <span id="${id}-val" style="font-size:10px;color:#9ca3af;min-width:26px;text-align:right;">${val ?? field.min}</span>
-        </div>`;
-      } else if (field.kind === 'select') {
-        controlHtml = `<select id="${id}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:12px;">
-          ${field.options.map(([v, l]) => `<option value="${v}" ${v === val ? 'selected' : ''}>${l}</option>`).join('')}
-        </select>`;
-      } else if (field.kind === 'checkbox') {
-        controlHtml = `<input id="${id}" type="checkbox" ${val ? 'checked' : ''} style="accent-color:#1a5cf5;width:16px;height:16px;">`;
-      } else if (field.kind === 'placeSelect') {
-        controlHtml = `<select id="${id}" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:12px;">
-          ${groupPlaces.map((p, i) => `<option value="${i}" ${i === val ? 'selected' : ''}>${p.name || ('Lugar ' + (i + 1))}</option>`).join('')}
-        </select>`;
-      }
-      return { id, html: `<div><div style="font-size:9.5px;color:#6b7280;margin-bottom:3px;">${field.label}</div>${controlHtml}</div>` };
-    };
-    const wireFieldInput = (fieldMeta, field, layer, onChanged) => {
-      const el = modal.querySelector('#' + fieldMeta.id);
-      if (!el) return;
-      const apply = () => {
-        if (field.kind === 'checkbox') layer[field.key] = el.checked;
-        else if (field.kind === 'range') {
-          layer[field.key] = parseFloat(el.value);
-          const span = modal.querySelector('#' + fieldMeta.id + '-val');
-          if (span) span.textContent = el.value;
-        } else if (field.kind === 'placeSelect') layer[field.key] = parseInt(el.value, 10);
-        else layer[field.key] = el.value;
-        onChanged();
-      };
-      el.addEventListener('input', apply);
-      el.addEventListener('change', apply);
-    };
-    function renderProps() {
-      if (selectedIdx == null || !layers[selectedIdx]) {
-        propsWrap.style.display = 'none';
-        return;
-      }
-      propsWrap.style.display = 'block';
-      const layer = layers[selectedIdx];
-      const fields = [...(CLUSTER_LAYER_FIELDS[layer.type] || []), ...CLUSTER_LAYER_COMMON_FIELDS];
-      const fieldMetas = fields.map(f => buildFieldInput(layer, f));
-      propsEl.innerHTML = fieldMetas.map(f => f.html).join('');
-      fieldMetas.forEach((fm, i) => wireFieldInput(fm, fields[i], layer, () => scheduleFullRender()));
-    }
-
-    modal.querySelector('#su-cluster-remove-selected').addEventListener('click', () => {
-      if (selectedIdx == null) return;
-      layers.splice(selectedIdx, 1);
-      selectedIdx = layers.length ? Math.min(selectedIdx, layers.length - 1) : null;
-      renderChips(); renderProps(); scheduleFullRender();
-    });
-
-    modal.querySelector('#su-cluster-add-layer').addEventListener('click', () => {
-      const type = modal.querySelector('#su-cluster-add-type').value;
-      layers.push(_newClusterLayer(type));
-      selectedIdx = layers.length - 1;
-      renderChips(); renderProps(); scheduleFullRender();
-    });
-
-    // ── Lista de lugares (checkboxes) ──────────────────────────
-    const placesListEl = modal.querySelector('#su-cluster-places-list');
-    groupPlaces.forEach(p => {
-      const pid = p.place_id || p.id;
-      const row = document.createElement('label');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;color:#d1d5db;cursor:pointer;';
-      row.innerHTML = `<input type="checkbox" checked style="accent-color:#1a5cf5;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || pid}</span>`;
-      row.querySelector('input').addEventListener('change', (e) => {
-        if (e.target.checked) included.add(pid); else included.delete(pid);
-      });
-      placesListEl.appendChild(row);
-    });
-
-    // ── Cierre / guardado ─────────────────────────────────────
-    modal.querySelector('#su-cluster-close').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-
-    modal.querySelector('#su-cluster-save-preset').addEventListener('click', async () => {
-      const name = prompt('Nombre del preset (para reusarlo en otros clusters):');
-      if (!name || !name.trim()) return;
-      try {
-        const res = await fetch('/api/supabase-clusters', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'savePreset', name, layers }),
-        });
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message);
-        savedPresets.unshift(json.preset ? { id: json.preset.id, name: json.preset.name, layers: json.preset.layers } : { id: Date.now(), name, layers });
-        renderPresetRow();
-        alert('Preset guardado — ya aparece en "Diseño base" para los próximos clusters.');
-      } catch (err) {
-        alert('Error guardando el preset: ' + err.message);
-      }
-    });
-
-    modal.querySelector('#su-cluster-save').addEventListener('click', async () => {
-      const place_ids = Array.from(included);
-      if (place_ids.length < 1) { alert('Tildá al menos un lugar'); return; }
-      const btn = modal.querySelector('#su-cluster-save');
-      btn.disabled = true; btn.textContent = 'Guardando...';
-      try {
-        const res = await fetch('/api/supabase-clusters', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'save',
-            id: existingCluster?.id,
-            stack_style: curPresetStyle,
-            layers,
-            place_ids,
-          }),
-        });
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message);
-        modal.remove();
-        await this.mapView.reloadPinClusters();
-      } catch (err) {
-        alert('Error guardando el cluster: ' + err.message);
-        btn.disabled = false; btn.textContent = 'Guardar';
-      }
-    });
-
-    if (isEdit) {
-      modal.querySelector('#su-cluster-delete').addEventListener('click', async () => {
-        if (!confirm('¿Quitar la personalización de este cluster? Los lugares vuelven al agrupamiento automático.')) return;
-        try {
-          await fetch('/api/supabase-clusters', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete', id: existingCluster.id }),
-          });
-          modal.remove();
-          await this.mapView.reloadPinClusters();
-        } catch (err) {
-          alert('Error quitando el cluster: ' + err.message);
-        }
-      });
-    }
-
-    // Primer render
-    renderCanvas();
-    renderChips();
-    renderProps();
-  }
 
   // ══════════════════════════════════════════════════════════
   // CATEGORÍAS
