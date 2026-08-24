@@ -55,52 +55,11 @@ export class SuperUserPanel {
     this._buildForm();
     this._buildListPanel();
     this._buildCategoriesPanel();
-    // Habilita el long-press sobre un sticker de cluster en MapView — la
-    // UI de edición en sí (arrastrar/redimensionar/girar sobre el pin
-    // real, el panel flotante) vive ENTERA en MapView.js porque necesita
-    // tocar el marker real del mapa. Acá solo prendemos la función y le
-    // damos los 4 callbacks de red (fetch a Supabase).
-    this.mapView.clusterEditEnabled = true;
-    this.mapView.onClusterSaveRequest = async ({ id, stack_style, layers, place_ids }) => {
-      const res = await fetch('/api/supabase-clusters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save', id, stack_style, layers, place_ids }),
-      });
-      return res.json();
-    };
-    this.mapView.onClusterDeleteRequest = async (id) => {
-      const res = await fetch('/api/supabase-clusters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id }),
-      });
-      return res.json();
-    };
-    this.mapView.onClusterSavePresetRequest = async (name, layers) => {
-      const res = await fetch('/api/supabase-clusters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'savePreset', name, layers }),
-      });
-      return res.json();
-    };
-    this.mapView.fetchClusterPresets = async () => {
-      const res = await fetch('/api/supabase-clusters?presets=1');
-      const json = await res.json();
-      return json.success ? json.presets : [];
-    };
   }
 
   unmount() {
     ['su-fab','su-panel','su-pick-banner','su-form-modal','su-list-panel','su-cat-panel','su-subcat-panel','su-cat-form-modal']
       .forEach(id => document.getElementById(id)?.remove());
-    this.mapView.clusterEditEnabled = false;
-    this.mapView.onClusterSaveRequest = null;
-    this.mapView.onClusterDeleteRequest = null;
-    this.mapView.onClusterSavePresetRequest = null;
-    this.mapView.fetchClusterPresets = null;
-    if (this.mapView._clusterEditSession) this.mapView._exitClusterEditMode();
   }
 
   // ── FAB: botón redondo ⚙️ para abrir panel ─────────────────
@@ -739,14 +698,6 @@ export class SuperUserPanel {
       console.error('Error recargando landmarks:', err);
     }
   }
-
-  // ══════════════════════════════════════════════════════════
-  // CLUSTERS DE PINES (calles con negocios amontonados) — la edición en
-  // sí (long-press → arrastrar/redimensionar/girar en vivo sobre el pin
-  // real del mapa) vive ENTERA en MapView.js (_enterClusterEditMode y
-  // alrededores). Acá en mount()/unmount() solo se habilita la función y
-  // se le dan los 4 callbacks de red — ver arriba.
-  // ══════════════════════════════════════════════════════════
 
   // ══════════════════════════════════════════════════════════
   // CATEGORÍAS
@@ -3076,24 +3027,6 @@ export class SuperUserPanel {
       .su-toggle-slider:before { content:""; position:absolute; width:15px; height:15px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
       .su-toggle-wrap input:checked + .su-toggle-slider { background:#00bcd4; }
       .su-toggle-wrap input:checked + .su-toggle-slider:before { transform:translateX(17px); }
-
-      /* ── Modal genérico (usado por el panel de clusters) ── */
-      .su-modal-overlay {
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 99998;
-        display: flex; align-items: center; justify-content: center;
-        padding: 20px;
-      }
-      .su-modal-box {
-        width: 100%;
-        background: #14141c;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        font-family: 'Uni Sans Bold Regular', sans-serif;
-      }
     `;
     document.head.appendChild(style);
   }
