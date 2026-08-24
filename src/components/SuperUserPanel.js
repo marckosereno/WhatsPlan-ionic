@@ -713,6 +713,15 @@ export class SuperUserPanel {
   // importada de MapView.js), así el preview es fiel sin duplicar lógica.
   // ══════════════════════════════════════════════════════════
 
+  // ══════════════════════════════════════════════════════════
+  // CLUSTERS DE PINES — panel abierto por MapView vía long-press.
+  // Interacción directa sobre el preview (a tamaño real, misma función
+  // que dibuja el pin real): 1 dedo = mover, 2 dedos = pinch (escalar +
+  // girar a la vez, como cualquier editor de fotos). Los controles
+  // aparte son solo lo que un gesto no puede resolver: forma, borde,
+  // stroke, color, y orden (traer al frente / enviar atrás).
+  // ══════════════════════════════════════════════════════════
+
   _openClusterCustomizePanel(group, existingCluster) {
     document.getElementById('su-cluster-modal')?.remove();
 
@@ -720,17 +729,12 @@ export class SuperUserPanel {
     const groupPlaces = group.map(({ el }) => el._place);
     const included = new Set(groupPlaces.map(p => p.place_id || p.id));
 
-    // Estado editable (clon — nunca mutar existingCluster hasta guardar)
-    let cards = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
+    let cards    = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
     let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
-    let label = isEdit && existingCluster.label
-      ? { text: '', bgColor: '#1e1b8f', textColor: '#ffffff', fontSize: 10, paddingX: 8, paddingY: 3, borderRadius: 4, ...existingCluster.label }
-      : { text: '', bgColor: '#1e1b8f', textColor: '#ffffff', fontSize: 10, paddingX: 8, paddingY: 3, borderRadius: 4 };
-    let badgeColor = existingCluster?.badgeColor || '#111827';
+    let badge    = isEdit && existingCluster.badge ? JSON.parse(JSON.stringify(existingCluster.badge)) : { dx: 60, dy: -46, scale: 1, color: '#111827', z: 30 };
 
     const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
-    // sel = qué está seleccionado ahora mismo en el preview: {kind:'card'|'sticker', idx} | null
-    let sel = null;
+    let sel = null; // {kind:'card'|'sticker'|'badge', idx}
 
     const modal = document.createElement('div');
     modal.id = 'su-cluster-modal';
@@ -742,36 +746,22 @@ export class SuperUserPanel {
           <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
 
-        <div style="font-size:9.5px;color:#6b7280;margin-bottom:6px;">Vista a tamaño real · tocá una tarjeta o sticker para seleccionarlo, arrastrá para moverlo</div>
+        <div style="font-size:9.5px;color:#6b7280;margin-bottom:6px;">1 dedo mueve · 2 dedos giran y escalan · tocá para seleccionar</div>
         <div id="su-cluster-preview" style="position:relative;width:100%;height:260px;background:repeating-conic-gradient(#20202c 0% 25%, #17171f 0% 50%) 50% / 16px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);margin-bottom:10px;overflow:hidden;touch-action:none;"></div>
 
         <div id="su-cluster-sel-props" style="display:none;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.25);border-radius:10px;padding:10px;margin-bottom:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <span id="su-cluster-sel-title" style="font-size:11px;font-weight:700;color:#67e8f9;"></span>
-            <button type="button" id="su-cluster-sel-deselect" style="background:none;border:none;color:#9ca3af;font-size:11px;cursor:pointer;">Listo</button>
+            <div style="display:flex;gap:4px;">
+              <button type="button" id="su-cluster-sel-back" title="Enviar atrás" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬇︎</button>
+              <button type="button" id="su-cluster-sel-front" title="Traer al frente" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬆︎</button>
+              <button type="button" id="su-cluster-sel-deselect" style="background:none;border:none;color:#9ca3af;font-size:11px;cursor:pointer;">Listo</button>
+            </div>
           </div>
           <div id="su-cluster-sel-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:12px;max-height:34vh;overflow-y:auto;">
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Etiqueta (opcional — Enter para 2da línea, ej. "CALLE" / "DE LOS AGACHADOS")</div>
-            <textarea id="su-cluster-label-text" rows="2" placeholder="Sin etiqueta" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;resize:none;font-family:inherit;margin-bottom:8px;">${label.text}</textarea>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div><div style="font-size:9px;color:#6b7280;">Color de fondo</div><input id="su-cluster-label-bg" type="color" value="${label.bgColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
-              <div><div style="font-size:9px;color:#6b7280;">Color de texto</div><input id="su-cluster-label-color" type="color" value="${label.textColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
-              <div><div style="font-size:9px;color:#6b7280;">Tamaño texto</div><input id="su-cluster-label-fontsize" type="range" min="7" max="18" step="1" value="${label.fontSize}" style="width:100%;accent-color:#1a5cf5;"></div>
-              <div><div style="font-size:9px;color:#6b7280;">Border radius</div><input id="su-cluster-label-radius" type="range" min="0" max="16" step="1" value="${label.borderRadius}" style="width:100%;accent-color:#1a5cf5;"></div>
-              <div><div style="font-size:9px;color:#6b7280;">Padding horizontal</div><input id="su-cluster-label-padx" type="range" min="2" max="20" step="1" value="${label.paddingX}" style="width:100%;accent-color:#1a5cf5;"></div>
-              <div><div style="font-size:9px;color:#6b7280;">Padding vertical</div><input id="su-cluster-label-pady" type="range" min="1" max="12" step="1" value="${label.paddingY}" style="width:100%;accent-color:#1a5cf5;"></div>
-            </div>
-          </div>
-
-          <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Color del badge "+N"</div>
-            <div id="su-cluster-badge-row" style="display:flex;gap:8px;"></div>
-          </div>
+        <div style="display:flex;flex-direction:column;gap:12px;max-height:38vh;overflow-y:auto;">
 
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
@@ -782,10 +772,15 @@ export class SuperUserPanel {
 
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              <div style="font-size:10px;color:#6b7280;">Stickers decorativos</div>
+              <div style="font-size:10px;color:#6b7280;">Stickers</div>
               <button type="button" id="su-cluster-add-sticker" style="font-size:10px;padding:3px 9px;border-radius:5px;border:none;background:#1a5cf5;color:#fff;font-weight:700;cursor:pointer;">+ Agregar</button>
             </div>
             <div id="su-cluster-stickers-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+
+          <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Badge "+N"</div>
+            <button type="button" id="su-cluster-badge-chip" style="padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10.5px;cursor:pointer;">🔢 Seleccionar badge</button>
           </div>
 
           <div>
@@ -796,154 +791,214 @@ export class SuperUserPanel {
         </div>
 
         <div style="display:flex;gap:8px;margin-top:14px;">
-          ${isEdit ? `<button type="button" id="su-cluster-delete" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Quitar personalización</button>` : ''}
+          ${isEdit ? `<button type="button" id="su-cluster-delete" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Quitar</button>` : ''}
           <button type="button" id="su-cluster-save" style="flex:1;padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a5cf5,#1540cc);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>
         </div>
       </div>`;
     document.body.appendChild(modal);
 
     const previewEl = modal.querySelector('#su-cluster-preview');
-
-    // ── Preview REAL (scale=1) + interactivo ────────────────────
-    // Usa _buildClusterStickerHtml (la MISMA función del mapa real) para
-    // el contenido — acá solo agregamos el drag encima de los elementos
-    // que ya trae etiquetados (data-card-idx / data-sticker-idx). El
-    // contenedor grande sigue con pointer-events:none (heredado del HTML
-    // que devuelve la función) y cada pieza visible con pointer-events:
-    // auto — mismo mecanismo que evita el toque fantasma en el mapa real.
-    const currentCustomDef = () => ({ cards, stickers, label: label.text ? label : null, badgeColor });
-
-    function renderPreview() {
-      previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, currentCustomDef())}</div>`;
-      const wrap = previewEl.firstElementChild.firstElementChild; // el div 150x120 que devuelve la función
-      // Centrar ese div (pensado para posicionarse sobre un pivote de
-      // mapa) dentro de la caja de preview, dejando aire para lo que se
-      // salga del recuadro base de 150x120 (tarjetas/stickers movidos).
-      wrap.style.left = '50%'; wrap.style.top = '50%';
-
-      wrap.querySelectorAll('[data-card-idx]').forEach(node => {
-        const idx = parseInt(node.dataset.cardIdx, 10);
-        wireDrag(node, 'card', idx, shownPlaces[idx]);
-        if (sel && sel.kind === 'card' && sel.idx === idx) node.style.outline = '2px dashed #67e8f9';
-      });
-      wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
-        const idx = parseInt(node.dataset.stickerIdx, 10);
-        wireDrag(node, 'sticker', idx, stickers[idx]);
-        if (sel && sel.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
-      });
-    }
+    const currentCustomDef = () => ({ cards, stickers, badge });
 
     const getCardOverride = (pid) => {
       let c = cards.find(c => c.placeId === pid);
-      if (!c) { c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0 }; cards.push(c); }
+      if (!c) { c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0, borderColor: '#ffffff', borderWidth: 2, borderRadius: 9, z: 4 }; cards.push(c); }
       return c;
     };
 
-    function wireDrag(node, kind, idx, dataObj) {
-      let dragging = false, sx = 0, sy = 0, startDx = 0, startDy = 0, moved = false;
-      node.style.cursor = 'grab';
+    // ── Orden (traer al frente / enviar atrás) ──────────────────
+    // Un solo número de z-index por elemento; "frente"/"atrás" solo
+    // mueven ese número al tope o al fondo de TODO lo que hay en el
+    // cluster (tarjetas + stickers + badge), sin reordenar arrays.
+    const allZValues = () => {
+      const zs = [];
+      shownPlaces.forEach(({ el }) => { const ov = cards.find(c => c.placeId === (el._place.place_id || el._place.id)); zs.push(ov ? ov.z : 1); });
+      stickers.forEach(s => zs.push(s.z ?? 20));
+      zs.push(badge.z ?? 30);
+      return zs;
+    };
+    const bringToFront = (obj) => { obj.z = Math.max(...allZValues()) + 1; };
+    const sendToBack = (obj) => { obj.z = Math.min(...allZValues()) - 1; };
+
+    // ── Preview + gesto (1 dedo mover, 2 dedos pinch escalar+girar) ──
+    function renderPreview() {
+      previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, currentCustomDef())}</div>`;
+      const wrap = previewEl.firstElementChild.firstElementChild;
+      wrap.querySelectorAll('[data-card-idx]').forEach(node => {
+        const idx = parseInt(node.dataset.cardIdx, 10);
+        const pid = shownPlaces[idx].el._place.place_id || shownPlaces[idx].el._place.id;
+        wireGesture(node, getCardOverride(pid), 'card', idx);
+        if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
+      });
+      wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
+        const idx = parseInt(node.dataset.stickerIdx, 10);
+        wireGesture(node, stickers[idx], 'sticker', idx);
+        if (sel?.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
+      });
+      const badgeNode = wrap.querySelector('[data-badge]');
+      if (badgeNode) {
+        wireGesture(badgeNode, badge, 'badge', 0);
+        if (sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
+      }
+    }
+
+    // Gesto unificado: pointerdown/move/up con Map de punteros activos.
+    // 1 puntero → drag (mueve dx/dy). 2 punteros → pinch: la distancia
+    // entre los dos dedos controla el tamaño, el ángulo entre ellos
+    // controla el giro — igual que cualquier editor de fotos real.
+    // Durante el gesto solo se toca el `transform` del nodo (liviano, no
+    // regenera contenido — así nunca se destruye el elemento que el
+    // usuario tiene agarrado). El re-render completo pasa recién cuando
+    // se levanta el último dedo.
+    function wireGesture(node, obj, kind, idx) {
+      const pts = new Map();
+      let mode = null, start = null;
+      const isSticker = kind === 'sticker';
+      const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+      const angle = (a, b) => Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+      const baseTransform = () => `translate(calc(-50% + ${obj.dx || 0}px),calc(-50% + ${obj.dy || 0}px)) rotate(${obj.rotation || 0}deg)`;
+      const metric = () => isSticker ? (obj.size ?? 26) : (obj.scale ?? 1);
+
       node.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         select(kind, idx);
-        dragging = true; moved = false;
         node.setPointerCapture(e.pointerId);
-        sx = e.clientX; sy = e.clientY;
-        const obj = kind === 'card' ? getCardOverride(dataObj.el._place.place_id || dataObj.el._place.id) : dataObj;
-        startDx = obj.dx || 0; startDy = obj.dy || 0;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pts.size === 1) {
+          mode = 'drag';
+          start = { dx: obj.dx || 0, dy: obj.dy || 0, p: [...pts.values()][0] };
+        } else if (pts.size === 2) {
+          const [a, b] = [...pts.values()];
+          mode = 'pinch';
+          start = { dist: dist(a, b) || 1, angle: angle(a, b), metric: metric(), rotation: obj.rotation || 0 };
+        }
       });
       node.addEventListener('pointermove', (e) => {
-        if (!dragging) return;
-        const dx = e.clientX - sx, dy = e.clientY - sy; // scale=1: px de pantalla = unidades reales
-        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
-        const obj = kind === 'card' ? getCardOverride(dataObj.el._place.place_id || dataObj.el._place.id) : dataObj;
-        obj.dx = Math.round(startDx + dx);
-        obj.dy = Math.round(startDy + dy);
-        // Reposición liviana en vivo (sin regenerar contenido — evita
-        // destruir el nodo que el usuario tiene agarrado a mitad del
-        // gesto, que fue justo lo que rompía el editor anterior).
-        node.style.transform = `translate(calc(-50% + ${obj.dx}px),calc(-50% + ${obj.dy}px)) rotate(${obj.rotation || 0}deg)`;
+        if (!pts.has(e.pointerId)) return;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (mode === 'drag' && pts.size === 1) {
+          const p = [...pts.values()][0];
+          obj.dx = Math.round(start.dx + (p.x - start.p.x));
+          obj.dy = Math.round(start.dy + (p.y - start.p.y));
+          node.style.transform = baseTransform();
+        } else if (mode === 'pinch' && pts.size === 2) {
+          const [a, b] = [...pts.values()];
+          const d = dist(a, b) || 1;
+          const ratio = d / start.dist;
+          const newMetric = start.metric * ratio;
+          if (isSticker) obj.size = Math.max(12, Math.min(90, Math.round(newMetric)));
+          else obj.scale = Math.max(0.35, Math.min(2.2, newMetric));
+          obj.rotation = Math.round(start.rotation + (angle(a, b) - start.angle));
+          // Preview en vivo: mueve+gira real (transform puro); el tamaño
+          // real (cambia ancho/alto, contenido) se aplica al soltar —
+          // mientras tanto un scale() visual da el feedback del pinch.
+          const visualRatio = metric() / start.metric;
+          node.style.transform = baseTransform() + ` scale(${visualRatio})`;
+        }
       });
-      const endDrag = (e) => {
-        if (!dragging) return;
-        dragging = false;
+      const release = (e) => {
+        if (!pts.has(e.pointerId)) return;
+        pts.delete(e.pointerId);
         try { node.releasePointerCapture(e.pointerId); } catch (_) {}
-        if (moved) { renderPreview(); renderSelProps(); }
+        if (pts.size === 0) {
+          mode = null;
+          renderPreview();
+          renderSelProps();
+        } else if (pts.size === 1) {
+          // pasó de pinch a un solo dedo sin soltar del todo: retoma el
+          // drag desde la posición actual, sin saltos.
+          mode = 'drag';
+          const p = [...pts.values()][0];
+          start = { dx: obj.dx || 0, dy: obj.dy || 0, p };
+        }
       };
-      node.addEventListener('pointerup', endDrag);
-      node.addEventListener('pointercancel', endDrag);
+      node.addEventListener('pointerup', release);
+      node.addEventListener('pointercancel', release);
     }
 
     function select(kind, idx) {
       sel = { kind, idx };
       renderPreview();
       renderSelProps();
+      renderCardChips(); renderStickerChips();
     }
 
-    // ── Panel de propiedades de lo seleccionado ─────────────────
+    // ── Propiedades mínimas de lo seleccionado ──────────────────
     const selWrap = modal.querySelector('#su-cluster-sel-props');
     const selTitle = modal.querySelector('#su-cluster-sel-title');
     const selFields = modal.querySelector('#su-cluster-sel-fields');
+    modal.querySelector('#su-cluster-sel-front').addEventListener('click', () => { if (!sel) return; bringToFront(currentSelObj()); renderPreview(); });
+    modal.querySelector('#su-cluster-sel-back').addEventListener('click', () => { if (!sel) return; sendToBack(currentSelObj()); renderPreview(); });
+    modal.querySelector('#su-cluster-sel-deselect').addEventListener('click', () => { sel = null; renderPreview(); renderSelProps(); renderCardChips(); renderStickerChips(); });
+
+    function currentSelObj() {
+      if (sel.kind === 'card') { const place = shownPlaces[sel.idx]; return getCardOverride(place.el._place.place_id || place.el._place.id); }
+      if (sel.kind === 'sticker') return stickers[sel.idx];
+      return badge;
+    }
+
     function renderSelProps() {
       if (!sel) { selWrap.style.display = 'none'; return; }
       selWrap.style.display = 'block';
 
       if (sel.kind === 'card') {
-        const place = shownPlaces[sel.idx];
-        const pid = place.place_id || place.id;
-        const ov = getCardOverride(pid);
-        selTitle.textContent = `📸 ${place.name || pid}`;
+        const place = shownPlaces[sel.idx].el._place;
+        const ov = getCardOverride(place.place_id || place.id);
+        selTitle.textContent = `📸 ${place.name || ''}`;
         selFields.innerHTML = `
           <div><div style="font-size:9px;color:#6b7280;">Forma</div>
             <select id="scf-shape" style="width:100%;padding:5px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:#1a1a24;color:#d1d5db;font-size:11px;">
               <option value="portrait" ${ov.shape==='portrait'?'selected':''}>Portrait</option>
               <option value="square" ${ov.shape==='square'?'selected':''}>Square</option>
             </select></div>
-          <div><div style="font-size:9px;color:#6b7280;">Tamaño</div><input id="scf-scale" type="range" min="0.4" max="1.5" step="0.02" value="${ov.scale}" style="width:100%;accent-color:#1a5cf5;"></div>
-          <div><div style="font-size:9px;color:#6b7280;">Giro</div><input id="scf-rot" type="range" min="-40" max="40" step="1" value="${ov.rotation}" style="width:100%;accent-color:#1a5cf5;"></div>
-          <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-reset" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">↺ Posición automática</button></div>`;
+          <div><div style="font-size:9px;color:#6b7280;">Border radius</div><input id="scf-radius" type="range" min="0" max="30" step="1" value="${ov.borderRadius}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Color de borde</div><input id="scf-bcolor" type="color" value="${ov.borderColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Grosor de borde</div><input id="scf-bwidth" type="range" min="0" max="6" step="0.5" value="${ov.borderWidth}" style="width:100%;accent-color:#1a5cf5;"></div>`;
         modal.querySelector('#scf-shape').addEventListener('change', (e) => { ov.shape = e.target.value; renderPreview(); });
-        modal.querySelector('#scf-scale').addEventListener('input', (e) => { ov.scale = parseFloat(e.target.value); renderPreview(); });
-        modal.querySelector('#scf-rot').addEventListener('input', (e) => { ov.rotation = parseFloat(e.target.value); renderPreview(); });
-        modal.querySelector('#scf-reset').addEventListener('click', () => {
-          const i = cards.findIndex(c => c.placeId === pid);
-          if (i >= 0) cards.splice(i, 1);
-          renderPreview(); renderSelProps(); renderCardChips();
-        });
-      } else {
+        modal.querySelector('#scf-radius').addEventListener('input', (e) => { ov.borderRadius = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-bcolor').addEventListener('input', (e) => { ov.borderColor = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-bwidth').addEventListener('input', (e) => { ov.borderWidth = parseFloat(e.target.value); renderPreview(); });
+
+      } else if (sel.kind === 'sticker') {
         const s = stickers[sel.idx];
         if (!s) { sel = null; selWrap.style.display = 'none'; return; }
         selTitle.textContent = '✨ Sticker';
         selFields.innerHTML = `
           <div><div style="font-size:9px;color:#6b7280;">Emoji</div><input id="scf-emoji" type="text" maxlength="4" value="${s.emoji || ''}" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;"></div>
-          <div><div style="font-size:9px;color:#6b7280;">Tamaño</div><input id="scf-size" type="range" min="14" max="54" step="1" value="${s.size || 26}" style="width:100%;accent-color:#1a5cf5;"></div>
-          <div><div style="font-size:9px;color:#6b7280;">Giro</div><input id="scf-srot" type="range" min="-45" max="45" step="1" value="${s.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Color de stroke</div><input id="scf-stroke" type="color" value="${s.strokeColor || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de stroke</div><input id="scf-strokew" type="range" min="0" max="6" step="0.5" value="${s.strokeWidth ?? 2}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
         modal.querySelector('#scf-emoji').addEventListener('input', (e) => { s.emoji = e.target.value; renderPreview(); });
-        modal.querySelector('#scf-size').addEventListener('input', (e) => { s.size = parseInt(e.target.value, 10); renderPreview(); });
-        modal.querySelector('#scf-srot').addEventListener('input', (e) => { s.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-stroke').addEventListener('input', (e) => { s.strokeColor = e.target.value; renderPreview(); });
         modal.querySelector('#scf-strokew').addEventListener('input', (e) => { s.strokeWidth = parseFloat(e.target.value); renderPreview(); });
-        modal.querySelector('#scf-remove').addEventListener('click', () => {
-          stickers.splice(sel.idx, 1);
-          sel = null;
-          renderPreview(); renderSelProps(); renderStickerChips();
+        modal.querySelector('#scf-remove').addEventListener('click', () => { stickers.splice(sel.idx, 1); sel = null; renderPreview(); renderSelProps(); renderStickerChips(); });
+
+      } else { // badge
+        selTitle.textContent = '🔢 Badge';
+        const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
+        selFields.innerHTML = `<div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:4px;">Color</div>
+          <div id="scf-badge-colors" style="display:flex;gap:6px;"></div></div>`;
+        const row = modal.querySelector('#scf-badge-colors');
+        BADGE_PRESET.forEach(c => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.style.cssText = `width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c === badge.color ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;`;
+          b.addEventListener('click', () => { badge.color = c; renderPreview(); renderSelProps(); });
+          row.appendChild(b);
         });
       }
     }
-    modal.querySelector('#su-cluster-sel-deselect').addEventListener('click', () => { sel = null; renderPreview(); renderSelProps(); });
 
-    // ── Chips (listas debajo — atajo para seleccionar sin buscar en el preview) ──
+    // ── Chips (atajo para seleccionar sin buscar en el preview) ──
     const cardChipsEl = modal.querySelector('#su-cluster-cards-chips');
     function renderCardChips() {
       cardChipsEl.innerHTML = '';
       shownPlaces.forEach((place, i) => {
         const chip = document.createElement('button');
         chip.type = 'button';
-        const active = sel && sel.kind === 'card' && sel.idx === i;
+        const active = sel?.kind === 'card' && sel.idx === i;
         chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:10.5px;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
-        chip.textContent = `📸 ${place.name || i + 1}`;
+        chip.textContent = `📸 ${place.el._place.name || i + 1}`;
         chip.addEventListener('click', () => select('card', i));
         cardChipsEl.appendChild(chip);
       });
@@ -954,7 +1009,7 @@ export class SuperUserPanel {
       stickers.forEach((s, i) => {
         const chip = document.createElement('button');
         chip.type = 'button';
-        const active = sel && sel.kind === 'sticker' && sel.idx === i;
+        const active = sel?.kind === 'sticker' && sel.idx === i;
         chip.style.cssText = `padding:6px 10px;border-radius:999px;border:1px solid ${active ? 'rgba(0,188,212,0.5)' : 'rgba(255,255,255,0.12)'};background:${active ? 'rgba(0,188,212,0.18)' : 'transparent'};color:${active ? '#67e8f9' : '#9ca3af'};font-size:12px;cursor:pointer;`;
         chip.textContent = s.emoji || '✨';
         chip.addEventListener('click', () => select('sticker', i));
@@ -962,36 +1017,13 @@ export class SuperUserPanel {
       });
     }
     modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
-      stickers.push({ emoji: '✨', dx: 0, dy: 0, size: 26, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2 });
+      stickers.push({ emoji: '✨', dx: 0, dy: 0, size: 26, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2, z: 20 + stickers.length });
       select('sticker', stickers.length - 1);
       renderStickerChips();
     });
+    modal.querySelector('#su-cluster-badge-chip').addEventListener('click', () => select('badge', 0));
 
-    // ── Color del badge ──────────────────────────────────────
-    const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
-    const badgeRow = modal.querySelector('#su-cluster-badge-row');
-    const paintBadgeRow = () => {
-      badgeRow.innerHTML = '';
-      BADGE_PRESET.forEach(c => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.style.cssText = `width:26px;height:26px;border-radius:50%;background:${c};border:2px solid ${c === badgeColor ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;`;
-        b.addEventListener('click', () => { badgeColor = c; paintBadgeRow(); renderPreview(); });
-        badgeRow.appendChild(b);
-      });
-    };
-    paintBadgeRow();
-
-    // ── Etiqueta ─────────────────────────────────────────────
-    modal.querySelector('#su-cluster-label-text').addEventListener('input', (e) => { label.text = e.target.value; renderPreview(); });
-    modal.querySelector('#su-cluster-label-bg').addEventListener('input', (e) => { label.bgColor = e.target.value; renderPreview(); });
-    modal.querySelector('#su-cluster-label-color').addEventListener('input', (e) => { label.textColor = e.target.value; renderPreview(); });
-    modal.querySelector('#su-cluster-label-fontsize').addEventListener('input', (e) => { label.fontSize = parseFloat(e.target.value); renderPreview(); });
-    modal.querySelector('#su-cluster-label-radius').addEventListener('input', (e) => { label.borderRadius = parseFloat(e.target.value); renderPreview(); });
-    modal.querySelector('#su-cluster-label-padx').addEventListener('input', (e) => { label.paddingX = parseFloat(e.target.value); renderPreview(); });
-    modal.querySelector('#su-cluster-label-pady').addEventListener('input', (e) => { label.paddingY = parseFloat(e.target.value); renderPreview(); });
-
-    // ── Lista de lugares (checkboxes) ──────────────────────────
+    // ── Lugares incluidos ────────────────────────────────────────
     const placesListEl = modal.querySelector('#su-cluster-places-list');
     groupPlaces.forEach(p => {
       const pid = p.place_id || p.id;
@@ -1016,14 +1048,7 @@ export class SuperUserPanel {
         const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: existingCluster?.id,
-            place_ids,
-            cards,
-            stickers,
-            label: label.text ? label : null,
-            badge_color: badgeColor,
-          }),
+          body: JSON.stringify({ id: existingCluster?.id, place_ids, cards, stickers, badge }),
         });
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
@@ -1056,6 +1081,7 @@ export class SuperUserPanel {
     renderStickerChips();
     renderPreview();
   }
+
 
 
 
