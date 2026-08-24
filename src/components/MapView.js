@@ -2356,10 +2356,30 @@ export function _buildClusterStickerHtml(group, customDef) {
     const strokeWidth = s.strokeWidth ?? 2;
     const dx = s.dx ?? 0, dy = s.dy ?? 0;
     const z = s.z ?? (20 + i);
+    const noStroke = strokeWidth === 0;
+
+    // Contorno por apilado de copias (mismo criterio que el sticker del
+    // pin individual) — es la técnica que SÍ funciona con emoji a color:
+    // -webkit-text-stroke no tiene efecto en glifos bitmap/COLR en la
+    // mayoría de navegadores. 12 puntos repartidos cada 30° para que el
+    // contorno se vea redondo, no "con picos".
+    const STROKE_POINTS = 12;
+    const emojiShadowStack = Array.from({ length: STROKE_POINTS }, (_, k) => {
+      const a = (k / STROKE_POINTS) * 2 * Math.PI;
+      const x = +(Math.cos(a) * strokeWidth).toFixed(2);
+      const y = +(Math.sin(a) * strokeWidth).toFixed(2);
+      return `${x}px ${y}px 0 ${strokeColor}`;
+    }).join(',');
+    const diag = +(strokeWidth * 0.7071).toFixed(2);
+
     const inner = s.imageUrl
-      ? `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 0 ${strokeWidth}px ${strokeColor}) drop-shadow(0 2px 4px rgba(0,0,0,0.32));">`
+      ? (noStroke
+          ? `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.32));">`
+          : `<img src="${s.imageUrl}" style="width:${size}px;height:${size}px;object-fit:contain;filter:drop-shadow(${strokeWidth}px 0 0 ${strokeColor}) drop-shadow(-${strokeWidth}px 0 0 ${strokeColor}) drop-shadow(0 ${strokeWidth}px 0 ${strokeColor}) drop-shadow(0 -${strokeWidth}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 2px 4px rgba(0,0,0,0.28));">`)
       : s.emoji
-      ? `<div style="font-size:${size}px;line-height:1;-webkit-text-stroke:${strokeWidth}px ${strokeColor};filter:drop-shadow(0 2px 4px rgba(0,0,0,0.32));">${s.emoji}</div>`
+      ? (noStroke
+          ? `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${size}px;line-height:1;text-shadow:0 2px 4px rgba(0,0,0,0.32);">${s.emoji}</div>`
+          : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${size}px;line-height:1;text-shadow:${emojiShadowStack},0 2px 4px rgba(0,0,0,0.28);">${s.emoji}</div>`)
       : '';
     if (!inner) return '';
     return `<div data-sticker-idx="${i}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${s.rotation || 0}deg);z-index:${z};pointer-events:auto;touch-action:none;">${inner}</div>`;
