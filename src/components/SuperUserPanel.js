@@ -753,8 +753,8 @@ export class SuperUserPanel {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <span id="su-cluster-sel-title" style="font-size:11px;font-weight:700;color:#67e8f9;"></span>
             <div style="display:flex;gap:4px;">
-              <button type="button" id="su-cluster-sel-back" title="Enviar atrás" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬇︎</button>
-              <button type="button" id="su-cluster-sel-front" title="Traer al frente" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬆︎</button>
+              <button type="button" id="su-cluster-sel-back" title="Retroceder un paso" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬇︎</button>
+              <button type="button" id="su-cluster-sel-front" title="Avanzar un paso" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬆︎</button>
               <button type="button" id="su-cluster-sel-deselect" style="background:none;border:none;color:#9ca3af;font-size:11px;cursor:pointer;">Listo</button>
             </div>
           </div>
@@ -806,19 +806,33 @@ export class SuperUserPanel {
       return c;
     };
 
-    // ── Orden (traer al frente / enviar atrás) ──────────────────
-    // Un solo número de z-index por elemento; "frente"/"atrás" solo
-    // mueven ese número al tope o al fondo de TODO lo que hay en el
-    // cluster (tarjetas + stickers + badge), sin reordenar arrays.
-    const allZValues = () => {
-      const zs = [];
-      shownPlaces.forEach(place => { const ov = cards.find(c => c.placeId === (place.place_id || place.id)); zs.push(ov ? ov.z : 1); });
-      stickers.forEach(s => zs.push(s.z ?? 20));
-      zs.push(badge.z ?? 30);
-      return zs;
+    // ── Orden (adelante/atrás DE A UNO, no al extremo) ──────────
+    // Junta tarjetas + stickers + badge, ordenados por su z actual, y
+    // "avanzar"/"retroceder" intercambia el z con el VECINO inmediato en
+    // ese orden — un paso por vez, no un salto al frente/fondo absoluto.
+    const allElements = () => {
+      const list = [];
+      shownPlaces.forEach(place => {
+        const ov = getCardOverride(place.place_id || place.id); // asegura que exista
+        list.push({ kind: 'card', ref: ov });
+      });
+      stickers.forEach(s => list.push({ kind: 'sticker', ref: s }));
+      list.push({ kind: 'badge', ref: badge });
+      return list;
     };
-    const bringToFront = (obj) => { obj.z = Math.max(...allZValues()) + 1; };
-    const sendToBack = (obj) => { obj.z = Math.min(...allZValues()) - 1; };
+    const stepZ = (obj, direction) => { // direction: +1 adelante, -1 atrás
+      const list = allElements().sort((a, b) => (a.ref.z ?? 0) - (b.ref.z ?? 0));
+      const idx = list.findIndex(e => e.ref === obj);
+      if (idx === -1) return;
+      const swapIdx = idx + direction;
+      if (swapIdx < 0 || swapIdx >= list.length) return; // ya está en la punta, no hay con quién cambiar
+      const other = list[swapIdx].ref;
+      const tmp = obj.z ?? 0;
+      obj.z = other.z ?? 0;
+      other.z = tmp;
+    };
+    const bringForwardOne = (obj) => stepZ(obj, 1);
+    const sendBackwardOne = (obj) => stepZ(obj, -1);
 
     // ── Preview + gesto (1 dedo mover, 2 dedos pinch escalar+girar) ──
     function renderPreview() {
@@ -852,14 +866,29 @@ export class SuperUserPanel {
       return null;
     }
 
+    // Busca en el DOM actual del preview el nodo que corresponde a `sel`
+    // — hace falta porque el nodo original se destruye en cada
+    // renderPreview() completo, así que el que quedó seleccionado antes
+    // ya no es el mismo objeto DOM.
+    function findSelNode() {
+      if (!sel) return null;
+      const wrap = previewEl.firstElementChild?.firstElementChild;
+      if (!wrap) return null;
+      let node = null;
+      if (sel.kind === 'card') node = wrap.querySelector(`[data-card-idx="${sel.idx}"]`);
+      else if (sel.kind === 'sticker') node = wrap.querySelector(`[data-sticker-idx="${sel.idx}"]`);
+      else if (sel.kind === 'badge') node = wrap.querySelector('[data-badge]');
+      if (!node) return null;
+      const r = resolveNode(node);
+      return r ? { node, obj: r.obj } : null;
+    }
+
     // Gesto unificado A NIVEL DEL CONTENEDOR (previewEl), no por elemento:
-    // el primer dedo tiene que tocar una tarjeta/sticker/badge para
-    // "agarrarlo" — desde ahí, el SEGUNDO dedo puede caer en cualquier
-    // parte del preview (no hace falta que toque el mismo elemento
-    // chiquito, que es prácticamente imposible en un pellizco real) y
-    // pasa a controlar tamaño+giro de lo que ya está agarrado. 1 dedo =
-    // mover, 2 dedos = pellizco (distancia entre ellos = tamaño, ángulo
-    // entre ellos = giro), igual que cualquier editor de fotos real.
+    // tocar una tarjeta/sticker/badge lo selecciona — desde ahí, CUALQUIER
+    // zona del preview (no hace falta seguir tocando el elemento chiquito)
+    // sirve para moverlo/pellizcarlo, hasta que se toque otro elemento
+    // distinto (ahí cambia la selección) o se cierre el panel. 1 dedo =
+    // mover, 2 dedos = pellizco (distancia = tamaño, ángulo = giro).
     // Durante el gesto solo se toca el `transform` del nodo activo
     // (liviano, no regenera contenido); el re-render completo pasa
     // recién cuando se levanta el último dedo.
@@ -874,11 +903,22 @@ export class SuperUserPanel {
     previewEl.addEventListener('pointerdown', (e) => {
       const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge]');
       if (pts.size === 0) {
-        if (!targetNode) return; // tocó el fondo vacío — no arranca nada
-        const r = resolveNode(targetNode);
-        if (!r) return;
-        activeNode = targetNode; activeObj = r.obj; activeKind = r.kind;
-        select(r.kind, r.idx, targetNode);
+        if (targetNode) {
+          const r = resolveNode(targetNode);
+          if (!r) return;
+          // Tocó un elemento DISTINTO al seleccionado → suelta el
+          // anterior y pasa a controlar este.
+          const isDifferent = !sel || sel.kind !== r.kind || sel.idx !== r.idx;
+          if (isDifferent) select(r.kind, r.idx, targetNode);
+          activeNode = targetNode; activeObj = r.obj; activeKind = r.kind;
+        } else {
+          // Tocó una zona vacía del preview: si YA hay algo seleccionado,
+          // seguir controlando ESE elemento desde acá — no hace falta
+          // tener los dedos exactos sobre él.
+          const found = findSelNode();
+          if (!found) return;
+          activeNode = found.node; activeObj = found.obj; activeKind = sel.kind;
+        }
       }
       if (!activeNode) return;
       e.preventDefault();
@@ -957,8 +997,8 @@ export class SuperUserPanel {
     const selWrap = modal.querySelector('#su-cluster-sel-props');
     const selTitle = modal.querySelector('#su-cluster-sel-title');
     const selFields = modal.querySelector('#su-cluster-sel-fields');
-    modal.querySelector('#su-cluster-sel-front').addEventListener('click', () => { if (!sel) return; bringToFront(currentSelObj()); renderPreview(); });
-    modal.querySelector('#su-cluster-sel-back').addEventListener('click', () => { if (!sel) return; sendToBack(currentSelObj()); renderPreview(); });
+    modal.querySelector('#su-cluster-sel-front').addEventListener('click', () => { if (!sel) return; bringForwardOne(currentSelObj()); renderPreview(); });
+    modal.querySelector('#su-cluster-sel-back').addEventListener('click', () => { if (!sel) return; sendBackwardOne(currentSelObj()); renderPreview(); });
     modal.querySelector('#su-cluster-sel-deselect').addEventListener('click', () => { sel = null; renderPreview(); renderSelProps(); renderCardChips(); renderStickerChips(); });
 
     function currentSelObj() {
@@ -981,10 +1021,14 @@ export class SuperUserPanel {
               <option value="portrait" ${ov.shape==='portrait'?'selected':''}>Portrait</option>
               <option value="square" ${ov.shape==='square'?'selected':''}>Square</option>
             </select></div>
+          <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-scale" type="range" min="0.35" max="2.2" step="0.02" value="${ov.scale ?? 1}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-rot" type="range" min="-180" max="180" step="1" value="${ov.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Border radius</div><input id="scf-radius" type="range" min="0" max="30" step="1" value="${ov.borderRadius}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Color de borde</div><input id="scf-bcolor" type="color" value="${ov.borderColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de borde</div><input id="scf-bwidth" type="range" min="0" max="6" step="0.5" value="${ov.borderWidth}" style="width:100%;accent-color:#1a5cf5;"></div>`;
         modal.querySelector('#scf-shape').addEventListener('change', (e) => { ov.shape = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-scale').addEventListener('input', (e) => { ov.scale = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-rot').addEventListener('input', (e) => { ov.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-radius').addEventListener('input', (e) => { ov.borderRadius = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-bcolor').addEventListener('input', (e) => { ov.borderColor = e.target.value; renderPreview(); });
         modal.querySelector('#scf-bwidth').addEventListener('input', (e) => { ov.borderWidth = parseFloat(e.target.value); renderPreview(); });
@@ -994,11 +1038,15 @@ export class SuperUserPanel {
         if (!s) { sel = null; selWrap.style.display = 'none'; return; }
         selTitle.textContent = '✨ Sticker';
         selFields.innerHTML = `
-          <div><div style="font-size:9px;color:#6b7280;">Emoji</div><input id="scf-emoji" type="text" maxlength="4" value="${s.emoji || ''}" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Emoji</div><input id="scf-emoji" type="text" maxlength="8" value="${s.emoji || ''}" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-size" type="range" min="12" max="90" step="1" value="${s.size ?? 26}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-srot" type="range" min="-180" max="180" step="1" value="${s.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Color de stroke</div><input id="scf-stroke" type="color" value="${s.strokeColor || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de stroke</div><input id="scf-strokew" type="range" min="0" max="6" step="0.5" value="${s.strokeWidth ?? 2}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
         modal.querySelector('#scf-emoji').addEventListener('input', (e) => { s.emoji = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-size').addEventListener('input', (e) => { s.size = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-srot').addEventListener('input', (e) => { s.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-stroke').addEventListener('input', (e) => { s.strokeColor = e.target.value; renderPreview(); });
         modal.querySelector('#scf-strokew').addEventListener('input', (e) => { s.strokeWidth = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-remove').addEventListener('click', () => { stickers.splice(sel.idx, 1); sel = null; renderPreview(); renderSelProps(); renderStickerChips(); });
