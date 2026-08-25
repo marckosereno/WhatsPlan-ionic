@@ -393,6 +393,18 @@ export class MapView {
           this._cancelActiveClusterPress = null;
         }
       });
+      // Red de seguridad extra: 'move' dispara en CUALQUIER movimiento de
+      // cámara, incluso el primer frame — más rápido/confiable que
+      // 'dragstart', que tiene su propio reconocimiento de gesto interno
+      // y a veces "llega tarde" si el dedo se queda quieto un instante
+      // antes de empezar a arrastrar (justo el momento en que el timer de
+      // long-press de 550ms puede alcanzar a completarse primero).
+      this.map.on('move', () => {
+        if (this._cancelActiveClusterPress) {
+          this._cancelActiveClusterPress();
+          this._cancelActiveClusterPress = null;
+        }
+      });
       this.map.on('drag', () => {
         if (!_dragStartCenter) return;
         const nowPx = this.map.project(_dragStartCenter);
@@ -1149,9 +1161,17 @@ export class MapView {
     // sin importar la distancia real entre ellos (curados a mano). Se
     // renderizan sin importar cuántos lugares tengan — el MIN_GROUP de
     // abajo solo aplica al clustering automático.
+    //
+    // El fallback (place_id → id → name) tiene que ser EXACTAMENTE el
+    // mismo que usa el panel de edición (placeIdOf en SuperUserPanel.js)
+    // — si no coinciden, un lugar sin place_id/id (típico en categorías
+    // con lugares cargados a mano) se guarda con un id que después nunca
+    // vuelve a matchear acá, y ese lugar queda afuera del cluster al
+    // recargar, "rompiendo" la edición para esa categoría en particular.
+    const placeIdOf = (place) => place?.place_id || place?.id || place?.name || '__lugar_sin_id';
     (this.pinClusters || []).forEach(customDef => {
       const members = candidates.filter(c =>
-        !usedEls.has(c.el) && (customDef.placeIds || []).includes(c.el._place.place_id || c.el._place.id)
+        !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
       );
       if (!members.length) return;
       members.forEach(m => usedEls.add(m.el));
@@ -1221,7 +1241,7 @@ export class MapView {
       if (this._cancelActiveClusterPress === clearPress) this._cancelActiveClusterPress = null;
     };
     el.addEventListener('pointermove', (e) => {
-      if (pressTimer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) clearPress();
+      if (pressTimer && (Math.abs(e.clientX - startX) > 5 || Math.abs(e.clientY - startY) > 5)) clearPress();
     });
     el.addEventListener('pointerup', clearPress);
     el.addEventListener('pointercancel', clearPress);
