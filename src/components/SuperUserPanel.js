@@ -12,7 +12,7 @@ import {
   reorderCategories, reorderSubcategories,
   invalidateCache
 } from '/src/services/CategoryService.js';
-import { _buildClusterStickerHtml, CLUSTER_MAX_CARDS, CLUSTER_CARD_SLOTS } from '/src/components/MapView.js';
+import { _buildClusterStickerHtml, CLUSTER_MAX_CARDS, CLUSTER_CARD_SLOTS, placeIdOf } from '/src/components/MapView.js';
 
 const STICKER_PRESETS = [
   { emoji: '⭐', label: 'Destacado' },
@@ -725,22 +725,15 @@ export class SuperUserPanel {
   _openClusterCustomizePanel(group, existingCluster) {
     document.getElementById('su-cluster-modal')?.remove();
 
-    // Único punto que resuelve el id de un lugar — antes esta fórmula
-    // estaba repetida 7 veces por el archivo; bastaba con que un lugar
-    // (típico en categorías con lugares cargados a mano, sin place_id de
-    // Google) no tuviera NI place_id NI id para que TODOS esos lugares
-    // colapsaran al mismo identificador `undefined` — tocar la tarjeta de
-    // uno terminaba controlando la de otro (o directamente no hacía nada
-    // visible), y por eso "en algunas categorías no funciona". El
-    // fallback por `name` (NO por posición/índice, que no es estable
-    // entre sesiones) le da a cada lugar un id distinto igual — y usa
-    // EXACTAMENTE la misma fórmula que MapView.js para matchear el
-    // cluster guardado contra los lugares reales al recargar (ver
-    // _updateClusters() en MapView.js — deben coincidir siempre).
-    const placeIdOf = (place) => place?.place_id || place?.id || place?.name || '__lugar_sin_id';
+    // placeIdOf() se importa de MapView.js — es la ÚNICA fuente de
+    // verdad, usada acá y también dentro de _buildClusterStickerHtml y
+    // _updateClusters(). Antes cada archivo tenía su propia copia de
+    // esta fórmula, ligeramente distintas entre sí, y esa desincronización
+    // era justo lo que rompía la edición para lugares sin place_id/id
+    // ("se desordena todo", "algunas categorías no funcionan").
 
     const isEdit = !!existingCluster;
-    const groupPlaces = group.map(({ el }) => el._place);
+    let groupPlaces = group.map(({ el }) => el._place);
     const included = new Set(groupPlaces.map((p, i) => placeIdOf(p)));
 
     // ── Saneamiento de datos al cargar ──────────────────────────
@@ -803,7 +796,7 @@ export class SuperUserPanel {
     let stickers = isEdit ? (existingCluster.stickers || []).map(sanitizeSticker).filter(Boolean) : [];
     let badge    = sanitizeBadge(isEdit ? existingCluster.badge : null);
 
-    const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
+    let shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
     let sel = null; // {kind:'card'|'sticker'|'badge', idx}
 
     const modal = document.createElement('div');
@@ -835,7 +828,7 @@ export class SuperUserPanel {
 
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              <div style="font-size:10px;color:#6b7280;">Tarjetas (${shownPlaces.length} de ${groupPlaces.length} lugares)</div>
+              <div id="su-cluster-cards-count" style="font-size:10px;color:#6b7280;">Tarjetas (${shownPlaces.length} de ${groupPlaces.length} lugares)</div>
             </div>
             <div id="su-cluster-cards-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
           </div>
@@ -854,8 +847,11 @@ export class SuperUserPanel {
           </div>
 
           <div>
-            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
-            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;"></div>
+            <div id="su-cluster-places-count" style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
+            <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;margin-bottom:8px;"></div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Agregar otro lugar (de toda la categoría, no solo los cercanos)</div>
+            <input id="su-cluster-add-place-search" type="text" placeholder="Buscar por nombre..." style="width:100%;padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;">
+            <div id="su-cluster-add-place-results" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;max-height:140px;overflow-y:auto;"></div>
           </div>
 
         </div>
@@ -875,7 +871,15 @@ export class SuperUserPanel {
       if (!c) {
         const i = shownPlaces.findIndex((p, idx) => placeIdOf(p) === pid);
         const slot = CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1];
-        c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0, borderColor: '#ffffff', borderWidth: 2, borderRadius: 9, z: slot.z };
+        // Usar la posición/giro/tamaño DEL SLOT como punto de partida —
+        // no hardcodeado en 0/0/0/1. "Adelante"/"Atrás" recorre TODOS los
+        // elementos del cluster para calcular el orden (allElements()),
+        // creando una entrada nueva acá para cualquier tarjeta que
+        // todavía no tuviera una guardada — con 0/0/0/1 (el centro) como
+        // default, cualquier tarjeta sin editar previamente saltaba al
+        // centro apenas usabas Adelante/Atrás sobre CUALQUIER otra
+        // tarjeta del mismo cluster, sin siquiera haberla tocado.
+        c = { placeId: pid, shape: 'portrait', rotation: slot.rot, scale: slot.scale, dx: slot.dx, dy: slot.dy, borderColor: '#ffffff', borderWidth: 2, borderRadius: 9, z: slot.z };
         cards.push(c);
       }
       return c;
@@ -1159,12 +1163,30 @@ export class SuperUserPanel {
         if (!s) { sel = null; selWrap.style.display = 'none'; return; }
         selTitle.textContent = '✨ Sticker';
         selFields.innerHTML = `
-          <div><div style="font-size:9px;color:#6b7280;">Emoji</div><input id="scf-emoji" type="text" maxlength="8" value="${s.emoji || ''}" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;"></div>
+          <div style="grid-column:1 / -1;display:flex;gap:8px;align-items:center;">
+            <div style="flex:1;">
+              <div style="font-size:9px;color:#6b7280;">Emoji</div>
+              <input id="scf-emoji" type="text" maxlength="8" value="${s.emoji || ''}" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;box-sizing:border-box;">
+            </div>
+            <div style="font-size:9px;color:#6b7280;padding-top:14px;">o</div>
+            <div style="flex:1;">
+              <div style="font-size:9px;color:#6b7280;">Imagen propia</div>
+              <label id="scf-image-label" style="display:flex;align-items:center;justify-content:center;gap:4px;width:100%;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,0.25);background:rgba(255,255,255,0.03);color:#9ca3af;font-size:10.5px;cursor:pointer;box-sizing:border-box;">
+                <span>${s.imageUrl ? '🖼️ Cambiar' : '📤 Subir'}</span>
+                <input id="scf-image-file" type="file" accept="image/*" style="display:none;">
+              </label>
+            </div>
+          </div>
+          ${s.imageUrl ? `<div style="grid-column:1 / -1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border-radius:6px;padding:5px 8px;">
+            <img src="${s.imageUrl}" style="width:22px;height:22px;object-fit:contain;border-radius:4px;">
+            <span style="font-size:10px;color:#9ca3af;flex:1;">Imagen propia activa</span>
+            <button type="button" id="scf-image-remove" style="background:rgba(239,68,68,0.15);border:none;color:#f87171;font-size:9px;padding:3px 7px;border-radius:5px;cursor:pointer;">Quitar</button>
+          </div>` : ''}
           <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-size" type="range" min="12" max="90" step="1" value="${s.size ?? 26}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-srot" type="range" min="-180" max="180" step="1" value="${s.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Color de stroke</div><input id="scf-stroke" type="color" value="${s.strokeColor || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de stroke</div><input id="scf-strokew" type="range" min="0" max="6" step="0.5" value="${s.strokeWidth ?? 2}" style="width:100%;accent-color:#1a5cf5;"></div>
-          <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
+          <div style="grid-column:1 / -1;"><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
         // El teclado de emojis en móvil suele insertar el emoji como una
         // "composición" (IME) — dispara compositionstart/compositionend en
         // vez de (o antes que) un 'input' normal, y en varios navegadores
@@ -1173,7 +1195,7 @@ export class SuperUserPanel {
         // emoji hasta que algo más (como la barra espaciadora) forzaba un
         // 'input' final — por eso "aparecía al tocar espacio".
         const emojiEl = modal.querySelector('#scf-emoji');
-        const applyEmoji = (e) => { s.emoji = e.target.value; renderPreview(); };
+        const applyEmoji = (e) => { s.emoji = e.target.value; if (e.target.value) s.imageUrl = ''; renderPreview(); }; // escribir emoji descarta la imagen propia (mismo criterio que el sticker del pin individual)
         emojiEl.addEventListener('input', (e) => { if (!e.isComposing) applyEmoji(e); });
         emojiEl.addEventListener('compositionend', applyEmoji);
         modal.querySelector('#scf-size').addEventListener('input', (e) => { s.size = parseFloat(e.target.value); renderPreview(); });
@@ -1181,6 +1203,65 @@ export class SuperUserPanel {
         modal.querySelector('#scf-stroke').addEventListener('input', (e) => { s.strokeColor = e.target.value; renderPreview(); });
         modal.querySelector('#scf-strokew').addEventListener('input', (e) => { s.strokeWidth = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-remove').addEventListener('click', () => { stickers.splice(sel.idx, 1); sel = null; renderPreview(); renderSelProps(); renderStickerChips(); });
+        modal.querySelector('#scf-image-remove')?.addEventListener('click', () => { s.imageUrl = ''; renderPreview(); renderSelProps(); });
+
+        // Subir imagen propia — mismo mecanismo que el sticker del pin
+        // individual (comprimir a máx 300px + subir a Supabase Storage).
+        modal.querySelector('#scf-image-file').addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) { alert('Solo imágenes.'); return; }
+          if (file.size > 10 * 1024 * 1024) { alert('Imagen demasiado grande (máx 10 MB).'); return; }
+
+          const label = modal.querySelector('#scf-image-label');
+          const origHtml = label.innerHTML;
+          label.style.opacity = '0.5';
+          label.querySelector('span').textContent = '⏳ Subiendo...';
+
+          const compressImage = (f) => new Promise((resolve) => {
+            const img = new Image();
+            const url = URL.createObjectURL(f);
+            img.onload = () => {
+              URL.revokeObjectURL(url);
+              const MAX = 300; // los stickers son chicos, no hace falta más resolución
+              let w = img.width, h = img.height;
+              if (w > MAX || h > MAX) {
+                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                else       { w = Math.round(w * MAX / h); h = MAX; }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              canvas.toBlob(resolve, 'image/png', 0.9); // png para conservar transparencia si la tiene
+            };
+            img.src = url;
+          });
+
+          try {
+            const compressed = await compressImage(file);
+            const { getSupabase } = await import('/src/services/SupabaseService.js');
+            const supabase = getSupabase();
+            if (!supabase) throw new Error('Supabase no inicializado');
+
+            const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.png';
+            const { error } = await supabase.storage
+              .from('place-photos')
+              .upload(path, compressed, { contentType: 'image/png', upsert: false });
+            if (error) throw error;
+
+            const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
+            s.imageUrl = urlData.publicUrl;
+            s.emoji = ''; // subir imagen descarta el emoji (mismo criterio que el sticker del pin individual)
+            renderPreview();
+            renderSelProps();
+          } catch (err) {
+            alert('Error al subir el sticker: ' + err.message);
+            label.style.opacity = '';
+            label.innerHTML = origHtml;
+          } finally {
+            e.target.value = '';
+          }
+        });
 
       } else { // badge
         selTitle.textContent = '🔢 Badge';
@@ -1240,16 +1321,65 @@ export class SuperUserPanel {
 
     // ── Lugares incluidos ────────────────────────────────────────
     const placesListEl = modal.querySelector('#su-cluster-places-list');
-    groupPlaces.forEach((p, i) => {
-      const pid = placeIdOf(p);
-      const row = document.createElement('label');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;color:#d1d5db;cursor:pointer;';
-      row.innerHTML = `<input type="checkbox" checked style="accent-color:#1a5cf5;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || pid}</span>`;
-      row.querySelector('input').addEventListener('change', (e) => {
-        if (e.target.checked) included.add(pid); else included.delete(pid);
+    function renderPlacesList() {
+      placesListEl.innerHTML = '';
+      groupPlaces.forEach((p, i) => {
+        const pid = placeIdOf(p);
+        const row = document.createElement('label');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;color:#d1d5db;cursor:pointer;';
+        row.innerHTML = `<input type="checkbox" ${included.has(pid) ? 'checked' : ''} style="accent-color:#1a5cf5;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || pid}</span>`;
+        row.querySelector('input').addEventListener('change', (e) => {
+          if (e.target.checked) included.add(pid); else included.delete(pid);
+        });
+        placesListEl.appendChild(row);
       });
-      placesListEl.appendChild(row);
-    });
+    }
+    renderPlacesList();
+
+    // ── Agregar más lugares al cluster (no solo los que ya venían
+    // agrupados por cercanía) — busca en TODOS los lugares cargados de
+    // la categoría actual y los suma al grupo en vivo. ──
+    const addSearchEl = modal.querySelector('#su-cluster-add-place-search');
+    const addResultsEl = modal.querySelector('#su-cluster-add-place-results');
+    function addPlaceToCluster(place) {
+      const pid = placeIdOf(place);
+      if (included.has(pid)) return;
+      group.push({ el: { _place: place }, ll: { lat: place.lat ?? place.location?.lat ?? 0, lng: place.lng ?? place.location?.lng ?? 0 } });
+      included.add(pid);
+      groupPlaces = group.map(({ el }) => el._place);
+      shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
+      renderPlacesList();
+      renderCardChips();
+      renderPreview();
+      const countEl = modal.querySelector('#su-cluster-places-count');
+      if (countEl) countEl.textContent = `Lugares incluidos (${groupPlaces.length})`;
+      const cardsCountEl = modal.querySelector('#su-cluster-cards-count');
+      if (cardsCountEl) cardsCountEl.textContent = `Tarjetas (${shownPlaces.length} de ${groupPlaces.length} lugares)`;
+      addSearchEl.value = '';
+      addResultsEl.innerHTML = '';
+    }
+    if (addSearchEl) {
+      addSearchEl.addEventListener('input', () => {
+        const q = addSearchEl.value.trim().toLowerCase();
+        addResultsEl.innerHTML = '';
+        if (!q) return;
+        const already = new Set(groupPlaces.map(p => placeIdOf(p)));
+        const matches = (this.mapView.allPlaces || [])
+          .filter(p => p.name && p.name.toLowerCase().includes(q) && !already.has(placeIdOf(p)))
+          .slice(0, 8);
+        matches.forEach(p => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.style.cssText = 'display:block;width:100%;text-align:left;padding:6px 8px;border-radius:6px;border:none;background:rgba(255,255,255,0.06);color:#d1d5db;font-size:11.5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          row.textContent = p.name;
+          row.addEventListener('click', () => addPlaceToCluster(p));
+          addResultsEl.appendChild(row);
+        });
+        if (!matches.length) {
+          addResultsEl.innerHTML = '<div style="font-size:11px;color:#6b7280;padding:4px;">Sin resultados</div>';
+        }
+      });
+    }
 
     // Cierre centralizado — resetea this.mapView._clusterModalOpen con un
     // pequeño margen (400ms) después de remover el modal, para absorber
