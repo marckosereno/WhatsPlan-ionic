@@ -743,9 +743,65 @@ export class SuperUserPanel {
     const groupPlaces = group.map(({ el }) => el._place);
     const included = new Set(groupPlaces.map((p, i) => placeIdOf(p)));
 
-    let cards    = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
-    let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
-    let badge    = isEdit && existingCluster.badge ? JSON.parse(JSON.stringify(existingCluster.badge)) : { dx: 34, dy: -28, scale: 1, rotation: 0, color: '#111827', z: 30 };
+    // ── Saneamiento de datos al cargar ──────────────────────────
+    // El esquema de cards/stickers/badge cambió varias veces durante el
+    // desarrollo (labels que se sacaron, "anchor" de stickers que pasó a
+    // ser dx/dy, badge que pasó de ser un color-string a un objeto
+    // completo, campo z que se agregó después, etc). Un cluster guardado
+    // en una sesión vieja puede traer datos con esa forma anterior — y
+    // eso es justo lo que explica "en algunos clusters sí, en otros no":
+    // no es un bug de la interacción en sí, es que el dato de ESE
+    // cluster en particular no tiene la forma que el código actual
+    // espera, y algo revienta silenciosamente al leerlo. En vez de
+    // perseguir síntomas uno por uno, se sanea todo UNA vez acá: cada
+    // campo se valida por tipo con un default sensato, y cualquier
+    // entrada que ni siquiera sea un objeto se descarta — así el resto
+    // del código siempre trabaja con una forma garantizada,
+    // independientemente de qué tan vieja sea la data.
+    const sanitizeCard = (c) => {
+      if (!c || typeof c !== 'object') return null;
+      return {
+        placeId: c.placeId,
+        shape: c.shape === 'square' ? 'square' : 'portrait',
+        rotation: Number.isFinite(c.rotation) ? c.rotation : 0,
+        scale: Number.isFinite(c.scale) && c.scale > 0 ? c.scale : 1,
+        dx: Number.isFinite(c.dx) ? c.dx : 0,
+        dy: Number.isFinite(c.dy) ? c.dy : 0,
+        borderColor: typeof c.borderColor === 'string' ? c.borderColor : '#ffffff',
+        borderWidth: Number.isFinite(c.borderWidth) ? c.borderWidth : 2,
+        borderRadius: Number.isFinite(c.borderRadius) ? c.borderRadius : 9,
+        z: Number.isFinite(c.z) ? c.z : null, // null = se resuelve solo más abajo
+      };
+    };
+    const sanitizeSticker = (s) => {
+      if (!s || typeof s !== 'object') return null;
+      if (typeof s.emoji !== 'string' && typeof s.imageUrl !== 'string') return null; // sticker sin contenido real, descartar
+      return {
+        emoji: typeof s.emoji === 'string' ? s.emoji : '',
+        imageUrl: typeof s.imageUrl === 'string' ? s.imageUrl : '',
+        dx: Number.isFinite(s.dx) ? s.dx : 0,
+        dy: Number.isFinite(s.dy) ? s.dy : 0,
+        size: Number.isFinite(s.size) && s.size > 0 ? s.size : 26,
+        rotation: Number.isFinite(s.rotation) ? s.rotation : 0,
+        strokeColor: typeof s.strokeColor === 'string' ? s.strokeColor : '#ffffff',
+        strokeWidth: Number.isFinite(s.strokeWidth) ? s.strokeWidth : 2,
+        z: Number.isFinite(s.z) ? s.z : null,
+      };
+    };
+    const sanitizeBadge = (b) => ({
+      dx: b && Number.isFinite(b.dx) ? b.dx : 34,
+      dy: b && Number.isFinite(b.dy) ? b.dy : -28,
+      scale: b && Number.isFinite(b.scale) && b.scale > 0 ? b.scale : 1,
+      rotation: b && Number.isFinite(b.rotation) ? b.rotation : 0,
+      // Versiones viejas guardaban `badgeColor` como string suelto en vez
+      // de `badge.color` — se acepta cualquiera de los dos acá.
+      color: (b && typeof b.color === 'string' ? b.color : (typeof b === 'string' ? b : '#111827')),
+      z: b && Number.isFinite(b.z) ? b.z : 30,
+    });
+
+    let cards    = isEdit ? (existingCluster.cards || []).map(sanitizeCard).filter(Boolean) : [];
+    let stickers = isEdit ? (existingCluster.stickers || []).map(sanitizeSticker).filter(Boolean) : [];
+    let badge    = sanitizeBadge(isEdit ? existingCluster.badge : null);
 
     const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
     let sel = null; // {kind:'card'|'sticker'|'badge', idx}
@@ -872,19 +928,26 @@ export class SuperUserPanel {
 
     // ── Preview + gesto (1 dedo mover, 2 dedos pinch escalar+girar) ──
     function renderPreview() {
-      const cd = currentCustomDef();
-      previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, cd)}</div>`;
-      const wrap = previewEl.firstElementChild.firstElementChild;
-      wrap.querySelectorAll('[data-card-idx]').forEach(node => {
-        const idx = parseInt(node.dataset.cardIdx, 10);
-        if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
-      });
-      wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
-        const idx = parseInt(node.dataset.stickerIdx, 10);
-        if (sel?.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
-      });
-      const badgeNode = wrap.querySelector('[data-badge]');
-      if (badgeNode && sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
+      try {
+        const cd = currentCustomDef();
+        previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, cd)}</div>`;
+        const wrap = previewEl.firstElementChild.firstElementChild;
+        wrap.querySelectorAll('[data-card-idx]').forEach(node => {
+          const idx = parseInt(node.dataset.cardIdx, 10);
+          if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
+        });
+        wrap.querySelectorAll('[data-sticker-idx]').forEach(node => {
+          const idx = parseInt(node.dataset.stickerIdx, 10);
+          if (sel?.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
+        });
+        const badgeNode = wrap.querySelector('[data-badge]');
+        if (badgeNode && sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
+      } catch (err) {
+        // Con los datos ya saneados esto no debería pasar más, pero si
+        // algo se escapa igual, que quede bien visible en la consola en
+        // vez de dejar el preview "congelado" en silencio.
+        console.error('[CLUSTER] renderPreview() excepción:', err);
+      }
     }
 
     // Resuelve a qué (kind, idx, obj) corresponde un nodo del preview.
@@ -952,36 +1015,43 @@ export class SuperUserPanel {
     const metric = () => activeKind === 'sticker' ? (activeObj.size ?? 26) : (activeObj.scale ?? 1);
 
     previewEl.addEventListener('pointerdown', (e) => {
-      const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge]');
-      if (pts.size === 0) {
-        if (targetNode) {
-          const r = resolveNode(targetNode);
-          if (!r) return;
-          // Tocó un elemento DISTINTO al seleccionado → suelta el
-          // anterior y pasa a controlar este.
-          const isDifferent = !sel || sel.kind !== r.kind || sel.idx !== r.idx;
-          if (isDifferent) select(r.kind, r.idx, targetNode);
-          activeNode = targetNode; activeObj = r.obj; activeKind = r.kind;
-        } else {
-          // Tocó una zona vacía del preview: si YA hay algo seleccionado,
-          // seguir controlando ESE elemento desde acá — no hace falta
-          // tener los dedos exactos sobre él.
-          const found = findSelNode();
-          if (!found) return;
-          activeNode = found.node; activeObj = found.obj; activeKind = sel.kind;
+      try {
+        const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge]');
+        if (pts.size === 0) {
+          if (targetNode) {
+            const r = resolveNode(targetNode);
+            if (!r) return;
+            // Tocó un elemento DISTINTO al seleccionado → suelta el
+            // anterior y pasa a controlar este.
+            const isDifferent = !sel || sel.kind !== r.kind || sel.idx !== r.idx;
+            if (isDifferent) select(r.kind, r.idx, targetNode);
+            activeNode = targetNode; activeObj = r.obj; activeKind = r.kind;
+          } else {
+            // Tocó una zona vacía del preview: si YA hay algo seleccionado,
+            // seguir controlando ESE elemento desde acá — no hace falta
+            // tener los dedos exactos sobre él.
+            const found = findSelNode();
+            if (!found) return;
+            activeNode = found.node; activeObj = found.obj; activeKind = sel.kind;
+          }
         }
-      }
-      if (!activeNode) return;
-      e.preventDefault();
-      previewEl.setPointerCapture(e.pointerId);
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pts.size === 1) {
-        mode = 'drag';
-        start = { dx: activeObj.dx || 0, dy: activeObj.dy || 0, p: [...pts.values()][0] };
-      } else if (pts.size === 2) {
-        const [a, b] = [...pts.values()];
-        mode = 'pinch';
-        start = { dist: dist(a, b) || 1, angle: angle(a, b), metric: metric(), rotation: activeObj.rotation || 0 };
+        if (!activeNode) return;
+        e.preventDefault();
+        previewEl.setPointerCapture(e.pointerId);
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pts.size === 1) {
+          mode = 'drag';
+          start = { dx: activeObj.dx || 0, dy: activeObj.dy || 0, p: [...pts.values()][0] };
+        } else if (pts.size === 2) {
+          const [a, b] = [...pts.values()];
+          mode = 'pinch';
+          start = { dist: dist(a, b) || 1, angle: angle(a, b), metric: metric(), rotation: activeObj.rotation || 0 };
+        }
+      } catch (err) {
+        // Última red de seguridad: que un dato inesperado nunca deje el
+        // gesto "congelado" en silencio — si algo se escapa del
+        // saneamiento, esto lo hace visible en la consola.
+        console.error('[CLUSTER] pointerdown excepción:', err);
       }
     });
     previewEl.addEventListener('pointermove', (e) => {
