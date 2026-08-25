@@ -209,21 +209,27 @@ function injectLandmarkStyles() {
 
     /* ── Animación al hacer drag en el mapa ──────────────────────────
        Pines: se achican mientras se arrastra (sin opacity — solo escala)
-       y vuelven a su tamaño con un rebote (spring) al soltar. Además,
-       durante el drag se les aplica un leve "parallax": se atrasan un
-       poco respecto al movimiento real del mapa (ver --wp-parallax-x/y,
-       calculado en _initMap en cada evento 'drag'), dando sensación de
-       profundidad/capas en vez de que todo se mueva como un bloque rígido.
-       El transform va en el HIJO DIRECTO de .place-marker-el (nunca en
+       y vuelven a su tamaño con un rebote (spring) al soltar. El
+       transform va en el HIJO DIRECTO de .place-marker-el (nunca en
        .place-marker-el mismo): MapLibre posiciona el marker con su
        propio transform inline ahí, y cualquier transform puesto por CSS
        quedaría pisado por ese inline — aplicándolo al hijo evitamos el
-       conflicto. */
+       conflicto.
+       ANTES esto también incluía un efecto de "parallax" (los pines se
+       atrasaban un poco respecto al mapa) calculado en JS en cada evento
+       'drag' vía CSS custom properties en el elemento raíz — medido con
+       logs de PERF, ese único efecto costaba 6-10ms POR FRAME (escribir
+       una custom property que una regla usa en TODOS los pines fuerza
+       un recálculo de estilos global), un tercio o más del presupuesto
+       de cada frame a 60fps — esa era la causa real del "barrido"/
+       tranco al arrastrar el mapa. Se sacó por completo; el achique al
+       arrastrar queda igual (es solo un toggle de clase, no algo que se
+       recalcule en cada frame). */
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
     }
     body.map-dragging .place-marker-el > * {
-      transform: scale(0.82) translate(var(--wp-parallax-x, 0px), var(--wp-parallax-y, 0px));
+      transform: scale(0.82);
       transition: transform 0.05s linear;
     }
 
@@ -392,19 +398,8 @@ export class MapView {
       this._loadActivities();
 
       // Drag pause para animaciones
-      // Parallax de pines durante el drag: se calcula cuánto se movió en
-      // pantalla el punto donde estaba el centro al empezar el drag
-      // (proyectando ESE lnglat fijo contra la cámara actual en cada
-      // frame), y se aplica una fracción de ese desplazamiento —en
-      // sentido contrario— a los pines vía CSS custom properties. Con
-      // PARALLAX_LAG=0.15, los pines "solo avanzan" un 85% de lo que
-      // avanza el mapa, dando sensación de profundidad/capas.
-      const PARALLAX_LAG = 0.15;
-      let _dragStartCenter = null, _dragStartPx = null;
       this.map.on('dragstart', () => {
         document.body.classList.add('map-dragging');
-        _dragStartCenter = this.map.getCenter();
-        _dragStartPx     = this.map.project(_dragStartCenter);
         // Si el drag del mapa arrancó justo encima de un sticker de
         // cluster, el pointermove local de ese elemento puede no llegar a
         // dispararse (MapLibre se queda con el gesto táctil primero) — el
@@ -474,58 +469,24 @@ export class MapView {
           this.onClusterCustomize([], null); // grupo vacío = cluster nuevo, se puebla a mano con el buscador
         }, 650); // un toque más largo que el de los pines (550ms) para no confundirse con un long-press accidental mientras se navega el mapa vacío
       });
-      let _perfDragCount = 0, _perfDragWindowStart = performance.now();
-      this.map.on('drag', () => {
-        if (!_dragStartCenter) return;
-        _perfDragCount++;
-        const _now = performance.now();
-        if (_now - _perfDragWindowStart > 1000) {
-          console.log(`[PERF] drag: ${_perfDragCount} llamadas/seg`);
-          _perfDragCount = 0; _perfDragWindowStart = _now;
-        }
-        const _t0 = performance.now();
-        const nowPx = this.map.project(_dragStartCenter);
-        const dx = nowPx.x - _dragStartPx.x;
-        const dy = nowPx.y - _dragStartPx.y;
-        document.documentElement.style.setProperty('--wp-parallax-x', (-dx * PARALLAX_LAG).toFixed(1) + 'px');
-        document.documentElement.style.setProperty('--wp-parallax-y', (-dy * PARALLAX_LAG).toFixed(1) + 'px');
-        // Forzar el recálculo de estilos ACÁ (leyendo una propiedad de
-        // layout) en vez de dejar que el navegador lo difiera al próximo
-        // frame — si no se fuerza, este performance.now() no vería el
-        // costo real del recalc que dispara la custom property al
-        // aplicarse sobre TODOS los ".place-marker-el > *" en pantalla.
-        void document.body.offsetHeight;
-        const _dur = performance.now() - _t0;
-        if (_dur > 2) console.log(`[PERF] drag-parallax (recalc de estilo en TODOS los pines): ${_dur.toFixed(1)}ms`);
-      });
+      // NOTA DE PERFORMANCE — acá vivía el cálculo de "parallax" de pines
+      // durante el drag (los pines se atrasaban un poco respecto al mapa),
+      // medido con logs de PERF: escribir la CSS custom property que ese
+      // efecto necesitaba costaba 6-10ms POR FRAME (fuerza un recálculo
+      // de estilos en TODOS los pines en pantalla), un tercio o más del
+      // presupuesto de cada frame a 60fps — era la causa real del
+      // "barrido"/tranco al arrastrar el mapa. Se sacó por completo; solo
+      // queda el achique de pines al arrastrar (ver CSS de arriba), que
+      // es gratis porque es un simple toggle de clase, no algo por-frame.
       this.map.on('dragend', () => {
         document.body.classList.remove('map-dragging');
-        _dragStartCenter = null; _dragStartPx = null;
-        document.documentElement.style.setProperty('--wp-parallax-x', '0px');
-        document.documentElement.style.setProperty('--wp-parallax-y', '0px');
       });
 
       // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
-      // ── LOG DE DIAGNÓSTICO TEMPORAL — mide cuánto tarda cada llamada y
-      // cuántas veces por segundo se dispara durante un drag/zoom. Buscá
-      // en la consola líneas que empiecen con [PERF] mientras arrastrás o
-      // hacés pellizco — si "ms" es alto (>8-10ms) o "llamadas/seg" es
-      // muy alto, ahí está el cuello de botella exacto.
-      let _perfMoveCount = 0, _perfMoveWindowStart = performance.now(), _perfMoveTotalMs = 0;
       const _featuredCheck = () => {
-        const _t0 = performance.now();
-        _perfMoveCount++;
-        if (_t0 - _perfMoveWindowStart > 1000) {
-          console.log(`[PERF] _featuredCheck: ${_perfMoveCount} llamadas/seg — ${_perfMoveTotalMs.toFixed(1)}ms acumulados en ese segundo (${(_perfMoveTotalMs / 10).toFixed(1)}% de un frame budget de 1000ms)`);
-          _perfMoveCount = 0; _perfMoveWindowStart = _t0; _perfMoveTotalMs = 0;
-        }
         if (this._clusterExpandEl) return; // idem: no tocar nada mientras el carrusel mueve la cámara
         if (this.map.getZoom() >= 17) {
-          const _tCheck0 = performance.now();
           this._checkFeaturedNearCenter();
-          const _dur = performance.now() - _tCheck0;
-          _perfMoveTotalMs += _dur;
-          if (_dur > 4) console.log(`[PERF] _checkFeaturedNearCenter tardó ${_dur.toFixed(1)}ms`);
         } else if (this._featuredHighlightEl) {
           // Al hacer zoom-out por debajo de 17, limpiar highlight
           this._clearFeaturedHighlight();
@@ -594,30 +555,18 @@ export class MapView {
       // Labels: solo recalcular cuando el zoom cambia — no en cada pan/drag
       // En moveend solo actualizar visibilidad de pines (dot/full/hidden)
       this._lastLabelZoom = null;
-      // ── LOG DE DIAGNÓSTICO TEMPORAL — mide cuánto tarda cada una de las
-      // 3 funciones que corren apenas termina un drag/zoom. Si alguna
-      // tarda mucho (>16ms, el presupuesto de un frame a 60fps), ESE es
-      // el "momento" exacto del congelamiento que sentís al soltar.
-      const _timed = (label, fn) => {
-        const t0 = performance.now();
-        fn();
-        const dur = performance.now() - t0;
-        console.log(`[PERF] ${label}: ${dur.toFixed(1)}ms`);
-      };
       this.map.on('zoomend', () => {
         if (this._clusterExpandEl) return; // el carrusel expandido mueve la cámara solo — no recalcular nada mientras está abierto
-        console.log('[PERF] ── zoomend ──');
-        _timed('_updatePinsByZoom', () => this._updatePinsByZoom());
-        _timed('_updateLabelsProgressive', () => this._updateLabelsProgressive());
-        _timed('_updateClusters', () => this._updateClusters());
+        this._updatePinsByZoom();
+        this._updateLabelsProgressive();
+        this._updateClusters();
         this._lastLabelZoom = this.map.getZoom();
       });
       this.map.on('moveend', () => {
         if (this._clusterExpandEl) return;
-        console.log('[PERF] ── moveend ──');
-        _timed('_updatePinsByZoom', () => this._updatePinsByZoom());
-        _timed('_updateLabelsProgressive', () => this._updateLabelsProgressive());
-        _timed('_updateClusters', () => this._updateClusters());
+        this._updatePinsByZoom();
+        this._updateLabelsProgressive();
+        this._updateClusters();
       });
 
       // Ghost-pan fix
@@ -1267,7 +1216,6 @@ export class MapView {
         const ll = el._marker.getLngLat();
         return { el, ll, px: this.map.project(ll) };
       });
-    console.log(`[PERF] _updateClusters: ${candidates.length} candidatos (de ${this.markerEls.length} markers totales)`);
 
     const usedEls = new Set();
 
@@ -2082,9 +2030,7 @@ export class MapView {
     const cy = container.offsetHeight / 2;
     const ENTER = 100, EXIT = 180;
     let closest = null, closestDist = Infinity;
-    const _allMarkerEls = document.querySelectorAll('.place-marker-el');
-    console.log(`[PERF] _checkFeaturedNearCenter: querySelectorAll encontró ${_allMarkerEls.length} elementos en TODO el documento`);
-    _allMarkerEls.forEach(el => {
+    document.querySelectorAll('.place-marker-el').forEach(el => {
       const place = el._place;
       if (!place?.featured) return;
       const marker = el._marker;
