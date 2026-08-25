@@ -293,6 +293,13 @@ function injectLandmarkStyles() {
 }
 
 // ====================================================================
+// ── PRUEBA DE DIAGNÓSTICO TEMPORAL ──────────────────────────────────
+// En true: desactiva POR COMPLETO los dos mecanismos de long-press
+// sobre clusters (el de un cluster existente y el de crear uno nuevo en
+// mapa vacío) — nada de timers, nada de listeners en document. El tap
+// normal (abrir el carrusel) sigue andando igual. Es para descartar de
+// una vez si el freeze en drag/zoom viene de acá o no.
+const LONGPRESS_DISABLED_FOR_TESTING = true;
 export class MapView {
   constructor() {
     // CATEGORIES accesible como propiedad de instancia para que app.js pueda actualizarla
@@ -445,6 +452,7 @@ export class MapView {
         if (mapPressTimer && (Math.abs(e2.clientX - mapPressStartX) > 6 || Math.abs(e2.clientY - mapPressStartY) > 6)) clearMapPress();
       };
       mapCanvas.addEventListener('pointerdown', (e) => {
+        if (LONGPRESS_DISABLED_FOR_TESTING) return; // prueba de diagnóstico — ver flag arriba del todo del archivo
         if (!this.onClusterCustomize || this._clusterModalOpen) return;
         if (e.target !== mapCanvas) return; // el toque aterrizó sobre un marker, no sobre mapa vacío — que lo maneje ese marker
         if (mapPressTimer) {
@@ -1298,6 +1306,7 @@ export class MapView {
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
     let docMoveHandler = null, docUpHandler = null;
     el.addEventListener('pointerdown', (e) => {
+      if (LONGPRESS_DISABLED_FOR_TESTING) return; // prueba de diagnóstico — ver flag arriba del todo del archivo
       if (this._clusterModalOpen) return; // hay un panel de edición abierto (o recién cerrado) — ignorar
       if (pressTimer) { clearPress(); return; } // 2do dedo tocando el mismo elemento (pellizco) — cancelar, no reiniciar el timer
       longPressFired = false;
