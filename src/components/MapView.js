@@ -2330,7 +2330,7 @@ function _buildPinPhotoStackHtml(photos, photoW, photoH, style) {
 // Slots de posición/tamaño/rotación/z para hasta 6 tarjetas visibles —
 // mismo espíritu disperso que la referencia de Moments. dx/dy en px
 // desde el centro del pin; scale multiplica el tamaño base.
-const CLUSTER_CARD_SLOTS = [
+export const CLUSTER_CARD_SLOTS = [
   { dx: -30, dy: -4,  rot: -4, scale: 0.74, z: 1 },
   { dx: 10,  dy: -22, rot: 3,  scale: 0.98, z: 2 },
   { dx: -16, dy: 10,  rot: -7, scale: 0.86, z: 3 },
