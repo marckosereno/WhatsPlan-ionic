@@ -287,7 +287,14 @@ function setupCategories(mv) {
       newChip.classList.add('active');
       window.wpApp.subcatRow?.showLoading(menuKey);
       await mv.loadCategory(menuKey);
-      window.wpApp.subcatRow?.showSubcats(menuKey);
+      await window.wpApp.subcatRow?.showSubcats(menuKey);
+      // "Todos" ya queda marcado como activo por showSubcats() (currentSubcat
+      // arranca en null en cada categoría nueva), pero el BADGE con la
+      // cantidad solo se llenaba cuando el usuario tocaba un chip a mano
+      // — acá se dispara una vez apenas se muestran las subcategorías,
+      // para que el badge de "Todos" aparezca de entrada sin esperar
+      // ningún tap.
+      filterBySubcat(mv, 'all');
     });
   });
 
