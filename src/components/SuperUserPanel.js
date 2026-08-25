@@ -725,9 +725,23 @@ export class SuperUserPanel {
   _openClusterCustomizePanel(group, existingCluster) {
     document.getElementById('su-cluster-modal')?.remove();
 
+    // Único punto que resuelve el id de un lugar — antes esta fórmula
+    // estaba repetida 7 veces por el archivo; bastaba con que un lugar
+    // (típico en categorías con lugares cargados a mano, sin place_id de
+    // Google) no tuviera NI place_id NI id para que TODOS esos lugares
+    // colapsaran al mismo identificador `undefined` — tocar la tarjeta de
+    // uno terminaba controlando la de otro (o directamente no hacía nada
+    // visible), y por eso "en algunas categorías no funciona". El
+    // fallback por `name` (NO por posición/índice, que no es estable
+    // entre sesiones) le da a cada lugar un id distinto igual — y usa
+    // EXACTAMENTE la misma fórmula que MapView.js para matchear el
+    // cluster guardado contra los lugares reales al recargar (ver
+    // _updateClusters() en MapView.js — deben coincidir siempre).
+    const placeIdOf = (place) => place?.place_id || place?.id || place?.name || '__lugar_sin_id';
+
     const isEdit = !!existingCluster;
     const groupPlaces = group.map(({ el }) => el._place);
-    const included = new Set(groupPlaces.map(p => p.place_id || p.id));
+    const included = new Set(groupPlaces.map((p, i) => placeIdOf(p)));
 
     let cards    = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
     let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
@@ -803,7 +817,7 @@ export class SuperUserPanel {
     const getCardOverride = (pid) => {
       let c = cards.find(c => c.placeId === pid);
       if (!c) {
-        const i = shownPlaces.findIndex(p => (p.place_id || p.id) === pid);
+        const i = shownPlaces.findIndex((p, idx) => placeIdOf(p) === pid);
         const slot = CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1];
         c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0, borderColor: '#ffffff', borderWidth: 2, borderRadius: 9, z: slot.z };
         cards.push(c);
@@ -826,7 +840,7 @@ export class SuperUserPanel {
     const allElements = () => {
       const list = [];
       shownPlaces.forEach((place, i) => {
-        const ov = getCardOverride(place.place_id || place.id);
+        const ov = getCardOverride(placeIdOf(place));
         if (ov.z == null) ov.z = (CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1]).z;
         list.push({ kind: 'card', ref: ov });
       });
@@ -874,18 +888,32 @@ export class SuperUserPanel {
     }
 
     // Resuelve a qué (kind, idx, obj) corresponde un nodo del preview.
+    // Envuelto en try/catch a propósito: si algún lugar del grupo tiene
+    // datos con una forma inesperada (típico de categorías con lugares
+    // cargados a mano), que explote ACÁ no debe tirar abajo todo el
+    // sistema de gestos para el resto de la sesión — antes una excepción
+    // sin atrapar en medio de un pointerdown cortaba la ejecución justo
+    // antes de setPointerCapture()/pts.set(), dejando el drag muerto
+    // silenciosamente ("a veces solo el badge" funcionaba porque el badge
+    // no depende de shownPlaces, así que nunca disparaba este error).
     function resolveNode(node) {
       if (!node) return null;
-      if (node.dataset.cardIdx !== undefined) {
-        const idx = parseInt(node.dataset.cardIdx, 10);
-        const place = shownPlaces[idx];
-        return { kind: 'card', idx, obj: getCardOverride(place.place_id || place.id) };
+      try {
+        if (node.dataset.cardIdx !== undefined) {
+          const idx = parseInt(node.dataset.cardIdx, 10);
+          const place = shownPlaces[idx];
+          if (!place) { console.error('[CLUSTER] resolveNode: no hay lugar en shownPlaces[' + idx + ']'); return null; }
+          return { kind: 'card', idx, obj: getCardOverride(placeIdOf(place)) };
+        }
+        if (node.dataset.stickerIdx !== undefined) {
+          const idx = parseInt(node.dataset.stickerIdx, 10);
+          if (!stickers[idx]) { console.error('[CLUSTER] resolveNode: no hay sticker en idx ' + idx); return null; }
+          return { kind: 'sticker', idx, obj: stickers[idx] };
+        }
+        if (node.hasAttribute('data-badge')) return { kind: 'badge', idx: 0, obj: badge };
+      } catch (err) {
+        console.error('[CLUSTER] resolveNode() excepción:', err);
       }
-      if (node.dataset.stickerIdx !== undefined) {
-        const idx = parseInt(node.dataset.stickerIdx, 10);
-        return { kind: 'sticker', idx, obj: stickers[idx] };
-      }
-      if (node.hasAttribute('data-badge')) return { kind: 'badge', idx: 0, obj: badge };
       return null;
     }
 
@@ -1025,7 +1053,7 @@ export class SuperUserPanel {
     modal.querySelector('#su-cluster-sel-deselect').addEventListener('click', () => { sel = null; renderPreview(); renderSelProps(); renderCardChips(); renderStickerChips(); });
 
     function currentSelObj() {
-      if (sel.kind === 'card') { const place = shownPlaces[sel.idx]; return getCardOverride(place.place_id || place.id); }
+      if (sel.kind === 'card') { const place = shownPlaces[sel.idx]; return getCardOverride(placeIdOf(place)); }
       if (sel.kind === 'sticker') return stickers[sel.idx];
       return badge;
     }
@@ -1036,7 +1064,7 @@ export class SuperUserPanel {
 
       if (sel.kind === 'card') {
         const place = shownPlaces[sel.idx];
-        const ov = getCardOverride(place.place_id || place.id);
+        const ov = getCardOverride(placeIdOf(place));
         selTitle.textContent = `📸 ${place.name || ''}`;
         selFields.innerHTML = `
           <div><div style="font-size:9px;color:#6b7280;">Forma</div>
@@ -1142,8 +1170,8 @@ export class SuperUserPanel {
 
     // ── Lugares incluidos ────────────────────────────────────────
     const placesListEl = modal.querySelector('#su-cluster-places-list');
-    groupPlaces.forEach(p => {
-      const pid = p.place_id || p.id;
+    groupPlaces.forEach((p, i) => {
+      const pid = placeIdOf(p);
       const row = document.createElement('label');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;color:#d1d5db;cursor:pointer;';
       row.innerHTML = `<input type="checkbox" checked style="accent-color:#1a5cf5;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name || pid}</span>`;
