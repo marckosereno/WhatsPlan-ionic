@@ -108,17 +108,22 @@ function proxyPhotoCard(url) {
 // individual (80px) porque acá cada tarjeta puede llegar a mostrarse a
 // ~90-100px, y encima el pellizco del editor las escala hasta 2.2x más
 // (~200px reales en pantalla) — con la resolución del pin normal se
-// vería borroso. 'cover' en vez de 'contain' porque así es como se
-// pintan las tarjetas en CSS (background-size:cover) — pedir la imagen
-// ya recortada al mismo modo evita desperdiciar resolución con
-// letterboxing. El costo de pedir una imagen más grande a Supabase es
-// marginal (es solo bandwidth, no cómputo extra relevante) — no hace
-// falta preocuparse por esto salvo un plan gratuito muy ajustado de
-// transformaciones de imagen.
+// vería borroso. El costo de pedir una imagen más grande a Supabase es
+// marginal (es solo bandwidth, no cómputo extra relevante).
+//
+// Importante: se mantiene 'contain' (el mismo modo que ya usaba
+// proxyPhoto) — probé pasar a 'cover' para que coincida con el
+// background-size:cover de la tarjeta, pero supabaseResize() solo manda
+// `width` sin `height`, y 'cover' sin las dos dimensiones hace que
+// Supabase recorte la imagen server-side con un criterio propio (quedó
+// más "pegada"/recortada que antes). 'contain' escala proporcional sin
+// recortar nada — el recorte final a la forma de la tarjeta lo sigue
+// haciendo el CSS (background-size:cover) como siempre, así que el
+// encuadre queda igual que antes, solo con más resolución.
 function proxyPhotoCluster(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 220, 85, 'cover');
+  if (url.includes('supabase.co')) return supabaseResize(url, 220, 85, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -2472,7 +2477,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     // pointer-events:auto explícito — el CONTENEDOR grande de todo el
     // cluster va con pointer-events:none (ver el return final), así que
     // sin este auto acá la tarjeta ni siquiera sería tappeable.
-    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:${borderRadius}px;${bg}border:${borderWidth}px solid ${borderColor};box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;touch-action:none;"></div>`;
+    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:${borderRadius}px;${bg}border:${borderWidth}px solid ${borderColor};box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;"></div>`;
   }).join('');
 
   const stickersHtml = (customDef?.stickers || []).map((s, i) => {
@@ -2507,7 +2512,7 @@ export function _buildClusterStickerHtml(group, customDef) {
           : `<div style="font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;font-size:${size}px;line-height:1;text-shadow:${emojiShadowStack},0 2px 4px rgba(0,0,0,0.28);">${s.emoji}</div>`)
       : '';
     if (!inner) return '';
-    return `<div data-sticker-idx="${i}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${s.rotation || 0}deg);z-index:${z};pointer-events:auto;touch-action:none;">${inner}</div>`;
+    return `<div data-sticker-idx="${i}" style="position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${s.rotation || 0}deg);z-index:${z};pointer-events:auto;">${inner}</div>`;
   }).join('');
 
   const badge = customDef?.badge || {};
@@ -2517,7 +2522,7 @@ export function _buildClusterStickerHtml(group, customDef) {
   const bRot = badge.rotation ?? 0;
   const bZ = badge.z ?? 30;
   const bSize = 22 * bScale;
-  const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;touch-action:none;">+${group.length}</div>`;
+  const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;">+${group.length}</div>`;
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
   // hay tarjetas/stickers desplazados afuera) pero es puramente un marco
