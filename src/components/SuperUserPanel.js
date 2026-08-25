@@ -12,7 +12,7 @@ import {
   reorderCategories, reorderSubcategories,
   invalidateCache
 } from '/src/services/CategoryService.js';
-import { _buildClusterStickerHtml, CLUSTER_MAX_CARDS } from '/src/components/MapView.js';
+import { _buildClusterStickerHtml, CLUSTER_MAX_CARDS, CLUSTER_CARD_SLOTS } from '/src/components/MapView.js';
 
 const STICKER_PRESETS = [
   { emoji: '⭐', label: 'Destacado' },
