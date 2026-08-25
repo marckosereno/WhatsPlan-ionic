@@ -104,6 +104,24 @@ function proxyPhotoCard(url) {
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
+// ── Proxy para las tarjetas del cluster — bastante más grande que el pin
+// individual (80px) porque acá cada tarjeta puede llegar a mostrarse a
+// ~90-100px, y encima el pellizco del editor las escala hasta 2.2x más
+// (~200px reales en pantalla) — con la resolución del pin normal se
+// vería borroso. 'cover' en vez de 'contain' porque así es como se
+// pintan las tarjetas en CSS (background-size:cover) — pedir la imagen
+// ya recortada al mismo modo evita desperdiciar resolución con
+// letterboxing. El costo de pedir una imagen más grande a Supabase es
+// marginal (es solo bandwidth, no cómputo extra relevante) — no hace
+// falta preocuparse por esto salvo un plan gratuito muy ajustado de
+// transformaciones de imagen.
+function proxyPhotoCluster(url) {
+  if (!url) return null;
+  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.includes('supabase.co')) return supabaseResize(url, 220, 85, 'cover');
+  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
+}
+
 // ── Fade-in de foto en pin ───────────────────────────────────────────
 function applyPhotoToPin(photoUrl, el) {
   const pi = el.querySelector('.pin-inner');
@@ -404,6 +422,42 @@ export class MapView {
           this._cancelActiveClusterPress();
           this._cancelActiveClusterPress = null;
         }
+      });
+
+      // ── Crear un cluster nuevo desde cero, long-press en mapa VACÍO ──
+      // Igual mecánica que el long-press de un pin (mismo umbral de
+      // movimiento, misma cancelación por drag real), pero sobre el
+      // canvas del mapa en sí — solo dispara si el toque no aterrizó
+      // sobre ningún marker (target === el canvas). Arranca el panel con
+      // un grupo vacío; el buscador de "agregar lugar" (mismo que usa
+      // "agregar más lugares a un cluster existente") es la forma de ir
+      // sumando lugares desde cero.
+      let mapPressTimer = null, mapPressStartX = 0, mapPressStartY = 0;
+      const mapCanvas = this.map.getCanvas();
+      const clearMapPress = () => {
+        if (mapPressTimer) { clearTimeout(mapPressTimer); mapPressTimer = null; }
+        document.removeEventListener('pointermove', onMapPressMove);
+        document.removeEventListener('pointerup', clearMapPress);
+        document.removeEventListener('pointercancel', clearMapPress);
+        if (this._cancelActiveClusterPress === clearMapPress) this._cancelActiveClusterPress = null;
+      };
+      const onMapPressMove = (e2) => {
+        if (mapPressTimer && (Math.abs(e2.clientX - mapPressStartX) > 6 || Math.abs(e2.clientY - mapPressStartY) > 6)) clearMapPress();
+      };
+      mapCanvas.addEventListener('pointerdown', (e) => {
+        if (!this.onClusterCustomize || this._clusterModalOpen) return;
+        if (e.target !== mapCanvas) return; // el toque aterrizó sobre un marker, no sobre mapa vacío — que lo maneje ese marker
+        mapPressStartX = e.clientX; mapPressStartY = e.clientY;
+        document.addEventListener('pointermove', onMapPressMove);
+        document.addEventListener('pointerup', clearMapPress);
+        document.addEventListener('pointercancel', clearMapPress);
+        this._cancelActiveClusterPress = clearMapPress;
+        mapPressTimer = setTimeout(() => {
+          clearMapPress();
+          this.haptic('longpress');
+          this._clusterModalOpen = true;
+          this.onClusterCustomize([], null); // grupo vacío = cluster nuevo, se puebla a mano con el buscador
+        }, 650); // un toque más largo que el de los pines (550ms) para no confundirse con un long-press accidental mientras se navega el mapa vacío
       });
       this.map.on('drag', () => {
         if (!_dragStartCenter) return;
@@ -1162,13 +1216,11 @@ export class MapView {
     // renderizan sin importar cuántos lugares tengan — el MIN_GROUP de
     // abajo solo aplica al clustering automático.
     //
-    // El fallback (place_id → id → name) tiene que ser EXACTAMENTE el
-    // mismo que usa el panel de edición (placeIdOf en SuperUserPanel.js)
-    // — si no coinciden, un lugar sin place_id/id (típico en categorías
-    // con lugares cargados a mano) se guarda con un id que después nunca
-    // vuelve a matchear acá, y ese lugar queda afuera del cluster al
-    // recargar, "rompiendo" la edición para esa categoría en particular.
-    const placeIdOf = (place) => place?.place_id || place?.id || place?.name || '__lugar_sin_id';
+    // placeIdOf() es la ÚNICA fuente de verdad (definida arriba en el
+    // módulo, exportada, y usada acá + en _buildClusterStickerHtml +
+    // en SuperUserPanel.js) — antes había copias locales ligeramente
+    // distintas en cada lugar, y esa desincronización era justo lo que
+    // rompía la edición para lugares sin place_id/id.
     (this.pinClusters || []).forEach(customDef => {
       const members = candidates.filter(c =>
         !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
@@ -1221,11 +1273,13 @@ export class MapView {
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
+    let docMoveHandler = null, docUpHandler = null;
     el.addEventListener('pointerdown', (e) => {
       if (this._clusterModalOpen) return; // hay un panel de edición abierto (o recién cerrado) — ignorar
       longPressFired = false;
       startX = e.clientX; startY = e.clientY;
       pressTimer = setTimeout(() => {
+        cleanupDocListeners();
         longPressFired = true;
         this._cancelActiveClusterPress = null;
         if (this.onClusterCustomize) {
@@ -1234,15 +1288,32 @@ export class MapView {
           this.onClusterCustomize(group, customDef || null);
         }
       }, 550);
-      this._cancelActiveClusterPress = clearPress; // ver map.on('dragstart') — cancela si arranca un drag real del mapa
+      this._cancelActiveClusterPress = clearPress; // ver map.on('dragstart')/('move') — cancela si arranca un drag real del mapa
+      // Trackear el movimiento a nivel de DOCUMENT, no solo de `el`: si el
+      // dedo se corre apenas unos px fuera del contenido renderizado de
+      // `el` (los huecos entre tarjetas tienen pointer-events:none), los
+      // siguientes pointermove dejan de apuntarle a `el` y su propio
+      // listener local deja de recibir nada — quedando el timer de
+      // long-press corriendo sin ninguna forma de cancelarse a tiempo.
+      // Escuchando en `document` nunca se pierde el rastro del dedo,
+      // sin importar qué elemento tenga debajo en cada momento.
+      docMoveHandler = (e2) => {
+        if (pressTimer && (Math.abs(e2.clientX - startX) > 5 || Math.abs(e2.clientY - startY) > 5)) clearPress();
+      };
+      docUpHandler = () => clearPress();
+      document.addEventListener('pointermove', docMoveHandler);
+      document.addEventListener('pointerup', docUpHandler);
+      document.addEventListener('pointercancel', docUpHandler);
     });
+    const cleanupDocListeners = () => {
+      if (docMoveHandler) { document.removeEventListener('pointermove', docMoveHandler); docMoveHandler = null; }
+      if (docUpHandler) { document.removeEventListener('pointerup', docUpHandler); document.removeEventListener('pointercancel', docUpHandler); docUpHandler = null; }
+    };
     const clearPress = () => {
       if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
       if (this._cancelActiveClusterPress === clearPress) this._cancelActiveClusterPress = null;
+      cleanupDocListeners();
     };
-    el.addEventListener('pointermove', (e) => {
-      if (pressTimer && (Math.abs(e.clientX - startX) > 5 || Math.abs(e.clientY - startY) > 5)) clearPress();
-    });
     el.addEventListener('pointerup', clearPress);
     el.addEventListener('pointercancel', clearPress);
     el.addEventListener('pointerleave', clearPress);
@@ -1293,7 +1364,7 @@ export class MapView {
       <div class="wp-ce-carousel" style="padding:0 calc(50% - ${CARD_W / 2}px);gap:${CARD_GAP}px;">
         ${group.map(({ el: markerEl }) => {
           const place = markerEl._place;
-          const photo = proxyPhoto(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
+          const photo = proxyPhotoCluster(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
           const rating = place.rating ? `★ ${Number(place.rating).toFixed(1)}` : '';
           return `<div class="wp-ce-card" style="width:${CARD_W}px;">
             <div class="wp-ce-card-photo" style="${photo ? `background-image:url('${photo}')` : 'background:linear-gradient(160deg,#e5e7eb,#d1d5db)'}">
@@ -2340,6 +2411,20 @@ export const CLUSTER_CARD_SLOTS = [
 ];
 export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
 
+// Único punto que resuelve el id de un lugar para todo lo relacionado a
+// clusters — usado tanto acá (render) como en _updateClusters() y en
+// SuperUserPanel.js (edición). ANTES esta fórmula estaba duplicada en
+// varios lugares con ligeras diferencias entre sí (algunas con fallback
+// por nombre, otras sin él) — para un lugar sin place_id NI id (típico
+// en categorías con lugares cargados a mano), cada copia podía resolver
+// a un id DISTINTO, así que el override guardado por el panel nunca se
+// encontraba al renderizar acá, y esos lugares terminaban usando un
+// override "vacío" recién creado (dx:0,dy:0 = centro) en vez del que el
+// SuperUser en realidad había guardado — de ahí el "se desordena todo".
+export function placeIdOf(place) {
+  return place?.place_id || place?.id || place?.name || '__lugar_sin_id';
+}
+
 // data-card-idx / data-sticker-idx / data-badge quedan siempre en el
 // HTML (no solo en el editor) — no hacen nada en el mapa real, pero le
 // permiten al panel de edición enganchar el gesto directo sobre CADA
@@ -2351,7 +2436,7 @@ export function _buildClusterStickerHtml(group, customDef) {
 
   const cardsHtml = shown.map(({ el }, i) => {
     const place = el._place;
-    const pid = place.place_id || place.id;
+    const pid = placeIdOf(place);
     const override = cardsOverride.find(c => c.placeId === pid);
     const slot = CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1];
 
@@ -2368,7 +2453,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     const h = BASE_H * scale;
     const w = shape === 'square' ? h : BASE_W * scale;
 
-    const photo = proxyPhoto(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
+    const photo = proxyPhotoCluster(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
     const bg = photo
       ? `background-image:url('${photo}');background-size:cover;background-position:center;`
       : `background:linear-gradient(160deg,#d1d5db,#9ca3af);`;
