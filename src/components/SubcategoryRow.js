@@ -362,6 +362,12 @@ export class SubcategoryRow {
 
   async showSubcats(menuKey) {
     await this._subcatsReady; // espera la carga inicial si aún no resolvió
+    // Cambio de categoría de verdad (no un refresh de la misma) → arrancar
+    // en "Todos". Sin esto, `currentSubcat` quedaba pegado al valor de la
+    // categoría anterior (ej. "Comida Mexicana"), que no existe en la
+    // nueva — y como ningún chip coincidía con ese valor, NINGUNO
+    // quedaba marcado como activo, ni el propio "Todos".
+    if (menuKey !== this.currentMenuKey) this.currentSubcat = null;
     this.currentMenuKey = menuKey;
     const items = this._subcatsMap[menuKey] || [];
     if (!items.length) { this.hide(); return; }
