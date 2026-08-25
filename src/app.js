@@ -215,11 +215,21 @@ function filterBySubcat(mv, subcatValue) {
     });
   };
 
+  // Antes de tocar ningún display: limpiar el estado de "escondido por
+  // clustering" que haya quedado de la categoría/subcategoría anterior.
+  // _updateClusters() (más abajo) arranca RESTAURANDO cualquier pin que
+  // tenga _clusterHiddenDisplay guardado — si no se limpia acá primero,
+  // esa restauración pisaría el filtro que estamos por aplicar con un
+  // valor viejo de otro agrupamiento, y el resultado quedaba con pines
+  // sueltos en vez de reagruparse según la subcategoría actual.
+  mv.markerEls.forEach(el => { delete el._clusterHiddenDisplay; });
+
   if (!subcatValue || subcatValue === 'all') {
     mv.markerEls.forEach(el => el.style.display = '');
     const total = mv.allPlaces.length;
     if (counter) counter.textContent = `${total} lugares`;
     setSubcatBadge(total);
+    mv._updateClusters(); // reagrupar según lo que quedó visible ("Todos")
     return;
   }
 
@@ -237,6 +247,7 @@ function filterBySubcat(mv, subcatValue) {
 
   if (counter) counter.textContent = `${visible} lugares`;
   setSubcatBadge(visible);
+  mv._updateClusters(); // reagrupar en clusters propios de esta subcategoría
   console.log(`🔍 Subcat "${subcatValue}": ${visible} lugares`);
 }
 
