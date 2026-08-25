@@ -474,13 +474,29 @@ export class MapView {
           this.onClusterCustomize([], null); // grupo vacío = cluster nuevo, se puebla a mano con el buscador
         }, 650); // un toque más largo que el de los pines (550ms) para no confundirse con un long-press accidental mientras se navega el mapa vacío
       });
+      let _perfDragCount = 0, _perfDragWindowStart = performance.now();
       this.map.on('drag', () => {
         if (!_dragStartCenter) return;
+        _perfDragCount++;
+        const _now = performance.now();
+        if (_now - _perfDragWindowStart > 1000) {
+          console.log(`[PERF] drag: ${_perfDragCount} llamadas/seg`);
+          _perfDragCount = 0; _perfDragWindowStart = _now;
+        }
+        const _t0 = performance.now();
         const nowPx = this.map.project(_dragStartCenter);
         const dx = nowPx.x - _dragStartPx.x;
         const dy = nowPx.y - _dragStartPx.y;
         document.documentElement.style.setProperty('--wp-parallax-x', (-dx * PARALLAX_LAG).toFixed(1) + 'px');
         document.documentElement.style.setProperty('--wp-parallax-y', (-dy * PARALLAX_LAG).toFixed(1) + 'px');
+        // Forzar el recálculo de estilos ACÁ (leyendo una propiedad de
+        // layout) en vez de dejar que el navegador lo difiera al próximo
+        // frame — si no se fuerza, este performance.now() no vería el
+        // costo real del recalc que dispara la custom property al
+        // aplicarse sobre TODOS los ".place-marker-el > *" en pantalla.
+        void document.body.offsetHeight;
+        const _dur = performance.now() - _t0;
+        if (_dur > 2) console.log(`[PERF] drag-parallax (recalc de estilo en TODOS los pines): ${_dur.toFixed(1)}ms`);
       });
       this.map.on('dragend', () => {
         document.body.classList.remove('map-dragging');
@@ -495,19 +511,20 @@ export class MapView {
       // en la consola líneas que empiecen con [PERF] mientras arrastrás o
       // hacés pellizco — si "ms" es alto (>8-10ms) o "llamadas/seg" es
       // muy alto, ahí está el cuello de botella exacto.
-      let _perfMoveCount = 0, _perfMoveWindowStart = performance.now();
+      let _perfMoveCount = 0, _perfMoveWindowStart = performance.now(), _perfMoveTotalMs = 0;
       const _featuredCheck = () => {
         const _t0 = performance.now();
         _perfMoveCount++;
         if (_t0 - _perfMoveWindowStart > 1000) {
-          console.log(`[PERF] _featuredCheck: ${_perfMoveCount} llamadas/seg`);
-          _perfMoveCount = 0; _perfMoveWindowStart = _t0;
+          console.log(`[PERF] _featuredCheck: ${_perfMoveCount} llamadas/seg — ${_perfMoveTotalMs.toFixed(1)}ms acumulados en ese segundo (${(_perfMoveTotalMs / 10).toFixed(1)}% de un frame budget de 1000ms)`);
+          _perfMoveCount = 0; _perfMoveWindowStart = _t0; _perfMoveTotalMs = 0;
         }
         if (this._clusterExpandEl) return; // idem: no tocar nada mientras el carrusel mueve la cámara
         if (this.map.getZoom() >= 17) {
           const _tCheck0 = performance.now();
           this._checkFeaturedNearCenter();
           const _dur = performance.now() - _tCheck0;
+          _perfMoveTotalMs += _dur;
           if (_dur > 4) console.log(`[PERF] _checkFeaturedNearCenter tardó ${_dur.toFixed(1)}ms`);
         } else if (this._featuredHighlightEl) {
           // Al hacer zoom-out por debajo de 17, limpiar highlight
