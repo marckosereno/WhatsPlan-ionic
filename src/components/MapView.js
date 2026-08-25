@@ -447,6 +447,16 @@ export class MapView {
       mapCanvas.addEventListener('pointerdown', (e) => {
         if (!this.onClusterCustomize || this._clusterModalOpen) return;
         if (e.target !== mapCanvas) return; // el toque aterrizó sobre un marker, no sobre mapa vacío — que lo maneje ese marker
+        if (mapPressTimer) {
+          // Ya había un dedo presionado — este es un SEGUNDO dedo tocando
+          // el canvas (típico de un pellizco para zoom). Sin este chequeo,
+          // el segundo pointerdown pisaba la referencia a `mapPressTimer`
+          // con un timer nuevo, dejando el PRIMERO corriendo sin ninguna
+          // forma de cancelarlo — disparaba solo, aunque el usuario
+          // estuviera pellizcando para hacer zoom, no manteniendo presionado.
+          clearMapPress();
+          return;
+        }
         mapPressStartX = e.clientX; mapPressStartY = e.clientY;
         document.addEventListener('pointermove', onMapPressMove);
         document.addEventListener('pointerup', clearMapPress);
@@ -1276,6 +1286,7 @@ export class MapView {
     let docMoveHandler = null, docUpHandler = null;
     el.addEventListener('pointerdown', (e) => {
       if (this._clusterModalOpen) return; // hay un panel de edición abierto (o recién cerrado) — ignorar
+      if (pressTimer) { clearPress(); return; } // 2do dedo tocando el mismo elemento (pellizco) — cancelar, no reiniciar el timer
       longPressFired = false;
       startX = e.clientX; startY = e.clientY;
       pressTimer = setTimeout(() => {
