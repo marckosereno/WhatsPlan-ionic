@@ -723,7 +723,6 @@ export class SuperUserPanel {
   // ══════════════════════════════════════════════════════════
 
   _openClusterCustomizePanel(group, existingCluster) {
-    console.log('[CLUSTER] abriendo panel. existingCluster=', JSON.parse(JSON.stringify(existingCluster || null)));
     document.getElementById('su-cluster-modal')?.remove();
 
     const isEdit = !!existingCluster;
@@ -732,7 +731,7 @@ export class SuperUserPanel {
 
     let cards    = isEdit ? JSON.parse(JSON.stringify(existingCluster.cards || [])) : [];
     let stickers = isEdit ? JSON.parse(JSON.stringify(existingCluster.stickers || [])) : [];
-    let badge    = isEdit && existingCluster.badge ? JSON.parse(JSON.stringify(existingCluster.badge)) : { dx: 34, dy: -28, scale: 1, color: '#111827', z: 30 };
+    let badge    = isEdit && existingCluster.badge ? JSON.parse(JSON.stringify(existingCluster.badge)) : { dx: 34, dy: -28, scale: 1, rotation: 0, color: '#111827', z: 30 };
 
     const shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
     let sel = null; // {kind:'card'|'sticker'|'badge', idx}
@@ -754,8 +753,8 @@ export class SuperUserPanel {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <span id="su-cluster-sel-title" style="font-size:11px;font-weight:700;color:#67e8f9;"></span>
             <div style="display:flex;gap:4px;">
-              <button type="button" id="su-cluster-sel-back" title="Retroceder un paso" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬇︎</button>
-              <button type="button" id="su-cluster-sel-front" title="Avanzar un paso" style="background:rgba(255,255,255,0.08);border:none;color:#d1d5db;font-size:11px;padding:4px 7px;border-radius:5px;cursor:pointer;">⬆︎</button>
+              <button type="button" id="su-cluster-sel-back" title="Retroceder un paso" style="background:rgba(255,255,255,0.1);border:none;color:#d1d5db;font-size:11px;font-weight:600;padding:8px 12px;border-radius:7px;cursor:pointer;">⬇ Atrás</button>
+              <button type="button" id="su-cluster-sel-front" title="Avanzar un paso" style="background:rgba(255,255,255,0.1);border:none;color:#d1d5db;font-size:11px;font-weight:600;padding:8px 12px;border-radius:7px;cursor:pointer;">⬆ Adelante</button>
               <button type="button" id="su-cluster-sel-deselect" style="background:none;border:none;color:#9ca3af;font-size:11px;cursor:pointer;">Listo</button>
             </div>
           </div>
@@ -803,7 +802,12 @@ export class SuperUserPanel {
 
     const getCardOverride = (pid) => {
       let c = cards.find(c => c.placeId === pid);
-      if (!c) { c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0, borderColor: '#ffffff', borderWidth: 2, borderRadius: 9, z: 4 }; cards.push(c); }
+      if (!c) {
+        const i = shownPlaces.findIndex(p => (p.place_id || p.id) === pid);
+        const slot = CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1];
+        c = { placeId: pid, shape: 'portrait', rotation: 0, scale: 1, dx: 0, dy: 0, borderColor: '#ffffff', borderWidth: 2, borderRadius: 9, z: slot.z };
+        cards.push(c);
+      }
       return c;
     };
 
@@ -811,14 +815,31 @@ export class SuperUserPanel {
     // Junta tarjetas + stickers + badge, ordenados por su z actual, y
     // "avanzar"/"retroceder" intercambia el z con el VECINO inmediato en
     // ese orden — un paso por vez, no un salto al frente/fondo absoluto.
+    //
+    // Si algún elemento viene de una sesión vieja (guardado antes de que
+    // existiera el campo `z`), sin este chequeo caían todos a 0 con el
+    // `?? 0` de abajo y, al haber varios "empatados" en el mismo valor,
+    // el intercambio terminaba siendo un no-op (0 se cambia por 0) —
+    // por eso después de un rato "dejaba de funcionar". Acá se le asigna
+    // un z real y ÚNICO la primera vez que se detecta uno faltante o
+    // repetido, autoreparando datos viejos.
     const allElements = () => {
       const list = [];
-      shownPlaces.forEach(place => {
-        const ov = getCardOverride(place.place_id || place.id); // asegura que exista
+      shownPlaces.forEach((place, i) => {
+        const ov = getCardOverride(place.place_id || place.id);
+        if (ov.z == null) ov.z = (CLUSTER_CARD_SLOTS[i] || CLUSTER_CARD_SLOTS[CLUSTER_CARD_SLOTS.length - 1]).z;
         list.push({ kind: 'card', ref: ov });
       });
-      stickers.forEach(s => list.push({ kind: 'sticker', ref: s }));
+      stickers.forEach((s, i) => { if (s.z == null) s.z = 20 + i; list.push({ kind: 'sticker', ref: s }); });
+      if (badge.z == null) badge.z = 30;
       list.push({ kind: 'badge', ref: badge });
+      // Deduplicar z repetidos (de datos viejos) reasignando en el
+      // mismo orden en que ya estaban, sin cambiar el orden visual actual.
+      const seen = new Set();
+      list.sort((a, b) => (a.ref.z ?? 0) - (b.ref.z ?? 0)).forEach(e => {
+        while (seen.has(e.ref.z)) e.ref.z += 1;
+        seen.add(e.ref.z);
+      });
       return list;
     };
     const stepZ = (obj, direction) => { // direction: +1 adelante, -1 atrás
@@ -828,8 +849,8 @@ export class SuperUserPanel {
       const swapIdx = idx + direction;
       if (swapIdx < 0 || swapIdx >= list.length) return; // ya está en la punta, no hay con quién cambiar
       const other = list[swapIdx].ref;
-      const tmp = obj.z ?? 0;
-      obj.z = other.z ?? 0;
+      const tmp = obj.z;
+      obj.z = other.z;
       other.z = tmp;
     };
     const bringForwardOne = (obj) => stepZ(obj, 1);
@@ -838,10 +859,8 @@ export class SuperUserPanel {
     // ── Preview + gesto (1 dedo mover, 2 dedos pinch escalar+girar) ──
     function renderPreview() {
       const cd = currentCustomDef();
-      console.log('[CLUSTER] renderPreview() — stickers actuales:', JSON.stringify(cd.stickers), '| sel=', JSON.stringify(sel));
       previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, cd)}</div>`;
       const wrap = previewEl.firstElementChild.firstElementChild;
-      console.log('[CLUSTER] nodos [data-sticker-idx] renderizados en el DOM:', wrap.querySelectorAll('[data-sticker-idx]').length);
       wrap.querySelectorAll('[data-card-idx]').forEach(node => {
         const idx = parseInt(node.dataset.cardIdx, 10);
         if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
@@ -1048,11 +1067,17 @@ export class SuperUserPanel {
           <div><div style="font-size:9px;color:#6b7280;">Color de stroke</div><input id="scf-stroke" type="color" value="${s.strokeColor || '#ffffff'}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de stroke</div><input id="scf-strokew" type="range" min="0" max="6" step="0.5" value="${s.strokeWidth ?? 2}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">&nbsp;</div><button type="button" id="scf-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar sticker</button></div>`;
-        modal.querySelector('#scf-emoji').addEventListener('input', (e) => {
-          s.emoji = e.target.value;
-          console.log('[CLUSTER] emoji input → s.emoji=', s.emoji, '| stickers[sel.idx] es el mismo objeto:', s === stickers[sel.idx]);
-          renderPreview();
-        });
+        // El teclado de emojis en móvil suele insertar el emoji como una
+        // "composición" (IME) — dispara compositionstart/compositionend en
+        // vez de (o antes que) un 'input' normal, y en varios navegadores
+        // el 'input' que sí llega trae e.isComposing=true con el valor
+        // todavía sin confirmar. Escuchando solo 'input' se perdía el
+        // emoji hasta que algo más (como la barra espaciadora) forzaba un
+        // 'input' final — por eso "aparecía al tocar espacio".
+        const emojiEl = modal.querySelector('#scf-emoji');
+        const applyEmoji = (e) => { s.emoji = e.target.value; renderPreview(); };
+        emojiEl.addEventListener('input', (e) => { if (!e.isComposing) applyEmoji(e); });
+        emojiEl.addEventListener('compositionend', applyEmoji);
         modal.querySelector('#scf-size').addEventListener('input', (e) => { s.size = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-srot').addEventListener('input', (e) => { s.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-stroke').addEventListener('input', (e) => { s.strokeColor = e.target.value; renderPreview(); });
@@ -1062,8 +1087,11 @@ export class SuperUserPanel {
       } else { // badge
         selTitle.textContent = '🔢 Badge';
         const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
-        selFields.innerHTML = `<div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:4px;">Color</div>
-          <div id="scf-badge-colors" style="display:flex;gap:6px;"></div></div>`;
+        selFields.innerHTML = `
+          <div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:4px;">Color</div>
+          <div id="scf-badge-colors" style="display:flex;gap:6px;"></div></div>
+          <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-bscale" type="range" min="0.5" max="2" step="0.02" value="${badge.scale ?? 1}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-brot" type="range" min="-180" max="180" step="1" value="${badge.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>`;
         const row = modal.querySelector('#scf-badge-colors');
         BADGE_PRESET.forEach(c => {
           const b = document.createElement('button');
@@ -1072,6 +1100,8 @@ export class SuperUserPanel {
           b.addEventListener('click', () => { badge.color = c; renderPreview(); renderSelProps(); });
           row.appendChild(b);
         });
+        modal.querySelector('#scf-bscale').addEventListener('input', (e) => { badge.scale = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-brot').addEventListener('input', (e) => { badge.rotation = parseFloat(e.target.value); renderPreview(); });
       }
     }
 
@@ -1104,7 +1134,6 @@ export class SuperUserPanel {
     }
     modal.querySelector('#su-cluster-add-sticker').addEventListener('click', () => {
       stickers.push({ emoji: '✨', dx: 0, dy: 0, size: 26, rotation: 0, strokeColor: '#ffffff', strokeWidth: 2, z: 20 + stickers.length });
-      console.log('[CLUSTER] +Agregar sticker → stickers ahora:', JSON.stringify(stickers));
       select('sticker', stickers.length - 1);
       renderPreview();
       renderStickerChips();
@@ -1124,8 +1153,17 @@ export class SuperUserPanel {
       placesListEl.appendChild(row);
     });
 
-    modal.querySelector('#su-cluster-close').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    // Cierre centralizado — resetea this.mapView._clusterModalOpen con un
+    // pequeño margen (400ms) después de remover el modal, para absorber
+    // cualquier evento de puntero residual (el dedo que seguía "apoyado"
+    // justo cuando se cerró) antes de volver a habilitar el long-press.
+    const closeModal = () => {
+      modal.remove();
+      setTimeout(() => { this.mapView._clusterModalOpen = false; }, 400);
+    };
+
+    modal.querySelector('#su-cluster-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
     modal.querySelector('#su-cluster-save').addEventListener('click', async () => {
       const place_ids = Array.from(included);
@@ -1133,7 +1171,6 @@ export class SuperUserPanel {
       const btn = modal.querySelector('#su-cluster-save');
       btn.disabled = true; btn.textContent = 'Guardando...';
       const payload = { id: existingCluster?.id, place_ids, cards, stickers, badge };
-      console.log('[CLUSTER] Guardando — body enviado:', JSON.stringify(payload));
       try {
         const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
@@ -1141,9 +1178,8 @@ export class SuperUserPanel {
           body: JSON.stringify(payload),
         });
         const json = await res.json();
-        console.log('[CLUSTER] Respuesta del servidor:', JSON.stringify(json));
         if (!json.success) throw new Error(json.message);
-        modal.remove();
+        closeModal();
         await this.mapView.reloadPinClusters();
       } catch (err) {
         console.error('[CLUSTER] Error guardando:', err);
@@ -1161,7 +1197,7 @@ export class SuperUserPanel {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'delete', id: existingCluster.id }),
           });
-          modal.remove();
+          closeModal();
           await this.mapView.reloadPinClusters();
         } catch (err) {
           alert('Error quitando el cluster: ' + err.message);
