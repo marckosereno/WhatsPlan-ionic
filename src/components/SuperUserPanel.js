@@ -936,6 +936,17 @@ export class SuperUserPanel {
         const cd = currentCustomDef();
         previewEl.innerHTML = `<div style="position:relative;width:100%;height:100%;">${_buildClusterStickerHtml(group, cd)}</div>`;
         const wrap = previewEl.firstElementChild.firstElementChild;
+        // touch-action:none se aplica ACÁ, no en _buildClusterStickerHtml
+        // (que también dibuja el pin real en el mapa) — solo adentro de
+        // este editor hace falta bloquear el gesto nativo del navegador
+        // para poder manejar el pellizco a mano; en el mapa real ese
+        // mismo touch-action:none rompía el pan nativo del mapa cuando
+        // el drag arrancaba justo sobre una tarjeta/sticker/badge (el
+        // "barrido" — MapLibre perdía el manejo fluido por compositor y
+        // pasaba a un fallback más entrecortado).
+        wrap.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge]').forEach(node => {
+          node.style.touchAction = 'none';
+        });
         wrap.querySelectorAll('[data-card-idx]').forEach(node => {
           const idx = parseInt(node.dataset.cardIdx, 10);
           if (sel?.kind === 'card' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
