@@ -1186,6 +1186,21 @@ export class MapView {
   // desarma solo, dejando ver los pines individuales normalmente — a esa
   // altura ya hay espacio de sobra entre ellos.
   _clearClusters() {
+    // Antes de destruir los markers, forzar la limpieza de cualquier
+    // long-press pendiente en ellos. Sin esto: si un dedo estaba
+    // tocando un cluster justo cuando el mapa se re-renderiza (pasa en
+    // CADA moveend/zoomend, o sea después de cada pan/zoom), el
+    // listener de pointermove/pointerup que ese long-press había puesto
+    // en `document` quedaba HUÉRFANO PARA SIEMPRE — el marker se
+        // destruye, pero el listener en `document` sigue vivo, referenciando
+    // una closure vieja. Como cada re-render crea una función NUEVA
+    // (no reutiliza la anterior), esto se iba acumulando de a uno con
+    // cada pan/zoom — cada vez más listeners de pointermove corriendo
+    // en simultáneo en TODO el documento, cada vez más lento.
+    const pending = (this._clusterPressCleanups || []).length;
+    if (pending > 0) console.log(`[PERF] _clearClusters: había ${pending} long-press pendiente(s) a punto de quedar huérfano(s) — limpiando antes de destruir los markers`);
+    (this._clusterPressCleanups || []).forEach(fn => fn());
+    this._clusterPressCleanups = [];
     this.clusterMarkers.forEach(m => m?.remove());
     this.clusterMarkers = [];
   }
@@ -1289,6 +1304,7 @@ export class MapView {
       startX = e.clientX; startY = e.clientY;
       pressTimer = setTimeout(() => {
         cleanupDocListeners();
+        removeFromPendingList();
         longPressFired = true;
         this._cancelActiveClusterPress = null;
         if (this.onClusterCustomize) {
@@ -1298,6 +1314,12 @@ export class MapView {
         }
       }, 550);
       this._cancelActiveClusterPress = clearPress; // ver map.on('dragstart')/('move') — cancela si arranca un drag real del mapa
+      // Registrar este press como "pendiente" — _clearClusters() usa esta
+      // lista para forzar la limpieza si el marker se destruye (re-cluster
+      // por pan/zoom) mientras el dedo todavía está apoyado, evitando el
+      // listener huérfano en `document` descrito arriba.
+      if (!this._clusterPressCleanups) this._clusterPressCleanups = [];
+      this._clusterPressCleanups.push(clearPress);
       // Trackear el movimiento a nivel de DOCUMENT, no solo de `el`: si el
       // dedo se corre apenas unos px fuera del contenido renderizado de
       // `el` (los huecos entre tarjetas tienen pointer-events:none), los
@@ -1318,10 +1340,21 @@ export class MapView {
       if (docMoveHandler) { document.removeEventListener('pointermove', docMoveHandler); docMoveHandler = null; }
       if (docUpHandler) { document.removeEventListener('pointerup', docUpHandler); document.removeEventListener('pointercancel', docUpHandler); docUpHandler = null; }
     };
+    // Sacarse de la lista de "long-press pendientes" — solo debe quedar
+    // en la lista mientras está genuinamente en curso (soltó el dedo, se
+    // movió, o el long-press disparó con éxito), para que
+    // _clearClusters() sepa a cuáles forzarles la limpieza si el marker
+    // se destruye a mitad de un gesto realmente activo.
+    const removeFromPendingList = () => {
+      if (!this._clusterPressCleanups) return;
+      const i = this._clusterPressCleanups.indexOf(clearPress);
+      if (i !== -1) this._clusterPressCleanups.splice(i, 1);
+    };
     const clearPress = () => {
       if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
       if (this._cancelActiveClusterPress === clearPress) this._cancelActiveClusterPress = null;
       cleanupDocListeners();
+      removeFromPendingList();
     };
     el.addEventListener('pointerup', clearPress);
     el.addEventListener('pointercancel', clearPress);
