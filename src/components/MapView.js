@@ -490,10 +490,25 @@ export class MapView {
       });
 
       // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
+      // ── LOG DE DIAGNÓSTICO TEMPORAL — mide cuánto tarda cada llamada y
+      // cuántas veces por segundo se dispara durante un drag/zoom. Buscá
+      // en la consola líneas que empiecen con [PERF] mientras arrastrás o
+      // hacés pellizco — si "ms" es alto (>8-10ms) o "llamadas/seg" es
+      // muy alto, ahí está el cuello de botella exacto.
+      let _perfMoveCount = 0, _perfMoveWindowStart = performance.now();
       const _featuredCheck = () => {
+        const _t0 = performance.now();
+        _perfMoveCount++;
+        if (_t0 - _perfMoveWindowStart > 1000) {
+          console.log(`[PERF] _featuredCheck: ${_perfMoveCount} llamadas/seg`);
+          _perfMoveCount = 0; _perfMoveWindowStart = _t0;
+        }
         if (this._clusterExpandEl) return; // idem: no tocar nada mientras el carrusel mueve la cámara
         if (this.map.getZoom() >= 17) {
+          const _tCheck0 = performance.now();
           this._checkFeaturedNearCenter();
+          const _dur = performance.now() - _tCheck0;
+          if (_dur > 4) console.log(`[PERF] _checkFeaturedNearCenter tardó ${_dur.toFixed(1)}ms`);
         } else if (this._featuredHighlightEl) {
           // Al hacer zoom-out por debajo de 17, limpiar highlight
           this._clearFeaturedHighlight();
@@ -562,18 +577,30 @@ export class MapView {
       // Labels: solo recalcular cuando el zoom cambia — no en cada pan/drag
       // En moveend solo actualizar visibilidad de pines (dot/full/hidden)
       this._lastLabelZoom = null;
+      // ── LOG DE DIAGNÓSTICO TEMPORAL — mide cuánto tarda cada una de las
+      // 3 funciones que corren apenas termina un drag/zoom. Si alguna
+      // tarda mucho (>16ms, el presupuesto de un frame a 60fps), ESE es
+      // el "momento" exacto del congelamiento que sentís al soltar.
+      const _timed = (label, fn) => {
+        const t0 = performance.now();
+        fn();
+        const dur = performance.now() - t0;
+        console.log(`[PERF] ${label}: ${dur.toFixed(1)}ms`);
+      };
       this.map.on('zoomend', () => {
         if (this._clusterExpandEl) return; // el carrusel expandido mueve la cámara solo — no recalcular nada mientras está abierto
-        this._updatePinsByZoom();
-        this._updateLabelsProgressive();
-        this._updateClusters();
+        console.log('[PERF] ── zoomend ──');
+        _timed('_updatePinsByZoom', () => this._updatePinsByZoom());
+        _timed('_updateLabelsProgressive', () => this._updateLabelsProgressive());
+        _timed('_updateClusters', () => this._updateClusters());
         this._lastLabelZoom = this.map.getZoom();
       });
       this.map.on('moveend', () => {
         if (this._clusterExpandEl) return;
-        this._updatePinsByZoom();
-        this._updateLabelsProgressive();
-        this._updateClusters();
+        console.log('[PERF] ── moveend ──');
+        _timed('_updatePinsByZoom', () => this._updatePinsByZoom());
+        _timed('_updateLabelsProgressive', () => this._updateLabelsProgressive());
+        _timed('_updateClusters', () => this._updateClusters());
       });
 
       // Ghost-pan fix
@@ -1223,6 +1250,7 @@ export class MapView {
         const ll = el._marker.getLngLat();
         return { el, ll, px: this.map.project(ll) };
       });
+    console.log(`[PERF] _updateClusters: ${candidates.length} candidatos (de ${this.markerEls.length} markers totales)`);
 
     const usedEls = new Set();
 
@@ -2037,7 +2065,9 @@ export class MapView {
     const cy = container.offsetHeight / 2;
     const ENTER = 100, EXIT = 180;
     let closest = null, closestDist = Infinity;
-    document.querySelectorAll('.place-marker-el').forEach(el => {
+    const _allMarkerEls = document.querySelectorAll('.place-marker-el');
+    console.log(`[PERF] _checkFeaturedNearCenter: querySelectorAll encontró ${_allMarkerEls.length} elementos en TODO el documento`);
+    _allMarkerEls.forEach(el => {
       const place = el._place;
       if (!place?.featured) return;
       const marker = el._marker;
