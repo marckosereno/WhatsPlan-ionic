@@ -281,6 +281,13 @@ export class MapView {
     this.clusterMarkers  = []; // pines "amontonados" agrupados en un solo sticker
     this.pinClusters     = null; // clusters personalizados (SuperUser) — null = aún no cargados
     this.onClusterCustomize = null; // callback (group, existingClusterOrNull) — lo asigna SuperUserPanel al hacer long-press
+    // Mientras el panel de edición de cluster está abierto (y un instante
+    // después de cerrarlo), ignorar cualquier pointerdown nuevo sobre un
+    // cluster — si no, un toque residual justo cuando el panel se abre o
+    // cierra (el dedo seguía "apoyado" en el mapa) podía interpretarse
+    // como un nuevo long-press y volver a entrar en modo edición solo,
+    // o dejar el drag del mapa "trabado" a mitad de camino.
+    this._clusterModalOpen = false;
     this._cancelActiveClusterPress = null; // cancela un long-press de cluster pendiente si arranca un drag real del mapa
     this.allPlaces       = [];
     this.activities      = [];
@@ -757,7 +764,6 @@ export class MapView {
       const res  = await fetch('/api/supabase-clusters');
       const json = await res.json();
       this.pinClusters = json.success ? (json.clusters || []) : [];
-      console.log('[CLUSTER] _loadPinClusters() — recibidos del servidor:', JSON.stringify(this.pinClusters));
     } catch (e) {
       console.warn('⚠️ pin_clusters:', e.message);
       this.pinClusters = this.pinClusters || [];
@@ -1196,6 +1202,7 @@ export class MapView {
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
     el.addEventListener('pointerdown', (e) => {
+      if (this._clusterModalOpen) return; // hay un panel de edición abierto (o recién cerrado) — ignorar
       longPressFired = false;
       startX = e.clientX; startY = e.clientY;
       pressTimer = setTimeout(() => {
@@ -1203,6 +1210,7 @@ export class MapView {
         this._cancelActiveClusterPress = null;
         if (this.onClusterCustomize) {
           this.haptic('longpress');
+          this._clusterModalOpen = true;
           this.onClusterCustomize(group, customDef || null);
         }
       }, 550);
@@ -2390,9 +2398,10 @@ export function _buildClusterStickerHtml(group, customDef) {
   const bColor = badge.color || '#111827';
   const bScale = badge.scale ?? 1;
   const bDx = badge.dx ?? 34, bDy = badge.dy ?? -28; // default: esquina superior-derecha, pegado al cluster
+  const bRot = badge.rotation ?? 0;
   const bZ = badge.z ?? 30;
   const bSize = 22 * bScale;
-  const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px));z-index:${bZ};pointer-events:auto;touch-action:none;">+${group.length}</div>`;
+  const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;touch-action:none;">+${group.length}</div>`;
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
   // hay tarjetas/stickers desplazados afuera) pero es puramente un marco
