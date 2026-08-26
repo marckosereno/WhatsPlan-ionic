@@ -208,29 +208,20 @@ function injectLandmarkStyles() {
     body.map-dragging .lm-shadow-slow { animation-play-state:paused; }
 
     /* ── Animación al hacer drag en el mapa ──────────────────────────
-       Pines: se achican mientras se arrastra (sin opacity — solo escala)
-       y vuelven a su tamaño con un rebote (spring) al soltar. El
-       transform va en el HIJO DIRECTO de .place-marker-el (nunca en
-       .place-marker-el mismo): MapLibre posiciona el marker con su
-       propio transform inline ahí, y cualquier transform puesto por CSS
-       quedaría pisado por ese inline — aplicándolo al hijo evitamos el
-       conflicto.
-       ANTES esto también incluía un efecto de "parallax" (los pines se
-       atrasaban un poco respecto al mapa) calculado en JS en cada evento
-       'drag' vía CSS custom properties en el elemento raíz — medido con
-       logs de PERF, ese único efecto costaba 6-10ms POR FRAME (escribir
-       una custom property que una regla usa en TODOS los pines fuerza
-       un recálculo de estilos global), un tercio o más del presupuesto
-       de cada frame a 60fps — esa era la causa real del "barrido"/
-       tranco al arrastrar el mapa. Se sacó por completo; el achique al
-       arrastrar queda igual (es solo un toggle de clase, no algo que se
-       recalcule en cada frame). */
+       Temporalmente sin efecto visual (ver nota más abajo) — se
+       reactivará una vez confirmado que los clusters ya no generan
+       freeze. Se deja la transición base para cuando vuelva.
+       ANTES acá vivían dos efectos: el achique de pines al arrastrar
+       (scale) y un "parallax" (los pines se atrasaban un poco respecto
+       al mapa) calculado en JS en cada evento 'drag' vía CSS custom
+       properties en el elemento raíz. El parallax ya se había sacado
+       por costar 6-10ms POR FRAME (medido con logs de PERF — forzaba un
+       recálculo de estilos en TODOS los pines en cada frame). El propio
+       achique de escala, aunque mucho más barato, también se sacó por
+       ahora a pedido — se van a reintroducir juntos, de forma más
+       eficiente, una vez resuelto el freeze de los clusters. */
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    body.map-dragging .place-marker-el > * {
-      transform: scale(0.82);
-      transition: transform 0.05s linear;
     }
 
     /* ── Carrusel expandido de cluster (pantalla completa) ──────────── */
@@ -293,18 +284,6 @@ function injectLandmarkStyles() {
 }
 
 // ====================================================================
-// ── PRUEBA DE DIAGNÓSTICO TEMPORAL ──────────────────────────────────
-// En true: desactiva POR COMPLETO los dos mecanismos de long-press
-// sobre clusters (el de un cluster existente y el de crear uno nuevo en
-// mapa vacío) — nada de timers, nada de listeners en document. El tap
-// normal (abrir el carrusel) sigue andando igual. Es para descartar de
-// una vez si el freeze en drag/zoom viene de acá o no.
-const LONGPRESS_DISABLED_FOR_TESTING = true;
-// En true: no agrupa NADA en clusters — todos los lugares quedan como
-// pines individuales sueltos. Sirve para aislar si el freeze viene del
-// renderizado propio de los clusters (DOM más pesado, fotos, sombras)
-// en vez de la interacción táctil (el long-press ya se descartó arriba).
-const CLUSTERING_DISABLED_FOR_TESTING = true;
 export class MapView {
   constructor() {
     // CATEGORIES accesible como propiedad de instancia para que app.js pueda actualizarla
@@ -457,7 +436,6 @@ export class MapView {
         if (mapPressTimer && (Math.abs(e2.clientX - mapPressStartX) > 6 || Math.abs(e2.clientY - mapPressStartY) > 6)) clearMapPress();
       };
       mapCanvas.addEventListener('pointerdown', (e) => {
-        if (LONGPRESS_DISABLED_FOR_TESTING) return; // prueba de diagnóstico — ver flag arriba del todo del archivo
         if (!this.onClusterCustomize || this._clusterModalOpen) return;
         if (e.target !== mapCanvas) return; // el toque aterrizó sobre un marker, no sobre mapa vacío — que lo maneje ese marker
         if (mapPressTimer) {
@@ -1233,15 +1211,6 @@ export class MapView {
       }
     });
 
-    // ── PRUEBA DE DIAGNÓSTICO TEMPORAL ──────────────────────────────
-    // En true: no agrupa nada — todos los lugares quedan como pines
-    // individuales (ya restaurados arriba), sin ningún sticker de
-    // cluster en el DOM. Sirve para aislar si el freeze en drag/zoom
-    // viene del renderizado propio de los clusters (fotos, sombras,
-    // bordes redondeados, DOM más pesado por marker) en vez de la
-    // interacción táctil del long-press (ya descartada).
-    if (CLUSTERING_DISABLED_FOR_TESTING) return;
-
     if (this.map.getZoom() >= 17.2) return; // ya hay espacio, no agrupar
 
     const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar (auto)
@@ -1314,13 +1283,22 @@ export class MapView {
 
     const el = document.createElement('div');
     el.className = 'place-cluster-el';
-    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+    // will-change:transform es la clave acá — MapLibre reposiciona este
+    // elemento en CADA frame de drag/zoom vía transform. Sin esto, el
+    // navegador puede optar por REPINTAR todo el contenido pesado del
+    // cluster (varias tarjetas con foto + box-shadow + border-radius)
+    // en cada una de esas reposiciones, en vez de simplemente mover una
+    // capa ya rasterizada por GPU — confirmado con pruebas que esto era
+    // la causa real del freeze en drag/zoom apenas había clusters en
+    // pantalla (sin relación con el long-press, que se había descartado
+    // antes). Con will-change, el navegador promueve este elemento a su
+    // propia capa de composición desde el principio.
+    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;will-change:transform;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
     let docMoveHandler = null, docUpHandler = null;
     el.addEventListener('pointerdown', (e) => {
-      if (LONGPRESS_DISABLED_FOR_TESTING) return; // prueba de diagnóstico — ver flag arriba del todo del archivo
       if (this._clusterModalOpen) return; // hay un panel de edición abierto (o recién cerrado) — ignorar
       if (pressTimer) { clearPress(); return; } // 2do dedo tocando el mismo elemento (pellizco) — cancelar, no reiniciar el timer
       longPressFired = false;
