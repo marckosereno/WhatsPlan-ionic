@@ -560,22 +560,54 @@ export class MapView {
         this._updateClusters();
       });
 
-      // Ghost-pan fix
+      // ── Ghost-pan fix ────────────────────────────────────────────────
+      // ESTE ERA EL "TOQUE FANTASMA" QUE CONGELABA EL DRAG SOBRE CLUSTERS.
+      // El hack sintetiza un TouchEvent('touchcancel') con bubbles:true
+      // sobre el marker, o sea INYECTA UN EVENTO TÁCTIL FALSO DIRECTO EN EL
+      // RECONOCEDOR DE GESTOS DE MAPLIBRE (burbujea marker →
+      // .maplibregl-canvas-container, que es donde MapLibre escucha). Un
+      // touchcancel resetea todos los handlers de MapLibre; si llega en el
+      // momento equivocado, el DragPan queda creyendo que hay un gesto a
+      // medias y el siguiente touchstart se interpreta como "segundo dedo"
+      // en vez de como el inicio de un pan → el drag no arranca nunca.
+      //
+      // Tenía tres agujeros, los tres arreglados abajo:
+      //  1. Solo limpiaba en 'touchend'. Si la secuencia terminaba en un
+      //     'touchcancel' REAL (lo normal cuando el browser se queda con el
+      //     gesto), onMove/onEnd quedaban colgados en el contenedor PARA
+      //     SIEMPRE, acumulándose. Después, en un touchend de OTRO gesto
+      //     cualquiera, esa closure vieja despertaba y disparaba su
+      //     touchcancel falso en medio de un gesto que no era el suyo.
+      //  2. Disparaba sobre `e.target` sin chequear que siguiera vivo. Los
+      //     clusters se destruyen y recrean en CADA moveend, así que los
+      //     targets viejos abundan.
+      //  3. Se aplicaba también a los clusters, que ya tienen su propio
+      //     manejo de press por pointer events con cancelación limpia — no
+      //     necesitan este parche y es justo donde hace daño.
       const c = this.map.getContainer();
       c.addEventListener('touchstart', (e) => {
-        if (!e.target.closest('.maplibregl-marker')) return;
+        const marker = e.target.closest && e.target.closest('.maplibregl-marker');
+        if (!marker) return;
+        if (marker.classList.contains('place-cluster-el')) return; // los clusters manejan su propio gesto
         let moved = false;
         const onMove = () => { moved = true; };
-        const onEnd  = () => {
-          c.removeEventListener('touchmove', onMove, { capture: true });
-          c.removeEventListener('touchend',  onEnd,  { capture: true });
-          if (!moved) e.target.dispatchEvent(new TouchEvent('touchcancel', {
+        const cleanup = () => {
+          c.removeEventListener('touchmove',   onMove,  { capture: true });
+          c.removeEventListener('touchend',    onEnd,   { capture: true });
+          c.removeEventListener('touchcancel', cleanup, { capture: true });
+        };
+        const onEnd = () => {
+          cleanup();
+          if (moved) return;
+          if (!marker.isConnected) return; // el marker ya fue destruido (re-cluster) — no inyectar nada
+          marker.dispatchEvent(new TouchEvent('touchcancel', {
             bubbles: true, cancelable: false,
             touches: [], targetTouches: [], changedTouches: e.changedTouches
           }));
         };
-        c.addEventListener('touchmove', onMove, { capture: true, passive: true });
-        c.addEventListener('touchend',  onEnd,  { capture: true, passive: true });
+        c.addEventListener('touchmove',   onMove,  { capture: true, passive: true });
+        c.addEventListener('touchend',    onEnd,   { capture: true, passive: true });
+        c.addEventListener('touchcancel', cleanup, { capture: true, passive: true });
       }, { passive: true, capture: true });
     });
 
