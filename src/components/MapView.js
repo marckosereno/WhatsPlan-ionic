@@ -449,9 +449,9 @@ export class MapView {
           return;
         }
         mapPressStartX = e.clientX; mapPressStartY = e.clientY;
-        document.addEventListener('pointermove', onMapPressMove);
-        document.addEventListener('pointerup', clearMapPress);
-        document.addEventListener('pointercancel', clearMapPress);
+        document.addEventListener('pointermove', onMapPressMove, { passive: true });
+        document.addEventListener('pointerup', clearMapPress, { passive: true });
+        document.addEventListener('pointercancel', clearMapPress, { passive: true });
         this._cancelActiveClusterPress = clearMapPress;
         mapPressTimer = setTimeout(() => {
           clearMapPress();
@@ -459,7 +459,7 @@ export class MapView {
           this._clusterModalOpen = true;
           this.onClusterCustomize([], null); // grupo vacío = cluster nuevo, se puebla a mano con el buscador
         }, 650); // un toque más largo que el de los pines (550ms) para no confundirse con un long-press accidental mientras se navega el mapa vacío
-      });
+      }, { passive: true });
       // NOTA DE PERFORMANCE — acá vivía el cálculo de "parallax" de pines
       // durante el drag (los pines se atrasaban un poco respecto al mapa),
       // medido con logs de PERF: escribir la CSS custom property que ese
@@ -1283,15 +1283,17 @@ export class MapView {
 
     const el = document.createElement('div');
     el.className = 'place-cluster-el';
-    // El contenedor mide su tamaño real (220x220, MapLibre lo centra
-    // solo vía su propio anchor) en vez de 2x2+overflow:visible — esa
-    // combinación (caja diminuta + contenido desbordado + will-change)
-    // es la que confundía a los navegadores para calcular los límites de
-    // la capa GPU, forzando repintados de golpe en cada frame de
-    // drag/zoom. overflow:visible queda como red de seguridad para
-    // casos extremos (mucho dx/dy custom), pero ya no es de lo que
-    // depende el caso normal.
-    el.style.cssText = 'position:relative;width:220px;height:220px;overflow:visible;cursor:pointer;will-change:transform;pointer-events:none;';
+    // De vuelta a 2x2 — agrandar este elemento (a 220x220) rompió el
+    // centrado: MapLibre calcula el anchor 'center' MIDIENDO el tamaño
+    // real del elemento en un momento en que puede no estar todavía
+    // adjunto al DOM (offsetWidth/Height da 0 ahí), y con 2x2 ese error
+    // de medición era invisible (~1px) pero con 220x220 se volvió un
+    // desplazamiento de ~110px — los clusters aparecían mucho más abajo.
+    // El will-change para el problema de la capa GPU va en el DIV
+    // INTERNO de tamaño fijo (ver _buildClusterStickerHtml), que nunca
+    // depende de que MapLibre lo mida — su tamaño lo define el CSS
+    // directamente, sin ambigüedad posible.
+    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
@@ -1331,10 +1333,10 @@ export class MapView {
         if (pressTimer && (Math.abs(e2.clientX - startX) > 5 || Math.abs(e2.clientY - startY) > 5)) clearPress();
       };
       docUpHandler = () => clearPress();
-      document.addEventListener('pointermove', docMoveHandler);
-      document.addEventListener('pointerup', docUpHandler);
-      document.addEventListener('pointercancel', docUpHandler);
-    });
+      document.addEventListener('pointermove', docMoveHandler, { passive: true });
+      document.addEventListener('pointerup', docUpHandler, { passive: true });
+      document.addEventListener('pointercancel', docUpHandler, { passive: true });
+    }, { passive: true });
     const cleanupDocListeners = () => {
       if (docMoveHandler) { document.removeEventListener('pointermove', docMoveHandler); docMoveHandler = null; }
       if (docUpHandler) { document.removeEventListener('pointerup', docUpHandler); document.removeEventListener('pointercancel', docUpHandler); docUpHandler = null; }
@@ -1355,9 +1357,9 @@ export class MapView {
       cleanupDocListeners();
       removeFromPendingList();
     };
-    el.addEventListener('pointerup', clearPress);
-    el.addEventListener('pointercancel', clearPress);
-    el.addEventListener('pointerleave', clearPress);
+    el.addEventListener('pointerup', clearPress, { passive: true });
+    el.addEventListener('pointercancel', clearPress, { passive: true });
+    el.addEventListener('pointerleave', clearPress, { passive: true });
 
     el.addEventListener('click', (e) => {
       e.stopPropagation();
