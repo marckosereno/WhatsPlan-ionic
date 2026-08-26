@@ -1283,17 +1283,15 @@ export class MapView {
 
     const el = document.createElement('div');
     el.className = 'place-cluster-el';
-    // will-change:transform es la clave acá — MapLibre reposiciona este
-    // elemento en CADA frame de drag/zoom vía transform. Sin esto, el
-    // navegador puede optar por REPINTAR todo el contenido pesado del
-    // cluster (varias tarjetas con foto + box-shadow + border-radius)
-    // en cada una de esas reposiciones, en vez de simplemente mover una
-    // capa ya rasterizada por GPU — confirmado con pruebas que esto era
-    // la causa real del freeze en drag/zoom apenas había clusters en
-    // pantalla (sin relación con el long-press, que se había descartado
-    // antes). Con will-change, el navegador promueve este elemento a su
-    // propia capa de composición desde el principio.
-    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;will-change:transform;';
+    // El contenedor mide su tamaño real (220x220, MapLibre lo centra
+    // solo vía su propio anchor) en vez de 2x2+overflow:visible — esa
+    // combinación (caja diminuta + contenido desbordado + will-change)
+    // es la que confundía a los navegadores para calcular los límites de
+    // la capa GPU, forzando repintados de golpe en cada frame de
+    // drag/zoom. overflow:visible queda como red de seguridad para
+    // casos extremos (mucho dx/dy custom), pero ya no es de lo que
+    // depende el caso normal.
+    el.style.cssText = 'position:relative;width:220px;height:220px;overflow:visible;cursor:pointer;will-change:transform;pointer-events:none;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
