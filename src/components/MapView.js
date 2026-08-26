@@ -1293,7 +1293,17 @@ export class MapView {
     // INTERNO de tamaño fijo (ver _buildClusterStickerHtml), que nunca
     // depende de que MapLibre lo mida — su tamaño lo define el CSS
     // directamente, sin ambigüedad posible.
-    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+    // touch-action:none es la pieza que faltaba para el freeze al arrancar
+    // el drag SOBRE un cluster: los markers de MapLibre cuelgan fuera de
+    // .maplibregl-canvas-container (que es donde vive el touch-action:none
+    // del propio MapLibre), así que este elemento queda en touch-action:auto
+    // por default — el navegador se toma ~100ms de reconocimiento de gesto
+    // nativo antes de dejar pasar los pointermove/touchmove al JS, y ese
+    // hueco es lo que se siente como "el longpress quiere agarrar y traba
+    // el drag". Con touch-action:none el navegador entrega el gesto al JS
+    // (y por lo tanto a MapLibre, que escucha en el contenedor por
+    // bubbling) sin ese período de indecisión.
+    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;touch-action:none;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
