@@ -212,20 +212,20 @@ function injectLandmarkStyles() {
     body.map-dragging .lm-shadow-slow { animation-play-state:paused; }
 
     /* ── Animación al hacer drag en el mapa ──────────────────────────
-       Temporalmente sin efecto visual (ver nota más abajo) — se
-       reactivará una vez confirmado que los clusters ya no generan
-       freeze. Se deja la transición base para cuando vuelva.
-       ANTES acá vivían dos efectos: el achique de pines al arrastrar
-       (scale) y un "parallax" (los pines se atrasaban un poco respecto
-       al mapa) calculado en JS en cada evento 'drag' vía CSS custom
-       properties en el elemento raíz. El parallax ya se había sacado
-       por costar 6-10ms POR FRAME (medido con logs de PERF — forzaba un
-       recálculo de estilos en TODOS los pines en cada frame). El propio
-       achique de escala, aunque mucho más barato, también se sacó por
-       ahora a pedido — se van a reintroducir juntos, de forma más
-       eficiente, una vez resuelto el freeze de los clusters. */
+       Reintroducido tras resolver el freeze de clusters (esa causa era
+       el rebuild completo de clusters en cada moveend — el parallax no
+       tenía nada que ver). Esta vez el JS escribe transform DIRECTO
+       en el estilo inline de cada .place-pin-root visible (ver
+       _applyPinParallax en el bloque de 'drag' del mapa) — compositor-only,
+       nada de CSS custom properties en :root/<html> (eso forzaba
+       recálculo de estilo en TODOS los pines, 6-10ms/frame, la causa
+       real del "barrido" viejo). Esta transición es la que anima el
+       REGRESO suave a 0 cuando el drag termina y el JS limpia el transform. */
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    body.map-dragging .place-marker-el > * {
+      will-change: transform; /* hint de compositor solo mientras se usa */
     }
 
     /* ── Carrusel expandido de cluster (pantalla completa) ──────────── */
@@ -394,8 +394,42 @@ export class MapView {
       this._loadActivities();
 
       // Drag pause para animaciones
+      // ── Parallax + achique de pines al arrastrar ──────────────────────
+      // Reintroducido: la causa del freeze nunca fue esto (era el rebuild
+      // de clusters en cada moveend, ya resuelto). Implementado BARATO a
+      // propósito, aprendiendo del intento viejo (6-10ms/frame porque
+      // escribía una CSS custom property en :root/<html>, forzando
+      // recálculo de estilo en TODOS los pines): acá se escribe
+      // `transform` DIRECTO en el inline style de cada `.place-pin-root`
+      // VISIBLE — compositor-only, sin recálculo en cascada — y se
+      // saltean los pines ocultos (agrupados en un cluster).
+      //
+      // El "lag" se logra proyectando un punto lngLat FIJO (el centro del
+      // mapa al arrancar el drag) en cada frame: como ese punto no se
+      // mueve en el mundo, su posición en pantalla se desplaza exactamente
+      // lo mismo que se movió la cámara — es un delta de pantalla gratis,
+      // sin trackear pointermove a mano.
+      let _parallaxAnchor = null, _parallaxStartPx = null;
+      const PARALLAX_LAG = 0.14;   // fracción del desplazamiento — sutil a propósito
+      const PIN_SHRINK    = 0.97;  // achique MÍNIMO pedido — casi imperceptible
+      const _applyPinParallax = (dx, dy) => {
+        const t = `translate3d(${(-dx * PARALLAX_LAG).toFixed(1)}px,${(-dy * PARALLAX_LAG).toFixed(1)}px,0) scale(${PIN_SHRINK})`;
+        for (const el of this.markerEls) {
+          if (el.style.display === 'none') continue; // oculto por estar agrupado en un cluster
+          const root = el.firstElementChild; // siempre .place-pin-root — ver _buildPinHtml
+          if (root) root.style.transform = t;
+        }
+      };
+      const _clearPinParallax = () => {
+        for (const el of this.markerEls) {
+          const root = el.firstElementChild;
+          if (root && root.style.transform) root.style.transform = '';
+        }
+      };
       this.map.on('dragstart', () => {
         document.body.classList.add('map-dragging');
+        _parallaxAnchor = this.map.getCenter();
+        _parallaxStartPx = this.map.project(_parallaxAnchor);
         // Si el drag del mapa arrancó justo encima de un sticker de
         // cluster, el pointermove local de ese elemento puede no llegar a
         // dispararse (MapLibre se queda con el gesto táctil primero) — el
@@ -418,6 +452,11 @@ export class MapView {
           this._cancelActiveClusterPress();
           this._cancelActiveClusterPress = null;
         }
+      });
+      this.map.on('drag', () => {
+        if (!_parallaxAnchor) return;
+        const curPx = this.map.project(_parallaxAnchor);
+        _applyPinParallax(curPx.x - _parallaxStartPx.x, curPx.y - _parallaxStartPx.y);
       });
 
       // ── Crear un cluster nuevo desde cero, long-press en mapa VACÍO ──
@@ -465,17 +504,10 @@ export class MapView {
           this.onClusterCustomize([], null); // grupo vacío = cluster nuevo, se puebla a mano con el buscador
         }, 650); // un toque más largo que el de los pines (550ms) para no confundirse con un long-press accidental mientras se navega el mapa vacío
       }, { passive: true });
-      // NOTA DE PERFORMANCE — acá vivía el cálculo de "parallax" de pines
-      // durante el drag (los pines se atrasaban un poco respecto al mapa),
-      // medido con logs de PERF: escribir la CSS custom property que ese
-      // efecto necesitaba costaba 6-10ms POR FRAME (fuerza un recálculo
-      // de estilos en TODOS los pines en pantalla), un tercio o más del
-      // presupuesto de cada frame a 60fps — era la causa real del
-      // "barrido"/tranco al arrastrar el mapa. Se sacó por completo; solo
-      // queda el achique de pines al arrastrar (ver CSS de arriba), que
-      // es gratis porque es un simple toggle de clase, no algo por-frame.
       this.map.on('dragend', () => {
         document.body.classList.remove('map-dragging');
+        _parallaxAnchor = null;
+        _clearPinParallax(); // la transición CSS de .place-marker-el > * anima el regreso a 0
       });
 
       // Featured highlight — se activa al acercarse al centro, se limpia al alejar zoom
@@ -1351,6 +1383,12 @@ export class MapView {
   _renderClusterMarker(group, customDef, key = null) {
     const centerLat = group.reduce((s, g) => s + g.ll.lat, 0) / group.length;
     const centerLng = group.reduce((s, g) => s + g.ll.lng, 0) / group.length;
+    // [PERF/DEBUG temporal] diagnóstico del "salto" al guardar una edición
+    // de cluster — comparar el log de ANTES de abrir el editor contra el
+    // de DESPUÉS de guardar para el MISMO cluster: si `members` difiere
+    // (una foto entró/salió del promedio) o center difiere, ahí está la
+    // causa. Sacar esta línea una vez confirmado.
+    if (customDef) console.log('[CLUSTER][pos]', { key, centerLat, centerLng, members: group.map(g => g.el?._place?.name) });
 
     // NOTA: el ocultamiento de los pines miembros NO va acá. Vive en la
     // reconciliación de _updateClusters(), porque ahora esta función solo
