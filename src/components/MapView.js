@@ -123,7 +123,13 @@ function proxyPhotoCard(url) {
 function proxyPhotoCluster(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.includes('supabase.co')) return supabaseResize(url, 220, 85, 'contain');
+  // BAJADO de 220/85 a 110/62 para probar si el freeze del drag es costo de
+  // rasterizado: cada tarjeta se ve a ~46-100px CSS, así que 220px era ~4x
+  // más píxeles decodificados de los necesarios. La memoria de bitmap
+  // decodificado escala con el CUADRADO del ancho — 220→110 la divide por 4
+  // por cada tarjeta, por cada cluster en pantalla. Si el tranco se va con
+  // esto, la causa es raster/decode, no el gesto.
+  if (url.includes('supabase.co')) return supabaseResize(url, 110, 62, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
