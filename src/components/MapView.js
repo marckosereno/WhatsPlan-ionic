@@ -123,13 +123,11 @@ function proxyPhotoCard(url) {
 function proxyPhotoCluster(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  // BAJADO de 220/85 a 110/62 para probar si el freeze del drag es costo de
-  // rasterizado: cada tarjeta se ve a ~46-100px CSS, así que 220px era ~4x
-  // más píxeles decodificados de los necesarios. La memoria de bitmap
-  // decodificado escala con el CUADRADO del ancho — 220→110 la divide por 4
-  // por cada tarjeta, por cada cluster en pantalla. Si el tranco se va con
-  // esto, la causa es raster/decode, no el gesto.
-  if (url.includes('supabase.co')) return supabaseResize(url, 110, 62, 'contain');
+  // (Se probó bajar a 110/62 durante el diagnóstico del freeze de drag —
+  // no era costo de raster/decode, la causa era el rebuild completo de
+  // clusters en cada moveend, ya resuelto por reconciliación en
+  // _updateClusters(). Revertido a la resolución original.)
+  if (url.includes('supabase.co')) return supabaseResize(url, 220, 85, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -567,54 +565,27 @@ export class MapView {
         this._updateClusters();
       });
 
-      // ── Ghost-pan fix ────────────────────────────────────────────────
-      // ESTE ERA EL "TOQUE FANTASMA" QUE CONGELABA EL DRAG SOBRE CLUSTERS.
-      // El hack sintetiza un TouchEvent('touchcancel') con bubbles:true
-      // sobre el marker, o sea INYECTA UN EVENTO TÁCTIL FALSO DIRECTO EN EL
-      // RECONOCEDOR DE GESTOS DE MAPLIBRE (burbujea marker →
-      // .maplibregl-canvas-container, que es donde MapLibre escucha). Un
-      // touchcancel resetea todos los handlers de MapLibre; si llega en el
-      // momento equivocado, el DragPan queda creyendo que hay un gesto a
-      // medias y el siguiente touchstart se interpreta como "segundo dedo"
-      // en vez de como el inicio de un pan → el drag no arranca nunca.
-      //
-      // Tenía tres agujeros, los tres arreglados abajo:
-      //  1. Solo limpiaba en 'touchend'. Si la secuencia terminaba en un
-      //     'touchcancel' REAL (lo normal cuando el browser se queda con el
-      //     gesto), onMove/onEnd quedaban colgados en el contenedor PARA
-      //     SIEMPRE, acumulándose. Después, en un touchend de OTRO gesto
-      //     cualquiera, esa closure vieja despertaba y disparaba su
-      //     touchcancel falso en medio de un gesto que no era el suyo.
-      //  2. Disparaba sobre `e.target` sin chequear que siguiera vivo. Los
-      //     clusters se destruyen y recrean en CADA moveend, así que los
-      //     targets viejos abundan.
-      //  3. Se aplicaba también a los clusters, que ya tienen su propio
-      //     manejo de press por pointer events con cancelación limpia — no
-      //     necesitan este parche y es justo donde hace daño.
+      // Ghost-pan fix
+      // (Se reescribió durante el diagnóstico del freeze de drag para
+      // excluir clusters y limpiar en touchcancel real — no era la causa
+      // del freeze, la causa era el rebuild completo de clusters en cada
+      // moveend, ya resuelto por reconciliación en _updateClusters().
+      // Revertido a la versión original.)
       const c = this.map.getContainer();
       c.addEventListener('touchstart', (e) => {
-        const marker = e.target.closest && e.target.closest('.maplibregl-marker');
-        if (!marker) return;
-        if (marker.classList.contains('place-cluster-el')) return; // los clusters manejan su propio gesto
+        if (!e.target.closest('.maplibregl-marker')) return;
         let moved = false;
         const onMove = () => { moved = true; };
-        const cleanup = () => {
-          c.removeEventListener('touchmove',   onMove,  { capture: true });
-          c.removeEventListener('touchend',    onEnd,   { capture: true });
-          c.removeEventListener('touchcancel', cleanup, { capture: true });
-        };
-        const onEnd = () => {
-          cleanup();
-          if (moved) return;
-          if (!marker.isConnected) return; // el marker ya fue destruido (re-cluster) — no inyectar nada
-          marker.dispatchEvent(new TouchEvent('touchcancel', {
+        const onEnd  = () => {
+          c.removeEventListener('touchmove', onMove, { capture: true });
+          c.removeEventListener('touchend',  onEnd,  { capture: true });
+          if (!moved) e.target.dispatchEvent(new TouchEvent('touchcancel', {
             bubbles: true, cancelable: false,
             touches: [], targetTouches: [], changedTouches: e.changedTouches
           }));
         };
-        c.addEventListener('touchmove',   onMove,  { capture: true, passive: true });
-        c.addEventListener('touchend',    onEnd,   { capture: true, passive: true });
-        c.addEventListener('touchcancel', cleanup, { capture: true, passive: true });
+        c.addEventListener('touchmove', onMove, { capture: true, passive: true });
+        c.addEventListener('touchend',  onEnd,  { capture: true, passive: true });
       }, { passive: true, capture: true });
     });
 
@@ -1398,17 +1369,11 @@ export class MapView {
     // INTERNO de tamaño fijo (ver _buildClusterStickerHtml), que nunca
     // depende de que MapLibre lo mida — su tamaño lo define el CSS
     // directamente, sin ambigüedad posible.
-    // touch-action:none es la pieza que faltaba para el freeze al arrancar
-    // el drag SOBRE un cluster: los markers de MapLibre cuelgan fuera de
-    // .maplibregl-canvas-container (que es donde vive el touch-action:none
-    // del propio MapLibre), así que este elemento queda en touch-action:auto
-    // por default — el navegador se toma ~100ms de reconocimiento de gesto
-    // nativo antes de dejar pasar los pointermove/touchmove al JS, y ese
-    // hueco es lo que se siente como "el longpress quiere agarrar y traba
-    // el drag". Con touch-action:none el navegador entrega el gesto al JS
-    // (y por lo tanto a MapLibre, que escucha en el contenedor por
-    // bubbling) sin ese período de indecisión.
-    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;touch-action:none;';
+    // (Se probó agregar touch-action:none acá durante el diagnóstico del
+    // freeze de drag — no era la causa real, la causa era el rebuild
+    // completo de clusters en cada moveend, ya resuelto por reconciliación
+    // en _updateClusters(). Revertido a la versión simple.)
+    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
