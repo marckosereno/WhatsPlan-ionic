@@ -305,6 +305,7 @@ export class MapView {
     this.markers         = [];
     this.markerEls       = [];
     this.clusterMarkers  = []; // pines "amontonados" agrupados en un solo sticker
+    this._clusterByKey   = new Map(); // clave estable → marker, para reutilizar en vez de reconstruir
     this.pinClusters     = null; // clusters personalizados (SuperUser) — null = aún no cargados
     this.onClusterCustomize = null; // callback (group, existingClusterOrNull) — lo asigna SuperUserPanel al hacer long-press
     // Mientras el panel de edición de cluster está abierto (y un instante
@@ -1226,16 +1227,38 @@ export class MapView {
     // (no reutiliza la anterior), esto se iba acumulando de a uno con
     // cada pan/zoom — cada vez más listeners de pointermove corriendo
     // en simultáneo en TODO el documento, cada vez más lento.
-    const pending = (this._clusterPressCleanups || []).length;
-    if (pending > 0) console.log(`[PERF] _clearClusters: había ${pending} long-press pendiente(s) a punto de quedar huérfano(s) — limpiando antes de destruir los markers`);
     (this._clusterPressCleanups || []).forEach(fn => fn());
     this._clusterPressCleanups = [];
     this.clusterMarkers.forEach(m => m?.remove());
     this.clusterMarkers = [];
+    this._clusterByKey = new Map();
+  }
+
+  // Firma estable de un cluster: si no cambió, el marker de la pasada
+  // anterior se REUTILIZA tal cual en vez de destruirse y volver a
+  // construirse. Ver el comentario largo en _updateClusters().
+  _clusterKey(group, customDef) {
+    const pids = group.map(({ el }) => placeIdOf(el._place)).sort().join('|');
+    if (!customDef) return `auto::${pids}`;
+    // Hash barato de la definición para que una edición del SuperUser sí
+    // fuerce el rebuild (cambian posiciones/stickers/badge sin cambiar los
+    // place_ids, así que los pids solos no alcanzan como firma).
+    const s = JSON.stringify(customDef);
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return `def:${h}::${pids}`;
+  }
+
+  _destroyClusterMarker(marker) {
+    const el = marker?.getElement?.();
+    if (el && el._clusterClearPress) el._clusterClearPress(); // cancelar su long-press pendiente, si lo hay
+    marker?.remove();
+    const i = this.clusterMarkers.indexOf(marker);
+    if (i !== -1) this.clusterMarkers.splice(i, 1);
   }
 
   _updateClusters() {
-    this._clearClusters();
+    if (!this._clusterByKey) this._clusterByKey = new Map();
 
     // Restaurar SIEMPRE primero los pines que un agrupamiento anterior
     // haya ocultado — si no, un pin que quedó escondido en una pasada
@@ -1249,7 +1272,7 @@ export class MapView {
       }
     });
 
-    if (this.map.getZoom() >= 17.2) return; // ya hay espacio, no agrupar
+    if (this.map.getZoom() >= 17.2) { this._clearClusters(); return; } // ya hay espacio, no agrupar
 
     const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar (auto)
     const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster (auto)
@@ -1273,13 +1296,14 @@ export class MapView {
     // en SuperUserPanel.js) — antes había copias locales ligeramente
     // distintas en cada lugar, y esa desincronización era justo lo que
     // rompía la edición para lugares sin place_id/id.
+    const wanted = [];
     (this.pinClusters || []).forEach(customDef => {
       const members = candidates.filter(c =>
         !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
       );
       if (!members.length) return;
       members.forEach(m => usedEls.add(m.el));
-      this._renderClusterMarker(members, customDef);
+      wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
     });
 
     // 2) Clustering automático por cercanía en pantalla para el resto
@@ -1301,7 +1325,51 @@ export class MapView {
       groups.push(group);
     });
 
-    groups.filter(g => g.length >= MIN_GROUP).forEach(group => this._renderClusterMarker(group, null));
+    groups.filter(g => g.length >= MIN_GROUP)
+      .forEach(group => wanted.push({ key: this._clusterKey(group, null), group, customDef: null }));
+
+    // ── RECONCILIACIÓN — este es el arreglo del freeze del drag ──────────
+    // Antes esta función arrancaba con _clearClusters(): en CADA moveend y
+    // CADA zoomend destruía TODOS los markers de cluster y los volvía a
+    // construir con innerHTML. Con N clusters en pantalla × varias tarjetas
+    // cada uno, eso es un teardown + parseo de HTML + layout + decode de
+    // imágenes + repintado completo, sincrónico, en el handler de moveend.
+    //
+    // Y moveend es exactamente el instante en que soltás el dedo. Si volvés
+    // a tocar enseguida — que es justo el caso "arrastro, freno sobre un
+    // cluster, y quiero seguir arrastrando" — tu touchstart aterriza en
+    // medio de ese trabajo: el main thread está ocupado, MapLibre no llega
+    // a procesar el inicio del gesto, y el drag no arranca. No es el
+    // long-press ni el hit-testing: es que los "containers" de los clusters
+    // se estaban rehaciendo enteros abajo de tu dedo.
+    //
+    // Clave del asunto: en un PAN puro, project() desplaza todos los pines
+    // por igual, así que las distancias EN PÍXELES entre ellos no cambian —
+    // los grupos resultantes son idénticos a los de la pasada anterior. O
+    // sea que el 100% de ese trabajo era tirar y reconstruir algo idéntico.
+    // Con la firma de _clusterKey(), un pan ahora no toca el DOM en
+    // absoluto; solo un zoom (que sí reagrupa) construye lo que cambió.
+    const wantedKeys = new Set(wanted.map(w => w.key));
+    for (const [key, marker] of Array.from(this._clusterByKey)) {
+      if (wantedKeys.has(key)) continue;
+      this._destroyClusterMarker(marker);
+      this._clusterByKey.delete(key);
+    }
+    wanted.forEach(w => {
+      // Ocultar los pines miembros vale para TODOS los clusters vigentes,
+      // sobrevivan o no — el bloque de "restaurar" del arranque de esta
+      // función los volvió a mostrar a todos. El guard de display evita
+      // escribir estilo (y por lo tanto invalidar layout) cuando ya estaba
+      // oculto, que es el caso normal en un pan.
+      w.group.forEach(({ el }) => {
+        if (el.style.display === 'none') return;
+        el._clusterHiddenDisplay = el.style.display;
+        el.style.display = 'none';
+        el.style.pointerEvents = 'none';
+      });
+      if (this._clusterByKey.has(w.key)) return; // sobrevive intacto — no tocarlo
+      this._renderClusterMarker(w.group, w.customDef, w.key);
+    });
   }
 
   // Crea el marker del cluster (personalizado o automático) con doble
@@ -1309,15 +1377,14 @@ export class MapView {
   // long-press (solo si SuperUserPanel dejó seteado this.onClusterCustomize)
   // → abre el panel de personalización, pasando el grupo actual y la
   // definición existente (o null si es la primera vez que se personaliza).
-  _renderClusterMarker(group, customDef) {
+  _renderClusterMarker(group, customDef, key = null) {
     const centerLat = group.reduce((s, g) => s + g.ll.lat, 0) / group.length;
     const centerLng = group.reduce((s, g) => s + g.ll.lng, 0) / group.length;
 
-    group.forEach(({ el }) => {
-      el._clusterHiddenDisplay = el.style.display;
-      el.style.display = 'none';
-      el.style.pointerEvents = 'none';
-    });
+    // NOTA: el ocultamiento de los pines miembros NO va acá. Vive en la
+    // reconciliación de _updateClusters(), porque ahora esta función solo
+    // corre para clusters NUEVOS — los que sobreviven a un pan no pasan por
+    // acá, y sus pines igual tienen que seguir ocultos.
 
     const el = document.createElement('div');
     el.className = 'place-cluster-el';
@@ -1408,6 +1475,7 @@ export class MapView {
     el.addEventListener('pointerup', clearPress, { passive: true });
     el.addEventListener('pointercancel', clearPress, { passive: true });
     el.addEventListener('pointerleave', clearPress, { passive: true });
+    el._clusterClearPress = clearPress; // lo usa _destroyClusterMarker() al eliminar SOLO este cluster
 
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1421,6 +1489,10 @@ export class MapView {
       .addTo(this.map);
 
     this.clusterMarkers.push(marker);
+    if (key) {
+      if (!this._clusterByKey) this._clusterByKey = new Map();
+      this._clusterByKey.set(key, marker);
+    }
   }
 
   // ── Carrusel expandido del cluster (pantalla completa, mapa de fondo) ──
