@@ -300,6 +300,11 @@ function injectLandmarkStyles() {
 // normal (abrir el carrusel) sigue andando igual. Es para descartar de
 // una vez si el freeze en drag/zoom viene de acá o no.
 const LONGPRESS_DISABLED_FOR_TESTING = true;
+// En true: no agrupa NADA en clusters — todos los lugares quedan como
+// pines individuales sueltos. Sirve para aislar si el freeze viene del
+// renderizado propio de los clusters (DOM más pesado, fotos, sombras)
+// en vez de la interacción táctil (el long-press ya se descartó arriba).
+const CLUSTERING_DISABLED_FOR_TESTING = true;
 export class MapView {
   constructor() {
     // CATEGORIES accesible como propiedad de instancia para que app.js pueda actualizarla
@@ -1227,6 +1232,15 @@ export class MapView {
         delete el._clusterHiddenDisplay;
       }
     });
+
+    // ── PRUEBA DE DIAGNÓSTICO TEMPORAL ──────────────────────────────
+    // En true: no agrupa nada — todos los lugares quedan como pines
+    // individuales (ya restaurados arriba), sin ningún sticker de
+    // cluster en el DOM. Sirve para aislar si el freeze en drag/zoom
+    // viene del renderizado propio de los clusters (fotos, sombras,
+    // bordes redondeados, DOM más pesado por marker) en vez de la
+    // interacción táctil del long-press (ya descartada).
+    if (CLUSTERING_DISABLED_FOR_TESTING) return;
 
     if (this.map.getZoom() >= 17.2) return; // ya hay espacio, no agrupar
 
