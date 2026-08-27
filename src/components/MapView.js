@@ -882,7 +882,7 @@ export class MapView {
     // confirma si el multi-lugar recién guardado siquiera LLEGA acá desde
     // el server. Si no aparece en esta lista, el problema es de guardado
     // (SuperUserPanel/API), no de este archivo. Sacar una vez confirmado.
-    console.log('[CLUSTER][reload] pinClusters:', (this.pinClusters || []).map(cd => ({ placeIds: cd.placeIds })));
+    console.log('[CLUSTER][reload] pinClusters:', JSON.stringify((this.pinClusters || []).map(cd => ({ placeIds: cd.placeIds }))));
     this._updateClusters();
   }
 
@@ -1389,13 +1389,12 @@ export class MapView {
         const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
-        // [DEBUG temporal] diagnóstico de "no se genera el custom cluster":
-        // si placeIds tiene ítems pero foundMembers da 0, el problema es un
-        // desfasaje de ID (placeIdOf no matchea lo guardado en el server);
-        // si foundMembers > 0 pero el cluster igual no se ve en el mapa, el
-        // problema está más adelante (reconciliación/render). Sacar esta
-        // línea una vez confirmada la causa.
-        console.log('[CLUSTER][multi]', { placeIds: customDef.placeIds, foundMembers: members.length, totalCandidates: candidates.length });
+        // [DEBUG temporal] versión expandida — la anterior colapsaba los
+        // arrays en la consola ("Array(2)") y no dejaba VER los IDs para
+        // comparar. Acá van los valores reales de ambos lados: lo que
+        // pide el customDef vs lo que placeIdOf() encuentra en pantalla.
+        console.log('[CLUSTER][multi] placeIds pedidos:', JSON.stringify(customDef.placeIds));
+        console.log('[CLUSTER][multi] placeIds en pantalla ahora:', JSON.stringify(candidates.map(c => placeIdOf(c.el._place))));
         if (!members.length) return;
         members.forEach(m => usedEls.add(m.el));
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
