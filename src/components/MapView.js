@@ -2042,7 +2042,22 @@ export class MapView {
     // quedó temporalmente visible en lugar del sticker personalizado —
     // acá se hace el swap inverso: se vuelve a ocultar el wrapper y se
     // muestra de nuevo el sticker, dejando todo como estaba antes del tap.
+    //
+    // _clusterHiddenDisplay ACÁ es crítico, no cosmético: _updateClusters()
+    // arma sus "candidates" filtrando por `display !== 'none'` — si este
+    // wrapper queda oculto SIN esa marca, la próxima vez que corra
+    // _updateClusters() (el propio easeTo() de _showMiniCard sigue
+    // animando unos ms después de cerrado el minicard, y termina
+    // disparando su moveend justo después de este restore) no lo va a
+    // encontrar como miembro, va a armar el cluster como "vacío" y va a
+    // DESTRUIR el sticker entero (_destroyClusterMarker) — el pin
+    // desaparecía del todo unos instantes después de reabrirse. Con la
+    // marca puesta, el paso de "restaurar" al inicio de _updateClusters()
+    // lo vuelve a mostrar un instante (queda como candidate válido) antes
+    // de que el paso de "ocultar miembros" lo esconda de nuevo — mismo
+    // ciclo que cualquier otro miembro de cluster.
     if (wrapper && wrapper._singlePinStickerEl) {
+      wrapper._clusterHiddenDisplay = '';
       wrapper.style.display = 'none';
       wrapper.style.pointerEvents = 'none';
       wrapper._singlePinStickerEl.style.display = '';
