@@ -1339,29 +1339,38 @@ export class MapView {
     const usedEls = new Set();
     const wanted = [];
 
-    // 0) Pines de ESTILO ÚNICO ("cluster" de un solo lugar) — el mismo
-    // sistema de tarjeta/stickers/badge personalizable, pero para UN
-    // lugar en particular en vez de un grupo. A diferencia de los
-    // clusters de abajo, esto NO es una agrupación temporal por
-    // cercanía/zoom — es el pin PERMANENTE de ese lugar, así que se
-    // procesa ACÁ, antes del corte por zoom, y siempre se muestra sin
-    // importar qué tan cerca esté el usuario.
-    (this.pinClusters || []).forEach(customDef => {
-      if ((customDef.placeIds || []).length !== 1) return; // esto es para multi-lugar, ver más abajo
-      const members = candidates.filter(c =>
-        !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
-      );
-      if (!members.length) return;
-      members.forEach(m => usedEls.add(m.el));
-      wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef, single: true });
-    });
+    // Lugares con su PROPIO pin de estilo único definido — se excluyen del
+    // clustering AUTOMÁTICO de abajo (por simple cercanía en pantalla con
+    // vecinos sin relación entre sí). Si no, un lugar ya personalizado a
+    // mano podía quedar arrastrado sin querer dentro de un "+N" genérico
+    // solo por estar físicamente cerca de otros pines sueltos — perdiendo
+    // su diseño individual en zoom bajo sin que el SuperUser lo haya
+    // pedido. SÍ pueden seguir formando parte de un cluster multi-lugar
+    // CURADO a mano (ver paso de arriba), porque ahí la inclusión es
+    // explícita por place_id, no por proximidad accidental.
+    const singleStyledIds = new Set(
+      (this.pinClusters || [])
+        .filter(cd => (cd.placeIds || []).length === 1)
+        .map(cd => cd.placeIds[0])
+    );
 
-    // 1) Clusters PERSONALIZADOS por el SuperUser — fijos por place_id,
-    // sin importar la distancia real entre ellos (curados a mano). Se
-    // renderizan sin importar cuántos lugares tengan — el MIN_GROUP de
-    // abajo solo aplica al clustering automático. A diferencia de los
-    // pines de estilo único de arriba, estos SÍ se disuelven al hacer
-    // zoom (son una agrupación, no el pin permanente de un lugar).
+    // 0) Clusters PERSONALIZADOS por el SuperUser (multi-lugar) — fijos
+    // por place_id, sin importar la distancia real entre ellos (curados a
+    // mano). Se renderizan sin importar cuántos lugares tengan — el
+    // MIN_GROUP de más abajo solo aplica al clustering automático. Estos
+    // SÍ se disuelven al hacer zoom (son una agrupación temporal, no el
+    // pin permanente de un lugar) — por eso van adentro del if de zoom.
+    //
+    // IMPORTANTE: este paso va ANTES que el de "pines de estilo único"
+    // de abajo — mientras el cluster está activo (zoom bajo), reclama a
+    // sus miembros primero, así que el sticker individual de un lugar NO
+    // compite visualmente con el cluster grupal que lo contiene. Recién
+    // cuando el cluster se disuelve (zoom alto, este bloque ni corre) esos
+    // mismos lugares quedan libres para el paso de abajo, que les
+    // devuelve su propio diseño individual en vez del pin de fábrica
+    // genérico — este orden es justamente lo que hace que "un lugar que
+    // ya tenía su pin de estilo único, al zoomear y salir del cluster,
+    // mantenga ESE diseño en vez de resetearse al pin default".
     //
     // placeIdOf() es la ÚNICA fuente de verdad (definida arriba en el
     // módulo, exportada, y usada acá + en _buildClusterStickerHtml +
@@ -1370,7 +1379,7 @@ export class MapView {
     // rompía la edición para lugares sin place_id/id.
     if (this.map.getZoom() < 17.2) {
       (this.pinClusters || []).forEach(customDef => {
-        if ((customDef.placeIds || []).length <= 1) return; // ya procesado en el paso 0
+        if ((customDef.placeIds || []).length <= 1) return; // esto es para 1 solo lugar, ver paso 1 más abajo
         const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
@@ -1379,8 +1388,8 @@ export class MapView {
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
       });
 
-      // 2) Clustering automático por cercanía en pantalla para el resto
-      const remaining = candidates.filter(c => !usedEls.has(c.el));
+      // Clustering automático por cercanía en pantalla para el resto
+      const remaining = candidates.filter(c => !usedEls.has(c.el) && !singleStyledIds.has(placeIdOf(c.el._place)));
       const usedAuto = new Set();
       const groups = [];
       remaining.forEach(item => {
@@ -1401,6 +1410,24 @@ export class MapView {
       groups.filter(g => g.length >= MIN_GROUP)
         .forEach(group => wanted.push({ key: this._clusterKey(group, null), group, customDef: null }));
     }
+
+    // 1) Pines de ESTILO ÚNICO ("cluster" de un solo lugar) — el mismo
+    // sistema de tarjeta/stickers/badge personalizable, pero para UN
+    // lugar en particular en vez de un grupo. A diferencia del paso de
+    // arriba, esto NO es una agrupación temporal por cercanía/zoom — es
+    // el pin PERMANENTE de ese lugar, así que se procesa SIN el corte por
+    // zoom (el `if` de arriba no lo alcanza) y siempre se muestra, salvo
+    // que el lugar esté reclamado en este momento por un cluster grupal
+    // activo (paso de arriba) — ver el comentario largo ahí.
+    (this.pinClusters || []).forEach(customDef => {
+      if ((customDef.placeIds || []).length !== 1) return; // esto es para multi-lugar, ver paso de arriba
+      const members = candidates.filter(c =>
+        !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
+      );
+      if (!members.length) return;
+      members.forEach(m => usedEls.add(m.el));
+      wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef, single: true });
+    });
 
 
     // ── RECONCILIACIÓN — este es el arreglo del freeze del drag ──────────
