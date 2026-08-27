@@ -1299,8 +1299,22 @@ export class MapView {
     // en SuperUserPanel.js) — antes había copias locales ligeramente
     // distintas en cada lugar, y esa desincronización era justo lo que
     // rompía la edición para lugares sin place_id/id.
+    //
+    // ORDEN por tamaño de grupo, de más a menos lugares, ANTES de reclamar
+    // miembros con `usedEls`: sin esto, el forEach reclama en el orden en
+    // que vinieron del server (básicamente orden de creación/edición), así
+    // que una entrada VIEJA de un solo lugar (por ejemplo, un cluster que
+    // en su momento se armó y después quedó con un solo miembro) podía
+    // "ganarle" el lugar a un cluster nuevo de varios lugares que lo
+    // incluye, dejando a ese cluster nuevo con menos miembros de los que
+    // debería — o directamente sin ninguno, si le pasaba a todos sus
+    // integrantes. Procesando primero las entradas más grandes, un grupo
+    // curado a propósito con varios lugares siempre tiene prioridad sobre
+    // una entrada suelta de un solo lugar que quedó de una edición vieja.
     const wanted = [];
-    (this.pinClusters || []).forEach(customDef => {
+    const pinClustersByGroupSize = [...(this.pinClusters || [])]
+      .sort((a, b) => (b.placeIds || []).length - (a.placeIds || []).length);
+    pinClustersByGroupSize.forEach(customDef => {
       const members = candidates.filter(c =>
         !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
       );
