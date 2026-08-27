@@ -1155,11 +1155,35 @@ export class MapView {
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
     const zoom = Math.floor(this.map.getZoom());
+    // Definiciones de pin de ESTILO ÚNICO indexadas por place_id. Sirven
+    // para dos cosas abajo: saber que un pin nunca debe desaparecer del
+    // todo (siempre deja al menos su punto), y de qué color pintar ese
+    // punto — el mismo color de badge que se eligió al personalizarlo.
+    const singleStyleById = new Map();
+    (this.pinClusters || []).forEach(cd => {
+      if ((cd.placeIds || []).length === 1) singleStyleById.set(cd.placeIds[0], cd);
+    });
+
     this.markerEls.forEach(el => {
       if (!el) return;
       const threshold = el._showAtZoom ?? 13;
       // 3 estados: 0=oculto, 1=punto celeste (1 zoom antes), 2=pin completo
-      const state = zoom >= threshold ? 2 : zoom >= threshold - 1 ? 1 : 0;
+      let state = zoom >= threshold ? 2 : zoom >= threshold - 1 ? 1 : 0;
+
+      // Un lugar con pin de estilo único nunca cae al estado 0: aunque
+      // falte zoom para revelarlo, deja su punto de color como señal de
+      // que ahí hay algo. Al alcanzar el zoom, el punto se apaga y el
+      // sticker lo reemplaza (lo dibuja _updateClusters, paso 3).
+      const styleDef = el._place ? singleStyleById.get(placeIdOf(el._place)) : null;
+      if (styleDef && state === 0) state = 1;
+      if (styleDef) {
+        const dotColor = styleDef.badge?.color || '#111827';
+        const d1 = el.querySelector('.place-pin-social-zoomdot');
+        const d2 = el.querySelector('.place-pin-bubble-dot');
+        if (d1) d1.style.background = dotColor;
+        if (d2) d2.style.background = dotColor;
+      }
+
       if (state === el._wpState) return;
       el._wpState   = state;
       el._wpVisible = state === 2;
@@ -1376,17 +1400,6 @@ export class MapView {
     // Los pines de ESTILO ÚNICO no dependen de esto — ver paso 3.
     const clustersActive = this.map.getZoom() < 17.2;
 
-    // Lugares que tienen su PROPIO pin de estilo único definido. Se
-    // excluyen del clustering AUTOMÁTICO (paso 2) para que un pin ya
-    // personalizado a mano no quede tragado por un "+N" genérico solo por
-    // estar cerca de otros pines sueltos sin relación. Sí pueden entrar a
-    // un cluster CURADO (paso 1), porque ahí los agregaste vos a propósito.
-    const singleStyledIds = new Set(
-      (this.pinClusters || [])
-        .filter(cd => (cd.placeIds || []).length === 1)
-        .map(cd => cd.placeIds[0])
-    );
-
     // PRIORIDAD entre filas que compiten por el mismo lugar. Hace falta
     // porque `usedEls` da el lugar a la PRIMERA fila que lo reclama, y en
     // la base conviven muchas filas que reclaman los mismos place_ids
@@ -1435,7 +1448,12 @@ export class MapView {
 
     // 2) Clustering automático por cercanía en pantalla para el resto
     if (clustersActive) {
-    const remaining = candidates.filter(c => !usedEls.has(c.el) && !singleStyledIds.has(placeIdOf(c.el._place)));
+    // Los pines con estilo único NO se excluyen de acá a propósito: si
+    // están lo bastante cerca de otros, se agrupan como cualquier otro
+    // pin y se desagrupan al alejarse. Ese ir y venir con el zoom —
+    // clusters que se forman, se disuelven y se recombinan — es el
+    // comportamiento buscado; excluirlos los volvía fijos.
+    const remaining = candidates.filter(c => !usedEls.has(c.el));
     const usedAuto = new Set();
     const groups = [];
     remaining.forEach(item => {
@@ -1464,10 +1482,20 @@ export class MapView {
     // cluster grupal activo se lo haya reclamado en el paso 1. Por eso,
     // al desintegrarse el cluster, estos lugares no vuelven al pin social
     // genérico sino que recuperan el estilo tipo cluster que definiste.
+    // Usa el pool ESTRICTO (`candidates`, con filtro de visibility) a
+    // propósito: si el pin todavía no llegó a su zoom de revelado, NO se
+    // dibuja el sticker. En su lugar queda su punto de color, que maneja
+    // _updatePinsByZoom (ver el bloque de "punto de color" ahí).
     pinClustersByPriority.forEach(customDef => {
       if ((customDef.placeIds || []).length !== 1) return; // multi-lugar → paso 1
-      const members = candidatesForCustom.filter(c =>
-        !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
+      const members = candidates.filter(c =>
+        !usedEls.has(c.el) &&
+        // _wpState 2 = pin plenamente revelado. En estado 1 el pin sigue
+        // con visibility:visible (por eso pasa el filtro de `candidates`)
+        // pero está mostrando solo su punto de color — ahí el sticker NO
+        // debe dibujarse todavía, o taparía al punto.
+        c.el._wpState === 2 &&
+        (customDef.placeIds || []).includes(placeIdOf(c.el._place))
       );
       if (!members.length) return;
       members.forEach(m => usedEls.add(m.el));
