@@ -947,8 +947,55 @@ export class MapView {
         : (parseFloat(place.rating) >= 3.5) ? 2
         : 3;
 
+      // ── Long-press sobre un pin normal → crear su "pin de estilo
+      // cluster" ────────────────────────────────────────────────────────
+      // Mismo mecanismo que el long-press de un cluster. Una vez creado,
+      // el lugar pasa a renderizarse como sticker (paso 3 de
+      // _updateClusters) y este wrapper queda oculto, así que a partir de
+      // ahí el long-press que lo EDITA es el del sticker, no este. Este
+      // solo sirve para la PRIMERA personalización.
+      let pinPressTimer = null, pinLongPressFired = false, pinStartX = 0, pinStartY = 0;
+      let pinDocMove = null, pinDocUp = null;
+      const pinCleanupDoc = () => {
+        if (pinDocMove) { document.removeEventListener('pointermove', pinDocMove); pinDocMove = null; }
+        if (pinDocUp) { document.removeEventListener('pointerup', pinDocUp); document.removeEventListener('pointercancel', pinDocUp); pinDocUp = null; }
+      };
+      const pinClearPress = () => {
+        if (pinPressTimer) { clearTimeout(pinPressTimer); pinPressTimer = null; }
+        if (this._cancelActiveClusterPress === pinClearPress) this._cancelActiveClusterPress = null;
+        pinCleanupDoc();
+      };
+      el.addEventListener('pointerdown', (e) => {
+        if (!this.onClusterCustomize || this._clusterModalOpen) return;
+        if (this._dragModeActive) return; // reposicionando lugares — no confundir gestos
+        if (pinPressTimer) { pinClearPress(); return; } // 2do dedo (pellizco) — cancelar
+        pinLongPressFired = false;
+        pinStartX = e.clientX; pinStartY = e.clientY;
+        pinPressTimer = setTimeout(() => {
+          pinCleanupDoc();
+          pinLongPressFired = true;
+          this._cancelActiveClusterPress = null;
+          this.haptic('longpress');
+          this._clusterModalOpen = true;
+          const ll = el._marker.getLngLat();
+          this.onClusterCustomize([{ el, ll, px: this.map.project(ll) }], null);
+        }, 550);
+        this._cancelActiveClusterPress = pinClearPress;
+        pinDocMove = (e2) => {
+          if (pinPressTimer && (Math.abs(e2.clientX - pinStartX) > 5 || Math.abs(e2.clientY - pinStartY) > 5)) pinClearPress();
+        };
+        pinDocUp = () => pinClearPress();
+        document.addEventListener('pointermove', pinDocMove, { passive: true });
+        document.addEventListener('pointerup', pinDocUp, { passive: true });
+        document.addEventListener('pointercancel', pinDocUp, { passive: true });
+      }, { passive: true });
+      el.addEventListener('pointerup', pinClearPress, { passive: true });
+      el.addEventListener('pointercancel', pinClearPress, { passive: true });
+      el.addEventListener('pointerleave', pinClearPress, { passive: true });
+
       el.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (pinLongPressFired) { pinLongPressFired = false; return; } // el long-press ya actuó
         // ── Reposicionar lugares (SuperUserPanel) ──────────────
         if (this._dragModeActive) {
           this.haptic('select');
@@ -1275,7 +1322,13 @@ export class MapView {
       }
     });
 
-    if (this.map.getZoom() >= 17.2) { this._clearClusters(); return; } // ya hay espacio, no agrupar
+    // NOTA: acá había un `if (zoom >= 17.2) { _clearClusters(); return; }`.
+    // Se sacó porque los pines de ESTILO ÚNICO (paso 3) tienen que
+    // renderizarse también a zoom alto — justo cuando el cluster grupal se
+    // desintegra. El corte por zoom ahora es la bandera `clustersActive`,
+    // que apaga solo los pasos 1 y 2 (los agrupamientos). La limpieza de
+    // los clusters que dejaron de corresponder la hace la reconciliación
+    // del final, que ya destruye todo lo que no esté en `wanted`.
 
     const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar (auto)
     const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster (auto)
@@ -1315,18 +1368,25 @@ export class MapView {
       });
 
     const usedEls = new Set();
-
-    // 1) Clusters PERSONALIZADOS por el SuperUser — fijos por place_id,
-    // sin importar la distancia real entre ellos (curados a mano). Se
-    // renderizan sin importar cuántos lugares tengan — el MIN_GROUP de
-    // abajo solo aplica al clustering automático.
-    //
-    // placeIdOf() es la ÚNICA fuente de verdad (definida arriba en el
-    // módulo, exportada, y usada acá + en _buildClusterStickerHtml +
-    // en SuperUserPanel.js) — antes había copias locales ligeramente
-    // distintas en cada lugar, y esa desincronización era justo lo que
-    // rompía la edición para lugares sin place_id/id.
     const wanted = [];
+
+    // ¿Está activo el agrupamiento? Los clusters GRUPALES (curados de
+    // varios lugares + automáticos por cercanía) solo existen por debajo
+    // de este zoom: más cerca ya hay lugar para mostrar cada pin suelto.
+    // Los pines de ESTILO ÚNICO no dependen de esto — ver paso 3.
+    const clustersActive = this.map.getZoom() < 17.2;
+
+    // Lugares que tienen su PROPIO pin de estilo único definido. Se
+    // excluyen del clustering AUTOMÁTICO (paso 2) para que un pin ya
+    // personalizado a mano no quede tragado por un "+N" genérico solo por
+    // estar cerca de otros pines sueltos sin relación. Sí pueden entrar a
+    // un cluster CURADO (paso 1), porque ahí los agregaste vos a propósito.
+    const singleStyledIds = new Set(
+      (this.pinClusters || [])
+        .filter(cd => (cd.placeIds || []).length === 1)
+        .map(cd => cd.placeIds[0])
+    );
+
     // PRIORIDAD entre filas que compiten por el mismo lugar. Hace falta
     // porque `usedEls` da el lugar a la PRIMERA fila que lo reclama, y en
     // la base conviven muchas filas que reclaman los mismos place_ids
@@ -1337,8 +1397,7 @@ export class MapView {
     //
     // 1º la más RECIENTE: si acabás de crear o editar un cluster, esa es
     //    la intención vigente y debe ganarle a cualquier fila anterior.
-    // 2º a igualdad de fecha, la que agrupa MÁS lugares: un grupo curado
-    //    de varios le gana a una entrada suelta de uno.
+    // 2º a igualdad de fecha, la que agrupa MÁS lugares.
     const pinClustersByPriority = [...(this.pinClusters || [])]
       .sort((a, b) => {
         const ta = Date.parse(a.updatedAt || '') || 0;
@@ -1346,17 +1405,37 @@ export class MapView {
         if (tb !== ta) return tb - ta;
         return (b.placeIds || []).length - (a.placeIds || []).length;
       });
-    pinClustersByPriority.forEach(customDef => {
-      const members = candidatesForCustom.filter(c =>
-        !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
-      );
-      if (!members.length) return;
-      members.forEach(m => usedEls.add(m.el));
-      wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
-    });
+
+    // 1) Clusters GRUPALES personalizados por el SuperUser — fijos por
+    // place_id, sin importar la distancia real entre ellos (curados a
+    // mano). Van ANTES que los pines de estilo único del paso 3: mientras
+    // el cluster está activo, reclama a sus miembros primero, así que un
+    // lugar con estilo propio que además pertenece a un cluster se ve
+    // COMO PARTE DEL CLUSTER, no como pin suelto. Recién cuando el
+    // cluster se desintegra (zoom alto → clustersActive false → este paso
+    // ni corre) ese lugar queda libre y el paso 3 le devuelve su diseño
+    // individual — que es exactamente el comportamiento pedido.
+    //
+    // placeIdOf() es la ÚNICA fuente de verdad (definida arriba en el
+    // módulo, exportada, y usada acá + en _buildClusterStickerHtml +
+    // en SuperUserPanel.js) — antes había copias locales ligeramente
+    // distintas en cada lugar, y esa desincronización era justo lo que
+    // rompía la edición para lugares sin place_id/id.
+    if (clustersActive) {
+      pinClustersByPriority.forEach(customDef => {
+        if ((customDef.placeIds || []).length <= 1) return; // de un solo lugar → paso 3
+        const members = candidatesForCustom.filter(c =>
+          !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
+        );
+        if (!members.length) return;
+        members.forEach(m => usedEls.add(m.el));
+        wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
+      });
+    }
 
     // 2) Clustering automático por cercanía en pantalla para el resto
-    const remaining = candidates.filter(c => !usedEls.has(c.el));
+    if (clustersActive) {
+    const remaining = candidates.filter(c => !usedEls.has(c.el) && !singleStyledIds.has(placeIdOf(c.el._place)));
     const usedAuto = new Set();
     const groups = [];
     remaining.forEach(item => {
@@ -1376,6 +1455,24 @@ export class MapView {
 
     groups.filter(g => g.length >= MIN_GROUP)
       .forEach(group => wanted.push({ key: this._clusterKey(group, null), group, customDef: null }));
+    }
+
+    // 3) Pines de ESTILO ÚNICO — un "cluster" de UN solo lugar. Misma
+    // maquinaria de tarjeta/stickers/badge/etiqueta, pero para el pin
+    // permanente de ese lugar. NO tiene corte por zoom (queda fuera del
+    // `if (clustersActive)`): se muestra siempre, salvo mientras un
+    // cluster grupal activo se lo haya reclamado en el paso 1. Por eso,
+    // al desintegrarse el cluster, estos lugares no vuelven al pin social
+    // genérico sino que recuperan el estilo tipo cluster que definiste.
+    pinClustersByPriority.forEach(customDef => {
+      if ((customDef.placeIds || []).length !== 1) return; // multi-lugar → paso 1
+      const members = candidatesForCustom.filter(c =>
+        !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
+      );
+      if (!members.length) return;
+      members.forEach(m => usedEls.add(m.el));
+      wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
+    });
 
     // ── RECONCILIACIÓN — este es el arreglo del freeze del drag ──────────
     // Antes esta función arrancaba con _clearClusters(): en CADA moveend y
@@ -1411,6 +1508,11 @@ export class MapView {
       // escribir estilo (y por lo tanto invalidar layout) cuando ya estaba
       // oculto, que es el caso normal en un pan.
       w.group.forEach(({ el }) => {
+        // Si este miembro es el wrapper que está mostrando el minicard
+        // ABIERTO, no ocultarlo: el easeTo() de _showMiniCard dispara su
+        // propio moveend a mitad del paneo y, sin este guard, la
+        // reconciliación cerraba el minicard sola.
+        if (el === this.miniCardMarker?.getElement()) return;
         if (el.style.display === 'none') return;
         el._clusterHiddenDisplay = el.style.display;
         el.style.display = 'none';
@@ -1449,6 +1551,14 @@ export class MapView {
     // directamente, sin ambigüedad posible.
     el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
+
+    // Pin de ESTILO ÚNICO (un solo lugar — ver paso 3 de _updateClusters):
+    // el tap NO abre el carrusel de cluster, abre el minicard normal del
+    // lugar como cualquier pin. _showMiniCard trabaja sobre el wrapper "de
+    // fábrica" de ese lugar (no sobre este sticker), así que se guarda la
+    // referencia cruzada para poder hacer el swap en el click.
+    const isSinglePin = group.length === 1;
+    if (isSinglePin) group[0].el._singlePinStickerEl = el;
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
     let docMoveHandler = null, docUpHandler = null;
@@ -1520,6 +1630,20 @@ export class MapView {
       e.stopPropagation();
       if (longPressFired) { longPressFired = false; return; } // el long-press ya actuó, no abrir el carrusel también
       this.haptic('tap');
+      if (isSinglePin) {
+        const memberEl = group[0].el;
+        const index    = this.markerEls.indexOf(memberEl);
+        if (index === -1) return;
+        // Swap: ocultar el sticker y mostrar el wrapper de fábrica, que es
+        // donde _showMiniCard infla la burbuja. El swap inverso ocurre en
+        // _restorePin() al cerrarse el minicard.
+        el.style.display = 'none';
+        memberEl.style.display = '';
+        memberEl.style.pointerEvents = '';
+        const p = memberEl._place;
+        this._showMiniCard(p, index, p.photoUrl || p.photo_url || p.photosUrls?.[0] || null);
+        return;
+      }
       this._openClusterExpand(group);
     });
 
@@ -1967,6 +2091,22 @@ export class MapView {
       wrapper.querySelectorAll('.place-act-badge').forEach(function(b) {
         b.style.opacity = z >= 15 ? '1' : '0';
       });
+    }
+    // Pin de ESTILO ÚNICO: mientras el minicard estuvo abierto, el wrapper
+    // de fábrica quedó visible en lugar del sticker. Acá se revierte.
+    //
+    // _clusterHiddenDisplay es CRÍTICO acá, no cosmético: _updateClusters()
+    // arma sus candidatos filtrando por `display !== 'none'`. Si el wrapper
+    // queda oculto SIN esa marca, el easeTo() de _showMiniCard —que sigue
+    // animando unos ms después de cerrado el minicard— dispara su moveend,
+    // _updateClusters() no encuentra al miembro, arma el cluster vacío y
+    // DESTRUYE el sticker. Con la marca, el bloque de "restaurar" del
+    // inicio lo vuelve a mostrar y el ciclo sigue normal.
+    if (wrapper && wrapper._singlePinStickerEl) {
+      wrapper._clusterHiddenDisplay = '';
+      wrapper.style.display = 'none';
+      wrapper.style.pointerEvents = 'none';
+      wrapper._singlePinStickerEl.style.display = '';
     }
     // Estado ya limpiado en _closeMiniCard — no tocar aquí
   }
@@ -2708,7 +2848,32 @@ export function _buildClusterStickerHtml(group, customDef) {
   const bRot = badge.rotation ?? 0;
   const bZ = badge.z ?? 30;
   const bSize = 22 * bScale;
-  const badgeHtml = `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;">+${group.length}</div>`;
+  // Texto del badge: si hay un `label` explícito lo usa (sirve tanto para
+  // clusters — "Top 5", "Centro" — como para un pin individual de estilo
+  // cluster, donde el conteo automático "+1" no tendría sentido). Si no
+  // hay label y es un grupo real (>1), cae al "+N" de siempre. Si no hay
+  // label y es un solo lugar, no se dibuja badge — recién aparece cuando
+  // el SuperUser le escribe algo.
+  const bText = typeof badge.label === 'string' && badge.label ? badge.label
+    : group.length > 1 ? `+${group.length}`
+    : '';
+  const badgeHtml = bText ? `<div data-badge style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;white-space:nowrap;">${bText}</div>` : '';
+
+  // ── Etiqueta SEPARADA (no es el badge) ──────────────────────────────
+  // Texto libre e independiente, pensado para el nombre del lugar al lado
+  // o debajo del pin, sin pisar el badge. Mismo patrón dx/dy/rotation/z
+  // que el resto de los elementos; solo se dibuja si tiene texto.
+  const label = customDef?.label || {};
+  const lText = typeof label.text === 'string' ? label.text : '';
+  const labelHtml = lText ? (() => {
+    const lDx = label.dx ?? 0, lDy = label.dy ?? 44; // default: debajo del pin
+    const lRot = label.rotation ?? 0;
+    const lScale = label.scale ?? 1;
+    const lColor = label.color || '#1a1a2e';
+    const lBg = label.bg || 'rgba(255,255,255,0.92)';
+    const lZ = label.z ?? 25;
+    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${4 * lScale}px ${9 * lScale}px;border-radius:${8 * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:'Inter Tight',system-ui,sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
+  })() : '';
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
   // hay tarjetas/stickers desplazados afuera) pero es puramente un marco
@@ -2718,7 +2883,7 @@ export function _buildClusterStickerHtml(group, customDef) {
   // tocado el cluster. Cada pieza visible (tarjeta/sticker/badge)
   // reactiva pointer-events:auto por separado arriba — así solo lo que
   // realmente se VE es tappeable, nada más.
-  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;pointer-events:none;">${cardsHtml}${stickersHtml}${badgeHtml}</div>`;
+  return `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:120px;pointer-events:none;">${cardsHtml}${stickersHtml}${badgeHtml}${labelHtml}</div>`;
 }
 
 
