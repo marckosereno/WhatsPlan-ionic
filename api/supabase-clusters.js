@@ -20,11 +20,16 @@ async function listClusters(res) {
   const rows = await response.json();
 
   const clusters = rows.map(r => ({
-    id:       r.id,
-    placeIds: r.place_ids || [],
-    cards:    Array.isArray(r.cards) ? r.cards : [],
-    stickers: Array.isArray(r.stickers) ? r.stickers : [],
-    badge:    r.badge && typeof r.badge === 'object' ? r.badge : null,
+    id:        r.id,
+    placeIds:  r.place_ids || [],
+    cards:     Array.isArray(r.cards) ? r.cards : [],
+    stickers:  Array.isArray(r.stickers) ? r.stickers : [],
+    badge:     r.badge && typeof r.badge === 'object' ? r.badge : null,
+    // Necesario en el cliente para resolver el conflicto cuando VARIAS
+    // filas reclaman el mismo place_id (pasa fácil: cada vez que se
+    // personaliza un grupo se crea una fila nueva, y las viejas quedan).
+    // _updateClusters() usa esto para que gane la más reciente.
+    updatedAt: r.updated_at || null,
   }));
 
   return res.status(200).json({ success: true, clusters });
@@ -78,6 +83,47 @@ async function saveCluster(body, res) {
   return res.status(200).json({ success: true, cluster: data[0] });
 }
 
+// Borra las filas OBSOLETAS: aquellas cuyos place_ids ya están todos
+// reclamados por filas más recientes. Es la basura que se acumula porque
+// cada personalización crea una fila nueva sin borrar la anterior — y como
+// _updateClusters() no deja que un lugar esté en dos clusters a la vez,
+// esas filas viejas compiten por los mismos lugares y hacen que clusters
+// legítimos no se rendericen. Se corre a mano desde la consola:
+//   fetch('/api/supabase-clusters',{method:'POST',headers:{'Content-Type':'application/json'},
+//     body:JSON.stringify({action:'cleanup'})}).then(r=>r.json()).then(console.log)
+async function cleanupClusters(res) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/pin_clusters?select=*`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!response.ok) throw new Error(`Supabase error ${response.status}: ${await response.text()}`);
+  const rows = await response.json();
+
+  // Más reciente primero — misma prioridad que usa el cliente al render.
+  rows.sort((a, b) => (Date.parse(b.updated_at || '') || 0) - (Date.parse(a.updated_at || '') || 0));
+
+  const claimed = new Set();
+  const obsolete = [];
+  for (const r of rows) {
+    const ids = r.place_ids || [];
+    // Si NINGUNO de sus lugares sigue libre, esta fila ya no puede
+    // renderizarse nunca — es exactamente lo que el cliente descarta con
+    // `if (!members.length) return`.
+    const stillUseful = ids.some(id => !claimed.has(id));
+    if (!stillUseful) { obsolete.push(r.id); continue; }
+    ids.forEach(id => claimed.add(id));
+  }
+
+  if (!obsolete.length) return res.status(200).json({ success: true, deleted: 0, message: 'No había clusters obsoletos.' });
+
+  const idList = obsolete.map(id => `"${id}"`).join(',');
+  const del = await fetch(`${SUPABASE_URL}/rest/v1/pin_clusters?id=in.(${encodeURIComponent(idList)})`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!del.ok) throw new Error(`Supabase error ${del.status}: ${await del.text()}`);
+  return res.status(200).json({ success: true, deleted: obsolete.length, ids: obsolete });
+}
+
 async function deleteCluster(body, res) {
   const { id } = body;
   if (!id) return res.status(400).json({ success: false, message: 'id es requerido' });
@@ -102,6 +148,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const body = req.body || {};
       if (body.action === 'delete') return await deleteCluster(body, res);
+      if (body.action === 'cleanup') return await cleanupClusters(res);
       return await saveCluster(body, res); // 'save' es el default si no viene action
     }
 
