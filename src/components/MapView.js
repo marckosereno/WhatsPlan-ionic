@@ -878,6 +878,11 @@ export class MapView {
   }
   async reloadPinClusters() {
     await this._loadPinClusters();
+    // [DEBUG temporal] diagnóstico de "no se genera el custom cluster":
+    // confirma si el multi-lugar recién guardado siquiera LLEGA acá desde
+    // el server. Si no aparece en esta lista, el problema es de guardado
+    // (SuperUserPanel/API), no de este archivo. Sacar una vez confirmado.
+    console.log('[CLUSTER][reload] pinClusters:', (this.pinClusters || []).map(cd => ({ placeIds: cd.placeIds })));
     this._updateClusters();
   }
 
@@ -1384,6 +1389,13 @@ export class MapView {
         const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
+        // [DEBUG temporal] diagnóstico de "no se genera el custom cluster":
+        // si placeIds tiene ítems pero foundMembers da 0, el problema es un
+        // desfasaje de ID (placeIdOf no matchea lo guardado en el server);
+        // si foundMembers > 0 pero el cluster igual no se ve en el mapa, el
+        // problema está más adelante (reconciliación/render). Sacar esta
+        // línea una vez confirmada la causa.
+        console.log('[CLUSTER][multi]', { placeIds: customDef.placeIds, foundMembers: members.length, totalCandidates: candidates.length });
         if (!members.length) return;
         members.forEach(m => usedEls.add(m.el));
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
@@ -2072,7 +2084,22 @@ export class MapView {
     // quedó temporalmente visible en lugar del sticker personalizado —
     // acá se hace el swap inverso: se vuelve a ocultar el wrapper y se
     // muestra de nuevo el sticker, dejando todo como estaba antes del tap.
+    //
+    // _clusterHiddenDisplay ACÁ es crítico, no cosmético: _updateClusters()
+    // arma sus "candidates" filtrando por `display !== 'none'` — si este
+    // wrapper queda oculto SIN esa marca, la próxima vez que corra
+    // _updateClusters() (el propio easeTo() de _showMiniCard sigue
+    // animando unos ms después de cerrado el minicard, y termina
+    // disparando su moveend justo después de este restore) no lo va a
+    // encontrar como miembro, va a armar el cluster como "vacío" y va a
+    // DESTRUIR el sticker entero (_destroyClusterMarker) — el pin
+    // desaparecía del todo unos instantes después de reabrirse. Con la
+    // marca puesta, el paso de "restaurar" al inicio de _updateClusters()
+    // lo vuelve a mostrar un instante (queda como candidate válido) antes
+    // de que el paso de "ocultar miembros" lo esconda de nuevo — mismo
+    // ciclo que cualquier otro miembro de cluster.
     if (wrapper && wrapper._singlePinStickerEl) {
+      wrapper._clusterHiddenDisplay = '';
       wrapper.style.display = 'none';
       wrapper.style.pointerEvents = 'none';
       wrapper._singlePinStickerEl.style.display = '';
