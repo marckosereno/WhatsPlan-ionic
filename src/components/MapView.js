@@ -1436,7 +1436,16 @@ export class MapView {
       // función los volvió a mostrar a todos. El guard de display evita
       // escribir estilo (y por lo tanto invalidar layout) cuando ya estaba
       // oculto, que es el caso normal en un pan.
+      //
+      // EXCEPCIÓN: si este miembro es justo el wrapper que está mostrando
+      // el minicard ABIERTO en este momento (pin de estilo único, tap →
+      // swap → _showMiniCard), NO ocultarlo. _showMiniCard hace un
+      // map.easeTo() para centrar el pin, y ese easeTo dispara su propio
+      // moveend → _updateClusters() — sin este chequeo, la reconciliación
+      // volvía a ocultar el wrapper A MITAD del paneo, cerrando el
+      // minicard solo (se veía como que "se abre y se oculta rápido").
       w.group.forEach(({ el }) => {
+        if (el === this.miniCardMarker?.getElement()) return;
         if (el.style.display === 'none') return;
         el._clusterHiddenDisplay = el.style.display;
         el.style.display = 'none';
