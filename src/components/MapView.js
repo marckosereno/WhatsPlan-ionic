@@ -1341,6 +1341,26 @@ export class MapView {
         return { el, ll, px: this.map.project(ll) };
       });
 
+    // Pool AMPLIO — sin el filtro de `visibility`, solo `display !== 'none'`
+    // — para los clusters CURADOS a mano (multi y de un solo lugar). El
+    // sistema de revelado progresivo (_updatePinsByZoom) pone
+    // `visibility:hidden` a los pines de tier bajo cuando el zoom actual
+    // todavía no les toca aparecer solos — que es EXACTAMENTE el rango de
+    // zoom donde viven los clusters (<17.2). Filtrar por `candidates`
+    // (el pool estricto) acá excluía sin querer a cualquier lugar de tier
+    // bajo de CUALQUIER cluster curado, sin importar que el SuperUser lo
+    // haya agregado a mano por place_id explícito — el cluster quedaba
+    // guardado en el server pero nunca podía renderizarse porque le
+    // "faltaban" justo esos miembros. El clustering AUTOMÁTICO (por
+    // cercanía, sin curar) sigue usando el pool estricto de arriba: no
+    // tiene sentido agrupar puntos que ni siquiera se están mostrando.
+    const candidatesForCustom = this.markerEls
+      .filter(el => el.style.display !== 'none' && el._place)
+      .map(el => {
+        const ll = el._marker.getLngLat();
+        return { el, ll, px: this.map.project(ll) };
+      });
+
     const usedEls = new Set();
     const wanted = [];
 
@@ -1386,15 +1406,17 @@ export class MapView {
     if (this.map.getZoom() < 17.2) {
       (this.pinClusters || []).forEach(customDef => {
         if ((customDef.placeIds || []).length <= 1) return; // esto es para 1 solo lugar, ver paso 1 más abajo
-        const members = candidates.filter(c =>
+        const members = candidatesForCustom.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
         // [DEBUG temporal] versión expandida — la anterior colapsaba los
         // arrays en la consola ("Array(2)") y no dejaba VER los IDs para
         // comparar. Acá van los valores reales de ambos lados: lo que
-        // pide el customDef vs lo que placeIdOf() encuentra en pantalla.
+        // pide el customDef vs lo que placeIdOf() encuentra en pantalla
+        // (pool amplio, incluye tier-hidden — así ya no debería dar 0
+        // solo por estar en un tier bajo a este zoom).
         console.log('[CLUSTER][multi] placeIds pedidos:', JSON.stringify(customDef.placeIds));
-        console.log('[CLUSTER][multi] placeIds en pantalla ahora:', JSON.stringify(candidates.map(c => placeIdOf(c.el._place))));
+        console.log('[CLUSTER][multi] placeIds en pantalla ahora (pool amplio):', JSON.stringify(candidatesForCustom.map(c => placeIdOf(c.el._place))));
         if (!members.length) return;
         members.forEach(m => usedEls.add(m.el));
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
@@ -1435,7 +1457,7 @@ export class MapView {
     // activo (paso de arriba) — ver el comentario largo ahí.
     (this.pinClusters || []).forEach(customDef => {
       if ((customDef.placeIds || []).length !== 1) return; // esto es para multi-lugar, ver paso de arriba
-      const members = candidates.filter(c =>
+      const members = candidatesForCustom.filter(c =>
         !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
       );
       if (!members.length) return;
