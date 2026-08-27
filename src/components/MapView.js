@@ -1287,6 +1287,33 @@ export class MapView {
         return { el, ll, px: this.map.project(ll) };
       });
 
+    // Pool AMPLIO para los clusters CURADOS a mano (paso 1). NO filtra por
+    // `visibility`, solo por `display`.
+    //
+    // Por qué hace falta: _updatePinsByZoom() le pone visibility:'hidden'
+    // a todo pin cuyo _showAtZoom sea mayor al zoom actual (revelado
+    // progresivo). Pero el buscador "+ Agregar lugar" del editor busca en
+    // mapView.allPlaces — TODOS los lugares de la categoría, ocultos
+    // incluidos. O sea que el editor te deja armar un cluster con lugares
+    // que, al zoom en que los clusters existen (<17.2), están ocultos por
+    // tier y por lo tanto NO estaban en `candidates` — el cluster se
+    // guardaba bien en Supabase pero acá nunca encontraba a sus miembros
+    // y el `if (!members.length) return` lo descartaba entero. Por eso
+    // fallaba incluso agregando un solo lugar.
+    //
+    // El clustering AUTOMÁTICO (paso 2) sigue usando `candidates`: ahí sí
+    // corresponde exigir visibilidad real, porque agrupa por cercanía en
+    // pantalla y no tiene sentido agrupar puntos que no se están viendo.
+    // Una curación explícita por place_id es otra cosa: es una decisión
+    // del SuperUser y debe respetarse aunque el tier todavía no revele
+    // ese pin por su cuenta.
+    const candidatesForCustom = this.markerEls
+      .filter(el => el.style.display !== 'none' && el._place)
+      .map(el => {
+        const ll = el._marker.getLngLat();
+        return { el, ll, px: this.map.project(ll) };
+      });
+
     const usedEls = new Set();
 
     // 1) Clusters PERSONALIZADOS por el SuperUser — fijos por place_id,
@@ -1299,23 +1326,28 @@ export class MapView {
     // en SuperUserPanel.js) — antes había copias locales ligeramente
     // distintas en cada lugar, y esa desincronización era justo lo que
     // rompía la edición para lugares sin place_id/id.
-    //
-    // ORDEN por tamaño de grupo, de más a menos lugares, ANTES de reclamar
-    // miembros con `usedEls`: sin esto, el forEach reclama en el orden en
-    // que vinieron del server (básicamente orden de creación/edición), así
-    // que una entrada VIEJA de un solo lugar (por ejemplo, un cluster que
-    // en su momento se armó y después quedó con un solo miembro) podía
-    // "ganarle" el lugar a un cluster nuevo de varios lugares que lo
-    // incluye, dejando a ese cluster nuevo con menos miembros de los que
-    // debería — o directamente sin ninguno, si le pasaba a todos sus
-    // integrantes. Procesando primero las entradas más grandes, un grupo
-    // curado a propósito con varios lugares siempre tiene prioridad sobre
-    // una entrada suelta de un solo lugar que quedó de una edición vieja.
     const wanted = [];
-    const pinClustersByGroupSize = [...(this.pinClusters || [])]
-      .sort((a, b) => (b.placeIds || []).length - (a.placeIds || []).length);
-    pinClustersByGroupSize.forEach(customDef => {
-      const members = candidates.filter(c =>
+    // PRIORIDAD entre filas que compiten por el mismo lugar. Hace falta
+    // porque `usedEls` da el lugar a la PRIMERA fila que lo reclama, y en
+    // la base conviven muchas filas que reclaman los mismos place_ids
+    // (cada personalización de un grupo crea una fila nueva; las viejas
+    // quedan). Sin un criterio explícito ganaba una cualquiera — el orden
+    // en que Supabase devolviera las filas — y el cluster recién creado
+    // se quedaba sin miembros y no se renderizaba nunca.
+    //
+    // 1º la más RECIENTE: si acabás de crear o editar un cluster, esa es
+    //    la intención vigente y debe ganarle a cualquier fila anterior.
+    // 2º a igualdad de fecha, la que agrupa MÁS lugares: un grupo curado
+    //    de varios le gana a una entrada suelta de uno.
+    const pinClustersByPriority = [...(this.pinClusters || [])]
+      .sort((a, b) => {
+        const ta = Date.parse(a.updatedAt || '') || 0;
+        const tb = Date.parse(b.updatedAt || '') || 0;
+        if (tb !== ta) return tb - ta;
+        return (b.placeIds || []).length - (a.placeIds || []).length;
+      });
+    pinClustersByPriority.forEach(customDef => {
+      const members = candidatesForCustom.filter(c =>
         !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
       );
       if (!members.length) return;
