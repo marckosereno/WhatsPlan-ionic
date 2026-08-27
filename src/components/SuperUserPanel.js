@@ -789,12 +789,28 @@ export class SuperUserPanel {
       // Versiones viejas guardaban `badgeColor` como string suelto en vez
       // de `badge.color` — se acepta cualquiera de los dos acá.
       color: (b && typeof b.color === 'string' ? b.color : (typeof b === 'string' ? b : '#111827')),
+      // Texto custom del badge — si está vacío, _buildClusterStickerHtml
+      // cae al conteo automático "+N" (o a nada, si es un pin de un solo
+      // lugar). Pensado para reemplazar el "+1" sin sentido de un pin
+      // único por texto propio ("Nuevo", "Top", etc).
+      label: b && typeof b.label === 'string' ? b.label : '',
       z: b && Number.isFinite(b.z) ? b.z : 30,
+    });
+    const sanitizeLabel = (l) => ({
+      text: l && typeof l.text === 'string' ? l.text : '',
+      dx: l && Number.isFinite(l.dx) ? l.dx : 0,
+      dy: l && Number.isFinite(l.dy) ? l.dy : 44,
+      scale: l && Number.isFinite(l.scale) && l.scale > 0 ? l.scale : 1,
+      rotation: l && Number.isFinite(l.rotation) ? l.rotation : 0,
+      color: l && typeof l.color === 'string' ? l.color : '#1a1a2e',
+      bg: l && typeof l.bg === 'string' ? l.bg : 'rgba(255,255,255,0.92)',
+      z: l && Number.isFinite(l.z) ? l.z : 25,
     });
 
     let cards    = isEdit ? (existingCluster.cards || []).map(sanitizeCard).filter(Boolean) : [];
     let stickers = isEdit ? (existingCluster.stickers || []).map(sanitizeSticker).filter(Boolean) : [];
     let badge    = sanitizeBadge(isEdit ? existingCluster.badge : null);
+    let label    = sanitizeLabel(isEdit ? existingCluster.label : null);
 
     let shownPlaces = groupPlaces.slice(0, CLUSTER_MAX_CARDS);
     let sel = null; // {kind:'card'|'sticker'|'badge', idx}
@@ -805,7 +821,7 @@ export class SuperUserPanel {
     modal.innerHTML = `
       <div class="su-modal-box" style="max-width:400px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:15px;font-weight:700;color:#e5e7eb;">${isEdit ? '✏️ Editar' : '✨ Personalizar'} cluster</span>
+          <span style="font-size:15px;font-weight:700;color:#e5e7eb;">${isEdit ? '✏️ Editar' : '✨ Personalizar'} ${groupPlaces.length === 1 ? 'pin' : 'cluster'}</span>
           <button type="button" id="su-cluster-close" style="background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
 
@@ -847,6 +863,11 @@ export class SuperUserPanel {
           </div>
 
           <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Etiqueta de texto (separada del badge)</div>
+            <button type="button" id="su-cluster-label-chip" style="padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10.5px;cursor:pointer;">🏷️ ${label.text ? 'Editar etiqueta' : 'Agregar etiqueta'}</button>
+          </div>
+
+          <div>
             <div id="su-cluster-places-count" style="font-size:10px;color:#6b7280;margin-bottom:5px;">Lugares incluidos (${groupPlaces.length})</div>
             <div id="su-cluster-places-list" style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow-y:auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;margin-bottom:8px;"></div>
             <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Agregar otro lugar (de toda la categoría, no solo los cercanos)</div>
@@ -864,7 +885,7 @@ export class SuperUserPanel {
     document.body.appendChild(modal);
 
     const previewEl = modal.querySelector('#su-cluster-preview');
-    const currentCustomDef = () => ({ cards, stickers, badge });
+    const currentCustomDef = () => ({ cards, stickers, badge, label });
 
     const getCardOverride = (pid) => {
       let c = cards.find(c => c.placeId === pid);
@@ -907,6 +928,8 @@ export class SuperUserPanel {
       stickers.forEach((s, i) => { if (s.z == null) s.z = 20 + i; list.push({ kind: 'sticker', ref: s }); });
       if (badge.z == null) badge.z = 30;
       list.push({ kind: 'badge', ref: badge });
+      if (label.z == null) label.z = 25;
+      if (label.text) list.push({ kind: 'label', ref: label }); // solo entra al orden si tiene texto (si no, no se dibuja)
       // Deduplicar z repetidos (de datos viejos) reasignando en el
       // mismo orden en que ya estaban, sin cambiar el orden visual actual.
       const seen = new Set();
@@ -944,7 +967,7 @@ export class SuperUserPanel {
         // el drag arrancaba justo sobre una tarjeta/sticker/badge (el
         // "barrido" — MapLibre perdía el manejo fluido por compositor y
         // pasaba a un fallback más entrecortado).
-        wrap.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge]').forEach(node => {
+        wrap.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge],[data-label]').forEach(node => {
           node.style.touchAction = 'none';
         });
         wrap.querySelectorAll('[data-card-idx]').forEach(node => {
@@ -957,6 +980,8 @@ export class SuperUserPanel {
         });
         const badgeNode = wrap.querySelector('[data-badge]');
         if (badgeNode && sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
+        const labelNode = wrap.querySelector('[data-label]');
+        if (labelNode && sel?.kind === 'label') { labelNode.style.outline = '2px dashed #67e8f9'; labelNode.style.outlineOffset = '2px'; }
       } catch (err) {
         // Con los datos ya saneados esto no debería pasar más, pero si
         // algo se escapa igual, que quede bien visible en la consola en
@@ -989,6 +1014,7 @@ export class SuperUserPanel {
           return { kind: 'sticker', idx, obj: stickers[idx] };
         }
         if (node.hasAttribute('data-badge')) return { kind: 'badge', idx: 0, obj: badge };
+        if (node.hasAttribute('data-label')) return { kind: 'label', idx: 0, obj: label };
       } catch (err) {
         console.error('[CLUSTER] resolveNode() excepción:', err);
       }
@@ -1007,6 +1033,7 @@ export class SuperUserPanel {
       if (sel.kind === 'card') node = wrap.querySelector(`[data-card-idx="${sel.idx}"]`);
       else if (sel.kind === 'sticker') node = wrap.querySelector(`[data-sticker-idx="${sel.idx}"]`);
       else if (sel.kind === 'badge') node = wrap.querySelector('[data-badge]');
+      else if (sel.kind === 'label') node = wrap.querySelector('[data-label]');
       if (!node) return null;
       const r = resolveNode(node);
       return r ? { node, obj: r.obj } : null;
@@ -1031,7 +1058,7 @@ export class SuperUserPanel {
 
     previewEl.addEventListener('pointerdown', (e) => {
       try {
-        const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge]');
+        const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge],[data-label]');
         if (pts.size === 0) {
           if (targetNode) {
             const r = resolveNode(targetNode);
@@ -1120,7 +1147,7 @@ export class SuperUserPanel {
       // de que setPointerCapture() alcance a agarrarlo — el gesto se corta
       // a la mitad. Solo togglea el outline directo sobre los nodos que
       // ya están en pantalla.
-      previewEl.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge]').forEach(n => {
+      previewEl.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge],[data-label]').forEach(n => {
         n.style.outline = ''; n.style.outlineOffset = '';
       });
       if (node) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
@@ -1274,14 +1301,17 @@ export class SuperUserPanel {
           }
         });
 
-      } else { // badge
+      } else if (sel.kind === 'badge') {
         selTitle.textContent = '🔢 Badge';
         const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6'];
         selFields.innerHTML = `
+          <div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;">Texto (vacío = automático: "+N", o nada si es un solo lugar)</div>
+          <input id="scf-badge-text" type="text" maxlength="12" value="${badge.label || ''}" placeholder="+N" style="width:100%;padding:6px;text-align:center;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;"></div>
           <div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:4px;">Color</div>
           <div id="scf-badge-colors" style="display:flex;gap:6px;"></div></div>
           <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-bscale" type="range" min="0.5" max="2" step="0.02" value="${badge.scale ?? 1}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-brot" type="range" min="-180" max="180" step="1" value="${badge.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>`;
+        modal.querySelector('#scf-badge-text').addEventListener('input', (e) => { badge.label = e.target.value; renderPreview(); });
         const row = modal.querySelector('#scf-badge-colors');
         BADGE_PRESET.forEach(c => {
           const b = document.createElement('button');
@@ -1292,6 +1322,32 @@ export class SuperUserPanel {
         });
         modal.querySelector('#scf-bscale').addEventListener('input', (e) => { badge.scale = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-brot').addEventListener('input', (e) => { badge.rotation = parseFloat(e.target.value); renderPreview(); });
+
+      } else if (sel.kind === 'label') {
+        selTitle.textContent = '🏷️ Etiqueta';
+        const LABEL_PRESET = ['#1a1a2e', '#ffffff', '#1a5cf5', '#f97316', '#ef4444', '#10b981'];
+        selFields.innerHTML = `
+          <div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;">Texto</div>
+          <input id="scf-label-text" type="text" maxlength="40" value="${label.text || ''}" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#e5e7eb;font-size:12px;box-sizing:border-box;"></div>
+          <div style="grid-column:1 / -1;"><div style="font-size:9px;color:#6b7280;margin-bottom:4px;">Color de texto</div>
+          <div id="scf-label-colors" style="display:flex;gap:6px;"></div></div>
+          <div><div style="font-size:9px;color:#6b7280;">Fondo</div><input id="scf-label-bg" type="color" value="${(() => { const m = (label.bg||'').match(/#[0-9a-fA-F]{6}/); return m ? m[0] : '#ffffff'; })()}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-lscale" type="range" min="0.5" max="2" step="0.02" value="${label.scale ?? 1}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-lrot" type="range" min="-180" max="180" step="1" value="${label.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div style="grid-column:1 / -1;"><button type="button" id="scf-label-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar etiqueta</button></div>`;
+        modal.querySelector('#scf-label-text').addEventListener('input', (e) => { label.text = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-label-bg').addEventListener('input', (e) => { label.bg = e.target.value; renderPreview(); });
+        const lrow = modal.querySelector('#scf-label-colors');
+        LABEL_PRESET.forEach(c => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.style.cssText = `width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c === label.color ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;`;
+          b.addEventListener('click', () => { label.color = c; renderPreview(); renderSelProps(); });
+          lrow.appendChild(b);
+        });
+        modal.querySelector('#scf-lscale').addEventListener('input', (e) => { label.scale = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-lrot').addEventListener('input', (e) => { label.rotation = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-label-remove').addEventListener('click', () => { label.text = ''; sel = null; renderPreview(); renderSelProps(); });
       }
     }
 
@@ -1329,6 +1385,12 @@ export class SuperUserPanel {
       renderStickerChips();
     });
     modal.querySelector('#su-cluster-badge-chip').addEventListener('click', () => { select('badge', 0); renderPreview(); });
+    modal.querySelector('#su-cluster-label-chip').addEventListener('click', () => {
+      if (!label.text) label.text = groupPlaces[0]?.name || 'Etiqueta'; // placeholder editable — si no, no hay nada que seleccionar/ver
+      select('label', 0);
+      renderPreview();
+      renderSelProps();
+    });
 
     // ── Lugares incluidos ────────────────────────────────────────
     const placesListEl = modal.querySelector('#su-cluster-places-list');
@@ -1409,7 +1471,7 @@ export class SuperUserPanel {
       if (place_ids.length < 1) { alert('Tildá al menos un lugar'); return; }
       const btn = modal.querySelector('#su-cluster-save');
       btn.disabled = true; btn.textContent = 'Guardando...';
-      const payload = { id: existingCluster?.id, place_ids, cards, stickers, badge };
+      const payload = { id: existingCluster?.id, place_ids, cards, stickers, badge, label };
       try {
         const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
