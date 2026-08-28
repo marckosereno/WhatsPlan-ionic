@@ -1364,6 +1364,33 @@ export class MapView {
         return { el, ll, px: this.map.project(ll) };
       });
 
+    // Pool AMPLIO para los clusters CURADOS a mano (paso 1). NO filtra por
+    // `visibility`, solo por `display`.
+    //
+    // Por qué hace falta: _updatePinsByZoom() le pone visibility:'hidden'
+    // a todo pin cuyo _showAtZoom sea mayor al zoom actual (revelado
+    // progresivo). Pero el buscador "+ Agregar lugar" del editor busca en
+    // mapView.allPlaces — TODOS los lugares de la categoría, ocultos
+    // incluidos. O sea que el editor te deja armar un cluster con lugares
+    // que, al zoom en que los clusters existen (<17.2), están ocultos por
+    // tier y por lo tanto NO estaban en `candidates` — el cluster se
+    // guardaba bien en Supabase pero acá nunca encontraba a sus miembros
+    // y el `if (!members.length) return` lo descartaba entero. Por eso
+    // fallaba incluso agregando un solo lugar.
+    //
+    // El clustering AUTOMÁTICO (paso 2) sigue usando `candidates`: ahí sí
+    // corresponde exigir visibilidad real, porque agrupa por cercanía en
+    // pantalla y no tiene sentido agrupar puntos que no se están viendo.
+    // Una curación explícita por place_id es otra cosa: es una decisión
+    // del SuperUser y debe respetarse aunque el tier todavía no revele
+    // ese pin por su cuenta.
+    const candidatesForCustom = this.markerEls
+      .filter(el => el.style.display !== 'none' && el._place)
+      .map(el => {
+        const ll = el._marker.getLngLat();
+        return { el, ll, px: this.map.project(ll) };
+      });
+
     const usedEls = new Set();
     const wanted = [];
 
@@ -1410,14 +1437,7 @@ export class MapView {
     if (clustersActive) {
       pinClustersByPriority.forEach(customDef => {
         if ((customDef.placeIds || []).length <= 1) return; // de un solo lugar → paso 3
-        // Pool ESTRICTO a propósito (respeta el revelado por zoom). Con el
-        // pool amplio que se probó antes, un cluster curado reclamaba a sus
-        // miembros SIEMPRE, incluso a zoom bajo donde esos pines todavía no
-        // se revelan — quedaba clavado en pantalla y le robaba miembros al
-        // clustering automático, que es el que hace que los grupos se
-        // formen, se disuelvan y se recombinen al hacer zoom. Con el pool
-        // estricto vuelve ese comportamiento dinámico.
-        const members = candidates.filter(c =>
+        const members = candidatesForCustom.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
         if (!members.length) return;
@@ -2111,22 +2131,10 @@ export class MapView {
     // DESTRUYE el sticker. Con la marca, el bloque de "restaurar" del
     // inicio lo vuelve a mostrar y el ciclo sigue normal.
     if (wrapper && wrapper._singlePinStickerEl) {
-      // NO se hace el swap a mano. Antes esto ocultaba el wrapper y volvía
-      // a mostrar `_singlePinStickerEl` directamente, y eso rompía si entre
-      // la apertura y el cierre del minicard hubo zoom: la reconciliación
-      // destruye y recrea stickers al reagrupar, así que la referencia
-      // guardada podía apuntar a un elemento YA DESTRUIDO. Mostrarlo no
-      // hacía nada (está fuera del DOM) y el wrapper quedaba visible con su
-      // estilo social — exactamente el síntoma de "abro el minicard, hago
-      // zoom out, cierro y el pin volvió al estilo anterior".
-      //
-      // En vez de adivinar el estado, se deja que _updateClusters() lo
-      // recalcule: sabe el zoom actual, qué clusters corresponden y si a
-      // este lugar le toca sticker propio, ir dentro de un grupo, o quedar
-      // como punto de color. El setTimeout(0) es para que corra DESPUÉS de
-      // que _closeMiniCard termine de limpiar su estado.
-      delete wrapper._singlePinStickerEl;
-      setTimeout(() => this._updateClusters(), 0);
+      wrapper._clusterHiddenDisplay = '';
+      wrapper.style.display = 'none';
+      wrapper.style.pointerEvents = 'none';
+      wrapper._singlePinStickerEl.style.display = '';
     }
     // Estado ya limpiado en _closeMiniCard — no tocar aquí
   }
