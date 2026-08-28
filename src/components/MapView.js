@@ -1175,7 +1175,16 @@ export class MapView {
       // que ahí hay algo. Al alcanzar el zoom, el punto se apaga y el
       // sticker lo reemplaza (lo dibuja _updateClusters, paso 3).
       const styleDef = el._place ? singleStyleById.get(placeIdOf(el._place)) : null;
-      if (styleDef && state === 0) state = 1;
+      // Marca de "punto forzado": este pin estaría OCULTO por zoom, y solo
+      // se lo deja visible como puntito de color. Es distinto del estado 1
+      // natural (el que ocurre un zoom antes del umbral). La distinción
+      // importa para el clustering: un punto forzado NO debe participar del
+      // agrupamiento automático — si participara, estos pines quedarían
+      // presentes en todos los zooms y sostendrían los grupos armados,
+      // que es justo lo que hacía perder el reagrupamiento dinámico (los
+      // grupos ya no se encogían ni se recombinaban al alejarse).
+      el._wpForcedDot = !!(styleDef && state === 0);
+      if (el._wpForcedDot) state = 1;
       if (styleDef) {
         const dotColor = styleDef.badge?.color || '#111827';
         const d1 = el.querySelector('.place-pin-social-zoomdot');
@@ -1358,34 +1367,11 @@ export class MapView {
     const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster (auto)
 
     const candidates = this.markerEls
-      .filter(el => el.style.display !== 'none' && el.style.visibility !== 'hidden' && el._place)
-      .map(el => {
-        const ll = el._marker.getLngLat();
-        return { el, ll, px: this.map.project(ll) };
-      });
-
-    // Pool AMPLIO para los clusters CURADOS a mano (paso 1). NO filtra por
-    // `visibility`, solo por `display`.
-    //
-    // Por qué hace falta: _updatePinsByZoom() le pone visibility:'hidden'
-    // a todo pin cuyo _showAtZoom sea mayor al zoom actual (revelado
-    // progresivo). Pero el buscador "+ Agregar lugar" del editor busca en
-    // mapView.allPlaces — TODOS los lugares de la categoría, ocultos
-    // incluidos. O sea que el editor te deja armar un cluster con lugares
-    // que, al zoom en que los clusters existen (<17.2), están ocultos por
-    // tier y por lo tanto NO estaban en `candidates` — el cluster se
-    // guardaba bien en Supabase pero acá nunca encontraba a sus miembros
-    // y el `if (!members.length) return` lo descartaba entero. Por eso
-    // fallaba incluso agregando un solo lugar.
-    //
-    // El clustering AUTOMÁTICO (paso 2) sigue usando `candidates`: ahí sí
-    // corresponde exigir visibilidad real, porque agrupa por cercanía en
-    // pantalla y no tiene sentido agrupar puntos que no se están viendo.
-    // Una curación explícita por place_id es otra cosa: es una decisión
-    // del SuperUser y debe respetarse aunque el tier todavía no revele
-    // ese pin por su cuenta.
-    const candidatesForCustom = this.markerEls
-      .filter(el => el.style.display !== 'none' && el._place)
+      // _wpForcedDot excluido: son pines que por zoom deberían estar
+      // ocultos y solo se muestran como punto de color (ver
+      // _updatePinsByZoom). No cuentan para agrupar — así los grupos
+      // vuelven a formarse y deshacerse con el zoom como antes.
+      .filter(el => el.style.display !== 'none' && el.style.visibility !== 'hidden' && !el._wpForcedDot && el._place)
       .map(el => {
         const ll = el._marker.getLngLat();
         return { el, ll, px: this.map.project(ll) };
@@ -1437,7 +1423,14 @@ export class MapView {
     if (clustersActive) {
       pinClustersByPriority.forEach(customDef => {
         if ((customDef.placeIds || []).length <= 1) return; // de un solo lugar → paso 3
-        const members = candidatesForCustom.filter(c =>
+        // Pool ESTRICTO a propósito (respeta el revelado por zoom). Con el
+        // pool amplio que se probó antes, un cluster curado reclamaba a sus
+        // miembros SIEMPRE, incluso a zoom bajo donde esos pines todavía no
+        // se revelan — quedaba clavado en pantalla y le robaba miembros al
+        // clustering automático, que es el que hace que los grupos se
+        // formen, se disuelvan y se recombinen al hacer zoom. Con el pool
+        // estricto vuelve ese comportamiento dinámico.
+        const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
         if (!members.length) return;
@@ -1546,7 +1539,20 @@ export class MapView {
         el.style.display = 'none';
         el.style.pointerEvents = 'none';
       });
-      if (this._clusterByKey.has(w.key)) return; // sobrevive intacto — no tocarlo
+      const survivor = this._clusterByKey.get(w.key);
+      if (survivor) {
+        // Sobrevive: no se reconstruye, pero SÍ hay que garantizar que su
+        // elemento esté visible. El tap en un pin de estilo único oculta
+        // el sticker a mano (display:none) para mostrar el wrapper y que
+        // _showMiniCard infle la burbuja sobre él. Al cerrar el minicard,
+        // esta reconciliación vuelve a ocultar el wrapper (arriba) — y si
+        // además el sticker seguía oculto por ese swap, no quedaba NADA
+        // visible: el pin desaparecía. Devolverle el display acá cierra
+        // ese hueco, y es inocuo cuando ya estaba visible.
+        const sEl = survivor.getElement?.();
+        if (sEl && sEl.style.display === 'none') sEl.style.display = '';
+        return;
+      }
       this._renderClusterMarker(w.group, w.customDef, w.key);
     });
   }
@@ -2131,10 +2137,32 @@ export class MapView {
     // DESTRUYE el sticker. Con la marca, el bloque de "restaurar" del
     // inicio lo vuelve a mostrar y el ciclo sigue normal.
     if (wrapper && wrapper._singlePinStickerEl) {
-      wrapper._clusterHiddenDisplay = '';
-      wrapper.style.display = 'none';
-      wrapper.style.pointerEvents = 'none';
-      wrapper._singlePinStickerEl.style.display = '';
+      // NO se hace el swap a mano. Antes esto ocultaba el wrapper y volvía
+      // a mostrar `_singlePinStickerEl` directamente, y eso rompía si entre
+      // la apertura y el cierre del minicard hubo zoom: la reconciliación
+      // destruye y recrea stickers al reagrupar, así que la referencia
+      // guardada podía apuntar a un elemento YA DESTRUIDO. Mostrarlo no
+      // hacía nada (está fuera del DOM) y el wrapper quedaba visible con su
+      // estilo social — exactamente el síntoma de "abro el minicard, hago
+      // zoom out, cierro y el pin volvió al estilo anterior".
+      //
+      // En vez de adivinar el estado, se deja que _updateClusters() lo
+      // recalcule: sabe el zoom actual, qué clusters corresponden y si a
+      // este lugar le toca sticker propio, ir dentro de un grupo, o quedar
+      // como punto de color. El setTimeout(0) es para que corra DESPUÉS de
+      // que _closeMiniCard termine de limpiar su estado.
+      // Si el sticker sigue vivo (caso normal: se cerró el minicard sin
+      // que hubiera un reagrupamiento de por medio), devolverlo YA — sin
+      // esperar al setTimeout, para que no quede un frame con el wrapper
+      // ya oculto y el sticker todavía sin mostrar, que se ve como un
+      // parpadeo del pin.
+      const sticker = wrapper._singlePinStickerEl;
+      if (sticker && sticker.isConnected) sticker.style.display = '';
+      delete wrapper._singlePinStickerEl;
+      // Y de todos modos recalcular: si hubo zoom con el minicard abierto,
+      // el sticker pudo haber sido destruido/recreado por la
+      // reconciliación y el estado correcto solo lo sabe _updateClusters.
+      setTimeout(() => this._updateClusters(), 0);
     }
     // Estado ya limpiado en _closeMiniCard — no tocar aquí
   }
