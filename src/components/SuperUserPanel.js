@@ -1481,6 +1481,18 @@ export class SuperUserPanel {
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
         closeModal();
+        // Si es de UN solo lugar, además de guardar el diseño hay que
+        // marcar ese lugar con pin_style='cluster' para que el mapa lo
+        // dibuje con este estilo (ver la rama 'cluster' de _buildPinHtml).
+        if (place_ids.length === 1) {
+          try {
+            await fetch('/api/supabase-place-update', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ place_id: place_ids[0], pin_style: 'cluster' }),
+            });
+          } catch (e) { console.error('[CLUSTER] no se pudo fijar pin_style:', e); }
+        }
         await this.mapView.reloadPinClusters();
       } catch (err) {
         console.error('[CLUSTER] Error guardando:', err);
@@ -2679,6 +2691,7 @@ export class SuperUserPanel {
             '<button type="button" id="su-pin-mode-sticker" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">😀 Sticker</button>' +
             '<button type="button" id="su-pin-mode-bubble" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">💬 Globo</button>' +
             '<button type="button" id="su-pin-mode-social" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">🎨 Social</button>' +
+            '<button type="button" id="su-pin-mode-cluster" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;">🖼️ Cluster</button>' +
           '</div>' +
           '<input id="su-pin-style-hidden" type="hidden" value="' + (prefill?.pin_style || 'photo') + '">' +
 
@@ -3193,6 +3206,7 @@ export class SuperUserPanel {
     const pinModeStickerBtn = document.getElementById('su-pin-mode-sticker');
     const pinModeBubbleBtn  = document.getElementById('su-pin-mode-bubble');
     const pinModeSocialBtn  = document.getElementById('su-pin-mode-social');
+    const pinModeClusterBtn = document.getElementById('su-pin-mode-cluster');
     const pinStickerPanel   = document.getElementById('su-pin-sticker-panel');
     const pinSizeRow        = document.getElementById('su-pin-size-row');
     const pinStrokeRow      = document.getElementById('su-pin-stroke-row');
@@ -3207,11 +3221,14 @@ export class SuperUserPanel {
     const _setPinMode = (mode) => {
       document.getElementById('su-pin-style-hidden').value = mode;
       const showPanel = mode === 'sticker' || mode === 'bubble' || mode === 'social';
+      // 'cluster' no usa ninguno de los controles de abajo (tamaño,
+      // contorno, emoji): su diseño se arma con long-press en el mapa.
       pinStickerPanel.style.display = showPanel ? 'flex' : 'none';
       _paintPinModeBtn(pinModePhotoBtn,   mode === 'photo');
       _paintPinModeBtn(pinModeStickerBtn, mode === 'sticker');
       _paintPinModeBtn(pinModeBubbleBtn,  mode === 'bubble');
       _paintPinModeBtn(pinModeSocialBtn,  mode === 'social');
+      _paintPinModeBtn(pinModeClusterBtn, mode === 'cluster');
       // El globo tiene tamaño fijo (icono + nombre) y no usa contorno de
       // color — oculta esos controles, solo quedan visibles emoji/sticker.
       // Social tampoco usa tamaño/contorno — usa su propio color de badge.
@@ -3225,6 +3242,11 @@ export class SuperUserPanel {
     pinModeStickerBtn.addEventListener('click', () => _setPinMode('sticker'));
     pinModeBubbleBtn.addEventListener('click', () => _setPinMode('bubble'));
     pinModeSocialBtn.addEventListener('click', () => _setPinMode('social'));
+    // El diseño del pin tipo cluster (tarjetas/stickers/badge/etiqueta) NO
+    // se edita en este formulario: se edita con long-press sobre el pin en
+    // el mapa, con el mismo editor que los clusters. Acá solo se elige el
+    // estilo; el diseño arranca vacío y se compone después.
+    pinModeClusterBtn.addEventListener('click', () => _setPinMode('cluster'));
     _setPinMode(document.getElementById('su-pin-style-hidden').value || 'photo');
 
     // Tamaño mini/normal/grande
