@@ -585,10 +585,18 @@ export class MapView {
       this._lastLabelZoom = null;
       this.map.on('zoomend', () => {
         if (this._clusterExpandEl) return; // el carrusel expandido mueve la cámara solo — no recalcular nada mientras está abierto
+        // [PERF/DEBUG temporal] medir cuánto tarda este bloque en la zona
+        // con clusters — si el freeze del drag después de un zoomout es
+        // costo de cómputo bloqueando el hilo principal, acá debería
+        // aparecer un número alto (varios ms) justo en esas zonas. Sacar
+        // una vez confirmado.
+        const _t0 = performance.now();
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
         this._lastLabelZoom = this.map.getZoom();
+        const _dt = performance.now() - _t0;
+        if (_dt > 8) console.log(`[PERF][zoomend] ${_dt.toFixed(1)}ms — pinClusters: ${(this.pinClusters||[]).length}`);
       });
       this.map.on('moveend', () => {
         if (this._clusterExpandEl) return;
