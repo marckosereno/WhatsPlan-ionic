@@ -1519,6 +1519,12 @@ export class MapView {
     const wantedKeys = new Set(wanted.map(w => w.key));
     for (const [key, marker] of Array.from(this._clusterByKey)) {
       if (wantedKeys.has(key)) continue;
+      // No destruir el sticker sobre el que está inflado el minicard: se
+      // llevaría puesto el minimodal abierto a mitad de un reagrupamiento
+      // (pasa al hacer zoom con el minicard abierto). Cuando se cierre,
+      // _restorePin dispara un _updateClusters() que lo limpia si ya no
+      // corresponde.
+      if (this.miniCardMarker === marker) continue;
       this._destroyClusterMarker(marker);
       this._clusterByKey.delete(key);
     }
@@ -1550,7 +1556,7 @@ export class MapView {
         // visible: el pin desaparecía. Devolverle el display acá cierra
         // ese hueco, y es inocuo cuando ya estaba visible.
         const sEl = survivor.getElement?.();
-        if (sEl && sEl.style.display === 'none' && sEl !== this._miniCardStickerEl) sEl.style.display = '';
+        if (sEl && sEl.style.display === 'none') sEl.style.display = '';
         return;
       }
       this._renderClusterMarker(w.group, w.customDef, w.key);
@@ -1592,7 +1598,8 @@ export class MapView {
     // fábrica" de ese lugar (no sobre este sticker), así que se guarda la
     // referencia cruzada para poder hacer el swap en el click.
     const isSinglePin = group.length === 1;
-    if (isSinglePin) group[0].el._singlePinStickerEl = el;
+    // (el swap sticker↔wrapper se eliminó; el minicard se infla sobre el
+    // propio sticker vía el marker guardado en el._clusterMarker)
 
     let pressTimer = null, longPressFired = false, startX = 0, startY = 0;
     let docMoveHandler = null, docUpHandler = null;
@@ -1671,16 +1678,12 @@ export class MapView {
         // Swap: ocultar el sticker y mostrar el wrapper de fábrica, que es
         // donde _showMiniCard infla la burbuja. El swap inverso ocurre en
         // _restorePin() al cerrarse el minicard.
-        el.style.display = 'none';
-        // Marca de "oculto a propósito mientras el minicard está abierto".
-        // Sin esto, la reconciliación (que corre por el moveend del easeTo
-        // de _showMiniCard) veía el sticker oculto y lo volvía a mostrar
-        // por debajo del minimodal.
-        this._miniCardStickerEl = el;
-        memberEl.style.display = '';
-        memberEl.style.pointerEvents = '';
         const p = memberEl._place;
-        this._showMiniCard(p, index, p.photoUrl || p.photo_url || p.photosUrls?.[0] || null);
+        // Sin swap: el minicard se infla sobre ESTE sticker. Al cerrarse,
+        // _restorePin le devuelve su HTML de sticker y listo — el wrapper
+        // de fábrica nunca se muestra, así que el estilo social no puede
+        // aparecer.
+        this._showMiniCard(p, index, p.photoUrl || p.photo_url || p.photosUrls?.[0] || null, false, el._clusterMarker);
         return;
       }
       this._openClusterExpand(group);
@@ -1690,6 +1693,7 @@ export class MapView {
       .setLngLat([centerLng, centerLat])
       .addTo(this.map);
 
+    el._clusterMarker = marker; // lo usa el tap del pin de estilo único
     this.clusterMarkers.push(marker);
     if (key) {
       if (!this._clusterByKey) this._clusterByKey = new Map();
@@ -1933,15 +1937,21 @@ export class MapView {
   }
 
   // ── MiniCard ──────────────────────────────────────────────────────
-  _showMiniCard(place, index, rawPhoto, skipMove = false) {
+  // markerOverride: para los pines de ESTILO CLUSTER el minicard se infla
+  // sobre el propio sticker, no sobre el marker "de fábrica" del lugar.
+  // Antes se intercambiaban los dos elementos (ocultar sticker / mostrar
+  // wrapper), y ese swap era la fuente de todos los bugs de este flujo:
+  // el pin volvía al estilo social, aparecían los dos encimados, o
+  // desaparecía. Operando siempre sobre un único elemento no hay estados
+  // intermedios que sincronizar.
+  _showMiniCard(place, index, rawPhoto, skipMove = false, markerOverride = null) {
     this._closeMiniCard();
+    const marker = markerOverride || this.markers[index];
+    if (!marker) return;
     this.miniCardPlace  = place;
-    this.miniCardMarker = this.markers[index];
+    this.miniCardMarker = marker;
     this.miniCardIndex  = index;
     this.haptic('tap');
-
-    const marker = this.markers[index];
-    if (!marker) return;
     const wrapper = marker.getElement();
     if (!wrapper) return;
 
@@ -2126,67 +2136,18 @@ export class MapView {
       wrapper.style.marginTop = '';
       wrapper.innerHTML = wrapper._savedPinHTML;
       delete wrapper._savedPinHTML;
+      // Si el minicard se infló sobre un STICKER de cluster, el reset
+      // genérico de arriba le borró su tamaño fijo (2x2 con overflow
+      // visible). Sin reponerlo, el sticker pasa a auto-dimensionarse por
+      // su contenido y MapLibre —que centra la caja del elemento— lo
+      // dibuja corrido. Se le devuelve su cssText original.
+      if (wrapper.classList.contains('place-cluster-el')) {
+        wrapper.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+      }
       const z = this.map ? this.map.getZoom() : 0;
       wrapper.querySelectorAll('.place-act-badge').forEach(function(b) {
         b.style.opacity = z >= 15 ? '1' : '0';
       });
-    }
-    // Pin de ESTILO ÚNICO: mientras el minicard estuvo abierto, el wrapper
-    // de fábrica quedó visible en lugar del sticker. Acá se revierte.
-    //
-    // _clusterHiddenDisplay es CRÍTICO acá, no cosmético: _updateClusters()
-    // arma sus candidatos filtrando por `display !== 'none'`. Si el wrapper
-    // queda oculto SIN esa marca, el easeTo() de _showMiniCard —que sigue
-    // animando unos ms después de cerrado el minicard— dispara su moveend,
-    // _updateClusters() no encuentra al miembro, arma el cluster vacío y
-    // DESTRUYE el sticker. Con la marca, el bloque de "restaurar" del
-    // inicio lo vuelve a mostrar y el ciclo sigue normal.
-    if (wrapper && wrapper._singlePinStickerEl) {
-      // NO se hace el swap a mano. Antes esto ocultaba el wrapper y volvía
-      // a mostrar `_singlePinStickerEl` directamente, y eso rompía si entre
-      // la apertura y el cierre del minicard hubo zoom: la reconciliación
-      // destruye y recrea stickers al reagrupar, así que la referencia
-      // guardada podía apuntar a un elemento YA DESTRUIDO. Mostrarlo no
-      // hacía nada (está fuera del DOM) y el wrapper quedaba visible con su
-      // estilo social — exactamente el síntoma de "abro el minicard, hago
-      // zoom out, cierro y el pin volvió al estilo anterior".
-      //
-      // En vez de adivinar el estado, se deja que _updateClusters() lo
-      // recalcule: sabe el zoom actual, qué clusters corresponden y si a
-      // este lugar le toca sticker propio, ir dentro de un grupo, o quedar
-      // como punto de color. El setTimeout(0) es para que corra DESPUÉS de
-      // que _closeMiniCard termine de limpiar su estado.
-      // Si el sticker sigue vivo (caso normal: se cerró el minicard sin
-      // que hubiera un reagrupamiento de por medio), devolverlo YA — sin
-      // esperar al setTimeout, para que no quede un frame con el wrapper
-      // ya oculto y el sticker todavía sin mostrar, que se ve como un
-      // parpadeo del pin.
-      const sticker = wrapper._singlePinStickerEl;
-      if (sticker && sticker.isConnected) {
-        // El swap completo se hace ACÁ, sincrónico: mostrar el sticker y
-        // ocultar el wrapper en el mismo tick. Dejar que el wrapper se
-        // ocultara en el pase diferido lo hacía visible durante un frame,
-        // y como _restorePin le acaba de devolver su HTML original, ese
-        // frame mostraba el pin con el estilo social viejo — el estilo que
-        // justamente ya no corresponde, porque este lugar está declarado
-        // como pin de estilo cluster.
-        //
-        // _clusterHiddenDisplay es la marca que _updateClusters() usa para
-        // reconocer "oculto por pertenecer a un cluster" y poder
-        // restaurarlo después; sin ella, el wrapper quedaría con
-        // display:none fuera de su control y el lugar desaparecería si más
-        // adelante dejara de tener sticker.
-        sticker.style.display = '';
-        wrapper._clusterHiddenDisplay = '';
-        wrapper.style.display = 'none';
-        wrapper.style.pointerEvents = 'none';
-      }
-      delete wrapper._singlePinStickerEl;
-      this._miniCardStickerEl = null;
-      // Y de todos modos recalcular: si hubo zoom con el minicard abierto,
-      // el sticker pudo haber sido destruido/recreado por la
-      // reconciliación y el estado correcto solo lo sabe _updateClusters.
-      setTimeout(() => this._updateClusters(), 0);
     }
     // Estado ya limpiado en _closeMiniCard — no tocar aquí
   }
