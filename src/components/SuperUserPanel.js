@@ -1491,6 +1491,17 @@ export class SuperUserPanel {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ place_id: place_ids[0], pin_style: 'cluster' }),
             });
+            // El PATCH de arriba solo toca la base de datos. Sin esto, el
+            // objeto `place` que YA está en memoria (el._place, y
+            // this.mapView.allPlaces) sigue con el pinStyle viejo hasta
+            // que se recargue toda la app — así que ni el redibujo del
+            // pin ni el punto de color de zoom (que dependen de
+            // el._place.pinStyle === 'cluster') se activaban recién
+            // creado el estilo. Se actualiza a mano en los dos lugares
+            // donde puede vivir la misma referencia de lugar.
+            group.forEach(({ el }) => { if (el._place) el._place.pinStyle = 'cluster'; });
+            const placeInAll = this.mapView.allPlaces?.find(p => placeIdOf(p) === place_ids[0]);
+            if (placeInAll) placeInAll.pinStyle = 'cluster';
           } catch (e) { console.error('[CLUSTER] no se pudo fijar pin_style:', e); }
         }
         await this.mapView.reloadPinClusters();
