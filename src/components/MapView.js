@@ -1550,7 +1550,7 @@ export class MapView {
         // visible: el pin desaparecía. Devolverle el display acá cierra
         // ese hueco, y es inocuo cuando ya estaba visible.
         const sEl = survivor.getElement?.();
-        if (sEl && sEl.style.display === 'none') sEl.style.display = '';
+        if (sEl && sEl.style.display === 'none' && sEl !== this._miniCardStickerEl) sEl.style.display = '';
         return;
       }
       this._renderClusterMarker(w.group, w.customDef, w.key);
@@ -1672,6 +1672,11 @@ export class MapView {
         // donde _showMiniCard infla la burbuja. El swap inverso ocurre en
         // _restorePin() al cerrarse el minicard.
         el.style.display = 'none';
+        // Marca de "oculto a propósito mientras el minicard está abierto".
+        // Sin esto, la reconciliación (que corre por el moveend del easeTo
+        // de _showMiniCard) veía el sticker oculto y lo volvía a mostrar
+        // por debajo del minimodal.
+        this._miniCardStickerEl = el;
         memberEl.style.display = '';
         memberEl.style.pointerEvents = '';
         const p = memberEl._place;
@@ -2177,6 +2182,7 @@ export class MapView {
         wrapper.style.pointerEvents = 'none';
       }
       delete wrapper._singlePinStickerEl;
+      this._miniCardStickerEl = null;
       // Y de todos modos recalcular: si hubo zoom con el minicard abierto,
       // el sticker pudo haber sido destruido/recreado por la
       // reconciliación y el estado correcto solo lo sabe _updateClusters.
