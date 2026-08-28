@@ -986,7 +986,21 @@ export class MapView {
           this.haptic('longpress');
           this._clusterModalOpen = true;
           const ll = el._marker.getLngLat();
-          this.onClusterCustomize([{ el, ll, px: this.map.project(ll) }], null);
+          // Si este lugar YA tiene un diseño de pin cluster guardado, hay
+          // que abrir el editor en modo EDITAR (pasándole esa fila y su
+          // id), no crear una fila nueva en blanco. Sin esto, cada
+          // long-press abría una sesión de creación nueva: la fila vieja
+          // seguía existiendo en Supabase, el guardado creaba OTRA fila
+          // más, y cuál de las dos "ganaba" al dibujar el pin dependía del
+          // orden en que Supabase devolviera las filas — no de cuál
+          // edición era la más reciente. Por eso cambios como el badge, la
+          // etiqueta o mover una tarjeta parecían no guardarse: se
+          // guardaban, pero en una fila que nadie leía.
+          const pid = placeIdOf(el._place);
+          const existing = (this.pinClusters || []).find(
+            cd => (cd.placeIds || []).length === 1 && cd.placeIds[0] === pid
+          ) || null;
+          this.onClusterCustomize([{ el, ll, px: this.map.project(ll) }], existing);
         }, 550);
         this._cancelActiveClusterPress = pinClearPress;
         pinDocMove = (e2) => {
@@ -1163,14 +1177,6 @@ export class MapView {
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
     const zoom = Math.floor(this.map.getZoom());
-    // Definiciones de pin de ESTILO ÚNICO indexadas por place_id. Sirven
-    // para dos cosas abajo: saber que un pin nunca debe desaparecer del
-    // todo (siempre deja al menos su punto), y de qué color pintar ese
-    // punto — el mismo color de badge que se eligió al personalizarlo.
-    const singleStyleById = new Map();
-    (this.pinClusters || []).forEach(cd => {
-      if ((cd.placeIds || []).length === 1) singleStyleById.set(cd.placeIds[0], cd);
-    });
 
     this.markerEls.forEach(el => {
       if (!el) return;
@@ -1178,11 +1184,11 @@ export class MapView {
       // 3 estados: 0=oculto, 1=punto celeste (1 zoom antes), 2=pin completo
       let state = zoom >= threshold ? 2 : zoom >= threshold - 1 ? 1 : 0;
 
-      // Un lugar con pin de estilo único nunca cae al estado 0: aunque
-      // falte zoom para revelarlo, deja su punto de color como señal de
-      // que ahí hay algo. Al alcanzar el zoom, el punto se apaga y el
-      // sticker lo reemplaza (lo dibuja _updateClusters, paso 3).
-      const styleDef = el._place ? singleStyleById.get(placeIdOf(el._place)) : null;
+      // Un pin de estilo cluster nunca cae al estado 0: aunque falte zoom
+      // para revelarlo, deja su punto de color (ver _buildPinHtml) como
+      // señal de que ahí hay algo. Al alcanzar el zoom, el punto se apaga
+      // y aparece el diseño completo del sticker.
+      const isClusterStyle = el._place?.pinStyle === 'cluster';
       // Marca de "punto forzado": este pin estaría OCULTO por zoom, y solo
       // se lo deja visible como puntito de color. Es distinto del estado 1
       // natural (el que ocurre un zoom antes del umbral). La distinción
@@ -1191,14 +1197,13 @@ export class MapView {
       // presentes en todos los zooms y sostendrían los grupos armados,
       // que es justo lo que hacía perder el reagrupamiento dinámico (los
       // grupos ya no se encogían ni se recombinaban al alejarse).
-      el._wpForcedDot = !!(styleDef && state === 0);
+      el._wpForcedDot = isClusterStyle && state === 0;
       if (el._wpForcedDot) state = 1;
-      if (styleDef) {
-        const dotColor = styleDef.badge?.color || '#111827';
-        const d1 = el.querySelector('.place-pin-social-zoomdot');
-        const d2 = el.querySelector('.place-pin-bubble-dot');
-        if (d1) d1.style.background = dotColor;
-        if (d2) d2.style.background = dotColor;
+      if (isClusterStyle) {
+        const dot     = el.querySelector('.place-pin-cluster-dot');
+        const content = el.querySelector('.place-pin-cluster-content');
+        if (dot)     dot.style.display     = state === 2 ? 'none' : 'block';
+        if (content) content.style.display = state === 2 ? '' : 'none';
       }
 
       if (state === el._wpState) return;
@@ -1441,7 +1446,20 @@ export class MapView {
         const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
-        if (!members.length) return;
+        // Exige el grupo COMPLETO, no "al menos uno". Antes, si a un
+        // cluster de 2+ lugares le faltaba alguno (por ejemplo, oculto
+        // todavía por el revelado de zoom), el resto igual se renderizaba
+        // — pero como "cluster de un solo lugar", que es un ESTILO DE PIN
+        // (pinStyle==='cluster', tap → minicard), no un cluster grupal
+        // (tap → carrusel). El resultado era un pin que abría el
+        // carrusel/slide como si fuera un lugar solo declarado con estilo
+        // cluster, cuando en realidad era un miembro suelto de un grupo.
+        // Si falta alguno, ningún miembro se dibuja como cluster acá: cada
+        // uno cae a su propio render normal (_buildPinHtml), que ya sabe
+        // mostrarlo con estilo cluster individual si ESE lugar en
+        // particular tiene ese estilo declarado — y si no, con lo que
+        // tenga configurado.
+        if (members.length < (customDef.placeIds || []).length) return;
         members.forEach(m => usedEls.add(m.el));
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
       });
@@ -2948,10 +2966,26 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   // al estilo social al cerrarlo.
   if (place.pinStyle === 'cluster') {
     const pid = placeIdOf(place);
-    const def = (this.pinClusters || []).find(
+    // Por si quedaron filas duplicadas de antes de este fix (cada
+    // long-press creaba una fila nueva): entre todas las que matchean
+    // este place_id, usar la más reciente por updatedAt, no la primera
+    // que aparezca en el array.
+    const matches = (this.pinClusters || []).filter(
       cd => (cd.placeIds || []).length === 1 && cd.placeIds[0] === pid
-    ) || null;
-    return `<div class="place-pin-root" style="position:relative;width:2px;height:2px;overflow:visible;">${_buildClusterStickerHtml([{ el: { _place: place } }], def)}</div>`;
+    );
+    const def = matches.length
+      ? matches.reduce((a, b) => (Date.parse(b.updatedAt || '') || 0) > (Date.parse(a.updatedAt || '') || 0) ? b : a)
+      : null;
+    const dotColor = def?.badge?.color || '#111827';
+    // El punto de "todavía no revelado por zoom" (ver _updatePinsByZoom,
+    // que alterna display entre este dot y .place-pin-cluster-content
+    // según el estado). No existe un dot equivalente en el diseño del
+    // sticker de cluster — los demás estilos (social, globo) sí tienen
+    // el suyo propio, así que se agrega acá.
+    return `<div class="place-pin-root" style="position:relative;width:2px;height:2px;overflow:visible;">` +
+      `<div class="place-pin-cluster-dot" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:${dotColor};box-shadow:0 0 0 1.5px rgba(255,255,255,0.9),0 1.5px 3px rgba(0,0,0,0.3);display:none;"></div>` +
+      `<div class="place-pin-cluster-content">${_buildClusterStickerHtml([{ el: { _place: place } }], def)}</div>` +
+      `</div>`;
   }
 
   if (place.pinStyle === 'social') {
