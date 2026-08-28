@@ -878,6 +878,14 @@ export class MapView {
   }
   async reloadPinClusters() {
     await this._loadPinClusters();
+    // Los pines con pinStyle 'cluster' renderizan su diseño desde
+    // this.pinClusters dentro de _buildPinHtml, así que al cambiar ese
+    // dato hay que reconstruir su HTML — si no, el pin sigue mostrando el
+    // diseño anterior hasta que algo más fuerce un re-render.
+    this.markerEls.forEach(el => {
+      if (!el || !el._place || el._place.pinStyle !== 'cluster') return;
+      el.innerHTML = this._buildPinHtml(el._place, null, null);
+    });
     this._updateClusters();
   }
 
@@ -1468,32 +1476,11 @@ export class MapView {
       .forEach(group => wanted.push({ key: this._clusterKey(group, null), group, customDef: null }));
     }
 
-    // 3) Pines de ESTILO ÚNICO — un "cluster" de UN solo lugar. Misma
-    // maquinaria de tarjeta/stickers/badge/etiqueta, pero para el pin
-    // permanente de ese lugar. NO tiene corte por zoom (queda fuera del
-    // `if (clustersActive)`): se muestra siempre, salvo mientras un
-    // cluster grupal activo se lo haya reclamado en el paso 1. Por eso,
-    // al desintegrarse el cluster, estos lugares no vuelven al pin social
-    // genérico sino que recuperan el estilo tipo cluster que definiste.
-    // Usa el pool ESTRICTO (`candidates`, con filtro de visibility) a
-    // propósito: si el pin todavía no llegó a su zoom de revelado, NO se
-    // dibuja el sticker. En su lugar queda su punto de color, que maneja
-    // _updatePinsByZoom (ver el bloque de "punto de color" ahí).
-    pinClustersByPriority.forEach(customDef => {
-      if ((customDef.placeIds || []).length !== 1) return; // multi-lugar → paso 1
-      const members = candidates.filter(c =>
-        !usedEls.has(c.el) &&
-        // _wpState 2 = pin plenamente revelado. En estado 1 el pin sigue
-        // con visibility:visible (por eso pasa el filtro de `candidates`)
-        // pero está mostrando solo su punto de color — ahí el sticker NO
-        // debe dibujarse todavía, o taparía al punto.
-        c.el._wpState === 2 &&
-        (customDef.placeIds || []).includes(placeIdOf(c.el._place))
-      );
-      if (!members.length) return;
-      members.forEach(m => usedEls.add(m.el));
-      wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
-    });
+    // NOTA: acá vivía un paso 3 que renderizaba los pines de estilo
+    // cluster como marcadores de cluster de un solo lugar. Se eliminó:
+    // ahora 'cluster' es un ESTILO DE PIN más (ver _buildPinHtml), así que
+    // esos lugares se dibujan como cualquier otro pin del mapa y no
+    // necesitan pasar por acá.
 
     // ── RECONCILIACIÓN — este es el arreglo del freeze del drag ──────────
     // Antes esta función arrancaba con _clearClusters(): en CADA moveend y
@@ -1597,7 +1584,6 @@ export class MapView {
     // lugar como cualquier pin. _showMiniCard trabaja sobre el wrapper "de
     // fábrica" de ese lugar (no sobre este sticker), así que se guarda la
     // referencia cruzada para poder hacer el swap en el click.
-    const isSinglePin = group.length === 1;
     // (el swap sticker↔wrapper se eliminó; el minicard se infla sobre el
     // propio sticker vía el marker guardado en el._clusterMarker)
 
@@ -1671,21 +1657,6 @@ export class MapView {
       e.stopPropagation();
       if (longPressFired) { longPressFired = false; return; } // el long-press ya actuó, no abrir el carrusel también
       this.haptic('tap');
-      if (isSinglePin) {
-        const memberEl = group[0].el;
-        const index    = this.markerEls.indexOf(memberEl);
-        if (index === -1) return;
-        // Swap: ocultar el sticker y mostrar el wrapper de fábrica, que es
-        // donde _showMiniCard infla la burbuja. El swap inverso ocurre en
-        // _restorePin() al cerrarse el minicard.
-        const p = memberEl._place;
-        // Sin swap: el minicard se infla sobre ESTE sticker. Al cerrarse,
-        // _restorePin le devuelve su HTML de sticker y listo — el wrapper
-        // de fábrica nunca se muestra, así que el estilo social no puede
-        // aparecer.
-        this._showMiniCard(p, index, p.photoUrl || p.photo_url || p.photosUrls?.[0] || null, false, el._clusterMarker);
-        return;
-      }
       this._openClusterExpand(group);
     });
 
@@ -2964,6 +2935,25 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   // reemplaza el badge por un mini-collage de fotos en abanico + pill de
   // tiempo en vez de la metadata normal. Gancho para avatares de actividad
   // activa (place.activeAvatars) para cuando ese dato esté disponible.
+  // ── Pin tipo "cluster" ────────────────────────────────────────────
+  // Usa exactamente el mismo render que un sticker de cluster, pero para
+  // UN lugar y como pin normal del mapa. El diseño (tarjetas, stickers,
+  // badge, etiqueta) vive en una fila de pin_clusters con un solo
+  // place_id — se busca acá por id.
+  //
+  // Al ser un estilo de pin más, este pin ES el marker del lugar: no hay
+  // un sticker aparte que haya que intercambiar con el pin "de fábrica".
+  // Ese swap era el origen de que el minimodal saliera descentrado (se
+  // inflaba sobre otro elemento) y de que el pin desapareciera o volviera
+  // al estilo social al cerrarlo.
+  if (place.pinStyle === 'cluster') {
+    const pid = placeIdOf(place);
+    const def = (this.pinClusters || []).find(
+      cd => (cd.placeIds || []).length === 1 && cd.placeIds[0] === pid
+    ) || null;
+    return `<div class="place-pin-root" style="position:relative;width:2px;height:2px;overflow:visible;">${_buildClusterStickerHtml([{ el: { _place: place } }], def)}</div>`;
+  }
+
   if (place.pinStyle === 'social') {
     const badgeColor = place.pinBadgeColor || '#f97316';
     // Modo evento AHORA solo controla si aparece la etiqueta de fecha/hora
