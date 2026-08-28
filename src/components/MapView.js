@@ -750,10 +750,43 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]); }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]); }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]); }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); map.setPaintProperty(id,'line-width',['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]); }
+            let fillWidth, dashColor;
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]; dashColor = 'rgba(255,255,255,0.85)'; }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]; dashColor = 'rgba(255,255,255,0.85)'; }
+            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = 'rgba(180,172,156,0.7)'; }
+            else             { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = 'rgba(180,172,156,0.7)'; }
+            map.setPaintProperty(id,'line-width',fillWidth);
+
+            // ── Línea central punteada (look Petal/Huawei Maps) ──────
+            // No se puede lograr con line-dasharray en la MISMA capa: eso
+            // corta el trazo entero (calle a rayas), no deja un trazo
+            // sólido con una rayita fina en el medio. Hace falta una
+            // segunda capa, más angosta, dibujada ENCIMA de la calle ya
+            // pintada arriba — mismo patrón que ya usa este archivo para
+            // el contorno manual de los edificios 3D (ver 'building-3d',
+            // el companion layer 'id + "-wp-outline"" unas líneas arriba).
+            // Blanca sobre asfalto naranja/amarillo (como una marca vial
+            // real); gris suave sobre las calles blancas (ahí el blanco
+            // sería invisible contra blanco).
+            const dashId = id + '-wp-dash';
+            if (!map.getLayer(dashId)) {
+              try {
+                map.addLayer({
+                  id: dashId, type: 'line',
+                  source: layer.source, 'source-layer': layer['source-layer'],
+                  filter: layer.filter,
+                  minzoom: Math.max(layer.minzoom || 0, 14), // recién cuando la calle ya se ve ancha
+                  layout: { 'line-cap': 'round', 'line-join': 'round' },
+                  paint: {
+                    'line-color': dashColor,
+                    'line-width': ['interpolate',['linear'],['zoom'],14,0.8,18,2.2],
+                    'line-dasharray': [2, 3],
+                  }
+                }); // sin beforeId: se agrega arriba de todo lo ya existente en ese momento (calles y edificios) — como es una línea fina y angosta, no tapa nada relevante
+              } catch(_){}
+            } else {
+              map.setPaintProperty(dashId,'line-color',dashColor);
+            }
           } catch(_){} return;
         }
 
