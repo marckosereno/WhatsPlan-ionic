@@ -2157,7 +2157,25 @@ export class MapView {
       // ya oculto y el sticker todavía sin mostrar, que se ve como un
       // parpadeo del pin.
       const sticker = wrapper._singlePinStickerEl;
-      if (sticker && sticker.isConnected) sticker.style.display = '';
+      if (sticker && sticker.isConnected) {
+        // El swap completo se hace ACÁ, sincrónico: mostrar el sticker y
+        // ocultar el wrapper en el mismo tick. Dejar que el wrapper se
+        // ocultara en el pase diferido lo hacía visible durante un frame,
+        // y como _restorePin le acaba de devolver su HTML original, ese
+        // frame mostraba el pin con el estilo social viejo — el estilo que
+        // justamente ya no corresponde, porque este lugar está declarado
+        // como pin de estilo cluster.
+        //
+        // _clusterHiddenDisplay es la marca que _updateClusters() usa para
+        // reconocer "oculto por pertenecer a un cluster" y poder
+        // restaurarlo después; sin ella, el wrapper quedaría con
+        // display:none fuera de su control y el lugar desaparecería si más
+        // adelante dejara de tener sticker.
+        sticker.style.display = '';
+        wrapper._clusterHiddenDisplay = '';
+        wrapper.style.display = 'none';
+        wrapper.style.pointerEvents = 'none';
+      }
       delete wrapper._singlePinStickerEl;
       // Y de todos modos recalcular: si hubo zoom con el minicard abierto,
       // el sticker pudo haber sido destruido/recreado por la
