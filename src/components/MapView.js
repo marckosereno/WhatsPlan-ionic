@@ -669,6 +669,14 @@ export class MapView {
       if (!style?.layers) return;
       const map = this.map;
 
+      // Id del primer layer de tipo 'symbol' (nombres de calles, POIs,
+      // etc) EN EL ORDEN ORIGINAL del estilo. Se usa como `beforeId` al
+      // agregar las capas de línea punteada más abajo — si no, addLayer()
+      // sin beforeId las agrega arriba de TODO lo que ya existe en el
+      // mapa, texto incluido, y las rayitas tapaban el nombre de las
+      // calles en vez de quedar por debajo.
+      const firstSymbolId = style.layers.find(l => l.type === 'symbol')?.id;
+
       // Quitar terrain 3D si el estilo lo trae configurado
       try { map.setTerrain(null); } catch(_){}
 
@@ -775,14 +783,19 @@ export class MapView {
                   id: dashId, type: 'line',
                   source: layer.source, 'source-layer': layer['source-layer'],
                   filter: layer.filter,
-                  minzoom: Math.max(layer.minzoom || 0, 14), // recién cuando la calle ya se ve ancha
+                  // maxZoom del mapa es 19 (ver _initMap) → el penúltimo
+                  // es 18. Antes aparecía desde zoom 14, mucho antes de
+                  // lo pedido.
+                  minzoom: Math.max(layer.minzoom || 0, 18),
                   layout: { 'line-cap': 'round', 'line-join': 'round' },
                   paint: {
                     'line-color': dashColor,
-                    'line-width': ['interpolate',['linear'],['zoom'],14,0.8,18,2.2],
-                    'line-dasharray': [2, 3],
+                    // Más angosta que antes (0.8→2.2 pasó a 0.5→1.4)
+                    'line-width': ['interpolate',['linear'],['zoom'],18,0.5,19,1.4],
+                    // Rayas más largas (2,3 → 3,3.5)
+                    'line-dasharray': [3, 3.5],
                   }
-                }); // sin beforeId: se agrega arriba de todo lo ya existente en ese momento (calles y edificios) — como es una línea fina y angosta, no tapa nada relevante
+                }, firstSymbolId); // debajo de los nombres de calle — si no, la rayita tapaba el texto
               } catch(_){}
             } else {
               map.setPaintProperty(dashId,'line-color',dashColor);
