@@ -224,7 +224,17 @@ function injectLandmarkStyles() {
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
     }
+    /* Durante el drag la transición se APAGA. El parallax escribe un
+       transform nuevo en cada frame; con la transición activa, cada una
+       de esas escrituras arranca una animación de 0.32s por pin — en el
+       primer frame del drag eso son cientos de transiciones largas
+       disparadas de golpe. Justo después de un zoom-out hay muchos más
+       pines en pantalla que de costumbre, y ahí el arranque del gesto se
+       traba: el drag "no engancha" hasta soltar y volver a tocar.
+       La transición sigue existiendo para lo único que se la quería: el
+       regreso suave a 0 al soltar, cuando esta clase ya se removió. */
     body.map-dragging .place-marker-el > * {
+      transition: none;
       will-change: transform; /* hint de compositor solo mientras se usa */
     }
 
@@ -416,6 +426,7 @@ export class MapView {
         const t = `translate3d(${(-dx * PARALLAX_LAG).toFixed(1)}px,${(-dy * PARALLAX_LAG).toFixed(1)}px,0) scale(${PIN_SHRINK})`;
         for (const el of this.markerEls) {
           if (el.style.display === 'none') continue; // oculto por estar agrupado en un cluster
+          if (el.style.visibility === 'hidden') continue; // no revelado aún por zoom — no vale gastar en él
           const root = el.firstElementChild; // siempre .place-pin-root — ver _buildPinHtml
           if (root) root.style.transform = t;
         }
