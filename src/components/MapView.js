@@ -221,6 +221,22 @@ function injectLandmarkStyles() {
        recálculo de estilo en TODOS los pines, 6-10ms/frame, la causa
        real del "barrido" viejo). Esta transición es la que anima el
        REGRESO suave a 0 cuando el drag termina y el JS limpia el transform. */
+    /* MapLibre pone touch-action:none en .maplibregl-canvas-container, pero
+       los markers son HIJOS de ese contenedor y touch-action NO se hereda:
+       se resuelve sobre el elemento que recibe el toque. Un marker sin
+       touch-action propio queda en 'auto', así que cuando el gesto ARRANCA
+       encima de uno, el navegador se reserva el gesto para su scroll/zoom
+       nativo y retiene los touchmove antes de entregárselos al JS.
+       MapLibre escucha touchmove con {passive:false} justo para poder
+       llamar preventDefault() y quedarse con el gesto — pero ese
+       preventDefault llega tarde si el navegador ya decidió, así que el
+       mapa no paneá hasta soltar y volver a tocar desde otro punto.
+       Con touch-action:none el navegador entrega el gesto al JS de
+       inmediato y el drag arranca igual que sobre el canvas. */
+    .maplibregl-marker {
+      touch-action: none;
+    }
+
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
     }
