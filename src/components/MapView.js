@@ -389,6 +389,39 @@ export class MapView {
       preserveDrawingBuffer: false,
     });
 
+    // [DEBUG temporal] línea de tiempo completa de gestos — para el
+    // freeze de drag justo después de un zoomout que arranca sobre un
+    // cluster. Saca la duda de si el drag arranca DURANTE la inercia del
+    // zoom (touchstart antes de que zoomend dispare), y muestra en qué
+    // momento exacto _updateClusters()/_updatePinsByZoom() corren en
+    // relación a los eventos de touch/drag. Sacar todo este bloque una
+    // vez identificada la causa.
+    (() => {
+      const t0 = performance.now();
+      window._wpGestoT0 = t0; // compartido con _updateClusters()/_updatePinsByZoom()
+      const log = (label) => console.log(`[GESTO] +${(performance.now()-t0).toFixed(0)}ms  ${label}`);
+      ['touchstart','touchend','touchcancel'].forEach(ev => {
+        this.map.getContainer().addEventListener(ev, (e) => {
+          log(`container:${ev}  touches=${e.touches ? e.touches.length : '?'}  target=${e.target?.className || e.target?.tagName}`);
+        }, { capture: true, passive: true });
+      });
+      ['zoomstart','zoomend','movestart','moveend','dragstart','dragend'].forEach(ev => {
+        this.map.on(ev, () => log(`map:${ev}  zoom=${this.map.getZoom().toFixed(2)}`));
+      });
+      // 'zoom'/'move'/'drag' disparan por frame — con throttle, para no
+      // inundar la consola, pero sin perder la foto de "seguía animando
+      // cuando pasó tal cosa".
+      let lastThrottled = 0;
+      ['zoom','move','drag'].forEach(ev => {
+        this.map.on(ev, () => {
+          const now = performance.now();
+          if (now - lastThrottled < 100) return;
+          lastThrottled = now;
+          log(`map:${ev}  zoom=${this.map.getZoom().toFixed(2)}`);
+        });
+      });
+    })();
+
     this.map.on('load', () => {
       console.log('✅ Mapa listo');
 
@@ -1298,6 +1331,7 @@ export class MapView {
 
   // ── Pines dinámicos — cuadrícula espacial tipo Apple Maps ──────────
   _updatePinsByZoom() {
+    if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  _updatePinsByZoom() arranca`);
     const zoom = Math.floor(this.map.getZoom());
 
     this.markerEls.forEach(el => {
@@ -1476,6 +1510,7 @@ export class MapView {
   }
 
   _updateClusters() {
+    if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  _updateClusters() arranca`);
     if (!this._clusterByKey) this._clusterByKey = new Map();
 
     // Restaurar SIEMPRE primero los pines que un agrupamiento anterior
