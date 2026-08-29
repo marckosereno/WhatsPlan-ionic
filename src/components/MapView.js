@@ -389,6 +389,46 @@ export class MapView {
       preserveDrawingBuffer: false,
     });
 
+    // Set de markers (.maplibregl-marker) con un dedo apoyado ENCIMA en
+    // este momento. _destroyClusterMarker() lo consulta antes de sacar un
+    // marker del DOM: si tiene un toque activo, la eliminación física se
+    // pospone hasta que ese toque termine.
+    //
+    // Por qué hace falta: si un marker se destruye (marker.remove()) con
+    // un dedo TODAVÍA apoyado encima, el navegador dejaba de entregar los
+    // touchmove/touchend de ESE dedo por completo (su elemento original ya
+    // no existe). Ni el JS de acá ni el reconocedor de gestos interno de
+    // MapLibre se enteraban de que el toque había terminado — MapLibre
+    // quedaba pensando que había un dedo fantasma activo, y el próximo
+    // toque real se interpretaba como "segundo dedo" en vez de inicio de
+    // drag. Confirmado con una línea de tiempo real: un cluster se
+    // destruye/recrea justo en el mismo instante en que el dedo lo está
+    // tocando (por un zoom que cruza el umbral de disolución), y ahí
+    // arranca un freeze de varios segundos hasta soltar y tocar en otro
+    // punto donde no hay ningún elemento fantasma de por medio.
+    this._activeTouchMarkerEls = new Set();
+    this._pendingMarkerRemovals = new Set();
+    const _recalcActiveTouchMarkers = (e) => {
+      this._activeTouchMarkerEls.clear();
+      if (e.touches) {
+        for (const t of e.touches) {
+          const m = t.target?.closest?.('.maplibregl-marker');
+          if (m) this._activeTouchMarkerEls.add(m);
+        }
+      }
+      // Si algún marker pendiente de eliminar ya no tiene ningún dedo
+      // encima, recién ahora se saca físicamente del DOM.
+      this._pendingMarkerRemovals.forEach(marker => {
+        const el = marker.getElement?.();
+        if (el && this._activeTouchMarkerEls.has(el)) return; // sigue tocado, esperar
+        marker.remove();
+        this._pendingMarkerRemovals.delete(marker);
+      });
+    };
+    this.map.getContainer().addEventListener('touchstart',  _recalcActiveTouchMarkers, { capture: true, passive: true });
+    this.map.getContainer().addEventListener('touchend',    _recalcActiveTouchMarkers, { capture: true, passive: true });
+    this.map.getContainer().addEventListener('touchcancel', _recalcActiveTouchMarkers, { capture: true, passive: true });
+
     // [DEBUG temporal] línea de tiempo completa de gestos — para el
     // freeze de drag justo después de un zoomout que arranca sobre un
     // cluster. Saca la duda de si el drag arranca DURANTE la inercia del
@@ -1504,7 +1544,18 @@ export class MapView {
   _destroyClusterMarker(marker) {
     const el = marker?.getElement?.();
     if (el && el._clusterClearPress) el._clusterClearPress(); // cancelar su long-press pendiente, si lo hay
-    marker?.remove();
+    if (el && this._activeTouchMarkerEls && this._activeTouchMarkerEls.has(el)) {
+      // Hay un dedo apoyado ENCIMA de este marker ahora mismo — no
+      // sacarlo del DOM todavía (ver el comentario largo donde se define
+      // _activeTouchMarkerEls). Se oculta visualmente y se desactiva como
+      // tappeable, pero queda en el DOM hasta que ese toque termine, para
+      // no perder los touchmove/touchend de ese dedo.
+      el.style.pointerEvents = 'none';
+      el.style.opacity = '0';
+      this._pendingMarkerRemovals.add(marker);
+    } else {
+      marker?.remove();
+    }
     const i = this.clusterMarkers.indexOf(marker);
     if (i !== -1) this.clusterMarkers.splice(i, 1);
   }
@@ -1703,6 +1754,11 @@ export class MapView {
         // reconciliación cerraba el minicard sola.
         if (el === this.miniCardMarker?.getElement()) return;
         if (el.style.display === 'none') return;
+        // Mismo motivo que el guard de _destroyClusterMarker: display:none
+        // sobre un elemento con un dedo apoyado encima puede cortar sus
+        // touchmove/touchend en algunos navegadores, igual que sacarlo del
+        // DOM. Más barato prevenirlo acá también que depurarlo de nuevo.
+        if (this._activeTouchMarkerEls && this._activeTouchMarkerEls.has(el)) return;
         el._clusterHiddenDisplay = el.style.display;
         el.style.display = 'none';
         el.style.pointerEvents = 'none';
