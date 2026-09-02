@@ -2151,11 +2151,30 @@ export class MapView {
     // CONTENIDO se actualiza aparte, ahí mismo, cada vez que cambia el
     // tamaño — si no, el contenido quedaba fijo mientras el contenedor
     // crecía alrededor.
+    // Reconstruye el CONTENIDO interno de un sticker (emoji <-> imagen) sin
+    // recrear el clon entero — así el usuario puede tipear un emoji o subir
+    // una imagen desde el mismo panel y ver el cambio al instante, sin
+    // perder posición/tamaño/selección.
+    const rebuildDecoInner = (clone, data) => {
+      const inner = clone.querySelector('.wp-ce-deco-inner');
+      if (!inner) return;
+      inner.innerHTML = '';
+      if (data.emoji) {
+        inner.style.fontFamily = "'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif";
+        inner.style.lineHeight = '1';
+        inner.textContent = data.emoji;
+      } else if (data.imageUrl) {
+        inner.style.fontFamily = ''; inner.style.lineHeight = '';
+        inner.innerHTML = `<img src="${data.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`;
+      }
+    };
+
     const createDecoClone = (kind, data) => {
       const c = document.createElement('div');
       c.className = 'wp-ce-flip-piece';
       c.style.position = 'fixed';
-      c.style.zIndex = kind === 'badge' ? '100040' : '100035';
+      // el z-index NO se fija acá — applyDecoStyle() lo recalcula cada
+      // frame incluyendo layerZ (orden "Adelante"/"Atrás" del panel)
       c.style.pointerEvents = 'auto';
       c.style.boxSizing = 'border-box';
       if (kind === 'badge') {
@@ -2168,14 +2187,8 @@ export class MapView {
         const inner = document.createElement('div');
         inner.className = 'wp-ce-deco-inner';
         inner.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;';
-        if (data.emoji) {
-          inner.style.fontFamily = "'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif";
-          inner.style.lineHeight = '1';
-          inner.textContent = data.emoji;
-        } else if (data.imageUrl) {
-          inner.innerHTML = `<img src="${data.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`;
-        }
         c.appendChild(inner);
+        rebuildDecoInner(c, data);
       }
       document.body.appendChild(c);
       return c;
@@ -2273,7 +2286,11 @@ export class MapView {
       // (left/top ya resueltos aparte). Separado en un helper porque el
       // bloque "por lugar" y el "global" de abajo necesitan exactamente
       // lo mismo, solo cambia de dónde sacan cx/cy.
-      const applyDecoStyle = (d, kind, w, h) => {
+      const applyDecoStyle = (d, kind, w, h, zBase) => {
+        // Orden de capas ("Adelante"/"Atrás" en el panel) — layerZ es
+        // relativo a las demás piezas de SU MISMO grupo (las de este
+        // lugar, o las globales), zBase separa un grupo de otro.
+        d.clone.style.zIndex = String(100000 + zBase + (d.layerZ || 0));
         if (kind === 'badge') {
           // Tamaño y font-size crecen JUNTOS; el padding queda fijo — es
           // lo que se pidió, y es la misma sensación que un badge del
@@ -2320,7 +2337,7 @@ export class MapView {
               ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s ease, height ${duration}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
               : 'none';
             d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-            applyDecoStyle(d, kind, w, h);
+            applyDecoStyle(d, kind, w, h, 35);
             d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
             d.clone.style.opacity = String(p.op);
             d.clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
@@ -2343,7 +2360,7 @@ export class MapView {
           const cx = gx0 + d.dx, cy = gy0 + d.dy;
           d.clone.style.transition = animated ? `left ${duration}s ease, top ${duration}s ease` : 'none';
           d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-          applyDecoStyle(d, kind, w, h);
+          applyDecoStyle(d, kind, w, h, 60);
           d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
           d.clone.style.opacity = '1';
         } catch (err) {
@@ -2470,6 +2487,8 @@ export class MapView {
     const editBtn = wrap.querySelector('.wp-ce-cedit');
     if (editBtn && this.onClusterCustomize) {
       let editSel = null; // { kind: 'badge'|'sticker'|'card'|'badgeGlobal'|'stickerGlobal', obj, clone }
+      let addGlobalNext = false; // checkbox del panel por defecto: el próximo "+ Badge"/"+ Sticker" va a slideGlobal en vez del lugar activo
+      let applyCardStyleToAll = false; // "Aplicar a todas las tarjetas" — ver doSave()
       let editBackup = null; // snapshot del LUGAR que se está editando, para "Cancelar"
       let editPlace = 0;
 
@@ -2513,6 +2532,9 @@ export class MapView {
         if (!editSel) {
           panel.innerHTML = `
             <div class="wp-ce-edithint">Editando "${group[editPlace]?.el._place?.name || ''}" — tocá un badge, sticker o la foto</div>
+            <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+              <input type="checkbox" data-ctl="globaltoggle" ${addGlobalNext ? 'checked' : ''}> Agregar como título global (todos los slides)
+            </label>
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn" data-act="addbadge">+ Badge</button>
               <button type="button" class="wp-ce-editbtn" data-act="addsticker">+ Sticker</button>
@@ -2521,6 +2543,7 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
             </div>`;
+          panel.querySelector('[data-ctl="globaltoggle"]').addEventListener('change', (e) => { addGlobalNext = e.target.checked; });
         } else if (editSel.kind === 'card') {
           const sd = editSel.obj;
           panel.innerHTML = `
@@ -2535,6 +2558,9 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn" data-act="resetcard">Restablecer</button>
               <button type="button" class="wp-ce-editbtn" data-act="deselect">Listo</button>
             </div>
+            ${group.length > 1 ? `<div class="wp-ce-editrow">
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="applyallcards">Aplicar a las ${group.length} tarjetas</button>
+            </div>` : ''}
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
@@ -2551,7 +2577,21 @@ export class MapView {
           panel.innerHTML = `
             <div class="wp-ce-edithint">${label}${isGlobal ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
             ${isBadge ? `<div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>` : ''}
-            ${isBadge ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="12" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
+            ${isBadge ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="40" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
+            ${!isBadge ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+              <div style="flex:1;">
+                <div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">Emoji</div>
+                <input type="text" maxlength="8" value="${sd.emoji || ''}" data-ctl="emoji" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:none;background:rgba(255,255,255,0.08);color:#fff;box-sizing:border-box;">
+              </div>
+              <div style="font-size:9px;color:#6b7280;padding-top:14px;">o</div>
+              <div style="flex:1;">
+                <div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">Imagen propia</div>
+                <label data-ctl="uploadlabel" style="display:flex;align-items:center;justify-content:center;gap:4px;width:100%;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,0.25);color:#9ca3af;font-size:10px;cursor:pointer;box-sizing:border-box;">
+                  <span data-ctl="uploadspan">${sd.imageUrl ? '🖼️ Cambiar' : '📤 Subir'}</span>
+                  <input type="file" accept="image/*" data-ctl="uploadfile" style="display:none;">
+                </label>
+              </div>
+            </div>` : ''}
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
             <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="200" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
             <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.radius ?? 0}" data-ctl="radius"></label>
@@ -2560,6 +2600,10 @@ export class MapView {
               <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;">
             </div>` : ''}
+            <div class="wp-ce-editrow">
+              <button type="button" class="wp-ce-editbtn" data-act="layerback">⬇️ Atrás</button>
+              <button type="button" class="wp-ce-editbtn" data-act="layerfront">⬆️ Adelante</button>
+            </div>
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn" data-act="delthis">Eliminar</button>
               <button type="button" class="wp-ce-editbtn" data-act="deselect">Listo</button>
@@ -2579,8 +2623,74 @@ export class MapView {
             });
             panel.querySelector('[data-ctl="text"]').addEventListener('input', (e) => { sd.label = e.target.value; editSel.clone.textContent = e.target.value || ''; });
           } else {
+            // El teclado de emojis en móvil suele insertar el emoji como
+            // una "composición" (IME) — mismo cuidado que el editor de
+            // cluster: escuchar solo 'input' se pierde el emoji hasta que
+            // algo más fuerza un 'input' final.
+            const emojiEl = panel.querySelector('[data-ctl="emoji"]');
+            const applyEmoji = (e) => {
+              sd.emoji = e.target.value;
+              if (e.target.value) sd.imageUrl = ''; // escribir emoji descarta la imagen propia
+              rebuildDecoInner(editSel.clone, sd);
+              applyLayout(activeIdx, false);
+            };
+            emojiEl.addEventListener('input', (e) => { if (!e.isComposing) applyEmoji(e); });
+            emojiEl.addEventListener('compositionend', applyEmoji);
             panel.querySelector('[data-ctl="strokecolor"]').addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
             panel.querySelector('[data-ctl="strokewidth"]').addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
+
+            // Subir imagen propia — mismo mecanismo que el sticker del
+            // cluster del mapa (comprimir a máx 300px + subir a Supabase
+            // Storage).
+            panel.querySelector('[data-ctl="uploadfile"]').addEventListener('change', async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              if (!file.type.startsWith('image/')) { alert('Solo imágenes.'); return; }
+              if (file.size > 10 * 1024 * 1024) { alert('Imagen demasiado grande (máx 10 MB).'); return; }
+              const uploadLabel = panel.querySelector('[data-ctl="uploadlabel"]');
+              const uploadSpan = panel.querySelector('[data-ctl="uploadspan"]');
+              uploadLabel.style.opacity = '0.5';
+              uploadSpan.textContent = '⏳ Subiendo…';
+              const compressImage = (f) => new Promise((resolve) => {
+                const img = new Image();
+                const url = URL.createObjectURL(f);
+                img.onload = () => {
+                  URL.revokeObjectURL(url);
+                  const MAX = 300;
+                  let w = img.width, h = img.height;
+                  if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else { w = Math.round(w * MAX / h); h = MAX; }
+                  }
+                  const canvas = document.createElement('canvas');
+                  canvas.width = w; canvas.height = h;
+                  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                  canvas.toBlob(resolve, 'image/png', 0.9);
+                };
+                img.src = url;
+              });
+              try {
+                const compressed = await compressImage(file);
+                const { getSupabase } = await import('/src/services/SupabaseService.js');
+                const supabase = getSupabase();
+                if (!supabase) throw new Error('Supabase no inicializado');
+                const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.png';
+                const { error } = await supabase.storage.from('place-photos').upload(path, compressed, { contentType: 'image/png', upsert: false });
+                if (error) throw error;
+                const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
+                sd.imageUrl = urlData.publicUrl;
+                sd.emoji = ''; // subir imagen descarta el emoji
+                rebuildDecoInner(editSel.clone, sd);
+                applyLayout(activeIdx, false);
+                renderPanel();
+              } catch (err) {
+                alert('Error al subir el sticker: ' + err.message);
+                uploadLabel.style.opacity = '';
+                uploadSpan.textContent = sd.imageUrl ? '🖼️ Cambiar' : '📤 Subir';
+              } finally {
+                e.target.value = '';
+              }
+            });
           }
           panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.rotation = +e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
@@ -2693,17 +2803,27 @@ export class MapView {
           renderPanel(); applyLayout(activeIdx, false);
           return;
         }
-        if (act === 'addbadge') {
-          const global = confirm('¿Este badge va como título fijo para TODOS los slides?\n\nAceptar = todos los slides.\nCancelar = solo este lugar.');
-          addLiveDecoration('badge', { label: 'Nuevo' }, global);
+        if (act === 'applyallcards') {
+          // Copia el estilo de ESTA tarjeta a TODAS las del cluster —
+          // en vivo, ya mismo. doSave() usa applyCardStyleToAll para
+          // saber que tiene que persistir el cardStyle de TODOS los
+          // lugares, no solo el que se está editando.
+          const style = { ...slideCardStyles[editPlace] };
+          group.forEach((_, i) => { slideCardStyles[i] = { ...style }; });
+          applyCardStyleToAll = true;
+          applyLayout(activeIdx, false);
           return;
         }
-        if (act === 'addsticker') {
-          const val = prompt('Pegá un emoji, o una URL de imagen:');
-          if (!val) return;
-          const global = confirm('¿Este sticker va fijo para TODOS los slides?\n\nAceptar = todos los slides.\nCancelar = solo este lugar.');
-          const isUrl = /^https?:\/\//i.test(val.trim());
-          addLiveDecoration('sticker', isUrl ? { imageUrl: val.trim() } : { emoji: val.trim() }, global);
+        if (act === 'addbadge') { addLiveDecoration('badge', { label: 'Nuevo' }, addGlobalNext); return; }
+        if (act === 'addsticker') { addLiveDecoration('sticker', { emoji: '⭐' }, addGlobalNext); return; }
+        if (act === 'layerfront' || act === 'layerback') {
+          if (!editSel) return;
+          const scope = editSel.kind.includes('Global')
+            ? [...slideGlobal.badges, ...slideGlobal.stickers]
+            : [...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers];
+          const zs = scope.map(d => d.layerZ || 0);
+          editSel.obj.layerZ = act === 'layerfront' ? Math.max(0, ...zs) + 1 : Math.min(0, ...zs) - 1;
+          applyLayout(activeIdx, false);
           return;
         }
         if (act === 'delthis' && editSel) {
@@ -2739,6 +2859,17 @@ export class MapView {
             stickers: slidePlaceDecos[editPlace].stickers.map(stripClone),
             cardStyle: { ...slideCardStyles[editPlace] },
           };
+          // "Aplicar a todas las tarjetas": el cardStyle se replica a
+          // TODOS los lugares del cluster — sus badges/stickers propios
+          // NO se tocan (se preservan tal cual, solo se les pisa
+          // cardStyle).
+          if (applyCardStyleToAll) {
+            group.forEach((_, i) => {
+              if (i === editPlace) return;
+              const prior = mergedSlidePlaces[placeIds[i]] || { badges: [], stickers: [] };
+              mergedSlidePlaces[placeIds[i]] = { ...prior, cardStyle: { ...slideCardStyles[editPlace] } };
+            });
+          }
           const mergedGlobal = {
             badges: slideGlobal.badges.map(stripClone),
             stickers: slideGlobal.stickers.map(stripClone),
@@ -2775,7 +2906,11 @@ export class MapView {
         editBackup = {
           badges: slidePlaceDecos[editPlace].badges.map(d => ({ ...d })),
           stickers: slidePlaceDecos[editPlace].stickers.map(d => ({ ...d })),
-          cardStyle: { ...slideCardStyles[editPlace] },
+          // TODOS los cardStyle, no solo el del lugar activo — "Aplicar a
+          // todas las tarjetas" muta las de TODOS en vivo, y Cancelar
+          // tiene que poder devolverlas todas, no solo la que se estaba
+          // mirando.
+          allCardStyles: slideCardStyles.map(s => ({ ...s })),
           globalBadges: slideGlobal.badges.map(d => ({ ...d })),
           globalStickers: slideGlobal.stickers.map(d => ({ ...d })),
         };
@@ -2785,12 +2920,14 @@ export class MapView {
       const exitEdit = (saved = false) => {
         if (editSel?.clone) { editSel.clone.style.outline = ''; editSel.clone.style.outlineOffset = ''; }
         clusterEditing = false; editSel = null; mode = null; pts.clear();
+        applyCardStyleToAll = false;
         wrap.classList.remove('wp-ce-editing');
         panel.innerHTML = ''; panel.classList.remove('wp-ce-editpanel-in');
         if (!saved && editBackup) {
           // Cancelar (o cerrar sin guardar): volver TODO — posiciones,
-          // agregados, borrados, estilo de tarjeta, y lo global — a como
-          // estaba al entrar a editar ESTE lugar.
+          // agregados, borrados, estilo de tarjeta (de TODOS los
+          // lugares, por si se usó "Aplicar a todas"), y lo global — a
+          // como estaba al entrar a editar.
           const keepClones = new Set([
             ...editBackup.badges, ...editBackup.stickers,
             ...editBackup.globalBadges, ...editBackup.globalStickers,
@@ -2802,7 +2939,7 @@ export class MapView {
           nowClones.forEach(c => { if (!keepClones.has(c)) c.remove(); });
           slidePlaceDecos[editPlace].badges = editBackup.badges;
           slidePlaceDecos[editPlace].stickers = editBackup.stickers;
-          slideCardStyles[editPlace] = editBackup.cardStyle;
+          editBackup.allCardStyles.forEach((s, i) => { slideCardStyles[i] = s; });
           slideGlobal.badges = editBackup.globalBadges;
           slideGlobal.stickers = editBackup.globalStickers;
         }
