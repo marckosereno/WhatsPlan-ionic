@@ -2124,8 +2124,33 @@ export class MapView {
 
     const decoCap = (kind) => kind === 'badge' ? 1.35 : 1.6; // tope de escala vía pellizco
 
+    // ── Stroke de sticker — MISMA técnica que usa el mapa (_buildClusterStickerHtml):
+    // -webkit-text-stroke no pinta en emoji a color en casi ningún navegador,
+    // así que el contorno se simula apilando copias del contenido en un
+    // círculo de 12 puntos (texto) u 8 puntos + drop-shadow (imagen).
+    const buildEmojiStroke = (strokeWidth, strokeColor) => {
+      if (strokeWidth <= 0) return '0 2px 4px rgba(0,0,0,0.32)';
+      const N = 12;
+      const stack = Array.from({ length: N }, (_, k) => {
+        const a = (k / N) * 2 * Math.PI;
+        const x = +(Math.cos(a) * strokeWidth).toFixed(2), y = +(Math.sin(a) * strokeWidth).toFixed(2);
+        return `${x}px ${y}px 0 ${strokeColor}`;
+      }).join(',');
+      return `${stack},0 2px 4px rgba(0,0,0,0.28)`;
+    };
+    const buildImageStroke = (strokeWidth, strokeColor) => {
+      if (strokeWidth <= 0) return 'drop-shadow(0 2px 4px rgba(0,0,0,0.32))';
+      const diag = +(strokeWidth * 0.7071).toFixed(2);
+      return `drop-shadow(${strokeWidth}px 0 0 ${strokeColor}) drop-shadow(-${strokeWidth}px 0 0 ${strokeColor}) drop-shadow(0 ${strokeWidth}px 0 ${strokeColor}) drop-shadow(0 -${strokeWidth}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 2px 4px rgba(0,0,0,0.28))`;
+    };
+
     // Crea el elemento DOM de una decoración nueva (sticker/badge), para
     // datos cargados desde lo guardado o agregados en vivo con el editor.
+    // El sticker lleva un DIV INTERNO — el tamaño del CONTENEDOR lo pisa
+    // applyLayout() (posición/parallax), pero el font-size/stroke del
+    // CONTENIDO se actualiza aparte, ahí mismo, cada vez que cambia el
+    // tamaño — si no, el contenido quedaba fijo mientras el contenedor
+    // crecía alrededor.
     const createDecoClone = (kind, data) => {
       const c = document.createElement('div');
       c.className = 'wp-ce-flip-piece';
@@ -2134,13 +2159,23 @@ export class MapView {
       c.style.pointerEvents = 'auto';
       c.style.boxSizing = 'border-box';
       if (kind === 'badge') {
-        c.style.cssText += `display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:999px;background:${data.color || '#111827'};color:#fff;font-size:11.5px;font-weight:800;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;`;
+        // padding FIJO a propósito (no escala con el tamaño) — el
+        // tamaño y el font-size sí crecen juntos, eso lo hace
+        // applyLayout() en cada frame.
+        c.style.cssText += `display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:999px;background:${data.color || '#111827'};color:#fff;font-weight:800;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;`;
         c.textContent = data.label || '';
-      } else if (data.emoji) {
-        c.style.cssText += 'font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center;';
-        c.textContent = data.emoji;
-      } else if (data.imageUrl) {
-        c.innerHTML = `<img src="${data.imageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;">`;
+      } else {
+        const inner = document.createElement('div');
+        inner.className = 'wp-ce-deco-inner';
+        inner.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;';
+        if (data.emoji) {
+          inner.style.fontFamily = "'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif";
+          inner.style.lineHeight = '1';
+          inner.textContent = data.emoji;
+        } else if (data.imageUrl) {
+          inner.innerHTML = `<img src="${data.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`;
+        }
+        c.appendChild(inner);
       }
       document.body.appendChild(c);
       return c;
@@ -2234,12 +2269,48 @@ export class MapView {
         }
       });
 
+      // Aplica el tamaño/contenido de UNA decoración ya posicionada
+      // (left/top ya resueltos aparte). Separado en un helper porque el
+      // bloque "por lugar" y el "global" de abajo necesitan exactamente
+      // lo mismo, solo cambia de dónde sacan cx/cy.
+      const applyDecoStyle = (d, kind, w, h) => {
+        if (kind === 'badge') {
+          // Tamaño y font-size crecen JUNTOS; el padding queda fijo — es
+          // lo que se pidió, y es la misma sensación que un badge del
+          // cluster del mapa al agrandarlo.
+          const totalScale = h / (d.baseH || 22);
+          d.clone.style.minWidth = w + 'px';
+          d.clone.style.height = h + 'px';
+          d.clone.style.width = '';
+          d.clone.style.fontSize = (11.5 * totalScale) + 'px';
+          d.clone.style.borderRadius = '999px';
+        } else {
+          d.clone.style.width = w + 'px'; d.clone.style.height = h + 'px';
+          d.clone.style.borderRadius = (d.radius || 0) + 'px';
+          const totalScale = h / (d.baseH || 26);
+          const liveStroke = (d.strokeWidth ?? 2) * totalScale;
+          const inner = d.clone.firstElementChild;
+          if (inner) {
+            if (d.emoji) {
+              inner.style.fontSize = h + 'px';
+              inner.style.textShadow = buildEmojiStroke(liveStroke, d.strokeColor || '#ffffff');
+            } else if (d.imageUrl) {
+              const img = inner.querySelector('img');
+              if (img) img.style.filter = buildImageStroke(liveStroke, d.strokeColor || '#ffffff');
+            }
+          }
+        }
+      };
+
       slidePlaceDecos.forEach((deco, i) => {
         const p = cardPosByIdx[i];
         if (!p) return;
         const scaleRef = p.w / heroW;
         const cx0 = p.x + p.w / 2, cy0 = p.y + p.h / 2;
-        [...deco.badges, ...deco.stickers].forEach(d => {
+        [
+          ...deco.badges.map(d => ({ d, kind: 'badge' })),
+          ...deco.stickers.map(d => ({ d, kind: 'sticker' })),
+        ].forEach(({ d, kind }) => {
           try {
             const w = d.baseW * scaleRef * (d.scale ?? 1);
             const h = d.baseH * scaleRef * (d.scale ?? 1);
@@ -2249,10 +2320,9 @@ export class MapView {
               ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s ease, height ${duration}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
               : 'none';
             d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-            d.clone.style.width = w + 'px'; d.clone.style.height = h + 'px';
+            applyDecoStyle(d, kind, w, h);
             d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
             d.clone.style.opacity = String(p.op);
-            d.clone.style.borderRadius = (d.radius || 0) + 'px';
             d.clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
           } catch (err) {
             console.error('[FLIP] error posicionando decoración', { place: i }, err);
@@ -2264,16 +2334,18 @@ export class MapView {
       // importar qué lugar sea héroe ahora. "Título para todos los
       // slides": no se desvanecen ni se mueven con el drag.
       const gx0 = heroX + heroW / 2, gy0 = heroY - 26; // arriba de la tarjeta héroe, centrado
-      [...slideGlobal.badges, ...slideGlobal.stickers].forEach(d => {
+      [
+        ...slideGlobal.badges.map(d => ({ d, kind: 'badge' })),
+        ...slideGlobal.stickers.map(d => ({ d, kind: 'sticker' })),
+      ].forEach(({ d, kind }) => {
         try {
           const w = d.baseW * (d.scale ?? 1), h = d.baseH * (d.scale ?? 1);
           const cx = gx0 + d.dx, cy = gy0 + d.dy;
           d.clone.style.transition = animated ? `left ${duration}s ease, top ${duration}s ease` : 'none';
           d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-          d.clone.style.width = w + 'px'; d.clone.style.height = h + 'px';
+          applyDecoStyle(d, kind, w, h);
           d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
           d.clone.style.opacity = '1';
-          d.clone.style.borderRadius = (d.radius || 0) + 'px';
         } catch (err) {
           console.error('[FLIP] error posicionando decoración global', err);
         }
@@ -2401,6 +2473,16 @@ export class MapView {
       let editBackup = null; // snapshot del LUGAR que se está editando, para "Cancelar"
       let editPlace = 0;
 
+      // Centraliza el contorno punteado de selección — mismo lenguaje
+      // visual que el editor de cluster del mapa (outline celeste
+      // punteado). Se limpia del anterior antes de ponerlo en el nuevo.
+      const setEditSel = (resolved) => {
+        if (editSel?.clone) { editSel.clone.style.outline = ''; editSel.clone.style.outlineOffset = ''; }
+        editSel = resolved;
+        if (editSel?.clone) { editSel.clone.style.outline = '2px dashed #67e8f9'; editSel.clone.style.outlineOffset = '2px'; }
+        renderPanel();
+      };
+
       const panel = document.createElement('div');
       panel.className = 'wp-ce-editpanel';
       wrap.appendChild(panel);
@@ -2463,13 +2545,21 @@ export class MapView {
         } else {
           const sd = editSel.obj;
           const isGlobal = editSel.kind.includes('Global');
-          const label = editSel.kind.startsWith('badge') ? 'Badge' : 'Sticker';
+          const isBadge = editSel.kind.startsWith('badge');
+          const label = isBadge ? 'Badge' : 'Sticker';
+          const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6']; // mismos colores que el editor de cluster
           panel.innerHTML = `
             <div class="wp-ce-edithint">${label}${isGlobal ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
+            ${isBadge ? `<div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>` : ''}
+            ${isBadge ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="12" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
             <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="200" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
             <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.radius ?? 0}" data-ctl="radius"></label>
-            ${editSel.kind.startsWith('badge') ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="12" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
+            ${!isBadge ? `<div class="wp-ce-editrow" style="align-items:center;">
+              <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Contorno (stroke)</span>
+              <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
+              <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;">
+            </div>` : ''}
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn" data-act="delthis">Eliminar</button>
               <button type="button" class="wp-ce-editbtn" data-act="deselect">Listo</button>
@@ -2478,10 +2568,23 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
             </div>`;
+          if (isBadge) {
+            const row = panel.querySelector('[data-ctl="colorrow"]');
+            BADGE_PRESET.forEach(c => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.style.cssText = `width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c === (sd.color || '#111827') ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;`;
+              b.addEventListener('click', () => { sd.color = c; editSel.clone.style.background = c; renderPanel(); });
+              row.appendChild(b);
+            });
+            panel.querySelector('[data-ctl="text"]').addEventListener('input', (e) => { sd.label = e.target.value; editSel.clone.textContent = e.target.value || ''; });
+          } else {
+            panel.querySelector('[data-ctl="strokecolor"]').addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
+            panel.querySelector('[data-ctl="strokewidth"]').addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
+          }
           panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.rotation = +e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="radius"]').addEventListener('input', (e) => { sd.radius = +e.target.value; applyLayout(activeIdx, false); });
-          panel.querySelector('[data-ctl="text"]')?.addEventListener('input', (e) => { sd.label = e.target.value; editSel.clone.textContent = e.target.value || ''; });
         }
         panel.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => onPanelAction(b.getAttribute('data-act'))));
         requestAnimationFrame(() => panel.classList.add('wp-ce-editpanel-in'));
@@ -2501,11 +2604,18 @@ export class MapView {
         if (e.target.closest('.wp-ce-editpanel')) return;
         if (pts.size === 0) {
           const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wp-ce-flip-piece');
-          const resolved = hit ? resolveClone(hit) : null;
+          let resolved = hit ? resolveClone(hit) : null;
+          // Las tarjetas ocupan casi toda la pantalla — si ya había un
+          // badge/sticker seleccionado y el toque cae sobre una tarjeta
+          // (no sobre el elemento chico en sí), NO robarle la selección:
+          // se sigue controlando lo que ya estaba activo. Recién si no
+          // hay nada seleccionado, tocar la tarjeta la selecciona a ELLA.
+          if (resolved && resolved.kind === 'card' && editSel && editSel.kind !== 'card') {
+            resolved = null;
+          }
           if (resolved) {
             const isDifferent = !editSel || editSel.clone !== resolved.clone;
-            editSel = resolved;
-            if (isDifferent) renderPanel();
+            if (isDifferent) setEditSel(resolved);
           } else if (!editSel) {
             return; // nada seleccionado y tocaste una zona sin nada — no hay qué mover
           }
@@ -2559,24 +2669,23 @@ export class MapView {
       // Agrega un badge o sticker VIVO — al lugar activo, o a la lista
       // global si se eligió "título para todos los slides".
       const addLiveDecoration = (kind, data, global) => {
-        const base = { dx: 0, dy: kind === 'badge' ? -28 : 0, rotation: 0, scale: 1, radius: 0, baseW: kind === 'badge' ? 26 : 40, baseH: kind === 'badge' ? 26 : 40, ...data };
+        const base = { dx: 0, dy: kind === 'badge' ? -28 : 0, rotation: 0, scale: 1, radius: 0, baseW: kind === 'badge' ? 22 : 26, baseH: kind === 'badge' ? 22 : 26, strokeColor: '#ffffff', strokeWidth: 2, ...data };
         const clone = createDecoClone(kind, base);
         const entry = { ...base, clone };
         if (global) {
           (kind === 'badge' ? slideGlobal.badges : slideGlobal.stickers).push(entry);
           clones.push({ node: null, kind: kind + 'Global', idx: 0, rect: null, clone });
-          editSel = { kind: kind + 'Global', obj: entry, clone };
+          setEditSel({ kind: kind + 'Global', obj: entry, clone });
         } else {
           (kind === 'badge' ? slidePlaceDecos[editPlace].badges : slidePlaceDecos[editPlace].stickers).push(entry);
           clones.push({ node: null, kind, idx: editPlace, rect: null, clone });
-          editSel = { kind, obj: entry, clone };
+          setEditSel({ kind, obj: entry, clone });
         }
-        renderPanel();
         applyLayout(activeIdx, false);
       };
 
       const onPanelAction = async (act) => {
-        if (act === 'deselect') { editSel = null; renderPanel(); applyLayout(activeIdx, false); return; }
+        if (act === 'deselect') { setEditSel(null); applyLayout(activeIdx, false); return; }
         if (act === 'cancel') { exitEdit(); return; }
         if (act === 'resetcard') {
           const sd = slideCardStyles[editPlace];
@@ -2607,8 +2716,7 @@ export class MapView {
           const ci = clones.findIndex(c => c.clone === editSel.clone);
           if (ci !== -1) clones.splice(ci, 1);
           editSel.clone.remove();
-          editSel = null;
-          renderPanel();
+          setEditSel(null);
           applyLayout(activeIdx, false);
           return;
         }
@@ -2675,6 +2783,7 @@ export class MapView {
         renderPanel();
       };
       const exitEdit = (saved = false) => {
+        if (editSel?.clone) { editSel.clone.style.outline = ''; editSel.clone.style.outlineOffset = ''; }
         clusterEditing = false; editSel = null; mode = null; pts.clear();
         wrap.classList.remove('wp-ce-editing');
         panel.innerHTML = ''; panel.classList.remove('wp-ce-editpanel-in');
