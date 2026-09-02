@@ -1934,6 +1934,15 @@ export class MapView {
   _openClusterExpand(group, customDef, stickerEl) {
     if (this._clusterExpandEl) this._closeClusterExpand();
 
+    // Red de seguridad: si una transición anterior falló a mitad de camino
+    // (una excepción, un cierre interrumpido) y sus clones nunca se
+    // sacaron del DOM, quedaban ahí para siempre — fixed, con z-index
+    // altísimo, flotando sobre el mapa aunque el modal ya no exista. Eso
+    // es justo el recuadro gris gigante que quedaba pegado en pantalla.
+    // Antes de crear una transición nueva, se limpia cualquier resto de
+    // una anterior.
+    document.querySelectorAll('.wp-ce-flip-piece').forEach(n => n.remove());
+
     this._clusterExpandOrigCamera = { center: this.map.getCenter(), zoom: this.map.getZoom() };
 
     // ── First: dónde está cada pieza AHORA, en coordenadas de pantalla ──
@@ -1946,6 +1955,13 @@ export class MapView {
       const labelN = stickerEl.querySelector('[data-label]');
       if (labelN) pieces.push({ node: labelN, kind: 'label', rect: labelN.getBoundingClientRect() });
     }
+    // [DEBUG temporal] diagnóstico de la pantalla en blanco — si
+    // cardPieces sale con menos elementos que group.length, o algún rect
+    // da 0x0 o coordenadas absurdas, ahí está la causa. Sacar una vez
+    // confirmada.
+    console.log('[FLIP] pieces capturadas:', pieces.map(p => ({ kind: p.kind, idx: p.idx, rect: { x: Math.round(p.rect.x), y: Math.round(p.rect.y), w: Math.round(p.rect.width), h: Math.round(p.rect.height) } })));
+    console.log('[FLIP] group.length:', group.length, ' stickerEl:', stickerEl, ' stickerEl rect:', stickerEl?.getBoundingClientRect());
+
     const cardPieces = pieces.filter(p => p.kind === 'card').sort((a, b) => a.idx - b.idx);
     // Si no hay tarjeta (cluster recién creado, sin fotos todavía), no hay
     // nada que animar en FLIP — no debería pasar en uso normal, pero por
@@ -1970,6 +1986,7 @@ export class MapView {
       const w = heroW * (0.58 - (i - 2) * 0.04);
       return { x: vw - w * 0.66 - (i - 2) * 10, y: heroY + heroH * (0.12 + (i - 2) * 0.14), w, h: w * 1.32, rot: 8 + (i - 2) * 5, z: 20 - i };
     };
+    console.log('[FLIP] destinos:', cardPieces.map(p => dest(p.idx)));
 
     // ── Overlay ────────────────────────────────────────────────────────
     const placeCount = group.length;
@@ -2035,27 +2052,38 @@ export class MapView {
       // colapsar ambos estados en uno y la transición no se ve).
       requestAnimationFrame(() => {
         clones.forEach(({ kind, idx, rect, clone }, order) => {
-          clone.style.transition = `left 0.52s cubic-bezier(0.34,1.56,0.64,1), top 0.52s cubic-bezier(0.34,1.56,0.64,1), width 0.52s cubic-bezier(0.34,1.56,0.64,1), height 0.52s cubic-bezier(0.34,1.56,0.64,1), transform 0.52s cubic-bezier(0.34,1.56,0.64,1)`;
-          clone.style.transitionDelay = `${Math.min(order * 35, 140)}ms`;
-          if (kind === 'card') {
-            const d = dest(idx);
-            clone.style.left = d.x + 'px'; clone.style.top = d.y + 'px';
-            clone.style.width = d.w + 'px'; clone.style.height = d.h + 'px';
-            clone.style.transform = `rotate(${d.rot}deg)`;
-            clone.style.zIndex = String(d.z);
-          } else {
-            // stickers/badge/label: mismo desplazamiento relativo a la
-            // tarjeta héroe que tenían en el mapa, reescalado según cuánto
-            // creció la tarjeta héroe respecto a su tamaño original.
-            const scale = heroW / (cardPieces[0]?.rect.width || heroW);
-            const relX = (rect.left + rect.width / 2) - heroDX;
-            const relY = (rect.top + rect.height / 2) - heroDY;
-            const cx = heroX + heroW / 2 + relX * scale;
-            const cy = heroY + heroH / 2 + relY * scale;
-            const w = rect.width * scale, h = rect.height * scale;
-            clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
-            clone.style.width = w + 'px'; clone.style.height = h + 'px';
-            clone.style.zIndex = '35';
+          try {
+            clone.style.transition = `left 0.52s cubic-bezier(0.34,1.56,0.64,1), top 0.52s cubic-bezier(0.34,1.56,0.64,1), width 0.52s cubic-bezier(0.34,1.56,0.64,1), height 0.52s cubic-bezier(0.34,1.56,0.64,1), transform 0.52s cubic-bezier(0.34,1.56,0.64,1)`;
+            clone.style.transitionDelay = `${Math.min(order * 35, 140)}ms`;
+            if (kind === 'card') {
+              const d = dest(idx);
+              console.log(`[FLIP] card idx=${idx} → destino:`, d); // [DEBUG temporal]
+              clone.style.left = d.x + 'px'; clone.style.top = d.y + 'px';
+              clone.style.width = d.w + 'px'; clone.style.height = d.h + 'px';
+              clone.style.transform = `rotate(${d.rot}deg)`;
+              clone.style.zIndex = String(d.z);
+            } else {
+              // stickers/badge/label: mismo desplazamiento relativo a la
+              // tarjeta héroe que tenían en el mapa, reescalado según cuánto
+              // creció la tarjeta héroe respecto a su tamaño original.
+              const scale = heroW / (cardPieces[0]?.rect.width || heroW);
+              const relX = (rect.left + rect.width / 2) - heroDX;
+              const relY = (rect.top + rect.height / 2) - heroDY;
+              const cx = heroX + heroW / 2 + relX * scale;
+              const cy = heroY + heroH / 2 + relY * scale;
+              const w = rect.width * scale, h = rect.height * scale;
+              clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
+              clone.style.width = w + 'px'; clone.style.height = h + 'px';
+              clone.style.zIndex = '35';
+            }
+          } catch (err) {
+            // Sin este catch, una excepción acá (por ejemplo un rect con
+            // NaN) frenaba el forEach a mitad de camino y dejaba clones
+            // sin reposicionar — la pantalla en blanco reportada. Con el
+            // catch, ese clon puntual queda en su posición de arranque
+            // (visible, aunque no anime) en vez de que se rompa TODO el
+            // resto de la transición detrás de él.
+            console.error('[FLIP] error posicionando pieza', { kind, idx }, err);
           }
         });
       });
