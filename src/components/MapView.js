@@ -1959,7 +1959,14 @@ export class MapView {
     // cardPieces sale con menos elementos que group.length, o algún rect
     // da 0x0 o coordenadas absurdas, ahí está la causa. Sacar una vez
     // confirmada.
-    console.log('[FLIP] pieces capturadas:', pieces.map(p => ({ kind: p.kind, idx: p.idx, rect: { x: Math.round(p.rect.x), y: Math.round(p.rect.y), w: Math.round(p.rect.width), h: Math.round(p.rect.height) } })));
+    console.log('[FLIP] pieces capturadas:', JSON.stringify(pieces.map(p => ({
+      kind: p.kind, idx: p.idx,
+      rect: { x: Math.round(p.rect.x), y: Math.round(p.rect.y), w: Math.round(p.rect.width), h: Math.round(p.rect.height) },
+      // si w/h da 0, el clon nace invisible (nada que crecer) — la causa
+      // más probable de "pantalla en blanco". bg confirma si la tarjeta
+      // realmente tiene una foto de fondo o el fallback gris.
+      bg: (p.node.getAttribute('style') || '').includes('background-image') ? 'photo' : 'fallback-gris',
+    }))));
     console.log('[FLIP] group.length:', group.length, ' stickerEl:', stickerEl, ' stickerEl rect:', stickerEl?.getBoundingClientRect());
 
     const cardPieces = pieces.filter(p => p.kind === 'card').sort((a, b) => a.idx - b.idx);
@@ -1986,7 +1993,7 @@ export class MapView {
       const w = heroW * (0.58 - (i - 2) * 0.04);
       return { x: vw - w * 0.66 - (i - 2) * 10, y: heroY + heroH * (0.12 + (i - 2) * 0.14), w, h: w * 1.32, rot: 8 + (i - 2) * 5, z: 20 - i };
     };
-    console.log('[FLIP] destinos:', cardPieces.map(p => dest(p.idx)));
+    console.log('[FLIP] destinos:', JSON.stringify(cardPieces.map(p => dest(p.idx))));
 
     // ── Overlay ────────────────────────────────────────────────────────
     const placeCount = group.length;
@@ -2093,6 +2100,16 @@ export class MapView {
     // después de que arrancó el FLIP — así el ojo primero sigue a las
     // fotos y el texto llega como remate, no todo junto de golpe.
     setTimeout(() => wrap.classList.add('wp-ce-chrome-in'), 260);
+    // [DEBUG temporal] estado FINAL, una vez asentada la animación —
+    // dónde quedó cada clon realmente en pantalla, y si terminó con
+    // tamaño 0 o fuera del viewport (lo que se vería como "blanco").
+    setTimeout(() => {
+      console.log('[FLIP] estado final de los clones:', JSON.stringify(clones.map(({ kind, idx, clone }) => {
+        const r = clone.getBoundingClientRect();
+        const cs = getComputedStyle(clone);
+        return { kind, idx, rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }, display: cs.display, opacity: cs.opacity, zIndex: cs.zIndex };
+      })));
+    }, 700);
 
     // Tocar una tarjeta ya asentada en el collage abre esa ficha
     clones.forEach(({ kind, idx, clone }) => {
