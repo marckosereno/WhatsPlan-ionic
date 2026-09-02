@@ -1993,11 +1993,6 @@ export class MapView {
       if (labelN) pieces.push({ node: labelN, kind: 'label', rect: labelN.getBoundingClientRect() });
     }
     const cardPieces = pieces.filter(p => p.kind === 'card').sort((a, b) => a.idx - b.idx);
-    // [DEBUG temporal] "pantalla en blanco" round 2 — si pieces sale vacío
-    // o sin cards, ahí está la causa directa (nada que clonar = nada que
-    // ver). onClusterCustomize confirma o descarta si el botón editar
-    // debería estar mostrándose. Sacar una vez confirmado.
-    console.log('[FLIP2] pieces:', JSON.stringify(pieces.map(p => ({ kind: p.kind, idx: p.idx }))), ' onClusterCustomize:', typeof this.onClusterCustomize);
     // Si no hay tarjeta (cluster recién creado, sin fotos todavía), no hay
     // nada que animar en FLIP — no debería pasar en uso normal, pero por
     // las dudas cae a abrir directo sin transición en vez de romper.
@@ -2096,16 +2091,6 @@ export class MapView {
       return { ...p, clone: c };
     });
 
-    const cleanupClones = () => clones.forEach(({ clone }) => clone.remove());
-
-    // Delta original entre cada sticker/badge/label y la tarjeta héroe —
-    // se preserva al reposicionar, así las decoraciones "viajan pegadas"
-    // a la foto que sea héroe en cada momento, en vez de recalcularse
-    // desde cero cada vez.
-    const heroDX = heroRect.left + heroRect.width / 2;
-    const heroDY = heroRect.top + heroRect.height / 2;
-    const cardClones = clones.filter(c => c.kind === 'card');
-
     // ── El "render" central: dado un activeIdx (puede ser fraccional,
     // en pleno drag), calcula y aplica la posición de CADA pieza. Se
     // llama en cada frame de drag (sin transición CSS, 1:1 con el dedo)
@@ -2116,27 +2101,106 @@ export class MapView {
     // si no, arrastrar para reposicionar un sticker también movería de
     // héroe, cambiando la referencia a mitad de la edición.
     let clusterEditing = false;
-    // ── Datos "vivos" de badges/stickers de ESTA pantalla ───────────────
-    // applyLayout() lee de ACÁ, no de `customDef` directamente — ese fue
-    // el bug real de "el panel se abre pero los cambios no se aplican":
-    // el editor mutaba una copia separada que applyLayout nunca leía.
-    // Con una sola fuente de verdad compartida, arrastrar/tocar un
-    // slider se ve al instante.
-    let liveBadges = Array.isArray(customDef?.badges) ? customDef.badges.map(b => ({ ...(b || {}) }))
-      : customDef?.badge ? [{ ...customDef.badge }]
-      // Sin badges/badge guardados, el "+N" que se ve es puramente
-      // automático (default de _buildClusterStickerHtml). Si esta sesión
-      // termina en un Guardar, hay que preservar ESE default como una
-      // entrada real — si no, guardar con liveBadges=[] lo borraría para
-      // siempre (Array.isArray([]) es true, así que ya no caería más en
-      // el fallback automático).
-      : group.length > 1 ? [{}]
-      : [];
-    let liveStickers = (customDef?.stickers || []).map(s => ({ ...s }));
+
+    // ── Decoraciones INDEPENDIENTES POR LUGAR ───────────────────────────
+    // Cada lugar del grupo tiene su PROPIO set de badges/stickers para
+    // esta pantalla — separado por completo de customDef.badges/stickers
+    // (lo que ve el CLUSTER en el mapa). Editar acá nunca toca el mapa;
+    // guardar acá nunca toca el mapa. slidePlaceDecos[i] = { badges, stickers },
+    // cada entrada { dx, dy, rotation, scale, radius, baseW, baseH, clone, ...datos }.
+    // Delta original entre cada sticker/badge/label y la tarjeta héroe —
+    // se usa SOLO para calcular la herencia inicial del lugar 0 (abajo).
+    const heroDX = heroRect.left + heroRect.width / 2;
+    const heroDY = heroRect.top + heroRect.height / 2;
+    // Cuánto creció la tarjeta 0 del tamaño diminuto del sticker (2x2px)
+    // al tamaño base de héroe — se usa para reproyectar la posición
+    // original de sus decoraciones a la escala que van a tener acá.
+    const inheritedBaseScale = heroW / (cardPieces[0]?.rect.width || heroW);
+
+    const placeIds = group.map(({ el }) => placeIdOf(el._place));
+    const savedSlidePlaces = customDef?.slidePlaces || {};
+    const slidePlaceDecos = group.map(() => ({ badges: [], stickers: [] }));
+
+    const decoCap = (kind) => kind === 'badge' ? 1.35 : 1.6;
+
+    // Crea el elemento DOM de una decoración nueva (sticker/badge), para
+    // datos cargados desde lo guardado o agregados en vivo con el editor.
+    const createDecoClone = (kind, data) => {
+      const c = document.createElement('div');
+      c.className = 'wp-ce-flip-piece';
+      c.style.position = 'fixed';
+      c.style.zIndex = kind === 'badge' ? '100040' : '100035';
+      c.style.pointerEvents = 'auto';
+      c.style.boxSizing = 'border-box';
+      if (kind === 'badge') {
+        c.style.cssText += `display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:999px;background:${data.color || '#111827'};color:#fff;font-size:11.5px;font-weight:800;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;`;
+        c.textContent = data.label || '';
+      } else if (data.emoji) {
+        c.style.cssText += 'font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center;';
+        c.textContent = data.emoji;
+      } else if (data.imageUrl) {
+        c.innerHTML = `<img src="${data.imageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;">`;
+      }
+      document.body.appendChild(c);
+      return c;
+    };
+
+    // Lugar 0 (el que se tocó): si no tiene datos PROPIOS guardados
+    // todavía, hereda una COPIA de lo que YA se ve en el sticker del mapa
+    // en este instante — pura continuidad visual para el FLIP de
+    // apertura. Reutiliza los clones YA CREADOS arriba (no crea de
+    // nuevo) — a partir de acá quedan totalmente independientes: nada de
+    // esto se vuelve a escribir en customDef.badges/stickers.
+    if (!savedSlidePlaces[placeIds[0]]) {
+      clones.filter(c => c.kind === 'badge' || c.kind === 'sticker').forEach(c => {
+        const relX = (c.rect.left + c.rect.width / 2) - heroDX;
+        const relY = (c.rect.top + c.rect.height / 2) - heroDY;
+        const scale = Math.min(inheritedBaseScale, decoCap(c.kind));
+        const deco = {
+          dx: relX * scale, dy: relY * scale, rotation: 0, scale: 1, radius: 0,
+          baseW: c.rect.width * scale, baseH: c.rect.height * scale,
+          clone: c.clone,
+          label: c.kind === 'badge' ? (c.clone.textContent || '') : undefined,
+        };
+        (c.kind === 'badge' ? slidePlaceDecos[0].badges : slidePlaceDecos[0].stickers).push(deco);
+      });
+    }
+
+    // Resto de los lugares (y el lugar 0 si YA tiene datos propios
+    // guardados de una edición anterior): cargar desde slidePlaces. Los
+    // que nunca se editaron quedan simplemente vacíos — "independiente"
+    // significa que no hay nada por default, no que hereden lo del mapa.
+    group.forEach((_, i) => {
+      const saved = savedSlidePlaces[placeIds[i]];
+      if (!saved) return;
+      ['badges', 'stickers'].forEach(key => {
+        const kind = key === 'badges' ? 'badge' : 'sticker';
+        (saved[key] || []).forEach(d => {
+          const clone = createDecoClone(kind, d);
+          const entry = { ...d, clone };
+          slidePlaceDecos[i][key].push(entry);
+          clones.push({ node: null, kind, idx: i, rect: null, clone });
+        });
+      });
+    });
+
+    const cleanupClones = () => clones.forEach(({ clone }) => clone && clone.remove());
+    const cardClones = clones.filter(c => c.kind === 'card');
+
+    // ── El "render" central: dado un activeIdx (puede ser fraccional,
+    // en pleno drag), calcula y aplica la posición de CADA pieza. Se
+    // llama en cada frame de drag (sin transición CSS, 1:1 con el dedo)
+    // y también para los saltos animados (chip, flick, snap al soltar).
+    //
+    // Las decoraciones de cada lugar se anclan a SU PROPIA tarjeta (no a
+    // "el héroe" global) — por eso al pasar del slide 1 al slide 2 no
+    // saltan de golpe: cada set viaja pegado a su propia foto, que ya se
+    // está deslizando con el mismo parallax que las tarjetas. Un lugar
+    // que no es héroe se ve desplazado y con menos opacidad — igual que
+    // su tarjeta — hasta que le toca ser el centro.
     const applyLayout = (idxVal, animated, opts = {}) => {
       const { duration = 0.36, stagger = 0 } = opts;
-      const nearest = Math.max(0, Math.min(group.length - 1, Math.round(idxVal)));
-      let heroLive = null;
+      const cardPosByIdx = {};
       cardClones.forEach(({ idx, clone }, order) => {
         try {
           const p = posForDistance(idx - idxVal);
@@ -2152,7 +2216,7 @@ export class MapView {
           // o el fondo blanco del wrap (99999) los tapa
           clone.style.zIndex = String(100000 + Math.round(p.z));
           clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
-          if (idx === nearest) heroLive = p;
+          cardPosByIdx[idx] = p;
         } catch (err) {
           // Sin este catch, una excepción acá (por ejemplo un rect con
           // NaN) frenaba el forEach a mitad de camino y dejaba clones sin
@@ -2160,68 +2224,31 @@ export class MapView {
           console.error('[FLIP] error posicionando tarjeta', { idx }, err);
         }
       });
-      if (!heroLive) return;
-      const heroLiveX = heroLive.x + heroLive.w / 2, heroLiveY = heroLive.y + heroLive.h / 2;
-      const baseW = cardPieces[0]?.rect.width || heroW;
-      const scaleFull = heroLive.w / baseW;
-      // Cuánto se corre cada decoración por el drag en curso — SUTIL a
-      // propósito (ver el pedido: "que sí se muevan pero solo muy poco,
-      // con efecto parallax"). Es la distancia al entero más cercano
-      // (0 cuando ya asentó en un héroe, hasta 0.5 a mitad de camino
-      // entre dos) multiplicada por un desplazamiento chico en px.
-      const parallaxPx = (idxVal - Math.round(idxVal)) * -18;
-      clones.forEach(({ kind, idx, rect, clone }) => {
-        if (kind === 'card') return;
-        try {
-        // El badge (y por consistencia el resto de las decoraciones) se
-        // agranda un poco respecto a como se ve en el mapa, pero NUNCA a
-        // la par de cuánto creció la foto — si no, un badge de 22px en
-        // el cluster terminaba en +100px, gigante. cap chico para el
-        // badge en particular (lo pedido); un poco más laxo para
-        // sticker/label.
-        const cap = kind === 'badge' ? 1.35 : 1.6;
 
-        // Posición editada a mano para esta pantalla (slideDx/slideDy...),
-        // guardada por el editor de SuperUser — ver _openClusterSlideEditor
-        // más abajo. Si existe, se usa TAL CUAL (fija respecto al héroe,
-        // solo con el parallax sutil de arriba); si no, cae al
-        // comportamiento legado: reproyectar la posición que la
-        // decoración tenía en el sticker del mapa, escalada según cuánto
-        // creció la tarjeta — eso hacía que viajara "a lo grande" de
-        // héroe en héroe, que es justo lo que ya no se quiere una vez que
-        // hay una posición propia definida para esta pantalla.
-        const slideDef = kind === 'badge' ? liveBadges[idx] : liveStickers[idx];
-        let cx, cy, w, h, rot;
-        if (slideDef && slideDef.slideDx != null) {
-          const scale = Math.min(slideDef.slideScale ?? 1, cap);
-          w = rect.width * scale; h = rect.height * scale;
-          cx = heroLiveX + slideDef.slideDx + parallaxPx;
-          cy = heroLiveY + slideDef.slideDy;
-          rot = slideDef.slideRotation ?? 0;
-          clone.style.borderRadius = (slideDef.slideRadius ?? 0) + 'px';
-        } else {
-          const scale = Math.min(scaleFull, cap);
-          const relX = (rect.left + rect.width / 2) - heroDX;
-          const relY = (rect.top + rect.height / 2) - heroDY;
-          cx = heroLiveX + relX * scale + parallaxPx;
-          cy = heroLiveY + relY * scale;
-          w = rect.width * scale; h = rect.height * scale;
-          rot = 0;
-        }
-        clone.style.transition = animated ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1)` : 'none';
-        clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
-        clone.style.width = w + 'px'; clone.style.height = h + 'px';
-        clone.style.transform = rot ? `rotate(${rot}deg)` : 'none';
-        clone.style.zIndex = '100035';
-        } catch (err) {
-          // Mismo motivo que el catch de las tarjetas más arriba: sin
-          // esto, una excepción acá frenaba TODO el resto del forEach —
-          // y como las tarjetas se recorren en un forEach SEPARADO
-          // (arriba), esto no debería taparlas a ellas, pero si el bug
-          // real estaba en otro lado y esto lo enmascaraba, quedará
-          // registrado acá para ubicarlo.
-          console.error('[FLIP] error posicionando decoración', { kind, idx }, err);
-        }
+      slidePlaceDecos.forEach((deco, i) => {
+        const p = cardPosByIdx[i];
+        if (!p) return;
+        const scaleRef = p.w / heroW;
+        const cx0 = p.x + p.w / 2, cy0 = p.y + p.h / 2;
+        [...deco.badges, ...deco.stickers].forEach(d => {
+          try {
+            const w = d.baseW * scaleRef * (d.scale ?? 1);
+            const h = d.baseH * scaleRef * (d.scale ?? 1);
+            const cx = cx0 + d.dx * scaleRef;
+            const cy = cy0 + d.dy * scaleRef;
+            d.clone.style.transition = animated
+              ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s ease, height ${duration}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
+              : 'none';
+            d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
+            d.clone.style.width = w + 'px'; d.clone.style.height = h + 'px';
+            d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
+            d.clone.style.opacity = String(p.op);
+            d.clone.style.borderRadius = (d.radius || 0) + 'px';
+            d.clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
+          } catch (err) {
+            console.error('[FLIP] error posicionando decoración', { place: i }, err);
+          }
+        });
       });
     };
 
@@ -2327,28 +2354,27 @@ export class MapView {
     // activo (updateChips ya lo hace en cada asentamiento).
     chipEls.forEach((chip, i) => chip.addEventListener('click', () => settleTo(i)));
 
-    // ── Editor de SuperUser: ubicar badge/sticker PARA ESTA PANTALLA ────
-    // Sencillo a propósito: tocar para seleccionar, arrastrar con el dedo
-    // para mover, sliders para girar/escalar/redondear esquinas. Nada de
-    // pellizco con dos dedos acá — ya existe ese gesto más completo en el
-    // editor del cluster del mapa; este es un ajuste rápido y puntual de
-    // ESTA pantalla en particular.
+    // ── Editor de SuperUser: elementos INDEPENDIENTES por lugar ────────
+    // Solo se puede editar el lugar que está de héroe EN ESTE MOMENTO —
+    // "cada vez que paso a un pin del slide, edito sus elementos, y esos
+    // cambios no se aplican a los demás ni al cluster del mapa". Para
+    // editar otro lugar: salir de edición, navegar (drag/chip) hasta que
+    // ese lugar sea el héroe, y volver a entrar.
     const editBtn = wrap.querySelector('.wp-ce-cedit');
     if (editBtn && this.onClusterCustomize) {
-      let editSel = null; // { kind, idx, clone, node }
-      let editBackup = null; // snapshot para "Cancelar" — ver enterEdit()
+      let editSel = null; // { clone, decoRef, place, kind }
+      let editBackup = null; // snapshot del LUGAR que se está editando, para "Cancelar"
+      let editPlace = 0;
 
       const panel = document.createElement('div');
       panel.className = 'wp-ce-editpanel';
       wrap.appendChild(panel);
 
-      const slideOf = (kind, idx) => kind === 'badge' ? liveBadges[idx] : liveStickers[idx];
-
       const renderPanel = () => {
         if (!clusterEditing) { panel.classList.remove('wp-ce-editpanel-in'); panel.innerHTML = ''; return; }
         if (!editSel) {
           panel.innerHTML = `
-            <div class="wp-ce-edithint">Tocá un badge o sticker para ubicarlo</div>
+            <div class="wp-ce-edithint">Editando "${group[editPlace]?.el._place?.name || ''}" — tocá un badge o sticker para ubicarlo</div>
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn" data-act="addbadge">+ Badge</button>
               <button type="button" class="wp-ce-editbtn" data-act="addsticker">+ Sticker</button>
@@ -2358,12 +2384,12 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
             </div>`;
         } else {
-          const sd = slideOf(editSel.kind, editSel.idx) || {};
+          const sd = editSel.decoRef;
           panel.innerHTML = `
-            <div class="wp-ce-edithint">${editSel.kind === 'badge' ? 'Badge' : 'Sticker'} seleccionado — arrastralo con el dedo</div>
-            <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.slideRotation ?? 0}" data-ctl="rot"></label>
-            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="200" step="1" value="${Math.round((sd.slideScale ?? 1) * 100)}" data-ctl="scale"></label>
-            <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.slideRadius ?? 0}" data-ctl="radius"></label>
+            <div class="wp-ce-edithint">${editSel.kind === 'badge' ? 'Badge' : 'Sticker'} de "${group[editPlace]?.el._place?.name || ''}" — arrastralo con el dedo</div>
+            <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
+            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="200" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
+            <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.radius ?? 0}" data-ctl="radius"></label>
             ${editSel.kind === 'badge' ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="12" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn" data-act="delthis">Eliminar</button>
@@ -2373,41 +2399,13 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
             </div>`;
-          panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.slideRotation = +e.target.value; applyLayout(activeIdx, false); });
-          panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.slideScale = +e.target.value / 100; applyLayout(activeIdx, false); });
-          panel.querySelector('[data-ctl="radius"]').addEventListener('input', (e) => { sd.slideRadius = +e.target.value; applyLayout(activeIdx, false); });
-          panel.querySelector('[data-ctl="text"]')?.addEventListener('input', (e) => {
-            sd.label = e.target.value;
-            // El texto es parte del HTML del clon (no algo que applyLayout
-            // reposicione) — se reescribe directo acá.
-            if (editSel.clone) editSel.clone.textContent = e.target.value || (editSel.idx === 0 && group.length > 1 ? `+${group.length}` : '');
-          });
+          panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.rotation = +e.target.value; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="radius"]').addEventListener('input', (e) => { sd.radius = +e.target.value; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="text"]')?.addEventListener('input', (e) => { sd.label = e.target.value; editSel.clone.textContent = e.target.value || ''; });
         }
         panel.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => onPanelAction(b.getAttribute('data-act'))));
         requestAnimationFrame(() => panel.classList.add('wp-ce-editpanel-in'));
-      };
-
-      // Al entrar a modo edición, asentar en el héroe más cercano — así
-      // dx/dy que se guarden acá son EXACTOS respecto al centro del héroe
-      // a escala base (heroW), sin tener que reproyectar por el zoom en
-      // que haya quedado un drag a medio camino.
-      const ensureSlideDef = (kind, idx) => {
-        const target = slideOf(kind, idx);
-        if (target.slideDx == null) {
-          // Arranca EXACTO donde ya se está viendo ahora mismo (legado),
-          // para no pegarle un salto al seleccionar por primera vez.
-          const r = clones.find(c => c.kind === kind && c.idx === idx)?.clone.getBoundingClientRect();
-          const heroR = cardClones.find(c => c.idx === Math.round(activeIdx))?.clone.getBoundingClientRect();
-          if (r && heroR) {
-            target.slideDx = (r.left + r.width / 2) - (heroR.left + heroR.width / 2);
-            target.slideDy = (r.top + r.height / 2) - (heroR.top + heroR.height / 2);
-            target.slideScale = 1;
-            target.slideRotation = target.slideRotation ?? 0;
-            target.slideRadius = target.slideRadius ?? 0;
-          } else {
-            target.slideDx = 0; target.slideDy = 0; target.slideScale = 1; target.slideRotation = 0; target.slideRadius = 0;
-          }
-        }
       };
 
       let dragEl = null, dragStart = { x: 0, y: 0 }, dragOrig = { dx: 0, dy: 0 };
@@ -2415,56 +2413,38 @@ export class MapView {
         if (!clusterEditing) return;
         if (e.target.closest('.wp-ce-editpanel')) return; // no pisar los botones/sliders del panel mismo
         const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wp-ce-flip-piece');
-        const entry = hit ? clones.find(c => c.clone === hit && c.kind !== 'card') : null;
-        if (!entry) { editSel = null; renderPanel(); return; }
-        ensureSlideDef(entry.kind, entry.idx);
-        editSel = entry;
+        if (!hit) { editSel = null; renderPanel(); return; }
+        // Buscar a qué lugar/kind pertenece este clon dentro de
+        // slidePlaceDecos[editPlace] — solo se puede seleccionar algo del
+        // lugar que se está editando en este momento.
+        const deco = slidePlaceDecos[editPlace];
+        let found = deco.badges.find(d => d.clone === hit);
+        let kind = 'badge';
+        if (!found) { found = deco.stickers.find(d => d.clone === hit); kind = 'sticker'; }
+        if (!found) { editSel = null; renderPanel(); return; }
+        editSel = { clone: hit, decoRef: found, kind };
         renderPanel();
-        const sd = slideOf(entry.kind, entry.idx);
-        dragEl = entry; dragStart = { x: e.clientX, y: e.clientY }; dragOrig = { dx: sd.slideDx, dy: sd.slideDy };
+        dragEl = editSel; dragStart = { x: e.clientX, y: e.clientY }; dragOrig = { dx: found.dx, dy: found.dy };
         e.stopPropagation();
       };
       const onEditPointerMove = (e) => {
         if (!clusterEditing || !dragEl) return;
-        const sd = slideOf(dragEl.kind, dragEl.idx);
-        sd.slideDx = dragOrig.dx + (e.clientX - dragStart.x);
-        sd.slideDy = dragOrig.dy + (e.clientY - dragStart.y);
+        dragEl.decoRef.dx = dragOrig.dx + (e.clientX - dragStart.x);
+        dragEl.decoRef.dy = dragOrig.dy + (e.clientY - dragStart.y);
         applyLayout(activeIdx, false);
       };
       const onEditPointerUp = () => { dragEl = null; };
 
-      // Agrega un badge o sticker VIVO en esta misma sesión de edición —
-      // sin guardar/recargar. Se ancla al centro del héroe (dx:0,dy:0) y
-      // queda seleccionado, listo para arrastrar a su lugar.
+      // Agrega un badge o sticker VIVO en el lugar que se está editando —
+      // sin guardar/recargar. Se ancla al centro de esa tarjeta (dx:0,dy:0)
+      // y queda seleccionado, listo para arrastrar a su lugar.
       const addLiveDecoration = (kind, data) => {
-        const idx = kind === 'badge' ? liveBadges.length : liveStickers.length;
-        const base = { dx: 0, dy: kind === 'badge' ? -28 : 44, rotation: 0, scale: 1, z: 30 + idx, slideDx: 0, slideDy: 0, slideScale: 1, slideRotation: 0, slideRadius: 0, ...data };
-        if (kind === 'badge') liveBadges.push(base); else liveStickers.push(base);
-
-        const heroR = cardClones.find(c => c.idx === Math.round(activeIdx))?.clone.getBoundingClientRect();
-        const c = document.createElement('div');
-        c.className = 'wp-ce-flip-piece';
-        c.style.position = 'fixed';
-        c.style.zIndex = kind === 'badge' ? '100040' : '100035';
-        c.style.pointerEvents = 'auto';
-        if (kind === 'badge') {
-          c.style.cssText += 'min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#111827;color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;';
-          c.textContent = base.label || '';
-        } else if (data.emoji) {
-          c.style.cssText += 'width:32px;height:32px;font-size:28px;line-height:32px;text-align:center;';
-          c.textContent = data.emoji;
-        } else if (data.imageUrl) {
-          c.innerHTML = `<img src="${data.imageUrl}" style="width:100%;height:100%;object-fit:contain;">`;
-          c.style.cssText += 'width:32px;height:32px;';
-        }
-        const w = c.style.width || '32px', h = c.style.height || '32px';
-        if (heroR) { c.style.left = (heroR.left + heroR.width / 2 - 16) + 'px'; c.style.top = (heroR.top + heroR.height / 2 - 16) + 'px'; }
-        c.style.width = w; c.style.height = h;
-        document.body.appendChild(c);
-        const entry = { node: c, kind, idx, rect: c.getBoundingClientRect(), clone: c };
-        clones.push(entry);
-        if (kind === 'card') cardClones.push(entry); // nunca pasa, pero mantiene la invariante si algo lo asume
-        editSel = entry;
+        const base = { dx: 0, dy: kind === 'badge' ? -28 : 0, rotation: 0, scale: 1, radius: 0, baseW: kind === 'badge' ? 26 : 40, baseH: kind === 'badge' ? 26 : 40, ...data };
+        const clone = createDecoClone(kind, base);
+        const entry = { ...base, clone };
+        (kind === 'badge' ? slidePlaceDecos[editPlace].badges : slidePlaceDecos[editPlace].stickers).push(entry);
+        clones.push({ node: null, kind, idx: editPlace, rect: null, clone });
+        editSel = { clone, decoRef: entry, kind };
         renderPanel();
         applyLayout(activeIdx, false);
       };
@@ -2481,13 +2461,13 @@ export class MapView {
           return;
         }
         if (act === 'delthis' && editSel) {
-          const arr = editSel.kind === 'badge' ? liveBadges : liveStickers;
-          arr.splice(editSel.idx, 1);
-          // Reindexar lo que quedó después del borrado, tanto en los
-          // datos vivos como en las piezas ya clonadas.
-          clones.filter(c => c.kind === editSel.kind && c.idx > editSel.idx).forEach(c => c.idx--);
-          const dead = clones.findIndex(c => c === editSel);
-          if (dead !== -1) { editSel.clone.remove(); clones.splice(dead, 1); }
+          const deco = slidePlaceDecos[editPlace];
+          const arr = editSel.kind === 'badge' ? deco.badges : deco.stickers;
+          const i = arr.indexOf(editSel.decoRef);
+          if (i !== -1) arr.splice(i, 1);
+          const ci = clones.findIndex(c => c.clone === editSel.clone);
+          if (ci !== -1) clones.splice(ci, 1);
+          editSel.clone.remove();
           editSel = null;
           renderPanel();
           applyLayout(activeIdx, false);
@@ -2500,22 +2480,35 @@ export class MapView {
         const saveBtn = panel.querySelector('[data-act="save"]');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando…'; }
         try {
+          // Solo se manda el lugar que se editó — el resto de slidePlaces
+          // (otros lugares, ya sean de este cluster u otros) se preserva
+          // tal cual estaba en el servidor. badges/stickers/cards del
+          // CLUSTER (lo que ve el mapa) ni se tocan ni se mandan de nuevo:
+          // este guardado es 100% independiente de eso.
+          const stripClone = (d) => { const { clone, ...rest } = d; return rest; };
+          const mergedSlidePlaces = { ...savedSlidePlaces };
+          mergedSlidePlaces[placeIds[editPlace]] = {
+            badges: slidePlaceDecos[editPlace].badges.map(stripClone),
+            stickers: slidePlaceDecos[editPlace].stickers.map(stripClone),
+          };
           const res = await fetch('/api/supabase-clusters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id: customDef?.id,
-              place_ids: group.map(({ el }) => placeIdOf(el._place)),
+              place_ids: placeIds,
               cards: customDef?.cards || [],
-              stickers: liveStickers,
-              badges: liveBadges,
+              stickers: customDef?.stickers || [],
+              badges: customDef?.badges || null,
+              badge: customDef?.badge || null,
               label: customDef?.label || null,
+              slidePlaces: mergedSlidePlaces,
             }),
           });
           const json = await res.json();
           if (!json.success) throw new Error(json.message);
-          await this.reloadPinClusters();
-          exitEdit();
+          if (customDef) customDef.slidePlaces = mergedSlidePlaces; // para que un segundo Guardar en esta misma sesión ya parta de lo recién guardado
+          exitEdit(true);
         } catch (err) {
           alert('Error guardando: ' + err.message);
           if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar'; }
@@ -2524,33 +2517,34 @@ export class MapView {
 
       const enterEdit = () => {
         clusterEditing = true;
-        settleTo(Math.round(activeIdx)); // asentar exacto — ver comentario en ensureSlideDef
-        // Snapshot para poder descartar todo si se cancela — sin esto,
-        // "Cancelar" solo dejaba de mostrar el panel pero los cambios ya
-        // aplicados (drag, sliders) quedaban en pantalla igual.
-        editBackup = { badges: liveBadges.map(b => ({ ...b })), stickers: liveStickers.map(s => ({ ...s })) };
+        editPlace = Math.round(activeIdx);
+        settleTo(editPlace); // asentar exacto en el lugar que se va a editar
+        editBackup = {
+          badges: slidePlaceDecos[editPlace].badges.map(d => ({ ...d })),
+          stickers: slidePlaceDecos[editPlace].stickers.map(d => ({ ...d })),
+        };
         wrap.classList.add('wp-ce-editing');
         renderPanel();
       };
-      const exitEdit = () => {
+      const exitEdit = (saved = false) => {
         clusterEditing = false; editSel = null;
         wrap.classList.remove('wp-ce-editing');
         panel.innerHTML = ''; panel.classList.remove('wp-ce-editpanel-in');
-        if (editBackup) {
-          // Revertir a lo que había al ENTRAR a modo edición — cubre
-          // tanto "Cancelar" explícito como salir sin guardar. Los
-          // elementos agregados/eliminados en vivo durante esta sesión
-          // (addLiveDecoration/delthis) también se deshacen: se recorta
-          // el array vivo de vuelta al largo del snapshot y se sacan del
-          // DOM los clones que no existían al entrar.
-          clones.filter(c => (c.kind === 'badge' && c.idx >= editBackup.badges.length) || (c.kind === 'sticker' && c.idx >= editBackup.stickers.length))
-            .forEach(c => c.clone.remove());
-          for (let i = clones.length - 1; i >= 0; i--) {
-            const c = clones[i];
-            if ((c.kind === 'badge' && c.idx >= editBackup.badges.length) || (c.kind === 'sticker' && c.idx >= editBackup.stickers.length)) clones.splice(i, 1);
-          }
-          liveBadges = editBackup.badges;
-          liveStickers = editBackup.stickers;
+        if (!saved && editBackup) {
+          // Cancelar (o cerrar sin guardar): volver TODO — posiciones,
+          // agregados, borrados — a como estaba al entrar a editar ESTE
+          // lugar. Los clones agregados en vivo que no existían en el
+          // backup se sacan del DOM; los borrados en vivo simplemente no
+          // están en el backup así que no hace falta recrearlos porque
+          // el array entero se reemplaza por la copia guardada — salvo
+          // que esa copia SÍ los tenga y su clon haya sido removido del
+          // DOM al borrarlos: caso raro (borrar y cancelar en la misma
+          // sesión), aceptado como límite conocido por ahora.
+          const currentClones = new Set([...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers].map(d => d.clone));
+          const backupHadClone = new Set([...editBackup.badges, ...editBackup.stickers].map(d => d.clone));
+          currentClones.forEach(c => { if (!backupHadClone.has(c)) c.remove(); });
+          slidePlaceDecos[editPlace].badges = editBackup.badges;
+          slidePlaceDecos[editPlace].stickers = editBackup.stickers;
         }
         editBackup = null;
         applyLayout(activeIdx, true);
@@ -2593,6 +2587,15 @@ export class MapView {
     if (flip) {
       flip.clones.forEach(({ rect, clone }) => {
         clone.style.transitionDelay = '0ms';
+        if (!rect) {
+          // Decoración propia de un lugar del slide (cargada desde lo
+          // guardado, o agregada en vivo) — nunca existió en el sticker
+          // del mapa, así que no tiene una posición "original" a la que
+          // volver. Se desvanece nomás donde estaba, en vez de romper
+          // con un rect.left de null.
+          clone.style.opacity = '0';
+          return;
+        }
         clone.style.transform = 'none';
         clone.style.left = rect.left + 'px';
         clone.style.top = rect.top + 'px';
