@@ -309,8 +309,14 @@ function injectLandmarkStyles() {
     .wp-ce-ctag {
       font-family: 'Inter Tight', system-ui, sans-serif;
       font-size: 12.5px; font-weight: 700; color: #374151;
-      background: #f3f4f6; border-radius: 999px; padding: 6px 12px;
+      background: #f3f4f6; border: none; border-radius: 999px; padding: 7px 13px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: background 0.22s ease, color 0.22s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
     }
+    .wp-ce-ctag:active { transform: scale(0.94); }
+    /* Chip activo: el lugar sobre el que está posicionado el drag/parallax
+       en este momento — mismo azul que el resto de la marca. */
+    .wp-ce-ctag.wp-ce-ctag-active { background: #1a5cf5; color: #fff; }
 
     /* ── Wrapper base compartido por la pantalla collage ─────────────── */
     .wp-ce-wrap {
@@ -1965,19 +1971,31 @@ export class MapView {
 
     const vw = innerWidth, vh = innerHeight;
 
-    // ── Last: destino de cada tarjeta en la pantalla collage ──────────
-    // Tarjeta 0 = héroe, centrada; tarjeta 1 a la izquierda; el resto en
-    // abanico a la derecha — mismo lenguaje que la referencia.
+    // ── Keyframes continuos de posición según distancia al héroe ───────
+    // d = idx - activeIdx. d=0 es el héroe (grande, al centro). Arrastrar
+    // o tocar un chip cambia `activeIdx` de forma continua (no a saltos),
+    // e interpolamos ENTRE estos puntos — así el drag es 1:1 con el dedo
+    // y las tarjetas se van "pasando" el rol de héroe entre ellas en vivo,
+    // en vez de tarjetas fijas con un carrusel scrolleando por encima.
     const heroW = Math.min(vw * 0.6, 290), heroH = heroW * 1.32;
     const heroX = vw / 2 - heroW / 2, heroY = vh * 0.46 - heroH / 2;
-    const dest = (i) => {
-      if (i === 0) return { x: heroX, y: heroY, w: heroW, h: heroH, rot: -2, z: 30 };
-      if (i === 1) {
-        const w = heroW * 0.62;
-        return { x: -w * 0.32, y: heroY + heroH * 0.22, w, h: w * 1.32, rot: -9, z: 20 };
-      }
-      const w = heroW * (0.58 - (i - 2) * 0.04);
-      return { x: vw - w * 0.66 - (i - 2) * 10, y: heroY + heroH * (0.12 + (i - 2) * 0.14), w, h: w * 1.32, rot: 8 + (i - 2) * 5, z: 20 - i };
+    const KF = [
+      { d: -2, x: -heroW * 0.95,                y: heroY + heroH * 0.32, w: heroW * 0.46, rot: -14, z: 5,  op: 0    },
+      { d: -1, x: -heroW * 0.62 * 0.32,          y: heroY + heroH * 0.22, w: heroW * 0.62, rot: -9,  z: 20, op: 1    },
+      { d:  0, x: heroX,                         y: heroY,                w: heroW,        rot: -2,  z: 30, op: 1    },
+      { d:  1, x: vw - heroW * 0.58 * 0.66,       y: heroY + heroH * 0.12, w: heroW * 0.58, rot: 8,   z: 20, op: 1    },
+      { d:  2, x: vw - heroW * 0.50 * 0.60,       y: heroY + heroH * 0.26, w: heroW * 0.50, rot: 13,  z: 12, op: 0.55 },
+      { d:  3, x: vw + heroW * 0.10,              y: heroY + heroH * 0.30, w: heroW * 0.44, rot: 16,  z: 5,  op: 0    },
+    ];
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const posForDistance = (dRaw) => {
+      const d = Math.max(KF[0].d, Math.min(KF[KF.length - 1].d, dRaw));
+      let i = 0;
+      while (i < KF.length - 2 && d > KF[i + 1].d) i++;
+      const a = KF[i], b = KF[i + 1];
+      const t = (b.d - a.d) === 0 ? 0 : (d - a.d) / (b.d - a.d);
+      const w = lerp(a.w, b.w, t);
+      return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t), w, h: w * 1.32, rot: lerp(a.rot, b.rot, t), z: lerp(a.z, b.z, t), op: lerp(a.op, b.op, t) };
     };
 
     // ── Overlay ────────────────────────────────────────────────────────
@@ -2010,7 +2028,8 @@ export class MapView {
 
     const stage = wrap.querySelector('.wp-ce-cstage');
     const caption = wrap.querySelector('.wp-ce-ccaption-list');
-    caption.innerHTML = group.map(({ el: mEl }) => `<span class="wp-ce-ctag">${mEl._place?.name || ''}</span>`).join('');
+    caption.innerHTML = group.map((_, i) => `<button type="button" class="wp-ce-ctag" data-chip-idx="${i}">${group[i].el._place?.name || ''}</button>`).join('');
+    const chipEls = Array.from(caption.querySelectorAll('.wp-ce-ctag'));
 
     // ── Clonar cada pieza en su posición ACTUAL (First) ────────────────
     const clones = pieces.map(p => {
@@ -2033,6 +2052,7 @@ export class MapView {
       c.style.zIndex = '100000';
       c.style.transition = 'none';
       c.removeAttribute('data-card-idx'); c.removeAttribute('data-sticker-idx');
+      if (p.kind === 'card') c.style.cursor = 'pointer';
       document.body.appendChild(c);
       return { ...p, clone: c };
     });
@@ -2041,9 +2061,81 @@ export class MapView {
 
     // Delta original entre cada sticker/badge/label y la tarjeta héroe —
     // se preserva al reposicionar, así las decoraciones "viajan pegadas"
-    // a la foto principal en vez de recalcularse desde cero.
+    // a la foto que sea héroe en cada momento, en vez de recalcularse
+    // desde cero cada vez.
     const heroDX = heroRect.left + heroRect.width / 2;
     const heroDY = heroRect.top + heroRect.height / 2;
+    const cardClones = clones.filter(c => c.kind === 'card');
+
+    // ── El "render" central: dado un activeIdx (puede ser fraccional,
+    // en pleno drag), calcula y aplica la posición de CADA pieza. Se
+    // llama en cada frame de drag (sin transición CSS, 1:1 con el dedo)
+    // y también para los saltos animados (chip, flick, snap al soltar).
+    let activeIdx = 0;
+    const applyLayout = (idxVal, animated, opts = {}) => {
+      const { duration = 0.36, stagger = 0 } = opts;
+      const nearest = Math.max(0, Math.min(group.length - 1, Math.round(idxVal)));
+      let heroLive = null;
+      cardClones.forEach(({ idx, clone }, order) => {
+        try {
+          const p = posForDistance(idx - idxVal);
+          clone.style.transition = animated
+            ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s cubic-bezier(0.34,1.56,0.64,1), height ${duration}s cubic-bezier(0.34,1.56,0.64,1), transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
+            : 'none';
+          clone.style.transitionDelay = animated ? `${Math.min(order * stagger, stagger * 4)}ms` : '0ms';
+          clone.style.left = p.x + 'px'; clone.style.top = p.y + 'px';
+          clone.style.width = p.w + 'px'; clone.style.height = p.h + 'px';
+          clone.style.transform = `rotate(${p.rot}deg)`;
+          clone.style.opacity = String(p.op);
+          // ver comentario en el clon inicial: nunca por debajo de 100000,
+          // o el fondo blanco del wrap (99999) los tapa
+          clone.style.zIndex = String(100000 + Math.round(p.z));
+          clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
+          if (idx === nearest) heroLive = p;
+        } catch (err) {
+          // Sin este catch, una excepción acá (por ejemplo un rect con
+          // NaN) frenaba el forEach a mitad de camino y dejaba clones sin
+          // reposicionar — la pantalla en blanco de una sesión anterior.
+          console.error('[FLIP] error posicionando tarjeta', { idx }, err);
+        }
+      });
+      if (!heroLive) return;
+      const heroLiveX = heroLive.x + heroLive.w / 2, heroLiveY = heroLive.y + heroLive.h / 2;
+      const baseW = cardPieces[0]?.rect.width || heroW;
+      const scaleFull = heroLive.w / baseW;
+      clones.forEach(({ kind, rect, clone }) => {
+        if (kind === 'card') return;
+        // El badge (y por consistencia el resto de las decoraciones) se
+        // agranda un poco respecto a como se ve en el mapa, pero NUNCA a
+        // la par de cuánto creció la foto — si no, un badge de 22px en
+        // el cluster terminaba en +100px, gigante. cap chico para el
+        // badge en particular (lo pedido); un poco más laxo para
+        // sticker/label.
+        const cap = kind === 'badge' ? 1.35 : 1.6;
+        const scale = Math.min(scaleFull, cap);
+        const relX = (rect.left + rect.width / 2) - heroDX;
+        const relY = (rect.top + rect.height / 2) - heroDY;
+        const cx = heroLiveX + relX * scale;
+        const cy = heroLiveY + relY * scale;
+        const w = rect.width * scale, h = rect.height * scale;
+        clone.style.transition = animated ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1)` : 'none';
+        clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
+        clone.style.width = w + 'px'; clone.style.height = h + 'px';
+        clone.style.zIndex = '100035';
+      });
+    };
+
+    const updateChips = (idxVal) => {
+      const nearest = Math.max(0, Math.min(group.length - 1, Math.round(idxVal)));
+      chipEls.forEach((chip, i) => chip.classList.toggle('wp-ce-ctag-active', i === nearest));
+    };
+
+    const clampIdx = (v) => Math.max(0, Math.min(group.length - 1, v));
+    const settleTo = (idx, opts) => {
+      activeIdx = clampIdx(idx);
+      applyLayout(activeIdx, true, opts);
+      updateChips(activeIdx);
+    };
 
     requestAnimationFrame(() => {
       wrap.classList.add('wp-ce-in');
@@ -2051,40 +2143,8 @@ export class MapView {
       // pinte primero la posición de arranque (si no, el navegador puede
       // colapsar ambos estados en uno y la transición no se ve).
       requestAnimationFrame(() => {
-        clones.forEach(({ kind, idx, rect, clone }, order) => {
-          try {
-            clone.style.transition = `left 0.52s cubic-bezier(0.34,1.56,0.64,1), top 0.52s cubic-bezier(0.34,1.56,0.64,1), width 0.52s cubic-bezier(0.34,1.56,0.64,1), height 0.52s cubic-bezier(0.34,1.56,0.64,1), transform 0.52s cubic-bezier(0.34,1.56,0.64,1)`;
-            clone.style.transitionDelay = `${Math.min(order * 35, 140)}ms`;
-            if (kind === 'card') {
-              const d = dest(idx);
-              clone.style.left = d.x + 'px'; clone.style.top = d.y + 'px';
-              clone.style.width = d.w + 'px'; clone.style.height = d.h + 'px';
-              clone.style.transform = `rotate(${d.rot}deg)`;
-              clone.style.zIndex = String(100000 + d.z); // ver comentario en el clon inicial: nunca por debajo de 100000, o el fondo blanco del wrap (99999) los tapa
-            } else {
-              // stickers/badge/label: mismo desplazamiento relativo a la
-              // tarjeta héroe que tenían en el mapa, reescalado según cuánto
-              // creció la tarjeta héroe respecto a su tamaño original.
-              const scale = heroW / (cardPieces[0]?.rect.width || heroW);
-              const relX = (rect.left + rect.width / 2) - heroDX;
-              const relY = (rect.top + rect.height / 2) - heroDY;
-              const cx = heroX + heroW / 2 + relX * scale;
-              const cy = heroY + heroH / 2 + relY * scale;
-              const w = rect.width * scale, h = rect.height * scale;
-              clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
-              clone.style.width = w + 'px'; clone.style.height = h + 'px';
-              clone.style.zIndex = '100035';
-            }
-          } catch (err) {
-            // Sin este catch, una excepción acá (por ejemplo un rect con
-            // NaN) frenaba el forEach a mitad de camino y dejaba clones
-            // sin reposicionar — la pantalla en blanco reportada. Con el
-            // catch, ese clon puntual queda en su posición de arranque
-            // (visible, aunque no anime) en vez de que se rompa TODO el
-            // resto de la transición detrás de él.
-            console.error('[FLIP] error posicionando pieza', { kind, idx }, err);
-          }
-        });
+        applyLayout(0, true, { duration: 0.52, stagger: 35 });
+        updateChips(0);
       });
     });
 
@@ -2093,22 +2153,83 @@ export class MapView {
     // fotos y el texto llega como remate, no todo junto de golpe.
     setTimeout(() => wrap.classList.add('wp-ce-chrome-in'), 260);
 
-    // Tocar una tarjeta ya asentada en el collage abre esa ficha
-    clones.forEach(({ kind, idx, clone }) => {
-      if (kind !== 'card') return;
-      clone.style.cursor = 'pointer';
-      clone.addEventListener('click', () => {
-        const place = group[idx]?.el._place;
-        if (!place) return;
-        this._closeClusterExpand(/* restoreCamera */ false);
-        if (this.onPlaceSelect) this.onPlaceSelect(place);
-      });
-    });
+    // ── Drag real, 1:1 con el dedo, con parallax entre lugares ─────────
+    // Los clones NO son hijos de `stage` (viven en document.body para
+    // poder volar por encima de todo durante el FLIP), así que un
+    // pointerdown sobre una tarjeta no burbujea hasta `stage` — por eso
+    // esto se engancha en `document` y se filtra por la franja vertical
+    // de `stage`, así el drag arranca sin importar si el dedo cae sobre
+    // una foto o en el espacio vacío entre ellas.
+    let dragging = false, dragStartX = 0, dragStartY = 0, dragBaseIdx = 0;
+    let lastMoveX = 0, lastMoveT = 0, velocity = 0, totalMove = 0;
+    const FLICK = 0.5; // px/ms — arriba de esto, un toque suelto avanza un lugar aunque no hayas cruzado la mitad
+    const inStageBand = (e) => {
+      const r = stage.getBoundingClientRect();
+      return e.clientY >= r.top && e.clientY <= r.bottom;
+    };
+    const onDown = (e) => {
+      if (this._clusterExpandEl !== wrap) return;
+      if (!inStageBand(e)) return;
+      dragging = true; totalMove = 0;
+      dragStartX = e.clientX; dragStartY = e.clientY; dragBaseIdx = activeIdx;
+      lastMoveX = e.clientX; lastMoveT = performance.now(); velocity = 0;
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - dragStartX;
+      totalMove = Math.max(totalMove, Math.abs(dx), Math.abs(e.clientY - dragStartY));
+      const now = performance.now();
+      const dt = now - lastMoveT;
+      if (dt > 0) velocity = (e.clientX - lastMoveX) / dt;
+      lastMoveX = e.clientX; lastMoveT = now;
+      const sensitivity = heroW * 1.05; // cuánto hay que arrastrar para "pasar" un lugar entero
+      activeIdx = clampIdx(dragBaseIdx - dx / sensitivity);
+      applyLayout(activeIdx, false);
+      updateChips(activeIdx);
+    };
+    const onUp = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      if (totalMove < 8 && Math.abs(velocity) < FLICK) {
+        // Fue un TAP, no un drag — ver qué tarjeta hay bajo el dedo.
+        const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wp-ce-flip-piece');
+        const hitEntry = hit ? cardClones.find(c => c.clone === hit) : null;
+        if (hitEntry) {
+          const nearest = Math.round(activeIdx);
+          if (hitEntry.idx === nearest) {
+            // Tarjeta héroe → abre su ficha
+            const place = group[hitEntry.idx]?.el._place;
+            if (place) { this._closeClusterExpand(false); if (this.onPlaceSelect) this.onPlaceSelect(place); }
+            return;
+          }
+          settleTo(hitEntry.idx); // tarjeta lateral → navega hacia ella
+          return;
+        }
+      }
+      let target = Math.round(activeIdx);
+      if (Math.abs(velocity) > FLICK) target = Math.round(activeIdx) + (velocity < 0 ? 1 : -1);
+      settleTo(target);
+    };
+    document.addEventListener('pointerdown', onDown, { passive: true });
+    document.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('pointerup', onUp, { passive: true });
+    document.addEventListener('pointercancel', onUp, { passive: true });
+    const cleanupDrag = () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    };
+
+    // Los chips son la navegación directa: tocar uno lleva a ese lugar
+    // con el mismo parallax animado, y se marca de azul el que quedó
+    // activo (updateChips ya lo hace en cada asentamiento).
+    chipEls.forEach((chip, i) => chip.addEventListener('click', () => settleTo(i)));
 
     const doClose = () => this._closeClusterExpand();
     wrap.querySelector('.wp-ce-cback').addEventListener('click', doClose);
 
-    this._clusterExpandCleanup = () => cleanupClones();
+    this._clusterExpandCleanup = () => { cleanupClones(); cleanupDrag(); };
     this._clusterExpandStickerEl = stickerEl;
     this._clusterExpandFlip = { clones, pieces, stickerEl };
   }
