@@ -967,7 +967,7 @@ export class SuperUserPanel {
         // el drag arrancaba justo sobre una tarjeta/sticker/badge (el
         // "barrido" — MapLibre perdía el manejo fluido por compositor y
         // pasaba a un fallback más entrecortado).
-        wrap.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge],[data-label]').forEach(node => {
+        wrap.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge-idx],[data-label]').forEach(node => {
           node.style.touchAction = 'none';
         });
         wrap.querySelectorAll('[data-card-idx]').forEach(node => {
@@ -978,7 +978,7 @@ export class SuperUserPanel {
           const idx = parseInt(node.dataset.stickerIdx, 10);
           if (sel?.kind === 'sticker' && sel.idx === idx) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
         });
-        const badgeNode = wrap.querySelector('[data-badge]');
+        const badgeNode = wrap.querySelector('[data-badge-idx="0"]');
         if (badgeNode && sel?.kind === 'badge') { badgeNode.style.outline = '2px dashed #67e8f9'; badgeNode.style.outlineOffset = '2px'; }
         const labelNode = wrap.querySelector('[data-label]');
         if (labelNode && sel?.kind === 'label') { labelNode.style.outline = '2px dashed #67e8f9'; labelNode.style.outlineOffset = '2px'; }
@@ -1013,7 +1013,7 @@ export class SuperUserPanel {
           if (!stickers[idx]) { console.error('[CLUSTER] resolveNode: no hay sticker en idx ' + idx); return null; }
           return { kind: 'sticker', idx, obj: stickers[idx] };
         }
-        if (node.hasAttribute('data-badge')) return { kind: 'badge', idx: 0, obj: badge };
+        if (node.hasAttribute('data-badge-idx')) return { kind: 'badge', idx: 0, obj: badge };
         if (node.hasAttribute('data-label')) return { kind: 'label', idx: 0, obj: label };
       } catch (err) {
         console.error('[CLUSTER] resolveNode() excepción:', err);
@@ -1032,7 +1032,7 @@ export class SuperUserPanel {
       let node = null;
       if (sel.kind === 'card') node = wrap.querySelector(`[data-card-idx="${sel.idx}"]`);
       else if (sel.kind === 'sticker') node = wrap.querySelector(`[data-sticker-idx="${sel.idx}"]`);
-      else if (sel.kind === 'badge') node = wrap.querySelector('[data-badge]');
+      else if (sel.kind === 'badge') node = wrap.querySelector('[data-badge-idx="0"]');
       else if (sel.kind === 'label') node = wrap.querySelector('[data-label]');
       if (!node) return null;
       const r = resolveNode(node);
@@ -1058,7 +1058,7 @@ export class SuperUserPanel {
 
     previewEl.addEventListener('pointerdown', (e) => {
       try {
-        const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge],[data-label]');
+        const targetNode = e.target.closest('[data-card-idx],[data-sticker-idx],[data-badge-idx],[data-label]');
         if (pts.size === 0) {
           if (targetNode) {
             const r = resolveNode(targetNode);
@@ -1147,7 +1147,7 @@ export class SuperUserPanel {
       // de que setPointerCapture() alcance a agarrarlo — el gesto se corta
       // a la mitad. Solo togglea el outline directo sobre los nodos que
       // ya están en pantalla.
-      previewEl.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge],[data-label]').forEach(n => {
+      previewEl.querySelectorAll('[data-card-idx],[data-sticker-idx],[data-badge-idx],[data-label]').forEach(n => {
         n.style.outline = ''; n.style.outlineOffset = '';
       });
       if (node) { node.style.outline = '2px dashed #67e8f9'; node.style.outlineOffset = '2px'; }
