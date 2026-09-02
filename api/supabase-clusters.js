@@ -33,6 +33,9 @@ async function listClusters(res) {
     // de slide (badges/stickers propios, que NO afectan el sticker del
     // mapa). Objeto { [place_id]: { badges:[...], stickers:[...] } }.
     slidePlaces: r.slide_places && typeof r.slide_places === 'object' ? r.slide_places : null,
+    // slideGlobal: badge/sticker "título" — fijo, igual en TODOS los
+    // slides de este cluster, independiente de cuál sea el héroe.
+    slideGlobal: r.slide_global && typeof r.slide_global === 'object' ? r.slide_global : null,
     label:     r.label && typeof r.label === 'object' ? r.label : null,
     // Necesario en el cliente para resolver el conflicto cuando VARIAS
     // filas reclaman el mismo place_id (pasa fácil: cada vez que se
@@ -45,7 +48,7 @@ async function listClusters(res) {
 }
 
 async function saveCluster(body, res) {
-  const { id, place_ids, cards, stickers, badge, badges, slidePlaces, label } = body;
+  const { id, place_ids, cards, stickers, badge, badges, slidePlaces, slideGlobal, label } = body;
 
   if (!Array.isArray(place_ids) || place_ids.length < 1) {
     return res.status(400).json({ success: false, message: 'place_ids es requerido (mínimo 1 lugar)' });
@@ -58,6 +61,7 @@ async function saveCluster(body, res) {
     badge:      badge && typeof badge === 'object' ? badge : null,
     badges:     Array.isArray(badges) ? badges : null,
     slide_places: slidePlaces && typeof slidePlaces === 'object' ? slidePlaces : null,
+    slide_global: slideGlobal && typeof slideGlobal === 'object' ? slideGlobal : null,
     label:      label && typeof label === 'object' ? label : null,
     updated_at: new Date().toISOString(),
   };
