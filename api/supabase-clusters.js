@@ -25,6 +25,10 @@ async function listClusters(res) {
     cards:     Array.isArray(r.cards) ? r.cards : [],
     stickers:  Array.isArray(r.stickers) ? r.stickers : [],
     badge:     r.badge && typeof r.badge === 'object' ? r.badge : null,
+    // badges (plural) es lo nuevo — soporta más de un badge por cluster.
+    // badge (singular) queda solo por compatibilidad con filas viejas;
+    // MapView.js ya sabe tratarlo como badges:[badge] si badges no viene.
+    badges:    Array.isArray(r.badges) ? r.badges : null,
     label:     r.label && typeof r.label === 'object' ? r.label : null,
     // Necesario en el cliente para resolver el conflicto cuando VARIAS
     // filas reclaman el mismo place_id (pasa fácil: cada vez que se
@@ -37,7 +41,7 @@ async function listClusters(res) {
 }
 
 async function saveCluster(body, res) {
-  const { id, place_ids, cards, stickers, badge, label } = body;
+  const { id, place_ids, cards, stickers, badge, badges, label } = body;
 
   if (!Array.isArray(place_ids) || place_ids.length < 1) {
     return res.status(400).json({ success: false, message: 'place_ids es requerido (mínimo 1 lugar)' });
@@ -48,6 +52,7 @@ async function saveCluster(body, res) {
     cards:      Array.isArray(cards) ? cards : [],
     stickers:   Array.isArray(stickers) ? stickers : [],
     badge:      badge && typeof badge === 'object' ? badge : null,
+    badges:     Array.isArray(badges) ? badges : null,
     label:      label && typeof label === 'object' ? label : null,
     updated_at: new Date().toISOString(),
   };
