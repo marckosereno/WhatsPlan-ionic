@@ -254,61 +254,71 @@ function injectLandmarkStyles() {
       will-change: transform; /* hint de compositor solo mientras se usa */
     }
 
-    /* ── Carrusel expandido de cluster (pantalla completa) ──────────── */
+    /* ── Transición FLIP: sticker de cluster → pantalla collage ────────
+       .wp-ce-flip-piece son los CLONES reales de las tarjetas/stickers
+       del mapa — arrancan en position:fixed con las coordenadas exactas
+       de pantalla que tenían como sticker, y JS les anima left/top/width/
+       height/transform hasta su lugar en el collage. Por eso NO llevan
+       transición acá (se las pone JS recién en el segundo frame, así el
+       navegador pinta primero el punto de partida). */
+    .wp-ce-flip-piece { pointer-events: auto; }
+
+    .wp-ce-collage { background: transparent; }
+    .wp-ce-collage-bg {
+      position: absolute; inset: 0; background: #fff;
+      opacity: 0; transition: opacity 0.38s ease-out;
+    }
+    .wp-ce-collage.wp-ce-in .wp-ce-collage-bg { opacity: 1; }
+
+    .wp-ce-collage-header {
+      position: relative; z-index: 2; flex-shrink: 0;
+      display: flex; align-items: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 12px;
+      opacity: 0; transform: translateY(-10px);
+      transition: opacity 0.38s cubic-bezier(0.34,1.56,0.64,1), transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .wp-ce-collage.wp-ce-chrome-in .wp-ce-collage-header { opacity: 1; transform: translateY(0); }
+    .wp-ce-cback, .wp-ce-cbtn {
+      width: 40px; height: 40px; border-radius: 9999px; border: none; flex-shrink: 0;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(16px) saturate(1.8); -webkit-backdrop-filter: blur(16px) saturate(1.8);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+      color: #111; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: transform 0.15s;
+    }
+    .wp-ce-cback:active, .wp-ce-cbtn:active { transform: scale(0.92); }
+    .wp-ce-ctitle {
+      margin-left: 12px; flex: 1 1 auto; min-width: 0;
+      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-size: 15px; font-weight: 800; color: #111; letter-spacing: -0.2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .wp-ce-cactions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .wp-ce-cstage { position: relative; z-index: 1; flex: 1; }
+
+    .wp-ce-ccaption {
+      position: relative; z-index: 2; flex-shrink: 0;
+      padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.38s cubic-bezier(0.34,1.56,0.64,1) 0.05s, transform 0.38s cubic-bezier(0.34,1.56,0.64,1) 0.05s;
+    }
+    .wp-ce-collage.wp-ce-chrome-in .wp-ce-ccaption { opacity: 1; transform: translateY(0); }
+    .wp-ce-ccaption-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .wp-ce-ctag {
+      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-size: 12.5px; font-weight: 700; color: #374151;
+      background: #f3f4f6; border-radius: 999px; padding: 6px 12px;
+    }
+
+    /* ── Wrapper base compartido por la pantalla collage ─────────────── */
     .wp-ce-wrap {
       position: fixed; inset: 0; z-index: 99999;
       display: flex; flex-direction: column;
       opacity: 0; transition: opacity 0.22s ease-out;
     }
     .wp-ce-wrap.wp-ce-in { opacity: 1; }
-    .wp-ce-bg {
-      position: absolute; inset: -20px; /* margen extra para que el scale/translate del parallax nunca deje ver el borde */
-      backdrop-filter: blur(26px) brightness(0.55) saturate(1.15);
-      -webkit-backdrop-filter: blur(26px) brightness(0.55) saturate(1.15);
-      background: rgba(10,10,14,0.28);
-      transition: transform 0.05s linear;
-      pointer-events: none;
-    }
-    .wp-ce-header {
-      position: relative; z-index: 2; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: calc(env(safe-area-inset-top, 0px) + 14px) 18px 12px;
-    }
-    .wp-ce-count { color: #fff; font-weight: 700; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-    .wp-ce-close {
-      width: 36px; height: 36px; border-radius: 50%; border: none;
-      background: rgba(255,255,255,0.18); backdrop-filter: blur(10px);
-      color: #fff; display: flex; align-items: center; justify-content: center;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-    }
-    .wp-ce-carousel {
-      position: relative; z-index: 2; flex: 1;
-      display: flex; align-items: center;
-      overflow-x: auto; overflow-y: hidden;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-    .wp-ce-carousel::-webkit-scrollbar { display: none; }
-    .wp-ce-card {
-      flex-shrink: 0; scroll-snap-align: center;
-      height: 320px; border-radius: 22px; overflow: hidden;
-      box-shadow: 0 14px 34px rgba(0,0,0,0.35);
-      cursor: pointer; transition: transform 0.05s linear, opacity 0.05s linear;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .wp-ce-card-photo {
-      position: relative; width: 100%; height: 100%;
-      background-size: cover; background-position: center;
-      display: flex; align-items: flex-end;
-    }
-    .wp-ce-card-fade {
-      position: absolute; inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.15) 45%, transparent 70%);
-    }
-    .wp-ce-card-text { position: relative; z-index: 1; padding: 16px; color: #fff; }
-    .wp-ce-card-rating { font-size: 12px; font-weight: 700; color: #fbbf24; margin-bottom: 3px; }
-    .wp-ce-card-name { font-size: 17px; font-weight: 800; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,0.35); }
   `;
   document.head.appendChild(s);
 }
@@ -1888,7 +1898,7 @@ export class MapView {
       e.stopPropagation();
       if (longPressFired) { longPressFired = false; return; } // el long-press ya actuó, no abrir el carrusel también
       this.haptic('tap');
-      this._openClusterExpand(group);
+      this._openClusterExpand(group, customDef, el);
     });
 
     const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -1914,109 +1924,198 @@ export class MapView {
   // cada lugar a medida que se recorre el stack. Tap en una tarjeta = abre
   // la ficha completa de ese lugar (mismo _closeClusterExpand + onPlaceSelect
   // que usa el resto de la app).
-  _openClusterExpand(group) {
+  // ── Transición FLIP: del sticker del cluster a la pantalla collage ──
+  // FLIP = First, Last, Invert, Play. En vez de abrir una pantalla nueva
+  // con fade, se clonan las tarjetas/stickers/badge TAL COMO ESTÁN en el
+  // mapa en este instante (First), se arma la pantalla final para saber
+  // dónde deberían terminar (Last), y se anima cada clon desde su
+  // posición real de arranque hasta ahí (Invert+Play) — el ojo lee la
+  // pantalla nueva como si "creciera" del propio pin, no como un corte.
+  _openClusterExpand(group, customDef, stickerEl) {
     if (this._clusterExpandEl) this._closeClusterExpand();
 
-    // Guardamos cámara original para restaurarla al cerrar sin dejar el
-    // mapa "pegado" en el lugar que se estaba mirando dentro del carrusel.
     this._clusterExpandOrigCamera = { center: this.map.getCenter(), zoom: this.map.getZoom() };
 
-    const CARD_W = 240, CARD_GAP = 16;
+    // ── First: dónde está cada pieza AHORA, en coordenadas de pantalla ──
+    const pieces = [];
+    if (stickerEl) {
+      stickerEl.querySelectorAll('[data-card-idx]').forEach(n => pieces.push({ node: n, kind: 'card', idx: +n.getAttribute('data-card-idx'), rect: n.getBoundingClientRect() }));
+      stickerEl.querySelectorAll('[data-sticker-idx]').forEach(n => pieces.push({ node: n, kind: 'sticker', rect: n.getBoundingClientRect() }));
+      const badgeN = stickerEl.querySelector('[data-badge]');
+      if (badgeN) pieces.push({ node: badgeN, kind: 'badge', rect: badgeN.getBoundingClientRect() });
+      const labelN = stickerEl.querySelector('[data-label]');
+      if (labelN) pieces.push({ node: labelN, kind: 'label', rect: labelN.getBoundingClientRect() });
+    }
+    const cardPieces = pieces.filter(p => p.kind === 'card').sort((a, b) => a.idx - b.idx);
+    // Si no hay tarjeta (cluster recién creado, sin fotos todavía), no hay
+    // nada que animar en FLIP — no debería pasar en uso normal, pero por
+    // las dudas cae a abrir directo sin transición en vez de romper.
+    const heroRect = cardPieces[0]?.rect || stickerEl?.getBoundingClientRect() || { left: innerWidth/2-1, top: innerHeight/2-1, width: 2, height: 2 };
+
+    if (stickerEl) stickerEl.style.visibility = 'hidden'; // el clon lo reemplaza visualmente — se restaura al cerrar
+
+    const vw = innerWidth, vh = innerHeight;
+
+    // ── Last: destino de cada tarjeta en la pantalla collage ──────────
+    // Tarjeta 0 = héroe, centrada; tarjeta 1 a la izquierda; el resto en
+    // abanico a la derecha — mismo lenguaje que la referencia.
+    const heroW = Math.min(vw * 0.6, 290), heroH = heroW * 1.32;
+    const heroX = vw / 2 - heroW / 2, heroY = vh * 0.46 - heroH / 2;
+    const dest = (i) => {
+      if (i === 0) return { x: heroX, y: heroY, w: heroW, h: heroH, rot: -2, z: 30 };
+      if (i === 1) {
+        const w = heroW * 0.62;
+        return { x: -w * 0.32, y: heroY + heroH * 0.22, w, h: w * 1.32, rot: -9, z: 20 };
+      }
+      const w = heroW * (0.58 - (i - 2) * 0.04);
+      return { x: vw - w * 0.66 - (i - 2) * 10, y: heroY + heroH * (0.12 + (i - 2) * 0.14), w, h: w * 1.32, rot: 8 + (i - 2) * 5, z: 20 - i };
+    };
+
+    // ── Overlay ────────────────────────────────────────────────────────
+    const placeCount = group.length;
     const wrap = document.createElement('div');
-    wrap.className = 'wp-ce-wrap';
+    wrap.className = 'wp-ce-wrap wp-ce-collage';
     wrap.innerHTML = `
-      <div class="wp-ce-bg"></div>
-      <div class="wp-ce-header">
-        <div class="wp-ce-count">${group.length} lugares</div>
-        <button type="button" class="wp-ce-close" aria-label="Cerrar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <div class="wp-ce-collage-bg"></div>
+      <div class="wp-ce-collage-header">
+        <button type="button" class="wp-ce-cback" aria-label="Volver">
+          <svg width="13" height="13" viewBox="0 0 32.75 32.75" fill="#000000"><path d="M32.75,16.377c0,2.209-1.791,4-4,4H12.646l3.754,4.42c1.431,1.684,1.224,4.207-0.46,5.638 c-0.752,0.64-1.672,0.95-2.587,0.95c-1.134,0-2.26-0.479-3.051-1.41l-9.351-11.01c-1.268-1.492-1.268-3.687,0-5.178l9.351-11.01 c1.431-1.684,3.954-1.89,5.638-0.459s1.891,3.954,0.46,5.638l-3.754,4.42H28.75C30.959,12.376,32.75,14.167,32.75,16.377z"/></svg>
         </button>
+        <span class="wp-ce-ctitle">${placeCount} lugares</span>
+        <div class="wp-ce-cactions">
+          <button type="button" class="wp-ce-cbtn" aria-label="Compartir">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>
+          </button>
+          <button type="button" class="wp-ce-cbtn" aria-label="Más opciones">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.0002 13.3C8.71817 13.3 9.3002 12.7179 9.3002 12C9.3002 11.282 8.71817 10.7 8.0002 10.7C7.28223 10.7 6.7002 11.282 6.7002 12C6.7002 12.7179 7.28223 13.3 8.0002 13.3ZM16.0002 13.3C16.7182 13.3 17.3002 12.7179 17.3002 12C17.3002 11.282 16.7182 10.7 16.0002 10.7C15.2822 10.7 14.7002 11.282 14.7002 12C14.7002 12.7179 15.2822 13.3 16.0002 13.3ZM12.0002 13.3C12.7182 13.3 13.3002 12.7179 13.3002 12C13.3002 11.282 12.7182 10.7 12.0002 10.7C11.2822 10.7 10.7002 11.282 10.7002 12C10.7002 12.7179 11.2822 13.3 12.0002 13.3Z"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="wp-ce-carousel" style="padding:0 calc(50% - ${CARD_W / 2}px);gap:${CARD_GAP}px;">
-        ${group.map(({ el: markerEl }) => {
-          const place = markerEl._place;
-          const photo = proxyPhotoCluster(place.photoUrl || place.photo_url || place.photosUrls?.[0] || null);
-          const rating = place.rating ? `★ ${Number(place.rating).toFixed(1)}` : '';
-          return `<div class="wp-ce-card" style="width:${CARD_W}px;">
-            <div class="wp-ce-card-photo" style="${photo ? `background-image:url('${photo}')` : 'background:linear-gradient(160deg,#e5e7eb,#d1d5db)'}">
-              <div class="wp-ce-card-fade"></div>
-              <div class="wp-ce-card-text">
-                ${rating ? `<div class="wp-ce-card-rating">${rating}</div>` : ''}
-                <div class="wp-ce-card-name">${place.name || ''}</div>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
+      <div class="wp-ce-cstage"></div>
+      <div class="wp-ce-ccaption">
+        <div class="wp-ce-ccaption-list"></div>
       </div>`;
     document.body.appendChild(wrap);
     this._clusterExpandEl = wrap;
     document.body.style.overflow = 'hidden';
 
-    const carousel = wrap.querySelector('.wp-ce-carousel');
-    const bg       = wrap.querySelector('.wp-ce-bg');
-    const cards    = Array.from(wrap.querySelectorAll('.wp-ce-card'));
-    const step     = CARD_W + CARD_GAP;
+    const stage = wrap.querySelector('.wp-ce-cstage');
+    const caption = wrap.querySelector('.wp-ce-ccaption-list');
+    caption.innerHTML = group.map(({ el: mEl }) => `<span class="wp-ce-ctag">${mEl._place?.name || ''}</span>`).join('');
 
-    const lerp = (a, b, t) => a + (b - a) * t;
+    // ── Clonar cada pieza en su posición ACTUAL (First) ────────────────
+    const clones = pieces.map(p => {
+      const c = p.node.cloneNode(true);
+      c.className = (c.className || '') + ' wp-ce-flip-piece';
+      c.style.position = 'fixed';
+      c.style.left = p.rect.left + 'px';
+      c.style.top = p.rect.top + 'px';
+      c.style.width = p.rect.width + 'px';
+      c.style.height = p.rect.height + 'px';
+      c.style.margin = '0'; c.style.transform = 'none';
+      c.style.zIndex = '100000';
+      c.style.transition = 'none';
+      c.removeAttribute('data-card-idx'); c.removeAttribute('data-sticker-idx');
+      document.body.appendChild(c);
+      return { ...p, clone: c };
+    });
 
-    let raf = null;
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = null;
-        const idx  = carousel.scrollLeft / step;
-        const i0   = Math.max(0, Math.min(group.length - 1, Math.floor(idx)));
-        const i1   = Math.min(group.length - 1, i0 + 1);
-        const frac = Math.min(1, Math.max(0, idx - i0));
+    const cleanupClones = () => clones.forEach(({ clone }) => clone.remove());
 
-        // Parallax real: el mapa de fondo interpola en vivo entre el punto
-        // del lugar i0 y el i1 según el progreso exacto del scroll — no
-        // espera a que la tarjeta "encaje" para saltar.
-        const a = group[i0].ll, b = group[i1].ll;
-        this.map.jumpTo({ center: [lerp(a.lng, b.lng, frac), lerp(a.lat, b.lat, frac)] });
+    // Delta original entre cada sticker/badge/label y la tarjeta héroe —
+    // se preserva al reposicionar, así las decoraciones "viajan pegadas"
+    // a la foto principal en vez de recalcularse desde cero.
+    const heroDX = heroRect.left + heroRect.width / 2;
+    const heroDY = heroRect.top + heroRect.height / 2;
 
-        // Además, un pequeño desfasce del fondo respecto al scroll (mismo
-        // lenguaje que el parallax del drag del mapa) para que no se
-        // sienta como un bloque rígido pegado 1:1 al carrusel.
-        bg.style.transform = `translateX(${(-carousel.scrollLeft * 0.04).toFixed(1)}px) scale(1.06)`;
-
-        // Escala/opacidad por cercanía al centro — la tarjeta activa
-        // resalta, las de al lado se achican levemente.
-        cards.forEach((card, i) => {
-          const dist = Math.abs(i - idx);
-          const scale = Math.max(0.86, 1 - dist * 0.14);
-          const op    = Math.max(0.55, 1 - dist * 0.35);
-          card.style.transform = `scale(${scale.toFixed(3)})`;
-          card.style.opacity   = op.toFixed(2);
+    requestAnimationFrame(() => {
+      wrap.classList.add('wp-ce-in');
+      // Segundo frame: recién acá se fija el destino, para que el browser
+      // pinte primero la posición de arranque (si no, el navegador puede
+      // colapsar ambos estados en uno y la transición no se ve).
+      requestAnimationFrame(() => {
+        clones.forEach(({ kind, idx, rect, clone }, order) => {
+          clone.style.transition = `left 0.52s cubic-bezier(0.34,1.56,0.64,1), top 0.52s cubic-bezier(0.34,1.56,0.64,1), width 0.52s cubic-bezier(0.34,1.56,0.64,1), height 0.52s cubic-bezier(0.34,1.56,0.64,1), transform 0.52s cubic-bezier(0.34,1.56,0.64,1)`;
+          clone.style.transitionDelay = `${Math.min(order * 35, 140)}ms`;
+          if (kind === 'card') {
+            const d = dest(idx);
+            clone.style.left = d.x + 'px'; clone.style.top = d.y + 'px';
+            clone.style.width = d.w + 'px'; clone.style.height = d.h + 'px';
+            clone.style.transform = `rotate(${d.rot}deg)`;
+            clone.style.zIndex = String(d.z);
+          } else {
+            // stickers/badge/label: mismo desplazamiento relativo a la
+            // tarjeta héroe que tenían en el mapa, reescalado según cuánto
+            // creció la tarjeta héroe respecto a su tamaño original.
+            const scale = heroW / (cardPieces[0]?.rect.width || heroW);
+            const relX = (rect.left + rect.width / 2) - heroDX;
+            const relY = (rect.top + rect.height / 2) - heroDY;
+            const cx = heroX + heroW / 2 + relX * scale;
+            const cy = heroY + heroH / 2 + relY * scale;
+            const w = rect.width * scale, h = rect.height * scale;
+            clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
+            clone.style.width = w + 'px'; clone.style.height = h + 'px';
+            clone.style.zIndex = '35';
+          }
         });
       });
-    };
-    carousel.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    });
 
-    cards.forEach((card, i) => {
-      card.addEventListener('click', () => {
-        const place = group[i].el._place;
+    // Header y caption entran con un pequeño rebote ("pulse"), un toque
+    // después de que arrancó el FLIP — así el ojo primero sigue a las
+    // fotos y el texto llega como remate, no todo junto de golpe.
+    setTimeout(() => wrap.classList.add('wp-ce-chrome-in'), 260);
+
+    // Tocar una tarjeta ya asentada en el collage abre esa ficha
+    clones.forEach(({ kind, idx, clone }) => {
+      if (kind !== 'card') return;
+      clone.style.cursor = 'pointer';
+      clone.addEventListener('click', () => {
+        const place = group[idx]?.el._place;
+        if (!place) return;
         this._closeClusterExpand(/* restoreCamera */ false);
         if (this.onPlaceSelect) this.onPlaceSelect(place);
       });
     });
 
-    wrap.querySelector('.wp-ce-close').addEventListener('click', () => this._closeClusterExpand());
+    const doClose = () => this._closeClusterExpand();
+    wrap.querySelector('.wp-ce-cback').addEventListener('click', doClose);
 
-    this._clusterExpandCleanup = () => carousel.removeEventListener('scroll', onScroll);
-
-    requestAnimationFrame(() => wrap.classList.add('wp-ce-in'));
+    this._clusterExpandCleanup = () => cleanupClones();
+    this._clusterExpandStickerEl = stickerEl;
+    this._clusterExpandFlip = { clones, pieces, stickerEl };
   }
 
   _closeClusterExpand(restoreCamera = true) {
     if (!this._clusterExpandEl) return;
-    if (this._clusterExpandCleanup) this._clusterExpandCleanup();
     const wrap = this._clusterExpandEl;
+    const flip = this._clusterExpandFlip;
     this._clusterExpandEl = null;
+    this._clusterExpandFlip = null;
     document.body.style.overflow = '';
+    wrap.classList.remove('wp-ce-chrome-in');
     wrap.classList.remove('wp-ce-in');
-    setTimeout(() => wrap.remove(), 220);
+
+    // Reverse-FLIP: los mismos clones vuelven a su posición ORIGINAL
+    // (la del sticker en el mapa) antes de desaparecer — el cierre se ve
+    // como el reflejo exacto de la apertura, no un simple fundido.
+    if (flip) {
+      flip.clones.forEach(({ rect, clone }) => {
+        clone.style.transitionDelay = '0ms';
+        clone.style.transform = 'none';
+        clone.style.left = rect.left + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+      });
+    }
+
+    setTimeout(() => {
+      if (this._clusterExpandCleanup) this._clusterExpandCleanup();
+      if (flip?.stickerEl) flip.stickerEl.style.visibility = '';
+      wrap.remove();
+    }, 380);
+
     if (restoreCamera && this._clusterExpandOrigCamera) {
       this.map.easeTo({ center: this._clusterExpandOrigCamera.center, zoom: this._clusterExpandOrigCamera.zoom, duration: 350 });
     }
