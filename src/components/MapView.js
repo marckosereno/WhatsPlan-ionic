@@ -318,6 +318,38 @@ function injectLandmarkStyles() {
        en este momento — mismo azul que el resto de la marca. */
     .wp-ce-ctag.wp-ce-ctag-active { background: #1a5cf5; color: #fff; }
 
+    /* ── Editor de posiciones (SuperUser) ─────────────────────────────── */
+    .wp-ce-cedit { color: #1a5cf5; }
+    .wp-ce-editing .wp-ce-cstage { cursor: crosshair; }
+    .wp-ce-editpanel {
+      position: fixed; left: 12px; right: 12px;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+      z-index: 100050; /* por encima de todos los clones (100000+35 como máximo) */
+      background: rgba(20,20,26,0.92); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-radius: 18px; padding: 14px 16px;
+      opacity: 0; transform: translateY(14px);
+      transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none;
+    }
+    .wp-ce-editpanel:empty { display: none; }
+    .wp-ce-editpanel.wp-ce-editpanel-in { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .wp-ce-edithint { color: #e5e7eb; font-size: 12px; font-weight: 600; margin-bottom: 10px; font-family: 'Inter Tight', system-ui, sans-serif; }
+    .wp-ce-editslider {
+      display: flex; align-items: center; gap: 10px; color: #9ca3af;
+      font-size: 11.5px; font-weight: 700; margin-bottom: 8px;
+      font-family: 'Inter Tight', system-ui, sans-serif;
+    }
+    .wp-ce-editslider input[type="range"] { flex: 1; accent-color: #1a5cf5; }
+    .wp-ce-editrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .wp-ce-editbtn {
+      flex: 1; min-width: 70px; padding: 9px; border-radius: 10px; border: none;
+      background: rgba(255,255,255,0.1); color: #e5e7eb;
+      font-size: 11.5px; font-weight: 700; font-family: 'Inter Tight', system-ui, sans-serif;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .wp-ce-editbtn-primary { background: #1a5cf5; color: #fff; }
+    .wp-ce-editbtn:disabled { opacity: 0.5; }
+
     /* ── Wrapper base compartido por la pantalla collage ─────────────── */
     .wp-ce-wrap {
       position: fixed; inset: 0; z-index: 99999;
@@ -1955,7 +1987,7 @@ export class MapView {
     const pieces = [];
     if (stickerEl) {
       stickerEl.querySelectorAll('[data-card-idx]').forEach(n => pieces.push({ node: n, kind: 'card', idx: +n.getAttribute('data-card-idx'), rect: n.getBoundingClientRect() }));
-      stickerEl.querySelectorAll('[data-sticker-idx]').forEach(n => pieces.push({ node: n, kind: 'sticker', rect: n.getBoundingClientRect() }));
+      stickerEl.querySelectorAll('[data-sticker-idx]').forEach(n => pieces.push({ node: n, kind: 'sticker', idx: +n.getAttribute('data-sticker-idx'), rect: n.getBoundingClientRect() }));
       const badgeN = stickerEl.querySelector('[data-badge]');
       if (badgeN) pieces.push({ node: badgeN, kind: 'badge', rect: badgeN.getBoundingClientRect() });
       const labelN = stickerEl.querySelector('[data-label]');
@@ -2016,6 +2048,9 @@ export class MapView {
           <button type="button" class="wp-ce-cbtn" aria-label="Más opciones">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="#000000"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.0002 13.3C8.71817 13.3 9.3002 12.7179 9.3002 12C9.3002 11.282 8.71817 10.7 8.0002 10.7C7.28223 10.7 6.7002 11.282 6.7002 12C6.7002 12.7179 7.28223 13.3 8.0002 13.3ZM16.0002 13.3C16.7182 13.3 17.3002 12.7179 17.3002 12C17.3002 11.282 16.7182 10.7 16.0002 10.7C15.2822 10.7 14.7002 11.282 14.7002 12C14.7002 12.7179 15.2822 13.3 16.0002 13.3ZM12.0002 13.3C12.7182 13.3 13.3002 12.7179 13.3002 12C13.3002 11.282 12.7182 10.7 12.0002 10.7C11.2822 10.7 10.7002 11.282 10.7002 12C10.7002 12.7179 11.2822 13.3 12.0002 13.3Z"/></svg>
           </button>
+          ${this.onClusterCustomize ? `<button type="button" class="wp-ce-cbtn wp-ce-cedit" aria-label="Editar posiciones">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>` : ''}
         </div>
       </div>
       <div class="wp-ce-cstage"></div>
@@ -2072,6 +2107,11 @@ export class MapView {
     // llama en cada frame de drag (sin transición CSS, 1:1 con el dedo)
     // y también para los saltos animados (chip, flick, snap al soltar).
     let activeIdx = 0;
+    // Compartido con el editor de SuperUser más abajo: mientras se edita,
+    // el sistema de navegación (drag/chip entre lugares) se desactiva —
+    // si no, arrastrar para reposicionar un sticker también movería de
+    // héroe, cambiando la referencia a mitad de la edición.
+    let clusterEditing = false;
     const applyLayout = (idxVal, animated, opts = {}) => {
       const { duration = 0.36, stagger = 0 } = opts;
       const nearest = Math.max(0, Math.min(group.length - 1, Math.round(idxVal)));
@@ -2103,7 +2143,13 @@ export class MapView {
       const heroLiveX = heroLive.x + heroLive.w / 2, heroLiveY = heroLive.y + heroLive.h / 2;
       const baseW = cardPieces[0]?.rect.width || heroW;
       const scaleFull = heroLive.w / baseW;
-      clones.forEach(({ kind, rect, clone }) => {
+      // Cuánto se corre cada decoración por el drag en curso — SUTIL a
+      // propósito (ver el pedido: "que sí se muevan pero solo muy poco,
+      // con efecto parallax"). Es la distancia al entero más cercano
+      // (0 cuando ya asentó en un héroe, hasta 0.5 a mitad de camino
+      // entre dos) multiplicada por un desplazamiento chico en px.
+      const parallaxPx = (idxVal - Math.round(idxVal)) * -18;
+      clones.forEach(({ kind, idx, rect, clone }) => {
         if (kind === 'card') return;
         // El badge (y por consistencia el resto de las decoraciones) se
         // agranda un poco respecto a como se ve en el mapa, pero NUNCA a
@@ -2112,15 +2158,38 @@ export class MapView {
         // badge en particular (lo pedido); un poco más laxo para
         // sticker/label.
         const cap = kind === 'badge' ? 1.35 : 1.6;
-        const scale = Math.min(scaleFull, cap);
-        const relX = (rect.left + rect.width / 2) - heroDX;
-        const relY = (rect.top + rect.height / 2) - heroDY;
-        const cx = heroLiveX + relX * scale;
-        const cy = heroLiveY + relY * scale;
-        const w = rect.width * scale, h = rect.height * scale;
+
+        // Posición editada a mano para esta pantalla (slideDx/slideDy...),
+        // guardada por el editor de SuperUser — ver _openClusterSlideEditor
+        // más abajo. Si existe, se usa TAL CUAL (fija respecto al héroe,
+        // solo con el parallax sutil de arriba); si no, cae al
+        // comportamiento legado: reproyectar la posición que la
+        // decoración tenía en el sticker del mapa, escalada según cuánto
+        // creció la tarjeta — eso hacía que viajara "a lo grande" de
+        // héroe en héroe, que es justo lo que ya no se quiere una vez que
+        // hay una posición propia definida para esta pantalla.
+        const slideDef = kind === 'badge' ? customDef?.badge : customDef?.stickers?.[idx];
+        let cx, cy, w, h, rot;
+        if (slideDef && slideDef.slideDx != null) {
+          const scale = Math.min(slideDef.slideScale ?? 1, cap);
+          w = rect.width * scale; h = rect.height * scale;
+          cx = heroLiveX + slideDef.slideDx + parallaxPx;
+          cy = heroLiveY + slideDef.slideDy;
+          rot = slideDef.slideRotation ?? 0;
+          clone.style.borderRadius = (slideDef.slideRadius ?? 0) + 'px';
+        } else {
+          const scale = Math.min(scaleFull, cap);
+          const relX = (rect.left + rect.width / 2) - heroDX;
+          const relY = (rect.top + rect.height / 2) - heroDY;
+          cx = heroLiveX + relX * scale + parallaxPx;
+          cy = heroLiveY + relY * scale;
+          w = rect.width * scale; h = rect.height * scale;
+          rot = 0;
+        }
         clone.style.transition = animated ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1)` : 'none';
         clone.style.left = (cx - w / 2) + 'px'; clone.style.top = (cy - h / 2) + 'px';
         clone.style.width = w + 'px'; clone.style.height = h + 'px';
+        clone.style.transform = rot ? `rotate(${rot}deg)` : 'none';
         clone.style.zIndex = '100035';
       });
     };
@@ -2169,6 +2238,7 @@ export class MapView {
     };
     const onDown = (e) => {
       if (this._clusterExpandEl !== wrap) return;
+      if (clusterEditing) return;
       if (!inStageBand(e)) return;
       dragging = true; totalMove = 0;
       dragStartX = e.clientX; dragStartY = e.clientY; dragBaseIdx = activeIdx;
@@ -2226,10 +2296,184 @@ export class MapView {
     // activo (updateChips ya lo hace en cada asentamiento).
     chipEls.forEach((chip, i) => chip.addEventListener('click', () => settleTo(i)));
 
+    // ── Editor de SuperUser: ubicar badge/sticker PARA ESTA PANTALLA ────
+    // Sencillo a propósito: tocar para seleccionar, arrastrar con el dedo
+    // para mover, sliders para girar/escalar/redondear esquinas. Nada de
+    // pellizco con dos dedos acá — ya existe ese gesto más completo en el
+    // editor del cluster del mapa; este es un ajuste rápido y puntual de
+    // ESTA pantalla en particular.
+    const editBtn = wrap.querySelector('.wp-ce-cedit');
+    if (editBtn && this.onClusterCustomize) {
+      let editSel = null; // { kind, idx, clone, node }
+      // Copia editable — se guarda solo si tocás "Guardar". badge puede
+      // no existir todavía (cluster sin badge armado); se crea recién si
+      // lo tocás.
+      const editBadge = customDef?.badge ? { ...customDef.badge } : null;
+      const editStickers = (customDef?.stickers || []).map(s => ({ ...s }));
+
+      const panel = document.createElement('div');
+      panel.className = 'wp-ce-editpanel';
+      wrap.appendChild(panel);
+
+      const slideOf = (kind, idx) => kind === 'badge' ? editBadge : editStickers[idx];
+
+      const renderPanel = () => {
+        if (!clusterEditing) { panel.classList.remove('wp-ce-editpanel-in'); panel.innerHTML = ''; return; }
+        if (!editSel) {
+          panel.innerHTML = `
+            <div class="wp-ce-edithint">Tocá el badge o un sticker para ubicarlo</div>
+            <div class="wp-ce-editrow">
+              <button type="button" class="wp-ce-editbtn" data-act="addsticker">+ Sticker</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
+              <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
+            </div>`;
+        } else {
+          const sd = slideOf(editSel.kind, editSel.idx) || {};
+          panel.innerHTML = `
+            <div class="wp-ce-edithint">${editSel.kind === 'badge' ? 'Badge' : 'Sticker'} seleccionado — arrastralo con el dedo</div>
+            <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.slideRotation ?? 0}" data-ctl="rot"></label>
+            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="200" step="1" value="${Math.round((sd.slideScale ?? 1) * 100)}" data-ctl="scale"></label>
+            <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.slideRadius ?? 0}" data-ctl="radius"></label>
+            <div class="wp-ce-editrow">
+              ${editSel.kind === 'sticker' ? `<button type="button" class="wp-ce-editbtn" data-act="delsticker">Eliminar</button>` : ''}
+              <button type="button" class="wp-ce-editbtn" data-act="deselect">Listo</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
+              <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
+            </div>`;
+          panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.slideRotation = +e.target.value; slideOf(editSel.kind, editSel.idx).slideRotation = sd.slideRotation; if (editSel.kind === 'badge') Object.assign(editBadge, sd); applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { const v = +e.target.value / 100; if (editSel.kind === 'badge') editBadge.slideScale = v; else editStickers[editSel.idx].slideScale = v; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="radius"]').addEventListener('input', (e) => { const v = +e.target.value; if (editSel.kind === 'badge') editBadge.slideRadius = v; else editStickers[editSel.idx].slideRadius = v; applyLayout(activeIdx, false); });
+        }
+        panel.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => onPanelAction(b.getAttribute('data-act'))));
+        requestAnimationFrame(() => panel.classList.add('wp-ce-editpanel-in'));
+      };
+
+      // Al entrar a modo edición, asentar en el héroe más cercano — así
+      // dx/dy que se guarden acá son EXACTOS respecto al centro del héroe
+      // a escala base (heroW), sin tener que reproyectar por el zoom en
+      // que haya quedado un drag a medio camino.
+      const ensureSlideDef = (kind, idx) => {
+        const target = kind === 'badge' ? editBadge : editStickers[idx];
+        if (target.slideDx == null) {
+          // Arranca EXACTO donde ya se está viendo ahora mismo (legado),
+          // para no pegarle un salto al seleccionar por primera vez.
+          const r = (kind === 'badge' ? clones.find(c => c.kind === 'badge') : clones.find(c => c.kind === 'sticker' && c.idx === idx))?.clone.getBoundingClientRect();
+          const heroR = cardClones.find(c => c.idx === Math.round(activeIdx))?.clone.getBoundingClientRect();
+          if (r && heroR) {
+            target.slideDx = (r.left + r.width / 2) - (heroR.left + heroR.width / 2);
+            target.slideDy = (r.top + r.height / 2) - (heroR.top + heroR.height / 2);
+            target.slideScale = 1;
+            target.slideRotation = target.slideRotation ?? 0;
+            target.slideRadius = target.slideRadius ?? 0;
+          } else {
+            target.slideDx = 0; target.slideDy = 0; target.slideScale = 1; target.slideRotation = 0; target.slideRadius = 0;
+          }
+        }
+      };
+
+      let dragEl = null, dragStart = { x: 0, y: 0 }, dragOrig = { dx: 0, dy: 0 };
+      const onEditPointerDown = (e) => {
+        if (!clusterEditing) return;
+        if (e.target.closest('.wp-ce-editpanel')) return; // no pisar los botones/sliders del panel mismo
+        const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest('.wp-ce-flip-piece');
+        const entry = hit ? clones.find(c => c.clone === hit && c.kind !== 'card') : null;
+        if (!entry) { editSel = null; renderPanel(); return; }
+        ensureSlideDef(entry.kind, entry.idx);
+        editSel = entry;
+        renderPanel();
+        const sd = slideOf(entry.kind, entry.idx);
+        dragEl = entry; dragStart = { x: e.clientX, y: e.clientY }; dragOrig = { dx: sd.slideDx, dy: sd.slideDy };
+        e.stopPropagation();
+      };
+      const onEditPointerMove = (e) => {
+        if (!clusterEditing || !dragEl) return;
+        const sd = slideOf(dragEl.kind, dragEl.idx);
+        sd.slideDx = dragOrig.dx + (e.clientX - dragStart.x);
+        sd.slideDy = dragOrig.dy + (e.clientY - dragStart.y);
+        applyLayout(activeIdx, false);
+      };
+      const onEditPointerUp = () => { dragEl = null; };
+
+      const onPanelAction = async (act) => {
+        if (act === 'deselect') { editSel = null; renderPanel(); applyLayout(activeIdx, false); return; }
+        if (act === 'cancel') { exitEdit(false); return; }
+        if (act === 'addsticker') {
+          const url = prompt('URL de la imagen del sticker:');
+          if (!url) return;
+          const newIdx = editStickers.length;
+          editStickers.push({ imageUrl: url, dx: 0, dy: 44, rotation: 0, scale: 1, z: 25 + newIdx, slideDx: 0, slideDy: 0, slideScale: 1, slideRotation: 0, slideRadius: 0 });
+          // El sticker nuevo no existe todavía como clon (no estaba en el
+          // sticker original del mapa) — guardar y reabrir para que
+          // aparezca es más simple y confiable que inyectar un clon vivo
+          // a mitad de una edición.
+          await doSave();
+          return;
+        }
+        if (act === 'delsticker' && editSel?.kind === 'sticker') {
+          editStickers.splice(editSel.idx, 1);
+          editSel = null;
+          await doSave();
+          return;
+        }
+        if (act === 'save') { await doSave(); }
+      };
+
+      const doSave = async () => {
+        const saveBtn = panel.querySelector('[data-act="save"]');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando…'; }
+        try {
+          const res = await fetch('/api/supabase-clusters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: customDef?.id,
+              place_ids: group.map(({ el }) => placeIdOf(el._place)),
+              cards: customDef?.cards || [],
+              stickers: editStickers,
+              badge: editBadge,
+              label: customDef?.label || null,
+            }),
+          });
+          const json = await res.json();
+          if (!json.success) throw new Error(json.message);
+          await this.reloadPinClusters();
+          exitEdit(true);
+        } catch (err) {
+          alert('Error guardando: ' + err.message);
+          if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar'; }
+        }
+      };
+
+      const enterEdit = () => {
+        clusterEditing = true;
+        settleTo(Math.round(activeIdx)); // asentar exacto — ver comentario en ensureSlideDef
+        wrap.classList.add('wp-ce-editing');
+        renderPanel();
+      };
+      const exitEdit = (reopenNeeded) => {
+        clusterEditing = false; editSel = null;
+        wrap.classList.remove('wp-ce-editing');
+        panel.innerHTML = ''; panel.classList.remove('wp-ce-editpanel-in');
+        if (!reopenNeeded) applyLayout(activeIdx, true); // cancelar → repinta con lo YA guardado (descarta cambios locales)
+      };
+
+      editBtn.addEventListener('click', () => { clusterEditing ? exitEdit(false) : enterEdit(); });
+      document.addEventListener('pointerdown', onEditPointerDown, { capture: true });
+      document.addEventListener('pointermove', onEditPointerMove, { passive: true });
+      document.addEventListener('pointerup', onEditPointerUp, { passive: true });
+      document.addEventListener('pointercancel', onEditPointerUp, { passive: true });
+      this._clusterExpandEditCleanup = () => {
+        document.removeEventListener('pointerdown', onEditPointerDown, { capture: true });
+        document.removeEventListener('pointermove', onEditPointerMove);
+        document.removeEventListener('pointerup', onEditPointerUp);
+        document.removeEventListener('pointercancel', onEditPointerUp);
+      };
+    }
+
     const doClose = () => this._closeClusterExpand();
     wrap.querySelector('.wp-ce-cback').addEventListener('click', doClose);
 
-    this._clusterExpandCleanup = () => { cleanupClones(); cleanupDrag(); };
+    this._clusterExpandCleanup = () => { cleanupClones(); cleanupDrag(); if (this._clusterExpandEditCleanup) { this._clusterExpandEditCleanup(); this._clusterExpandEditCleanup = null; } };
     this._clusterExpandStickerEl = stickerEl;
     this._clusterExpandFlip = { clones, pieces, stickerEl };
   }
