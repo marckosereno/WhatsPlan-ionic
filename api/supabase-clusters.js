@@ -29,6 +29,10 @@ async function listClusters(res) {
     // badge (singular) queda solo por compatibilidad con filas viejas;
     // MapView.js ya sabe tratarlo como badges:[badge] si badges no viene.
     badges:    Array.isArray(r.badges) ? r.badges : null,
+    // slidePlaces: decoraciones INDEPENDIENTES por lugar para la pantalla
+    // de slide (badges/stickers propios, que NO afectan el sticker del
+    // mapa). Objeto { [place_id]: { badges:[...], stickers:[...] } }.
+    slidePlaces: r.slide_places && typeof r.slide_places === 'object' ? r.slide_places : null,
     label:     r.label && typeof r.label === 'object' ? r.label : null,
     // Necesario en el cliente para resolver el conflicto cuando VARIAS
     // filas reclaman el mismo place_id (pasa fácil: cada vez que se
@@ -41,7 +45,7 @@ async function listClusters(res) {
 }
 
 async function saveCluster(body, res) {
-  const { id, place_ids, cards, stickers, badge, badges, label } = body;
+  const { id, place_ids, cards, stickers, badge, badges, slidePlaces, label } = body;
 
   if (!Array.isArray(place_ids) || place_ids.length < 1) {
     return res.status(400).json({ success: false, message: 'place_ids es requerido (mínimo 1 lugar)' });
@@ -53,6 +57,7 @@ async function saveCluster(body, res) {
     stickers:   Array.isArray(stickers) ? stickers : [],
     badge:      badge && typeof badge === 'object' ? badge : null,
     badges:     Array.isArray(badges) ? badges : null,
+    slide_places: slidePlaces && typeof slidePlaces === 'object' ? slidePlaces : null,
     label:      label && typeof label === 'object' ? label : null,
     updated_at: new Date().toISOString(),
   };
