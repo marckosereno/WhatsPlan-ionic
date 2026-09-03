@@ -2268,7 +2268,7 @@ export class MapView {
     // que no es héroe se ve desplazado y con menos opacidad — igual que
     // su tarjeta — hasta que le toca ser el centro.
     const applyLayout = (idxVal, animated, opts = {}) => {
-      const { duration = 0.36, stagger = 0 } = opts;
+      const { duration = 0.36, stagger = 0, decoDelay = 0 } = opts;
       const cardPosByIdx = {};
       cardClones.forEach(({ idx, clone }, order) => {
         try {
@@ -2308,11 +2308,21 @@ export class MapView {
       // (left/top ya resueltos aparte). Separado en un helper porque el
       // bloque "por lugar" y el "global" de abajo necesitan exactamente
       // lo mismo, solo cambia de dónde sacan cx/cy.
-      const applyDecoStyle = (d, kind, w, h, zBase) => {
-        // Orden de capas ("Adelante"/"Atrás" en el panel) — layerZ es
-        // relativo a las demás piezas de SU MISMO grupo (las de este
-        // lugar, o las globales), zBase separa un grupo de otro.
-        d.clone.style.zIndex = String(100000 + zBase + (d.layerZ || 0));
+      const applyDecoStyle = (d, kind, w, h, cardZ) => {
+        // Orden de capas ("Adelante"/"Atrás"): para decoraciones LOCALES
+        // (atadas a un lugar), cardZ es el z de SU PROPIA tarjeta en este
+        // instante — layerZ es un offset relativo a ESA tarjeta, no a un
+        // piso fijo. Antes el piso (zBase=35) estaba SIEMPRE por encima
+        // del máximo z de cualquier tarjeta (30) — o sea que un sticker
+        // JAMÁS podía quedar detrás de su foto, sin importar cuántas
+        // veces tocaras "Atrás": por eso el drag lo "devolvía" adelante
+        // en cuanto la tarjeta volvía a ser héroe, y por eso con un solo
+        // sticker el botón no tenía ningún vecino con quien
+        // intercambiarse y no hacía nada. Ahora layerZ se suma al z REAL
+        // de la tarjeta, así que un valor negativo lo manda genuinamente
+        // detrás — y esa relación se mantiene sin importar en qué
+        // posición del parallax esté la tarjeta en cada momento.
+        d.clone.style.zIndex = String(100000 + cardZ + (d.layerZ ?? 5));
         if (kind === 'badge') {
           // Tamaño y font-size crecen JUNTOS; el padding queda fijo — es
           // lo que se pidió, y es la misma sensación que un badge del
@@ -2325,17 +2335,18 @@ export class MapView {
           d.clone.style.borderRadius = '999px';
         } else {
           d.clone.style.width = w + 'px'; d.clone.style.height = h + 'px';
-          d.clone.style.borderRadius = (d.radius || 0) + 'px';
           const totalScale = h / (d.baseH || 26);
           const liveStroke = (d.strokeWidth ?? 2) * totalScale;
           const inner = d.clone.firstElementChild;
           if (inner) {
+            const blurPx = d.blur || 0;
             if (d.emoji) {
               inner.style.fontSize = h + 'px';
               inner.style.textShadow = buildEmojiStroke(liveStroke, d.strokeColor || '#ffffff');
+              inner.style.filter = blurPx ? `blur(${blurPx}px)` : 'none';
             } else if (d.imageUrl) {
               const img = inner.querySelector('img');
-              if (img) img.style.filter = buildImageStroke(liveStroke, d.strokeColor || '#ffffff');
+              if (img) img.style.filter = buildImageStroke(liveStroke, d.strokeColor || '#ffffff') + (blurPx ? ` blur(${blurPx}px)` : '');
             }
           }
         }
@@ -2358,8 +2369,9 @@ export class MapView {
             d.clone.style.transition = animated
               ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s ease, height ${duration}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
               : 'none';
+            d.clone.style.transitionDelay = animated ? `${decoDelay}ms` : '0ms';
             d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-            applyDecoStyle(d, kind, w, h, 35);
+            applyDecoStyle(d, kind, w, h, p.z);
             d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
             d.clone.style.opacity = String(p.op);
             d.clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
@@ -2409,7 +2421,11 @@ export class MapView {
       // pinte primero la posición de arranque (si no, el navegador puede
       // colapsar ambos estados en uno y la transición no se ve).
       requestAnimationFrame(() => {
-        applyLayout(0, true, { duration: 0.52, stagger: 35 });
+        // decoDelay: las decoraciones entran un toque DESPUÉS que las
+        // tarjetas (que ya escalonan hasta stagger*4 = 140ms) — mismo
+        // pulse, con un pequeño retraso para que se lea como remate en
+        // vez de que todo aparezca junto.
+        applyLayout(0, true, { duration: 0.52, stagger: 35, decoDelay: 180 });
         updateChips(0);
       });
     });
@@ -2511,32 +2527,6 @@ export class MapView {
       let editSel = null; // { kind: 'badge'|'sticker'|'card'|'badgeGlobal'|'stickerGlobal', obj, clone }
       let addGlobalNext = false; // checkbox del panel por defecto: el próximo "+ Badge"/"+ Sticker" va a slideGlobal en vez del lugar activo
       let applyCardStyleToAll = false; // "Aplicar a todas las tarjetas" — ver doSave()
-      // Orden de capas: intercambio de a UNO con el vecino inmediato en
-      // el z-order actual — mismo mecanismo que "Adelante"/"Atrás" en el
-      // editor de cluster del mapa (ver stepZ en SuperUserPanel.js). Un
-      // contador que solo suma/resta se va de rango con el uso (unas
-      // pocas veces alcanza para bajar por debajo de z:100000 y el fondo
-      // blanco de la pantalla tapa al elemento por completo — pasó
-      // literalmente eso). Intercambiando valores YA EXISTENTES entre dos
-      // elementos, el rango nunca se corre: como mucho reordena lo que
-      // ya había.
-      const stepLayerZ = (scope, obj, direction) => {
-        // Asegurar que todos tengan un z único antes de ordenar — si dos
-        // quedan empatados (el default de ambos es 0), intercambiarlos
-        // es un no-op inútil.
-        const seen = new Set();
-        scope.sort((a, b) => (a.layerZ ?? 0) - (b.layerZ ?? 0)).forEach(d => {
-          if (d.layerZ == null) d.layerZ = 0;
-          while (seen.has(d.layerZ)) d.layerZ += 1;
-          seen.add(d.layerZ);
-        });
-        const idx = scope.indexOf(obj);
-        if (idx === -1) return;
-        const swapIdx = idx + direction;
-        if (swapIdx < 0 || swapIdx >= scope.length) return; // ya está en la punta, no hay con quién cambiar
-        const other = scope[swapIdx];
-        const tmp = obj.layerZ; obj.layerZ = other.layerZ; other.layerZ = tmp;
-      };
       let editBackup = null; // snapshot del LUGAR que se está editando, para "Cancelar"
       let editPlace = 0;
 
@@ -2642,12 +2632,12 @@ export class MapView {
             </div>` : ''}
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
             <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="${isBadge ? 200 : 400}" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
-            <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.radius ?? 0}" data-ctl="radius"></label>
             ${!isBadge ? `<div class="wp-ce-editrow" style="align-items:center;">
               <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Contorno (stroke)</span>
               <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;">
-            </div>` : ''}
+            </div>
+            <label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>` : ''}
             <div class="wp-ce-editrow wp-ce-editrow-compact">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerfront" title="Adelante">⬆️</button>
@@ -2684,6 +2674,7 @@ export class MapView {
             emojiEl.addEventListener('compositionend', applyEmoji);
             panel.querySelector('[data-ctl="strokecolor"]').addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
             panel.querySelector('[data-ctl="strokewidth"]').addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
+            panel.querySelector('[data-ctl="blur"]').addEventListener('input', (e) => { sd.blur = +e.target.value; applyLayout(activeIdx, false); });
 
             // Subir imagen propia — mismo mecanismo que el sticker del
             // cluster del mapa (comprimir a máx 300px + subir a Supabase
@@ -2740,7 +2731,6 @@ export class MapView {
           }
           panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.rotation = +e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
-          panel.querySelector('[data-ctl="radius"]').addEventListener('input', (e) => { sd.radius = +e.target.value; applyLayout(activeIdx, false); });
         }
         panel.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => onPanelAction(b.getAttribute('data-act'))));
         requestAnimationFrame(() => panel.classList.add('wp-ce-editpanel-in'));
@@ -2864,10 +2854,21 @@ export class MapView {
         if (act === 'addsticker') { addLiveDecoration('sticker', { emoji: '⭐' }, addGlobalNext); return; }
         if (act === 'layerfront' || act === 'layerback') {
           if (!editSel) return;
-          const scope = editSel.kind.includes('Global')
-            ? [...slideGlobal.badges, ...slideGlobal.stickers]
-            : [...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers];
-          stepLayerZ(scope, editSel.obj, act === 'layerfront' ? 1 : -1);
+          // Antes esto intercambiaba el valor con el "vecino" más
+          // cercano en el mismo orden — igual que el editor de cluster
+          // del mapa. Pero ahí SIEMPRE hay al menos 3-4 elementos
+          // (tarjetas + stickers + badge) con quien intercambiar; acá es
+          // normal tener un solo sticker en un lugar, y sin nadie con
+          // quien cambiar, el botón no hacía nada. Ahora layerZ es un
+          // offset respecto a la TARJETA propia (ver applyDecoStyle) y
+          // el botón simplemente fuerza el cruce de signo — "Atrás"
+          // siempre termina negativo (detrás de la foto), "Adelante"
+          // siempre positivo — funciona aunque no haya ningún otro
+          // elemento con quien compararse.
+          const cur = editSel.obj.layerZ ?? 5;
+          editSel.obj.layerZ = act === 'layerfront'
+            ? (cur <= 0 ? 5 : cur + 3)
+            : (cur >= 0 ? -5 : cur - 3);
           applyLayout(activeIdx, false);
           return;
         }
