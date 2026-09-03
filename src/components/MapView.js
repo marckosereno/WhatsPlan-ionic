@@ -2376,6 +2376,29 @@ export class MapView {
             const h = d.baseH * scaleRef * (d.scale ?? 1);
             const cx = cx0 + d.dx * scaleRef;
             const cy = cy0 + d.dy * scaleRef;
+            // Primera vez que esta decoración se posiciona: el clon nace
+            // con position:fixed pero SIN left/top todavía, así que el
+            // navegador lo deja en su rincón de origen (arriba a la
+            // izquierda) hasta que algo lo mueva — y como la PRIMERA vez
+            // que lo movemos es con transición animada, se ve como que
+            // "entra viajando desde arriba" en vez de aparecer con el
+            // pulse (que es lo que sí les pasa a las tarjetas, porque
+            // ESAS arrancan ya ancladas en la posición real del sticker
+            // del mapa). Acá no hay una posición previa real — se la
+            // inventa: fijar YA, sin transición, la posición/tamaño/blur
+            // FINALES pero invisible y un poco más chico, forzar un
+            // reflow, y recién ahí dejar que la transición de abajo
+            // anime nada más que opacidad+escala — un pulse genuino en
+            // el lugar que le toca, sin viaje.
+            if (!d._entered) {
+              d._entered = true;
+              d.clone.style.transition = 'none';
+              d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
+              applyDecoStyle(d, kind, w, h, p.z);
+              d.clone.style.transform = `${d.rotation ? `rotate(${d.rotation}deg) ` : ''}scale(0.4)`;
+              d.clone.style.opacity = '0';
+              void d.clone.offsetHeight; // forzar reflow — sin esto el navegador podía "fusionar" este estado con el siguiente y saltarse el snap
+            }
             d.clone.style.transition = animated
               ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s ease, height ${duration}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
               : 'none';
@@ -2402,7 +2425,20 @@ export class MapView {
         try {
           const w = d.baseW * (d.scale ?? 1), h = d.baseH * (d.scale ?? 1);
           const cx = gx0 + d.dx, cy = gy0 + d.dy;
-          d.clone.style.transition = animated ? `left ${duration}s ease, top ${duration}s ease` : 'none';
+          // Mismo motivo que en las decoraciones por lugar: sin esto, la
+          // primera vez que aparece se ve "viajar" desde el rincón donde
+          // el navegador deja un position:fixed sin left/top todavía.
+          if (!d._entered) {
+            d._entered = true;
+            d.clone.style.transition = 'none';
+            d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
+            applyDecoStyle(d, kind, w, h, 60);
+            d.clone.style.transform = `${d.rotation ? `rotate(${d.rotation}deg) ` : ''}scale(0.4)`;
+            d.clone.style.opacity = '0';
+            void d.clone.offsetHeight;
+          }
+          d.clone.style.transition = animated ? `left ${duration}s ease, top ${duration}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease` : 'none';
+          d.clone.style.transitionDelay = animated ? `${decoDelay}ms` : '0ms';
           d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
           applyDecoStyle(d, kind, w, h, 60);
           d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
@@ -2941,7 +2977,12 @@ export class MapView {
           // badges/stickers/cards del CLUSTER (lo que ve el mapa) ni se
           // tocan ni se mandan de nuevo: este guardado es 100%
           // independiente de eso.
-          const stripClone = (d) => { const { clone, ...rest } = d; return rest; };
+          // _entered es un flag de ESTA sesión (para que la animación de
+          // entrada no se repita en cada frame) — no es un dato a
+          // persistir. Si se guardara, la próxima vez que se cargue esta
+          // decoración ya vendría marcada como "ya entró" y perdería el
+          // pulse de apertura para siempre.
+          const stripClone = (d) => { const { clone, _entered, ...rest } = d; return rest; };
           const mergedSlidePlaces = { ...savedSlidePlaces };
           mergedSlidePlaces[placeIds[editPlace]] = {
             badges: slidePlaceDecos[editPlace].badges.map(stripClone),
