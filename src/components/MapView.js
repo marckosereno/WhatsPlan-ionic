@@ -370,7 +370,18 @@ function injectLandmarkStyles() {
       font-size: 11.5px; font-weight: 700; margin-bottom: 8px;
       font-family: 'Inter Tight', system-ui, sans-serif;
     }
-    .wp-ce-editslider input[type="range"] { flex: 1; accent-color: #1a5cf5; }
+    .wp-ce-editslider input[type="range"] {
+      flex: 1; accent-color: #1a5cf5;
+      /* Sin esto, si arrancás un scroll del panel (gesto vertical) y el
+         dedo pasa por encima de un slider, el navegador se lo adjudica al
+         slider (que por default captura CUALQUIER toque, sin importar la
+         dirección) y aplica un cambio no querido. touch-action:pan-y le
+         dice al navegador "dejá pasar el scroll vertical" — un gesto
+         claramente vertical sigue de largo hacia el scroll del panel; el
+         slider solo reacciona a un arrastre genuinamente horizontal
+         sobre él, que es como se usa en realidad. */
+      touch-action: pan-y;
+    }
     .wp-ce-editrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
     .wp-ce-editbtn {
       flex: 1; min-width: 70px; padding: 9px; border-radius: 10px; border: none;
@@ -2343,6 +2354,11 @@ export class MapView {
     // toque a esos botones — ver el comentario largo más abajo, en el
     // punto donde se usa.
     const HEADER_SAFE_Y = 95;
+    // Misma idea abajo: los chips de navegación (los nombres de lugar,
+    // tocables para saltar entre slides) también viven dentro de wrap —
+    // si un texto/sticker gigante llega hasta ahí, les pasaría lo mismo
+    // que al header.
+    const FOOTER_SAFE_Y = 90; // px medidos desde el borde inferior de la pantalla
 
     const applyLayout = (idxVal, animated, opts = {}) => {
       const { duration = 0.36, stagger = 0, decoDelay = 0 } = opts;
@@ -2533,10 +2549,20 @@ export class MapView {
             // riesgo para este arreglo puntual — más simple y seguro:
             // cualquier decoración que caiga en la franja del header
             // pierde pointer-events, así el toque la atraviesa y llega
-            // igual al botón de abajo. El texto creció (pedido aparte) y
-            // es lo que más probabilidad tiene de terminar ahí arriba.
-            const inHeaderBand = (cy - h / 2) < HEADER_SAFE_Y;
-            d.clone.style.pointerEvents = (p.op < 0.15 || inHeaderBand) ? 'none' : 'auto';
+            // igual al botón de abajo.
+            //
+            // Para esto hace falta el ALTO REAL renderizado, no `h` — `h`
+            // es una estimación fija (d.baseH) pensada para centrar la
+            // caja, pero un texto con font-size enorme (ahora hay rango
+            // hasta 2500%) mide muchísimo más que esa estimación una vez
+            // renderizado, y el chequeo con `h` se quedaba corto: el
+            // texto tapaba el header pero el cálculo pensaba que no
+            // llegaba. getBoundingClientRect() da el tamaño posterior a
+            // rotación/escala tal como quedó pintado, sin adivinar.
+            const realRect = d.clone.getBoundingClientRect();
+            const inHeaderBand = realRect.top < HEADER_SAFE_Y;
+            const inFooterBand = realRect.bottom > (vh - FOOTER_SAFE_Y);
+            d.clone.style.pointerEvents = (p.op < 0.15 || inHeaderBand || inFooterBand) ? 'none' : 'auto';
           } catch (err) {
             console.error('[FLIP] error posicionando decoración', { place: i }, err);
           }
@@ -2580,11 +2606,11 @@ export class MapView {
           applyDecoStyle(d, kind, w, h, 60);
           d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
           d.clone.style.opacity = String(d.opacity ?? 1); // las globales no se desvanecen por distancia, pero sí respetan su propia opacidad
-          // Las globales viven arriba de la tarjeta héroe por diseño —
-          // justo la zona donde está el header. Mismo motivo que las
-          // decoraciones por lugar: si cae en esa franja, no debe robarle
-          // el toque a los botones de abajo.
-          d.clone.style.pointerEvents = (cy - h / 2) < HEADER_SAFE_Y ? 'none' : 'auto';
+          // Real, no estimado — ver el comentario largo en el loop por
+          // lugar (un texto de fuente gigante desborda por mucho la
+          // estimación de alto d.baseH). Chequea header Y footer.
+          const realRectG = d.clone.getBoundingClientRect();
+          d.clone.style.pointerEvents = (realRectG.top < HEADER_SAFE_Y || realRectG.bottom > (vh - FOOTER_SAFE_Y)) ? 'none' : 'auto';
         } catch (err) {
           console.error('[FLIP] error posicionando decoración global', err);
         }
@@ -2816,7 +2842,7 @@ export class MapView {
             <div class="wp-ce-editrow" style="align-items:center;">
               <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Color de borde</span>
               <input type="color" value="${sd.borderColor || '#ffffff'}" data-ctl="cbcolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
-              <input type="range" min="0" max="10" step="1" value="${sd.borderWidth ?? 0}" data-ctl="cbwidth" style="flex:1;">
+              <input type="range" min="0" max="10" step="1" value="${sd.borderWidth ?? 0}" data-ctl="cbwidth" style="flex:1;touch-action:pan-y;">
             </div>
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn" data-act="resetcard">Restablecer</button>
@@ -2836,6 +2862,11 @@ export class MapView {
           const sd = editSel.obj;
           const isGlobalText = editSel.kind.includes('Global');
           const TEXT_PRESET = ['#ffffff', '#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981']; // mismo lenguaje de color que badge/sticker
+          // Mismas bases que usa applyDecoStyle para renderizar — hace
+          // falta acá para poder mostrar/editar el tamaño en px directo,
+          // no solo como % del slider.
+          const TEXT_TAG_BASE = { h1: 64, h2: 48, h3: 36, p: 30 };
+          const curFontPx = Math.round(TEXT_TAG_BASE[sd.tag || 'p'] * (sd.scale ?? 1));
           panel.innerHTML = `
             <div class="wp-ce-edithint">Texto${isGlobalText ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
             <textarea data-ctl="text" rows="2" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;resize:none;background:rgba(255,255,255,0.08);border:none;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:'Inter Tight',system-ui,sans-serif;margin-bottom:8px;">${sd.text || ''}</textarea>
@@ -2858,7 +2889,9 @@ export class MapView {
             <div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
             <label class="wp-ce-editslider">Ancho<input type="range" min="40" max="1200" step="1" value="${sd.baseW ?? 160}" data-ctl="width"></label>
-            <label class="wp-ce-editslider">Tamaño<input type="range" min="10" max="2500" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
+            <label class="wp-ce-editslider">Tamaño<input type="range" min="10" max="2500" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale">
+              <input type="number" min="1" max="2000" value="${curFontPx}" data-ctl="scalepx" style="width:52px;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:5px 4px;font-size:12px;text-align:center;">px
+            </label>
             <label class="wp-ce-editslider">Interlineado<input type="range" min="80" max="200" step="1" value="${Math.round((sd.lineHeight ?? 1.2) * 100)}" data-ctl="lh"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>
             <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:6px;">
@@ -2866,7 +2899,7 @@ export class MapView {
             </label>
             ${sd.strokeWidth ? `<div class="wp-ce-editrow" style="align-items:center;">
               <input type="color" value="${sd.strokeColor || '#000000'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
-              <input type="range" min="0.5" max="8" step="0.5" value="${sd.strokeWidth}" data-ctl="strokewidth" style="flex:1;">
+              <input type="range" min="0.5" max="8" step="0.5" value="${sd.strokeWidth}" data-ctl="strokewidth" style="flex:1;touch-action:pan-y;">
             </div>` : ''}
             <div class="wp-ce-editrow wp-ce-editrow-compact">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
@@ -2889,7 +2922,21 @@ export class MapView {
           });
           panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.rotation = +e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="width"]').addEventListener('input', (e) => { sd.baseW = +e.target.value; applyLayout(activeIdx, false); });
-          panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
+          const scaleSlider = panel.querySelector('[data-ctl="scale"]');
+          const scalePxInput = panel.querySelector('[data-ctl="scalepx"]');
+          const tagBaseNow = () => TEXT_TAG_BASE[sd.tag || 'p'];
+          scaleSlider.addEventListener('input', (e) => {
+            sd.scale = +e.target.value / 100;
+            scalePxInput.value = Math.round(tagBaseNow() * sd.scale); // mantener sincronizado el campo en px mientras se arrastra el slider
+            applyLayout(activeIdx, false);
+          });
+          scalePxInput.addEventListener('input', (e) => {
+            const px = +e.target.value;
+            if (!px || px <= 0) return;
+            sd.scale = px / tagBaseNow();
+            scaleSlider.value = String(Math.round(sd.scale * 100));
+            applyLayout(activeIdx, false);
+          });
           panel.querySelector('[data-ctl="lh"]').addEventListener('input', (e) => { sd.lineHeight = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="opacity"]').addEventListener('input', (e) => { sd.opacity = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="strokeon"]').addEventListener('change', (e) => {
@@ -2932,7 +2979,7 @@ export class MapView {
             ${!isBadge ? `<div class="wp-ce-editrow" style="align-items:center;">
               <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Contorno (stroke)</span>
               <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
-              <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;">
+              <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;touch-action:pan-y;">
             </div>
             <label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>` : ''}
