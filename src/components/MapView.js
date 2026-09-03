@@ -384,6 +384,18 @@ function injectLandmarkStyles() {
        para que el panel tape lo menos posible de las tarjetas detrás. */
     .wp-ce-editrow-compact .wp-ce-editbtn-icon { flex: 1; min-width: 0; padding: 8px 0; font-size: 15px; }
     .wp-ce-editbtn:disabled { opacity: 0.5; }
+    /* Lista de elementos del slide — filas angostas, texto a la
+       izquierda, para el caso de un elemento imposible de tocar directo
+       (tapado, muy chico, en la franja del header). */
+    .wp-ce-elist { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .wp-ce-elist-item {
+      text-align: left; padding: 8px 10px; border-radius: 8px; border: none;
+      background: rgba(255,255,255,0.06); color: #e5e7eb;
+      font-size: 11.5px; font-weight: 600; font-family: 'Inter Tight', system-ui, sans-serif;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .wp-ce-elist-item:active { background: rgba(255,255,255,0.14); }
 
     /* ── Wrapper base compartido por la pantalla collage ─────────────── */
     .wp-ce-wrap {
@@ -2748,6 +2760,21 @@ export class MapView {
       const renderPanel = () => {
         if (!clusterEditing) { panel.classList.remove('wp-ce-editpanel-in'); panel.innerHTML = ''; return; }
         if (!editSel) {
+          // Lista de TODOS los elementos de este lugar (+ los globales) —
+          // pensada para el caso de un sticker/badge que por su posición
+          // o tamaño es difícil o imposible de tocar directo en la
+          // pantalla (tapado por otro elemento, muy chico, en una franja
+          // sin pointer-events como la del header). Tocar la fila lo
+          // selecciona igual que si le hubieras acertado el tap.
+          const listOf = (arr, kind, labelFn) => arr.map((d, i) => ({ d, kind, i, label: labelFn(d) }));
+          const items = [
+            ...listOf(slidePlaceDecos[editPlace].badges, 'badge', d => `🏷️ Badge: ${d.label || '(sin texto)'}`),
+            ...listOf(slidePlaceDecos[editPlace].stickers, 'sticker', d => `✨ Sticker: ${d.emoji || (d.imageUrl ? 'imagen propia' : '?')}`),
+            ...listOf(slidePlaceDecos[editPlace].texts, 'text', d => `🔤 Texto: ${(d.text || '').slice(0, 22) || '(vacío)'}`),
+            ...listOf(slideGlobal.badges, 'badgeGlobal', d => `🌐🏷️ Badge global: ${d.label || '(sin texto)'}`),
+            ...listOf(slideGlobal.stickers, 'stickerGlobal', d => `🌐✨ Sticker global: ${d.emoji || (d.imageUrl ? 'imagen propia' : '?')}`),
+            ...listOf(slideGlobal.texts, 'textGlobal', d => `🌐🔤 Texto global: ${(d.text || '').slice(0, 22) || '(vacío)'}`),
+          ];
           panel.innerHTML = `
             <div class="wp-ce-edithint">Editando "${group[editPlace]?.el._place?.name || ''}" — tocá un badge, sticker o la foto</div>
             ${group.length > 1 ? `<div class="wp-ce-editrow" style="align-items:center;">
@@ -2763,11 +2790,24 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn" data-act="addsticker">+ Sticker</button>
               <button type="button" class="wp-ce-editbtn" data-act="addtext">+ Texto</button>
             </div>
+            ${items.length ? `
+              <div style="color:#9ca3af;font-size:10.5px;font-weight:700;margin:10px 0 4px;text-transform:uppercase;letter-spacing:0.04em;">Elementos en este slide (${items.length})</div>
+              <div class="wp-ce-elist">
+                ${items.map((it, li) => `<button type="button" class="wp-ce-elist-item" data-list-idx="${li}">${it.label}</button>`).join('')}
+              </div>
+            ` : ''}
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
             </div>`;
           panel.querySelector('[data-ctl="globaltoggle"]').addEventListener('change', (e) => { addGlobalNext = e.target.checked; });
+          panel.querySelectorAll('[data-list-idx]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const it = items[+btn.getAttribute('data-list-idx')];
+              if (!it) return;
+              setEditSel({ kind: it.kind, obj: it.d, clone: it.d.clone });
+            });
+          });
         } else if (editSel.kind === 'card') {
           const sd = editSel.obj;
           panel.innerHTML = `
