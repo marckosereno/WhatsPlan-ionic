@@ -1717,6 +1717,16 @@ export class MapView {
         const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
+        // .filter() preserva el orden de `candidates` (básicamente el
+        // orden en que los pines se cargaron en el mapa), NO el de
+        // customDef.placeIds — así que reordenar los lugares desde el
+        // editor del slide, guardar, y reabrir NUNCA se veía reflejado:
+        // el array `place_ids` en la base sí quedaba reordenado, pero acá
+        // se reconstruía el grupo ignorando ese orden por completo. El
+        // orden de placeIds es la ÚNICA fuente de verdad para "quién va
+        // primero" — se reordena explícitamente para que coincida.
+        const order = customDef.placeIds || [];
+        members.sort((a, b) => order.indexOf(placeIdOf(a.el._place)) - order.indexOf(placeIdOf(b.el._place)));
         // Exige el grupo COMPLETO, no "al menos uno". Antes, si a un
         // cluster de 2+ lugares le faltaba alguno (por ejemplo, oculto
         // todavía por el revelado de zoom), el resto igual se renderizaba
@@ -2970,7 +2980,21 @@ export class MapView {
           });
           const json = await res.json();
           if (!json.success) throw new Error(json.message);
-          if (customDef) { customDef.slidePlaces = mergedSlidePlaces; customDef.slideGlobal = mergedGlobal; }
+          if (customDef) {
+            // placeIds (la copia local que usa este editor) y
+            // customDef.placeIds son arrays DISTINTOS — reordenar uno
+            // nunca tocaba el otro. Sin sincronizarlo acá, un reordenamiento
+            // se veía perfecto en esta misma sesión pero desaparecía en
+            // cuanto algo (o un reload) reconstruía el grupo desde
+            // customDef.placeIds de nuevo, todavía en el orden viejo.
+            customDef.placeIds = [...placeIds];
+            customDef.slidePlaces = mergedSlidePlaces;
+            customDef.slideGlobal = mergedGlobal;
+          }
+          // Traer del servidor la versión recién guardada — sin esto,
+          // this.pinClusters seguía con los datos de ANTES de este
+          // guardado hasta el próximo reload de la app entera.
+          await this.reloadPinClusters();
           exitEdit(true);
         } catch (err) {
           alert('Error guardando: ' + err.message);
