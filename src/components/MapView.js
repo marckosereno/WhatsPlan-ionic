@@ -324,13 +324,24 @@ function injectLandmarkStyles() {
     .wp-ce-editpanel {
       position: fixed; left: 12px; right: 12px;
       bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-      z-index: 100050; /* por encima de todos los clones (100000+35 como máximo) */
+      z-index: 100050; /* por encima de todos los clones (100000+60 como máximo) */
       background: rgba(20,20,26,0.92); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       border-radius: 18px; padding: 14px 16px;
       opacity: 0; transform: translateY(14px);
       transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.34,1.56,0.64,1);
       pointer-events: none;
+      /* Con más controles (color, stroke, capas, "aplicar a todas") el
+         panel había crecido lo bastante como para taparse con las
+         tarjetas detrás. Vuelve al tamaño que tenía antes — lo que no
+         entra, scrollea adentro del panel en vez de estirarlo. */
+      max-height: min(280px, 40vh);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.25) transparent;
     }
+    .wp-ce-editpanel::-webkit-scrollbar { width: 5px; }
+    .wp-ce-editpanel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
     .wp-ce-editpanel:empty { display: none; }
     .wp-ce-editpanel.wp-ce-editpanel-in { opacity: 1; transform: translateY(0); pointer-events: auto; }
     .wp-ce-edithint { color: #e5e7eb; font-size: 12px; font-weight: 600; margin-bottom: 10px; font-family: 'Inter Tight', system-ui, sans-serif; }
@@ -2122,7 +2133,7 @@ export class MapView {
     // borde, giro y tamaño extra — también independiente del mapa.
     const slideCardStyles = group.map(() => ({ radius: null, borderColor: null, borderWidth: null, rotation: 0, scale: 1 }));
 
-    const decoCap = (kind) => kind === 'badge' ? 1.35 : 1.6; // tope de escala vía pellizco
+    const decoCap = (kind) => kind === 'badge' ? 2 : 4; // tope de escala vía pellizco — mismo rango que el slider de abajo
 
     // ── Stroke de sticker — MISMA técnica que usa el mapa (_buildClusterStickerHtml):
     // -webkit-text-stroke no pinta en emoji a color en casi ningún navegador,
@@ -2489,6 +2500,7 @@ export class MapView {
       let editSel = null; // { kind: 'badge'|'sticker'|'card'|'badgeGlobal'|'stickerGlobal', obj, clone }
       let addGlobalNext = false; // checkbox del panel por defecto: el próximo "+ Badge"/"+ Sticker" va a slideGlobal en vez del lugar activo
       let applyCardStyleToAll = false; // "Aplicar a todas las tarjetas" — ver doSave()
+      let layerCounter = 100; // contador monotónico para "Adelante"/"Atrás" — ver onPanelAction
       let editBackup = null; // snapshot del LUGAR que se está editando, para "Cancelar"
       let editPlace = 0;
 
@@ -2593,7 +2605,7 @@ export class MapView {
               </div>
             </div>` : ''}
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
-            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="200" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
+            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="${isBadge ? 200 : 400}" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
             <label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="50" step="1" value="${sd.radius ?? 0}" data-ctl="radius"></label>
             ${!isBadge ? `<div class="wp-ce-editrow" style="align-items:center;">
               <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Contorno (stroke)</span>
@@ -2818,11 +2830,16 @@ export class MapView {
         if (act === 'addsticker') { addLiveDecoration('sticker', { emoji: '⭐' }, addGlobalNext); return; }
         if (act === 'layerfront' || act === 'layerback') {
           if (!editSel) return;
-          const scope = editSel.kind.includes('Global')
-            ? [...slideGlobal.badges, ...slideGlobal.stickers]
-            : [...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers];
-          const zs = scope.map(d => d.layerZ || 0);
-          editSel.obj.layerZ = act === 'layerfront' ? Math.max(0, ...zs) + 1 : Math.min(0, ...zs) - 1;
+          // Antes esto calculaba min/max entre los "hermanos" (las demás
+          // decoraciones de este lugar) y sumaba/restaba 1 — funcionaba
+          // en la mayoría de los casos, pero si dos elementos quedaban
+          // empatados en layerZ (el default de ambos es 0), un solo
+          // click podía no alcanzar a superar al otro y hacía falta
+          // repetir. Un contador monotónico no tiene ese problema: cada
+          // click SIEMPRE va más lejos que el anterior, sin comparar con
+          // nada — garantizado en un solo toque.
+          layerCounter += 1;
+          editSel.obj.layerZ = act === 'layerfront' ? layerCounter : -layerCounter;
           applyLayout(activeIdx, false);
           return;
         }
