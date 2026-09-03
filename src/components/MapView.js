@@ -359,6 +359,10 @@ function injectLandmarkStyles() {
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     .wp-ce-editbtn-primary { background: #1a5cf5; color: #fff; }
+    /* Fila compacta de 4 botones-ícono (capas + eliminar + listo) — ahorra
+       una fila entera de alto respecto a tenerlos en dos filas de texto,
+       para que el panel tape lo menos posible de las tarjetas detrás. */
+    .wp-ce-editrow-compact .wp-ce-editbtn-icon { flex: 1; min-width: 0; padding: 8px 0; font-size: 15px; }
     .wp-ce-editbtn:disabled { opacity: 0.5; }
 
     /* ── Wrapper base compartido por la pantalla collage ─────────────── */
@@ -2184,6 +2188,13 @@ export class MapView {
       const c = document.createElement('div');
       c.className = 'wp-ce-flip-piece';
       c.style.position = 'fixed';
+      // Fijar la rotación YA, sin transición, en el mismo momento en que
+      // se crea el elemento — si no, la PRIMERA vez que applyLayout()
+      // (animado) lo posiciona, el navegador transiciona el `transform`
+      // desde "sin rotar" hasta la rotación guardada, y se ve como que
+      // el sticker/badge entra girando en vez de con el pulse normal
+      // (posición/tamaño/opacidad) que tiene todo lo demás.
+      c.style.transform = data.rotation ? `rotate(${data.rotation}deg)` : 'none';
       // el z-index NO se fija acá — applyDecoStyle() lo recalcula cada
       // frame incluyendo layerZ (orden "Adelante"/"Atrás" del panel)
       c.style.pointerEvents = 'auto';
@@ -2500,7 +2511,32 @@ export class MapView {
       let editSel = null; // { kind: 'badge'|'sticker'|'card'|'badgeGlobal'|'stickerGlobal', obj, clone }
       let addGlobalNext = false; // checkbox del panel por defecto: el próximo "+ Badge"/"+ Sticker" va a slideGlobal en vez del lugar activo
       let applyCardStyleToAll = false; // "Aplicar a todas las tarjetas" — ver doSave()
-      let layerCounter = 100; // contador monotónico para "Adelante"/"Atrás" — ver onPanelAction
+      // Orden de capas: intercambio de a UNO con el vecino inmediato en
+      // el z-order actual — mismo mecanismo que "Adelante"/"Atrás" en el
+      // editor de cluster del mapa (ver stepZ en SuperUserPanel.js). Un
+      // contador que solo suma/resta se va de rango con el uso (unas
+      // pocas veces alcanza para bajar por debajo de z:100000 y el fondo
+      // blanco de la pantalla tapa al elemento por completo — pasó
+      // literalmente eso). Intercambiando valores YA EXISTENTES entre dos
+      // elementos, el rango nunca se corre: como mucho reordena lo que
+      // ya había.
+      const stepLayerZ = (scope, obj, direction) => {
+        // Asegurar que todos tengan un z único antes de ordenar — si dos
+        // quedan empatados (el default de ambos es 0), intercambiarlos
+        // es un no-op inútil.
+        const seen = new Set();
+        scope.sort((a, b) => (a.layerZ ?? 0) - (b.layerZ ?? 0)).forEach(d => {
+          if (d.layerZ == null) d.layerZ = 0;
+          while (seen.has(d.layerZ)) d.layerZ += 1;
+          seen.add(d.layerZ);
+        });
+        const idx = scope.indexOf(obj);
+        if (idx === -1) return;
+        const swapIdx = idx + direction;
+        if (swapIdx < 0 || swapIdx >= scope.length) return; // ya está en la punta, no hay con quién cambiar
+        const other = scope[swapIdx];
+        const tmp = obj.layerZ; obj.layerZ = other.layerZ; other.layerZ = tmp;
+      };
       let editBackup = null; // snapshot del LUGAR que se está editando, para "Cancelar"
       let editPlace = 0;
 
@@ -2612,13 +2648,11 @@ export class MapView {
               <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;">
             </div>` : ''}
-            <div class="wp-ce-editrow">
-              <button type="button" class="wp-ce-editbtn" data-act="layerback">⬇️ Atrás</button>
-              <button type="button" class="wp-ce-editbtn" data-act="layerfront">⬆️ Adelante</button>
-            </div>
-            <div class="wp-ce-editrow">
-              <button type="button" class="wp-ce-editbtn" data-act="delthis">Eliminar</button>
-              <button type="button" class="wp-ce-editbtn" data-act="deselect">Listo</button>
+            <div class="wp-ce-editrow wp-ce-editrow-compact">
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerfront" title="Adelante">⬆️</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="delthis" title="Eliminar">🗑️</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="deselect" title="Listo">✓</button>
             </div>
             <div class="wp-ce-editrow">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
@@ -2830,16 +2864,10 @@ export class MapView {
         if (act === 'addsticker') { addLiveDecoration('sticker', { emoji: '⭐' }, addGlobalNext); return; }
         if (act === 'layerfront' || act === 'layerback') {
           if (!editSel) return;
-          // Antes esto calculaba min/max entre los "hermanos" (las demás
-          // decoraciones de este lugar) y sumaba/restaba 1 — funcionaba
-          // en la mayoría de los casos, pero si dos elementos quedaban
-          // empatados en layerZ (el default de ambos es 0), un solo
-          // click podía no alcanzar a superar al otro y hacía falta
-          // repetir. Un contador monotónico no tiene ese problema: cada
-          // click SIEMPRE va más lejos que el anterior, sin comparar con
-          // nada — garantizado en un solo toque.
-          layerCounter += 1;
-          editSel.obj.layerZ = act === 'layerfront' ? layerCounter : -layerCounter;
+          const scope = editSel.kind.includes('Global')
+            ? [...slideGlobal.badges, ...slideGlobal.stickers]
+            : [...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers];
+          stepLayerZ(scope, editSel.obj, act === 'layerfront' ? 1 : -1);
           applyLayout(activeIdx, false);
           return;
         }
