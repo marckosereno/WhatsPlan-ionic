@@ -2198,6 +2198,15 @@ export class MapView {
       const c = document.createElement('div');
       c.className = 'wp-ce-flip-piece';
       c.style.position = 'fixed';
+      // Invisible desde YA — sin esto, el elemento existe (visible, sin
+      // left/top todavía) desde el instante en que se crea hasta que el
+      // PRIMER applyLayout() corre dos frames más tarde (el doble
+      // requestAnimationFrame de la apertura). En ese hueco, un
+      // position:fixed sin left/top queda en su posición estática —
+      // típicamente arriba a la izquierda — y eso es justo el
+      // "parpadeo" reportado: se ve ahí un instante, opaco, antes de que
+      // el snap invisible de applyLayout llegue a ocultarlo.
+      c.style.opacity = '0';
       // Fijar la rotación YA, sin transición, en el mismo momento en que
       // se crea el elemento — si no, la PRIMERA vez que applyLayout()
       // (animado) lo posiciona, el navegador transiciona el `transform`
@@ -3132,8 +3141,13 @@ export class MapView {
           // Decoración propia de un lugar del slide (cargada desde lo
           // guardado, o agregada en vivo) — nunca existió en el sticker
           // del mapa, así que no tiene una posición "original" a la que
-          // volver. Se desvanece nomás donde estaba, en vez de romper
-          // con un rect.left de null.
+          // volver, ni falta que le hace: no viaja a ningún punto del
+          // mapa como sí las tarjetas, así que no necesita el mismo
+          // tiempo que ellas — una transición propia, corta, nada más
+          // para el fundido (la que traía de antes era la del último
+          // applyLayout, pensada para mover/agrandar tarjetas, no para
+          // desaparecer rápido).
+          clone.style.transition = 'opacity 0.15s ease';
           clone.style.opacity = '0';
           return;
         }
