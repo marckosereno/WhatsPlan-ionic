@@ -1471,7 +1471,21 @@ export class SuperUserPanel {
       if (place_ids.length < 1) { alert('Tildá al menos un lugar'); return; }
       const btn = modal.querySelector('#su-cluster-save');
       btn.disabled = true; btn.textContent = 'Guardando...';
-      const payload = { id: existingCluster?.id, place_ids, cards, stickers, badge, label };
+      // badges/slidePlaces/slideGlobal se preservan TAL CUAL estaban —
+      // este editor (el del mapa) no los conoce ni los toca. Sin esto,
+      // guardar cualquier cambio acá (badge, tarjeta, sticker del
+      // CLUSTER) reemplazaba la fila entera y esos tres campos quedaban
+      // en null — literalmente borrando todo lo que se hubiera
+      // personalizado desde el editor del slide, aunque la edición fuera
+      // algo sin ninguna relación. place_ids SÍ se manda actualizado a
+      // propósito: agregar/quitar un lugar del cluster, o reordenarlos
+      // desde el slide, tiene que reflejarse acá también.
+      const payload = {
+        id: existingCluster?.id, place_ids, cards, stickers, badge, label,
+        badges: existingCluster?.badges ?? null,
+        slidePlaces: existingCluster?.slidePlaces ?? null,
+        slideGlobal: existingCluster?.slideGlobal ?? null,
+      };
       try {
         const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
