@@ -2137,7 +2137,7 @@ export class MapView {
     // borde, giro y tamaño extra — también independiente del mapa.
     const slideCardStyles = group.map(() => ({ radius: null, borderColor: null, borderWidth: null, rotation: 0, scale: 1 }));
 
-    const decoCap = (kind) => kind === 'badge' ? 2 : 4; // tope de escala vía pellizco — mismo rango que el slider de abajo
+    const decoCap = (kind) => kind === 'badge' ? 2 : 8; // tope de escala vía pellizco — mismo rango que el slider de abajo
 
     // ── Stroke de sticker — MISMA técnica que usa el mapa (_buildClusterStickerHtml):
     // -webkit-text-stroke no pinta en emoji a color en casi ningún navegador,
@@ -2373,7 +2373,7 @@ export class MapView {
             d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
             applyDecoStyle(d, kind, w, h, p.z);
             d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
-            d.clone.style.opacity = String(p.op);
+            d.clone.style.opacity = String(p.op * (d.opacity ?? 1)); // fade por distancia × opacidad propia del sticker
             d.clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
           } catch (err) {
             console.error('[FLIP] error posicionando decoración', { place: i }, err);
@@ -2396,7 +2396,7 @@ export class MapView {
           d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
           applyDecoStyle(d, kind, w, h, 60);
           d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
-          d.clone.style.opacity = '1';
+          d.clone.style.opacity = String(d.opacity ?? 1); // las globales no se desvanecen por distancia, pero sí respetan su propia opacidad
         } catch (err) {
           console.error('[FLIP] error posicionando decoración global', err);
         }
@@ -2570,6 +2570,11 @@ export class MapView {
         if (!editSel) {
           panel.innerHTML = `
             <div class="wp-ce-edithint">Editando "${group[editPlace]?.el._place?.name || ''}" — tocá un badge, sticker o la foto</div>
+            ${group.length > 1 ? `<div class="wp-ce-editrow" style="align-items:center;">
+              <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Orden: puesto ${editPlace + 1} de ${group.length}</span>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="moveleft" ${editPlace === 0 ? 'disabled' : ''} title="Mover antes">◀</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="moveright" ${editPlace === group.length - 1 ? 'disabled' : ''} title="Mover después">▶</button>
+            </div>` : ''}
             <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
               <input type="checkbox" data-ctl="globaltoggle" ${addGlobalNext ? 'checked' : ''}> Agregar como título global (todos los slides)
             </label>
@@ -2631,13 +2636,14 @@ export class MapView {
               </div>
             </div>` : ''}
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
-            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="${isBadge ? 200 : 400}" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
+            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="${isBadge ? 200 : 800}" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
             ${!isBadge ? `<div class="wp-ce-editrow" style="align-items:center;">
               <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Contorno (stroke)</span>
               <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;">
             </div>
-            <label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>` : ''}
+            <label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>
+            <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>` : ''}
             <div class="wp-ce-editrow wp-ce-editrow-compact">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerfront" title="Adelante">⬆️</button>
@@ -2675,6 +2681,7 @@ export class MapView {
             panel.querySelector('[data-ctl="strokecolor"]').addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
             panel.querySelector('[data-ctl="strokewidth"]').addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
             panel.querySelector('[data-ctl="blur"]').addEventListener('input', (e) => { sd.blur = +e.target.value; applyLayout(activeIdx, false); });
+            panel.querySelector('[data-ctl="opacity"]').addEventListener('input', (e) => { sd.opacity = +e.target.value / 100; applyLayout(activeIdx, false); });
 
             // Subir imagen propia — mismo mecanismo que el sticker del
             // cluster del mapa (comprimir a máx 300px + subir a Supabase
@@ -2815,7 +2822,7 @@ export class MapView {
       // Agrega un badge o sticker VIVO — al lugar activo, o a la lista
       // global si se eligió "título para todos los slides".
       const addLiveDecoration = (kind, data, global) => {
-        const base = { dx: 0, dy: kind === 'badge' ? -28 : 0, rotation: 0, scale: 1, radius: 0, baseW: kind === 'badge' ? 22 : 26, baseH: kind === 'badge' ? 22 : 26, strokeColor: '#ffffff', strokeWidth: 2, ...data };
+        const base = { dx: 0, dy: kind === 'badge' ? -28 : 0, rotation: 0, scale: 1, radius: 0, opacity: 1, blur: 0, baseW: kind === 'badge' ? 22 : 26, baseH: kind === 'badge' ? 22 : 26, strokeColor: '#ffffff', strokeWidth: 2, ...data };
         const clone = createDecoClone(kind, base);
         const entry = { ...base, clone };
         if (global) {
@@ -2830,9 +2837,35 @@ export class MapView {
         applyLayout(activeIdx, false);
       };
 
+      // Reordenar lugares — intercambia TODO lo que corresponde a la
+      // posición i con la posición j: a qué lugar apunta, sus
+      // decoraciones propias, el estilo de su tarjeta, y el place_id que
+      // se manda a guardar (que es lo que también reordena el cluster en
+      // el MAPA — comparten el mismo array). Se aplica en vivo; recién
+      // queda permanente al tocar "Guardar".
+      const swapPlaces = (i, j) => {
+        if (i < 0 || j < 0 || i >= group.length || j >= group.length) return;
+        [group[i], group[j]] = [group[j], group[i]];
+        [placeIds[i], placeIds[j]] = [placeIds[j], placeIds[i]];
+        [slidePlaceDecos[i], slidePlaceDecos[j]] = [slidePlaceDecos[j], slidePlaceDecos[i]];
+        [slideCardStyles[i], slideCardStyles[j]] = [slideCardStyles[j], slideCardStyles[i]];
+        // Las piezas (tarjetas y decoraciones) llevan su posición como
+        // `idx` — reasignarlo es lo que hace que applyLayout() las dibuje
+        // en el lugar que corresponde a la NUEVA posición.
+        clones.forEach(c => { if (c.idx === i) c.idx = -999; else if (c.idx === j) c.idx = i; });
+        clones.forEach(c => { if (c.idx === -999) c.idx = j; });
+        // Nombre visible en los chips de navegación
+        const tmpText = chipEls[i].textContent;
+        chipEls[i].textContent = chipEls[j].textContent;
+        chipEls[j].textContent = tmpText;
+        if (editPlace === i) editPlace = j; else if (editPlace === j) editPlace = i;
+      };
+
       const onPanelAction = async (act) => {
         if (act === 'deselect') { setEditSel(null); applyLayout(activeIdx, false); return; }
         if (act === 'cancel') { exitEdit(); return; }
+        if (act === 'moveleft') { swapPlaces(editPlace, editPlace - 1); settleTo(editPlace); renderPanel(); return; }
+        if (act === 'moveright') { swapPlaces(editPlace, editPlace + 1); settleTo(editPlace); renderPanel(); return; }
         if (act === 'resetcard') {
           const sd = slideCardStyles[editPlace];
           sd.radius = null; sd.borderColor = null; sd.borderWidth = null; sd.rotation = 0; sd.scale = 1;
