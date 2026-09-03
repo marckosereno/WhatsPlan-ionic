@@ -2446,6 +2446,13 @@ export class MapView {
           const align = d.align || 'center';
           d.clone.style.textAlign = align;
           d.clone.style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+          // Contorno OPCIONAL — mismo mecanismo que el stroke del sticker
+          // (buildEmojiStroke: apila copias del texto en 12 puntos, ya
+          // que -webkit-text-stroke no pinta a color en casi ningún
+          // navegador). strokeWidth en 0/undefined = sin contorno.
+          d.clone.style.textShadow = d.strokeWidth
+            ? buildEmojiStroke(d.strokeWidth * (d.scale ?? 1), d.strokeColor || '#000000')
+            : 'none';
           return parallaxScale; // el llamador lo mete en el transform como scale()
         }
         return 1; // badge/sticker ya escalan vía width/height — nada extra que aplicar acá
@@ -2810,10 +2817,17 @@ export class MapView {
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
-            <label class="wp-ce-editslider">Ancho<input type="range" min="40" max="500" step="1" value="${sd.baseW ?? 160}" data-ctl="width"></label>
-            <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="300" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
+            <label class="wp-ce-editslider">Ancho<input type="range" min="40" max="1200" step="1" value="${sd.baseW ?? 160}" data-ctl="width"></label>
+            <label class="wp-ce-editslider">Tamaño<input type="range" min="10" max="2500" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
             <label class="wp-ce-editslider">Interlineado<input type="range" min="80" max="200" step="1" value="${Math.round((sd.lineHeight ?? 1.2) * 100)}" data-ctl="lh"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>
+            <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:6px;">
+              <input type="checkbox" data-ctl="strokeon" ${sd.strokeWidth ? 'checked' : ''}> Contorno (stroke)
+            </label>
+            ${sd.strokeWidth ? `<div class="wp-ce-editrow" style="align-items:center;">
+              <input type="color" value="${sd.strokeColor || '#000000'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
+              <input type="range" min="0.5" max="8" step="0.5" value="${sd.strokeWidth}" data-ctl="strokewidth" style="flex:1;">
+            </div>` : ''}
             <div class="wp-ce-editrow wp-ce-editrow-compact">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerfront" title="Adelante">⬆️</button>
@@ -2838,6 +2852,17 @@ export class MapView {
           panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="lh"]').addEventListener('input', (e) => { sd.lineHeight = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="opacity"]').addEventListener('input', (e) => { sd.opacity = +e.target.value / 100; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="strokeon"]').addEventListener('change', (e) => {
+            // El checkbox solo prende/apaga — al prender arranca en un
+            // valor por default razonable; renderPanel() recién ahí
+            // muestra el color/ancho, porque antes no hay nada que
+            // ajustar.
+            sd.strokeWidth = e.target.checked ? (sd.strokeWidth || 2) : 0;
+            applyLayout(activeIdx, false);
+            renderPanel();
+          });
+          panel.querySelector('[data-ctl="strokecolor"]')?.addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="strokewidth"]')?.addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
         } else {
           const sd = editSel.obj;
           const isGlobal = editSel.kind.includes('Global');
