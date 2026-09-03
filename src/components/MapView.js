@@ -2324,6 +2324,14 @@ export class MapView {
     // está deslizando con el mismo parallax que las tarjetas. Un lugar
     // que no es héroe se ve desplazado y con menos opacidad — igual que
     // su tarjeta — hasta que le toca ser el centro.
+    // Franja de pantalla donde vive el header (back/share/más/editar) —
+    // env(safe-area-inset-top) + el alto real del header ronda esto en
+    // la gran mayoría de teléfonos. Cualquier decoración cuyo TOP caiga
+    // antes de esta Y pierde pointer-events, para no poder taparle el
+    // toque a esos botones — ver el comentario largo más abajo, en el
+    // punto donde se usa.
+    const HEADER_SAFE_Y = 95;
+
     const applyLayout = (idxVal, animated, opts = {}) => {
       const { duration = 0.36, stagger = 0, decoDelay = 0 } = opts;
       const cardPosByIdx = {};
@@ -2365,7 +2373,7 @@ export class MapView {
       // (left/top ya resueltos aparte). Separado en un helper porque el
       // bloque "por lugar" y el "global" de abajo necesitan exactamente
       // lo mismo, solo cambia de dónde sacan cx/cy.
-      const applyDecoStyle = (d, kind, w, h, cardZ) => {
+      const applyDecoStyle = (d, kind, w, h, cardZ, parallaxScale = 1) => {
         // Orden de capas ("Adelante"/"Atrás"): para decoraciones LOCALES
         // (atadas a un lugar), cardZ es el z de SU PROPIA tarjeta en este
         // instante — layerZ es un offset relativo a ESA tarjeta, no a un
@@ -2407,16 +2415,26 @@ export class MapView {
             }
           }
         } else if (kind === 'text') {
-          // Tamaño base según el nivel elegido (H1/H2/H3/Párrafo) — el
-          // mismo criterio que el badge: tamaño y font-size crecen
-          // JUNTOS con el parallax de la tarjeta, así el texto no queda
-          // fijo mientras todo lo demás se agranda o achica alrededor.
+          // Ancho y font-size FIJOS, en los px "de diseño" (d.baseW, el
+          // que el usuario ajustó con el slider de Ancho) — NUNCA
+          // multiplicados por el scaleRef del parallax. Si el ancho
+          // dependiera del parallax (como badge/sticker), el navegador
+          // recalcula dónde saltan las líneas EN CADA FRAME de la
+          // transición entre slides — y como el salto de línea es una
+          // decisión de todo o nada (una palabra entra o no entra), dos
+          // frames consecutivos con anchos casi iguales pueden mostrar
+          // saltos de línea DISTINTOS: se ve como un tironeo/parpadeo del
+          // texto reacomodándose mientras la tarjeta cambia de tamaño.
+          // El achique/agrande por el parallax se aplica acá con un
+          // `scale()` en el transform (que el llamador arma con el valor
+          // que esta función devuelve) — eso escala el bloque YA
+          // renderizado tal cual, sin volver a calcular el salto de
+          // línea ni una sola vez durante la transición.
           const TAG_BASE = { h1: 64, h2: 48, h3: 36, p: 30 }; // el doble de lo que tenía antes (32/24/18/15)
           const baseFont = TAG_BASE[d.tag || 'p'];
-          const totalScale = h / (d.baseH || 40);
-          d.clone.style.width = w + 'px';
-          d.clone.style.height = h + 'px';
-          d.clone.style.fontSize = (baseFont * totalScale) + 'px';
+          d.clone.style.width = (d.baseW || 160) + 'px';
+          d.clone.style.height = 'auto';
+          d.clone.style.fontSize = (baseFont * (d.scale ?? 1)) + 'px';
           d.clone.style.color = d.color || '#ffffff';
           d.clone.style.fontWeight = d.weight === 'bold' ? '800' : d.weight === 'light' ? '300' : '600';
           d.clone.style.lineHeight = String(d.lineHeight ?? 1.2);
@@ -2428,7 +2446,9 @@ export class MapView {
           const align = d.align || 'center';
           d.clone.style.textAlign = align;
           d.clone.style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+          return parallaxScale; // el llamador lo mete en el transform como scale()
         }
+        return 1; // badge/sticker ya escalan vía width/height — nada extra que aplicar acá
       };
 
       slidePlaceDecos.forEach((deco, i) => {
@@ -2442,8 +2462,16 @@ export class MapView {
           ...deco.texts.map(d => ({ d, kind: 'text' })),
         ].forEach(({ d, kind }) => {
           try {
-            const w = d.baseW * scaleRef * (d.scale ?? 1);
-            const h = d.baseH * scaleRef * (d.scale ?? 1);
+            // El texto usa su ancho/alto DE DISEÑO (sin escalar por el
+            // parallax) tanto para su tamaño real (ver applyDecoStyle)
+            // como para centrarlo acá — si acá se centrara con el ancho
+            // YA escalado pero el elemento real tuviera el ancho sin
+            // escalar, quedaría descentrado apenas el parallax achicara
+            // la tarjeta (el transform:scale() de abajo escala alrededor
+            // del centro de la caja REAL, no del punto cx/cy).
+            const isText = kind === 'text';
+            const w = isText ? (d.baseW || 160) : d.baseW * scaleRef * (d.scale ?? 1);
+            const h = isText ? (d.baseH || 40) : d.baseH * scaleRef * (d.scale ?? 1);
             const cx = cx0 + d.dx * scaleRef;
             const cy = cy0 + d.dy * scaleRef;
             // Primera vez que esta decoración se posiciona: el clon nace
@@ -2464,8 +2492,8 @@ export class MapView {
               d._entered = true;
               d.clone.style.transition = 'none';
               d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-              applyDecoStyle(d, kind, w, h, p.z);
-              d.clone.style.transform = `${d.rotation ? `rotate(${d.rotation}deg) ` : ''}scale(0.4)`;
+              const pScale0 = applyDecoStyle(d, kind, w, h, p.z, scaleRef);
+              d.clone.style.transform = `${d.rotation ? `rotate(${d.rotation}deg) ` : ''}scale(${pScale0 * 0.4})`;
               d.clone.style.opacity = '0';
               void d.clone.offsetHeight; // forzar reflow — sin esto el navegador podía "fusionar" este estado con el siguiente y saltarse el snap
             }
@@ -2474,10 +2502,22 @@ export class MapView {
               : 'none';
             d.clone.style.transitionDelay = animated ? `${decoDelay}ms` : '0ms';
             d.clone.style.left = (cx - w / 2) + 'px'; d.clone.style.top = (cy - h / 2) + 'px';
-            applyDecoStyle(d, kind, w, h, p.z);
-            d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
+            const pScale = applyDecoStyle(d, kind, w, h, p.z, scaleRef);
+            d.clone.style.transform = `${d.rotation ? `rotate(${d.rotation}deg) ` : ''}${pScale !== 1 ? `scale(${pScale})` : ''}`.trim() || 'none';
             d.clone.style.opacity = String(p.op * (d.opacity ?? 1)); // fade por distancia × opacidad propia del sticker
-            d.clone.style.pointerEvents = p.op < 0.15 ? 'none' : 'auto';
+            // Los botones del header (back/share/más/editar) viven DENTRO
+            // de .wp-ce-wrap, que tiene su propio z-index:99999 — nada
+            // adentro de wrap puede ganarle en z-index a un clon de acá
+            // (viven en document.body, a 100000+), sin importar qué
+            // z-index se le ponga al header. Reestructurar todo el árbol
+            // para que el header compita en el mismo nivel es demasiado
+            // riesgo para este arreglo puntual — más simple y seguro:
+            // cualquier decoración que caiga en la franja del header
+            // pierde pointer-events, así el toque la atraviesa y llega
+            // igual al botón de abajo. El texto creció (pedido aparte) y
+            // es lo que más probabilidad tiene de terminar ahí arriba.
+            const inHeaderBand = (cy - h / 2) < HEADER_SAFE_Y;
+            d.clone.style.pointerEvents = (p.op < 0.15 || inHeaderBand) ? 'none' : 'auto';
           } catch (err) {
             console.error('[FLIP] error posicionando decoración', { place: i }, err);
           }
@@ -2494,7 +2534,14 @@ export class MapView {
         ...slideGlobal.texts.map(d => ({ d, kind: 'text' })),
       ].forEach(({ d, kind }) => {
         try {
-          const w = d.baseW * (d.scale ?? 1), h = d.baseH * (d.scale ?? 1);
+          // Mismo motivo que en el loop por lugar: el texto usa su ancho
+          // de diseño fijo (sin multiplicar por d.scale, que es lo que
+          // ya escala el font-size) — si acá se centrara con un ancho
+          // distinto al que realmente tiene el elemento, quedaría
+          // descentrado.
+          const isTextG = kind === 'text';
+          const w = isTextG ? (d.baseW || 160) : d.baseW * (d.scale ?? 1);
+          const h = isTextG ? (d.baseH || 40) : d.baseH * (d.scale ?? 1);
           const cx = gx0 + d.dx, cy = gy0 + d.dy;
           // Mismo motivo que en las decoraciones por lugar: sin esto, la
           // primera vez que aparece se ve "viajar" desde el rincón donde
@@ -2514,6 +2561,11 @@ export class MapView {
           applyDecoStyle(d, kind, w, h, 60);
           d.clone.style.transform = d.rotation ? `rotate(${d.rotation}deg)` : 'none';
           d.clone.style.opacity = String(d.opacity ?? 1); // las globales no se desvanecen por distancia, pero sí respetan su propia opacidad
+          // Las globales viven arriba de la tarjeta héroe por diseño —
+          // justo la zona donde está el header. Mismo motivo que las
+          // decoraciones por lugar: si cae en esa franja, no debe robarle
+          // el toque a los botones de abajo.
+          d.clone.style.pointerEvents = (cy - h / 2) < HEADER_SAFE_Y ? 'none' : 'auto';
         } catch (err) {
           console.error('[FLIP] error posicionando decoración global', err);
         }
@@ -2758,6 +2810,7 @@ export class MapView {
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
+            <label class="wp-ce-editslider">Ancho<input type="range" min="40" max="500" step="1" value="${sd.baseW ?? 160}" data-ctl="width"></label>
             <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="300" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
             <label class="wp-ce-editslider">Interlineado<input type="range" min="80" max="200" step="1" value="${Math.round((sd.lineHeight ?? 1.2) * 100)}" data-ctl="lh"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>
@@ -2781,6 +2834,7 @@ export class MapView {
             trow.appendChild(b);
           });
           panel.querySelector('[data-ctl="rot"]').addEventListener('input', (e) => { sd.rotation = +e.target.value; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="width"]').addEventListener('input', (e) => { sd.baseW = +e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="scale"]').addEventListener('input', (e) => { sd.scale = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="lh"]').addEventListener('input', (e) => { sd.lineHeight = +e.target.value / 100; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="opacity"]').addEventListener('input', (e) => { sd.opacity = +e.target.value / 100; applyLayout(activeIdx, false); });
