@@ -124,13 +124,30 @@ function proxyPhotoCluster(url) {
   if (!url) return null;
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   // supabaseResize(url, width, quality, mode) — el 2do parámetro es el
-  // ANCHO en px, el 3ro es la CALIDAD (0-100), no una altura. Subido de
-  // 85 a 95: en la pantalla del slide la foto se ve hasta ~290px de
-  // ancho (tarjeta héroe) en vez de los ~46px del sticker en el mapa, así
-  // que la compresión de antes se notaba más al agrandarla. El ANCHO de
-  // origen queda igual (220px) a propósito — más calidad, no más peso
-  // por resolución extra.
-  if (url.includes('supabase.co')) return supabaseResize(url, 220, 95, 'contain');
+  // ANCHO en px, el 3ro es la CALIDAD (0-100), no una altura. Esta URL es
+  // la que queda embebida en el sticker del MAPA (donde la tarjeta se ve
+  // chica, ~46-100px) — el slide usa su propia versión de mayor
+  // resolución (ver proxyPhotoSlide más abajo), no ésta, así que acá no
+  // hace falta pedir más ancho del que el mapa realmente muestra.
+  if (url.includes('supabase.co')) return supabaseResize(url, 220, 90, 'contain');
+  return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
+}
+
+// La tarjeta del slide es un cloneNode() literal de la tarjeta del mapa
+// (ver el FLIP en _openClusterExpand) — hereda la MISMA imagen de fondo
+// que ya tenía embebida, la de proxyPhotoCluster (220px, pensada para un
+// sticker de 46-100px). Al agrandarse hasta los ~290px de la tarjeta
+// héroe (más en pantallas retina), esos 220px se notaban borrosos —
+// subir la calidad ahí no alcanza, es un problema de resolución, no de
+// compresión. Esta función pide una versión aparte, de más ancho, que
+// _openClusterExpand usa para PISAR el background-image del clon justo
+// después de crearlo — así el mapa sigue pidiendo la versión chica
+// (no tiene sentido gastar de más en algo que se ve a 46px) y el slide
+// pide la propia, más grande, solo cuando realmente se abre.
+function proxyPhotoSlide(url) {
+  if (!url) return null;
+  if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.includes('supabase.co')) return supabaseResize(url, 640, 92, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -2121,7 +2138,18 @@ export class MapView {
       c.style.zIndex = '100000';
       c.style.transition = 'none';
       c.removeAttribute('data-card-idx'); c.removeAttribute('data-sticker-idx');
-      if (p.kind === 'card') c.style.cursor = 'pointer';
+      if (p.kind === 'card') {
+        c.style.cursor = 'pointer';
+        // Pisar la foto heredada del cloneNode (la chica, de 220px que
+        // usa el mapa) por la versión de mayor resolución — ver el
+        // comentario largo en proxyPhotoSlide(). Si la foto viniera de
+        // otro proxy (no Supabase) o el lugar no tuviera foto, no hay
+        // nada que pisar y se deja tal cual venía.
+        const place = group[p.idx]?.el._place;
+        const rawPhoto = place?.photoUrl || place?.photo_url || place?.photosUrls?.[0] || null;
+        const hiRes = rawPhoto ? proxyPhotoSlide(rawPhoto) : null;
+        if (hiRes) c.style.backgroundImage = `url('${hiRes}')`;
+      }
       document.body.appendChild(c);
       return { ...p, clone: c };
     });
@@ -2383,7 +2411,7 @@ export class MapView {
           // mismo criterio que el badge: tamaño y font-size crecen
           // JUNTOS con el parallax de la tarjeta, así el texto no queda
           // fijo mientras todo lo demás se agranda o achica alrededor.
-          const TAG_BASE = { h1: 32, h2: 24, h3: 18, p: 15 };
+          const TAG_BASE = { h1: 64, h2: 48, h3: 36, p: 30 }; // el doble de lo que tenía antes (32/24/18/15)
           const baseFont = TAG_BASE[d.tag || 'p'];
           const totalScale = h / (d.baseH || 40);
           d.clone.style.width = w + 'px';
@@ -2392,6 +2420,14 @@ export class MapView {
           d.clone.style.color = d.color || '#ffffff';
           d.clone.style.fontWeight = d.weight === 'bold' ? '800' : d.weight === 'light' ? '300' : '600';
           d.clone.style.lineHeight = String(d.lineHeight ?? 1.2);
+          // text-align mueve las líneas DENTRO del bloque; justifyContent
+          // mueve el bloque en sí dentro de su propia caja (que puede ser
+          // más ancha que el texto) — hacen falta los dos para que
+          // "izquierda"/"derecha" se vean realmente pegados a un borde,
+          // no solo el texto alineado adentro de una caja centrada.
+          const align = d.align || 'center';
+          d.clone.style.textAlign = align;
+          d.clone.style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
         }
       };
 
@@ -2715,6 +2751,11 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn ${!sd.weight || sd.weight === 'normal' ? 'wp-ce-editbtn-primary' : ''}" data-act="wnormal">Normal</button>
               <button type="button" class="wp-ce-editbtn ${sd.weight === 'bold' ? 'wp-ce-editbtn-primary' : ''}" data-act="wbold">Bold</button>
             </div>
+            <div class="wp-ce-editrow" style="margin-bottom:8px;">
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon ${(sd.align || 'center') === 'left' ? 'wp-ce-editbtn-primary' : ''}" data-act="alignleft" title="Izquierda">⬅️</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon ${(sd.align || 'center') === 'center' ? 'wp-ce-editbtn-primary' : ''}" data-act="aligncenter" title="Centro">↔️</button>
+              <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon ${sd.align === 'right' ? 'wp-ce-editbtn-primary' : ''}" data-act="alignright" title="Derecha">➡️</button>
+            </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
             <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="300" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
@@ -2959,7 +3000,7 @@ export class MapView {
           baseW: kind === 'badge' ? 22 : kind === 'text' ? 160 : 26,
           baseH: kind === 'badge' ? 22 : kind === 'text' ? 40 : 26,
           strokeColor: '#ffffff', strokeWidth: 2,
-          ...(kind === 'text' ? { tag: 'p', color: '#ffffff', weight: 'normal', lineHeight: 1.2 } : {}),
+          ...(kind === 'text' ? { tag: 'p', color: '#ffffff', weight: 'normal', lineHeight: 1.2, align: 'center' } : {}),
           ...data,
         };
         const clone = createDecoClone(kind, base);
@@ -3035,6 +3076,12 @@ export class MapView {
         if (act === 'wlight' || act === 'wnormal' || act === 'wbold') {
           if (!editSel) return;
           editSel.obj.weight = act.replace('w', '');
+          applyLayout(activeIdx, false); renderPanel();
+          return;
+        }
+        if (act === 'alignleft' || act === 'aligncenter' || act === 'alignright') {
+          if (!editSel) return;
+          editSel.obj.align = act.replace('align', '');
           applyLayout(activeIdx, false); renderPanel();
           return;
         }
