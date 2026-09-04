@@ -282,6 +282,14 @@ function injectLandmarkStyles() {
        transición acá (se las pone JS recién en el segundo frame, así el
        navegador pinta primero el punto de partida). */
     .wp-ce-flip-piece { pointer-events: auto; }
+    /* Skeleton de tarjeta mientras precarga su foto — un pulse suave de
+       brillo sobre el degradé gris, para que "cargando" se lea como tal
+       en vez de un rectángulo gris inerte. brightness() y no opacity: la
+       opacidad de la tarjeta ya la controla applyLayout() (fundido por
+       distancia + el pulse de entrada) — animarla acá también las haría
+       pelearse por la misma propiedad. */
+    @keyframes wp-ce-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(0.82); } }
+    .wp-ce-skeleton { animation: wp-ce-pulse 1.1s ease-in-out infinite; }
 
     .wp-ce-collage { background: transparent; }
     .wp-ce-collage-bg {
@@ -2141,6 +2149,29 @@ export class MapView {
     const chipEls = Array.from(caption.querySelectorAll('.wp-ce-ctag'));
 
     // ── Clonar cada pieza en su posición ACTUAL (First) ────────────────
+    // Skeleton + precarga real — sin esto, background-image aparece de
+    // golpe en cuanto termina de bajar (o "por partes" si es un JPEG
+    // progresivo que el navegador va pintando en pasadas). Acá se pone
+    // un fondo con pulse mientras se precarga la imagen ENTERA en
+    // memoria (new Image().onload), y recién cuando está 100% lista se
+    // pisa el fondo y se saca el pulse — un solo salto limpio de
+    // "cargando" a "lista", nunca a medias.
+    const SKELETON_BG = 'background:linear-gradient(160deg,#e5e7eb,#d1d5db);';
+    const setCardPhoto = (clone, hiRes) => {
+      if (!hiRes) { clone.style.cssText += SKELETON_BG; return; }
+      clone.classList.add('wp-ce-skeleton');
+      clone.style.cssText += SKELETON_BG;
+      const img = new Image();
+      img.onload = () => {
+        clone.classList.remove('wp-ce-skeleton');
+        clone.style.backgroundImage = `url('${hiRes}')`;
+        clone.style.backgroundSize = 'cover';
+        clone.style.backgroundPosition = 'center';
+      };
+      img.onerror = () => clone.classList.remove('wp-ce-skeleton'); // se queda con el degradé si la foto falla
+      img.src = hiRes;
+    };
+
     const clones = pieces.map(p => {
       const c = p.node.cloneNode(true);
       c.className = (c.className || '') + ' wp-ce-flip-piece';
@@ -2171,15 +2202,46 @@ export class MapView {
         const place = group[p.idx]?.el._place;
         const rawPhoto = place?.photoUrl || place?.photo_url || place?.photosUrls?.[0] || null;
         const hiRes = rawPhoto ? proxyPhotoSlide(rawPhoto) : null;
-        if (hiRes) c.style.backgroundImage = `url('${hiRes}')`;
+        c.style.backgroundImage = ''; // sacar la heredada del cloneNode — setCardPhoto pone el skeleton mientras precarga la de mayor resolución
+        setCardPhoto(c, hiRes);
       }
       document.body.appendChild(c);
       return { ...p, clone: c };
     });
 
+    // ── Tarjetas extra, más allá de las 6 que el sticker del MAPA clona ──
+    // CLUSTER_CARD_SLOTS limita el sticker del mapa a 6 tarjetas visibles
+    // a propósito (una pila de más fotos se ve saturada ahí) — pero eso
+    // significa que con un grupo de, digamos, 11 lugares, los lugares
+    // 6..10 NUNCA existieron como pieza `data-card-idx` en el DOM del
+    // mapa, así que el FLIP de arriba (que solo clona lo que YA está en
+    // el sticker) nunca las capturó. El resultado: el slide navegaba
+    // hasta el puesto 7 (los chips sí muestran los 11 nombres, porque
+    // esos salen directo de `group`) pero no había ninguna tarjeta para
+    // mostrar ahí — "sigue avanzando pero no muestra nada".
+    // Estas no tienen una posición real en el mapa de la que "volar" —
+    // se crean directo con su tamaño/posición final, sin animación de
+    // apertura (el flag `synthetic` hace que el pulse de entrada de más
+    // abajo las trate igual que a un sticker cargado: aparecen con el
+    // mismo pulse, no con el FLIP).
+    for (let i = cardPieces.length; i < group.length; i++) {
+      const place = group[i]?.el._place;
+      const rawPhoto = place?.photoUrl || place?.photo_url || place?.photosUrls?.[0] || null;
+      const hiRes = rawPhoto ? proxyPhotoSlide(rawPhoto) : null;
+      const c = document.createElement('div');
+      c.className = 'wp-ce-flip-piece';
+      c.style.cssText = 'position:fixed;margin:0;border-radius:9px;border:2px solid #ffffff;box-shadow:0 3px 8px rgba(0,0,0,0.28);cursor:pointer;opacity:0;z-index:100000;';
+      setCardPhoto(c, hiRes);
+      document.body.appendChild(c);
+      const entry = { node: null, kind: 'card', idx: i, rect: null, clone: c };
+      clones.push(entry);
+    }
+    const cardClones = clones.filter(c => c.kind === 'card');
+
     // ── El "render" central: dado un activeIdx (puede ser fraccional,
     // en pleno drag), calcula y aplica la posición de CADA pieza. Se
     // llama en cada frame de drag (sin transición CSS, 1:1 con el dedo)
+    // y también para los saltos animados (chip, flick, snap al soltar).
     // y también para los saltos animados (chip, flick, snap al soltar).
     let activeIdx = 0;
     // Compartido con el editor de SuperUser más abajo: mientras se edita,
@@ -2334,7 +2396,6 @@ export class MapView {
     });
 
     const cleanupClones = () => clones.forEach(({ clone }) => clone && clone.remove());
-    const cardClones = clones.filter(c => c.kind === 'card');
 
     // ── El "render" central: dado un activeIdx (puede ser fraccional,
     // en pleno drag), calcula y aplica la posición de CADA pieza. Se
@@ -2363,10 +2424,28 @@ export class MapView {
     const applyLayout = (idxVal, animated, opts = {}) => {
       const { duration = 0.36, stagger = 0, decoDelay = 0 } = opts;
       const cardPosByIdx = {};
-      cardClones.forEach(({ idx, clone }, order) => {
+      cardClones.forEach(({ idx, clone, rect }, order) => {
         try {
           const p = posForDistance(idx - idxVal);
           const style = slideCardStyles[idx] || {};
+          // Las REALES (capturadas del sticker del mapa, `rect` real) ya
+          // nacieron ancladas en su posición real — esa es la gracia del
+          // FLIP, crecer desde ahí. Las SINTÉTICAS (lugar #7 en adelante,
+          // que nunca existieron como pieza en el mapa — ver el bloque
+          // que las crea, más arriba) no tienen ninguna posición previa
+          // real: nacen en el rincón donde el navegador deja un
+          // position:fixed sin left/top, y sin este snap se verían
+          // "viajar" desde ahí en vez de aparecer con un pulse — mismo
+          // motivo exacto que ya resolvimos para los stickers.
+          if (!rect && !clone._entered) {
+            clone._entered = true;
+            clone.style.transition = 'none';
+            clone.style.left = p.x + 'px'; clone.style.top = p.y + 'px';
+            clone.style.width = p.w + 'px'; clone.style.height = p.h + 'px';
+            clone.style.transform = `rotate(${p.rot + (style.rotation || 0)}deg) scale(${(style.scale ?? 1) * 0.4})`;
+            clone.style.opacity = '0';
+            void clone.offsetHeight; // forzar reflow — mismo motivo que en las decoraciones
+          }
           clone.style.transition = animated
             ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s cubic-bezier(0.34,1.56,0.64,1), height ${duration}s cubic-bezier(0.34,1.56,0.64,1), transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
             : 'none';
