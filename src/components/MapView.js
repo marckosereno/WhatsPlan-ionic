@@ -2169,7 +2169,6 @@ export class MapView {
     slideBackdrop.className = 'wp-ce-flip-piece';
     slideBackdrop.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:98999;pointer-events:none;';
     document.body.appendChild(slideBackdrop);
-    clones.push({ node: null, kind: 'backdrop', idx: 0, rect: null, clone: slideBackdrop });
     const caption = wrap.querySelector('.wp-ce-ccaption-list');
     caption.innerHTML = group.map((_, i) => `<button type="button" class="wp-ce-ctag" data-chip-idx="${i}">${group[i].el._place?.name || ''}</button>`).join('');
     const chipEls = Array.from(caption.querySelectorAll('.wp-ce-ctag'));
@@ -2234,6 +2233,14 @@ export class MapView {
       document.body.appendChild(c);
       return { ...p, clone: c };
     });
+    // El backdrop se creó más arriba (antes de que `clones` existiera —
+    // hacerle push ahí tiraba ReferenceError, "no se puede acceder a
+    // 'clones' antes de su inicialización", y esa excepción cortaba TODA
+    // la función a mitad de camino: nada de lo que viene después llegaba
+    // a correr, por eso quedaba la pantalla en blanco con el backdrop
+    // como único sobreviviente). Ahora que el array ya existe de
+    // verdad, se agrega acá.
+    clones.push({ node: null, kind: 'backdrop', idx: 0, rect: null, clone: slideBackdrop });
 
     // ── Tarjetas extra, más allá de las 6 que el sticker del MAPA clona ──
     // CLUSTER_CARD_SLOTS limita el sticker del mapa a 6 tarjetas visibles
