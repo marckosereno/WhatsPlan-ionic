@@ -2156,6 +2156,7 @@ export class MapView {
     document.body.style.overflow = 'hidden';
 
     const stage = wrap.querySelector('.wp-ce-cstage');
+    const collageBg = wrap.querySelector('.wp-ce-collage-bg');
     const caption = wrap.querySelector('.wp-ce-ccaption-list');
     caption.innerHTML = group.map((_, i) => `<button type="button" class="wp-ce-ctag" data-chip-idx="${i}">${group[i].el._place?.name || ''}</button>`).join('');
     const chipEls = Array.from(caption.querySelectorAll('.wp-ce-ctag'));
@@ -2506,15 +2507,20 @@ export class MapView {
         // de la tarjeta, así que un valor negativo lo manda genuinamente
         // detrás — y esa relación se mantiene sin importar en qué
         // posición del parallax esté la tarjeta en cada momento.
-        // "background" es la excepción: SIEMPRE tiene que quedar DETRÁS
-        // de la tarjeta (es un fondo, no una decoración encima de la
-        // foto) — por eso no usa cardZ+layerZ como las demás (eso las
-        // pone cerca del z de SU tarjeta, a veces por encima a veces
-        // cerca). Un z bajo pero FIJO (no relativo a cardZ, que puede
-        // bajar hasta ~5) asegura que nunca quede por debajo de 100000
-        // — el piso de wrap — ni tampoco por encima de ninguna tarjeta.
+        // "background" es la excepción: tiene que quedar DETRÁS del
+        // header/chips (que viven DENTRO de wrap, z:99999) — no solo
+        // detrás de las tarjetas. Un z de 100000+ (como todo lo demás)
+        // SIEMPRE gana contra wrap sin importar cuánto se lo achique,
+        // porque wrap arma su PROPIO contexto de apilamiento: nada
+        // adentro de wrap puede hacer que wrap ENTERO se vea "más atrás"
+        // que algo de afuera con menor z. La única forma real de
+        // ponerlo detrás del header es bajarlo por DEBAJO de 99999 — acá
+        // 99000+layerZ, entre el mapa (0) y wrap (99999). El fondo BLANCO
+        // opaco de wrap (.wp-ce-collage-bg) taparía esto igual, así que
+        // se vuelve transparente apenas hay un fondo-imagen activo — ver
+        // más abajo, donde se decide `hasActiveBg`.
         d.clone.style.zIndex = kind === 'background'
-          ? String(100000 + 1 + (d.layerZ ?? 0))
+          ? String(99000 + (d.layerZ ?? 0))
           : String(100000 + cardZ + (d.layerZ ?? 5));
         if (kind === 'badge') {
           // Tamaño y font-size crecen JUNTOS; el padding queda fijo — es
@@ -2733,6 +2739,19 @@ export class MapView {
           console.error('[FLIP] error posicionando decoración global', err);
         }
       });
+
+      // Si hay un fondo-imagen activo (del lugar héroe actual, o global),
+      // el fondo BLANCO de la pantalla se vuelve transparente — si no,
+      // por más que el fondo-imagen esté en un z por debajo de wrap
+      // (ver el comentario largo de arriba), este blanco opaco lo
+      // taparía igual. Cuando NO hay ninguno, se limpia el estilo en
+      // línea para que vuelva a mandar la regla CSS normal (opacity:1).
+      if (collageBg) {
+        const heroIdxNow = Math.max(0, Math.min(group.length - 1, Math.round(idxVal)));
+        const hasActiveBg = (slidePlaceDecos[heroIdxNow]?.backgrounds || []).some(d => d.imageUrl)
+          || slideGlobal.backgrounds.some(d => d.imageUrl);
+        collageBg.style.opacity = hasActiveBg ? '0' : '';
+      }
     };
 
     const updateChips = (idxVal) => {
@@ -3028,6 +3047,9 @@ export class MapView {
               <input type="color" value="${sd.strokeColor || '#000000'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0.5" max="8" step="0.5" value="${sd.strokeWidth}" data-ctl="strokewidth" style="flex:1;touch-action:pan-y;">
             </div>` : ''}
+            ${isGlobalText ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+              <input type="checkbox" data-ctl="parallax" ${sd.parallax ? 'checked' : ''}> Parallax (se corre un poco con el drag, en vez de quedar fijo)
+            </label>` : ''}
             <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
               <input type="checkbox" data-ctl="lockon"${sd.locked ? ' checked' : ''}> 🔒 Bloquear (solo editable desde la lista)
             </label>
@@ -3080,6 +3102,7 @@ export class MapView {
           });
           panel.querySelector('[data-ctl="strokecolor"]')?.addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="strokewidth"]')?.addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="parallax"]')?.addEventListener('change', (e) => { sd.parallax = e.target.checked; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="lockon"]').addEventListener('change', (e) => { sd.locked = e.target.checked; });
         } else {
           const sd = editSel.obj;
@@ -3120,7 +3143,7 @@ export class MapView {
             ${!isBadge ? `<label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>` : ''}
             ${isBackground ? `<label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="60" step="1" value="${sd.radius ?? 0}" data-ctl="bgradius"></label>` : ''}
-            ${(isBackground && isGlobal) ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+            ${isGlobal ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
               <input type="checkbox" data-ctl="parallax" ${sd.parallax ? 'checked' : ''}> Parallax (se corre un poco con el drag, en vez de quedar fijo)
             </label>` : ''}
             <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
@@ -3142,9 +3165,9 @@ export class MapView {
             // de tocarlo directo (ver resolveClone). No hace falta
             // applyLayout acá.
           });
+          panel.querySelector('[data-ctl="parallax"]')?.addEventListener('change', (e) => { sd.parallax = e.target.checked; applyLayout(activeIdx, false); });
           if (isBackground) {
             panel.querySelector('[data-ctl="bgradius"]').addEventListener('input', (e) => { sd.radius = +e.target.value; applyLayout(activeIdx, false); });
-            panel.querySelector('[data-ctl="parallax"]')?.addEventListener('change', (e) => { sd.parallax = e.target.checked; applyLayout(activeIdx, false); });
             panel.querySelector('[data-ctl="uploadfile"]').addEventListener('change', async (e) => {
               const file = e.target.files[0];
               if (!file) return;
