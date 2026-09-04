@@ -221,6 +221,18 @@ function injectLandmarkStyles() {
       0%   { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+    /* Pin individual del mapa mientras carga su foto — mismo shimmer que
+       ya usa el minicard (wp-mc-skeleton), para que "cargando" se vea
+       igual en toda la app. Antes .pin-inner.loading no tenía NINGÚN
+       tratamiento visual — el ícono se veía solo hasta que la foto
+       aparecía de golpe (o lento, sin avisar que algo estaba pasando).
+       Se saca sola: applyPhotoToPin() remueve la clase 'loading' apenas
+       la foto termina de precargar. */
+    .pin-inner.loading {
+      background: linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+      background-size: 400% 100%;
+      animation: wp-mc-skeleton 1.4s ease-in-out infinite;
+    }
     .lm-wrap        { display:flex;flex-direction:column;align-items:center;cursor:pointer;overflow:visible; }
     .lm-inner       { animation:lmFloat 3s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
     .lm-inner-slow  { animation:lmFloat 2.6s ease-in-out infinite;display:flex;flex-direction:column;align-items:center; }
@@ -2258,7 +2270,7 @@ export class MapView {
     // cada entrada { dx, dy, rotation, scale, radius, baseW, baseH, clone, ...datos }.
     const placeIds = group.map(({ el }) => placeIdOf(el._place));
     const savedSlidePlaces = customDef?.slidePlaces || {};
-    const slidePlaceDecos = group.map(() => ({ badges: [], stickers: [], texts: [] }));
+    const slidePlaceDecos = group.map(() => ({ badges: [], stickers: [], texts: [], backgrounds: [] }));
     // Estilo propio de CADA tarjeta en este slide — radio, color/ancho de
     // borde, giro y tamaño extra — también independiente del mapa.
     const slideCardStyles = group.map(() => ({ radius: null, borderColor: null, borderWidth: null, rotation: 0, scale: 1 }));
@@ -2364,8 +2376,8 @@ export class MapView {
     group.forEach((_, i) => {
       const saved = savedSlidePlaces[placeIds[i]];
       if (!saved) return;
-      ['badges', 'stickers', 'texts'].forEach(key => {
-        const kind = key === 'badges' ? 'badge' : key === 'stickers' ? 'sticker' : 'text';
+      ['badges', 'stickers', 'texts', 'backgrounds'].forEach(key => {
+        const kind = key === 'badges' ? 'badge' : key === 'stickers' ? 'sticker' : key === 'texts' ? 'text' : 'background';
         (saved[key] || []).forEach(d => {
           const clone = createDecoClone(kind, d);
           const entry = { ...d, clone };
@@ -2383,10 +2395,10 @@ export class MapView {
     // estas viven SIEMPRE en la misma posición de pantalla, sin importar
     // qué lugar esté de héroe — para un badge/sticker/texto que querés
     // que se vea en TODO el recorrido, no solo en uno.
-    const slideGlobal = { badges: [], stickers: [], texts: [] };
+    const slideGlobal = { badges: [], stickers: [], texts: [], backgrounds: [] };
     const savedGlobal = customDef?.slideGlobal || {};
-    ['badges', 'stickers', 'texts'].forEach(key => {
-      const kind = key === 'badges' ? 'badge' : key === 'stickers' ? 'sticker' : 'text';
+    ['badges', 'stickers', 'texts', 'backgrounds'].forEach(key => {
+      const kind = key === 'badges' ? 'badge' : key === 'stickers' ? 'sticker' : key === 'texts' ? 'text' : 'background';
       (savedGlobal[key] || []).forEach(d => {
         const clone = createDecoClone(kind, d);
         const entry = { ...d, clone };
@@ -2494,7 +2506,16 @@ export class MapView {
         // de la tarjeta, así que un valor negativo lo manda genuinamente
         // detrás — y esa relación se mantiene sin importar en qué
         // posición del parallax esté la tarjeta en cada momento.
-        d.clone.style.zIndex = String(100000 + cardZ + (d.layerZ ?? 5));
+        // "background" es la excepción: SIEMPRE tiene que quedar DETRÁS
+        // de la tarjeta (es un fondo, no una decoración encima de la
+        // foto) — por eso no usa cardZ+layerZ como las demás (eso las
+        // pone cerca del z de SU tarjeta, a veces por encima a veces
+        // cerca). Un z bajo pero FIJO (no relativo a cardZ, que puede
+        // bajar hasta ~5) asegura que nunca quede por debajo de 100000
+        // — el piso de wrap — ni tampoco por encima de ninguna tarjeta.
+        d.clone.style.zIndex = kind === 'background'
+          ? String(100000 + 1 + (d.layerZ ?? 0))
+          : String(100000 + cardZ + (d.layerZ ?? 5));
         if (kind === 'badge') {
           // Tamaño y font-size crecen JUNTOS; el padding queda fijo — es
           // lo que se pidió, y es la misma sensación que un badge del
@@ -2505,21 +2526,29 @@ export class MapView {
           d.clone.style.width = '';
           d.clone.style.fontSize = (11.5 * totalScale) + 'px';
           d.clone.style.borderRadius = '999px';
-        } else if (kind === 'sticker') {
+        } else if (kind === 'sticker' || kind === 'background') {
           d.clone.style.width = w + 'px'; d.clone.style.height = h + 'px';
+          d.clone.style.borderRadius = (d.radius || 0) + 'px';
           const totalScale = h / (d.baseH || 26);
-          const liveStroke = (d.strokeWidth ?? 2) * totalScale;
           const inner = d.clone.firstElementChild;
-          if (inner) {
-            const blurPx = d.blur || 0;
-            if (d.emoji) {
-              inner.style.fontSize = h + 'px';
-              inner.style.textShadow = buildEmojiStroke(liveStroke, d.strokeColor || '#ffffff');
-              inner.style.filter = blurPx ? `blur(${blurPx}px)` : 'none';
-            } else if (d.imageUrl) {
-              const img = inner.querySelector('img');
-              if (img) img.style.filter = buildImageStroke(liveStroke, d.strokeColor || '#ffffff') + (blurPx ? ` blur(${blurPx}px)` : '');
+          const blurPx = d.blur || 0;
+          if (kind === 'sticker') {
+            // El fondo no lleva stroke (no tiene sentido en una imagen
+            // que cubre toda el área) — solo blur y radio.
+            const liveStroke = (d.strokeWidth ?? 2) * totalScale;
+            if (inner) {
+              if (d.emoji) {
+                inner.style.fontSize = h + 'px';
+                inner.style.textShadow = buildEmojiStroke(liveStroke, d.strokeColor || '#ffffff');
+                inner.style.filter = blurPx ? `blur(${blurPx}px)` : 'none';
+              } else if (d.imageUrl) {
+                const img = inner.querySelector('img');
+                if (img) img.style.filter = buildImageStroke(liveStroke, d.strokeColor || '#ffffff') + (blurPx ? ` blur(${blurPx}px)` : '');
+              }
             }
+          } else if (inner) {
+            const img = inner.querySelector('img');
+            if (img) img.style.filter = blurPx ? `blur(${blurPx}px)` : 'none';
           }
         } else if (kind === 'text') {
           // Ancho y font-size FIJOS, en los px "de diseño" (d.baseW, el
@@ -2571,6 +2600,7 @@ export class MapView {
         const scaleRef = p.w / heroW;
         const cx0 = p.x + p.w / 2, cy0 = p.y + p.h / 2;
         [
+          ...deco.backgrounds.map(d => ({ d, kind: 'background' })),
           ...deco.badges.map(d => ({ d, kind: 'badge' })),
           ...deco.stickers.map(d => ({ d, kind: 'sticker' })),
           ...deco.texts.map(d => ({ d, kind: 'text' })),
@@ -2653,6 +2683,7 @@ export class MapView {
       // slides": no se desvanecen ni se mueven con el drag.
       const gx0 = heroX + heroW / 2, gy0 = heroY - 26; // arriba de la tarjeta héroe, centrado
       [
+        ...slideGlobal.backgrounds.map(d => ({ d, kind: 'background' })),
         ...slideGlobal.badges.map(d => ({ d, kind: 'badge' })),
         ...slideGlobal.stickers.map(d => ({ d, kind: 'sticker' })),
         ...slideGlobal.texts.map(d => ({ d, kind: 'text' })),
@@ -2666,7 +2697,15 @@ export class MapView {
           const isTextG = kind === 'text';
           const w = isTextG ? (d.baseW || 160) : d.baseW * (d.scale ?? 1);
           const h = isTextG ? (d.baseH || 40) : d.baseH * (d.scale ?? 1);
-          const cx = gx0 + d.dx, cy = gy0 + d.dy;
+          // "Global" quiere decir "el mismo elemento en todos los
+          // slides", NO "tiene que quedarse perfectamente quieto" — si
+          // el elemento tiene el parallax activado (checkbox propio en
+          // su panel), se corre un poco horizontalmente según qué tan
+          // lejos esté el drag del entero más cercano — un dejo de
+          // profundidad, como el fondo de un carrusel, sin llegar a
+          // navegar como hacen las decoraciones por lugar.
+          const parallaxDx = d.parallax ? -(idxVal) * 14 : 0;
+          const cx = gx0 + d.dx + parallaxDx, cy = gy0 + d.dy;
           // Mismo motivo que en las decoraciones por lugar: sin esto, la
           // primera vez que aparece se ve "viajar" desde el rincón donde
           // el navegador deja un position:fixed sin left/top todavía.
@@ -2845,18 +2884,22 @@ export class MapView {
         const cardEntry = cardClones.find(c => c.clone === clone && c.idx === editPlace);
         if (cardEntry) return { kind: 'card', obj: slideCardStyles[editPlace], clone };
         const deco = slidePlaceDecos[editPlace];
-        let f = deco.badges.find(d => d.clone === clone);
-        if (f) return { kind: 'badge', obj: f, clone };
+        let f = deco.backgrounds.find(d => d.clone === clone);
+        if (f) return f.locked ? null : { kind: 'background', obj: f, clone };
+        f = deco.badges.find(d => d.clone === clone);
+        if (f) return f.locked ? null : { kind: 'badge', obj: f, clone };
         f = deco.stickers.find(d => d.clone === clone);
-        if (f) return { kind: 'sticker', obj: f, clone };
+        if (f) return f.locked ? null : { kind: 'sticker', obj: f, clone };
         f = deco.texts.find(d => d.clone === clone);
-        if (f) return { kind: 'text', obj: f, clone };
+        if (f) return f.locked ? null : { kind: 'text', obj: f, clone };
+        f = slideGlobal.backgrounds.find(d => d.clone === clone);
+        if (f) return f.locked ? null : { kind: 'backgroundGlobal', obj: f, clone };
         f = slideGlobal.badges.find(d => d.clone === clone);
-        if (f) return { kind: 'badgeGlobal', obj: f, clone };
+        if (f) return f.locked ? null : { kind: 'badgeGlobal', obj: f, clone };
         f = slideGlobal.stickers.find(d => d.clone === clone);
-        if (f) return { kind: 'stickerGlobal', obj: f, clone };
+        if (f) return f.locked ? null : { kind: 'stickerGlobal', obj: f, clone };
         f = slideGlobal.texts.find(d => d.clone === clone);
-        if (f) return { kind: 'textGlobal', obj: f, clone };
+        if (f) return f.locked ? null : { kind: 'textGlobal', obj: f, clone };
         return null;
       };
       const isDeco = (kind) => kind !== 'card';
@@ -2871,11 +2914,13 @@ export class MapView {
           // pantalla (tapado por otro elemento, muy chico, en una franja
           // sin pointer-events como la del header). Tocar la fila lo
           // selecciona igual que si le hubieras acertado el tap.
-          const listOf = (arr, kind, labelFn) => arr.map((d, i) => ({ d, kind, i, label: labelFn(d) }));
+          const listOf = (arr, kind, labelFn) => arr.map((d, i) => ({ d, kind, i, label: `${d.locked ? '🔒 ' : ''}${labelFn(d)}` }));
           const items = [
+            ...listOf(slidePlaceDecos[editPlace].backgrounds, 'background', d => `🖼️ Fondo${d.imageUrl ? '' : ' (sin imagen)'}`),
             ...listOf(slidePlaceDecos[editPlace].badges, 'badge', d => `🏷️ Badge: ${d.label || '(sin texto)'}`),
             ...listOf(slidePlaceDecos[editPlace].stickers, 'sticker', d => `✨ Sticker: ${d.emoji || (d.imageUrl ? 'imagen propia' : '?')}`),
             ...listOf(slidePlaceDecos[editPlace].texts, 'text', d => `🔤 Texto: ${(d.text || '').slice(0, 22) || '(vacío)'}`),
+            ...listOf(slideGlobal.backgrounds, 'backgroundGlobal', d => `🌐🖼️ Fondo global${d.imageUrl ? '' : ' (sin imagen)'}`),
             ...listOf(slideGlobal.badges, 'badgeGlobal', d => `🌐🏷️ Badge global: ${d.label || '(sin texto)'}`),
             ...listOf(slideGlobal.stickers, 'stickerGlobal', d => `🌐✨ Sticker global: ${d.emoji || (d.imageUrl ? 'imagen propia' : '?')}`),
             ...listOf(slideGlobal.texts, 'textGlobal', d => `🌐🔤 Texto global: ${(d.text || '').slice(0, 22) || '(vacío)'}`),
@@ -2894,6 +2939,9 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn" data-act="addbadge">+ Badge</button>
               <button type="button" class="wp-ce-editbtn" data-act="addsticker">+ Sticker</button>
               <button type="button" class="wp-ce-editbtn" data-act="addtext">+ Texto</button>
+            </div>
+            <div class="wp-ce-editrow">
+              <button type="button" class="wp-ce-editbtn" data-act="addbackground">+ Fondo</button>
             </div>
             ${items.length ? `
               <div style="color:#9ca3af;font-size:10.5px;font-weight:700;margin:10px 0 4px;text-transform:uppercase;letter-spacing:0.04em;">Elementos en este slide (${items.length})</div>
@@ -2980,6 +3028,9 @@ export class MapView {
               <input type="color" value="${sd.strokeColor || '#000000'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0.5" max="8" step="0.5" value="${sd.strokeWidth}" data-ctl="strokewidth" style="flex:1;touch-action:pan-y;">
             </div>` : ''}
+            <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+              <input type="checkbox" data-ctl="lockon"${sd.locked ? ' checked' : ''}> 🔒 Bloquear (solo editable desde la lista)
+            </label>
             <div class="wp-ce-editrow wp-ce-editrow-compact">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerfront" title="Adelante">⬆️</button>
@@ -3029,17 +3080,23 @@ export class MapView {
           });
           panel.querySelector('[data-ctl="strokecolor"]')?.addEventListener('input', (e) => { sd.strokeColor = e.target.value; applyLayout(activeIdx, false); });
           panel.querySelector('[data-ctl="strokewidth"]')?.addEventListener('input', (e) => { sd.strokeWidth = +e.target.value; applyLayout(activeIdx, false); });
+          panel.querySelector('[data-ctl="lockon"]').addEventListener('change', (e) => { sd.locked = e.target.checked; });
         } else {
           const sd = editSel.obj;
           const isGlobal = editSel.kind.includes('Global');
           const isBadge = editSel.kind.startsWith('badge');
-          const label = isBadge ? 'Badge' : 'Sticker';
+          const isBackground = editSel.kind.startsWith('background');
+          const label = isBadge ? 'Badge' : isBackground ? 'Fondo' : 'Sticker';
           const BADGE_PRESET = ['#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6']; // mismos colores que el editor de cluster
           panel.innerHTML = `
             <div class="wp-ce-edithint">${label}${isGlobal ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
             ${isBadge ? `<div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>` : ''}
             ${isBadge ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="40" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
-            ${!isBadge ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            ${isBackground ? `<label data-ctl="uploadlabel" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border-radius:8px;border:1px dashed rgba(255,255,255,0.3);color:#9ca3af;font-size:11px;cursor:pointer;box-sizing:border-box;margin-bottom:8px;">
+              <span data-ctl="uploadspan">${sd.imageUrl ? '🖼️ Cambiar imagen de fondo' : '📤 Subir imagen de fondo'}</span>
+              <input type="file" accept="image/*" data-ctl="uploadfile" style="display:none;">
+            </label>` : ''}
+            ${(!isBadge && !isBackground) ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
               <div style="flex:1;">
                 <div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">Emoji</div>
                 <input type="text" maxlength="8" value="${sd.emoji || ''}" data-ctl="emoji" style="width:100%;padding:6px;text-align:center;font-size:16px;border-radius:6px;border:none;background:rgba(255,255,255,0.08);color:#fff;box-sizing:border-box;">
@@ -3055,13 +3112,20 @@ export class MapView {
             </div>` : ''}
             <label class="wp-ce-editslider">Giro<input type="range" min="-180" max="180" step="1" value="${sd.rotation ?? 0}" data-ctl="rot"></label>
             <label class="wp-ce-editslider">Tamaño<input type="range" min="50" max="${isBadge ? 200 : 800}" step="1" value="${Math.round((sd.scale ?? 1) * 100)}" data-ctl="scale"></label>
-            ${!isBadge ? `<div class="wp-ce-editrow" style="align-items:center;">
+            ${(!isBadge && !isBackground) ? `<div class="wp-ce-editrow" style="align-items:center;">
               <span style="color:#9ca3af;font-size:11px;font-weight:700;flex:1;">Contorno (stroke)</span>
               <input type="color" value="${sd.strokeColor || '#ffffff'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0" max="6" step="1" value="${sd.strokeWidth ?? 2}" data-ctl="strokewidth" style="flex:1;touch-action:pan-y;">
-            </div>
-            <label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>
+            </div>` : ''}
+            ${!isBadge ? `<label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>` : ''}
+            ${isBackground ? `<label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="60" step="1" value="${sd.radius ?? 0}" data-ctl="bgradius"></label>` : ''}
+            ${(isBackground && isGlobal) ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+              <input type="checkbox" data-ctl="parallax" ${sd.parallax ? 'checked' : ''}> Parallax (se corre un poco con el drag, en vez de quedar fijo)
+            </label>` : ''}
+            <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+              <input type="checkbox" data-ctl="lockon" ${sd.locked ? 'checked' : ''}> 🔒 Bloquear (solo editable desde la lista)
+            </label>
             <div class="wp-ce-editrow wp-ce-editrow-compact">
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerback" title="Atrás">⬇️</button>
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-icon" data-act="layerfront" title="Adelante">⬆️</button>
@@ -3072,7 +3136,67 @@ export class MapView {
               <button type="button" class="wp-ce-editbtn wp-ce-editbtn-primary" data-act="save">Guardar</button>
               <button type="button" class="wp-ce-editbtn" data-act="cancel">Cancelar</button>
             </div>`;
-          if (isBadge) {
+          panel.querySelector('[data-ctl="lockon"]').addEventListener('change', (e) => {
+            sd.locked = e.target.checked;
+            // Bloquear no cambia nada visual — solo apaga la posibilidad
+            // de tocarlo directo (ver resolveClone). No hace falta
+            // applyLayout acá.
+          });
+          if (isBackground) {
+            panel.querySelector('[data-ctl="bgradius"]').addEventListener('input', (e) => { sd.radius = +e.target.value; applyLayout(activeIdx, false); });
+            panel.querySelector('[data-ctl="parallax"]')?.addEventListener('change', (e) => { sd.parallax = e.target.checked; applyLayout(activeIdx, false); });
+            panel.querySelector('[data-ctl="uploadfile"]').addEventListener('change', async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              if (!file.type.startsWith('image/')) { alert('Solo imágenes.'); return; }
+              if (file.size > 10 * 1024 * 1024) { alert('Imagen demasiado grande (máx 10 MB).'); return; }
+              const uploadLabel = panel.querySelector('[data-ctl="uploadlabel"]');
+              const uploadSpan = panel.querySelector('[data-ctl="uploadspan"]');
+              uploadLabel.style.opacity = '0.5';
+              uploadSpan.textContent = '⏳ Subiendo…';
+              // Un fondo va más grande que un sticker — se comprime a un
+              // máximo mayor (900px) para que no se vea pixelado al
+              // ocupar buena parte de la pantalla.
+              const compressImage = (f) => new Promise((resolve) => {
+                const img = new Image();
+                const url = URL.createObjectURL(f);
+                img.onload = () => {
+                  URL.revokeObjectURL(url);
+                  const MAX = 900;
+                  let w = img.width, h = img.height;
+                  if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else { w = Math.round(w * MAX / h); h = MAX; }
+                  }
+                  const canvas = document.createElement('canvas');
+                  canvas.width = w; canvas.height = h;
+                  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                  canvas.toBlob(resolve, 'image/jpeg', 0.88);
+                };
+                img.src = url;
+              });
+              try {
+                const compressed = await compressImage(file);
+                const { getSupabase } = await import('/src/services/SupabaseService.js');
+                const supabase = getSupabase();
+                if (!supabase) throw new Error('Supabase no inicializado');
+                const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+                const { error } = await supabase.storage.from('place-photos').upload(path, compressed, { contentType: 'image/jpeg', upsert: false });
+                if (error) throw error;
+                const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
+                sd.imageUrl = urlData.publicUrl;
+                rebuildDecoInner(editSel.clone, sd);
+                applyLayout(activeIdx, false);
+                renderPanel();
+              } catch (err) {
+                alert('Error al subir el fondo: ' + err.message);
+                uploadLabel.style.opacity = '';
+                uploadSpan.textContent = sd.imageUrl ? '🖼️ Cambiar imagen de fondo' : '📤 Subir imagen de fondo';
+              } finally {
+                e.target.value = '';
+              }
+            });
+          } else if (isBadge) {
             const row = panel.querySelector('[data-ctl="colorrow"]');
             BADGE_PRESET.forEach(c => {
               const b = document.createElement('button');
@@ -3242,15 +3366,17 @@ export class MapView {
       const addLiveDecoration = (kind, data, global) => {
         const base = {
           dx: 0, dy: kind === 'badge' ? -28 : 0, rotation: 0, scale: 1, radius: 0, opacity: 1, blur: 0,
-          baseW: kind === 'badge' ? 22 : kind === 'text' ? 160 : 26,
-          baseH: kind === 'badge' ? 22 : kind === 'text' ? 40 : 26,
+          locked: false,
+          baseW: kind === 'badge' ? 22 : kind === 'text' ? 160 : kind === 'background' ? 260 : 26,
+          baseH: kind === 'badge' ? 22 : kind === 'text' ? 40 : kind === 'background' ? 340 : 26,
           strokeColor: '#ffffff', strokeWidth: 2,
           ...(kind === 'text' ? { tag: 'p', color: '#ffffff', weight: 'normal', lineHeight: 1.2, align: 'center' } : {}),
+          ...(kind === 'background' ? { parallax: false } : {}),
           ...data,
         };
         const clone = createDecoClone(kind, base);
         const entry = { ...base, clone };
-        const arrKey = kind === 'badge' ? 'badges' : kind === 'sticker' ? 'stickers' : 'texts';
+        const arrKey = kind === 'badge' ? 'badges' : kind === 'sticker' ? 'stickers' : kind === 'text' ? 'texts' : 'backgrounds';
         if (global) {
           slideGlobal[arrKey].push(entry);
           clones.push({ node: null, kind: kind + 'Global', idx: 0, rect: null, clone });
@@ -3312,6 +3438,7 @@ export class MapView {
         if (act === 'addbadge') { addLiveDecoration('badge', { label: 'Nuevo' }, addGlobalNext); return; }
         if (act === 'addsticker') { addLiveDecoration('sticker', { emoji: '⭐' }, addGlobalNext); return; }
         if (act === 'addtext') { addLiveDecoration('text', { text: 'Texto' }, addGlobalNext); return; }
+        if (act === 'addbackground') { addLiveDecoration('background', {}, addGlobalNext); return; }
         if (act === 'tagh1' || act === 'tagh2' || act === 'tagh3' || act === 'tagp') {
           if (!editSel) return;
           editSel.obj.tag = act.replace('tag', '');
@@ -3353,7 +3480,7 @@ export class MapView {
         if (act === 'delthis' && editSel) {
           const isGlobal = editSel.kind.includes('Global');
           const store = isGlobal ? slideGlobal : slidePlaceDecos[editPlace];
-          const arrKey = editSel.kind.startsWith('badge') ? 'badges' : editSel.kind.startsWith('sticker') ? 'stickers' : 'texts';
+          const arrKey = editSel.kind.startsWith('badge') ? 'badges' : editSel.kind.startsWith('sticker') ? 'stickers' : editSel.kind.startsWith('text') ? 'texts' : 'backgrounds';
           const arr = store[arrKey];
           const i = arr.indexOf(editSel.obj);
           if (i !== -1) arr.splice(i, 1);
@@ -3387,6 +3514,7 @@ export class MapView {
             badges: slidePlaceDecos[editPlace].badges.map(stripClone),
             stickers: slidePlaceDecos[editPlace].stickers.map(stripClone),
             texts: slidePlaceDecos[editPlace].texts.map(stripClone),
+            backgrounds: slidePlaceDecos[editPlace].backgrounds.map(stripClone),
             cardStyle: { ...slideCardStyles[editPlace] },
           };
           // "Aplicar a todas las tarjetas": el cardStyle se replica a
@@ -3404,6 +3532,7 @@ export class MapView {
             badges: slideGlobal.badges.map(stripClone),
             stickers: slideGlobal.stickers.map(stripClone),
             texts: slideGlobal.texts.map(stripClone),
+            backgrounds: slideGlobal.backgrounds.map(stripClone),
           };
           const res = await fetch('/api/supabase-clusters', {
             method: 'POST',
@@ -3452,6 +3581,7 @@ export class MapView {
           badges: slidePlaceDecos[editPlace].badges.map(d => ({ ...d })),
           stickers: slidePlaceDecos[editPlace].stickers.map(d => ({ ...d })),
           texts: slidePlaceDecos[editPlace].texts.map(d => ({ ...d })),
+          backgrounds: slidePlaceDecos[editPlace].backgrounds.map(d => ({ ...d })),
           // TODOS los cardStyle, no solo el del lugar activo — "Aplicar a
           // todas las tarjetas" muta las de TODOS en vivo, y Cancelar
           // tiene que poder devolverlas todas, no solo la que se estaba
@@ -3460,6 +3590,7 @@ export class MapView {
           globalBadges: slideGlobal.badges.map(d => ({ ...d })),
           globalStickers: slideGlobal.stickers.map(d => ({ ...d })),
           globalTexts: slideGlobal.texts.map(d => ({ ...d })),
+          globalBackgrounds: slideGlobal.backgrounds.map(d => ({ ...d })),
         };
         wrap.classList.add('wp-ce-editing');
         renderPanel();
@@ -3476,21 +3607,23 @@ export class MapView {
           // lugares, por si se usó "Aplicar a todas"), y lo global — a
           // como estaba al entrar a editar.
           const keepClones = new Set([
-            ...editBackup.badges, ...editBackup.stickers, ...editBackup.texts,
-            ...editBackup.globalBadges, ...editBackup.globalStickers, ...editBackup.globalTexts,
+            ...editBackup.badges, ...editBackup.stickers, ...editBackup.texts, ...editBackup.backgrounds,
+            ...editBackup.globalBadges, ...editBackup.globalStickers, ...editBackup.globalTexts, ...editBackup.globalBackgrounds,
           ].map(d => d.clone));
           const nowClones = new Set([
-            ...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers, ...slidePlaceDecos[editPlace].texts,
-            ...slideGlobal.badges, ...slideGlobal.stickers, ...slideGlobal.texts,
+            ...slidePlaceDecos[editPlace].badges, ...slidePlaceDecos[editPlace].stickers, ...slidePlaceDecos[editPlace].texts, ...slidePlaceDecos[editPlace].backgrounds,
+            ...slideGlobal.badges, ...slideGlobal.stickers, ...slideGlobal.texts, ...slideGlobal.backgrounds,
           ].map(d => d.clone));
           nowClones.forEach(c => { if (!keepClones.has(c)) c.remove(); });
           slidePlaceDecos[editPlace].badges = editBackup.badges;
           slidePlaceDecos[editPlace].stickers = editBackup.stickers;
           slidePlaceDecos[editPlace].texts = editBackup.texts;
+          slidePlaceDecos[editPlace].backgrounds = editBackup.backgrounds;
           editBackup.allCardStyles.forEach((s, i) => { slideCardStyles[i] = s; });
           slideGlobal.badges = editBackup.globalBadges;
           slideGlobal.stickers = editBackup.globalStickers;
           slideGlobal.texts = editBackup.globalTexts;
+          slideGlobal.backgrounds = editBackup.globalBackgrounds;
         }
         editBackup = null;
         applyLayout(activeIdx, true);
