@@ -293,7 +293,24 @@ function injectLandmarkStyles() {
        height/transform hasta su lugar en el collage. Por eso NO llevan
        transición acá (se las pone JS recién en el segundo frame, así el
        navegador pinta primero el punto de partida). */
-    .wp-ce-flip-piece { pointer-events: auto; }
+    .wp-ce-flip-piece {
+      pointer-events: auto;
+      /* El "destello blanco" al animar transform/opacity/left/top en un
+         position:fixed es un glitch conocido de navegadores móviles: si
+         el elemento no está YA promovido a su propia capa de GPU antes
+         de que arranque la animación, el navegador a veces recompositó
+         a mitad de camino y por un frame se ve el fondo (blanco) en vez
+         del contenido. will-change avisa de antemano qué va a animarse,
+         así lo promueve ANTES de que se mueva. El transform no entra en
+         esta lista: JS lo pisa en cada frame con la posición real, y
+         ponerlo acá arriesga que el navegador lo "congele" en un valor
+         viejo en vez de dejarlo libre. backface-visibility:hidden es el
+         otro lado del mismo arreglo, estándar para este glitch puntual
+         en WebKit/Chromium. */
+      will-change: opacity, left, top;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
     /* Skeleton de tarjeta mientras precarga su foto — un pulse suave de
        brillo sobre el degradé gris, para que "cargando" se lea como tal
        en vez de un rectángulo gris inerte. brightness() y no opacity: la
