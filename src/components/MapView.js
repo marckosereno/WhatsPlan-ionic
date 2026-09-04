@@ -2157,6 +2157,19 @@ export class MapView {
 
     const stage = wrap.querySelector('.wp-ce-cstage');
     const collageBg = wrap.querySelector('.wp-ce-collage-bg');
+    // Backdrop blanco DEDICADO, siempre opaco — vive en document.body,
+    // por DEBAJO de la capa donde se dibuja el "fondo" (background),
+    // que ahora tiene que quedar detrás de wrap (ver el comentario largo
+    // en applyDecoStyle). Sin esto, bajarle la opacidad a un fondo con
+    // blur/opacidad revelaba el MAPA de verdad detrás en vez de blanco —
+    // "el slide en general sí debe tener un fondo blanco" es exactamente
+    // esto: una base que nunca se transparenta, pase lo que pase con la
+    // opacidad del fondo que pusiste.
+    const slideBackdrop = document.createElement('div');
+    slideBackdrop.className = 'wp-ce-flip-piece';
+    slideBackdrop.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:98999;pointer-events:none;';
+    document.body.appendChild(slideBackdrop);
+    clones.push({ node: null, kind: 'backdrop', idx: 0, rect: null, clone: slideBackdrop });
     const caption = wrap.querySelector('.wp-ce-ccaption-list');
     caption.innerHTML = group.map((_, i) => `<button type="button" class="wp-ce-ctag" data-chip-idx="${i}">${group[i].el._place?.name || ''}</button>`).join('');
     const chipEls = Array.from(caption.querySelectorAll('.wp-ce-ctag'));
@@ -2555,6 +2568,11 @@ export class MapView {
           } else if (inner) {
             const img = inner.querySelector('img');
             if (img) img.style.filter = blurPx ? `blur(${blurPx}px)` : 'none';
+            // Color sólido — se pinta en el CONTENEDOR (no en la imagen),
+            // así sirve tanto de fondo detrás de una imagen con
+            // transparencia como de color puro cuando no hay imagen
+            // cargada todavía.
+            d.clone.style.background = d.colorFill || 'transparent';
           }
         } else if (kind === 'text') {
           // Ancho y font-size FIJOS, en los px "de diseño" (d.baseW, el
@@ -2710,7 +2728,8 @@ export class MapView {
           // lejos esté el drag del entero más cercano — un dejo de
           // profundidad, como el fondo de un carrusel, sin llegar a
           // navegar como hacen las decoraciones por lugar.
-          const parallaxDx = d.parallax ? -(idxVal) * 14 : 0;
+          const PARALLAX_SPEEDS = { slow: 6, medium: 14, fast: 26 };
+          const parallaxDx = d.parallax ? -(idxVal) * (PARALLAX_SPEEDS[d.parallaxSpeed] || PARALLAX_SPEEDS.medium) : 0;
           const cx = gx0 + d.dx + parallaxDx, cy = gy0 + d.dy;
           // Mismo motivo que en las decoraciones por lugar: sin esto, la
           // primera vez que aparece se ve "viajar" desde el rincón donde
@@ -2740,17 +2759,31 @@ export class MapView {
         }
       });
 
-      // Si hay un fondo-imagen activo (del lugar héroe actual, o global),
-      // el fondo BLANCO de la pantalla se vuelve transparente — si no,
-      // por más que el fondo-imagen esté en un z por debajo de wrap
-      // (ver el comentario largo de arriba), este blanco opaco lo
-      // taparía igual. Cuando NO hay ninguno, se limpia el estilo en
-      // línea para que vuelva a mandar la regla CSS normal (opacity:1).
+      // Si hay un fondo (imagen o color) activo, el fondo BLANCO de wrap
+      // se vuelve transparente — si no, por más que el fondo esté en un
+      // z por debajo de wrap, este blanco opaco lo taparía igual.
+      //
+      // Antes esto usaba Math.round(idxVal) — un salto DURO apenas
+      // cruzabas la mitad entre dos lugares. Si uno tenía fondo y el de
+      // al lado no, cada frame que el redondeo cambiaba de uno a otro
+      // (algo que pasa VARIAS veces por segundo mientras arrastrás, no
+      // solo una vez al cruzar la mitad) el blanco se prendía y apagaba
+      // de golpe — el parpadeo reportado. Ahora se interpola de forma
+      // continua entre el lugar de "atrás" y el de "adelante" según la
+      // fracción exacta del drag, igual que ya hace la opacidad de las
+      // tarjetas — sin saltos, y sin transición CSS por debajo (que
+      // además iba a agregar SU PROPIO desfasaje) mientras se está
+      // arrastrando a mano.
       if (collageBg) {
-        const heroIdxNow = Math.max(0, Math.min(group.length - 1, Math.round(idxVal)));
-        const hasActiveBg = (slidePlaceDecos[heroIdxNow]?.backgrounds || []).some(d => d.imageUrl)
-          || slideGlobal.backgrounds.some(d => d.imageUrl);
-        collageBg.style.opacity = hasActiveBg ? '0' : '';
+        const floorIdx = Math.max(0, Math.min(group.length - 1, Math.floor(idxVal)));
+        const ceilIdx = Math.max(0, Math.min(group.length - 1, Math.ceil(idxVal)));
+        const frac = idxVal - Math.floor(idxVal);
+        const hasBgAt = (i) => (slidePlaceDecos[i]?.backgrounds || []).some(d => d.imageUrl || d.colorFill)
+          || slideGlobal.backgrounds.some(d => d.imageUrl || d.colorFill);
+        const opAt = (i) => hasBgAt(i) ? 0 : 1;
+        const targetOp = opAt(floorIdx) + (opAt(ceilIdx) - opAt(floorIdx)) * frac;
+        collageBg.style.transition = animated ? 'opacity 0.38s ease-out' : 'none';
+        collageBg.style.opacity = String(targetOp);
       }
     };
 
@@ -3047,9 +3080,14 @@ export class MapView {
               <input type="color" value="${sd.strokeColor || '#000000'}" data-ctl="strokecolor" style="width:36px;height:28px;border:none;border-radius:6px;background:none;padding:0;">
               <input type="range" min="0.5" max="8" step="0.5" value="${sd.strokeWidth}" data-ctl="strokewidth" style="flex:1;touch-action:pan-y;">
             </div>` : ''}
-            ${isGlobalText ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+            ${isGlobalText ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:6px;">
               <input type="checkbox" data-ctl="parallax" ${sd.parallax ? 'checked' : ''}> Parallax (se corre un poco con el drag, en vez de quedar fijo)
-            </label>` : ''}
+            </label>
+            ${sd.parallax ? `<div class="wp-ce-editrow" style="margin-bottom:8px;">
+              <button type="button" class="wp-ce-editbtn ${(sd.parallaxSpeed || 'medium') === 'slow' ? 'wp-ce-editbtn-primary' : ''}" data-act="pxslow">Lento</button>
+              <button type="button" class="wp-ce-editbtn ${(sd.parallaxSpeed || 'medium') === 'medium' ? 'wp-ce-editbtn-primary' : ''}" data-act="pxmedium">Medio</button>
+              <button type="button" class="wp-ce-editbtn ${sd.parallaxSpeed === 'fast' ? 'wp-ce-editbtn-primary' : ''}" data-act="pxfast">Rápido</button>
+            </div>` : ''}` : ''}
             <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
               <input type="checkbox" data-ctl="lockon"${sd.locked ? ' checked' : ''}> 🔒 Bloquear (solo editable desde la lista)
             </label>
@@ -3115,10 +3153,12 @@ export class MapView {
             <div class="wp-ce-edithint">${label}${isGlobal ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
             ${isBadge ? `<div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>` : ''}
             ${isBadge ? `<label class="wp-ce-editslider">Texto<input type="text" maxlength="40" value="${sd.label || ''}" placeholder="+N" data-ctl="text" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:#fff;padding:6px 8px;font-size:12px;"></label>` : ''}
-            ${isBackground ? `<label data-ctl="uploadlabel" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border-radius:8px;border:1px dashed rgba(255,255,255,0.3);color:#9ca3af;font-size:11px;cursor:pointer;box-sizing:border-box;margin-bottom:8px;">
+            ${isBackground ? `<div style="display:flex;gap:6px;margin-bottom:8px;" data-ctl="colorrow"></div>
+            <label data-ctl="uploadlabel" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border-radius:8px;border:1px dashed rgba(255,255,255,0.3);color:#9ca3af;font-size:11px;cursor:pointer;box-sizing:border-box;margin-bottom:8px;">
               <span data-ctl="uploadspan">${sd.imageUrl ? '🖼️ Cambiar imagen de fondo' : '📤 Subir imagen de fondo'}</span>
               <input type="file" accept="image/*" data-ctl="uploadfile" style="display:none;">
-            </label>` : ''}
+            </label>
+            ${sd.imageUrl ? `<button type="button" class="wp-ce-editbtn" data-act="bgclearimg" style="margin-bottom:8px;">Quitar imagen (usar solo color)</button>` : ''}` : ''}
             ${(!isBadge && !isBackground) ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
               <div style="flex:1;">
                 <div style="font-size:9px;color:#9ca3af;margin-bottom:3px;">Emoji</div>
@@ -3143,9 +3183,14 @@ export class MapView {
             ${!isBadge ? `<label class="wp-ce-editslider">Blur<input type="range" min="0" max="10" step="0.5" value="${sd.blur ?? 0}" data-ctl="blur"></label>
             <label class="wp-ce-editslider">Opacidad<input type="range" min="10" max="100" step="1" value="${Math.round((sd.opacity ?? 1) * 100)}" data-ctl="opacity"></label>` : ''}
             ${isBackground ? `<label class="wp-ce-editslider">Borde redondeado<input type="range" min="0" max="60" step="1" value="${sd.radius ?? 0}" data-ctl="bgradius"></label>` : ''}
-            ${isGlobal ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
+            ${isGlobal ? `<label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:6px;">
               <input type="checkbox" data-ctl="parallax" ${sd.parallax ? 'checked' : ''}> Parallax (se corre un poco con el drag, en vez de quedar fijo)
-            </label>` : ''}
+            </label>
+            ${sd.parallax ? `<div class="wp-ce-editrow" style="margin-bottom:8px;">
+              <button type="button" class="wp-ce-editbtn ${(sd.parallaxSpeed || 'medium') === 'slow' ? 'wp-ce-editbtn-primary' : ''}" data-act="pxslow">Lento</button>
+              <button type="button" class="wp-ce-editbtn ${(sd.parallaxSpeed || 'medium') === 'medium' ? 'wp-ce-editbtn-primary' : ''}" data-act="pxmedium">Medio</button>
+              <button type="button" class="wp-ce-editbtn ${sd.parallaxSpeed === 'fast' ? 'wp-ce-editbtn-primary' : ''}" data-act="pxfast">Rápido</button>
+            </div>` : ''}` : ''}
             <label style="display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:11px;font-weight:700;margin-bottom:8px;">
               <input type="checkbox" data-ctl="lockon" ${sd.locked ? 'checked' : ''}> 🔒 Bloquear (solo editable desde la lista)
             </label>
@@ -3168,6 +3213,26 @@ export class MapView {
           panel.querySelector('[data-ctl="parallax"]')?.addEventListener('change', (e) => { sd.parallax = e.target.checked; applyLayout(activeIdx, false); });
           if (isBackground) {
             panel.querySelector('[data-ctl="bgradius"]').addEventListener('input', (e) => { sd.radius = +e.target.value; applyLayout(activeIdx, false); });
+            // blur/opacidad se muestran para "todo lo que no es badge"
+            // (más arriba), pero antes solo el sticker les conectaba el
+            // listener — el fondo los mostraba sin que hicieran nada.
+            panel.querySelector('[data-ctl="blur"]').addEventListener('input', (e) => { sd.blur = +e.target.value; applyLayout(activeIdx, false); });
+            panel.querySelector('[data-ctl="opacity"]').addEventListener('input', (e) => { sd.opacity = +e.target.value / 100; applyLayout(activeIdx, false); });
+            const BG_COLOR_PRESET = ['#ffffff', '#111827', '#1a5cf5', '#f97316', '#ef4444', '#10b981', '#8b5cf6', 'transparent'];
+            const brow = panel.querySelector('[data-ctl="colorrow"]');
+            BG_COLOR_PRESET.forEach(c => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              const isSel = (sd.colorFill || 'transparent') === c;
+              b.style.cssText = `width:24px;height:24px;border-radius:50%;background:${c === 'transparent' ? 'repeating-conic-gradient(#999 0% 25%, #666 0% 50%) 0 0/8px 8px' : c};border:2px solid ${isSel ? '#67e8f9' : 'rgba(255,255,255,0.25)'};cursor:pointer;`;
+              b.title = c === 'transparent' ? 'Sin color (solo imagen)' : c;
+              b.addEventListener('click', () => {
+                sd.colorFill = c === 'transparent' ? '' : c;
+                applyLayout(activeIdx, false);
+                renderPanel();
+              });
+              brow.appendChild(b);
+            });
             panel.querySelector('[data-ctl="uploadfile"]').addEventListener('change', async (e) => {
               const file = e.target.files[0];
               if (!file) return;
@@ -3465,6 +3530,19 @@ export class MapView {
         if (act === 'tagh1' || act === 'tagh2' || act === 'tagh3' || act === 'tagp') {
           if (!editSel) return;
           editSel.obj.tag = act.replace('tag', '');
+          applyLayout(activeIdx, false); renderPanel();
+          return;
+        }
+        if (act === 'pxslow' || act === 'pxmedium' || act === 'pxfast') {
+          if (!editSel) return;
+          editSel.obj.parallaxSpeed = act.replace('px', '');
+          applyLayout(activeIdx, false); renderPanel();
+          return;
+        }
+        if (act === 'bgclearimg') {
+          if (!editSel) return;
+          editSel.obj.imageUrl = '';
+          rebuildDecoInner(editSel.clone, editSel.obj);
           applyLayout(activeIdx, false); renderPanel();
           return;
         }
