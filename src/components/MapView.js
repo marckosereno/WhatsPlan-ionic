@@ -2861,6 +2861,111 @@ export class MapView {
       updateChips(activeIdx);
     };
 
+    // ── FLIP real: la tarjeta tocada "vuela" hasta convertirse en el
+    // hero de la ficha, y el slide queda VIVO (pausado) debajo ─────────
+    // Mismo principio de FLIP que ya usa todo esto (clon anclado en la
+    // posición real, animado hacia el destino real) — pero acá el slide
+    // no se cierra: se pausa (bloqueado, con un ligero zoom-out+fade en
+    // todo lo que NO es la tarjeta tocada) y vuelve a la vida si la
+    // ficha se cierra, con el mismo vuelo pero al revés.
+    const flipCardToFicha = (hitEntry, place) => {
+      const cardClone = hitEntry.clone;
+      const startRect = cardClone.getBoundingClientRect();
+      const cs = getComputedStyle(cardClone);
+      const startRadius = cardClone.style.borderRadius || cs.borderRadius;
+      const startBgImage = cardClone.style.backgroundImage || cs.backgroundImage;
+      // La rotación vive metida en el transform del clon original
+      // (rotate(Xdeg) scale(Y)) — se extrae para que el puente arranque
+      // EXACTO igual y la enderece junto con el resto del vuelo.
+      const rotMatch = /rotate\(([-\d.]+)deg\)/.exec(cardClone.style.transform || '');
+      const startRot = rotMatch ? parseFloat(rotMatch[1]) : 0;
+      // La URL desnuda (sin url('...')) — PlaceModal2 la necesita así
+      // para pisar su hero directo, sin pasar por su ciclo normal de
+      // skeleton+precarga (ver preloadedHeroUrl más abajo).
+      const rawUrl = (startBgImage.match(/url\(['"]?(.*?)['"]?\)/) || [])[1] || '';
+
+      const makeFlyer = (rect, radius, bgImage, rot) => {
+        const el = document.createElement('div');
+        el.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${radius};background-image:${bgImage};background-size:cover;background-position:center;transform:rotate(${rot}deg);z-index:999999;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,0.28);`;
+        document.body.appendChild(el);
+        return el;
+      };
+      const flyTo = (el, rect, radius, rot, duration = 0.46) => {
+        el.style.transition = `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s cubic-bezier(0.34,1.56,0.64,1), height ${duration}s cubic-bezier(0.34,1.56,0.64,1), border-radius ${duration * 0.9}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1)`;
+        el.style.left = rect.left + 'px'; el.style.top = rect.top + 'px';
+        el.style.width = rect.width + 'px'; el.style.height = rect.height + 'px';
+        el.style.borderRadius = radius; el.style.transform = `rotate(${rot}deg)`;
+      };
+
+      const bridge = makeFlyer(startRect, startRadius, startBgImage, startRot);
+      // El clon original desaparece YA — el puente lo reemplaza
+      // visualmente en el mismo lugar exacto, sin salto.
+      cardClone.style.opacity = '0';
+
+      // Pausar el slide: se bloquea (reusa `clusterEditing`, la misma
+      // bandera que ya frena drag/gestos durante la edición — acá con el
+      // mismo propósito: nada de esto debe poder tocarse mientras la
+      // ficha está arriba) y todo lo que NO es la tarjeta tocada hace un
+      // ligero zoom-out + fade — "queda atrás" sin desaparecer del todo,
+      // listo para volver si hace falta.
+      clusterEditing = true;
+      wrap.style.pointerEvents = 'none';
+      wrap.style.transition = 'opacity 0.32s ease';
+      wrap.style.opacity = '0.4';
+      const others = clones.filter(c => c.clone !== cardClone);
+      others.forEach(({ clone }) => {
+        clone.style.transition = 'transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.32s ease';
+        clone.style.transform += ' scale(0.88)';
+        clone.style.opacity = '0';
+      });
+
+      // show(place, {...}) arma la ficha con el hero real invisible
+      // (o directamente con NUESTRA foto, sin recargar — preloadedHeroUrl)
+      // y devuelve, YA, el rect al que tiene que volar el puente.
+      // flipContext.onDismiss es el gancho para el vuelo de VUELTA,
+      // llamado desde PlaceModal2.hide() (botón volver o drag-to-dismiss).
+      const targetRect = this.onPlaceSelect ? this.onPlaceSelect(place, {
+        direct: true,
+        flipFromRect: startRect,
+        preloadedHeroUrl: rawUrl,
+        flipContext: {
+          onDismiss: (heroRectNow, heroBgNow) => {
+            const backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              flyTo(backBridge, startRect, startRadius, startRot, 0.42);
+            }));
+            // El resto del slide reaparece EN PARALELO al vuelo de
+            // vuelta — se ve como que "estaba ahí todo el tiempo".
+            wrap.style.opacity = '1';
+            applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
+            setTimeout(() => {
+              cardClone.style.opacity = ''; // la tarjeta real vuelve a mostrarse
+              backBridge.remove();
+              wrap.style.pointerEvents = '';
+              clusterEditing = false;
+            }, 440);
+          },
+        },
+      }) : null;
+
+      if (!targetRect) {
+        // Por si algo salió mal (no debería) — no dejar todo pausado ni
+        // el puente huérfano.
+        bridge.remove(); cardClone.style.opacity = ''; wrap.style.opacity = '1'; wrap.style.pointerEvents = '';
+        applyLayout(activeIdx, true); clusterEditing = false;
+        return;
+      }
+
+      requestAnimationFrame(() => requestAnimationFrame(() => flyTo(bridge, targetRect, '0px', 0)));
+
+      // Al llegar: revelar el hero real de la ficha (revealHeroNow) y
+      // sacar el puente — recién ahí queda UNA sola foto en pantalla.
+      setTimeout(() => {
+        if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
+        bridge.remove();
+      }, 480);
+    };
+
     requestAnimationFrame(() => {
       wrap.classList.add('wp-ce-in');
       // Segundo frame: recién acá se fija el destino, para que el browser
@@ -2930,7 +3035,7 @@ export class MapView {
             // de cerrar el slide y abrir la ficha de golpe sin relación
             // visual entre una pantalla y la otra.
             const place = group[hitEntry.idx]?.el._place;
-            if (place) this._flipCardToFicha(hitEntry.clone, place);
+            if (place) flipCardToFicha(hitEntry, place);
             return;
           }
           settleTo(hitEntry.idx); // tarjeta lateral → navega hacia ella
@@ -3815,63 +3920,11 @@ export class MapView {
     this._clusterExpandFlip = { clones, pieces, stickerEl };
   }
 
-  // ── FLIP real: la tarjeta del slide "vuela" hasta convertirse en el
-  // hero de la ficha ─────────────────────────────────────────────────
-  // Mismo principio que el FLIP de apertura del slide (sticker → tarjeta
-  // grande): un clon aparte, anclado en la posición REAL de arranque,
-  // que se anima hacia el destino real — acá el destino es el hero de
-  // PlaceModal2, no un layout interno nuestro.
-  _flipCardToFicha(cardClone, place) {
-    const startRect = cardClone.getBoundingClientRect();
-    const cs = getComputedStyle(cardClone);
-    const startRadius = cardClone.style.borderRadius || cs.borderRadius;
-    const startBgImage = cardClone.style.backgroundImage || cs.backgroundImage;
-    // La rotación vive metida en el transform del clon original
-    // (rotate(Xdeg) scale(Y)) — se extrae para que el puente arranque
-    // EXACTO igual y la enderece junto con el resto del vuelo.
-    const rotMatch = /rotate\(([-\d.]+)deg\)/.exec(cardClone.style.transform || '');
-    const startRot = rotMatch ? parseFloat(rotMatch[1]) : 0;
-
-    // Puente APARTE de todo lo del slide (para que sobreviva a su
-    // cierre) — z-index por encima de TODO: el slide, y la ficha nueva
-    // que está por entrar con su propia transición debajo.
-    const bridge = document.createElement('div');
-    bridge.style.cssText = `position:fixed;left:${startRect.left}px;top:${startRect.top}px;width:${startRect.width}px;height:${startRect.height}px;border-radius:${startRadius};background-image:${startBgImage};background-size:cover;background-position:center;transform:rotate(${startRot}deg);z-index:999999;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,0.28);`;
-    document.body.appendChild(bridge);
-
-    // El clon original desaparece YA — el puente lo reemplaza visualmente
-    // en el mismo lugar exacto, sin salto.
-    cardClone.style.opacity = '0';
-
-    // show(place, {flipFromRect}) arma la ficha con el hero real
-    // invisible (wp-pm2-hero-pending) y devuelve, YA, el rect al que
-    // tiene que volar el puente — sus dimensiones salen de una regla CSS
-    // fija, no dependen de la foto ni de ningún cálculo posterior.
-    const targetRect = this.onPlaceSelect ? this.onPlaceSelect(place, { direct: true, flipFromRect: startRect }) : null;
-
-    // Cerrar el slide de atrás en paralelo — el puente, a un z-index muy
-    // por encima de todo, tapa esa transición de cierre igual.
-    this._closeClusterExpand(false);
-
-    if (!targetRect) { bridge.remove(); return; } // por si algo salió mal — no dejar el puente huérfano
-
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      bridge.style.transition = 'left 0.46s cubic-bezier(0.34,1.56,0.64,1), top 0.46s cubic-bezier(0.34,1.56,0.64,1), width 0.46s cubic-bezier(0.34,1.56,0.64,1), height 0.46s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.4s ease, transform 0.46s cubic-bezier(0.34,1.56,0.64,1)';
-      bridge.style.left = targetRect.left + 'px';
-      bridge.style.top = targetRect.top + 'px';
-      bridge.style.width = targetRect.width + 'px';
-      bridge.style.height = targetRect.height + 'px';
-      bridge.style.borderRadius = '0px';
-      bridge.style.transform = 'rotate(0deg)';
-    }));
-
-    // Al llegar: revelar el hero real de la ficha (revealHeroNow) y sacar
-    // el puente — recién ahí queda UNA sola foto en pantalla, la real.
-    setTimeout(() => {
-      if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
-      bridge.remove();
-    }, 480);
-  }
+  // NOTA: el FLIP tarjeta→ficha (_flipCardToFicha) vive ahora como
+  // función LOCAL dentro de _openClusterExpand() — necesita acceso
+  // directo a `clones`/`wrap`/`applyLayout` de esa función para poder
+  // pausar el slide entero y pulsar las demás tarjetas mientras la
+  // tocada vuela, algo que un método de clase aparte no podía alcanzar.
 
   _closeClusterExpand(restoreCamera = true) {
     if (!this._clusterExpandEl) return;
