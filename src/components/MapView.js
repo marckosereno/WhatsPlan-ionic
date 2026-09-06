@@ -2926,9 +2926,11 @@ export class MapView {
         if (hitEntry) {
           const nearest = Math.round(activeIdx);
           if (hitEntry.idx === nearest) {
-            // Tarjeta héroe → abre su ficha
+            // Tarjeta héroe → transición FLIP real hacia su ficha, en vez
+            // de cerrar el slide y abrir la ficha de golpe sin relación
+            // visual entre una pantalla y la otra.
             const place = group[hitEntry.idx]?.el._place;
-            if (place) { this._closeClusterExpand(false); if (this.onPlaceSelect) this.onPlaceSelect(place); }
+            if (place) this._flipCardToFicha(hitEntry.clone, place);
             return;
           }
           settleTo(hitEntry.idx); // tarjeta lateral → navega hacia ella
@@ -3811,6 +3813,64 @@ export class MapView {
     this._clusterExpandCleanup = () => { cleanupClones(); cleanupDrag(); if (this._clusterExpandEditCleanup) { this._clusterExpandEditCleanup(); this._clusterExpandEditCleanup = null; } };
     this._clusterExpandStickerEl = stickerEl;
     this._clusterExpandFlip = { clones, pieces, stickerEl };
+  }
+
+  // ── FLIP real: la tarjeta del slide "vuela" hasta convertirse en el
+  // hero de la ficha ─────────────────────────────────────────────────
+  // Mismo principio que el FLIP de apertura del slide (sticker → tarjeta
+  // grande): un clon aparte, anclado en la posición REAL de arranque,
+  // que se anima hacia el destino real — acá el destino es el hero de
+  // PlaceModal2, no un layout interno nuestro.
+  _flipCardToFicha(cardClone, place) {
+    const startRect = cardClone.getBoundingClientRect();
+    const cs = getComputedStyle(cardClone);
+    const startRadius = cardClone.style.borderRadius || cs.borderRadius;
+    const startBgImage = cardClone.style.backgroundImage || cs.backgroundImage;
+    // La rotación vive metida en el transform del clon original
+    // (rotate(Xdeg) scale(Y)) — se extrae para que el puente arranque
+    // EXACTO igual y la enderece junto con el resto del vuelo.
+    const rotMatch = /rotate\(([-\d.]+)deg\)/.exec(cardClone.style.transform || '');
+    const startRot = rotMatch ? parseFloat(rotMatch[1]) : 0;
+
+    // Puente APARTE de todo lo del slide (para que sobreviva a su
+    // cierre) — z-index por encima de TODO: el slide, y la ficha nueva
+    // que está por entrar con su propia transición debajo.
+    const bridge = document.createElement('div');
+    bridge.style.cssText = `position:fixed;left:${startRect.left}px;top:${startRect.top}px;width:${startRect.width}px;height:${startRect.height}px;border-radius:${startRadius};background-image:${startBgImage};background-size:cover;background-position:center;transform:rotate(${startRot}deg);z-index:999999;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,0.28);`;
+    document.body.appendChild(bridge);
+
+    // El clon original desaparece YA — el puente lo reemplaza visualmente
+    // en el mismo lugar exacto, sin salto.
+    cardClone.style.opacity = '0';
+
+    // show(place, {flipFromRect}) arma la ficha con el hero real
+    // invisible (wp-pm2-hero-pending) y devuelve, YA, el rect al que
+    // tiene que volar el puente — sus dimensiones salen de una regla CSS
+    // fija, no dependen de la foto ni de ningún cálculo posterior.
+    const targetRect = this.onPlaceSelect ? this.onPlaceSelect(place, { direct: true, flipFromRect: startRect }) : null;
+
+    // Cerrar el slide de atrás en paralelo — el puente, a un z-index muy
+    // por encima de todo, tapa esa transición de cierre igual.
+    this._closeClusterExpand(false);
+
+    if (!targetRect) { bridge.remove(); return; } // por si algo salió mal — no dejar el puente huérfano
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      bridge.style.transition = 'left 0.46s cubic-bezier(0.34,1.56,0.64,1), top 0.46s cubic-bezier(0.34,1.56,0.64,1), width 0.46s cubic-bezier(0.34,1.56,0.64,1), height 0.46s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.4s ease, transform 0.46s cubic-bezier(0.34,1.56,0.64,1)';
+      bridge.style.left = targetRect.left + 'px';
+      bridge.style.top = targetRect.top + 'px';
+      bridge.style.width = targetRect.width + 'px';
+      bridge.style.height = targetRect.height + 'px';
+      bridge.style.borderRadius = '0px';
+      bridge.style.transform = 'rotate(0deg)';
+    }));
+
+    // Al llegar: revelar el hero real de la ficha (revealHeroNow) y sacar
+    // el puente — recién ahí queda UNA sola foto en pantalla, la real.
+    setTimeout(() => {
+      if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
+      bridge.remove();
+    }, 480);
   }
 
   _closeClusterExpand(restoreCamera = true) {
