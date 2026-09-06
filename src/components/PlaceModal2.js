@@ -272,6 +272,24 @@ export class PlaceModal2 {
         font-weight:400;
       }
       #wp-pm2.visible { display:block; }
+      /* Antes esto pasaba de display:none a block de golpe — nada de
+         transición, la ficha "aparecía" en el frame siguiente. Ahora el
+         backdrop hace fade y la card entra con la misma curva bouncy
+         (cubic-bezier(0.34,1.56,0.64,1)) que usa el resto de la app para
+         estas entradas — mismo principio, consistente con el slide. */
+      #wp-pm2-backdrop { opacity:0; transition:opacity 0.32s ease-out; }
+      #wp-pm2.wp-pm2-in #wp-pm2-backdrop { opacity:1; }
+      #wp-pm2-card {
+        opacity:0; transform:translateY(18px) scale(0.97);
+        transition:opacity 0.34s ease-out, transform 0.42s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
+      /* Mientras el flip de una foto viene "volando" desde el slide, la
+         foto real del hero se mantiene invisible — revealHeroNow() la
+         hace aparecer recién cuando el clon que vuela llega a destino,
+         para que no se vean las dos superpuestas ni un salto entre una y
+         otra. */
+      #wp-pm2-hero-bg.wp-pm2-hero-pending { opacity:0; }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.4);
       }
@@ -1273,11 +1291,12 @@ export class PlaceModal2 {
     setTimeout(() => { if (ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
   }
 
-  show(place) {
+  show(place, opts = {}) {
     this._fromSearch = false;
     this._place = place;
     this._populate(place);
     this._el.classList.add('visible');
+    this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
     document.body.style.overflow = 'hidden';
     // Activa la sombra superior "oficial" con blur real (ion-app::before,
     // variante body.wp-pm-open en app.css) + el blur del mapa de fondo —
@@ -1293,6 +1312,7 @@ export class PlaceModal2 {
     const spacer      = this._el.querySelector('#wp-pm2-scroll-spacer');
     const heroEl      = this._el.querySelector('#wp-pm2-hero');
     const heroInner   = this._el.querySelector('#wp-pm2-hero-inner');
+    const heroBg      = this._el.querySelector('#wp-pm2-hero-bg');
     const heroOverlayFast = this._el.querySelector('#wp-pm2-hero-overlay-fast');
     const topbarFade = this._el.querySelector('#wp-pm2-topbar-fade');
     const heroGradient = this._el.querySelector('#wp-pm2-hero-gradient');
@@ -1319,6 +1339,29 @@ export class PlaceModal2 {
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
+
+    // ── Modo flip: viene un clon volando desde el slide hasta acá ──────
+    // El hero real queda invisible (el clon que vuela lo tapa) hasta que
+    // quien llamó a show() confirma que el clon llegó (revealHeroNow()).
+    // Sin flip, es el flujo de siempre: se muestra tal cual.
+    if (heroBg) heroBg.classList.toggle('wp-pm2-hero-pending', !!opts.flipFromRect);
+    this._pendingHeroReveal = !!opts.flipFromRect;
+
+    // Transición de entrada del modal completo — backdrop con fade, card
+    // con la misma curva bouncy que usa el slide. Doble rAF: primero se
+    // pinta el estado inicial (opacity:0, definido en la clase base de
+    // #wp-pm2-card/#wp-pm2-backdrop), recién en el segundo frame se
+    // agrega la clase que dispara la transición — si no, el navegador
+    // puede colapsar ambos estados en uno y la entrada no se ve.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      this._el.classList.add('wp-pm2-in');
+    }));
+
+    // El rect destino del hero se puede medir YA — sus dimensiones sales
+    // de una regla CSS fija (88vw, clamp 320-460px), no dependen de la
+    // foto ni de ningún cálculo posterior. Quien llama con flipFromRect
+    // lo necesita ANTES para saber hacia dónde animar su propio clon.
+    const heroTargetRect = heroEl.getBoundingClientRect();
 
     // hero (overlay absoluto encima del body) + hero-inner (alto FIJO fullH,
     // translateY) — imagen+overlay suben juntos, sin huecos. El spacer al
@@ -1400,6 +1443,25 @@ export class PlaceModal2 {
       this._scrollHandler = onScroll;
       body.addEventListener('scroll', onScroll, { passive: true });
     }));
+
+    return heroTargetRect;
+  }
+
+  // Revela el hero real después de un show(place, {flipFromRect}) — se
+  // llama cuando el clon que "vuela" desde el origen (el slide) termina
+  // su animación y llega a destino. Antes de esto el hero real está
+  // invisible (wp-pm2-hero-pending), así que no hay un instante con las
+  // dos fotos superpuestas ni un salto entre el clon y la foto real.
+  revealHeroNow() {
+    const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
+    if (!heroBg || !this._pendingHeroReveal) return;
+    this._pendingHeroReveal = false;
+    heroBg.style.transition = 'opacity 0.16s ease-out';
+    heroBg.classList.remove('wp-pm2-hero-pending');
+    // Limpiar la transición puntual después de que corra, para no dejarla
+    // pisando cualquier otra transición propia que #wp-pm2-hero-bg use en
+    // el resto del ciclo de vida de la ficha.
+    setTimeout(() => { heroBg.style.transition = ''; }, 200);
   }
 
   hide() {
