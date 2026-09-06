@@ -530,6 +530,19 @@ export class MapView {
       maxTileCacheSize:      20,
       fadeDuration:          0,
       preserveDrawingBuffer: false,
+      // El gesto nativo "doble-tap y sostener para hacer zoom con el
+      // movimiento vertical del dedo" (touch) / doble-click (desktop) es
+      // justo lo que generaba el pellizco fantasma: tocar afuera para
+      // cerrar el minicard cuenta como el PRIMER tap de una secuencia; si
+      // el siguiente toque (el que arranca el drag real) llega dentro de
+      // la ventana de doble-tap de MapLibre y el dedo se mueve en vez de
+      // levantarse, MapLibre lo toma como "segundo tap sostenido → zoom
+      // por arrastre vertical" en lugar de un pan normal — con un solo
+      // dedo en todo momento, nunca hubo un pellizco de dos dedos de
+      // verdad. Esta app no depende de ese gesto para nada, así que se
+      // desactiva de raíz en vez de tratar de esquivar la ventana de
+      // tiempo.
+      doubleClickZoom:       false,
     });
 
     // Set de markers (.maplibregl-marker) con un dedo apoyado ENCIMA en
@@ -936,7 +949,6 @@ export class MapView {
         window.wpApp.searchBar.onMapClick();
         return;
       }
-      if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  map:click → _closeMiniCard()  target=${e.originalEvent.target?.className || e.originalEvent.target?.tagName}`);
       this._closeMiniCard();
     });
   }
@@ -4115,7 +4127,6 @@ export class MapView {
 
   _closeMiniCard() {
     if (!this.miniCardMarker) return;
-    if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  _closeMiniCard() arranca`);
     // Capturar wrapper y limpiar estado YA — antes de cualquier animación
     // Así _showMiniCard puede pisar miniCardMarker sin race condition
     const wrapper = this.miniCardMarker.getElement();
@@ -4130,7 +4141,6 @@ export class MapView {
       // Animación de salida — restaurar pin al terminar
       const self = this;
       animateMinicardOut(card, function() {
-        if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  animateMinicardOut completó → _restorePin()`);
         self._restorePin(wrapper);
       });
     } else {
@@ -4146,11 +4156,9 @@ export class MapView {
     // MapLibre (ver el comentario largo donde se define
     // _pendingPinRestores). Se reintenta solo cuando ese dedo se levanta.
     if (wrapper && this._activeTouchMarkerEls && this._activeTouchMarkerEls.has(wrapper)) {
-      if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  _restorePin() DIFERIDO — dedo activo sobre el wrapper`);
       this._pendingPinRestores.set(wrapper, () => this._restorePin(wrapper));
       return;
     }
-    if (window._wpGestoT0) console.log(`[GESTO] +${(performance.now()-window._wpGestoT0).toFixed(0)}ms  _restorePin() ejecuta innerHTML swap`);
     if (wrapper && wrapper._savedPinHTML !== undefined) {
       // El wrapper del marker (.place-marker-el) NUNCA tiene ancho/alto fijo
       // por CSS — se auto-dimensiona según su contenido (2x2px para el pin
