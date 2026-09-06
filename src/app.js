@@ -503,7 +503,18 @@ try {
       // - Mapview normal: abre el minisnap primero (tap en el minisnap
       //   recién ahí abre la ficha completa — ver showMini/_showMiniSnap
       //   en PlaceModal2.js)
-      mv.onPlaceSelect = function(place) {
+      // - opts.direct (el tap en la tarjeta héroe del slide de cluster):
+      //   va DIRECTO a la ficha completa, sin pasar por el minisnap —
+      //   ahí ya se venía de una pantalla "completa" (el slide), pasar
+      //   por un paso intermedio chico se sentiría como un retroceso.
+      //   Si además viene con flipFromRect, show() devuelve a dónde tiene
+      //   que volar el clon que arma MapView — ver el flip en
+      //   _openClusterExpand().
+      mv.onPlaceSelect = function(place, opts) {
+        if (opts && opts.direct) {
+          placeModal._fromSearch = false;
+          return placeModal.show(place, opts);
+        }
         var sb = window.wpApp && window.wpApp.searchBar;
         if (sb && sb.isActive()) {
           placeModal._fromSearch = true;
