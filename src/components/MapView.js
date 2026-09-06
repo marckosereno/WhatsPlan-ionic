@@ -530,19 +530,6 @@ export class MapView {
       maxTileCacheSize:      20,
       fadeDuration:          0,
       preserveDrawingBuffer: false,
-      // El gesto nativo "doble-tap y sostener para hacer zoom con el
-      // movimiento vertical del dedo" (touch) / doble-click (desktop) es
-      // justo lo que generaba el pellizco fantasma: tocar afuera para
-      // cerrar el minicard cuenta como el PRIMER tap de una secuencia; si
-      // el siguiente toque (el que arranca el drag real) llega dentro de
-      // la ventana de doble-tap de MapLibre y el dedo se mueve en vez de
-      // levantarse, MapLibre lo toma como "segundo tap sostenido → zoom
-      // por arrastre vertical" en lugar de un pan normal — con un solo
-      // dedo en todo momento, nunca hubo un pellizco de dos dedos de
-      // verdad. Esta app no depende de ese gesto para nada, así que se
-      // desactiva de raíz en vez de tratar de esquivar la ventana de
-      // tiempo.
-      doubleClickZoom:       false,
     });
 
     // Set de markers (.maplibregl-marker) con un dedo apoyado ENCIMA en
@@ -949,6 +936,29 @@ export class MapView {
         window.wpApp.searchBar.onMapClick();
         return;
       }
+      // El tap para cerrar el minicard cuenta, sin que lo pidamos, como
+      // el PRIMER tap de "doble-tap y sostener para hacer zoom con el
+      // dedo" — un gesto NATIVO de touchZoomRotate (el mismo handler del
+      // pellizco de dos dedos; documentado así por MapLibre, no hay forma
+      // de desactivar nada más que esa sub-parte sola). Si el siguiente
+      // toque (el drag real que la persona quiere hacer) llega dentro de
+      // esa ventana y el dedo se mueve en vez de levantarse, MapLibre lo
+      // toma como el segundo tap sostenido y hace zoom por el movimiento
+      // vertical — con un solo dedo, nunca un pellizco de dos dedos de
+      // verdad (confirmado con el log de gestos).
+      //
+      // No se puede apagar solo esa sub-función sin apagar también el
+      // pellizco de dos dedos normal — así que se apaga TODO
+      // touchZoomRotate por una ventana bien chica (400ms) SOLO después
+      // de este tap puntual, y se reactiva sola. Nadie arranca un
+      // pellizco de dos dedos genuino en los 400ms inmediatos después de
+      // tocar con un dedo para cerrar algo, así que no se pierde nada en
+      // la práctica — y el doble-tap real para zoom sigue intacto,
+      // porque esta ventana solo se abre acá, no en cualquier tap del
+      // mapa.
+      this.map.touchZoomRotate.disable();
+      clearTimeout(this._tzrCooldown);
+      this._tzrCooldown = setTimeout(() => this.map.touchZoomRotate.enable(), 400);
       this._closeMiniCard();
     });
   }
