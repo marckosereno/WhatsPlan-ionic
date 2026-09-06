@@ -1036,6 +1036,7 @@ export class PlaceModal2 {
   _wireEvents() {
     const el = this._el;
     el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
+    this._initDragDismiss();
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
     this._wireTagToggle(el);
@@ -1294,6 +1295,14 @@ export class PlaceModal2 {
   show(place, opts = {}) {
     this._fromSearch = false;
     this._place = place;
+    // Ver el comentario largo en _populate(): si viene con una foto YA
+    // cargada (el flip desde el slide), se usa esa directo, sin el
+    // ciclo de skeleton+precarga que se sentía como una recarga.
+    this._preloadedHeroBg = opts.preloadedHeroUrl ? `url('${opts.preloadedHeroUrl}')` : null;
+    // flipContext.onDismiss(rect, bgImage) se llama desde hide() — es el
+    // gancho para que quien abrió esta ficha (MapView, desde el slide)
+    // arme el vuelo de vuelta. Sin esto, hide() cierra normal, sin flip.
+    this._flipContext = opts.flipContext || null;
     this._populate(place);
     this._el.classList.add('visible');
     this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
@@ -1464,21 +1473,118 @@ export class PlaceModal2 {
     setTimeout(() => { heroBg.style.transition = ''; }, 200);
   }
 
+  // Antes esto era instantáneo (classList.remove('visible') → display:none
+  // en el mismo tick, sin transición de salida). Ahora es el reflejo de
+  // show(): primero se dispara la transición inversa (quitar wp-pm2-in),
+  // y recién cuando termina se saca del DOM (display:none real).
+  //
+  // Si la ficha se abrió desde el slide (_flipContext seteado en
+  // showFromSlide), este es también el punto donde se avisa a quien la
+  // abrió — con el rect ACTUAL del hero (que puede estar colapsado si
+  // hubo scroll) y su imagen — para que arme el vuelo de vuelta hacia la
+  // tarjeta original, "como si el slide viviera debajo".
   hide() {
     this._closeLightbox();
-    this._el.classList.remove('visible');
-    document.body.style.overflow = '';
-    document.body.classList.remove('wp-pm-open');
-    this._place = null;
     if (this._aiAbort) this._aiAbort();
-    // Restaurar el footer menu del mapview
+
+    const flipCtx = this._flipContext;
+    this._flipContext = null;
+    if (flipCtx) {
+      const heroEl = this._el.querySelector('#wp-pm2-hero');
+      const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
+      flipCtx.onDismiss(heroEl.getBoundingClientRect(), heroBg.style.backgroundImage);
+    }
+
+    this._el.classList.remove('wp-pm2-in');
+    document.body.classList.remove('wp-pm-open');
+    // Restaurar el footer menu del mapview YA (no depende de la
+    // transición, y si se tarda se nota más que si aparece de una)
     const footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.display = '';
+
+    setTimeout(() => {
+      this._el.classList.remove('visible');
+      document.body.style.overflow = '';
+      this._place = null;
+      const body = this._el.querySelector('#wp-pm2-body');
+      if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = null;
+      this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
+      // Reset del drag-to-dismiss — si se cerró por otra vía (botón
+      // volver, o el reverse-flip de arriba) mientras había un drag a
+      // medio camino, no debe quedar pisando el próximo show().
+      const card = this._el.querySelector('#wp-pm2-card');
+      if (card) { card.style.transform = ''; card.style.borderRadius = ''; card.style.transition = ''; }
+      const backdrop = this._el.querySelector('#wp-pm2-backdrop');
+      if (backdrop) { backdrop.style.opacity = ''; backdrop.style.transition = ''; }
+    }, 320);
+  }
+
+  // ── Drag-to-dismiss nativo ───────────────────────────────────────────
+  // Arrastrar hacia abajo desde arriba del todo del scroll cierra la
+  // ficha — mismo lenguaje que un sheet nativo de iOS/Android: se puede
+  // arrastrar en cualquier momento (no hace falta un botón), con
+  // resistencia progresiva, y suelta o cancela según qué tan lejos y qué
+  // tan rápido se soltó. Se engancha UNA sola vez (no en cada show()).
+  _initDragDismiss() {
+    const card = this._el.querySelector('#wp-pm2-card');
+    const backdrop = this._el.querySelector('#wp-pm2-backdrop');
     const body = this._el.querySelector('#wp-pm2-body');
-    if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
-    this._scrollHandler = null;
-    // Reset topbar
-    this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
+    if (!card || this._dragDismissInit) return;
+    this._dragDismissInit = true;
+
+    let dragging = false, startY = 0, moved = 0, lastY = 0, lastT = 0, velocity = 0;
+    const DISMISS_DISTANCE = 130; // px
+    const DISMISS_VELOCITY = 0.6; // px/ms — un swipe rápido cierra aunque no haya llegado a la distancia
+
+    const onDown = (e) => {
+      // Solo si el contenido está scrolleado hasta arriba del todo — si
+      // no, el gesto es "scrollear", no "cerrar la ficha". Mismo criterio
+      // que cualquier sheet nativo.
+      if (!this._el.classList.contains('visible')) return;
+      if (body.scrollTop > 2) return;
+      dragging = true; moved = 0; startY = e.clientY; lastY = e.clientY; lastT = performance.now(); velocity = 0;
+      card.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dy = e.clientY - startY;
+      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = '0px'; backdrop.style.opacity = '1'; return; }
+      moved = dy;
+      const now = performance.now();
+      const dt = now - lastT;
+      if (dt > 0) velocity = (e.clientY - lastY) / dt;
+      lastY = e.clientY; lastT = now;
+      // Resistencia progresiva — cuanto más lejos, menos avanza por px
+      // de dedo, como cualquier sheet nativo (nunca se siente "de goma
+      // dura" ni "suelto del todo").
+      const damped = dy < 220 ? dy : 220 + (dy - 220) * 0.28;
+      card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)})`;
+      card.style.borderRadius = Math.min(28, damped / 6) + 'px';
+      backdrop.style.opacity = String(Math.max(0.1, 1 - damped / 380));
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      const shouldDismiss = moved > DISMISS_DISTANCE || velocity > DISMISS_VELOCITY;
+      if (shouldDismiss) {
+        // No animar de vuelta a "fullscreen" antes de cerrar — deja la
+        // card tal como quedó (achicada, redondeada) y hide() dispara su
+        // propia transición de salida desde ahí, más el reverse-flip si
+        // corresponde. Se ve continuo, un solo gesto de principio a fin.
+        this.hide();
+        return;
+      }
+      card.style.transition = 'transform 0.34s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.3s ease';
+      backdrop.style.transition = 'opacity 0.34s ease';
+      card.style.transform = 'none';
+      card.style.borderRadius = '0px';
+      backdrop.style.opacity = '1';
+    };
+    card.addEventListener('pointerdown', onDown);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
@@ -1538,18 +1644,29 @@ export class PlaceModal2 {
       stripEl.appendChild(img);
     });
 
-    // Hero background — primera foto con parallax, con skeleton mientras carga
+    // Hero background — primera foto con parallax, con skeleton mientras
+    // carga. EXCEPCIÓN: si viene de un flip desde el slide
+    // (this._preloadedHeroBg, seteado por showFromSlide antes de llamar
+    // acá), esa foto YA está cargada y en pantalla — pasar por el
+    // skeleton+precarga de nuevo se sentía como "la imagen se recarga",
+    // aunque técnicamente sea la misma URL cacheada: el flash del
+    // skeleton alcanza a verse igual. Se pisa directo, sin la danza.
     const heroBg = $('wp-pm2-hero-bg');
     if (heroBg) {
-      heroBg.style.backgroundImage = '';
-      if (photos.length) {
-        this._skelOn(heroBg);
-        const preload = new Image();
-        preload.onload  = () => { heroBg.style.backgroundImage = `url('${photos[0]}')`; this._skelOff(heroBg); };
-        preload.onerror = () => { this._skelOff(heroBg); };
-        preload.src = photos[0];
-      } else {
+      if (this._preloadedHeroBg) {
+        heroBg.style.backgroundImage = this._preloadedHeroBg;
         this._skelOff(heroBg);
+      } else {
+        heroBg.style.backgroundImage = '';
+        if (photos.length) {
+          this._skelOn(heroBg);
+          const preload = new Image();
+          preload.onload  = () => { heroBg.style.backgroundImage = `url('${photos[0]}')`; this._skelOff(heroBg); };
+          preload.onerror = () => { this._skelOff(heroBg); };
+          preload.src = photos[0];
+        } else {
+          this._skelOff(heroBg);
+        }
       }
     }
 
