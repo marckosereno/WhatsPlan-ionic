@@ -551,6 +551,16 @@ export class MapView {
     // punto donde no hay ningún elemento fantasma de por medio.
     this._activeTouchMarkerEls = new Set();
     this._pendingMarkerRemovals = new Set();
+    // Mismo mecanismo, para _restorePin(): si al cerrar el minicard el
+    // dedo YA está apoyado de nuevo (un tap-para-cerrar seguido rápido de
+    // un drag) justo sobre el mismo wrapper que se está por restaurar,
+    // reemplazarle el innerHTML mata el rastro de ESE toque — el
+    // navegador deja de mandarle touchmove/touchend, y MapLibre queda
+    // pensando que hay un dedo fantasma, confundiendo el próximo drag
+    // real con un pellizco. Ver el comentario largo más arriba: es el
+    // mismo bug de fondo, ahora en el cierre del minicard en vez de en
+    // la reconciliación de clusters.
+    this._pendingPinRestores = new Map();
     const _recalcActiveTouchMarkers = (e) => {
       this._activeTouchMarkerEls.clear();
       if (e.touches) {
@@ -566,6 +576,11 @@ export class MapView {
         if (el && this._activeTouchMarkerEls.has(el)) return; // sigue tocado, esperar
         marker.remove();
         this._pendingMarkerRemovals.delete(marker);
+      });
+      this._pendingPinRestores.forEach((fn, el) => {
+        if (this._activeTouchMarkerEls.has(el)) return; // sigue tocado, esperar
+        fn();
+        this._pendingPinRestores.delete(el);
       });
     };
     this.map.getContainer().addEventListener('touchstart',  _recalcActiveTouchMarkers, { capture: true, passive: true });
@@ -4121,6 +4136,16 @@ export class MapView {
   }
 
   _restorePin(wrapper) {
+    // Si hay un dedo apoyado justo en este wrapper ahora mismo (tap para
+    // cerrar el minicard seguido rápido de un drag que arranca en el
+    // mismo lugar), no reemplazar el innerHTML todavía — eso mata el
+    // rastro de ESE toque y confunde el reconocedor multi-touch de
+    // MapLibre (ver el comentario largo donde se define
+    // _pendingPinRestores). Se reintenta solo cuando ese dedo se levanta.
+    if (wrapper && this._activeTouchMarkerEls && this._activeTouchMarkerEls.has(wrapper)) {
+      this._pendingPinRestores.set(wrapper, () => this._restorePin(wrapper));
+      return;
+    }
     if (wrapper && wrapper._savedPinHTML !== undefined) {
       // El wrapper del marker (.place-marker-el) NUNCA tiene ancho/alto fijo
       // por CSS — se auto-dimensiona según su contenido (2x2px para el pin
