@@ -543,6 +543,15 @@ export class PlaceModal2 {
            el mismo radio ACÁ TAMBIÉN, el propio hero se recorta a sí
            mismo sin depender de que el padre lo haga bien. */
         border-radius: 18px 18px 0 0;
+        /* Mismo bug que resolvimos en #wp-pm2-card, un nivel más adentro:
+           #wp-pm2-hero-inner (hijo directo) tiene un transform ACTIVO en
+           todo momento (translateY, el parallax que sube la foto con el
+           scroll) — border-radius+overflow:hidden en un elemento con un
+           hijo transformado es exactamente la combinación que rompe el
+           recorte en varios WebViews. clip-path no depende del mismo
+           mecanismo de compositing. */
+        clip-path: inset(0 round 18px 18px 0 0);
+        -webkit-clip-path: inset(0 round 18px 18px 0 0);
       }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
@@ -1640,6 +1649,13 @@ export class PlaceModal2 {
       if (body.scrollTop > 2) return;
       dragging = true; moved = 0; startY = e.clientY; lastY = e.clientY; lastT = performance.now(); velocity = 0;
       card.style.transition = 'none';
+      // El backdrop se quedaba con su transition:opacity 0.32s de
+      // fábrica durante TODO el drag — cada frame le pedíamos un valor
+      // nuevo, pero el navegador intentaba animar suavemente hacia él en
+      // vez de aplicarlo ya (seguía "atrasado" persiguiendo al dedo, sin
+      // alcanzarlo nunca porque el valor cambia de nuevo antes de que
+      // termine) — eso es lo que se percibía como parpadeo.
+      backdrop.style.transition = 'none';
     };
     const onMove = (e) => {
       if (!dragging) return;
@@ -1682,6 +1698,13 @@ export class PlaceModal2 {
       dragging = false;
       const shouldDismiss = moved > DISMISS_DISTANCE || (moved > DISMISS_MIN_DISTANCE && velocity > DISMISS_VELOCITY);
       if (shouldDismiss) {
+        // Reactivar la transición del backdrop ANTES de hide() — quedó
+        // en 'none' desde onDown (necesario durante el drag, para
+        // seguir al dedo 1:1 sin que el navegador intente suavizar cada
+        // frame) y si hide() dispara su propio fundido de salida con
+        // esto todavía en 'none', ese fundido sale instantáneo en vez
+        // de suave.
+        backdrop.style.transition = 'opacity 0.32s ease-out';
         // No animar de vuelta a "fullscreen" antes de cerrar — deja la
         // card tal como quedó (achicada, redondeada) y hide() dispara su
         // propia transición de salida desde ahí, más el reverse-flip si
