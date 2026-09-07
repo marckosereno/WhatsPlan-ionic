@@ -324,20 +324,23 @@ export class PlaceModal2 {
          otra. */
       #wp-pm2-hero-bg.wp-pm2-hero-pending { opacity:0; }
       #wp-pm2-backdrop {
-        position:absolute; inset:0; background:rgba(0,0,0,0.4);
-        /* El slide que asoma en el hueco de arriba (y en general lo que
-           sea que esté detrás) se ve DESENFOCADO, no solo oscurecido —
-           mismo lenguaje visual que un sheet nativo. backdrop-filter
-           actúa sobre lo que está DETRÁS del elemento, no sobre el
-           elemento en sí. */
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
+        position:absolute; inset:0; background:rgba(0,0,0,0.45);
       }
       #wp-pm2-card {
         position:absolute; left:0; right:0; bottom:0;
         background:#fff;
         display:flex; flex-direction:column;
         overflow:hidden;
+        /* clip-path ADEMÁS de overflow:hidden+border-radius (no en vez
+           de) — border-radius+overflow:hidden solos tienen un bug de
+           compositing conocido en varios WebViews de Android/iOS: si el
+           MISMO elemento también tiene un transform activo (que es
+           justo nuestro caso: la animación de entrada, y el drag),
+           el recorte redondeado se rompe y se ven las puntas cuadradas
+           del contenido asomando en las esquinas. clip-path no depende
+           del mismo mecanismo de compositing y no sufre ese problema. */
+        clip-path: inset(0 round 18px 18px 0 0);
+        -webkit-clip-path: inset(0 round 18px 18px 0 0);
       }
       /* La card entera ya está corrida hacia abajo por
          env(safe-area-inset-top) (ver #wp-pm2-card más arriba) — si el
@@ -1605,7 +1608,7 @@ export class PlaceModal2 {
       // volver, o el reverse-flip de arriba) mientras había un drag a
       // medio camino, no debe quedar pisando el próximo show().
       const card = this._el.querySelector('#wp-pm2-card');
-      if (card) { card.style.transform = ''; card.style.borderRadius = ''; card.style.transition = ''; }
+      if (card) { card.style.transform = ''; card.style.borderRadius = ''; card.style.clipPath = ''; card.style.transition = ''; }
       const backdrop = this._el.querySelector('#wp-pm2-backdrop');
       if (backdrop) { backdrop.style.opacity = ''; backdrop.style.transition = ''; }
     }, 320);
@@ -1645,7 +1648,15 @@ export class PlaceModal2 {
       // fábrica (18px arriba, ver la regla de #wp-pm2-card) en lugar de
       // dejarlo pegado en cuadrado para siempre con un valor en línea
       // que ninguna regla CSS puede pisar después.
-      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = ''; backdrop.style.opacity = '1'; return; }
+      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = ''; card.style.clipPath = ''; backdrop.style.opacity = '1'; return; }
+      // Reclamar el gesto YA — #wp-pm2-body es scrolleable, y aunque
+      // scrollTop esté en 0, el navegador igual intenta reconocer SU
+      // PROPIO gesto de scroll/rebote sobre ese toque en paralelo al
+      // nuestro (esto no pasa arrancando desde el hero, que no vive
+      // dentro del área scrolleable). Sin este preventDefault, el drag
+      // se sentía "dbil"/necesitaba más fuerza cuando arrancaba sobre la
+      // descripción o cualquier otro punto dentro del body.
+      e.preventDefault();
       moved = dy;
       const now = performance.now();
       const dt = now - lastT;
@@ -1656,7 +1667,14 @@ export class PlaceModal2 {
       // dura" ni "suelto del todo").
       const damped = dy < 220 ? dy : 220 + (dy - 220) * 0.28;
       card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)})`;
-      card.style.borderRadius = Math.max(18, Math.min(28, damped / 6)) + 'px'; // nunca por debajo del radio de fábrica
+      const liveRadius = Math.max(18, Math.min(28, damped / 6)); // nunca por debajo del radio de fábrica
+      card.style.borderRadius = liveRadius + 'px';
+      // clip-path es el recorte que realmente manda (ver el comentario
+      // largo en la regla base) — tiene que seguir al mismo radio en
+      // vivo, si no el recorte real se queda pegado en 18px mientras el
+      // border-radius (que ya no hace el trabajo de recortar, solo
+      // afecta la curva de la sombra) sigue creciendo.
+      card.style.clipPath = `inset(0 round ${liveRadius}px ${liveRadius}px 0 0)`;
       backdrop.style.opacity = String(Math.max(0.1, 1 - damped / 380));
     };
     const onUp = () => {
@@ -1674,11 +1692,14 @@ export class PlaceModal2 {
       card.style.transition = 'transform 0.34s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.3s ease';
       backdrop.style.transition = 'opacity 0.34s ease';
       card.style.transform = 'none';
-      card.style.borderRadius = ''; // vuelve al de fábrica — ver el comentario de arriba
+      card.style.borderRadius = ''; card.style.clipPath = ''; // vuelve al de fábrica — ver el comentario de arriba
       backdrop.style.opacity = '1';
     };
     card.addEventListener('pointerdown', onDown);
-    document.addEventListener('pointermove', onMove);
+    // { passive:false } — imprescindible: preventDefault() en onMove no
+    // hace nada si el listener queda marcado pasivo (el default para
+    // gestos táctiles en la mayoría de navegadores modernos).
+    document.addEventListener('pointermove', onMove, { passive: false });
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onUp);
   }
