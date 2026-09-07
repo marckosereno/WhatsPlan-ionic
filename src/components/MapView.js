@@ -2945,19 +2945,32 @@ export class MapView {
         preloadedHeroUrl: rawUrl,
         flipContext: {
           onDismiss: (heroRectNow, heroBgNow) => {
-            const backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              flyTo(backBridge, startRect, startRadius, startRot, 0.42);
-            }));
-            // El resto del slide reaparece EN PARALELO al vuelo de
-            // vuelta — se ve como que "estaba ahí todo el tiempo".
-            applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
-            setTimeout(() => {
-              cardClone.style.opacity = ''; // la tarjeta real vuelve a mostrarse
-              backBridge.remove();
-              wrap.style.pointerEvents = '';
-              clusterEditing = false; flipInProgress = false;
-            }, 440);
+            // try/finally: el cleanup de abajo (destrabar el slide,
+            // volver a mostrar la tarjeta real) tiene que correr SIEMPRE
+            // — si algo de acá arriba (crear el puente, animarlo,
+            // applyLayout) tirara una excepción, sin este resguardo el
+            // slide quedaba bloqueado (clusterEditing/pointerEvents
+            // pegados) para siempre, un estado que después se manifiesta
+            // como cosas raras al volver a tocarlo.
+            let backBridge = null;
+            try {
+              backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
+              requestAnimationFrame(() => requestAnimationFrame(() => {
+                flyTo(backBridge, startRect, startRadius, startRot, 0.42);
+              }));
+              // El resto del slide reaparece EN PARALELO al vuelo de
+              // vuelta — se ve como que "estaba ahí todo el tiempo".
+              applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
+            } catch (err) {
+              console.error('[FLIP] error en el vuelo de vuelta hacia el slide', err);
+            } finally {
+              setTimeout(() => {
+                cardClone.style.opacity = ''; // la tarjeta real vuelve a mostrarse
+                if (backBridge) backBridge.remove();
+                wrap.style.pointerEvents = '';
+                clusterEditing = false; flipInProgress = false;
+              }, 440);
+            }
           },
         },
       }) : null;
