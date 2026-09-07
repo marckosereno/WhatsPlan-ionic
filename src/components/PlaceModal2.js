@@ -321,6 +321,13 @@ export class PlaceModal2 {
       #wp-pm2-hero-bg.wp-pm2-hero-pending { opacity:0; }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.4);
+        /* El slide que asoma en el hueco de arriba (y en general lo que
+           sea que esté detrás) se ve DESENFOCADO, no solo oscurecido —
+           mismo lenguaje visual que un sheet nativo. backdrop-filter
+           actúa sobre lo que está DETRÁS del elemento, no sobre el
+           elemento en sí. */
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
       }
       #wp-pm2-card {
         position:absolute; left:0; right:0; bottom:0;
@@ -1540,9 +1547,22 @@ export class PlaceModal2 {
     const flipCtx = this._flipContext;
     this._flipContext = null;
     if (flipCtx) {
-      const heroEl = this._el.querySelector('#wp-pm2-hero');
-      const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
-      flipCtx.onDismiss(heroEl.getBoundingClientRect(), heroBg.style.backgroundImage);
+      // try/catch a propósito: si algo dentro de onDismiss (código de
+      // MapView, fuera de este archivo) tirara una excepción, sin este
+      // try TODO lo que sigue en hide() se corta a mitad de camino — la
+      // ficha no termina de limpiarse (footer menu, overflow del body,
+      // scroll handler, clase 'visible') y el slide de atrás tampoco
+      // recupera su estado. Varios de los síntomas reportados (topbar
+      // que parpadea, la galería apareciendo sola, el fondo del slide
+      // transparente) son compatibles con exactamente este tipo de
+      // corte a mitad de camino.
+      try {
+        const heroEl = this._el.querySelector('#wp-pm2-hero');
+        const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
+        flipCtx.onDismiss(heroEl.getBoundingClientRect(), heroBg.style.backgroundImage);
+      } catch (err) {
+        console.error('[PlaceModal2] error en flipContext.onDismiss — el cierre continúa igual', err);
+      }
     }
 
     this._el.classList.remove('wp-pm2-in');
@@ -1585,7 +1605,8 @@ export class PlaceModal2 {
 
     let dragging = false, startY = 0, moved = 0, lastY = 0, lastT = 0, velocity = 0;
     const DISMISS_DISTANCE = 130; // px
-    const DISMISS_VELOCITY = 0.6; // px/ms — un swipe rápido cierra aunque no haya llegado a la distancia
+    const DISMISS_VELOCITY = 0.9; // px/ms — antes 0.6: un toque chico con algo de inercia (el rebote natural del dedo al soltar) ya alcanzaba ese umbral y cerraba el sheet sin que la persona arrastrara en serio
+    const DISMISS_MIN_DISTANCE = 40; // px — un flick de velocidad alta pero de un par de píxeles (ruido de contacto, no un gesto real) tampoco debe cerrar
 
     const onDown = (e) => {
       // Solo si el contenido está scrolleado hasta arriba del todo — si
@@ -1620,7 +1641,7 @@ export class PlaceModal2 {
     const onUp = () => {
       if (!dragging) return;
       dragging = false;
-      const shouldDismiss = moved > DISMISS_DISTANCE || velocity > DISMISS_VELOCITY;
+      const shouldDismiss = moved > DISMISS_DISTANCE || (moved > DISMISS_MIN_DISTANCE && velocity > DISMISS_VELOCITY);
       if (shouldDismiss) {
         // No animar de vuelta a "fullscreen" antes de cerrar — deja la
         // card tal como quedó (achicada, redondeada) y hide() dispara su
