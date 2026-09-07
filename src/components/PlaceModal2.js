@@ -24,6 +24,7 @@ export class PlaceModal2 {
     el.innerHTML = `
       <div id="wp-pm2-backdrop"></div>
       <div id="wp-pm2-card">
+        <div id="wp-pm2-grabber"></div>
 
         <!-- WHITE OVERLAY grows upward on scroll -->
 <!-- TOPBAR -->
@@ -298,7 +299,14 @@ export class PlaceModal2 {
            y overflow:hidden para que el contenido (el hero incluido)
            respete ese radio en vez de tener las puntas cuadradas
            asomando por encima de la curva. */
-        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        /* Antes esto era env(safe-area-inset-top)+10px — en un teléfono
+           sin notch/dynamic island (safe-area-inset-top:0) eso dejaba un
+           margen de apenas 10px, casi imperceptible en pantalla: se veía
+           igual que full-bleed aunque técnicamente NO lo fuera. Subido a
+           un mínimo fijo de 46px (+ el área segura si el dispositivo la
+           tiene) para que el "sheet" se note sin ambigüedad en cualquier
+           teléfono. */
+        top: calc(env(safe-area-inset-top, 0px) + 46px);
         border-radius: 18px 18px 0 0;
         box-shadow: 0 -8px 28px rgba(0,0,0,0.22);
         opacity:0; transform:translateY(18px) scale(0.97);
@@ -327,6 +335,18 @@ export class PlaceModal2 {
          iba pegado al borde real de la pantalla), quedaría contado dos
          veces y el header se vería con un hueco de más arriba. */
       #wp-pm2-card > #wp-pm2-topbar { position:absolute; top:0; height:68px; padding-top:14px; }
+      /* Grabber — la barrita que indica "esto se puede arrastrar",
+         mismo lenguaje que cualquier sheet nativo (iOS lo llama así,
+         Android "drag handle"). Con blur + semi-transparencia propia
+         para leerse bien tanto sobre una foto clara como una oscura. */
+      #wp-pm2-grabber {
+        position:absolute; top:8px; left:50%; transform:translateX(-50%);
+        width:36px; height:5px; border-radius:999px;
+        background:rgba(255,255,255,0.75);
+        box-shadow:0 1px 3px rgba(0,0,0,0.25);
+        backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+        z-index:11; pointer-events:none;
+      }
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
       /* TOPBAR */
@@ -359,6 +379,12 @@ export class PlaceModal2 {
         opacity:0.4; /* JS la sube con el scroll */
         transition:opacity 0.05s linear;
       }
+      /* Igual que el topbar: position:fixed la sacaba del límite de la
+         card entera (que ahora empieza ~46px más abajo que el borde real
+         de la pantalla) — se notaba como una sombra de más asomando en
+         el hueco de arriba del sheet. Anclada a la card, no a la
+         pantalla completa. */
+      #wp-pm2-card > #wp-pm2-topbar-fade { position:absolute; top:0; height:100px; }
 
       /* Sombra blanca en el borde inferior — igual que la del top pero
          invertida (blanco abajo, transparente arriba), fija (no se anima
@@ -1573,7 +1599,11 @@ export class PlaceModal2 {
     const onMove = (e) => {
       if (!dragging) return;
       const dy = e.clientY - startY;
-      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = '0px'; backdrop.style.opacity = '1'; return; }
+      // '' en vez de '0px' — deja que vuelva a mandar el border-radius de
+      // fábrica (18px arriba, ver la regla de #wp-pm2-card) en lugar de
+      // dejarlo pegado en cuadrado para siempre con un valor en línea
+      // que ninguna regla CSS puede pisar después.
+      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = ''; backdrop.style.opacity = '1'; return; }
       moved = dy;
       const now = performance.now();
       const dt = now - lastT;
@@ -1584,7 +1614,7 @@ export class PlaceModal2 {
       // dura" ni "suelto del todo").
       const damped = dy < 220 ? dy : 220 + (dy - 220) * 0.28;
       card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)})`;
-      card.style.borderRadius = Math.min(28, damped / 6) + 'px';
+      card.style.borderRadius = Math.max(18, Math.min(28, damped / 6)) + 'px'; // nunca por debajo del radio de fábrica
       backdrop.style.opacity = String(Math.max(0.1, 1 - damped / 380));
     };
     const onUp = () => {
@@ -1602,7 +1632,7 @@ export class PlaceModal2 {
       card.style.transition = 'transform 0.34s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.3s ease';
       backdrop.style.transition = 'opacity 0.34s ease';
       card.style.transform = 'none';
-      card.style.borderRadius = '0px';
+      card.style.borderRadius = ''; // vuelve al de fábrica — ver el comentario de arriba
       backdrop.style.opacity = '1';
     };
     card.addEventListener('pointerdown', onDown);
