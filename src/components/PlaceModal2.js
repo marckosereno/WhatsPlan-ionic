@@ -263,7 +263,19 @@ export class PlaceModal2 {
     s.id = 'wp-pm2-css';
     s.textContent = `
       #wp-pm2 {
-        display:none; position:fixed; inset:0; z-index:2100;
+        display:none; position:fixed; inset:0;
+        /* 2100 alcanzaba de sobra contra el mapa normal, pero el slide de
+           cluster (y el puente que vuela desde ahí) vive a propósito en
+           z-index 100000+ — hasta 999999 el puente — para poder ganarle
+           SIEMPRE al fondo blanco de su propia pantalla (ver los
+           comentarios largos en MapView.js sobre por qué). Con 2100 acá,
+           la ficha terminaba re-abriéndose POR DEBAJO de todo eso: se
+           veía "transparente" porque en realidad era la ficha opaca
+           asomando débilmente a través del slide atenuado que sí estaba
+           por encima suyo, con las tarjetas del slide encima de todo.
+           Subida bien por encima de cualquier cosa que pueda estar
+           abierta detrás. */
+        z-index: 2000000;
         /* NO usar var(--wp-font) — esa variable está fijada globalmente a
            Avenir en styles/app.css:330, así que su fallback nunca se
            aplicaba y todo lo que hacía font-family:inherit heredaba
@@ -280,6 +292,15 @@ export class PlaceModal2 {
       #wp-pm2-backdrop { opacity:0; transition:opacity 0.32s ease-out; }
       #wp-pm2.wp-pm2-in #wp-pm2-backdrop { opacity:1; }
       #wp-pm2-card {
+        /* Sheet nativo tipo Ionic/iOS — no full-bleed hasta arriba: un
+           margen que deja asomar el backdrop (y lo que sea que esté
+           detrás, atenuado) arriba del todo, esquinas redondeadas ahí,
+           y overflow:hidden para que el contenido (el hero incluido)
+           respete ese radio en vez de tener las puntas cuadradas
+           asomando por encima de la curva. */
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -8px 28px rgba(0,0,0,0.22);
         opacity:0; transform:translateY(18px) scale(0.97);
         transition:opacity 0.34s ease-out, transform 0.42s cubic-bezier(0.34,1.56,0.64,1);
       }
@@ -294,15 +315,18 @@ export class PlaceModal2 {
         position:absolute; inset:0; background:rgba(0,0,0,0.4);
       }
       #wp-pm2-card {
-        position:absolute; inset:0;
+        position:absolute; left:0; right:0; bottom:0;
         background:#fff;
         display:flex; flex-direction:column;
         overflow:hidden;
-        transform:translateY(100%);
-        transition:transform 0.38s cubic-bezier(0.32,0.72,0,1);
       }
-      #wp-pm2-card > #wp-pm2-topbar { position:absolute; }
-      #wp-pm2.visible #wp-pm2-card { transform:translateY(0); }
+      /* La card entera ya está corrida hacia abajo por
+         env(safe-area-inset-top) (ver #wp-pm2-card más arriba) — si el
+         topbar TAMBIÉN sumara ese mismo margen en su padding-top (la
+         regla base de acá abajo lo hace, pensada para cuando el topbar
+         iba pegado al borde real de la pantalla), quedaría contado dos
+         veces y el header se vería con un hueco de más arriba. */
+      #wp-pm2-card > #wp-pm2-topbar { position:absolute; top:0; height:68px; padding-top:14px; }
 
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
       /* TOPBAR */
