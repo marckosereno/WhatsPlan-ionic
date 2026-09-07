@@ -306,7 +306,11 @@ export class PlaceModal2 {
            un mínimo fijo de 46px (+ el área segura si el dispositivo la
            tiene) para que el "sheet" se note sin ambigüedad en cualquier
            teléfono. */
-        top: calc(env(safe-area-inset-top, 0px) + 46px);
+        /* "Justo debajo del status bar" — el margen es prácticamente
+           solo el área segura en sí (más unos pocos px de aire), no un
+           hueco grande. El sheet arranca inmediatamente después de la
+           hora/batería, no a mitad de pantalla. */
+        top: calc(env(safe-area-inset-top, 0px) + 6px);
         border-radius: 18px 18px 0 0;
         box-shadow: 0 -8px 28px rgba(0,0,0,0.22);
         opacity:0; transform:translateY(18px) scale(0.97);
@@ -410,8 +414,16 @@ export class PlaceModal2 {
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
       #wp-pm2-activity-stack {
-        position:fixed;
-        top:calc(78px + env(safe-area-inset-top,0px));
+        /* Antes position:fixed (relativo a TODA la pantalla) — no seguía
+           el desplazamiento de la card cuando ésta pasó a ser un sheet
+           con margen arriba (top: calc(safe-area+Npx) en vez de 0). Con
+           position:absolute queda anclado a la card, en la misma caja de
+           coordenadas que el topbar — ya no hace falta sumar
+           env(safe-area-inset-top) de nuevo acá (la card entera ya está
+           corrida ese margen), mismo motivo que el ajuste que le hicimos
+           al topbar. */
+        position:absolute;
+        top:78px;
         right:2px;
         width:92px; height:118px;
         z-index:6; pointer-events:none;
@@ -519,6 +531,15 @@ export class PlaceModal2 {
         height:88vw; min-height:320px; max-height:460px;
         overflow:hidden; background:transparent;
         will-change:height;
+        /* Redundante con el border-radius de #wp-pm2-card (que ya
+           debería recortar esto vía overflow:hidden), pero en algunos
+           WebViews de Android/iOS el overflow:hidden del padre no
+           recorta de forma confiable el background-image de un hijo
+           position:absolute contra una esquina redondeada — quedan
+           triángulos blancos asomando en las puntas de arriba. Poniendo
+           el mismo radio ACÁ TAMBIÉN, el propio hero se recorta a sí
+           mismo sin depender de que el padre lo haga bien. */
+        border-radius: 18px 18px 0 0;
       }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
