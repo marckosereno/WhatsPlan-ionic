@@ -2868,7 +2868,15 @@ export class MapView {
     // no se cierra: se pausa (bloqueado, con un ligero zoom-out+fade en
     // todo lo que NO es la tarjeta tocada) y vuelve a la vida si la
     // ficha se cierra, con el mismo vuelo pero al revés.
+    // Evita que dos toques rápidos (o un toque justo mientras el vuelo
+    // anterior todavía está resolviéndose) disparen DOS flips a la vez —
+    // dos puentes/dos aperturas de ficha superpuestas podían dejar un
+    // puente huérfano en pantalla, que se veía como "aparece la imagen
+    // completa" al tocar después.
+    let flipInProgress = false;
     const flipCardToFicha = (hitEntry, place) => {
+      if (flipInProgress) return;
+      flipInProgress = true;
       const cardClone = hitEntry.clone;
       const startRect = cardClone.getBoundingClientRect();
       const cs = getComputedStyle(cardClone);
@@ -2908,10 +2916,17 @@ export class MapView {
       // ficha está arriba) y todo lo que NO es la tarjeta tocada hace un
       // ligero zoom-out + fade — "queda atrás" sin desaparecer del todo,
       // listo para volver si hace falta.
+      //
+      // wrap (el fondo/header/chips del slide) NO se atenúa — antes le
+      // bajaba la opacidad, pero eso vuelve transparente TODO lo de
+      // adentro, incluido su propio fondo blanco opaco: al arrastrar la
+      // ficha hacia abajo, en vez de ver el slide atenuado detrás, se
+      // veía el MAPA de verdad asomando a través del slide ya
+      // transparentado. El oscurecido correcto lo da el backdrop PROPIO
+      // de la ficha (rgba(0,0,0,0.4) en PlaceModal2) — con tal de que el
+      // slide se quede opaco debajo, ese backdrop hace el trabajo solo.
       clusterEditing = true;
       wrap.style.pointerEvents = 'none';
-      wrap.style.transition = 'opacity 0.32s ease';
-      wrap.style.opacity = '0.4';
       const others = clones.filter(c => c.clone !== cardClone);
       others.forEach(({ clone }) => {
         clone.style.transition = 'transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.32s ease';
@@ -2936,13 +2951,12 @@ export class MapView {
             }));
             // El resto del slide reaparece EN PARALELO al vuelo de
             // vuelta — se ve como que "estaba ahí todo el tiempo".
-            wrap.style.opacity = '1';
             applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
             setTimeout(() => {
               cardClone.style.opacity = ''; // la tarjeta real vuelve a mostrarse
               backBridge.remove();
               wrap.style.pointerEvents = '';
-              clusterEditing = false;
+              clusterEditing = false; flipInProgress = false;
             }, 440);
           },
         },
@@ -2951,8 +2965,8 @@ export class MapView {
       if (!targetRect) {
         // Por si algo salió mal (no debería) — no dejar todo pausado ni
         // el puente huérfano.
-        bridge.remove(); cardClone.style.opacity = ''; wrap.style.opacity = '1'; wrap.style.pointerEvents = '';
-        applyLayout(activeIdx, true); clusterEditing = false;
+        bridge.remove(); cardClone.style.opacity = ''; wrap.style.pointerEvents = '';
+        applyLayout(activeIdx, true); clusterEditing = false; flipInProgress = false;
         return;
       }
 
