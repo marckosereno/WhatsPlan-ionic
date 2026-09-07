@@ -2898,8 +2898,16 @@ export class MapView {
         document.body.appendChild(el);
         return el;
       };
-      const flyTo = (el, rect, radius, rot, duration = 0.46) => {
-        el.style.transition = `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s cubic-bezier(0.34,1.56,0.64,1), height ${duration}s cubic-bezier(0.34,1.56,0.64,1), border-radius ${duration * 0.9}s ease, transform ${duration}s cubic-bezier(0.34,1.56,0.64,1)`;
+      // La curva bouncy (cubic-bezier(0.34,1.56,0.64,1), con rebote/
+      // overshoot) se usa en el resto del slide para stickers/tarjetas
+      // que "aparecen" — pero para ESTE flip puntual (una foto
+      // convirtiéndose en el hero de la ficha) se sentía pesada/lenta:
+      // un rebote notorio no es lo que hace una transición nativa de
+      // foto-a-hero (la de Fotos de iOS, por ejemplo, decelera suave sin
+      // pasarse de largo). ease-out-expo, sin rebote, y más corta.
+      const flyTo = (el, rect, radius, rot, duration = 0.34) => {
+        const ease = 'cubic-bezier(0.22,1,0.36,1)';
+        el.style.transition = `left ${duration}s ${ease}, top ${duration}s ${ease}, width ${duration}s ${ease}, height ${duration}s ${ease}, border-radius ${duration * 0.85}s ease-out, transform ${duration}s ${ease}`;
         el.style.left = rect.left + 'px'; el.style.top = rect.top + 'px';
         el.style.width = rect.width + 'px'; el.style.height = rect.height + 'px';
         el.style.borderRadius = radius; el.style.transform = `rotate(${rot}deg)`;
@@ -2956,7 +2964,7 @@ export class MapView {
             try {
               backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
               requestAnimationFrame(() => requestAnimationFrame(() => {
-                flyTo(backBridge, startRect, startRadius, startRot, 0.42);
+                flyTo(backBridge, startRect, startRadius, startRot, 0.34);
               }));
               // El resto del slide reaparece EN PARALELO al vuelo de
               // vuelta — se ve como que "estaba ahí todo el tiempo".
@@ -2967,9 +2975,17 @@ export class MapView {
               setTimeout(() => {
                 cardClone.style.opacity = ''; // la tarjeta real vuelve a mostrarse
                 if (backBridge) backBridge.remove();
-                wrap.style.pointerEvents = '';
                 clusterEditing = false; flipInProgress = false;
-              }, 440);
+                // wrap (con el botón de editar en su header) se reactiva
+                // con un pequeño margen EXTRA aparte del resto del
+                // cleanup — un toque que llega justo cuando el layout
+                // todavía se está asentando visualmente puede caer en
+                // coordenadas que ya no corresponden a lo que la persona
+                // ve en pantalla. 120ms de margen no se notan como
+                // demora, pero alcanzan para que todo esté quieto antes
+                // de aceptar el próximo toque.
+                setTimeout(() => { wrap.style.pointerEvents = ''; }, 120);
+              }, 380);
             }
           },
         },
@@ -2990,7 +3006,7 @@ export class MapView {
       setTimeout(() => {
         if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
         bridge.remove();
-      }, 480);
+      }, 380);
     };
 
     requestAnimationFrame(() => {
