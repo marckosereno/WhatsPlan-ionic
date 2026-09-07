@@ -324,7 +324,17 @@ export class PlaceModal2 {
          otra. */
       #wp-pm2-hero-bg.wp-pm2-hero-pending { opacity:0; }
       #wp-pm2-backdrop {
-        position:absolute; inset:0; background:rgba(0,0,0,0.45);
+        /* ⚠️ MARCADOR DE DIAGNÓSTICO TEMPORAL — ⚠️
+           Este rosa fuerte NO es el diseño final. Es a propósito, para
+           confirmar de una vez si la app está cargando este archivo o
+           no. Si al abrir la ficha ves TODO detrás en rosa chicle en vez
+           de oscurecido normal, este archivo SÍ se está usando — ahí
+           seguimos con el resto de los arreglos y saco este color. Si NO
+           lo ves así, ninguno de los cambios de esta conversación está
+           llegando de verdad a tu teléfono — el problema es de
+           build/caché, no de este código, y hay que resolver eso
+           primero antes de seguir tocando nada acá. */
+        position:absolute; inset:0; background:rgba(255,0,170,0.6);
       }
       #wp-pm2-card {
         position:absolute; left:0; right:0; bottom:0;
