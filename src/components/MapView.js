@@ -2882,6 +2882,11 @@ export class MapView {
       const cs = getComputedStyle(cardClone);
       const startRadius = cardClone.style.borderRadius || cs.borderRadius;
       const startBgImage = cardClone.style.backgroundImage || cs.backgroundImage;
+      // Se guarda tal cual estaba — al restaurar la tarjeta hay que
+      // devolvérselo EXACTO, no vaciarlo (vaciar el inline style dejaría
+      // la tarjeta sin borde para siempre, perdiendo el marco blanco que
+      // sí es intencional en el slide).
+      const startBorder = cardClone.style.border || cs.border;
       // La rotación vive metida en el transform del clon original
       // (rotate(Xdeg) scale(Y)) — se extrae para que el puente arranque
       // EXACTO igual y la enderece junto con el resto del vuelo.
@@ -2916,7 +2921,18 @@ export class MapView {
       const bridge = makeFlyer(startRect, startRadius, startBgImage, startRot);
       // El clon original desaparece YA — el puente lo reemplaza
       // visualmente en el mismo lugar exacto, sin salto.
+      //
+      // opacity:0 sola venía dejando algo visible en algunos WebViews de
+      // Android (el mismo tipo de glitch de compositing que venimos
+      // viendo en el sheet de la ficha) — la tarjeta original hereda
+      // (via cloneNode) un borde blanco de 1.5-2px del sticker del mapa,
+      // y ese borde es sospechoso de ser la "línea blanca" que persistía
+      // incluso con opacity:0. visibility:hidden es más robusta —saca el
+      // elemento del árbol de render por completo, no solo lo hace
+      // transparente— y sacamos el borde explícitamente por las dudas.
       cardClone.style.opacity = '0';
+      cardClone.style.visibility = 'hidden';
+      cardClone.style.border = 'none';
 
       // Pausar el slide: se bloquea (reusa `clusterEditing`, la misma
       // bandera que ya frena drag/gestos durante la edición — acá con el
@@ -2973,7 +2989,7 @@ export class MapView {
               console.error('[FLIP] error en el vuelo de vuelta hacia el slide', err);
             } finally {
               setTimeout(() => {
-                cardClone.style.opacity = ''; // la tarjeta real vuelve a mostrarse
+                cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 if (backBridge) backBridge.remove();
                 clusterEditing = false; flipInProgress = false;
                 // wrap (con el botón de editar en su header) se reactiva
@@ -2994,7 +3010,7 @@ export class MapView {
       if (!targetRect) {
         // Por si algo salió mal (no debería) — no dejar todo pausado ni
         // el puente huérfano.
-        bridge.remove(); cardClone.style.opacity = ''; wrap.style.pointerEvents = '';
+        bridge.remove(); cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; wrap.style.pointerEvents = '';
         applyLayout(activeIdx, true); clusterEditing = false; flipInProgress = false;
         return;
       }
