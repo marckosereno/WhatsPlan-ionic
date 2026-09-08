@@ -332,7 +332,7 @@ export class PlaceModal2 {
       }
       #wp-pm2-card {
         position:absolute; left:0; right:0; bottom:0;
-        background:#fff;
+        background:#00ff00; /* ⚠️ DIAGNÓSTICO TEMPORAL: card = VERDE */
         display:flex; flex-direction:column;
         overflow:hidden;
         /* clip-path ADEMÁS de overflow:hidden+border-radius (no en vez
@@ -374,7 +374,7 @@ export class PlaceModal2 {
         padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
-        z-index:10; background:transparent;
+        z-index:10; background:#aa00ff; /* ⚠️ DIAGNÓSTICO TEMPORAL: topbar = MORADO (debería decir transparent) */
         overflow:hidden;
         font-family:'Inter Tight',sans-serif;
       }
@@ -394,10 +394,7 @@ export class PlaceModal2 {
            apenas perceptible en reposo; sigue intensificándose con el
            scroll (ver el JS) para cuando SÍ hace falta leer los íconos
            del header sobre una foto clara. */
-        background:linear-gradient(to bottom,
-          rgba(255,255,255,0.5) 0%,
-          rgba(255,255,255,0.22) 55%,
-          rgba(255,255,255,0) 100%);
+        background:#ff8800; /* ⚠️ DIAGNÓSTICO TEMPORAL: topbar-fade = NARANJA (sin gradiente) */
         backdrop-filter:blur(0.5px);
         -webkit-backdrop-filter:blur(0.5px);
         mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
@@ -545,7 +542,7 @@ export class PlaceModal2 {
       #wp-pm2-hero {
         position:absolute; top:0; left:0; right:0; z-index:5;
         height:88vw; min-height:320px; max-height:460px;
-        overflow:hidden; background:transparent;
+        overflow:hidden; background:#0000ff; /* ⚠️ DIAGNÓSTICO TEMPORAL: hero = AZUL */
         will-change:height;
         /* Redundante con el border-radius de #wp-pm2-card (que ya
            debería recortar esto vía overflow:hidden), pero en algunos
