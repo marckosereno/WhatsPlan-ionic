@@ -2836,6 +2836,21 @@ export class MapView {
       // tarjetas — sin saltos, y sin transición CSS por debajo (que
       // además iba a agregar SU PROPIO desfasaje) mientras se está
       // arrastrando a mano.
+      // Auto-reparación: el backdrop blanco dedicado (slideBackdrop, ver
+      // el comentario largo donde se crea) NUNCA debería desaparecer
+      // mientras el slide está vivo — pero si por algún motivo (una
+      // carrera con _openClusterExpand/_closeClusterExpand, un cleanup
+      // que corrió de más) terminó sacado del DOM, sin esto el mapa
+      // quedaba asomando transparente por el resto de la sesión del
+      // slide. Se verifica en cada render y se reconstruye sola si hace
+      // falta — no cuesta nada cuando todo está bien (una sola
+      // comprobación .isConnected), y evita que un bug puntual en OTRO
+      // lado deje el slide roto para siempre hasta cerrarlo y abrirlo de
+      // nuevo.
+      if (!slideBackdrop.isConnected) {
+        document.body.appendChild(slideBackdrop);
+      }
+
       if (collageBg) {
         const floorIdx = Math.max(0, Math.min(group.length - 1, Math.floor(idxVal)));
         const ceilIdx = Math.max(0, Math.min(group.length - 1, Math.ceil(idxVal)));
