@@ -558,6 +558,10 @@ export class PlaceModal2 {
          incl. detrás del hero) */
       #wp-pm2-content-area {
         position:relative; flex:1; overflow:hidden;
+        /* Una capa más de recorte, redundante con hero y card — barata
+           de agregar y por las dudas alguna de las otras dos no esté
+           agarrando en el dispositivo real. */
+        border-radius: 18px 18px 0 0;
       }
 
       /* HERO — overlay absoluto que se encoge (overflow:hidden) */
