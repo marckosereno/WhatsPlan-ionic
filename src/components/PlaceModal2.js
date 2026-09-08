@@ -314,11 +314,9 @@ export class PlaceModal2 {
            más de aire antes de que arranque el sheet. */
         top: calc(env(safe-area-inset-top, 0px) + 20px);
         border-radius: 18px 18px 0 0;
-        /* Sacado a modo de prueba — sospecha de que este blur (28px,
-           offset -8px) generaba un halo claro cerca de las esquinas que
-           se leía como "fondo blanco". Si las esquinas se ven limpias
-           ahora, era esto; si no, lo reincorporamos y seguimos buscando
-           por otro lado. */
+        /* La causa real de las esquinas blancas era #wp-pm2-topbar-fade
+           (ver su comentario largo más abajo), no esta sombra — restaurada. */
+        box-shadow: 0 -8px 28px rgba(0,0,0,0.22);
         opacity:0; transform:translateY(18px) scale(0.97);
         transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
       }
@@ -387,16 +385,25 @@ export class PlaceModal2 {
       #wp-pm2-topbar-fade {
         position:fixed; top:0; left:0; right:0;
         height:calc(env(safe-area-inset-top,20px) + 100px);
+        /* Antes 0.9/0.5 de opacidad en el gradiente + 0.4 de opacidad
+           base en el elemento — combinados, un blanco bastante fuerte
+           SIEMPRE presente sobre los primeros ~100px de la foto, incluso
+           sin haber scrolleado nada. Esto es casi seguro lo que se veía
+           como "esquinas blancas"/"línea blanca arriba" — no era un
+           problema de recorte del sheet en absoluto. Bajado a algo
+           apenas perceptible en reposo; sigue intensificándose con el
+           scroll (ver el JS) para cuando SÍ hace falta leer los íconos
+           del header sobre una foto clara. */
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.9) 0%,
-          rgba(255,255,255,0.5) 55%,
+          rgba(255,255,255,0.5) 0%,
+          rgba(255,255,255,0.22) 55%,
           rgba(255,255,255,0) 100%);
         backdrop-filter:blur(0.5px);
         -webkit-backdrop-filter:blur(0.5px);
         mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         z-index:9; pointer-events:none;
-        opacity:0.4; /* JS la sube con el scroll */
+        opacity:0.15; /* JS la sube con el scroll */
         transition:opacity 0.05s linear;
       }
       /* Igual que el topbar: position:fixed la sacaba del límite de la
@@ -1440,7 +1447,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.4';
+    topbarFade.style.opacity = '0.15'; // igual a la base nueva del CSS — ver el comentario largo en la regla #wp-pm2-topbar-fade
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1529,7 +1536,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
+        topbarFade.style.opacity = Math.min(1, 0.15 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
