@@ -351,6 +351,12 @@ export class PlaceModal2 {
            del mismo mecanismo de compositing y no sufre ese problema. */
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
+        /* isolation:isolate — fuerza su propio contexto de apilamiento,
+           un arreglo simple y bien documentado para este tipo de
+           glitch de compositing en WebViews de Android (border-radius/
+           clip-path que "gotea" o parpadea cuando el elemento vive
+           dentro de un padre con transform activo). */
+        isolation: isolate;
         /* Forzar una capa de composición GPU propia ANTES de que el
            navegador calcule el recorte — en varios WebViews de Android,
            clip-path/border-radius sin esto se calculan sobre una capa
@@ -562,6 +568,7 @@ export class PlaceModal2 {
            de agregar y por las dudas alguna de las otras dos no esté
            agarrando en el dispositivo real. */
         border-radius: 18px 18px 0 0;
+        isolation: isolate;
       }
 
       /* HERO — overlay absoluto que se encoge (overflow:hidden) */
@@ -588,6 +595,12 @@ export class PlaceModal2 {
            mecanismo de compositing. */
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
+        /* isolation:isolate — fuerza su propio contexto de apilamiento,
+           un arreglo simple y bien documentado para este tipo de
+           glitch de compositing en WebViews de Android (border-radius/
+           clip-path que "gotea" o parpadea cuando el elemento vive
+           dentro de un padre con transform activo). */
+        isolation: isolate;
         /* Forzar una capa de composición GPU propia ANTES de que el
            navegador calcule el recorte — en varios WebViews de Android,
            clip-path/border-radius sin esto se calculan sobre una capa
