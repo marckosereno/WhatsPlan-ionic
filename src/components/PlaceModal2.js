@@ -310,11 +310,17 @@ export class PlaceModal2 {
            solo el área segura en sí (más unos pocos px de aire), no un
            hueco grande. El sheet arranca inmediatamente después de la
            hora/batería, no a mitad de pantalla. */
-        top: calc(env(safe-area-inset-top, 0px) + 6px);
+        /* "Unos 20px abajo del status bar" — antes 6px, ahora un poco
+           más de aire antes de que arranque el sheet. */
+        top: calc(env(safe-area-inset-top, 0px) + 20px);
         border-radius: 18px 18px 0 0;
-        box-shadow: 0 -8px 28px rgba(0,0,0,0.22);
+        /* Sacado a modo de prueba — sospecha de que este blur (28px,
+           offset -8px) generaba un halo claro cerca de las esquinas que
+           se leía como "fondo blanco". Si las esquinas se ven limpias
+           ahora, era esto; si no, lo reincorporamos y seguimos buscando
+           por otro lado. */
         opacity:0; transform:translateY(18px) scale(0.97);
-        transition:opacity 0.34s ease-out, transform 0.42s cubic-bezier(0.34,1.56,0.64,1);
+        transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
       }
       #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
       /* Mientras el flip de una foto viene "volando" desde el slide, la
@@ -1620,7 +1626,7 @@ export class PlaceModal2 {
       if (card) { card.style.transform = ''; card.style.borderRadius = ''; card.style.clipPath = ''; card.style.transition = ''; }
       const backdrop = this._el.querySelector('#wp-pm2-backdrop');
       if (backdrop) { backdrop.style.opacity = ''; backdrop.style.transition = ''; }
-    }, 320);
+    }, 300);
   }
 
   // ── Drag-to-dismiss nativo ───────────────────────────────────────────
@@ -1682,15 +1688,16 @@ export class PlaceModal2 {
       // de dedo, como cualquier sheet nativo (nunca se siente "de goma
       // dura" ni "suelto del todo").
       const damped = dy < 220 ? dy : 220 + (dy - 220) * 0.28;
+      // Durante el drag SOLO se actualiza transform — es la única
+      // propiedad barata/acelerada por GPU en cada frame. Actualizar
+      // clip-path y border-radius en cada pointermove (como hacía antes)
+      // obliga al navegador a recalcular el recorte real en cada frame,
+      // que es caro — eso es lo que se sentía como lento/parpadeando.
+      // El radio se queda fijo en el de fábrica (18px, ya seteado por la
+      // regla base) durante TODO el arrastre; solo se pone bonito
+      // (crece un poco) recién al soltar, en onUp, UNA sola vez, no 60
+      // veces por segundo.
       card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)})`;
-      const liveRadius = Math.max(18, Math.min(28, damped / 6)); // nunca por debajo del radio de fábrica
-      card.style.borderRadius = liveRadius + 'px';
-      // clip-path es el recorte que realmente manda (ver el comentario
-      // largo en la regla base) — tiene que seguir al mismo radio en
-      // vivo, si no el recorte real se queda pegado en 18px mientras el
-      // border-radius (que ya no hace el trabajo de recortar, solo
-      // afecta la curva de la sombra) sigue creciendo.
-      card.style.clipPath = `inset(0 round ${liveRadius}px ${liveRadius}px 0 0)`;
       backdrop.style.opacity = String(Math.max(0.1, 1 - damped / 380));
     };
     const onUp = () => {
