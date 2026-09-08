@@ -320,7 +320,13 @@ export class PlaceModal2 {
         opacity:0; transform:translateY(18px) scale(0.97);
         transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
       }
-      #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
+      /* translateZ(0) en vez de "none" — visualmente es lo mismo (no
+         mueve nada), pero mantiene la capa GPU propia que fuerza el
+         recorte correcto de clip-path (ver el comentario largo en la
+         regla base de #wp-pm2-card). Con "none" se perdía esa capa justo
+         en el estado de reposo normal — el momento en que más se nota
+         el problema. */
+      #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:translateZ(0); }
       /* Mientras el flip de una foto viene "volando" desde el slide, la
          foto real del hero se mantiene invisible — revealHeroNow() la
          hace aparecer recién cuando el clon que vuela llega a destino,
@@ -345,6 +351,14 @@ export class PlaceModal2 {
            del mismo mecanismo de compositing y no sufre ese problema. */
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
+        /* Forzar una capa de composición GPU propia ANTES de que el
+           navegador calcule el recorte — en varios WebViews de Android,
+           clip-path/border-radius sin esto se calculan sobre una capa
+           "plana" que a veces no respeta el recorte en las puntas,
+           dejando asomar el fondo real del elemento (blanco acá) en las
+           esquinas. translateZ(0) es el truco estándar para esto. */
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
       }
       /* Grabber — la barrita que indica "esto se puede arrastrar",
          mismo lenguaje que cualquier sheet nativo (iOS lo llama así,
@@ -570,6 +584,14 @@ export class PlaceModal2 {
            mecanismo de compositing. */
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
+        /* Forzar una capa de composición GPU propia ANTES de que el
+           navegador calcule el recorte — en varios WebViews de Android,
+           clip-path/border-radius sin esto se calculan sobre una capa
+           "plana" que a veces no respeta el recorte en las puntas,
+           dejando asomar el fondo real del elemento (blanco acá) en las
+           esquinas. translateZ(0) es el truco estándar para esto. */
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
       }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
@@ -1682,7 +1704,7 @@ export class PlaceModal2 {
       // fábrica (18px arriba, ver la regla de #wp-pm2-card) en lugar de
       // dejarlo pegado en cuadrado para siempre con un valor en línea
       // que ninguna regla CSS puede pisar después.
-      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = ''; card.style.clipPath = ''; backdrop.style.opacity = '1'; return; }
+      if (dy <= 0) { moved = 0; card.style.transform = 'translateZ(0)'; card.style.borderRadius = ''; card.style.clipPath = ''; backdrop.style.opacity = '1'; return; }
       // Reclamar el gesto YA — #wp-pm2-body es scrolleable, y aunque
       // scrollTop esté en 0, el navegador igual intenta reconocer SU
       // PROPIO gesto de scroll/rebote sobre ese toque en paralelo al
@@ -1709,7 +1731,7 @@ export class PlaceModal2 {
       // regla base) durante TODO el arrastre; solo se pone bonito
       // (crece un poco) recién al soltar, en onUp, UNA sola vez, no 60
       // veces por segundo.
-      card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)})`;
+      card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)}) translateZ(0)`;
       backdrop.style.opacity = String(Math.max(0.1, 1 - damped / 380));
     };
     const onUp = () => {
@@ -1733,7 +1755,7 @@ export class PlaceModal2 {
       }
       card.style.transition = 'transform 0.34s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.3s ease';
       backdrop.style.transition = 'opacity 0.34s ease';
-      card.style.transform = 'none';
+      card.style.transform = 'translateZ(0)';
       card.style.borderRadius = ''; card.style.clipPath = ''; // vuelve al de fábrica — ver el comentario de arriba
       backdrop.style.opacity = '1';
     };
