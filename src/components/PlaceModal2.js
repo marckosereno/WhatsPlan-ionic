@@ -314,19 +314,15 @@ export class PlaceModal2 {
            más de aire antes de que arranque el sheet. */
         top: calc(env(safe-area-inset-top, 0px) + 20px);
         border-radius: 18px 18px 0 0;
-        /* La causa real de las esquinas blancas era #wp-pm2-topbar-fade
-           (ver su comentario largo más abajo), no esta sombra — restaurada. */
-        box-shadow: 0 -8px 28px rgba(0,0,0,0.22);
+        /* Sacado a modo de prueba — sospecha de que este blur (28px,
+           offset -8px) generaba un halo claro cerca de las esquinas que
+           se leía como "fondo blanco". Si las esquinas se ven limpias
+           ahora, era esto; si no, lo reincorporamos y seguimos buscando
+           por otro lado. */
         opacity:0; transform:translateY(18px) scale(0.97);
         transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
       }
-      /* translateZ(0) en vez de "none" — visualmente es lo mismo (no
-         mueve nada), pero mantiene la capa GPU propia que fuerza el
-         recorte correcto de clip-path (ver el comentario largo en la
-         regla base de #wp-pm2-card). Con "none" se perdía esa capa justo
-         en el estado de reposo normal — el momento en que más se nota
-         el problema. */
-      #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:translateZ(0); }
+      #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
       /* Mientras el flip de una foto viene "volando" desde el slide, la
          foto real del hero se mantiene invisible — revealHeroNow() la
          hace aparecer recién cuando el clon que vuela llega a destino,
@@ -351,21 +347,14 @@ export class PlaceModal2 {
            del mismo mecanismo de compositing y no sufre ese problema. */
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
-        /* isolation:isolate — fuerza su propio contexto de apilamiento,
-           un arreglo simple y bien documentado para este tipo de
-           glitch de compositing en WebViews de Android (border-radius/
-           clip-path que "gotea" o parpadea cuando el elemento vive
-           dentro de un padre con transform activo). */
-        isolation: isolate;
-        /* Forzar una capa de composición GPU propia ANTES de que el
-           navegador calcule el recorte — en varios WebViews de Android,
-           clip-path/border-radius sin esto se calculan sobre una capa
-           "plana" que a veces no respeta el recorte en las puntas,
-           dejando asomar el fondo real del elemento (blanco acá) en las
-           esquinas. translateZ(0) es el truco estándar para esto. */
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
       }
+      /* La card entera ya está corrida hacia abajo por
+         env(safe-area-inset-top) (ver #wp-pm2-card más arriba) — si el
+         topbar TAMBIÉN sumara ese mismo margen en su padding-top (la
+         regla base de acá abajo lo hace, pensada para cuando el topbar
+         iba pegado al borde real de la pantalla), quedaría contado dos
+         veces y el header se vería con un hueco de más arriba. */
+      #wp-pm2-card > #wp-pm2-topbar { position:absolute; top:0; height:68px; padding-top:14px; }
       /* Grabber — la barrita que indica "esto se puede arrastrar",
          mismo lenguaje que cualquier sheet nativo (iOS lo llama así,
          Android "drag handle"). Con blur + semi-transparencia propia
@@ -382,22 +371,9 @@ export class PlaceModal2 {
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
       /* TOPBAR */
       #wp-pm2-topbar {
-        /* Antes position:fixed (relativo a TODA la pantalla) + una
-           regla aparte "#wp-pm2-card > #wp-pm2-topbar" que trataba de
-           pisarlo a position:absolute. La especificidad de esa regla
-           GANABA en teoría, pero un elemento position:fixed de verdad
-           escapa al overflow/clip-path de sus ancestros salvo casos
-           particulares — en la práctica el topbar seguía comportándose
-           como fixed: se veía con esquinas cuadradas (nunca respetaba
-           la curva del sheet) y, al arrastrar el sheet hacia abajo (que
-           mueve la card con transform), el topbar se quedaba QUIETO en
-           vez de acompañar el movimiento — de ahí que "las esquinas
-           blancas desaparecían" al hacer drag: en realidad era el
-           topbar quedándose atrás, no un recorte que se arreglaba solo.
-           Una sola regla, position:absolute desde el vamos, sin
-           ambigüedad ni pelea de especificidad. */
-        position:absolute; top:0; left:0; right:0;
-        height:68px; padding-top:14px;
+        position:fixed; top:0; left:0; right:0;
+        height:calc(68px + env(safe-area-inset-top,0px));
+        padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
@@ -409,34 +385,26 @@ export class PlaceModal2 {
          app.css (ion-app::before) — acá con control propio para poder
          reaccionar al scroll (la nativa es estática). */
       #wp-pm2-topbar-fade {
-        /* Mismo problema y mismo arreglo que #wp-pm2-topbar: dos reglas
-           separadas (una position:fixed de base, otra tratando de
-           pisarla a absolute) no garantizan el resultado esperado en la
-           práctica — un position:fixed real no acompaña el transform de
-           la card al arrastrar, y no se recorta de forma confiable por
-           el overflow/clip-path del padre. Una sola regla, sin pelea de
-           especificidad. */
-        position:absolute; top:0; left:0; right:0;
-        height:100px;
-        /* Antes 0.9/0.5 de opacidad en el gradiente + 0.4 de opacidad
-           base en el elemento — combinados, un blanco bastante fuerte
-           SIEMPRE presente sobre los primeros ~100px de la foto, incluso
-           sin haber scrolleado nada. Bajado a algo apenas perceptible en
-           reposo; sigue intensificándose con el scroll (ver el JS) para
-           cuando SÍ hace falta leer los íconos del header sobre una foto
-           clara. */
+        position:fixed; top:0; left:0; right:0;
+        height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.5) 0%,
-          rgba(255,255,255,0.22) 55%,
+          rgba(255,255,255,0.9) 0%,
+          rgba(255,255,255,0.5) 55%,
           rgba(255,255,255,0) 100%);
         backdrop-filter:blur(0.5px);
         -webkit-backdrop-filter:blur(0.5px);
         mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         z-index:9; pointer-events:none;
-        opacity:0.15; /* JS la sube con el scroll */
+        opacity:0.4; /* JS la sube con el scroll */
         transition:opacity 0.05s linear;
       }
+      /* Igual que el topbar: position:fixed la sacaba del límite de la
+         card entera (que ahora empieza ~46px más abajo que el borde real
+         de la pantalla) — se notaba como una sombra de más asomando en
+         el hueco de arriba del sheet. Anclada a la card, no a la
+         pantalla completa. */
+      #wp-pm2-card > #wp-pm2-topbar-fade { position:absolute; top:0; height:100px; }
 
       /* Sombra blanca en el borde inferior — igual que la del top pero
          invertida (blanco abajo, transparente arriba), fija (no se anima
@@ -564,11 +532,6 @@ export class PlaceModal2 {
          incl. detrás del hero) */
       #wp-pm2-content-area {
         position:relative; flex:1; overflow:hidden;
-        /* Una capa más de recorte, redundante con hero y card — barata
-           de agregar y por las dudas alguna de las otras dos no esté
-           agarrando en el dispositivo real. */
-        border-radius: 18px 18px 0 0;
-        isolation: isolate;
       }
 
       /* HERO — overlay absoluto que se encoge (overflow:hidden) */
@@ -595,20 +558,6 @@ export class PlaceModal2 {
            mecanismo de compositing. */
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
-        /* isolation:isolate — fuerza su propio contexto de apilamiento,
-           un arreglo simple y bien documentado para este tipo de
-           glitch de compositing en WebViews de Android (border-radius/
-           clip-path que "gotea" o parpadea cuando el elemento vive
-           dentro de un padre con transform activo). */
-        isolation: isolate;
-        /* Forzar una capa de composición GPU propia ANTES de que el
-           navegador calcule el recorte — en varios WebViews de Android,
-           clip-path/border-radius sin esto se calculan sobre una capa
-           "plana" que a veces no respeta el recorte en las puntas,
-           dejando asomar el fondo real del elemento (blanco acá) en las
-           esquinas. translateZ(0) es el truco estándar para esto. */
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
       }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
@@ -1491,7 +1440,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.15'; // igual a la base nueva del CSS — ver el comentario largo en la regla #wp-pm2-topbar-fade
+    topbarFade.style.opacity = '0.4';
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1580,7 +1529,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.15 + prog * 2.2);
+        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
@@ -1721,7 +1670,7 @@ export class PlaceModal2 {
       // fábrica (18px arriba, ver la regla de #wp-pm2-card) en lugar de
       // dejarlo pegado en cuadrado para siempre con un valor en línea
       // que ninguna regla CSS puede pisar después.
-      if (dy <= 0) { moved = 0; card.style.transform = 'translateZ(0)'; card.style.borderRadius = ''; card.style.clipPath = ''; backdrop.style.opacity = '1'; return; }
+      if (dy <= 0) { moved = 0; card.style.transform = 'none'; card.style.borderRadius = ''; card.style.clipPath = ''; backdrop.style.opacity = '1'; return; }
       // Reclamar el gesto YA — #wp-pm2-body es scrolleable, y aunque
       // scrollTop esté en 0, el navegador igual intenta reconocer SU
       // PROPIO gesto de scroll/rebote sobre ese toque en paralelo al
@@ -1748,7 +1697,7 @@ export class PlaceModal2 {
       // regla base) durante TODO el arrastre; solo se pone bonito
       // (crece un poco) recién al soltar, en onUp, UNA sola vez, no 60
       // veces por segundo.
-      card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)}) translateZ(0)`;
+      card.style.transform = `translateY(${damped}px) scale(${Math.max(0.93, 1 - damped / 2400)})`;
       backdrop.style.opacity = String(Math.max(0.1, 1 - damped / 380));
     };
     const onUp = () => {
@@ -1772,7 +1721,7 @@ export class PlaceModal2 {
       }
       card.style.transition = 'transform 0.34s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.3s ease';
       backdrop.style.transition = 'opacity 0.34s ease';
-      card.style.transform = 'translateZ(0)';
+      card.style.transform = 'none';
       card.style.borderRadius = ''; card.style.clipPath = ''; // vuelve al de fábrica — ver el comentario de arriba
       backdrop.style.opacity = '1';
     };
