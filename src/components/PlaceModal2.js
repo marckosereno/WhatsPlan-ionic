@@ -332,7 +332,7 @@ export class PlaceModal2 {
       }
       #wp-pm2-card {
         position:absolute; left:0; right:0; bottom:0;
-        background:#00ff00; /* ⚠️ DIAGNÓSTICO TEMPORAL: card = VERDE */
+        background:#fff;
         display:flex; flex-direction:column;
         overflow:hidden;
         /* clip-path ADEMÁS de overflow:hidden+border-radius (no en vez
@@ -346,13 +346,6 @@ export class PlaceModal2 {
         clip-path: inset(0 round 18px 18px 0 0);
         -webkit-clip-path: inset(0 round 18px 18px 0 0);
       }
-      /* La card entera ya está corrida hacia abajo por
-         env(safe-area-inset-top) (ver #wp-pm2-card más arriba) — si el
-         topbar TAMBIÉN sumara ese mismo margen en su padding-top (la
-         regla base de acá abajo lo hace, pensada para cuando el topbar
-         iba pegado al borde real de la pantalla), quedaría contado dos
-         veces y el header se vería con un hueco de más arriba. */
-      #wp-pm2-card > #wp-pm2-topbar { position:absolute; top:0; height:68px; padding-top:14px; }
       /* Grabber — la barrita que indica "esto se puede arrastrar",
          mismo lenguaje que cualquier sheet nativo (iOS lo llama así,
          Android "drag handle"). Con blur + semi-transparencia propia
@@ -369,12 +362,25 @@ export class PlaceModal2 {
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
       /* TOPBAR */
       #wp-pm2-topbar {
-        position:fixed; top:0; left:0; right:0;
-        height:calc(68px + env(safe-area-inset-top,0px));
-        padding-top:env(safe-area-inset-top,0px);
+        /* Antes position:fixed (relativo a TODA la pantalla) + una
+           regla aparte "#wp-pm2-card > #wp-pm2-topbar" que trataba de
+           pisarlo a position:absolute. La especificidad de esa regla
+           GANABA en teoría, pero un elemento position:fixed de verdad
+           escapa al overflow/clip-path de sus ancestros salvo casos
+           particulares — en la práctica el topbar seguía comportándose
+           como fixed: se veía con esquinas cuadradas (nunca respetaba
+           la curva del sheet) y, al arrastrar el sheet hacia abajo (que
+           mueve la card con transform), el topbar se quedaba QUIETO en
+           vez de acompañar el movimiento — de ahí que "las esquinas
+           blancas desaparecían" al hacer drag: en realidad era el
+           topbar quedándose atrás, no un recorte que se arreglaba solo.
+           Una sola regla, position:absolute desde el vamos, sin
+           ambigüedad ni pelea de especificidad. */
+        position:absolute; top:0; left:0; right:0;
+        height:68px; padding-top:14px;
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
-        z-index:10; background:#aa00ff; /* ⚠️ DIAGNÓSTICO TEMPORAL: topbar = MORADO (debería decir transparent) */
+        z-index:10; background:transparent;
         overflow:hidden;
         font-family:'Inter Tight',sans-serif;
       }
@@ -383,18 +389,26 @@ export class PlaceModal2 {
          app.css (ion-app::before) — acá con control propio para poder
          reaccionar al scroll (la nativa es estática). */
       #wp-pm2-topbar-fade {
-        position:fixed; top:0; left:0; right:0;
-        height:calc(env(safe-area-inset-top,20px) + 100px);
+        /* Mismo problema y mismo arreglo que #wp-pm2-topbar: dos reglas
+           separadas (una position:fixed de base, otra tratando de
+           pisarla a absolute) no garantizan el resultado esperado en la
+           práctica — un position:fixed real no acompaña el transform de
+           la card al arrastrar, y no se recorta de forma confiable por
+           el overflow/clip-path del padre. Una sola regla, sin pelea de
+           especificidad. */
+        position:absolute; top:0; left:0; right:0;
+        height:100px;
         /* Antes 0.9/0.5 de opacidad en el gradiente + 0.4 de opacidad
            base en el elemento — combinados, un blanco bastante fuerte
            SIEMPRE presente sobre los primeros ~100px de la foto, incluso
-           sin haber scrolleado nada. Esto es casi seguro lo que se veía
-           como "esquinas blancas"/"línea blanca arriba" — no era un
-           problema de recorte del sheet en absoluto. Bajado a algo
-           apenas perceptible en reposo; sigue intensificándose con el
-           scroll (ver el JS) para cuando SÍ hace falta leer los íconos
-           del header sobre una foto clara. */
-        background:#ff8800; /* ⚠️ DIAGNÓSTICO TEMPORAL: topbar-fade = NARANJA (sin gradiente) */
+           sin haber scrolleado nada. Bajado a algo apenas perceptible en
+           reposo; sigue intensificándose con el scroll (ver el JS) para
+           cuando SÍ hace falta leer los íconos del header sobre una foto
+           clara. */
+        background:linear-gradient(to bottom,
+          rgba(255,255,255,0.5) 0%,
+          rgba(255,255,255,0.22) 55%,
+          rgba(255,255,255,0) 100%);
         backdrop-filter:blur(0.5px);
         -webkit-backdrop-filter:blur(0.5px);
         mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
@@ -403,12 +417,6 @@ export class PlaceModal2 {
         opacity:0.15; /* JS la sube con el scroll */
         transition:opacity 0.05s linear;
       }
-      /* Igual que el topbar: position:fixed la sacaba del límite de la
-         card entera (que ahora empieza ~46px más abajo que el borde real
-         de la pantalla) — se notaba como una sombra de más asomando en
-         el hueco de arriba del sheet. Anclada a la card, no a la
-         pantalla completa. */
-      #wp-pm2-card > #wp-pm2-topbar-fade { position:absolute; top:0; height:100px; }
 
       /* Sombra blanca en el borde inferior — igual que la del top pero
          invertida (blanco abajo, transparente arriba), fija (no se anima
@@ -542,7 +550,7 @@ export class PlaceModal2 {
       #wp-pm2-hero {
         position:absolute; top:0; left:0; right:0; z-index:5;
         height:88vw; min-height:320px; max-height:460px;
-        overflow:hidden; background:#0000ff; /* ⚠️ DIAGNÓSTICO TEMPORAL: hero = AZUL */
+        overflow:hidden; background:transparent;
         will-change:height;
         /* Redundante con el border-radius de #wp-pm2-card (que ya
            debería recortar esto vía overflow:hidden), pero en algunos
