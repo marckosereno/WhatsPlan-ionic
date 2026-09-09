@@ -335,8 +335,12 @@ function injectLandmarkStyles() {
       transition: opacity 0.38s cubic-bezier(0.34,1.56,0.64,1), transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
     }
     .wp-ce-collage.wp-ce-chrome-in .wp-ce-collage-header { opacity: 1; transform: translateY(0); }
+    /* .wp-ce-cback (volver) va a 44px, igual que #wp-pm2-back en la
+       ficha (PlaceModal2) — son el mismo rol visual en las dos
+       pantallas, tienen que verse idénticos. Los demás botones
+       (compartir/más) se quedan en 40px, igual que .wp-pm2-tb-btn. */
     .wp-ce-cback, .wp-ce-cbtn {
-      width: 40px; height: 40px; border-radius: 9999px; border: none; flex-shrink: 0;
+      border-radius: 9999px; border: none; flex-shrink: 0;
       background: rgba(255,255,255,0.88);
       backdrop-filter: blur(16px) saturate(1.8); -webkit-backdrop-filter: blur(16px) saturate(1.8);
       box-shadow: 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
@@ -344,6 +348,8 @@ function injectLandmarkStyles() {
       cursor: pointer; -webkit-tap-highlight-color: transparent;
       transition: transform 0.15s;
     }
+    .wp-ce-cback { width: 44px; height: 44px; }
+    .wp-ce-cbtn { width: 40px; height: 40px; }
     .wp-ce-cback:active, .wp-ce-cbtn:active { transform: scale(0.92); }
     .wp-ce-ctitle {
       margin-left: 12px; flex: 1 1 auto; min-width: 0;
@@ -2113,6 +2119,17 @@ export class MapView {
   // posición real de arranque hasta ahí (Invert+Play) — el ojo lee la
   // pantalla nueva como si "creciera" del propio pin, no como un corte.
   _openClusterExpand(group, customDef, stickerEl) {
+    // Si el slide actual está PAUSADO con la ficha abierta arriba (el
+    // flip de una tarjeta), NO se lo destruye — el gancho de cierre de
+    // la ficha (flipContext.onDismiss) todavía tiene referencias vivas
+    // a ese wrap/clones para poder "reanudarlo" cuando la ficha cierre.
+    // Si se lo destruye ACÁ (por cualquier motivo raro que dispare un
+    // segundo _openClusterExpand mientras eso pasa), ese onDismiss
+    // termina intentando reanudar un slide que ya no existe — ahí es
+    // donde el fondo se queda transparente y todo se ve amontonado con
+    // el mapa. Mientras el flip esté activo, un intento de abrir otro
+    // cluster simplemente se ignora.
+    if (this._slideFlipActive) return;
     if (this._clusterExpandEl) this._closeClusterExpand();
 
     // Cancelar YA cualquier timer de long-press que haya quedado corriendo
@@ -2909,6 +2926,11 @@ export class MapView {
     const flipCardToFicha = (hitEntry, place) => {
       if (flipInProgress) return;
       flipInProgress = true;
+      // Instancia-level (no local a este closure) — _openClusterExpand
+      // lo consulta para no destruir este slide pausado si algo dispara
+      // un segundo intento de abrir un cluster mientras la ficha está
+      // arriba. Ver el comentario largo ahí.
+      this._slideFlipActive = true;
       // Si esto se dispara MUY rápido después de abrir el slide (la
       // persona toca una tarjeta antes de que la apertura del slide
       // termine de asentarse), es posible agarrar al slide a mitad de
@@ -3030,7 +3052,7 @@ export class MapView {
               setTimeout(() => {
                 cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 if (backBridge) backBridge.remove();
-                clusterEditing = false; flipInProgress = false;
+                clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
                 // wrap (con el botón de editar en su header) se reactiva
                 // con un pequeño margen EXTRA aparte del resto del
                 // cleanup — un toque que llega justo cuando el layout
@@ -3050,7 +3072,7 @@ export class MapView {
         // Por si algo salió mal (no debería) — no dejar todo pausado ni
         // el puente huérfano.
         bridge.remove(); cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; wrap.style.pointerEvents = '';
-        applyLayout(activeIdx, true); clusterEditing = false; flipInProgress = false;
+        applyLayout(activeIdx, true); clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
         return;
       }
 
