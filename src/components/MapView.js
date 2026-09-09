@@ -2909,6 +2909,13 @@ export class MapView {
     const flipCardToFicha = (hitEntry, place) => {
       if (flipInProgress) return;
       flipInProgress = true;
+      // Si esto se dispara MUY rápido después de abrir el slide (la
+      // persona toca una tarjeta antes de que la apertura del slide
+      // termine de asentarse), es posible agarrar al slide a mitad de
+      // su propio setup — mismo motivo que el auto-heal de applyLayout,
+      // pero ACÁ, antes de pausar nada, para no pausar un slide que
+      // todavía no tiene su fondo bien puesto.
+      if (!slideBackdrop.isConnected) document.body.appendChild(slideBackdrop);
       const cardClone = hitEntry.clone;
       const startRect = cardClone.getBoundingClientRect();
       const cs = getComputedStyle(cardClone);
