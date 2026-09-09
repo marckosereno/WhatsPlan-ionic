@@ -19,28 +19,11 @@ export class PlaceModal2 {
   // ── BUILD ─────────────────────────────────────────────────────────
   _build() {
     if (document.getElementById('wp-pm2')) return;
-    // Antes: un <div> a mano, position:fixed, con backdrop/grabber/drag
-    // hechos a pulso — y ahí es donde vivían los glitches de compositing
-    // de WebView que veníamos persiguiendo (esquinas que se recortaban
-    // mal, parpadeo al arrastrar). <ion-modal> con breakpoints es el
-    // componente NATIVO de Ionic para exactamente este patrón — maneja
-    // backdrop, drag-to-dismiss y el redondeo del sheet con su propia
-    // implementación ya probada en producción por Ionic, sin que
-    // nosotros tengamos que reinventar nada de eso a mano.
-    const el = document.createElement('ion-modal');
+    // Volvimos a fullscreen — el <div> a mano de antes, sin ion-modal.
+    const el = document.createElement('div');
     el.id = 'wp-pm2';
-    el.breakpoints = [0, 1];
-    el.initialBreakpoint = 1;
-    el.handle = true;
-    el.backdropDismiss = true;
-    el.showBackdrop = true;
-    el.cssClass = 'wp-pm2-ionsheet';
-    // Corre SIEMPRE que el modal termina de cerrarse — sin importar si
-    // el cierre lo pedimos nosotros (hide() → dismiss()) o lo hizo el
-    // usuario directo (drag nativo, tap en el backdrop). Ver el
-    // comentario largo en hide()/_onModalDidDismiss().
-    el.addEventListener('ionModalDidDismiss', () => this._onModalDidDismiss());
     el.innerHTML = `
+      <div id="wp-pm2-backdrop"></div>
       <div id="wp-pm2-card">
 
         <!-- WHITE OVERLAY grows upward on scroll -->
@@ -243,19 +226,7 @@ export class PlaceModal2 {
         </div>
 
       </div><!-- /card -->
-    `;
-    (document.querySelector('ion-app') || document.body).appendChild(el);
-    this._el = el;
 
-    // El lightbox se crea APARTE, como hermano del ion-modal (no
-    // adentro) — aprendimos con el topbar que un position:fixed DENTRO
-    // de un elemento con transform activo (que es justo lo que usa
-    // ion-modal para animarse) no se comporta como fixed de verdad
-    // contra la pantalla real, sino contra la caja del propio ancestro
-    // transformado. El lightbox necesita cubrir la pantalla ENTERA
-    // siempre, sin importar en qué estado esté el sheet.
-    const lightbox = document.createElement('div');
-    lightbox.innerHTML = `
       <!-- LIGHTBOX — carrusel de fotos a pantalla completa, con swipe -->
       <div id="wp-pm2-lightbox">
         <button id="wp-pm2-lb-close">
@@ -265,9 +236,9 @@ export class PlaceModal2 {
         <div id="wp-pm2-lb-track"></div>
       </div>
     `;
-    const lightboxEl = lightbox.firstElementChild;
-    (document.querySelector('ion-app') || document.body).appendChild(lightboxEl);
-    this._lightboxEl = lightboxEl;
+    document.body.appendChild(el);
+    this._el = el;
+    this._lightboxEl = el.querySelector('#wp-pm2-lightbox'); // vive adentro de nuevo
 
     this._injectCSS();
     this._wireEvents();
@@ -294,16 +265,28 @@ export class PlaceModal2 {
     const s = document.createElement('style');
     s.id = 'wp-pm2-css';
     s.textContent = `
-      /* #wp-pm2 es ahora un <ion-modal> real — Ionic maneja su propio
-         display/position/z-index/backdrop/redondeo/drag internamente.
-         No se le pisa nada de eso acá; solo la fuente, que si no se
-         fuerza acá hereda Avenir global (ver styles/app.css:330). */
       #wp-pm2 {
+        display:none; position:fixed; inset:0; z-index:2100;
+        /* NO usar var(--wp-font) — esa variable está fijada globalmente a
+           Avenir en styles/app.css:330, así que su fallback nunca se
+           aplicaba y todo lo que hacía font-family:inherit heredaba
+           Avenir igual. Forzamos Inter Tight directo acá. */
         font-family: 'Inter Tight', system-ui, sans-serif;
         font-weight:400;
       }
+      #wp-pm2.visible { display:block; }
+      #wp-pm2-backdrop { opacity:0; transition:opacity 0.32s ease-out; }
+      #wp-pm2.wp-pm2-in #wp-pm2-backdrop { opacity:1; }
       #wp-pm2-card {
-        width:100%; height:100%;
+        opacity:0; transform:translateY(18px) scale(0.97);
+        transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
+      }
+      #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
+      #wp-pm2-backdrop {
+        position:absolute; inset:0; background:rgba(0,0,0,0.45);
+      }
+      #wp-pm2-card {
+        position:absolute; inset:0;
         background:#fff;
         display:flex; flex-direction:column;
         overflow:hidden;
@@ -318,22 +301,9 @@ export class PlaceModal2 {
       /* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
       /* TOPBAR */
       #wp-pm2-topbar {
-        /* Antes position:fixed (relativo a TODA la pantalla) + una
-           regla aparte "#wp-pm2-card > #wp-pm2-topbar" que trataba de
-           pisarlo a position:absolute. La especificidad de esa regla
-           GANABA en teoría, pero un elemento position:fixed de verdad
-           escapa al overflow/clip-path de sus ancestros salvo casos
-           particulares — en la práctica el topbar seguía comportándose
-           como fixed: se veía con esquinas cuadradas (nunca respetaba
-           la curva del sheet) y, al arrastrar el sheet hacia abajo (que
-           mueve la card con transform), el topbar se quedaba QUIETO en
-           vez de acompañar el movimiento — de ahí que "las esquinas
-           blancas desaparecían" al hacer drag: en realidad era el
-           topbar quedándose atrás, no un recorte que se arreglaba solo.
-           Una sola regla, position:absolute desde el vamos, sin
-           ambigüedad ni pelea de especificidad. */
-        position:absolute; top:0; left:0; right:0;
-        height:68px; padding-top:14px;
+        position:fixed; top:0; left:0; right:0;
+        height:calc(68px + env(safe-area-inset-top,0px));
+        padding-top:env(safe-area-inset-top,0px);
         display:flex; align-items:center;
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
@@ -345,22 +315,8 @@ export class PlaceModal2 {
          app.css (ion-app::before) — acá con control propio para poder
          reaccionar al scroll (la nativa es estática). */
       #wp-pm2-topbar-fade {
-        /* Mismo problema y mismo arreglo que #wp-pm2-topbar: dos reglas
-           separadas (una position:fixed de base, otra tratando de
-           pisarla a absolute) no garantizan el resultado esperado en la
-           práctica — un position:fixed real no acompaña el transform de
-           la card al arrastrar, y no se recorta de forma confiable por
-           el overflow/clip-path del padre. Una sola regla, sin pelea de
-           especificidad. */
-        position:absolute; top:0; left:0; right:0;
-        height:100px;
-        /* Antes 0.9/0.5 de opacidad en el gradiente + 0.4 de opacidad
-           base en el elemento — combinados, un blanco bastante fuerte
-           SIEMPRE presente sobre los primeros ~100px de la foto, incluso
-           sin haber scrolleado nada. Bajado a algo apenas perceptible en
-           reposo; sigue intensificándose con el scroll (ver el JS) para
-           cuando SÍ hace falta leer los íconos del header sobre una foto
-           clara. */
+        position:fixed; top:0; left:0; right:0;
+        height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
           rgba(255,255,255,0.5) 0%,
           rgba(255,255,255,0.22) 55%,
@@ -391,16 +347,8 @@ export class PlaceModal2 {
 
       /* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
       #wp-pm2-activity-stack {
-        /* Antes position:fixed (relativo a TODA la pantalla) — no seguía
-           el desplazamiento de la card cuando ésta pasó a ser un sheet
-           con margen arriba (top: calc(safe-area+Npx) en vez de 0). Con
-           position:absolute queda anclado a la card, en la misma caja de
-           coordenadas que el topbar — ya no hace falta sumar
-           env(safe-area-inset-top) de nuevo acá (la card entera ya está
-           corrida ese margen), mismo motivo que el ajuste que le hicimos
-           al topbar. */
-        position:absolute;
-        top:78px;
+        position:fixed;
+        top:calc(78px + env(safe-area-inset-top,0px));
         right:2px;
         width:92px; height:118px;
         z-index:6; pointer-events:none;
@@ -500,11 +448,6 @@ export class PlaceModal2 {
          incl. detrás del hero) */
       #wp-pm2-content-area {
         position:relative; flex:1; overflow:hidden;
-        /* Una capa más de recorte, redundante con hero y card — barata
-           de agregar y por las dudas alguna de las otras dos no esté
-           agarrando en el dispositivo real. */
-        border-radius: 18px 18px 0 0;
-        isolation: isolate;
       }
 
       /* HERO — overlay absoluto que se encoge (overflow:hidden) */
@@ -513,38 +456,6 @@ export class PlaceModal2 {
         height:88vw; min-height:320px; max-height:460px;
         overflow:hidden; background:transparent;
         will-change:height;
-        /* Redundante con el border-radius de #wp-pm2-card (que ya
-           debería recortar esto vía overflow:hidden), pero en algunos
-           WebViews de Android/iOS el overflow:hidden del padre no
-           recorta de forma confiable el background-image de un hijo
-           position:absolute contra una esquina redondeada — quedan
-           triángulos blancos asomando en las puntas de arriba. Poniendo
-           el mismo radio ACÁ TAMBIÉN, el propio hero se recorta a sí
-           mismo sin depender de que el padre lo haga bien. */
-        border-radius: 18px 18px 0 0;
-        /* Mismo bug que resolvimos en #wp-pm2-card, un nivel más adentro:
-           #wp-pm2-hero-inner (hijo directo) tiene un transform ACTIVO en
-           todo momento (translateY, el parallax que sube la foto con el
-           scroll) — border-radius+overflow:hidden en un elemento con un
-           hijo transformado es exactamente la combinación que rompe el
-           recorte en varios WebViews. clip-path no depende del mismo
-           mecanismo de compositing. */
-        clip-path: inset(0 round 18px 18px 0 0);
-        -webkit-clip-path: inset(0 round 18px 18px 0 0);
-        /* isolation:isolate — fuerza su propio contexto de apilamiento,
-           un arreglo simple y bien documentado para este tipo de
-           glitch de compositing en WebViews de Android (border-radius/
-           clip-path que "gotea" o parpadea cuando el elemento vive
-           dentro de un padre con transform activo). */
-        isolation: isolate;
-        /* Forzar una capa de composición GPU propia ANTES de que el
-           navegador calcule el recorte — en varios WebViews de Android,
-           clip-path/border-radius sin esto se calculan sobre una capa
-           "plana" que a veces no respeta el recorte en las puntas,
-           dejando asomar el fondo real del elemento (blanco acá) en las
-           esquinas. translateZ(0) es el truco estándar para esto. */
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
       }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
@@ -1119,11 +1030,7 @@ export class PlaceModal2 {
   _wireEvents() {
     const el = this._el;
     el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
-    // El drag-to-dismiss Y el tap-en-backdrop-para-cerrar ahora los
-    // maneja el propio ion-modal (breakpoints + handle:true +
-    // backdropDismiss:true) — ver _build(). #wp-pm2-backdrop ya no
-    // existe en el HTML; el modal se cierra solo, y su evento
-    // ionModalDidDismiss dispara this.hide() — ver _build().
+    el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
     this._wireTagToggle(el);
 
@@ -1442,26 +1349,33 @@ export class PlaceModal2 {
     if (heroBg) heroBg.classList.toggle('wp-pm2-hero-pending', !!opts.flipFromRect);
     this._pendingHeroReveal = !!opts.flipFromRect;
 
-    // present() es la animación de entrada NATIVA del ion-modal — nada
-    // de doble-rAF ni clases CSS a mano. Es asíncrona (a diferencia del
-    // viejo classList.add), así que show() ahora devuelve una Promise
-    // con el rect destino del hero — quien llama (el flip de MapView)
-    // tiene que esperarla con .then()/await en vez de usar el valor de
-    // retorno directo como antes. Todo lo que antes necesitaba layout
-    // real (medir el rect, medir alturas para el scroll) vive ahora dentro
-    // de este mismo .then() — antes de present(), aunque el elemento ya
-    // esté conectado al DOM, Ionic lo mantiene sin dimensiones reales
-    // hasta que arranca a presentarlo, así que medir antes daba ceros.
-    const presentPromise = this._el.present().then(() => {
-      const heroTargetRect = heroEl.getBoundingClientRect();
+    this._el.classList.add('visible');
+    this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
 
-      // hero (overlay absoluto encima del body) + hero-inner (alto FIJO fullH,
-      // translateY) — imagen+overlay suben juntos, sin huecos. El spacer al
-      // inicio del body mide `travel` (chico, no fullH) para que el hero lo
-      // termine de tapar justo cuando colapsa del todo.
+    // Transición de entrada del modal completo — backdrop con fade, card
+    // con la misma curva que usa el resto de la app. Doble rAF: primero
+    // se pinta el estado inicial (opacity:0, definido en la clase base
+    // de #wp-pm2-card/#wp-pm2-backdrop), recién en el segundo frame se
+    // agrega la clase que dispara la transición — si no, el navegador
+    // puede colapsar ambos estados en uno y la entrada no se ve.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      this._el.classList.add('wp-pm2-in');
+    }));
+
+    // El rect destino del hero se puede medir YA — sus dimensiones salen
+    // de una regla CSS fija (88vw, clamp 320-460px), no dependen de la
+    // foto ni de ningún cálculo posterior. Quien llama con flipFromRect
+    // lo necesita ANTES para saber hacia dónde animar su propio clon.
+    const heroTargetRect = heroEl.getBoundingClientRect();
+
+    // hero (overlay absoluto encima del body) + hero-inner (alto FIJO fullH,
+    // translateY) — imagen+overlay suben juntos, sin huecos. El spacer al
+    // inicio del body mide `travel` (chico, no fullH) para que el hero lo
+    // termine de tapar justo cuando colapsa del todo.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       const topbarH = topbar.offsetHeight;
       const fullH   = heroEl.offsetHeight;   // con min-height:260px del CSS todavía activo
-      if (!fullH) return heroTargetRect;
+      if (!fullH) return;
       const travel = fullH - topbarH;
       heroInner.style.height = fullH + 'px';
       heroOverlayFast.style.height = fullH + 'px';
@@ -1533,11 +1447,9 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = onScroll;
       body.addEventListener('scroll', onScroll, { passive: true });
+    }));
 
-      return heroTargetRect;
-    });
-
-    return presentPromise;
+    return heroTargetRect;
   }
 
   // Revela el hero real después de un show(place, {flipFromRect}) — se
@@ -1557,22 +1469,16 @@ export class PlaceModal2 {
     setTimeout(() => { heroBg.style.transition = ''; }, 200);
   }
 
-  // hide() solo PIDE el cierre — la limpieza real vive en
-  // _onModalDidDismiss(), disparada por el evento nativo del ion-modal
-  // (ver _build()). Esto es a propósito: el modal se puede cerrar de
-  // TRES formas distintas — llamando a hide() (botón volver), un drag
-  // nativo del usuario, o un tap en el backdrop (backdropDismiss:true)
-  // — y las tres tienen que terminar limpiando lo mismo (footer menu,
-  // overflow del body, scroll handler, el aviso al flip). Si la
-  // limpieza viviera acá adentro, las dos últimas formas de cerrar
-  // jamás la ejecutarían.
+  // Antes esto era instantáneo (classList.remove('visible') → display:none
+  // en el mismo tick). Ahora primero se dispara la transición inversa
+  // (quitar wp-pm2-in), y recién cuando termina se saca del DOM
+  // (display:none real) — el setTimeout espera esa transición CSS.
+  //
+  // Si la ficha se abrió desde el slide (_flipContext seteado), este es
+  // también el punto donde se avisa a quien la abrió — con el rect
+  // ACTUAL del hero (puede estar colapsado si hubo scroll) y su imagen —
+  // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
-    this._el.dismiss().catch(() => {}); // dismiss() puede rechazar si ya estaba cerrado — no es un error real
-  }
-
-  // Corre SIEMPRE que el modal termina de cerrarse, sin importar cómo
-  // se disparó el cierre — ver el comentario de hide().
-  _onModalDidDismiss() {
     this._closeLightbox();
     if (this._aiAbort) this._aiAbort();
 
@@ -1581,9 +1487,9 @@ export class PlaceModal2 {
     if (flipCtx) {
       // try/catch a propósito: si algo dentro de onDismiss (código de
       // MapView, fuera de este archivo) tirara una excepción, sin este
-      // try TODO lo que sigue acá se corta a mitad de camino — la
-      // ficha no termina de limpiarse (footer menu, overflow del body,
-      // scroll handler) y el slide de atrás tampoco recupera su estado.
+      // try TODO lo que sigue en hide() se corta a mitad de camino — la
+      // ficha no termina de limpiarse y el slide de atrás tampoco
+      // recupera su estado.
       try {
         const heroEl = this._el.querySelector('#wp-pm2-hero');
         const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
@@ -1593,16 +1499,22 @@ export class PlaceModal2 {
       }
     }
 
+    this._el.classList.remove('wp-pm2-in');
     document.body.classList.remove('wp-pm-open');
+    // Restaurar el footer menu del mapview YA (no depende de la
+    // transición, y si se tarda se nota más que si aparece de una)
     const footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.display = '';
 
-    document.body.style.overflow = '';
-    this._place = null;
-    const body = this._el.querySelector('#wp-pm2-body');
-    if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
-    this._scrollHandler = null;
-    this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
+    setTimeout(() => {
+      this._el.classList.remove('visible');
+      document.body.style.overflow = '';
+      this._place = null;
+      const body = this._el.querySelector('#wp-pm2-body');
+      if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+      this._scrollHandler = null;
+      this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
+    }, 300);
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
@@ -2343,7 +2255,7 @@ export class PlaceModal2 {
     track.innerHTML = ''; // libera memoria de las imágenes
   }
 
-  isVisible() { return !!this._el?.isOpen; }
+  isVisible() { return this._el?.classList.contains('visible'); }
 }
 
 export { PlaceModal2 as PlaceModal };
