@@ -2975,10 +2975,14 @@ export class MapView {
 
       // show(place, {...}) arma la ficha con el hero real invisible
       // (o directamente con NUESTRA foto, sin recargar — preloadedHeroUrl)
-      // y devuelve, YA, el rect al que tiene que volar el puente.
+      // y devuelve una PROMISE que resuelve con el rect al que tiene que
+      // volar el puente — antes esto era síncrono, pero PlaceModal2 ahora
+      // usa un <ion-modal> real (present() es async de verdad, no un
+      // classList.add a mano) así que hay que esperarla con .then().
       // flipContext.onDismiss es el gancho para el vuelo de VUELTA,
-      // llamado desde PlaceModal2.hide() (botón volver o drag-to-dismiss).
-      const targetRect = this.onPlaceSelect ? this.onPlaceSelect(place, {
+      // llamado desde PlaceModal2 cuando el modal termina de cerrarse
+      // (botón volver, drag nativo, o tap en el backdrop — cualquiera).
+      const resultPromise = this.onPlaceSelect ? this.onPlaceSelect(place, {
         direct: true,
         flipFromRect: startRect,
         preloadedHeroUrl: rawUrl,
@@ -3022,22 +3026,30 @@ export class MapView {
         },
       }) : null;
 
-      if (!targetRect) {
+      const abortFlip = () => {
         // Por si algo salió mal (no debería) — no dejar todo pausado ni
         // el puente huérfano.
         bridge.remove(); cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; wrap.style.pointerEvents = '';
         applyLayout(activeIdx, true); clusterEditing = false; flipInProgress = false;
-        return;
-      }
+      };
 
-      requestAnimationFrame(() => requestAnimationFrame(() => flyTo(bridge, targetRect, '0px', 0)));
+      if (!resultPromise) { abortFlip(); return; }
 
-      // Al llegar: revelar el hero real de la ficha (revealHeroNow) y
-      // sacar el puente — recién ahí queda UNA sola foto en pantalla.
-      setTimeout(() => {
-        if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
-        bridge.remove();
-      }, 380);
+      Promise.resolve(resultPromise).then((targetRect) => {
+        if (!targetRect) { abortFlip(); return; }
+
+        requestAnimationFrame(() => requestAnimationFrame(() => flyTo(bridge, targetRect, '0px', 0)));
+
+        // Al llegar: revelar el hero real de la ficha (revealHeroNow) y
+        // sacar el puente — recién ahí queda UNA sola foto en pantalla.
+        setTimeout(() => {
+          if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
+          bridge.remove();
+        }, 380);
+      }).catch((err) => {
+        console.error('[FLIP] error esperando el rect destino de la ficha', err);
+        abortFlip();
+      });
     };
 
     requestAnimationFrame(() => {
