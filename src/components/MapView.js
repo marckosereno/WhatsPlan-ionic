@@ -2115,6 +2115,23 @@ export class MapView {
   _openClusterExpand(group, customDef, stickerEl) {
     if (this._clusterExpandEl) this._closeClusterExpand();
 
+    // Cancelar YA cualquier timer de long-press que haya quedado corriendo
+    // en el sticker que se está por abrir. Llegar hasta acá significa que
+    // el tap YA fue reconocido como tap real (no long-press) — pero el
+    // FLIP que sigue más abajo oculta/clona el sticker mientras el dedo
+    // puede seguir técnicamente apoyado, y eso es EXACTO el mismo patrón
+    // de "toque fantasma" que resolvimos para el freeze de drag al
+    // principio de este proyecto: si el elemento que capturó el toque se
+    // oculta/modifica a mitad de camino, el navegador a veces deja de
+    // entregar el pointerup correspondiente — ni siquiera a los
+    // listeners de `document`, porque el ruteo del evento queda atado al
+    // elemento original. El timer de 550ms del long-press (ver
+    // _renderClusterMarker) queda corriendo de fondo sin que nada lo
+    // cancele, y dispara más tarde — mientras ya estás usando el slide —
+    // abriendo el panel de personalización de cluster de SuperUserPanel
+    // sin que nadie lo haya pedido.
+    stickerEl?._clusterClearPress?.();
+
     // Red de seguridad: si una transición anterior falló a mitad de camino
     // (una excepción, un cierre interrumpido) y sus clones nunca se
     // sacaron del DOM, quedaban ahí para siempre — fixed, con z-index
