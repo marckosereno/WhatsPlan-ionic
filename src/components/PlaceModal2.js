@@ -298,11 +298,16 @@ export class PlaceModal2 {
          hace el puente que vuela por fuera, y si el card TAMBIÉN se
          mueve son dos cosas animando a la vez. Especificidad (0,2,0)
          contra la base #wp-pm2-card (0,1,0) — no hace falta !important,
-         gana por ser más específica. Transición un poco más corta
-         también, para sincronizar mejor con los ~0.34s del puente. */
+         gana por ser más específica.
+         0.34s — misma duración que el vuelo del puente (ver flyTo() en
+         MapView.js). Antes esto duraba menos (0.22s) que el vuelo: el
+         fondo de la ficha desaparecía mientras la foto todavía seguía
+         volando sola contra un fondo casi vacío — eso es lo que se veía
+         forzado/descoordinado. Con la misma duración, todo resuelve
+         junto. */
       #wp-pm2.wp-pm2-flip-entry #wp-pm2-card {
         transform:none;
-        transition:opacity 0.22s ease-out;
+        transition:opacity 0.34s ease-out;
       }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
@@ -340,15 +345,15 @@ export class PlaceModal2 {
         position:fixed; top:0; left:0; right:0;
         height:calc(env(safe-area-inset-top,20px) + 100px);
         background:linear-gradient(to bottom,
-          rgba(255,255,255,0.5) 0%,
-          rgba(255,255,255,0.22) 55%,
+          rgba(255,255,255,0.9) 0%,
+          rgba(255,255,255,0.5) 55%,
           rgba(255,255,255,0) 100%);
         backdrop-filter:blur(0.5px);
         -webkit-backdrop-filter:blur(0.5px);
         mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         z-index:9; pointer-events:none;
-        opacity:0.15; /* JS la sube con el scroll */
+        opacity:0.4; /* JS la sube con el scroll */
         transition:opacity 0.05s linear;
       }
 
@@ -1369,7 +1374,7 @@ export class PlaceModal2 {
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
     topbar.style.boxShadow = '';
-    topbarFade.style.opacity = '0.15'; // igual a la base nueva del CSS — ver el comentario largo en la regla #wp-pm2-topbar-fade
+    topbarFade.style.opacity = '0.4'; // igual a la base del CSS — ver el comentario largo en la regla #wp-pm2-topbar-fade
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
@@ -1468,7 +1473,7 @@ export class PlaceModal2 {
         // Sombra del status bar: a medida que el contenido llega arriba
         // (scroll avanza), se pone cada vez menos transparente — el
         // contenido detrás queda cada vez más tapado/blanco.
-        topbarFade.style.opacity = Math.min(1, 0.15 + prog * 2.2);
+        topbarFade.style.opacity = Math.min(1, 0.4 + prog * 2.2);
 
         // Título centrado del topbar aparece cuando el hero ya casi terminó
         // El título solo vive en el hero (nameEl) — ya no se duplica en
@@ -1564,7 +1569,7 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = null;
       this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
-    }, 300);
+    }, 350);
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
