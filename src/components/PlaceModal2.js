@@ -297,10 +297,23 @@ export class PlaceModal2 {
       /* #wp-pm2 es ahora un <ion-modal> real — Ionic maneja su propio
          display/position/z-index/backdrop/redondeo/drag internamente.
          No se le pisa nada de eso acá; solo la fuente, que si no se
-         fuerza acá hereda Avenir global (ver styles/app.css:330). */
+         fuerza acá hereda Avenir global (ver styles/app.css:330).
+
+         La EXCEPCIÓN es z-index: encontramos que #su-subcat-panel (del
+         SuperUserPanel, un panel completamente aparte para editar
+         categorías de lugares) usa z-index:99994 y a veces queda
+         "pegado" en su estado visible por un bug propio de ESE panel,
+         ajeno a esta ficha. Antes esto no se notaba porque #wp-pm2 tenía
+         z-index:2000000 a mano, tapando cualquier otra cosa de la app
+         sin que nadie lo supiera. El z-index interno de ion-modal es
+         mucho más bajo — sin este empujón, ese panel pegado se veía
+         ENCIMA de la ficha. No es nuestro bug arreglarlo (vive en
+         SuperUserPanel.js), pero la ficha sí tiene que ganarle a
+         cualquier cosa que quede colgada en la app. */
       #wp-pm2 {
         font-family: 'Inter Tight', system-ui, sans-serif;
         font-weight:400;
+        z-index: 3000000 !important;
       }
       #wp-pm2-card {
         width:100%; height:100%;
