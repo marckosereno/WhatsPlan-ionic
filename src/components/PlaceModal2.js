@@ -293,6 +293,17 @@ export class PlaceModal2 {
         transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
       }
       #wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
+      /* Modo flip (viene del slide, o vuelve hacia él) — el card entero
+         solo hace fade, nunca traslado/escala: ese movimiento ya lo
+         hace el puente que vuela por fuera, y si el card TAMBIÉN se
+         mueve son dos cosas animando a la vez. Especificidad (0,2,0)
+         contra la base #wp-pm2-card (0,1,0) — no hace falta !important,
+         gana por ser más específica. Transición un poco más corta
+         también, para sincronizar mejor con los ~0.34s del puente. */
+      #wp-pm2.wp-pm2-flip-entry #wp-pm2-card {
+        transform:none;
+        transition:opacity 0.22s ease-out;
+      }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
       }
@@ -1372,6 +1383,13 @@ export class PlaceModal2 {
 
     this._el.classList.add('visible');
     this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
+    // Cuando viene del flip, el card NO hace su propio pop de
+    // escala+traslado — ese movimiento ya lo aporta el puente que vuela
+    // por fuera (en MapView). Si el card TAMBIÉN escala/traslada al
+    // mismo tiempo, son dos cosas moviéndose a la vez compitiendo por la
+    // atención — un fade simple deja que el puente sea lo único que se
+    // mueve, y el resto de la ficha (header, fondo) solo aparece detrás.
+    this._el.classList.toggle('wp-pm2-flip-entry', !!opts.flipFromRect);
 
     // Transición de entrada del modal completo — backdrop con fade, card
     // con la misma curva que usa el resto de la app. Doble rAF: primero
