@@ -266,7 +266,18 @@ export class PlaceModal2 {
     s.id = 'wp-pm2-css';
     s.textContent = `
       #wp-pm2 {
-        display:none; position:fixed; inset:0; z-index:2100;
+        display:none; position:fixed; inset:0;
+        /* 2100 alcanza de sobra contra el mapa/minicard normal — pero
+           cuando la ficha se abre desde el slide de cluster (el flip en
+           MapView.js), el slide NO se destruye, se pausa: sus tarjetas y
+           decoraciones se quedan en el DOM a z-index 100000+ (hasta
+           999999 el puente que "vuela" hacia acá), solo con
+           pointer-events:none. Con 2100 la ficha se abría por DEBAJO de
+           todo eso — se veía perfecto desde el minicard (nada compite
+           ahí) pero invisible desde el slide (tapada por sus propias
+           tarjetas, que siguen ahí, pausadas pero visibles). Subida por
+           encima de cualquier cosa que el slide pueda dejar viva detrás. */
+        z-index: 1500000;
         /* NO usar var(--wp-font) — esa variable está fijada globalmente a
            Avenir en styles/app.css:330, así que su fallback nunca se
            aplicaba y todo lo que hacía font-family:inherit heredaba
