@@ -1301,6 +1301,10 @@ export class PlaceModal2 {
   show(place, opts = {}) {
     this._fromSearch = false;
     this._place = place;
+    // Se usa más abajo para ignorar clics-fantasma que aterrizan sobre
+    // contenido recién insertado — ver el comentario largo en el listener
+    // de las fotos, en _populate().
+    this._shownAt = Date.now();
     // Ver el comentario largo en _populate(): si viene con una foto YA
     // cargada (el flip desde el slide), se usa esa directo, sin el
     // ciclo de skeleton+precarga que se sentía como una recarga.
@@ -1344,6 +1348,12 @@ export class PlaceModal2 {
     heroInner.style.opacity = '';
     heroOverlayFast.style.transform = '';
     heroGradient.style.opacity = '';
+    // hide() (si esta ficha se cerró antes con flip) pudo haber dejado
+    // heroBg con opacity:0 y transition:none puestos en línea a mano —
+    // ver el comentario largo ahí. Sin este reset, una apertura NORMAL
+    // posterior (sin flip) heredaría ese hero invisible para siempre.
+    heroBg.style.opacity = '';
+    heroBg.style.transition = '';
     spacer.style.height = '0px';
     nameEl.style.opacity = '';
     topbar.classList.remove('scrolled');
@@ -1504,7 +1514,18 @@ export class PlaceModal2 {
       try {
         const heroEl = this._el.querySelector('#wp-pm2-hero');
         const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
-        flipCtx.onDismiss(heroEl.getBoundingClientRect(), heroBg.style.backgroundImage);
+        const heroRect = heroEl.getBoundingClientRect();
+        const heroImage = heroBg.style.backgroundImage;
+        // Ocultar el hero real YA, sin transición — a partir de este
+        // punto es el puente que arma MapView (en flipCtx.onDismiss) el
+        // que muestra esa misma foto volando de vuelta. Si el hero real
+        // se queda visible mientras la ficha entera hace su propio
+        // fade-out, se ven DOS fotos moviéndose por separado durante un
+        // instante (una quieta desvaneciéndose, otra volando) — no es
+        // un solo gesto continuo, se siente duplicado en vez de fluido.
+        heroBg.style.transition = 'none';
+        heroBg.style.opacity = '0';
+        flipCtx.onDismiss(heroRect, heroImage);
       } catch (err) {
         console.error('[PlaceModal2] error en flipContext.onDismiss — el cierre continúa igual', err);
       }
@@ -1581,7 +1602,20 @@ export class PlaceModal2 {
       img.onload  = () => this._skelOff(img);
       img.onerror = () => this._skelOff(img);
       img.src = url;
-      img.addEventListener('click', () => this._openLightbox(i));
+      // Guard contra clic-fantasma: cuando la ficha se abre desde el
+      // flip del slide, el toque original (touchend/pointerup) puede
+      // generar un "click" sintético del navegador que se dispara un
+      // instante después — y como esta grilla de fotos se acaba de
+      // insertar EN ESE MISMO momento, si una foto queda posicionada
+      // justo donde estaba el dedo, ese click sintético cae sobre ELLA
+      // en vez de perderse en el vacío. Ignorar cualquier clic en los
+      // primeros 400ms desde que show() arrancó descarta ese caso sin
+      // afectar un tap genuino posterior (nadie llega a tocar una foto
+      // real en menos de 400ms de que la ficha recién apareció).
+      img.addEventListener('click', () => {
+        if (Date.now() - (this._shownAt || 0) < 400) return;
+        this._openLightbox(i);
+      });
       stripEl.appendChild(img);
     });
 
