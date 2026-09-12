@@ -328,9 +328,17 @@ function injectLandmarkStyles() {
     .wp-ce-collage.wp-ce-in .wp-ce-collage-bg { opacity: 1; }
 
     .wp-ce-collage-header {
+      /* Antes: padding: calc(safe-area+14px) 16px 12px, altura
+         automática según el contenido — distinto del criterio de
+         #wp-pm2-topbar en la ficha (altura FIJA de 68px+safe-area,
+         padding-top solo el safe-area, 12px a los costados). Mismo
+         criterio acá, para que el header se vea idéntico en las dos
+         pantallas. */
+      height: calc(68px + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-left: 12px; padding-right: 12px;
       position: relative; z-index: 2; flex-shrink: 0;
       display: flex; align-items: center;
-      padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 12px;
       opacity: 0; transform: translateY(-10px);
       transition: opacity 0.38s cubic-bezier(0.34,1.56,0.64,1), transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
     }
@@ -354,7 +362,7 @@ function injectLandmarkStyles() {
     .wp-ce-ctitle {
       margin-left: 12px; flex: 1 1 auto; min-width: 0;
       font-family: 'Inter Tight', system-ui, sans-serif;
-      font-size: 15px; font-weight: 800; color: #111; letter-spacing: -0.2px;
+      font-size: 16px; font-weight: 800; color: #111; letter-spacing: -0.2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .wp-ce-cactions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -2255,9 +2263,27 @@ export class MapView {
     // esto: una base que nunca se transparenta, pase lo que pase con la
     // opacidad del fondo que pusiste.
     const slideBackdrop = document.createElement('div');
-    slideBackdrop.className = 'wp-ce-flip-piece';
+    // Clase PROPIA, no .wp-ce-flip-piece — esa clase la usa el sweep de
+    // huérfanos al principio de esta función (document.querySelectorAll
+    // ('.wp-ce-flip-piece').forEach(n => n.remove())), pensado para
+    // limpiar tarjetas/decoraciones de una sesión ANTERIOR que falló a
+    // mitad de camino. Compartir esa clase significa que ESTE backdrop
+    // también podía terminar barrido por esa misma limpieza en
+    // circunstancias que no llegamos a aislar del todo — su remoción
+    // real sigue pasando igual, vía el array `clones` en cleanupClones().
+    slideBackdrop.className = 'wp-ce-slide-backdrop';
     slideBackdrop.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:98999;pointer-events:none;';
     document.body.appendChild(slideBackdrop);
+    // Watchdog: además de las verificaciones puntuales en applyLayout()
+    // y al arrancar el flip, este chequeo corre solo cada 500ms mientras
+    // el slide esté abierto — cubre cualquier ventana donde el backdrop
+    // se pierda sin que nada dispare un applyLayout en el medio (por
+    // ejemplo, con la ficha abierta y el slide totalmente quieto). Barato
+    // (una sola comprobación .isConnected) y se apaga solo en
+    // _closeClusterExpand.
+    this._slideBackdropWatchdog = setInterval(() => {
+      if (!slideBackdrop.isConnected) document.body.appendChild(slideBackdrop);
+    }, 500);
     const caption = wrap.querySelector('.wp-ce-ccaption-list');
     caption.innerHTML = group.map((_, i) => `<button type="button" class="wp-ce-ctag" data-chip-idx="${i}">${group[i].el._place?.name || ''}</button>`).join('');
     const chipEls = Array.from(caption.querySelectorAll('.wp-ce-ctag'));
@@ -4048,6 +4074,7 @@ export class MapView {
 
   _closeClusterExpand(restoreCamera = true) {
     if (!this._clusterExpandEl) return;
+    if (this._slideBackdropWatchdog) { clearInterval(this._slideBackdropWatchdog); this._slideBackdropWatchdog = null; }
     const wrap = this._clusterExpandEl;
     const flip = this._clusterExpandFlip;
     this._clusterExpandEl = null;
