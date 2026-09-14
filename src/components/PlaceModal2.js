@@ -305,10 +305,20 @@ export class PlaceModal2 {
          volando sola contra un fondo casi vacío — eso es lo que se veía
          forzado/descoordinado. Con la misma duración, todo resuelve
          junto. */
+      /* Modo flip (viene del slide, o vuelve hacia él) — ya NO hay
+         puente volando por fuera (se sacó, era la parte pesada de la
+         transición: recreaba posición+tamaño+radio+borde a la vez).
+         Ahora el card entero hace su propio pulse — entra achicado y
+         transparente, sale igual — independiente de la tarjeta del
+         slide, que hace SU PROPIO pulse-in por separado, sin ninguna
+         interpolación de forma entre una y otra. Rápido (0.22s) porque
+         es un pulse simple, no un vuelo con distancia real que
+         recorrer. */
       #wp-pm2.wp-pm2-flip-entry #wp-pm2-card {
-        transform:none;
-        transition:opacity 0.34s ease-out;
+        transform:scale(0.92);
+        transition:opacity 0.22s ease-out, transform 0.22s cubic-bezier(0.34,1.4,0.64,1);
       }
+      #wp-pm2.wp-pm2-in.wp-pm2-flip-entry #wp-pm2-card { transform:scale(1); }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
       }
@@ -1534,21 +1544,17 @@ export class PlaceModal2 {
       // try TODO lo que sigue en hide() se corta a mitad de camino — la
       // ficha no termina de limpiarse y el slide de atrás tampoco
       // recupera su estado.
+      //
+      // Ya no hace falta capturar rect/imagen del hero ni ocultarlo por
+      // separado — antes eso era para que un puente en MapView pudiera
+      // "recibir la posta" y mostrar la misma foto volando de vuelta.
+      // Ese puente se sacó (era la parte pesada de la transición): ahora
+      // el regreso es un pulse-in casi instantáneo de la tarjeta real en
+      // el slide, sin ningún puente ni recreación de forma. El hero de
+      // ACÁ simplemente se desvanece como parte del pulse-out de toda
+      // la card — ver la regla #wp-pm2.wp-pm2-flip-entry.
       try {
-        const heroEl = this._el.querySelector('#wp-pm2-hero');
-        const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
-        const heroRect = heroEl.getBoundingClientRect();
-        const heroImage = heroBg.style.backgroundImage;
-        // Ocultar el hero real YA, sin transición — a partir de este
-        // punto es el puente que arma MapView (en flipCtx.onDismiss) el
-        // que muestra esa misma foto volando de vuelta. Si el hero real
-        // se queda visible mientras la ficha entera hace su propio
-        // fade-out, se ven DOS fotos moviéndose por separado durante un
-        // instante (una quieta desvaneciéndose, otra volando) — no es
-        // un solo gesto continuo, se siente duplicado en vez de fluido.
-        heroBg.style.transition = 'none';
-        heroBg.style.opacity = '0';
-        flipCtx.onDismiss(heroRect, heroImage);
+        flipCtx.onDismiss();
       } catch (err) {
         console.error('[PlaceModal2] error en flipContext.onDismiss — el cierre continúa igual', err);
       }
