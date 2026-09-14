@@ -2997,8 +2997,7 @@ export class MapView {
       // un rebote notorio no es lo que hace una transición nativa de
       // foto-a-hero (la de Fotos de iOS, por ejemplo, decelera suave sin
       // pasarse de largo). ease-out-expo, sin rebote, y más corta.
-      const flyTo = (el, rect, radius, rot, duration = 0.34) => {
-        const ease = 'cubic-bezier(0.22,1,0.36,1)';
+      const flyTo = (el, rect, radius, rot, duration = 0.34, ease = 'cubic-bezier(0.22,1,0.36,1)') => {
         el.style.transition = `left ${duration}s ${ease}, top ${duration}s ${ease}, width ${duration}s ${ease}, height ${duration}s ${ease}, border-radius ${duration * 0.85}s ease-out, transform ${duration}s ${ease}`;
         el.style.left = rect.left + 'px'; el.style.top = rect.top + 'px';
         el.style.width = rect.width + 'px'; el.style.height = rect.height + 'px';
@@ -3067,11 +3066,26 @@ export class MapView {
             try {
               backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
               requestAnimationFrame(() => requestAnimationFrame(() => {
-                flyTo(backBridge, startRect, startRadius, startRot, 0.34);
+                // Asentamiento sutil — antes esto usaba la misma curva
+                // pura de deceleración que la ida (sin rebote alguno),
+                // y se sentía "seco": llega y se frena, sin más. Un
+                // overshoot MINÚSCULO (nada que se vea como rebote, solo
+                // se nota en cómo se acomoda el último tramo) le da la
+                // sensación de tener peso real al aterrizar — el mismo
+                // lenguaje que usa iOS en sus transiciones de foto
+                // compartida.
+                flyTo(backBridge, startRect, startRadius, startRot, 0.36, 'cubic-bezier(0.32,1.1,0.64,1)');
               }));
-              // El resto del slide reaparece EN PARALELO al vuelo de
-              // vuelta — se ve como que "estaba ahí todo el tiempo".
-              applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
+              // El resto del slide reaparece un instante DESPUÉS de que
+              // arranca el vuelo de vuelta, no exactamente en el mismo
+              // frame — antes las dos cosas pasaban en paralelo desde el
+              // primer instante, y se leía como "todo se mueve junto" en
+              // vez de "la foto vuelve a casa, y recién ahí el resto se
+              // acomoda alrededor". Mismo truco que usan las
+              // transiciones de "elemento compartido" en Android.
+              setTimeout(() => {
+                applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
+              }, 90);
             } catch (err) {
               console.error('[FLIP] error en el vuelo de vuelta hacia el slide', err);
             } finally {
@@ -3088,7 +3102,7 @@ export class MapView {
                 // demora, pero alcanzan para que todo esté quieto antes
                 // de aceptar el próximo toque.
                 setTimeout(() => { wrap.style.pointerEvents = ''; }, 120);
-              }, 380);
+              }, 400); // 380 → 400: 20ms más para cubrir los 90ms de delay + la duración un poco más larga del vuelo (0.36s)
             }
           },
         },
