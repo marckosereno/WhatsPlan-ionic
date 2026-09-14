@@ -3054,44 +3054,46 @@ export class MapView {
         flipFromRect: startRect,
         preloadedHeroUrl: rawUrl,
         flipContext: {
-          onDismiss: (heroRectNow, heroBgNow) => {
-            // try/finally: el cleanup de abajo (destrabar el slide,
-            // volver a mostrar la tarjeta real) tiene que correr SIEMPRE
-            // — si algo de acá arriba (crear el puente, animarlo,
-            // applyLayout) tirara una excepción, sin este resguardo el
-            // slide quedaba bloqueado (clusterEditing/pointerEvents
-            // pegados) para siempre, un estado que después se manifiesta
-            // como cosas raras al volver a tocarlo.
-            let backBridge = null;
+          onDismiss: () => {
+            // Antes: un puente aparte que recreaba posición+tamaño+radio+
+            // borde de la tarjeta, animando los cuatro a la vez desde el
+            // rect de la ficha hasta el rect del slide — eso es lo que
+            // se sentía pesado (browser recalculando forma en cada
+            // frame, no solo moviendo algo). Ahora no hay ningún puente
+            // ni interpolación de forma: la tarjeta real hace un
+            // pulse-in casi instantáneo EN SU PROPIO LUGAR de siempre
+            // (nunca se movió, solo estuvo invisible) — mismo principio
+            // que un modal nativo apareciendo con un "pop", no un
+            // objeto viajando de un lado a otro.
+            //
+            // try/finally: el cleanup de abajo (destrabar el slide)
+            // tiene que correr SIEMPRE, incluso si el pulse-in fallara.
             try {
-              backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
-              requestAnimationFrame(() => requestAnimationFrame(() => {
-                // Asentamiento sutil — antes esto usaba la misma curva
-                // pura de deceleración que la ida (sin rebote alguno),
-                // y se sentía "seco": llega y se frena, sin más. Un
-                // overshoot MINÚSCULO (nada que se vea como rebote, solo
-                // se nota en cómo se acomoda el último tramo) le da la
-                // sensación de tener peso real al aterrizar — el mismo
-                // lenguaje que usa iOS en sus transiciones de foto
-                // compartida.
-                flyTo(backBridge, startRect, startRadius, startRot, 0.36, 'cubic-bezier(0.32,1.1,0.64,1)');
-              }));
-              // El resto del slide reaparece un instante DESPUÉS de que
-              // arranca el vuelo de vuelta, no exactamente en el mismo
-              // frame — antes las dos cosas pasaban en paralelo desde el
-              // primer instante, y se leía como "todo se mueve junto" en
-              // vez de "la foto vuelve a casa, y recién ahí el resto se
-              // acomoda alrededor". Mismo truco que usan las
+              const baseTransform = cardClone.style.transform || '';
+              cardClone.style.transition = 'none';
+              cardClone.style.visibility = '';
+              cardClone.style.border = startBorder;
+              cardClone.style.opacity = '0';
+              cardClone.style.transform = `${baseTransform} scale(0.85)`;
+              void cardClone.offsetHeight; // forzar reflow — que el navegador pinte el estado "chico e invisible" antes de animar
+              cardClone.style.transition = 'opacity 0.16s ease-out, transform 0.2s cubic-bezier(0.34,1.4,0.64,1)';
+              cardClone.style.opacity = '1';
+              cardClone.style.transform = baseTransform;
+
+              // El resto del slide reaparece un instante DESPUÉS del
+              // pulse-in de la tarjeta tocada, no exactamente en el
+              // mismo frame — se lee como "esa tarjeta vuelve primero, y
+              // recién ahí el resto se acomoda alrededor", en vez de
+              // "todo se mueve junto". Mismo truco que usan las
               // transiciones de "elemento compartido" en Android.
               setTimeout(() => {
                 applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
               }, 90);
             } catch (err) {
-              console.error('[FLIP] error en el vuelo de vuelta hacia el slide', err);
+              console.error('[FLIP] error en el pulse-in de vuelta hacia el slide', err);
             } finally {
               setTimeout(() => {
                 cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
-                if (backBridge) backBridge.remove();
                 clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
                 // wrap (con el botón de editar en su header) se reactiva
                 // con un pequeño margen EXTRA aparte del resto del
@@ -3102,7 +3104,7 @@ export class MapView {
                 // demora, pero alcanzan para que todo esté quieto antes
                 // de aceptar el próximo toque.
                 setTimeout(() => { wrap.style.pointerEvents = ''; }, 120);
-              }, 400); // 380 → 400: 20ms más para cubrir los 90ms de delay + la duración un poco más larga del vuelo (0.36s)
+              }, 220); // 90ms de delay + el pulse-in (máx 0.2s) + margen chico
             }
           },
         },
