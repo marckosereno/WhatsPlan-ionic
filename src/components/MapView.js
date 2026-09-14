@@ -2984,6 +2984,23 @@ export class MapView {
       // skeleton+precarga (ver preloadedHeroUrl más abajo).
       const rawUrl = (startBgImage.match(/url\(['"]?(.*?)['"]?\)/) || [])[1] || '';
 
+      // Pulse táctil — confirmación visual inmediata de que el toque
+      // registró, ANTES de que la tarjeta se oculte y el puente tome la
+      // posta. Sin este paso, el toque pasaba directo a "la tarjeta
+      // desaparece" sin ningún acuse de recibo en el medio.
+      const baseTransformForPulse = cardClone.style.transform || '';
+      cardClone.style.transition = 'transform 0.1s ease-out';
+      cardClone.style.transform = `${baseTransformForPulse} scale(1.045)`;
+
+      // El resto del flip arranca con un retraso CHICO (90ms) — deja que
+      // el pulse de arriba se alcance a ver antes de que la tarjeta se
+      // oculte, sin que se sienta como una demora real: 90ms está bien
+      // por debajo de lo que el ojo humano percibe como "esperó a que
+      // pase algo" — sigue leyéndose como "inmediato".
+      setTimeout(() => {
+      cardClone.style.transition = 'none';
+      cardClone.style.transform = baseTransformForPulse;
+
       const makeFlyer = (rect, radius, bgImage, rot) => {
         const el = document.createElement('div');
         el.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${radius};background-image:${bgImage};background-size:cover;background-position:center;transform:rotate(${rot}deg);z-index:999999;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,0.28);`;
@@ -2997,9 +3014,17 @@ export class MapView {
       // un rebote notorio no es lo que hace una transición nativa de
       // foto-a-hero (la de Fotos de iOS, por ejemplo, decelera suave sin
       // pasarse de largo). ease-out-expo, sin rebote, y más corta.
-      const flyTo = (el, rect, radius, rot, duration = 0.34) => {
-        const ease = 'cubic-bezier(0.22,1,0.36,1)';
-        el.style.transition = `left ${duration}s ${ease}, top ${duration}s ${ease}, width ${duration}s ${ease}, height ${duration}s ${ease}, border-radius ${duration * 0.85}s ease-out, transform ${duration}s ${ease}`;
+      //
+      // El border-radius usa su PROPIA duración, más LARGA que el resto
+      // (antes usaba duration*0.85 — más CORTA, así que las esquinas
+      // terminaban de cuadrarse ANTES de que la foto llegara a destino,
+      // se veía "subir ya cuadrada" en pleno vuelo). Ahora se queda
+      // redondeada durante CASI todo el vuelo y recién se cuadra del
+      // todo cerca del final, con un pequeño transition-delay para que
+      // el cambio de forma se note recién sobre el final, no desde el
+      // arranque.
+      const flyTo = (el, rect, radius, rot, duration = 0.34, ease = 'cubic-bezier(0.22,1,0.36,1)') => {
+        el.style.transition = `left ${duration}s ${ease}, top ${duration}s ${ease}, width ${duration}s ${ease}, height ${duration}s ${ease}, border-radius ${duration * 0.55}s ease-in ${duration * 0.45}s, transform ${duration}s ${ease}`;
         el.style.left = rect.left + 'px'; el.style.top = rect.top + 'px';
         el.style.width = rect.width + 'px'; el.style.height = rect.height + 'px';
         el.style.borderRadius = radius; el.style.transform = `rotate(${rot}deg)`;
@@ -3055,29 +3080,70 @@ export class MapView {
         flipFromRect: startRect,
         preloadedHeroUrl: rawUrl,
         flipContext: {
-          onDismiss: (heroRectNow, heroBgNow) => {
-            // try/finally: el cleanup de abajo (destrabar el slide,
-            // volver a mostrar la tarjeta real) tiene que correr SIEMPRE
-            // — si algo de acá arriba (crear el puente, animarlo,
-            // applyLayout) tirara una excepción, sin este resguardo el
-            // slide quedaba bloqueado (clusterEditing/pointerEvents
-            // pegados) para siempre, un estado que después se manifiesta
-            // como cosas raras al volver a tocarlo.
-            let backBridge = null;
+          onDismiss: () => {
+            // try/finally: el cleanup de abajo (destrabar el slide)
+            // tiene que correr SIEMPRE, incluso si el pulse-in fallara.
             try {
-              backBridge = makeFlyer(heroRectNow, '0px', heroBgNow || startBgImage, 0);
-              requestAnimationFrame(() => requestAnimationFrame(() => {
-                flyTo(backBridge, startRect, startRadius, startRot, 0.34);
-              }));
-              // El resto del slide reaparece EN PARALELO al vuelo de
-              // vuelta — se ve como que "estaba ahí todo el tiempo".
-              applyLayout(activeIdx, true); // repone transform/opacity reales de cada pieza — pisa el scale(0.88)+fade de arriba
+              // Mismo "pulse de aparición" que usa el resto de la app
+              // para stickers/decoraciones nuevas (ver el patrón
+              // !d._entered en applyLayout): arranca chico e invisible,
+              // se fuerza un reflow limpio, y RECIÉN AHÍ se anima hacia
+              // el tamaño real con la curva bouncy — es la sensación de
+              // "esto está entrando", no un simple fundido. La aplico
+              // acá a mano (no delegando en applyLayout) porque un
+              // cambio de estilo animado en el mismo tick que el pausado
+              // anterior podía colapsarse/saltearse sin un respiro real
+              // en el medio — eso es lo que dejaba a las demás tarjetas
+              // invisibles hasta que un drag forzaba un render fresco.
+              const pulseIn = (clone, baseTransform) => {
+                clone.style.transition = 'none';
+                clone.style.opacity = '0';
+                clone.style.transform = `${baseTransform} scale(0.55)`;
+                void clone.offsetHeight; // forzar reflow — separa "estado pausado" de "estado animando" en dos pintados distintos
+                clone.style.transition = 'transform 0.42s cubic-bezier(0.34,1.56,0.64,1), opacity 0.32s ease-out';
+                clone.style.opacity = '1';
+                clone.style.transform = baseTransform;
+              };
+
+              // La ficha ahora sale deslizándose hacia abajo (no con
+              // pulse) — mientras se va, recién empieza a revelarse el
+              // slide detrás. Un retraso chico (70ms) antes de arrancar
+              // el pulse de las tarjetas evita que "aparezcan" antes de
+              // que haya algo de pantalla libre para mostrarlas.
+              setTimeout(() => {
+                cardClone.style.visibility = '';
+                cardClone.style.border = startBorder;
+                pulseIn(cardClone, cardClone.style.transform || '');
+
+                // Las demás tarjetas entran CASI junto con la tocada,
+                // con un desfase mínimo (35ms) — se leen como un solo
+                // grupo "entrando desde el mapa" (igual que la apertura
+                // original del cluster), no como dos eventos separados.
+                setTimeout(() => {
+                  const others = clones.filter(c => c.clone !== cardClone);
+                  others.forEach(({ clone }) => {
+                    // El transform base real (sin el " scale(0.88)" que
+                    // le habíamos agregado a mano al pausar) — applyLayout
+                    // ya lo va a recalcular abajo, pero acá alcanza con
+                    // sacarle esa cola para que el pulso arranque desde
+                    // el transform correcto.
+                    const cleanTransform = (clone.style.transform || '').replace(/\s*scale\(0\.88\)\s*/, '');
+                    pulseIn(clone, cleanTransform);
+                  });
+                  // applyLayout llega DESPUÉS del pulso (no antes, no al
+                  // mismo tiempo) — ahora que cada tarjeta ya está en
+                  // pantalla, visible y animando, esta llamada solo
+                  // afina valores exactos (opacidad real por distancia,
+                  // etc.) sin arriesgarse a pisar el pulso a mitad de
+                  // camino.
+                  requestAnimationFrame(() => applyLayout(activeIdx, true));
+                }, 35);
+              }, 70);
             } catch (err) {
-              console.error('[FLIP] error en el vuelo de vuelta hacia el slide', err);
+              console.error('[FLIP] error en el pulse-in de vuelta hacia el slide', err);
             } finally {
               setTimeout(() => {
                 cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
-                if (backBridge) backBridge.remove();
                 clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
                 // wrap (con el botón de editar en su header) se reactiva
                 // con un pequeño margen EXTRA aparte del resto del
@@ -3088,7 +3154,7 @@ export class MapView {
                 // demora, pero alcanzan para que todo esté quieto antes
                 // de aceptar el próximo toque.
                 setTimeout(() => { wrap.style.pointerEvents = ''; }, 120);
-              }, 380);
+              }, 70 + 35 + 420 + 30); // retraso inicial + desfase de las demás + duración del pulso más largo + margen chico
             }
           },
         },
@@ -3110,6 +3176,7 @@ export class MapView {
         if (window.wpApp && window.wpApp.placeModal) window.wpApp.placeModal.revealHeroNow();
         bridge.remove();
       }, 380);
+      }, 90); // cierre del setTimeout del pulse táctil — ver el comentario largo al principio de la función
     };
 
     requestAnimationFrame(() => {
