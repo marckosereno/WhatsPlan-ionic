@@ -512,12 +512,12 @@ export class PlaceModal2 {
          solo. z-index:-1 para quedar SIEMPRE detrás del ícono del
          botón, nunca tapándolo. */
       @keyframes wpPm2TapFlash {
-        0%   { transform:scale(1);   opacity:0.6; }
-        100% { transform:scale(2.1); opacity:0; }
+        0%   { transform:scale(1);   opacity:0.55; }
+        100% { transform:scale(1.5); opacity:0; }
       }
       #wp-pm2-back::after, .wp-pm2-tb-btn::after {
         content:''; position:absolute; inset:0; border-radius:9999px;
-        background:rgba(59,130,246,0.55);
+        background:rgba(255,255,255,0.75);
         opacity:0; pointer-events:none; z-index:-1;
       }
       #wp-pm2-back.wp-pm2-tap-flash::after, .wp-pm2-tb-btn.wp-pm2-tap-flash::after {
