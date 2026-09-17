@@ -358,7 +358,18 @@ export class PlaceModal2 {
         z-index:10; background:transparent;
         overflow:hidden;
         font-family:'Inter Tight',sans-serif;
+        /* Misma entrada que usa el header del slide (.wp-ce-collage-header
+           en MapView.js) — mismos valores exactos (opacity, distancia del
+           translateY, duración, curva bouncy) para que se sientan como
+           el mismo gesto en las dos pantallas. Es SOLO del topbar — el
+           resto de la ficha (fondo, contenido) sigue con su propia
+           entrada de siempre, sin tocar. Aplica siempre que la ficha
+           entra, sin importar si es flip desde el slide o apertura
+           normal — .wp-pm2-in se activa en los dos casos por igual. */
+        opacity:0; transform:translateY(-10px);
+        transition:opacity 0.38s cubic-bezier(0.34,1.56,0.64,1), transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
       }
+      #wp-pm2.wp-pm2-in #wp-pm2-topbar { opacity:1; transform:translateY(0); }
       /* Topbar 100% transparente: no tiene fondo propio. La sombra usa el
          mismo blur sutil (0.5px) + mask-image que la versión nativa de
          app.css (ion-app::before) — acá con control propio para poder
