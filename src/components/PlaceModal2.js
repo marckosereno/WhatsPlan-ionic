@@ -480,6 +480,7 @@ export class PlaceModal2 {
         cursor:pointer; -webkit-tap-highlight-color:transparent;
         transition:transform 0.15s; flex-shrink:0;
       }
+      #wp-pm2-back:active { transform:scale(0.92); }
       #wp-pm2-topbar-title {
         position:relative; z-index:1; margin-left:12px;
         flex:1 1 auto; min-width:0; max-width:85%;
@@ -503,6 +504,25 @@ export class PlaceModal2 {
         transition:transform 0.15s;
       }
       .wp-pm2-tb-btn:active { transform:scale(0.92); }
+
+      /* Destello tipo GPS al tocar — mismo lenguaje visual que el anillo
+         de las actividades en el mapa (.pin-pulse-ring/@keyframes
+         pinPulse en map.css: scale(1)→scale(2.2), opacity 0.7→0), pero
+         disparado UNA vez por toque (no infinito) en vez de repetirse
+         solo. z-index:-1 para quedar SIEMPRE detrás del ícono del
+         botón, nunca tapándolo. */
+      @keyframes wpPm2TapFlash {
+        0%   { transform:scale(1);   opacity:0.6; }
+        100% { transform:scale(2.1); opacity:0; }
+      }
+      #wp-pm2-back::after, .wp-pm2-tb-btn::after {
+        content:''; position:absolute; inset:0; border-radius:9999px;
+        background:rgba(59,130,246,0.55);
+        opacity:0; pointer-events:none; z-index:-1;
+      }
+      #wp-pm2-back.wp-pm2-tap-flash::after, .wp-pm2-tb-btn.wp-pm2-tap-flash::after {
+        animation:wpPm2TapFlash 0.5s ease-out;
+      }
 
       /* CONTENT AREA — hero (overlay) encima de body (ocupa TODO el área,
          incl. detrás del hero) */
@@ -1089,6 +1109,23 @@ export class PlaceModal2 {
   // ── WIRE EVENTS ────────────────────────────────────────────────────
   _wireEvents() {
     const el = this._el;
+
+    // Destello tipo GPS en los botones del topbar — se dispara en
+    // pointerdown (no click) para que arranque en el mismo instante que
+    // el squish de :active, no un instante después. remove+reflow+add
+    // es necesario para poder re-disparar la animación en toques
+    // seguidos y rápidos — si solo se agregara la clase, un segundo tap
+    // mientras la animación anterior sigue corriendo no haría nada (la
+    // clase ya estaba puesta, "agregarla de nuevo" no es un cambio).
+    const triggerTapFlash = (btn) => {
+      btn.classList.remove('wp-pm2-tap-flash');
+      void btn.offsetWidth; // fuerza reflow — sin esto el browser puede no notar el remove+add como dos cambios distintos
+      btn.classList.add('wp-pm2-tap-flash');
+    };
+    el.querySelectorAll('#wp-pm2-back, .wp-pm2-tb-btn').forEach(btn => {
+      btn.addEventListener('pointerdown', () => triggerTapFlash(btn));
+    });
+
     el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
