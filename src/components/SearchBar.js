@@ -106,6 +106,16 @@ export class SearchBar {
     ['wp-side-panel-top','wp-side-panel-bottom'].forEach(function(id){var el=document.getElementById(id);if(el){el.style.transition='opacity 0.28s ease';el.style.opacity='1';el.style.pointerEvents='';}});
     // Restaurar mini snap si estaba visible antes del search
     var ms = document.getElementById('wp-minisnap-panel');
+    if (ms) {
+      // pointerEvents se restaura SIEMPRE que el panel exista, sin
+      // depender de _searchHidden — esa bandera solo queda bien puesta
+      // si el panel YA existía en el momento exacto de activate(); si
+      // no, deactivate() nunca la restauraba y el panel quedaba
+      // visible pero sin poder tocarse. _showMiniSnap() en
+      // PlaceModal2.js también se defiende de esto por su cuenta al
+      // mostrar, pero conviene arreglarlo acá también.
+      ms.style.pointerEvents = '';
+    }
     if (ms && ms._searchHidden) {
       ms._searchHidden = false;
       ms.style.visibility    = 'visible';
