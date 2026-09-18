@@ -324,8 +324,13 @@ export class PlaceModal2 {
          viajando, no hay "rectángulo con esquinas cuadradas" que se
          note rígido en pleno movimiento; ver también la regla del hero
          más abajo (#wp-pm2.wp-pm2-flip-exit #wp-pm2-hero), que le
-         redondea las esquinas apenas arranca esta salida. */
-      #wp-pm2.wp-pm2-flip-entry.wp-pm2-flip-exit #wp-pm2-card {
+         redondea las esquinas apenas arranca esta salida.
+         SOLO depende de wp-pm2-flip-exit — a propósito, sin exigir
+         también wp-pm2-flip-entry: hide() agrega esta clase siempre
+         (ver el JS), sin importar si la ficha se abrió desde el flip
+         del slide, desde el minicard o desde la búsqueda global. Así
+         esta salida es la misma en los tres casos. */
+      #wp-pm2.wp-pm2-flip-exit #wp-pm2-card {
         transform:none;
         transition:opacity 0.24s ease-in;
       }
@@ -1627,10 +1632,10 @@ export class PlaceModal2 {
       }
     }
 
-    // Solo tiene efecto si es una salida de tipo flip (ver la regla CSS
-    // #wp-pm2.wp-pm2-flip-entry.wp-pm2-flip-exit) — en una ficha abierta
-    // normal (sin flip) no cambia nada, esa clase por sí sola no hace
-    // nada.
+    // Dispara la salida de fade puro (ver la regla CSS
+    // #wp-pm2.wp-pm2-flip-exit) — se agrega SIEMPRE, sin importar si la
+    // ficha se abrió desde el flip del slide, desde el minicard o desde
+    // la búsqueda global, así la salida es la misma en los tres casos.
     this._el.classList.add('wp-pm2-flip-exit');
     this._el.classList.remove('wp-pm2-in');
     document.body.classList.remove('wp-pm-open');
