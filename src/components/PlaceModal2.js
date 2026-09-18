@@ -319,17 +319,15 @@ export class PlaceModal2 {
         transition:opacity 0.22s ease-out, transform 0.22s cubic-bezier(0.34,1.4,0.64,1);
       }
       #wp-pm2.wp-pm2-in.wp-pm2-flip-entry #wp-pm2-card { transform:scale(1); }
-      /* Salida: se desliza hacia abajo como un sheet cerrándose — NO el
-         mismo pulse de escala que usa la entrada. Se agrega la clase
-         wp-pm2-flip-exit SOLO en hide() (ver el JS), justo antes de
-         sacar wp-pm2-in — como esta regla es más específica (3 clases
-         contra 1), le gana a la de arriba y define un destino distinto
-         para cuando el card vuelve al estado "afuera". ease-in
-         (acelera en vez de frenar) porque es una salida "se deja caer",
-         no una llegada. */
+      /* Salida: fade puro, sin ningún movimiento (ni escala ni
+         traslado) — el card entero se desvanece en el lugar. Sin nada
+         viajando, no hay "rectángulo con esquinas cuadradas" que se
+         note rígido en pleno movimiento; ver también la regla del hero
+         más abajo (#wp-pm2.wp-pm2-flip-exit #wp-pm2-hero), que le
+         redondea las esquinas apenas arranca esta salida. */
       #wp-pm2.wp-pm2-flip-entry.wp-pm2-flip-exit #wp-pm2-card {
-        transform:translateY(70px);
-        transition:opacity 0.28s ease-in, transform 0.32s cubic-bezier(0.32,0,0.67,0);
+        transform:none;
+        transition:opacity 0.24s ease-in;
       }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
@@ -536,7 +534,15 @@ export class PlaceModal2 {
         height:88vw; min-height:320px; max-height:460px;
         overflow:hidden; background:transparent;
         will-change:height;
+        /* Al salir (wp-pm2-flip-exit, ver más abajo), las esquinas se
+           redondean RÁPIDO (0.15s — más corto que el fade de 0.24s del
+           card) para que ya estén redondeadas antes de que el
+           desvanecido se note. Es lo que evita que la foto se lea como
+           un cartón cuadrado despidiéndose. */
+        border-radius:0px;
+        transition:border-radius 0.15s ease-out;
       }
+      #wp-pm2.wp-pm2-flip-exit #wp-pm2-hero { border-radius:22px; }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
       #wp-pm2-hero-inner {
