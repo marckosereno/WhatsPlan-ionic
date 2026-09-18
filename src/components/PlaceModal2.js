@@ -1256,6 +1256,16 @@ export class PlaceModal2 {
       ms.id = 'wp-minisnap-panel';
       document.body.appendChild(ms);
     }
+    // Bug real encontrado: _hideMiniSnap() pone pointer-events:none al
+    // ocultar, y SearchBar.activate() TAMBIÉN se lo pone al entrar a
+    // búsqueda — pero la restauración de ese segundo caso
+    // (SearchBar.deactivate()) es CONDICIONAL a una bandera
+    // (ms._searchHidden) que no siempre queda bien puesta. Resultado:
+    // el panel volvía a aparecer visualmente (opacity:1) pero sin
+    // poder tocarse — para siempre, hasta reiniciar la app. La función
+    // que MUESTRA el panel tiene que garantizar que quede interactivo,
+    // sin importar quién ni por qué se lo haya sacado antes.
+    ms.style.pointerEvents = '';
 
     const name   = place.name || place.displayName || '';
     const rating = parseFloat(place.rating) || 0;
