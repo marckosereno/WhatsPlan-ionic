@@ -1274,8 +1274,11 @@ export class PlaceModal2 {
     const statusTxt   = isOpen === true ? 'Abierto' : isOpen === false ? 'Cerrado' : 'Sin horario';
 
     const photosAll = place.photosUrls || place.photos_urls || (place.photoUrl || place.photo_url ? [place.photoUrl || place.photo_url] : []);
-    const photos4 = photosAll.slice(0, 4);
-    const remaining = photosAll.length - 3;
+    // Antes se cortaba a las primeras 4 con un "+N" en la última — eso
+    // no dejaba nada para scrollear de verdad. Ahora se muestran todas
+    // (tope de 12 por performance, casi ningún lugar tiene más fotos
+    // que eso cargadas) en una tira horizontal con scroll real.
+    const photos4 = photosAll.slice(0, 12);
 
     const panelEl = document.querySelector('.map-results-panel-float');
     const panelHeight = panelEl ? panelEl.offsetHeight : 156;
@@ -1316,10 +1319,9 @@ export class PlaceModal2 {
       ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20)'
       : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18)';
 
-    const photoCardHtml = (url, isLast) => `
-      <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;">
+    const photoCardHtml = (url) => `
+      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:center;transform-origin:center;">
         <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
-        ${isLast && remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;">+${remaining - 1}</div>` : ''}
       </div>`;
 
     ms.innerHTML = `
@@ -1338,10 +1340,10 @@ export class PlaceModal2 {
           </button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
+      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:0 4px;scrollbar-width:none;">
         ${photos4.length
-          ? photos4.map((u, i) => photoCardHtml(u, i === photos4.length - 1)).join('')
-          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:20px">📷</span></div>`}
+          ? photos4.map((u) => photoCardHtml(u)).join('')
+          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:20px">📷</span></div>`}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:7px">
@@ -1389,9 +1391,107 @@ export class PlaceModal2 {
     }
     const cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = goFull;
+    // justSwiped: el navegador dispara un "click" normal después del
+    // pointerup incluso tras un drag largo (esto NO es un scroll nativo
+    // — el movimiento lo maneja transform a mano — así que el browser no
+    // tiene forma de saber que fue un swipe y no un tap). Sin este
+    // guard, un swipe exitoso a otro lugar dispararía IGUAL goFull()
+    // apenas después, abriendo la ficha completa sin que nadie la haya
+    // pedido.
+    let justSwiped = false;
     ms.addEventListener('click', (e) => {
+      if (justSwiped) { justSwiped = false; return; }
       if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
     });
+
+    // ── Parallax en la tira de fotos ─────────────────────────────────
+    // Las fotos cerca del centro de la tira quedan a tamaño completo y
+    // opacidad completa; las que se van acercando a los bordes se achican
+    // y atenúan — mismo principio que el parallax del slide de cluster,
+    // adaptado a una tira chica de miniaturas en vez de tarjetas grandes.
+    const photoStrip = ms.querySelector('#wp-ms-photo-strip');
+    if (photoStrip) {
+      const applyPhotoParallax = () => {
+        const stripRect = photoStrip.getBoundingClientRect();
+        if (!stripRect.width) return;
+        const centerX = stripRect.left + stripRect.width / 2;
+        photoStrip.querySelectorAll('.wp-ms-photo').forEach(photo => {
+          const r = photo.getBoundingClientRect();
+          const dist = Math.abs((r.left + r.width / 2) - centerX);
+          const norm = Math.min(1, dist / (stripRect.width / 2));
+          photo.style.transform = `scale(${1 - norm * 0.18})`;
+          photo.style.opacity   = 1 - norm * 0.35;
+        });
+      };
+      photoStrip.addEventListener('scroll', applyPhotoParallax, { passive: true });
+      requestAnimationFrame(applyPhotoParallax); // estado inicial, una vez que el layout ya midió bien
+    }
+
+    // ── Swipe horizontal entre lugares cercanos ──────────────────────
+    // Usa el mismo índice que ya trackea MapView (mv.miniCardIndex,
+    // dentro de mv.markers) para saber cuál es "el siguiente" y "el
+    // anterior" — la misma idea de continuidad que el slide de cluster
+    // entre lugares, pero para el minisnap de un lugar suelto. Se
+    // excluyen la tira de fotos (tiene su propio scroll), los botones y
+    // el handle — todos manejan su propio gesto.
+    const SWIPE_EXCLUDE = '#wp-ms-photo-strip, #wp-ms-fav-btn, #wp-ms-close-btn, #wp-ms-cta-btn, #wp-ms-handle';
+    let swipeStartX = 0, swipeStartY = 0, swiping = false;
+    ms.addEventListener('pointerdown', (e) => {
+      if (e.target.closest(SWIPE_EXCLUDE)) return;
+      swipeStartX = e.clientX; swipeStartY = e.clientY; swiping = true;
+      ms.style.transition = 'none';
+    });
+    ms.addEventListener('pointermove', (e) => {
+      if (!swiping) return;
+      const dx = e.clientX - swipeStartX;
+      const dy = e.clientY - swipeStartY;
+      // Gesto más vertical que horizontal — probablemente querían tocar
+      // o hacer otra cosa, no swipear de lugar. Se suelta sin animar.
+      if (Math.abs(dy) > Math.abs(dx) * 1.2) { swiping = false; ms.style.transform = ''; return; }
+      ms.style.transform = `translateX(${dx * 0.6}px)`; // con resistencia — sigue al dedo pero no 1:1
+    });
+    const finishPlaceSwipe = (e) => {
+      if (!swiping) return;
+      swiping = false;
+      const dx = (typeof e.clientX === 'number' ? e.clientX : swipeStartX) - swipeStartX;
+      const mv = window.wpApp && window.wpApp.mapView;
+      const THRESHOLD = 60;
+      if (mv && Math.abs(dx) > THRESHOLD && mv.miniCardIndex >= 0) {
+        const dir = dx < 0 ? 1 : -1; // izquierda = siguiente, derecha = anterior
+        const nextMarker = mv.markers[mv.miniCardIndex + dir];
+        const nextPlace = nextMarker && nextMarker.getElement && nextMarker.getElement()._place;
+        if (nextPlace) {
+          justSwiped = true;
+          const nextIndex = mv.miniCardIndex + dir;
+          ms.style.transition = 'transform 0.18s ease-in, opacity 0.18s ease-in';
+          ms.style.transform  = `translateX(${dir > 0 ? -40 : 40}px)`; // sigue saliendo en la misma dirección del swipe
+          ms.style.opacity    = '0';
+          setTimeout(() => {
+            mv._showMiniCard(nextPlace, nextIndex); // el pin correspondiente en el mapa también pasa a estar "activo" — mismo lugar, dos vistas en sync
+            self._showMiniSnap(nextPlace);
+            const freshMs = document.getElementById('wp-minisnap-panel');
+            // Entra desde el lado OPUESTO al que salió el anterior —
+            // sensación de continuidad, como si el siguiente lugar ya
+            // estuviera ahí esperando.
+            freshMs.style.transition = 'none';
+            freshMs.style.transform  = `translateX(${dir > 0 ? 40 : -40}px)`;
+            freshMs.style.opacity    = '0';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              freshMs.style.transition = 'transform 0.26s cubic-bezier(0.22,1,0.36,1), opacity 0.22s ease-out';
+              freshMs.style.transform  = 'translateX(0)';
+              freshMs.style.opacity    = '1';
+            }));
+          }, 170);
+          return;
+        }
+      }
+      // No había lugar siguiente/anterior, o no se llegó al umbral —
+      // vuelve a su lugar con un resorte suave.
+      ms.style.transition = 'transform 0.28s cubic-bezier(0.34,1.4,0.64,1)';
+      ms.style.transform  = 'translateX(0)';
+    };
+    ms.addEventListener('pointerup', finishPlaceSwipe);
+    ms.addEventListener('pointercancel', finishPlaceSwipe);
   }
 
   _hideMiniSnap() {
