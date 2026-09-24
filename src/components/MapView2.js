@@ -1875,20 +1875,27 @@ export class MapView {
         // primero" — se reordena explícitamente para que coincida.
         const order = customDef.placeIds || [];
         members.sort((a, b) => order.indexOf(placeIdOf(a.el._place)) - order.indexOf(placeIdOf(b.el._place)));
-        // Exige el grupo COMPLETO, no "al menos uno". Antes, si a un
-        // cluster de 2+ lugares le faltaba alguno (por ejemplo, oculto
-        // todavía por el revelado de zoom), el resto igual se renderizaba
-        // — pero como "cluster de un solo lugar", que es un ESTILO DE PIN
-        // (pinStyle==='cluster', tap → minicard), no un cluster grupal
-        // (tap → carrusel). El resultado era un pin que abría el
-        // carrusel/slide como si fuera un lugar solo declarado con estilo
-        // cluster, cuando en realidad era un miembro suelto de un grupo.
-        // Si falta alguno, ningún miembro se dibuja como cluster acá: cada
-        // uno cae a su propio render normal (_buildPinHtml), que ya sabe
-        // mostrarlo con estilo cluster individual si ESE lugar en
-        // particular tiene ese estilo declarado — y si no, con lo que
-        // tenga configurado.
-        if (members.length < (customDef.placeIds || []).length) return;
+        // Antes exigía el grupo COMPLETO (todos los placeIds del
+        // customDef, sin excepción) — eso arreglaba un bug real (un
+        // cluster de 2+ al que le faltaba UN miembro se rendía como
+        // pin de estilo "cluster" individual, con comportamiento de
+        // tap equivocado — abría un minicard en vez del carrusel). Pero
+        // "todo o nada" traía un problema nuevo: al editar un cluster
+        // existente y sumarle un lugar, ese lugar recién agregado
+        // puede no tener todavía un marcador real visible en pantalla
+        // en ESE instante (recién se agregó como objeto de preview en
+        // el editor, no como pin real del mapa) — y con la exigencia
+        // estricta, el grupo ENTERO se rechazaba acá, mandando a los
+        // demás miembros (que sí estaban listos) al clustering
+        // automático, separados del diseño personalizado — el "cluster
+        // nuevo" que se reportó, en vez de actualizarse el existente.
+        //
+        // Ahora alcanza con 2+ miembros encontrados — sigue evitando
+        // exactamente el bug original (un cluster de 1 solo miembro
+        // nunca llega a formarse acá, cae al paso 3 como antes), pero
+        // ya no tira todo el grupo por un miembro que temporalmente no
+        // tiene marcador en pantalla.
+        if (members.length < 2) return;
         members.forEach(m => usedEls.add(m.el));
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
       });
