@@ -1568,6 +1568,12 @@ export class MapView {
       prio: el._zoomTier ?? 3,
       clusterGroup: clusterGroupOf.get(placeIdOf(el._place)) ?? null,
     })).filter(x => x.m);
+    // Setear _clusterGroup en TODOS los marcadores desde ya, no solo en
+    // los que terminan asignados dentro del loop de abajo — si un
+    // miembro cae en el fallback de "no encajó en ningún nivel → zoom
+    // 18", igual necesita su _clusterGroup puesto para que la
+    // sincronización final lo alcance.
+    all.forEach(({ el, clusterGroup }) => { el._clusterGroup = clusterGroup; });
     all.sort((a, b) => a.prio - b.prio);
 
     const assigned = new Set();
@@ -1603,6 +1609,27 @@ export class MapView {
     // TODOS los pines deben aparecer — ninguno se oculta permanentemente
     this.markerEls.forEach(el => {
       if (!assigned.has(el)) el._showAtZoom = 18;
+    });
+
+    // Sincronizar a TODOS los miembros de un mismo cluster curado al
+    // MEJOR (más bajo) umbral entre ellos — no alcanza con que no
+    // compitan por espacio entre sí (arriba): cada uno igual podía
+    // terminar en un nivel distinto por culpa de OTROS pines cercanos
+    // que NO son parte del cluster. Sin esta sincronización, el cluster
+    // sigue formándose recién en la ventana donde el ÚLTIMO miembro (el
+    // de umbral más alto) se revela — angosta igual. Ahora todos entran
+    // juntos, desde el momento en que el más favorecido de ellos lo
+    // haría solo.
+    const byGroup = new Map();
+    this.markerEls.forEach(el => {
+      const gi = el._clusterGroup;
+      if (gi === null || gi === undefined) return;
+      if (!byGroup.has(gi)) byGroup.set(gi, []);
+      byGroup.get(gi).push(el);
+    });
+    byGroup.forEach(members => {
+      const best = Math.min(...members.map(el => el._showAtZoom ?? 18));
+      members.forEach(el => { el._showAtZoom = best; });
     });
   }
 
@@ -1858,6 +1885,15 @@ export class MapView {
     // varios lugares + automáticos por cercanía) solo existen por debajo
     // de este zoom: más cerca ya hay lugar para mostrar cada pin suelto.
     // Los pines de ESTILO ÚNICO no dependen de esto — ver paso 3.
+    //
+    // Dos umbrales distintos a propósito: los clusters CURADOS a mano
+    // (paso 1) aguantan hasta un zoom más alto (18.3) que los AUTOMÁTICOS
+    // por cercanía (paso 2, 17.2) — si alguien arma un cluster a mano, la
+    // intención es que se vea como grupo un rato más antes de desarmarse;
+    // el automático puede seguir desintegrándose antes, ya que ESE
+    // comportamiento dinámico (formarse/deshacerse con el zoom) es
+    // justamente lo esperado para agrupamiento no curado.
+    const curatedClustersActive = this.map.getZoom() < 18.3;
     const clustersActive = this.map.getZoom() < 17.2;
 
     // PRIORIDAD entre filas que compiten por el mismo lugar. Hace falta
@@ -1894,7 +1930,7 @@ export class MapView {
     // en SuperUserPanel.js) — antes había copias locales ligeramente
     // distintas en cada lugar, y esa desincronización era justo lo que
     // rompía la edición para lugares sin place_id/id.
-    if (clustersActive) {
+    if (curatedClustersActive) {
       pinClustersByPriority.forEach(customDef => {
         if ((customDef.placeIds || []).length <= 1) return; // de un solo lugar → paso 3
         // Pool ESTRICTO a propósito (respeta el revelado por zoom). Con el
