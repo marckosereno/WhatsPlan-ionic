@@ -1268,6 +1268,20 @@ export class MapView {
   }
   async reloadPinClusters() {
     await this._loadPinClusters();
+    // Recalcular los umbrales de zoom DESPUÉS de refrescar pinClusters
+    // — _assignZoomThresholds() ahora usa esa data para que los
+    // miembros de un mismo cluster no compitan por espacio entre sí
+    // (ver el comentario largo ahí). Si esto no corriera acá, el fix
+    // recién se aplicaría en la próxima carga completa de categoría,
+    // no apenas se guarda una edición — que es justo cuando hace falta.
+    this._assignZoomThresholds();
+    // _assignZoomThresholds() solo calcula el número (_showAtZoom) —
+    // _updatePinsByZoom() es la que de verdad aplica ese número al DOM
+    // (mostrar/ocultar cada pin). Sin este paso, _updateClusters() de
+    // abajo lee la visibilidad VIEJA (la del último zoom/pan real), no
+    // la recién recalculada, y el fix no se nota hasta el próximo
+    // movimiento del mapa.
+    this._updatePinsByZoom();
     // Los pines con pinStyle 'cluster' renderizan su diseño desde
     // this.pinClusters dentro de _buildPinHtml, así que al cambiar ese
     // dato hay que reconstruir su HTML — si no, el pin sigue mostrando el
@@ -1529,9 +1543,30 @@ export class MapView {
       { zoom: 17, minDist: 0.00015 },
     ];
 
+    // Mapa place_id → índice de fila en pinClusters, para saber si dos
+    // pines son miembros del MISMO cluster curado. Es necesario porque
+    // los miembros de un cluster están cerca entre sí por definición —
+    // sin este mapa, el algoritmo de abajo (que empuja a un pin a un
+    // nivel de zoom MÁS lejano si está "muy cerca" de uno ya colocado)
+    // casi siempre les asigna umbrales DISTINTOS a los miembros de un
+    // mismo cluster, porque cada uno cuenta como "demasiado cerca" del
+    // otro. Resultado: el cluster completo solo se ve armado en la
+    // ventana de zoom donde TODOS sus miembros coinciden en estar
+    // revelados — angosta o casi inexistente si hay 3+ miembros con
+    // umbrales distintos entre sí. Esto es justo lo que se reportó como
+    // "el cluster editado solo se ve un instante" — no es un bug en el
+    // guardado ni en el armado del grupo, es que sus propios miembros
+    // se estaban compitiendo espacio unos a otros en este cálculo.
+    const clusterGroupOf = new Map();
+    (this.pinClusters || []).forEach((cd, gi) => {
+      if ((cd.placeIds || []).length < 2) return; // clusters de 1 lugar no aplican acá
+      (cd.placeIds || []).forEach(pid => clusterGroupOf.set(pid, gi));
+    });
+
     const all = this.markerEls.map((el, i) => ({
       el, m: this.markers[i],
-      prio: el._zoomTier ?? 3
+      prio: el._zoomTier ?? 3,
+      clusterGroup: clusterGroupOf.get(placeIdOf(el._place)) ?? null,
     })).filter(x => x.m);
     all.sort((a, b) => a.prio - b.prio);
 
@@ -1539,20 +1574,27 @@ export class MapView {
 
     levels.forEach(({ zoom, minDist }) => {
       const placed = [];
-      assigned.forEach(el => { if (el._m) placed.push(el._m.getLngLat()); });
+      assigned.forEach(el => { if (el._m) placed.push({ ll: el._m.getLngLat(), clusterGroup: el._clusterGroup ?? null }); });
 
-      all.forEach(({ el, m }) => {
+      all.forEach(({ el, m, clusterGroup }) => {
         if (assigned.has(el)) return;
         const ll = m.getLngLat();
         const tooClose = placed.some(p => {
-          const dx = p.lng - ll.lng, dy = p.lat - ll.lat;
+          // Miembros del MISMO cluster curado no compiten entre sí por
+          // espacio — están destinados a agruparse juntos, no a
+          // estorbarse. Sin esta excepción, el segundo miembro de un
+          // cluster SIEMPRE queda "demasiado cerca" del primero y se
+          // empuja a un nivel de zoom más lejano.
+          if (clusterGroup !== null && p.clusterGroup === clusterGroup) return false;
+          const dx = p.ll.lng - ll.lng, dy = p.ll.lat - ll.lat;
           return Math.sqrt(dx*dx + dy*dy) < minDist;
         });
         if (!tooClose) {
           el._showAtZoom = zoom;
           el._m = m;
+          el._clusterGroup = clusterGroup;
           assigned.add(el);
-          placed.push(ll);
+          placed.push({ ll, clusterGroup });
         }
       });
     });
