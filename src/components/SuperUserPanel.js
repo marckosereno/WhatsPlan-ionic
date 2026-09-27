@@ -733,6 +733,17 @@ export class SuperUserPanel {
     // ("se desordena todo", "algunas categorías no funcionan").
 
     const isEdit = !!existingCluster;
+    // [DIAG-CLUSTER] Temporal — sacar una vez encontrada la causa real
+    // del bug de "se crea un cluster nuevo al editar". Confirma si el
+    // editor reconoce que ESTE cluster ya existe en la base (isEdit) y
+    // con qué id/place_ids arranca.
+    console.log('[DIAG-CLUSTER] abrir editor', {
+      isEdit,
+      existingClusterId: existingCluster?.id ?? null,
+      existingPlaceIds: existingCluster?.placeIds ?? null,
+      groupSize: group.length,
+      groupPlaceIds: group.map(({ el }) => el._place?.id ?? el._place?.place_id ?? null),
+    });
     let groupPlaces = group.map(({ el }) => el._place);
     const included = new Set(groupPlaces.map((p, i) => placeIdOf(p)));
 
@@ -1486,6 +1497,12 @@ export class SuperUserPanel {
         slidePlaces: existingCluster?.slidePlaces ?? null,
         slideGlobal: existingCluster?.slideGlobal ?? null,
       };
+      // [DIAG-CLUSTER] Temporal — ver el comentario en _openClusterCustomizePanel.
+      // Esto confirma EXACTAMENTE qué id y qué place_ids se están mandando
+      // a guardar — si el id viene null/undefined en una edición, ESE es
+      // el momento exacto en que se crea una fila nueva en vez de
+      // actualizar la existente.
+      console.log('[DIAG-CLUSTER] guardando', { id: payload.id, place_ids: payload.place_ids });
       try {
         const res = await fetch('/api/supabase-clusters', {
           method: 'POST',
