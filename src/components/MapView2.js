@@ -1268,6 +1268,13 @@ export class MapView {
   }
   async reloadPinClusters() {
     await this._loadPinClusters();
+    // [DIAG-CLUSTER] Temporal — ver el comentario en
+    // SuperUserPanel.js/_openClusterCustomizePanel. Esto muestra CUÁNTAS
+    // filas hay ahora en la base para cada place_id — si el mismo lugar
+    // aparece en DOS filas distintas de this.pinClusters después de
+    // guardar una edición, ESA es la prueba de que el guardado creó una
+    // fila nueva en vez de actualizar la existente.
+    console.log('[DIAG-CLUSTER] pinClusters recargados', (this.pinClusters || []).map(cd => ({ id: cd.id, placeIds: cd.placeIds, updatedAt: cd.updatedAt })));
     // Recalcular los umbrales de zoom DESPUÉS de refrescar pinClusters
     // — _assignZoomThresholds() ahora usa esa data para que los
     // miembros de un mismo cluster no compitan por espacio entre sí
@@ -2060,6 +2067,20 @@ export class MapView {
     // sea que el 100% de ese trabajo era tirar y reconstruir algo idéntico.
     // Con la firma de _clusterKey(), un pan ahora no toca el DOM en
     // absoluto; solo un zoom (que sí reagrupa) construye lo que cambió.
+    // [DIAG-CLUSTER] Temporal — ver los comentarios en
+    // SuperUserPanel.js/_openClusterCustomizePanel y
+    // MapView.js/reloadPinClusters. Esto muestra los grupos que
+    // _updateClusters() terminó armando en ESTA pasada — si acá aparecen
+    // DOS entradas con place_ids superpuestos (el viejo grupo de 3 Y un
+    // grupo nuevo con más), la causa está en el armado/reconciliación de
+    // acá, no en la base de datos.
+    if (wanted.length) {
+      console.log('[DIAG-CLUSTER] grupos armados', wanted.map(w => ({
+        key: w.key,
+        curado: !!w.customDef,
+        placeIds: w.group.map(m => placeIdOf(m.el._place)),
+      })));
+    }
     const wantedKeys = new Set(wanted.map(w => w.key));
     for (const [key, marker] of Array.from(this._clusterByKey)) {
       if (wantedKeys.has(key)) continue;
