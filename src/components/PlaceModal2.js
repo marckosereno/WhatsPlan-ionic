@@ -1330,8 +1330,8 @@ export class PlaceModal2 {
       </div>
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:8px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,0.92);box-shadow:0 1px 3px rgba(0,0,0,0.10),inset 0 1px 0 #fff;display:flex;align-items:center;justify-content:center;color:#374151;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;height:30px;padding:0 16px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,0.92);box-shadow:0 1px 3px rgba(0,0,0,0.10),inset 0 1px 0 #fff;font-size:13px;font-weight:700;color:#1f2937;letter-spacing:0.1px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);">Cerrar</button></div>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:8px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,0.92);box-shadow:0 1px 3px rgba(0,0,0,0.10),inset 0 1px 0 #fff;display:flex;align-items:center;justify-content:center;color:#374151;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,0.92);box-shadow:0 1px 3px rgba(0,0,0,0.10),inset 0 1px 0 #fff;display:flex;align-items:center;justify-content:center;color:#374151;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
       </div>
       <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:0 4px;scrollbar-width:none;">
         ${photos4.length
@@ -1392,16 +1392,7 @@ export class PlaceModal2 {
     }
     const cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = goFull;
-    // justSwiped: el navegador dispara un "click" normal después del
-    // pointerup incluso tras un drag largo (esto NO es un scroll nativo
-    // — el movimiento lo maneja transform a mano — así que el browser no
-    // tiene forma de saber que fue un swipe y no un tap). Sin este
-    // guard, un swipe exitoso a otro lugar dispararía IGUAL goFull()
-    // apenas después, abriendo la ficha completa sin que nadie la haya
-    // pedido.
-    let justSwiped = false;
     ms.addEventListener('click', (e) => {
-      if (justSwiped) { justSwiped = false; return; }
       if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
     });
 
@@ -1427,76 +1418,6 @@ export class PlaceModal2 {
       photoStrip.addEventListener('scroll', applyPhotoParallax, { passive: true });
       requestAnimationFrame(applyPhotoParallax); // estado inicial, una vez que el layout ya midió bien
     }
-
-    // ── Swipe horizontal entre lugares cercanos ──────────────────────
-    // Usa el mismo índice que ya trackea MapView (mv.miniCardIndex,
-    // dentro de mv.markers) para saber cuál es "el siguiente" y "el
-    // anterior" — la misma idea de continuidad que el slide de cluster
-    // entre lugares, pero para el minisnap de un lugar suelto. Se
-    // excluyen la tira de fotos (tiene su propio scroll), los botones y
-    // el handle — todos manejan su propio gesto.
-    const SWIPE_EXCLUDE = '#wp-ms-photo-strip, #wp-ms-fav-btn, #wp-ms-close-btn, #wp-ms-cta-btn, #wp-ms-handle';
-    let swipeStartX = 0, swipeStartY = 0, swipeLastX = 0, swiping = false;
-    ms.style.touchAction = 'pan-y'; // el navegador se queda con el scroll vertical; el horizontal lo manejamos nosotros sin pointercancel
-    ms.addEventListener('pointerdown', (e) => {
-      if (e.target.closest(SWIPE_EXCLUDE)) return;
-      swipeStartX = swipeLastX = e.clientX; swipeStartY = e.clientY; swiping = true;
-      ms.style.transition = 'none';
-    });
-    ms.addEventListener('pointermove', (e) => {
-      if (!swiping) return;
-      swipeLastX = e.clientX;
-      const dx = e.clientX - swipeStartX;
-      const dy = e.clientY - swipeStartY;
-      // Gesto más vertical que horizontal — probablemente querían tocar
-      // o hacer otra cosa, no swipear de lugar. Se suelta sin animar.
-      if (Math.abs(dy) > Math.abs(dx) * 1.2) { swiping = false; ms.style.transform = ''; return; }
-      ms.style.transform = `translateX(${dx * 0.6}px)`; // con resistencia — sigue al dedo pero no 1:1
-    });
-    const finishPlaceSwipe = (e) => {
-      if (!swiping) return;
-      swiping = false;
-      // pointercancel trae clientX 0 → se usa la última X real y, si se canceló, nunca navega.
-      const cancelled = e.type === 'pointercancel';
-      const dx = cancelled ? 0 : swipeLastX - swipeStartX;
-      const mv = window.wpApp && window.wpApp.mapView;
-      const THRESHOLD = 60;
-      if (mv && Math.abs(dx) > THRESHOLD && mv.miniCardIndex >= 0) {
-        const dir = dx < 0 ? 1 : -1; // izquierda = siguiente, derecha = anterior
-        const nextMarker = mv.markers[mv.miniCardIndex + dir];
-        const nextPlace = nextMarker && nextMarker.getElement && nextMarker.getElement()._place;
-        if (nextPlace) {
-          justSwiped = true;
-          const nextIndex = mv.miniCardIndex + dir;
-          ms.style.transition = 'transform 0.18s ease-in, opacity 0.18s ease-in';
-          ms.style.transform  = `translateX(${dir > 0 ? -40 : 40}px)`; // sigue saliendo en la misma dirección del swipe
-          ms.style.opacity    = '0';
-          setTimeout(() => {
-            mv._showMiniCard(nextPlace, nextIndex); // el pin correspondiente en el mapa también pasa a estar "activo" — mismo lugar, dos vistas en sync
-            self._showMiniSnap(nextPlace);
-            const freshMs = document.getElementById('wp-minisnap-panel');
-            // Entra desde el lado OPUESTO al que salió el anterior —
-            // sensación de continuidad, como si el siguiente lugar ya
-            // estuviera ahí esperando.
-            freshMs.style.transition = 'none';
-            freshMs.style.transform  = `translateX(${dir > 0 ? 40 : -40}px)`;
-            freshMs.style.opacity    = '0';
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              freshMs.style.transition = 'transform 0.26s cubic-bezier(0.22,1,0.36,1), opacity 0.22s ease-out';
-              freshMs.style.transform  = 'translateX(0)';
-              freshMs.style.opacity    = '1';
-            }));
-          }, 170);
-          return;
-        }
-      }
-      // No había lugar siguiente/anterior, o no se llegó al umbral —
-      // vuelve a su lugar con un resorte suave.
-      ms.style.transition = 'transform 0.28s cubic-bezier(0.34,1.4,0.64,1)';
-      ms.style.transform  = 'translateX(0)';
-    };
-    ms.addEventListener('pointerup', finishPlaceSwipe);
-    ms.addEventListener('pointercancel', finishPlaceSwipe);
   }
 
   _hideMiniSnap() {
