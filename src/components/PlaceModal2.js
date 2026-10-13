@@ -1320,7 +1320,7 @@ export class PlaceModal2 {
       : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18)';
 
     const photoCardHtml = (url) => `
-      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:center;transform-origin:center;">
+      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:start;">
         <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
       </div>`;
 
@@ -1333,7 +1333,7 @@ export class PlaceModal2 {
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
         <div style="position:absolute;right:0;display:flex;align-items:center;gap:3px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,0.7);background:radial-gradient(120% 90% at 30% 15%,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.55) 45%,rgba(226,232,240,0.45) 100%);backdrop-filter:blur(14px) saturate(1.8);-webkit-backdrop-filter:blur(14px) saturate(1.8);box-shadow:0 2px 6px rgba(0,0,0,0.08),inset 0 1.5px 1px rgba(255,255,255,1),inset 0 -2px 4px rgba(148,163,184,0.25);display:flex;align-items:center;justify-content:center;color:#374151;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,0.45);background:radial-gradient(120% 90% at 30% 15%,rgba(255,140,140,0.85) 0%,rgba(239,68,68,0.62) 50%,rgba(220,38,38,0.58) 100%);backdrop-filter:blur(14px) saturate(1.8);-webkit-backdrop-filter:blur(14px) saturate(1.8);box-shadow:0 2px 6px rgba(220,38,38,0.22),inset 0 1.5px 1px rgba(255,255,255,0.85),inset 0 -2px 4px rgba(153,27,27,0.28);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
       </div>
-      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:0 4px;scrollbar-width:none;">
+      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px;scroll-padding:0 14px;scrollbar-width:none;">
         ${photos4.length
           ? photos4.map((u) => photoCardHtml(u)).join('')
           : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:20px">📷</span></div>`}
@@ -1369,6 +1369,9 @@ export class PlaceModal2 {
       const active = favBtn.classList.contains('active');
       svg.setAttribute('fill', active ? '#ef4444' : 'none');
       favBtn.style.color = active ? '#ef4444' : '#374151';
+      favBtn.style.background = active
+        ? 'radial-gradient(120% 90% at 30% 15%,rgba(255,255,255,0.95) 0%,rgba(254,205,211,0.75) 55%,rgba(253,164,175,0.6) 100%)'
+        : 'radial-gradient(120% 90% at 30% 15%,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.55) 45%,rgba(226,232,240,0.45) 100%)';
     };
 
     // Feedback de presión: se hunde como botón físico y rebota al soltar
@@ -1396,28 +1399,6 @@ export class PlaceModal2 {
       if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
     });
 
-    // ── Parallax en la tira de fotos ─────────────────────────────────
-    // Las fotos cerca del centro de la tira quedan a tamaño completo y
-    // opacidad completa; las que se van acercando a los bordes se achican
-    // y atenúan — mismo principio que el parallax del slide de cluster,
-    // adaptado a una tira chica de miniaturas en vez de tarjetas grandes.
-    const photoStrip = ms.querySelector('#wp-ms-photo-strip');
-    if (photoStrip) {
-      const applyPhotoParallax = () => {
-        const stripRect = photoStrip.getBoundingClientRect();
-        if (!stripRect.width) return;
-        const centerX = stripRect.left + stripRect.width / 2;
-        photoStrip.querySelectorAll('.wp-ms-photo').forEach(photo => {
-          const r = photo.getBoundingClientRect();
-          const dist = Math.abs((r.left + r.width / 2) - centerX);
-          const norm = Math.min(1, dist / (stripRect.width / 2));
-          photo.style.transform = `scale(${1 - norm * 0.18})`;
-          photo.style.opacity   = 1 - norm * 0.35;
-        });
-      };
-      photoStrip.addEventListener('scroll', applyPhotoParallax, { passive: true });
-      requestAnimationFrame(applyPhotoParallax); // estado inicial, una vez que el layout ya midió bien
-    }
   }
 
   _hideMiniSnap() {
