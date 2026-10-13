@@ -1308,16 +1308,16 @@ export class PlaceModal2 {
 
     const glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent';
     const dotStyle = isOpen === true
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 4px rgba(255,255,255,0.8);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
       : isOpen === false
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 3px rgba(255,255,255,0.7)'
       : '';
     const badgeDot = isOpen !== null ? `<span style="${dotStyle}"></span>` : '';
     const glassBadge = isOpen === true
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#bbf7d0 0%,#86efac 100%);color:#15803d;border:1px solid transparent'
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#34d36b 0%,#16a34a 100%);color:#fff;border:1px solid transparent'
       : isOpen === false
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#fecaca 0%,#fca5a5 100%);color:#b91c1c;border:1px solid transparent'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#e5e7eb 0%,#d1d5db 100%);color:#6b7280;border:1px solid transparent';
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%);color:#fff;border:1px solid transparent'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#a3a9b3 0%,#6b7280 100%);color:#fff;border:1px solid transparent';
 
     const photoCardHtml = (url) => `
       <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:start;">
