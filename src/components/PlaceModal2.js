@@ -1274,8 +1274,11 @@ export class PlaceModal2 {
     const statusTxt   = isOpen === true ? 'Abierto' : isOpen === false ? 'Cerrado' : 'Sin horario';
 
     const photosAll = place.photosUrls || place.photos_urls || (place.photoUrl || place.photo_url ? [place.photoUrl || place.photo_url] : []);
-    const photos4 = photosAll.slice(0, 4);
-    const remaining = photosAll.length - 3;
+    // Antes se cortaba a las primeras 4 con un "+N" en la última — eso
+    // no dejaba nada para scrollear de verdad. Ahora se muestran todas
+    // (tope de 12 por performance, casi ningún lugar tiene más fotos
+    // que eso cargadas) en una tira horizontal con scroll real.
+    const photos4 = photosAll.slice(0, 12);
 
     const panelEl = document.querySelector('.map-results-panel-float');
     const panelHeight = panelEl ? panelEl.offsetHeight : 156;
@@ -1316,10 +1319,9 @@ export class PlaceModal2 {
       ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20)'
       : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18)';
 
-    const photoCardHtml = (url, isLast) => `
-      <div style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;">
+    const photoCardHtml = (url) => `
+      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:center;transform-origin:center;">
         <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
-        ${isLast && remaining > 1 ? `<div style="position:absolute;inset:0;border-radius:22px;background:rgba(0,0,0,0.48);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;">+${remaining - 1}</div>` : ''}
       </div>`;
 
     ms.innerHTML = `
@@ -1330,18 +1332,18 @@ export class PlaceModal2 {
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
         <div style="position:absolute;right:0;display:flex;align-items:center;gap:4px;background:rgba(238,240,242,0.65);backdrop-filter:blur(10px) saturate(1.6);-webkit-backdrop-filter:blur(10px) saturate(1.6);border-radius:999px;height:34px;padding:0 4px;overflow:hidden;">
-          <button id="wp-ms-fav-btn" style="width:36px;height:28px;border-radius:999px;border:none;background:linear-gradient(160deg,rgba(255,255,255,0.78) 0%,rgba(255,255,255,0.42) 100%);backdrop-filter:blur(18px) saturate(2.2);-webkit-backdrop-filter:blur(18px) saturate(2.2);box-shadow:0 4px 14px rgba(0,0,0,0.10),inset 0 1.5px 0 rgba(255,255,255,0.95),inset 0 -1px 0 rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
+          <button id="wp-ms-fav-btn" style="width:38px;height:32px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:linear-gradient(180deg,#ffffff 0%,#eef0f3 100%);box-shadow:0 1px 0 rgba(255,255,255,1) inset,0 -2px 3px rgba(0,0,0,0.07) inset,0 3px 8px rgba(0,0,0,0.18),0 1px 2px rgba(0,0,0,0.12);transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.36129 3.46995C6.03579 3.16081 6.76287 3 7.50002 3C8.23718 3 8.96425 3.16081 9.63875 3.46995C10.3129 3.77893 10.9185 4.22861 11.4239 4.78788C11.7322 5.12902 12.2678 5.12902 12.5761 4.78788C13.5979 3.65726 15.0068 3.00001 16.5 3.00001C17.9932 3.00001 19.4021 3.65726 20.4239 4.78788C21.4427 5.91515 22 7.42425 22 8.9792C22 10.5342 21.4427 12.0433 20.4239 13.1705L14.2257 20.0287C13.0346 21.3467 10.9654 21.3467 9.77429 20.0287L3.57613 13.1705C3.07086 12.6115 2.67474 11.9531 2.40602 11.2353C2.13731 10.5175 2 9.75113 2 8.9792C2 8.20728 2.13731 7.44094 2.40602 6.72315C2.67474 6.00531 3.07086 5.34694 3.57613 4.78788C4.08157 4.22861 4.68716 3.77893 5.36129 3.46995Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           </button>
-          <button id="wp-ms-close-btn" style="width:36px;height:28px;border-radius:999px;border:none;background:linear-gradient(160deg,rgba(255,255,255,0.78) 0%,rgba(255,255,255,0.42) 100%);backdrop-filter:blur(18px) saturate(2.2);-webkit-backdrop-filter:blur(18px) saturate(2.2);box-shadow:0 4px 14px rgba(0,0,0,0.10),inset 0 1.5px 0 rgba(255,255,255,0.95),inset 0 -1px 0 rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
+          <button id="wp-ms-close-btn" style="width:38px;height:32px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:linear-gradient(180deg,#ffffff 0%,#eef0f3 100%);box-shadow:0 1px 0 rgba(255,255,255,1) inset,0 -2px 3px rgba(0,0,0,0.07) inset,0 3px 8px rgba(0,0,0,0.18),0 1px 2px rgba(0,0,0,0.12);transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M16 16L12 12M12 12L8 8M12 12L16 8M12 12L8 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;height:68px;flex-shrink:0;justify-content:center;align-items:center">
+      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:0 4px;scrollbar-width:none;">
         ${photos4.length
-          ? photos4.map((u, i) => photoCardHtml(u, i === photos4.length - 1)).join('')
-          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;"><span style="font-size:20px">📷</span></div>`}
+          ? photos4.map((u) => photoCardHtml(u)).join('')
+          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:20px">📷</span></div>`}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:7px">
@@ -1376,6 +1378,14 @@ export class PlaceModal2 {
       favBtn.style.color = active ? '#ef4444' : '#374151';
     };
 
+    // Feedback de presión: se hunde como botón físico y rebota al soltar
+    [ms.querySelector('#wp-ms-fav-btn'), ms.querySelector('#wp-ms-close-btn')].forEach(b => {
+      if (!b) return;
+      b.addEventListener('pointerdown', () => { b.style.transform = 'scale(0.88,0.82)'; });
+      const up = () => { b.style.transform = ''; };
+      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
+    });
+
     const closeBtn = ms.querySelector('#wp-ms-close-btn');
     if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); self._hideMiniSnap(); });
 
@@ -1389,9 +1399,111 @@ export class PlaceModal2 {
     }
     const cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = goFull;
+    // justSwiped: el navegador dispara un "click" normal después del
+    // pointerup incluso tras un drag largo (esto NO es un scroll nativo
+    // — el movimiento lo maneja transform a mano — así que el browser no
+    // tiene forma de saber que fue un swipe y no un tap). Sin este
+    // guard, un swipe exitoso a otro lugar dispararía IGUAL goFull()
+    // apenas después, abriendo la ficha completa sin que nadie la haya
+    // pedido.
+    let justSwiped = false;
     ms.addEventListener('click', (e) => {
+      if (justSwiped) { justSwiped = false; return; }
       if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
     });
+
+    // ── Parallax en la tira de fotos ─────────────────────────────────
+    // Las fotos cerca del centro de la tira quedan a tamaño completo y
+    // opacidad completa; las que se van acercando a los bordes se achican
+    // y atenúan — mismo principio que el parallax del slide de cluster,
+    // adaptado a una tira chica de miniaturas en vez de tarjetas grandes.
+    const photoStrip = ms.querySelector('#wp-ms-photo-strip');
+    if (photoStrip) {
+      const applyPhotoParallax = () => {
+        const stripRect = photoStrip.getBoundingClientRect();
+        if (!stripRect.width) return;
+        const centerX = stripRect.left + stripRect.width / 2;
+        photoStrip.querySelectorAll('.wp-ms-photo').forEach(photo => {
+          const r = photo.getBoundingClientRect();
+          const dist = Math.abs((r.left + r.width / 2) - centerX);
+          const norm = Math.min(1, dist / (stripRect.width / 2));
+          photo.style.transform = `scale(${1 - norm * 0.18})`;
+          photo.style.opacity   = 1 - norm * 0.35;
+        });
+      };
+      photoStrip.addEventListener('scroll', applyPhotoParallax, { passive: true });
+      requestAnimationFrame(applyPhotoParallax); // estado inicial, una vez que el layout ya midió bien
+    }
+
+    // ── Swipe horizontal entre lugares cercanos ──────────────────────
+    // Usa el mismo índice que ya trackea MapView (mv.miniCardIndex,
+    // dentro de mv.markers) para saber cuál es "el siguiente" y "el
+    // anterior" — la misma idea de continuidad que el slide de cluster
+    // entre lugares, pero para el minisnap de un lugar suelto. Se
+    // excluyen la tira de fotos (tiene su propio scroll), los botones y
+    // el handle — todos manejan su propio gesto.
+    const SWIPE_EXCLUDE = '#wp-ms-photo-strip, #wp-ms-fav-btn, #wp-ms-close-btn, #wp-ms-cta-btn, #wp-ms-handle';
+    let swipeStartX = 0, swipeStartY = 0, swipeLastX = 0, swiping = false;
+    ms.style.touchAction = 'pan-y'; // el navegador se queda con el scroll vertical; el horizontal lo manejamos nosotros sin pointercancel
+    ms.addEventListener('pointerdown', (e) => {
+      if (e.target.closest(SWIPE_EXCLUDE)) return;
+      swipeStartX = swipeLastX = e.clientX; swipeStartY = e.clientY; swiping = true;
+      ms.style.transition = 'none';
+    });
+    ms.addEventListener('pointermove', (e) => {
+      if (!swiping) return;
+      swipeLastX = e.clientX;
+      const dx = e.clientX - swipeStartX;
+      const dy = e.clientY - swipeStartY;
+      // Gesto más vertical que horizontal — probablemente querían tocar
+      // o hacer otra cosa, no swipear de lugar. Se suelta sin animar.
+      if (Math.abs(dy) > Math.abs(dx) * 1.2) { swiping = false; ms.style.transform = ''; return; }
+      ms.style.transform = `translateX(${dx * 0.6}px)`; // con resistencia — sigue al dedo pero no 1:1
+    });
+    const finishPlaceSwipe = (e) => {
+      if (!swiping) return;
+      swiping = false;
+      // pointercancel trae clientX 0 → se usa la última X real y, si se canceló, nunca navega.
+      const cancelled = e.type === 'pointercancel';
+      const dx = cancelled ? 0 : swipeLastX - swipeStartX;
+      const mv = window.wpApp && window.wpApp.mapView;
+      const THRESHOLD = 60;
+      if (mv && Math.abs(dx) > THRESHOLD && mv.miniCardIndex >= 0) {
+        const dir = dx < 0 ? 1 : -1; // izquierda = siguiente, derecha = anterior
+        const nextMarker = mv.markers[mv.miniCardIndex + dir];
+        const nextPlace = nextMarker && nextMarker.getElement && nextMarker.getElement()._place;
+        if (nextPlace) {
+          justSwiped = true;
+          const nextIndex = mv.miniCardIndex + dir;
+          ms.style.transition = 'transform 0.18s ease-in, opacity 0.18s ease-in';
+          ms.style.transform  = `translateX(${dir > 0 ? -40 : 40}px)`; // sigue saliendo en la misma dirección del swipe
+          ms.style.opacity    = '0';
+          setTimeout(() => {
+            mv._showMiniCard(nextPlace, nextIndex); // el pin correspondiente en el mapa también pasa a estar "activo" — mismo lugar, dos vistas en sync
+            self._showMiniSnap(nextPlace);
+            const freshMs = document.getElementById('wp-minisnap-panel');
+            // Entra desde el lado OPUESTO al que salió el anterior —
+            // sensación de continuidad, como si el siguiente lugar ya
+            // estuviera ahí esperando.
+            freshMs.style.transition = 'none';
+            freshMs.style.transform  = `translateX(${dir > 0 ? 40 : -40}px)`;
+            freshMs.style.opacity    = '0';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              freshMs.style.transition = 'transform 0.26s cubic-bezier(0.22,1,0.36,1), opacity 0.22s ease-out';
+              freshMs.style.transform  = 'translateX(0)';
+              freshMs.style.opacity    = '1';
+            }));
+          }, 170);
+          return;
+        }
+      }
+      // No había lugar siguiente/anterior, o no se llegó al umbral —
+      // vuelve a su lugar con un resorte suave.
+      ms.style.transition = 'transform 0.28s cubic-bezier(0.34,1.4,0.64,1)';
+      ms.style.transform  = 'translateX(0)';
+    };
+    ms.addEventListener('pointerup', finishPlaceSwipe);
+    ms.addEventListener('pointercancel', finishPlaceSwipe);
   }
 
   _hideMiniSnap() {
