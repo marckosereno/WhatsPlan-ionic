@@ -1,16 +1,5 @@
-/* ════════════════════════════════════════════════════════════
-   FUENTE GLOBAL DE WHATSPLAN
-   Para cambiar la fuente de toda la app, edita SOLO este archivo:
-   1. Cambia los @import por los de la nueva fuente (un @import por peso).
-   2. Cambia el nombre en --wp-font.
-   Pesos cargados: 400, 500, 600, 700 (los mismos que tenía Inter Tight).
-   ════════════════════════════════════════════════════════════ */
-
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/argentum-sans@5.3.0/400.css');
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/argentum-sans@5.3.0/500.css');
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/argentum-sans@5.3.0/600.css');
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/argentum-sans@5.3.0/700.css');
+@import url('https://db.onlinewebfonts.com/c/2285e99cd2ca526cbe912cf3c4a8b88f?family=Gontserrat+Light');
 
 :root {
-  --wp-font: 'Argentum Sans', system-ui, sans-serif;
+  --wp-font: 'Gontserrat Light', system-ui, sans-serif;
 }
