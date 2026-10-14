@@ -1102,6 +1102,113 @@ export class PlaceModal2 {
       }
       .wp-pm2-review-time { font-size:11px; color:#9ca3af; margin-top:2px; }
 
+      /* ── REACCIONES Y RESPUESTAS ─────────────────────────────────── */
+      /* La tarjeta no permite seleccionar texto: el long-press abre las
+         reacciones en vez del menú de copiar del sistema. */
+      .wp-pm2-review-row {
+        -webkit-user-select:none; user-select:none;
+        -webkit-touch-callout:none;
+        transition:transform 0.18s cubic-bezier(0.34,1.4,0.64,1), background-color 0.2s ease;
+        border-radius:16px;
+      }
+      .wp-pm2-review-row.wp-pm2-rv-pressing { transform:scale(0.97); background-color:#f6f7f9; }
+      .wp-pm2-review-row.wp-pm2-rv-focus { background-color:#f3f4f6; }
+      .wp-pm2-emoji {
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;
+        line-height:1;
+      }
+      /* Chips con el resumen de reacciones (😍 4  😂 1) */
+      .wp-pm2-rv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+      .wp-pm2-rv-chips:empty { display:none; }
+      .wp-pm2-rv-chip {
+        display:inline-flex; align-items:center; gap:4px;
+        padding:3px 8px 3px 6px; border-radius:999px;
+        background:#f3f4f6; border:1px solid transparent;
+        font-size:11px; font-weight:700; color:#4b5563;
+        font-family:var(--wp-font); cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm2-rv-chip .wp-pm2-emoji { font-size:13px; }
+      .wp-pm2-rv-chip.wp-pm2-mine { background:#eef4ff; border-color:#bfd4fb; color:#1d4ed8; }
+      .wp-pm2-rv-chip:active { transform:scale(0.88,0.82); }
+      .wp-pm2-rv-chip.wp-pm2-rv-pop { animation:wpPm2RvPop 0.32s cubic-bezier(0.34,1.56,0.64,1); }
+      @keyframes wpPm2RvPop { 0% { transform:scale(0.6); } 100% { transform:scale(1); } }
+
+      /* Fila de acciones: Útil · Responder */
+      .wp-pm2-rv-actions { display:flex; align-items:center; gap:8px; margin-top:8px; }
+      .wp-pm2-rv-btn {
+        display:inline-flex; align-items:center; gap:5px;
+        height:26px; padding:0 10px; border-radius:999px; border:none;
+        background:#f3f4f6; color:#6b7280;
+        font-size:11.5px; font-weight:700; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm2-rv-btn svg { flex-shrink:0; }
+      .wp-pm2-rv-btn:active { transform:scale(0.88,0.82); }
+      .wp-pm2-rv-btn.wp-pm2-on {
+        background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+        color:#fff;
+      }
+      .wp-pm2-rv-btn.wp-pm2-rv-pop { animation:wpPm2RvPop 0.32s cubic-bezier(0.34,1.56,0.64,1); }
+
+      /* Respuestas — un solo nivel, colapsadas por defecto */
+      .wp-pm2-rv-replies { margin-top:6px; }
+      .wp-pm2-rv-replies:empty { display:none; }
+      .wp-pm2-rv-toggle {
+        display:inline-flex; align-items:center; gap:6px;
+        background:none; border:none; padding:4px 0; cursor:pointer;
+        font-size:12px; font-weight:700; color:#2563eb; font-family:var(--wp-font);
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-rv-toggle::before {
+        content:''; width:18px; height:1px; background:#d1d5db;
+      }
+      .wp-pm2-rv-reply { display:flex; gap:8px; padding:6px 0; }
+      .wp-pm2-rv-reply img {
+        width:24px; height:24px; border-radius:50%; object-fit:cover;
+        flex-shrink:0; background:#e5e7eb;
+      }
+      .wp-pm2-rv-reply-body { flex:1; min-width:0; }
+      .wp-pm2-rv-reply-name { font-size:12px; font-weight:700; color:#0a0a0a; }
+      .wp-pm2-rv-reply-text {
+        font-size:12.5px; color:#374151; line-height:1.45; margin-top:1px;
+        font-family:var(--wp-font); word-wrap:break-word;
+      }
+      .wp-pm2-rv-reply-meta { display:flex; gap:10px; margin-top:2px; font-size:11px; color:#9ca3af; }
+      .wp-pm2-rv-reply-del {
+        background:none; border:none; padding:0; cursor:pointer;
+        font-size:11px; font-weight:600; color:#ef4444; font-family:var(--wp-font);
+      }
+
+      /* Barra flotante de reacciones (long-press) — vive en <body>,
+         por encima de la ficha (#wp-pm2 = 1500000) */
+      #wp-pm2-react-layer { position:fixed; inset:0; z-index:1500100; }
+      #wp-pm2-react-dim {
+        position:absolute; inset:0; background:rgba(0,0,0,0.08);
+        opacity:0; transition:opacity 0.2s ease;
+      }
+      #wp-pm2-react-layer.wp-pm2-in #wp-pm2-react-dim { opacity:1; }
+      #wp-pm2-react-bar {
+        position:absolute; display:flex; gap:2px; padding:6px 8px;
+        background:#fff; border-radius:999px;
+        box-shadow:0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+        transform:scale(0.6); opacity:0; transform-origin:var(--wp-pm2-origin, 50% 100%);
+        transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease;
+      }
+      #wp-pm2-react-layer.wp-pm2-in #wp-pm2-react-bar { transform:scale(1); opacity:1; }
+      .wp-pm2-react-opt {
+        width:44px; height:44px; border-radius:50%; border:none; background:transparent;
+        display:flex; align-items:center; justify-content:center;
+        font-size:28px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transform:translateY(8px) scale(0.5); opacity:0;
+        transition:transform 0.34s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease, background-color 0.15s;
+      }
+      #wp-pm2-react-layer.wp-pm2-in .wp-pm2-react-opt { transform:none; opacity:1; }
+      .wp-pm2-react-opt.wp-pm2-mine { background:#eef4ff; }
+      .wp-pm2-react-opt:active { transform:scale(1.25); }
+
       /* FOOTER */
       #wp-pm2-footer {
         position:absolute; left:0; right:0; bottom:0; z-index:6;
@@ -1636,6 +1743,11 @@ export class PlaceModal2 {
   // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
     this._closeLightbox();
+    this._closeReactionBar(true);
+    ['wp-pm2-review-modal', 'wp-pm2-reply-sheet'].forEach(id => {
+      const n = document.getElementById(id);
+      if (n) n.remove();
+    });
     if (this._aiAbort) this._aiAbort();
 
     const flipCtx = this._flipContext;
@@ -2265,9 +2377,12 @@ export class PlaceModal2 {
     }
 
     this._googleReviews = reviews;
+    this._reviewCards = new Map();
+    this._social = { util: new Map(), emoji: new Map(), replies: new Map() };
     this._buildReviewsHeader(place);
     this._renderGooglePanel(place);
     this._loadCommunityReviews(place); // async, WhatsPlan
+    this._loadReviewSocial(place);     // async, reacciones + respuestas
   }
 
   // Header con "Reseñas" + tabs (Google / WhatsPlan) + pill "Añadir reseña",
@@ -2301,19 +2416,32 @@ export class PlaceModal2 {
 
   // Construye una tarjeta de reseña (misma estructura para Google y
   // WhatsPlan, solo cambian los datos de entrada)
-  _buildReviewCard(name, rating, text, timeLabel, photoSeed) {
+  // ctx (opcional): { key, source:'google'|'wp', author, text, ownerId }
+  // — activa Útil / reacciones / respuestas en la tarjeta.
+  _buildReviewCard(name, rating, text, timeLabel, photoSeed, ctx = null) {
     const row = document.createElement('div');
     row.className = 'wp-pm2-review-row';
     const stars = rating ? '⭐'.repeat(Math.round(rating)) : '';
+    // _esc: nombre y texto los escriben usuarios — sin escapar, una
+    // reseña con "<img onerror=...>" se ejecutaba como HTML.
     row.innerHTML = `
       <img class="wp-pm2-review-avatar">
       <div class="wp-pm2-review-body">
-        <div class="wp-pm2-review-name">${name}</div>
+        <div class="wp-pm2-review-name">${this._esc(name)}</div>
         ${stars ? `<div class="wp-pm2-review-stars">${stars}</div>` : ''}
-        <div class="wp-pm2-review-text">${text || ''}</div>
+        <div class="wp-pm2-review-text">${this._esc(text || '')}</div>
         <button class="wp-pm2-review-more">Ver más</button>
-        ${timeLabel ? `<div class="wp-pm2-review-time">${timeLabel}</div>` : ''}
+        ${timeLabel ? `<div class="wp-pm2-review-time">${this._esc(timeLabel)}</div>` : ''}
+        ${ctx ? `<div class="wp-pm2-rv-chips"></div>
+        <div class="wp-pm2-rv-actions"></div>
+        <div class="wp-pm2-rv-replies"></div>` : ''}
       </div>`;
+    if (ctx) {
+      if (!this._reviewCards) this._reviewCards = new Map();
+      this._reviewCards.set(ctx.key, { row, ctx, repliesOpen: false });
+      this._wireReviewLongPress(row, ctx.key);
+      this._renderReviewSocial(ctx.key);
+    }
 
     const avImg = row.querySelector('.wp-pm2-review-avatar');
     this._skelOn(avImg);
@@ -2345,11 +2473,18 @@ export class PlaceModal2 {
       panel.innerHTML = '<p class="wpr-empty">Sin reseñas de Google todavía</p>';
       return;
     }
+    const gPid = place.place_id || place.id;
     reviews.slice(0, 5).forEach(r => {
       panel.appendChild(this._buildReviewCard(
         r.author_name || 'Usuario de Google',
         r.rating, r.text, r.relative_time,
-        getAvatarUrl(r.author_name || 'user')
+        getAvatarUrl(r.author_name || 'user'),
+        gPid ? {
+          key: this._googleReviewKey(gPid, r),
+          source: 'google',
+          author: r.author_name || 'Usuario de Google',
+          text: r.text || '',
+        } : null
       ));
     });
     const placeId = place.place_id || place.id;
@@ -2530,6 +2665,501 @@ export class PlaceModal2 {
     });
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // REACCIONES Y RESPUESTAS A RESEÑAS
+  //  - Útil: botón fijo en todas las reseñas (Google y WhatsPlan)
+  //  - Emoji (long-press): solo reseñas de WhatsPlan, uno por usuario
+  //  - Responder: solo reseñas de WhatsPlan, un nivel
+  // Estado en this._social (agrupado por review_key):
+  //   util:    Map(key → Set(userId))
+  //   emoji:   Map(key → Map(userId → type))
+  //   replies: Map(key → [filas de review_replies])
+  // ══════════════════════════════════════════════════════════════════
+
+  _esc(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  _timeAgo(iso) {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (!t) return '';
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60)        return 'ahora';
+    if (s < 3600)      return `hace ${Math.floor(s / 60)} min`;
+    if (s < 86400)     return `hace ${Math.floor(s / 3600)} h`;
+    if (s < 86400 * 7) return `hace ${Math.floor(s / 86400)} d`;
+    return new Date(t).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // Las reseñas de Google no traen id: se arma uno estable con el autor +
+  // la fecha (time, unix) — o el inicio del texto si no hay fecha.
+  _googleReviewKey(placeId, r) {
+    const base = (r.author_name || '') + '|' + (r.time || (r.text || '').slice(0, 60));
+    let h = 5381;
+    for (let i = 0; i < base.length; i++) h = ((h << 5) + h + base.charCodeAt(i)) >>> 0;
+    return `g:${placeId}:${h.toString(36)}`;
+  }
+
+  static get REACTIONS() {
+    return [
+      { type: 'love', emoji: '😍' },
+      { type: 'haha', emoji: '😂' },
+      { type: 'wow',  emoji: '😮' },
+      { type: 'fire', emoji: '🔥' },
+      { type: 'hmm',  emoji: '🤔' },
+    ];
+  }
+
+  async _loadReviewSocial(place) {
+    const pid = place.place_id || place.id;
+    if (!pid) return;
+    let data;
+    try {
+      data = await ReviewService.getSocialForPlace(pid);
+    } catch (e) {
+      // Si las tablas todavía no existen (falta correr review_social.sql)
+      // la ficha sigue funcionando, solo sin conteos.
+      console.warn('[PM2] Reacciones/respuestas no disponibles:', e.message || e);
+      return;
+    }
+    if (this._place !== place) return; // se abrió otra ficha mientras cargaba
+    const social = { util: new Map(), emoji: new Map(), replies: new Map() };
+    (data.reactions || []).forEach(r => {
+      if (r.type === 'util') {
+        if (!social.util.has(r.review_key)) social.util.set(r.review_key, new Set());
+        social.util.get(r.review_key).add(r.user_id);
+      } else {
+        if (!social.emoji.has(r.review_key)) social.emoji.set(r.review_key, new Map());
+        social.emoji.get(r.review_key).set(r.user_id, r.type);
+      }
+    });
+    (data.replies || []).forEach(r => {
+      if (!social.replies.has(r.review_key)) social.replies.set(r.review_key, []);
+      social.replies.get(r.review_key).push(r);
+    });
+    this._social = social;
+    (this._reviewCards || new Map()).forEach((_, key) => this._renderReviewSocial(key));
+  }
+
+  // Dibuja chips + Útil/Responder + respuestas de UNA tarjeta.
+  // pop: 'util' | 'emoji:<type>' → rebote en el elemento que cambió.
+  _renderReviewSocial(key, pop = null) {
+    const card = this._reviewCards?.get(key);
+    if (!card) return;
+    const { row, ctx } = card;
+    const social = this._social || { util: new Map(), emoji: new Map(), replies: new Map() };
+    const uid = this.getCurrentUser?.()?.id || null;
+    const isWp = ctx.source === 'wp';
+
+    // ── Chips de emoji ──
+    const chipsEl = row.querySelector('.wp-pm2-rv-chips');
+    chipsEl.innerHTML = '';
+    if (isWp) {
+      const em = social.emoji.get(key) || new Map();
+      const mine = uid ? em.get(uid) : null;
+      PlaceModal2.REACTIONS.forEach(({ type, emoji }) => {
+        let n = 0;
+        em.forEach(t => { if (t === type) n++; });
+        if (!n) return;
+        const chip = document.createElement('button');
+        chip.className = 'wp-pm2-rv-chip' + (mine === type ? ' wp-pm2-mine' : '')
+          + (pop === 'emoji:' + type ? ' wp-pm2-rv-pop' : '');
+        chip.innerHTML = `<span class="wp-pm2-emoji">${emoji}</span>${n}`;
+        chip.onclick = (e) => {
+          e.stopPropagation();
+          this._setEmoji(key, mine === type ? null : type);
+        };
+        chipsEl.appendChild(chip);
+      });
+    }
+
+    // ── Útil / Responder ──
+    const actionsEl = row.querySelector('.wp-pm2-rv-actions');
+    const utilSet = social.util.get(key) || new Set();
+    const utilOn = !!(uid && utilSet.has(uid));
+    const replies = social.replies.get(key) || [];
+    actionsEl.innerHTML = `
+      <button class="wp-pm2-rv-btn wp-pm2-rv-util${utilOn ? ' wp-pm2-on' : ''}${pop === 'util' ? ' wp-pm2-rv-pop' : ''}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="${utilOn ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+        Útil${utilSet.size ? ' · ' + utilSet.size : ''}
+      </button>
+      ${isWp ? `<button class="wp-pm2-rv-btn wp-pm2-rv-reply-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+        Responder
+      </button>` : ''}`;
+    actionsEl.querySelector('.wp-pm2-rv-util').onclick = (e) => {
+      e.stopPropagation();
+      this._toggleUseful(key);
+    };
+    const replyBtn = actionsEl.querySelector('.wp-pm2-rv-reply-btn');
+    if (replyBtn) replyBtn.onclick = (e) => { e.stopPropagation(); this._openReplySheet(key); };
+
+    // ── Respuestas ──
+    const repliesEl = row.querySelector('.wp-pm2-rv-replies');
+    repliesEl.innerHTML = '';
+    if (!isWp || !replies.length) return;
+    const toggle = document.createElement('button');
+    toggle.className = 'wp-pm2-rv-toggle';
+    toggle.textContent = card.repliesOpen
+      ? 'Ocultar respuestas'
+      : `Ver ${replies.length} ${replies.length === 1 ? 'respuesta' : 'respuestas'}`;
+    toggle.onclick = (e) => {
+      e.stopPropagation();
+      card.repliesOpen = !card.repliesOpen;
+      this._renderReviewSocial(key);
+    };
+    repliesEl.appendChild(toggle);
+    if (!card.repliesOpen) return;
+    replies.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'wp-pm2-rv-reply';
+      const name = r.display_name || 'Usuario';
+      item.innerHTML = `
+        <img alt="">
+        <div class="wp-pm2-rv-reply-body">
+          <div class="wp-pm2-rv-reply-name">${this._esc(name)}</div>
+          <div class="wp-pm2-rv-reply-text">${this._esc(r.text)}</div>
+          <div class="wp-pm2-rv-reply-meta">
+            <span>${this._esc(this._timeAgo(r.created_at))}</span>
+            ${uid && r.user_id === uid ? '<button class="wp-pm2-rv-reply-del">Eliminar</button>' : ''}
+          </div>
+        </div>`;
+      item.querySelector('img').src = r.avatar_url || getAvatarUrl(name);
+      const del = item.querySelector('.wp-pm2-rv-reply-del');
+      if (del) {
+        // Dos toques: el primero pide confirmación, el segundo borra
+        let armed = false, t = null;
+        del.onclick = (e) => {
+          e.stopPropagation();
+          if (!armed) {
+            armed = true; del.textContent = '¿Eliminar?';
+            t = setTimeout(() => { armed = false; del.textContent = 'Eliminar'; }, 3000);
+            return;
+          }
+          clearTimeout(t);
+          this._deleteReply(key, r.id);
+        };
+      }
+      repliesEl.appendChild(item);
+    });
+  }
+
+  _requireUser(msg) {
+    const user = this.getCurrentUser?.();
+    if (!user) { this._showToast(msg); return null; }
+    return user;
+  }
+
+  async _toggleUseful(key) {
+    const user = this._requireUser('Inicia sesión para marcar como útil');
+    if (!user || !this._place) return;
+    const card = this._reviewCards?.get(key);
+    if (card?.ctx.ownerId && card.ctx.ownerId === user.id) {
+      this._showToast('No puedes marcar tu propia reseña');
+      return;
+    }
+    this._socialBusy = this._socialBusy || new Set();
+    const busyKey = key + '|util';
+    if (this._socialBusy.has(busyKey)) return;
+    this._socialBusy.add(busyKey);
+
+    const map = this._social.util;
+    if (!map.has(key)) map.set(key, new Set());
+    const set = map.get(key);
+    const wasOn = set.has(user.id);
+    if (wasOn) set.delete(user.id); else set.add(user.id);
+    this._renderReviewSocial(key, wasOn ? null : 'util');
+    try {
+      await ReviewService.setUseful(key, this._place.place_id || this._place.id, user.id, !wasOn);
+    } catch (e) {
+      console.error('[PM2] Útil:', e);
+      if (wasOn) set.add(user.id); else set.delete(user.id);
+      this._renderReviewSocial(key);
+      this._showToast('No se pudo guardar');
+    } finally {
+      this._socialBusy.delete(busyKey);
+    }
+  }
+
+  async _setEmoji(key, type) {
+    const user = this._requireUser('Inicia sesión para reaccionar');
+    if (!user || !this._place) return;
+    this._socialBusy = this._socialBusy || new Set();
+    const busyKey = key + '|emoji';
+    if (this._socialBusy.has(busyKey)) return;
+    this._socialBusy.add(busyKey);
+
+    const map = this._social.emoji;
+    if (!map.has(key)) map.set(key, new Map());
+    const em = map.get(key);
+    const prev = em.get(user.id) || null;
+    if (type) em.set(user.id, type); else em.delete(user.id);
+    this._renderReviewSocial(key, type ? 'emoji:' + type : null);
+    try {
+      await ReviewService.setEmoji(key, this._place.place_id || this._place.id, user.id, type);
+    } catch (e) {
+      console.error('[PM2] Reacción:', e);
+      if (prev) em.set(user.id, prev); else em.delete(user.id);
+      this._renderReviewSocial(key);
+      this._showToast('No se pudo guardar la reacción');
+    } finally {
+      this._socialBusy.delete(busyKey);
+    }
+  }
+
+  async _deleteReply(key, replyId) {
+    const user = this.getCurrentUser?.();
+    if (!user) return;
+    const list = this._social.replies.get(key) || [];
+    const idx = list.findIndex(r => r.id === replyId);
+    if (idx < 0) return;
+    const [removed] = list.splice(idx, 1);
+    this._renderReviewSocial(key);
+    try {
+      await ReviewService.deleteReply(replyId, user.id);
+    } catch (e) {
+      console.error('[PM2] Eliminar respuesta:', e);
+      list.splice(idx, 0, removed);
+      this._renderReviewSocial(key);
+      this._showToast('No se pudo eliminar');
+    }
+  }
+
+  // Long-press (450 ms) sobre la tarjeta → barra de reacciones.
+  // Se cancela si el dedo se mueve (scroll) o se suelta antes.
+  _wireReviewLongPress(row, key) {
+    let timer = null, visualTimer = null, sx = 0, sy = 0, fired = false;
+    const cancel = () => {
+      clearTimeout(timer); clearTimeout(visualTimer);
+      timer = visualTimer = null;
+      row.classList.remove('wp-pm2-rv-pressing');
+    };
+    row.addEventListener('pointerdown', (e) => {
+      // Se resetea ANTES de cualquier return: si el long-press anterior
+      // abrió la barra, el click de soltar nunca llega a la tarjeta y
+      // 'fired' quedaba en true — el siguiente toque (p.ej. Responder)
+      // se perdía.
+      fired = false;
+      if (e.button > 0) return;
+      if (e.target.closest('button, a')) return;
+      if (this._reviewCards?.get(key)?.ctx.source !== 'wp') return;
+      sx = e.clientX; sy = e.clientY;
+      // El squish aparece un poco después para no parpadear en cada scroll
+      visualTimer = setTimeout(() => row.classList.add('wp-pm2-rv-pressing'), 140);
+      timer = setTimeout(() => {
+        cancel();
+        fired = true;
+        try { navigator.vibrate?.(12); } catch (_) {}
+        this._openReactionBar(key);
+      }, 450);
+    });
+    row.addEventListener('pointermove', (e) => {
+      if (!timer) return;
+      if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) cancel();
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => row.addEventListener(ev, cancel));
+    // Android abre el menú contextual con el long-press — se bloquea
+    row.addEventListener('contextmenu', (e) => e.preventDefault());
+    // El click que llega al soltar después de un long-press no debe
+    // activar "Ver más" ni nada debajo
+    row.addEventListener('click', (e) => {
+      if (fired) { e.stopPropagation(); e.preventDefault(); fired = false; }
+    }, true);
+  }
+
+  _openReactionBar(key) {
+    const card = this._reviewCards?.get(key);
+    if (!card) return;
+    if (!this._requireUser('Inicia sesión para reaccionar')) return;
+    this._closeReactionBar(true);
+
+    const uid = this.getCurrentUser().id;
+    const mine = (this._social.emoji.get(key) || new Map()).get(uid) || null;
+
+    const layer = document.createElement('div');
+    layer.id = 'wp-pm2-react-layer';
+    layer.innerHTML = `<div id="wp-pm2-react-dim"></div><div id="wp-pm2-react-bar"></div>`;
+    const bar = layer.querySelector('#wp-pm2-react-bar');
+    PlaceModal2.REACTIONS.forEach(({ type, emoji }, i) => {
+      const b = document.createElement('button');
+      b.className = 'wp-pm2-react-opt wp-pm2-emoji' + (mine === type ? ' wp-pm2-mine' : '');
+      b.textContent = emoji;
+      b.style.transitionDelay = (i * 30) + 'ms';
+      b.dataset.type = type;
+      bar.appendChild(b);
+    });
+    document.body.appendChild(layer);
+    this._reactLayer = layer;
+    this._reactRow = card.row;
+    card.row.classList.add('wp-pm2-rv-focus');
+
+    // Posición: arriba de la tarjeta; si no hay lugar (cerca del topbar),
+    // debajo del nombre.
+    const rect = card.row.getBoundingClientRect();
+    const bw = bar.offsetWidth, bh = bar.offsetHeight;
+    const left = Math.min(Math.max(12, rect.left + 50), window.innerWidth - bw - 12);
+    let top = rect.top - bh - 6;
+    let origin = 'bottom';
+    if (top < 96) { top = Math.min(rect.top + 40, window.innerHeight - bh - 110); origin = 'top'; }
+    bar.style.left = left + 'px';
+    bar.style.top = top + 'px';
+    bar.style.setProperty('--wp-pm2-origin', `${Math.max(20, rect.left + 66 - left)}px ${origin === 'bottom' ? '100%' : '0%'}`);
+
+    // El dedo del long-press todavía está apoyado: el toque recién cuenta
+    // cuando empieza uno NUEVO sobre la capa.
+    let armed = false;
+    layer.addEventListener('pointerdown', () => { armed = true; });
+    layer.querySelector('#wp-pm2-react-dim').addEventListener('click', () => {
+      if (armed) this._closeReactionBar();
+    });
+    bar.addEventListener('click', (e) => {
+      const opt = e.target.closest('.wp-pm2-react-opt');
+      if (!opt || !armed) return;
+      const type = opt.dataset.type;
+      this._closeReactionBar();
+      this._setEmoji(key, mine === type ? null : type);
+    });
+
+    // Si la ficha scrollea, la barra queda desalineada → se cierra
+    const body = this._el.querySelector('#wp-pm2-body');
+    this._reactScrollClose = () => this._closeReactionBar();
+    body?.addEventListener('scroll', this._reactScrollClose, { passive: true, once: true });
+
+    void layer.offsetHeight;
+    requestAnimationFrame(() => layer.classList.add('wp-pm2-in'));
+  }
+
+  _closeReactionBar(instant = false) {
+    const layer = this._reactLayer;
+    if (this._reactRow) this._reactRow.classList.remove('wp-pm2-rv-focus');
+    this._reactRow = null;
+    const body = this._el?.querySelector('#wp-pm2-body');
+    if (body && this._reactScrollClose) body.removeEventListener('scroll', this._reactScrollClose);
+    this._reactScrollClose = null;
+    if (!layer) return;
+    this._reactLayer = null;
+    if (instant) { layer.remove(); return; }
+    layer.classList.remove('wp-pm2-in');
+    layer.style.pointerEvents = 'none';
+    setTimeout(() => layer.remove(), 220);
+  }
+
+  // Hoja para responder — misma estética que el popup de reseña
+  _openReplySheet(key) {
+    const card = this._reviewCards?.get(key);
+    if (!card || !this._place) return;
+    const user = this._requireUser('Inicia sesión para responder');
+    if (!user) return;
+
+    const prev = document.getElementById('wp-pm2-reply-sheet');
+    if (prev) prev.remove();
+
+    const displayName = user.user_metadata?.display_name
+      || user.user_metadata?.full_name
+      || user.email?.split('@')[0]
+      || 'Usuario';
+    const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+
+    const frag = document.createElement('div');
+    frag.id = 'wp-pm2-reply-sheet';
+    frag.innerHTML = `
+      <div class="wp-pm2-rs-overlay" style="position:fixed;inset:0;z-index:1500100;background:rgba(0,0,0,0.3);opacity:0;transition:opacity 0.25s ease"></div>
+      <div class="wp-pm2-rs-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
+        <div class="wp-pm2-rs-header" style="padding:4px 20px 10px">
+          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Respondiendo a ${this._esc(card.ctx.author)}</span>
+          <span style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;color:#8e8e93;margin-top:4px;padding-left:10px;border-left:2px solid #e5e7eb;line-height:1.4">${this._esc(card.ctx.text)}</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:0 16px">
+          <img src="${this._esc(avatarUrl)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:4px">
+          <div style="flex:1;min-width:0">
+            <textarea class="wp-pm2-rs-textarea" maxlength="500" placeholder="Escribe tu respuesta..." style="width:100%;height:80px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:10px 12px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+            <div class="wp-pm2-rs-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px">0 / 500</div>
+          </div>
+        </div>
+        <div style="padding:10px 16px 16px">
+          <button class="wp-pm2-rs-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);opacity:0.4;transition:opacity 0.15s;-webkit-tap-highlight-color:transparent">Responder</button>
+        </div>
+      </div>`;
+    document.body.appendChild(frag);
+
+    const overlay  = frag.querySelector('.wp-pm2-rs-overlay');
+    const menu     = frag.querySelector('.wp-pm2-rs-menu');
+    const header   = frag.querySelector('.wp-pm2-rs-header');
+    const textarea = frag.querySelector('.wp-pm2-rs-textarea');
+    const charEl   = frag.querySelector('.wp-pm2-rs-char');
+    const submit   = frag.querySelector('.wp-pm2-rs-submit');
+
+    textarea.oninput = () => {
+      charEl.textContent = textarea.value.length + ' / 500';
+      const ok = textarea.value.trim().length >= 1;
+      submit.disabled = !ok;
+      submit.style.opacity = ok ? '1' : '0.4';
+    };
+
+    const close = () => {
+      textarea.blur();
+      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
+      menu.style.transform = 'translateY(110%)';
+      overlay.style.opacity = '0';
+      setTimeout(() => frag.remove(), 320);
+    };
+    overlay.onclick = close;
+
+    submit.onclick = async () => {
+      if (submit.disabled) return;
+      submit.disabled = true;
+      submit.textContent = 'Enviando...';
+      try {
+        const row = await ReviewService.addReply(
+          key, this._place.place_id || this._place.id, user.id,
+          textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null
+        );
+        if (!this._social.replies.has(key)) this._social.replies.set(key, []);
+        this._social.replies.get(key).push(row);
+        card.repliesOpen = true;
+        this._renderReviewSocial(key);
+        close();
+        this._showToast('✓ Respuesta publicada');
+      } catch (e) {
+        console.error('[PM2] Responder:', e);
+        this._showToast(e.message || 'No se pudo enviar');
+        submit.disabled = false;
+        submit.textContent = 'Responder';
+      }
+    };
+
+    // Arrastrar el encabezado hacia abajo para cerrar
+    let sy = 0, dy = 0, dragging = false;
+    header.addEventListener('touchstart', e => {
+      sy = e.touches[0].clientY; dy = 0; dragging = true;
+      menu.style.transition = 'none';
+    }, { passive: true });
+    header.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      menu.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: true });
+    header.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      menu.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
+      if (dy > 80) close();
+      else menu.style.transform = 'translateY(0)';
+    });
+
+    void menu.offsetHeight;
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      menu.style.transform = 'translateY(0)';
+    });
+    // Teclado directo: quien toca "Responder" va a escribir
+    setTimeout(() => { if (frag.isConnected) textarea.focus(); }, 340);
+  }
+
   // Panel de reseñas de WhatsPlan (tabla place_reviews vía ReviewService)
   async _loadCommunityReviews(place) {
     const panel = this._el.querySelector('#wpr-panel-community');
@@ -2543,8 +3173,15 @@ export class PlaceModal2 {
         this._communityReviews.forEach(r => {
           panel.appendChild(this._buildReviewCard(
             r.display_name || 'Usuario',
-            r.rating, r.text, '',
-            getAvatarUrl(r.display_name || 'user')
+            r.rating, r.text, this._timeAgo(r.created_at),
+            getAvatarUrl(r.display_name || 'user'),
+            r.id != null ? {
+              key: 'wp:' + r.id,
+              source: 'wp',
+              author: r.display_name || 'Usuario',
+              text: r.text || '',
+              ownerId: r.user_id || null,
+            } : null
           ));
         });
       }
