@@ -629,6 +629,7 @@ export class PlaceModal2 {
       #wp-pm2-body {
         position:absolute; inset:0; z-index:1;
         overflow-y:auto; overscroll-behavior:contain;
+        overflow-x:hidden; /* el swipe de responder desplaza tarjetas a la derecha */
         -webkit-overflow-scrolling:touch;
         background:#fff;
       }
@@ -1111,6 +1112,9 @@ export class PlaceModal2 {
         transition:transform 0.18s cubic-bezier(0.34,1.4,0.64,1), background-color 0.2s ease;
         border-radius:16px;
       }
+      /* touch-action:pan-y → el scroll vertical lo maneja el navegador y
+         el gesto horizontal (swipe para responder) llega al JS */
+      .wp-pm2-review-row { position:relative; touch-action:pan-y; }
       .wp-pm2-review-row.wp-pm2-rv-pressing { transform:scale(0.97); background-color:#f6f7f9; }
       .wp-pm2-review-row.wp-pm2-rv-focus { background-color:#f3f4f6; }
       .wp-pm2-emoji {
@@ -1165,7 +1169,37 @@ export class PlaceModal2 {
       .wp-pm2-rv-toggle::before {
         content:''; width:18px; height:1px; background:#d1d5db;
       }
-      .wp-pm2-rv-reply { display:flex; gap:8px; padding:6px 0; }
+      .wp-pm2-rv-reply {
+        display:flex; gap:8px; padding:6px 6px 6px 0; margin-right:-6px;
+        position:relative; touch-action:pan-y; border-radius:12px;
+        transition:transform 0.18s cubic-bezier(0.34,1.4,0.64,1), background-color 0.2s ease;
+      }
+      .wp-pm2-rv-reply.wp-pm2-rv-pressing { transform:scale(0.97); background-color:#f3f4f6; }
+      .wp-pm2-rv-reply.wp-pm2-rv-focus { background-color:#eef0f3; }
+      .wp-pm2-rv-reply-to { margin-left:6px; font-size:11px; font-weight:600; color:#9ca3af; }
+      .wp-pm2-rv-mention { color:#2563eb; font-weight:600; }
+      .wp-pm2-rv-reply-act {
+        background:none; border:none; padding:0; cursor:pointer;
+        font-size:11px; font-weight:700; color:#6b7280; font-family:var(--wp-font);
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-rv-chips-sm { margin-top:4px; gap:4px; }
+      .wp-pm2-rv-chips-sm .wp-pm2-rv-chip { padding:1px 6px 1px 4px; font-size:10px; }
+      .wp-pm2-rv-chips-sm .wp-pm2-rv-chip .wp-pm2-emoji { font-size:11px; }
+      /* Ícono que aparece a la izquierda al deslizar para responder */
+      .wp-pm2-rv-swipe-icon {
+        position:absolute; left:0; top:50%;
+        width:28px; height:28px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        background:#e5e7eb; color:#6b7280;
+        opacity:0; transform:translateY(-50%) scale(0.6);
+        pointer-events:none; z-index:2;
+      }
+      .wp-pm2-review-row > .wp-pm2-rv-swipe-icon { top:27px; }
+      .wp-pm2-rv-swipe-icon.wp-pm2-on {
+        background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+        color:#fff;
+      }
       .wp-pm2-rv-reply img {
         width:24px; height:24px; border-radius:50%; object-fit:cover;
         flex-shrink:0; background:#e5e7eb;
@@ -2439,7 +2473,7 @@ export class PlaceModal2 {
     if (ctx) {
       if (!this._reviewCards) this._reviewCards = new Map();
       this._reviewCards.set(ctx.key, { row, ctx, repliesOpen: false });
-      this._wireReviewLongPress(row, ctx.key);
+      this._wireReviewGestures(row, ctx.key);
       this._renderReviewSocial(ctx.key);
     }
 
@@ -2668,12 +2702,16 @@ export class PlaceModal2 {
   // ══════════════════════════════════════════════════════════════════
   // REACCIONES Y RESPUESTAS A RESEÑAS
   //  - Útil: botón fijo en todas las reseñas (Google y WhatsPlan)
-  //  - Emoji (long-press): solo reseñas de WhatsPlan, uno por usuario
-  //  - Responder: solo reseñas de WhatsPlan, un nivel
-  // Estado en this._social (agrupado por review_key):
+  //  - Emoji (long-press): reseñas de WhatsPlan y sus respuestas
+  //  - Responder (botón o swipe a la derecha): reseñas de WhatsPlan y
+  //    sus respuestas. Todo queda en UN hilo por reseña; responder a una
+  //    respuesta agrega "@Nombre" y muestra "↳ Nombre", sin anidar.
+  // Claves (review_key): 'wp:<id>' reseña, 'g:<pid>:<hash>' Google,
+  //                      'r:<id>' respuesta (solo para emojis).
+  // Estado en this._social:
   //   util:    Map(key → Set(userId))
   //   emoji:   Map(key → Map(userId → type))
-  //   replies: Map(key → [filas de review_replies])
+  //   replies: Map(key de la reseña → [filas de review_replies])
   // ══════════════════════════════════════════════════════════════════
 
   _esc(str) {
@@ -2720,8 +2758,8 @@ export class PlaceModal2 {
     try {
       data = await ReviewService.getSocialForPlace(pid);
     } catch (e) {
-      // Si las tablas todavía no existen (falta correr review_social.sql)
-      // la ficha sigue funcionando, solo sin conteos.
+      // Si faltan las tablas/columnas (no se corrió el SQL) la ficha
+      // sigue funcionando, solo sin conteos ni respuestas.
       console.warn('[PM2] Reacciones/respuestas no disponibles:', e.message || e);
       return;
     }
@@ -2744,45 +2782,49 @@ export class PlaceModal2 {
     (this._reviewCards || new Map()).forEach((_, key) => this._renderReviewSocial(key));
   }
 
-  // Dibuja chips + Útil/Responder + respuestas de UNA tarjeta.
-  // pop: 'util' | 'emoji:<type>' → rebote en el elemento que cambió.
+  // Chips de emoji (😍 4  😂 1) para una reseña o una respuesta.
+  // reactKey: de quién son las reacciones · renderKey: qué tarjeta se
+  // redibuja al cambiar (la reseña que contiene todo el hilo).
+  _renderEmojiChips(container, reactKey, renderKey, pop) {
+    container.innerHTML = '';
+    const uid = this.getCurrentUser?.()?.id || null;
+    const em = this._social.emoji.get(reactKey) || new Map();
+    const mine = uid ? em.get(uid) : null;
+    PlaceModal2.REACTIONS.forEach(({ type, emoji }) => {
+      let n = 0;
+      em.forEach(t => { if (t === type) n++; });
+      if (!n) return;
+      const chip = document.createElement('button');
+      chip.className = 'wp-pm2-rv-chip' + (mine === type ? ' wp-pm2-mine' : '')
+        + (pop === `emoji:${reactKey}:${type}` ? ' wp-pm2-rv-pop' : '');
+      chip.innerHTML = `<span class="wp-pm2-emoji">${emoji}</span>${n}`;
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        this._setEmoji(reactKey, mine === type ? null : type, renderKey);
+      };
+      container.appendChild(chip);
+    });
+  }
+
+  // Dibuja chips + Útil/Responder + hilo de respuestas de UNA reseña.
   _renderReviewSocial(key, pop = null) {
     const card = this._reviewCards?.get(key);
     if (!card) return;
     const { row, ctx } = card;
-    const social = this._social || { util: new Map(), emoji: new Map(), replies: new Map() };
     const uid = this.getCurrentUser?.()?.id || null;
     const isWp = ctx.source === 'wp';
 
-    // ── Chips de emoji ──
-    const chipsEl = row.querySelector('.wp-pm2-rv-chips');
-    chipsEl.innerHTML = '';
-    if (isWp) {
-      const em = social.emoji.get(key) || new Map();
-      const mine = uid ? em.get(uid) : null;
-      PlaceModal2.REACTIONS.forEach(({ type, emoji }) => {
-        let n = 0;
-        em.forEach(t => { if (t === type) n++; });
-        if (!n) return;
-        const chip = document.createElement('button');
-        chip.className = 'wp-pm2-rv-chip' + (mine === type ? ' wp-pm2-mine' : '')
-          + (pop === 'emoji:' + type ? ' wp-pm2-rv-pop' : '');
-        chip.innerHTML = `<span class="wp-pm2-emoji">${emoji}</span>${n}`;
-        chip.onclick = (e) => {
-          e.stopPropagation();
-          this._setEmoji(key, mine === type ? null : type);
-        };
-        chipsEl.appendChild(chip);
-      });
-    }
+    // ── Chips de emoji de la reseña ──
+    const chipsEl = row.querySelector('.wp-pm2-review-body > .wp-pm2-rv-chips');
+    if (isWp) this._renderEmojiChips(chipsEl, key, key, pop);
+    else chipsEl.innerHTML = '';
 
     // ── Útil / Responder ──
     const actionsEl = row.querySelector('.wp-pm2-rv-actions');
-    const utilSet = social.util.get(key) || new Set();
+    const utilSet = this._social.util.get(key) || new Set();
     const utilOn = !!(uid && utilSet.has(uid));
-    const replies = social.replies.get(key) || [];
     actionsEl.innerHTML = `
-      <button class="wp-pm2-rv-btn wp-pm2-rv-util${utilOn ? ' wp-pm2-on' : ''}${pop === 'util' ? ' wp-pm2-rv-pop' : ''}">
+      <button class="wp-pm2-rv-btn wp-pm2-rv-util${utilOn ? ' wp-pm2-on' : ''}${pop === 'util:' + key ? ' wp-pm2-rv-pop' : ''}">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="${utilOn ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
         Útil${utilSet.size ? ' · ' + utilSet.size : ''}
       </button>
@@ -2797,9 +2839,10 @@ export class PlaceModal2 {
     const replyBtn = actionsEl.querySelector('.wp-pm2-rv-reply-btn');
     if (replyBtn) replyBtn.onclick = (e) => { e.stopPropagation(); this._openReplySheet(key); };
 
-    // ── Respuestas ──
+    // ── Hilo de respuestas ──
     const repliesEl = row.querySelector('.wp-pm2-rv-replies');
     repliesEl.innerHTML = '';
+    const replies = this._social.replies.get(key) || [];
     if (!isWp || !replies.length) return;
     const toggle = document.createElement('button');
     toggle.className = 'wp-pm2-rv-toggle';
@@ -2813,38 +2856,67 @@ export class PlaceModal2 {
     };
     repliesEl.appendChild(toggle);
     if (!card.repliesOpen) return;
-    replies.forEach(r => {
-      const item = document.createElement('div');
-      item.className = 'wp-pm2-rv-reply';
-      const name = r.display_name || 'Usuario';
-      item.innerHTML = `
-        <img alt="">
-        <div class="wp-pm2-rv-reply-body">
-          <div class="wp-pm2-rv-reply-name">${this._esc(name)}</div>
-          <div class="wp-pm2-rv-reply-text">${this._esc(r.text)}</div>
-          <div class="wp-pm2-rv-reply-meta">
-            <span>${this._esc(this._timeAgo(r.created_at))}</span>
-            ${uid && r.user_id === uid ? '<button class="wp-pm2-rv-reply-del">Eliminar</button>' : ''}
-          </div>
-        </div>`;
-      item.querySelector('img').src = r.avatar_url || getAvatarUrl(name);
-      const del = item.querySelector('.wp-pm2-rv-reply-del');
-      if (del) {
-        // Dos toques: el primero pide confirmación, el segundo borra
-        let armed = false, t = null;
-        del.onclick = (e) => {
-          e.stopPropagation();
-          if (!armed) {
-            armed = true; del.textContent = '¿Eliminar?';
-            t = setTimeout(() => { armed = false; del.textContent = 'Eliminar'; }, 3000);
-            return;
-          }
-          clearTimeout(t);
-          this._deleteReply(key, r.id);
-        };
+    replies.forEach(r => repliesEl.appendChild(this._buildReplyItem(key, r, pop)));
+  }
+
+  // Una respuesta del hilo: nombre (+ "↳ a quién"), texto con la @mención
+  // resaltada, chips de emoji y la fila "hace 2 h · Responder · Eliminar".
+  _buildReplyItem(parentKey, r, pop) {
+    const uid = this.getCurrentUser?.()?.id || null;
+    const rKey = 'r:' + r.id;
+    const name = r.display_name || 'Usuario';
+    const target = { id: r.id, name, text: r.text || '' };
+
+    let textHtml = this._esc(r.text);
+    if (r.reply_to_name) {
+      const mention = '@' + r.reply_to_name;
+      if ((r.text || '').startsWith(mention)) {
+        textHtml = `<span class="wp-pm2-rv-mention">${this._esc(mention)}</span>`
+          + this._esc(r.text.slice(mention.length));
       }
-      repliesEl.appendChild(item);
-    });
+    }
+
+    const item = document.createElement('div');
+    item.className = 'wp-pm2-rv-reply';
+    item.innerHTML = `
+      <img alt="">
+      <div class="wp-pm2-rv-reply-body">
+        <div class="wp-pm2-rv-reply-name">${this._esc(name)}${r.reply_to_name ? `<span class="wp-pm2-rv-reply-to">↳ ${this._esc(r.reply_to_name)}</span>` : ''}</div>
+        <div class="wp-pm2-rv-reply-text">${textHtml}</div>
+        <div class="wp-pm2-rv-chips wp-pm2-rv-chips-sm"></div>
+        <div class="wp-pm2-rv-reply-meta">
+          <span>${this._esc(this._timeAgo(r.created_at))}</span>
+          <button class="wp-pm2-rv-reply-act">Responder</button>
+          ${uid && r.user_id === uid ? '<button class="wp-pm2-rv-reply-del">Eliminar</button>' : ''}
+        </div>
+      </div>`;
+    item.querySelector('img').src = r.avatar_url || getAvatarUrl(name);
+    this._renderEmojiChips(item.querySelector('.wp-pm2-rv-chips'), rKey, parentKey, pop);
+
+    item.querySelector('.wp-pm2-rv-reply-act').onclick = (e) => {
+      e.stopPropagation();
+      this._openReplySheet(parentKey, target);
+    };
+    const del = item.querySelector('.wp-pm2-rv-reply-del');
+    if (del) {
+      // Dos toques: el primero pide confirmación, el segundo borra
+      let armed = false, t = null;
+      del.onclick = (e) => {
+        e.stopPropagation();
+        if (!armed) {
+          armed = true; del.textContent = '¿Eliminar?';
+          t = setTimeout(() => { armed = false; del.textContent = 'Eliminar'; }, 3000);
+          return;
+        }
+        clearTimeout(t);
+        this._deleteReply(parentKey, r.id);
+      };
+    }
+
+    this._addSwipeIcon(item);
+    this._wireLongPress(item, () => this._openReactionBar(rKey, item, parentKey));
+    this._wireSwipeReply(item, () => this._openReplySheet(parentKey, target));
+    return item;
   }
 
   _requireUser(msg) {
@@ -2871,7 +2943,7 @@ export class PlaceModal2 {
     const set = map.get(key);
     const wasOn = set.has(user.id);
     if (wasOn) set.delete(user.id); else set.add(user.id);
-    this._renderReviewSocial(key, wasOn ? null : 'util');
+    this._renderReviewSocial(key, wasOn ? null : 'util:' + key);
     try {
       await ReviewService.setUseful(key, this._place.place_id || this._place.id, user.id, !wasOn);
     } catch (e) {
@@ -2884,7 +2956,9 @@ export class PlaceModal2 {
     }
   }
 
-  async _setEmoji(key, type) {
+  // key: reseña ('wp:..') o respuesta ('r:..') · renderKey: reseña a
+  // redibujar (la que contiene el hilo)
+  async _setEmoji(key, type, renderKey = key) {
     const user = this._requireUser('Inicia sesión para reaccionar');
     if (!user || !this._place) return;
     this._socialBusy = this._socialBusy || new Set();
@@ -2897,13 +2971,13 @@ export class PlaceModal2 {
     const em = map.get(key);
     const prev = em.get(user.id) || null;
     if (type) em.set(user.id, type); else em.delete(user.id);
-    this._renderReviewSocial(key, type ? 'emoji:' + type : null);
+    this._renderReviewSocial(renderKey, type ? `emoji:${key}:${type}` : null);
     try {
       await ReviewService.setEmoji(key, this._place.place_id || this._place.id, user.id, type);
     } catch (e) {
       console.error('[PM2] Reacción:', e);
       if (prev) em.set(user.id, prev); else em.delete(user.id);
-      this._renderReviewSocial(key);
+      this._renderReviewSocial(renderKey);
       this._showToast('No se pudo guardar la reacción');
     } finally {
       this._socialBusy.delete(busyKey);
@@ -2928,56 +3002,149 @@ export class PlaceModal2 {
     }
   }
 
-  // Long-press (450 ms) sobre la tarjeta → barra de reacciones.
-  // Se cancela si el dedo se mueve (scroll) o se suelta antes.
-  _wireReviewLongPress(row, key) {
+  // Gestos de la tarjeta de una reseña de WhatsPlan. Lo que pase DENTRO
+  // de una respuesta del hilo lo maneja la respuesta, no la reseña.
+  _wireReviewGestures(row, key) {
+    if (this._reviewCards?.get(key)?.ctx.source !== 'wp') return;
+    this._addSwipeIcon(row);
+    this._wireLongPress(row, () => this._openReactionBar(key, row, key), '.wp-pm2-rv-reply');
+    this._wireSwipeReply(row, () => this._openReplySheet(key), '.wp-pm2-rv-reply');
+  }
+
+  _addSwipeIcon(el) {
+    const icon = document.createElement('div');
+    icon.className = 'wp-pm2-rv-swipe-icon';
+    icon.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>';
+    el.prepend(icon);
+  }
+
+  // Long-press (450 ms) → onFire. Se cancela si el dedo se mueve (scroll
+  // o swipe) o se suelta antes. ignoreSel: zonas internas que no cuentan.
+  _wireLongPress(el, onFire, ignoreSel = null) {
     let timer = null, visualTimer = null, sx = 0, sy = 0, fired = false;
     const cancel = () => {
       clearTimeout(timer); clearTimeout(visualTimer);
       timer = visualTimer = null;
-      row.classList.remove('wp-pm2-rv-pressing');
+      el.classList.remove('wp-pm2-rv-pressing');
     };
-    row.addEventListener('pointerdown', (e) => {
+    el.addEventListener('pointerdown', (e) => {
       // Se resetea ANTES de cualquier return: si el long-press anterior
-      // abrió la barra, el click de soltar nunca llega a la tarjeta y
-      // 'fired' quedaba en true — el siguiente toque (p.ej. Responder)
-      // se perdía.
+      // abrió la barra, el click de soltar nunca llega acá y 'fired'
+      // quedaba en true — el siguiente toque se perdía.
       fired = false;
       if (e.button > 0) return;
       if (e.target.closest('button, a')) return;
-      if (this._reviewCards?.get(key)?.ctx.source !== 'wp') return;
+      if (ignoreSel && e.target.closest(ignoreSel)) return;
       sx = e.clientX; sy = e.clientY;
       // El squish aparece un poco después para no parpadear en cada scroll
-      visualTimer = setTimeout(() => row.classList.add('wp-pm2-rv-pressing'), 140);
+      visualTimer = setTimeout(() => el.classList.add('wp-pm2-rv-pressing'), 140);
       timer = setTimeout(() => {
         cancel();
         fired = true;
         try { navigator.vibrate?.(12); } catch (_) {}
-        this._openReactionBar(key);
+        onFire();
       }, 450);
     });
-    row.addEventListener('pointermove', (e) => {
+    el.addEventListener('pointermove', (e) => {
       if (!timer) return;
       if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) cancel();
     });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => row.addEventListener(ev, cancel));
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, cancel));
     // Android abre el menú contextual con el long-press — se bloquea
-    row.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
     // El click que llega al soltar después de un long-press no debe
     // activar "Ver más" ni nada debajo
-    row.addEventListener('click', (e) => {
+    el.addEventListener('click', (e) => {
       if (fired) { e.stopPropagation(); e.preventDefault(); fired = false; }
     }, true);
   }
 
-  _openReactionBar(key) {
-    const card = this._reviewCards?.get(key);
-    if (!card) return;
+  // Swipe a la derecha → onReply (estilo WhatsApp). Solo cuenta si el
+  // movimiento es claramente horizontal (más del doble que vertical) y
+  // si arranca lejos del borde izquierdo (ahí iOS usa el "volver").
+  _wireSwipeReply(el, onReply, ignoreSel = null) {
+    const TH = 60, EDGE = 25;
+    let sx = 0, sy = 0, pid = null, mode = null, dx = 0, passed = false, suppress = false;
+    const icon = el.querySelector(':scope > .wp-pm2-rv-swipe-icon');
+    const ICON = 28;
+
+    const paint = (tx, k) => {
+      el.style.transform = tx ? `translateX(${tx}px)` : '';
+      if (!icon) return;
+      // El ícono queda quieto en el hueco que se abre a la izquierda
+      const off = -tx + Math.max(4, (tx - ICON) / 2);
+      icon.style.opacity = String(k);
+      icon.style.transform = `translateX(${off}px) translateY(-50%) scale(${0.6 + 0.4 * k})`;
+    };
+    const release = () => {
+      const tr = 'transform 0.35s cubic-bezier(0.34,1.4,0.64,1), opacity 0.2s ease';
+      el.style.transition = tr;
+      if (icon) { icon.style.transition = tr; icon.classList.remove('wp-pm2-on'); }
+      paint(0, 0);
+      setTimeout(() => {
+        el.style.transition = '';
+        if (icon) icon.style.transition = '';
+      }, 360);
+    };
+
+    el.addEventListener('pointerdown', (e) => {
+      suppress = false;
+      if (e.button > 0) return;
+      if (ignoreSel && e.target.closest(ignoreSel)) return;
+      if (e.clientX < EDGE) return;
+      sx = e.clientX; sy = e.clientY; pid = e.pointerId;
+      mode = null; dx = 0; passed = false;
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (pid !== e.pointerId) return;
+      const mx = e.clientX - sx, my = e.clientY - sy;
+      if (!mode) {
+        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        mode = (mx > 0 && mx > 2 * Math.abs(my)) ? 'h' : 'v';
+        if (mode === 'v') { pid = null; mode = null; return; }
+        el.style.transition = 'none';
+        if (icon) icon.style.transition = 'background-color 0.15s, color 0.15s';
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      dx = Math.max(0, mx);
+      const tx = dx <= TH ? dx : TH + (dx - TH) * 0.3; // resistencia pasado el umbral
+      paint(tx, Math.min(1, dx / TH));
+      if (!passed && dx >= TH) {
+        passed = true;
+        icon?.classList.add('wp-pm2-on');
+        try { navigator.vibrate?.(10); } catch (_) {}
+      } else if (passed && dx < TH) {
+        passed = false;
+        icon?.classList.remove('wp-pm2-on');
+      }
+    });
+    const end = (e) => {
+      if (pid !== e.pointerId) return;
+      pid = null;
+      if (mode === 'h') {
+        suppress = true;
+        release();
+        if (passed && e.type === 'pointerup') onReply();
+      }
+      mode = null;
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('click', (e) => {
+      if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; }
+    }, true);
+  }
+
+  // Barra de emojis flotante. reactKey: reseña o respuesta a la que se
+  // reacciona · anchorEl: elemento sobre el que aparece · renderKey:
+  // reseña a redibujar.
+  _openReactionBar(reactKey, anchorEl, renderKey = reactKey) {
+    if (!anchorEl) return;
     if (!this._requireUser('Inicia sesión para reaccionar')) return;
     this._closeReactionBar(true);
 
     const uid = this.getCurrentUser().id;
-    const mine = (this._social.emoji.get(key) || new Map()).get(uid) || null;
+    const mine = (this._social.emoji.get(reactKey) || new Map()).get(uid) || null;
 
     const layer = document.createElement('div');
     layer.id = 'wp-pm2-react-layer';
@@ -2993,20 +3160,19 @@ export class PlaceModal2 {
     });
     document.body.appendChild(layer);
     this._reactLayer = layer;
-    this._reactRow = card.row;
-    card.row.classList.add('wp-pm2-rv-focus');
+    this._reactAnchor = anchorEl;
+    anchorEl.classList.add('wp-pm2-rv-focus');
 
-    // Posición: arriba de la tarjeta; si no hay lugar (cerca del topbar),
-    // debajo del nombre.
-    const rect = card.row.getBoundingClientRect();
+    // Arriba del elemento; si no hay lugar (cerca del topbar), debajo.
+    const rect = anchorEl.getBoundingClientRect();
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
-    const left = Math.min(Math.max(12, rect.left + 50), window.innerWidth - bw - 12);
+    const left = Math.min(Math.max(12, rect.left + 40), window.innerWidth - bw - 12);
     let top = rect.top - bh - 6;
     let origin = 'bottom';
-    if (top < 96) { top = Math.min(rect.top + 40, window.innerHeight - bh - 110); origin = 'top'; }
+    if (top < 96) { top = Math.min(rect.top + 34, window.innerHeight - bh - 110); origin = 'top'; }
     bar.style.left = left + 'px';
     bar.style.top = top + 'px';
-    bar.style.setProperty('--wp-pm2-origin', `${Math.max(20, rect.left + 66 - left)}px ${origin === 'bottom' ? '100%' : '0%'}`);
+    bar.style.setProperty('--wp-pm2-origin', `${Math.max(20, rect.left + 56 - left)}px ${origin === 'bottom' ? '100%' : '0%'}`);
 
     // El dedo del long-press todavía está apoyado: el toque recién cuenta
     // cuando empieza uno NUEVO sobre la capa.
@@ -3020,7 +3186,7 @@ export class PlaceModal2 {
       if (!opt || !armed) return;
       const type = opt.dataset.type;
       this._closeReactionBar();
-      this._setEmoji(key, mine === type ? null : type);
+      this._setEmoji(reactKey, mine === type ? null : type, renderKey);
     });
 
     // Si la ficha scrollea, la barra queda desalineada → se cierra
@@ -3034,8 +3200,8 @@ export class PlaceModal2 {
 
   _closeReactionBar(instant = false) {
     const layer = this._reactLayer;
-    if (this._reactRow) this._reactRow.classList.remove('wp-pm2-rv-focus');
-    this._reactRow = null;
+    if (this._reactAnchor) this._reactAnchor.classList.remove('wp-pm2-rv-focus');
+    this._reactAnchor = null;
     const body = this._el?.querySelector('#wp-pm2-body');
     if (body && this._reactScrollClose) body.removeEventListener('scroll', this._reactScrollClose);
     this._reactScrollClose = null;
@@ -3047,8 +3213,9 @@ export class PlaceModal2 {
     setTimeout(() => layer.remove(), 220);
   }
 
-  // Hoja para responder — misma estética que el popup de reseña
-  _openReplySheet(key) {
+  // Hoja para responder. replyTo (opcional): { id, name, text } cuando se
+  // contesta a una respuesta del hilo → arranca con "@Nombre ".
+  _openReplySheet(key, replyTo = null) {
     const card = this._reviewCards?.get(key);
     if (!card || !this._place) return;
     const user = this._requireUser('Inicia sesión para responder');
@@ -3062,6 +3229,9 @@ export class PlaceModal2 {
       || user.email?.split('@')[0]
       || 'Usuario';
     const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+    const toName = replyTo ? replyTo.name : card.ctx.author;
+    const quote  = replyTo ? replyTo.text : card.ctx.text;
+    const prefix = replyTo ? '@' + replyTo.name + ' ' : '';
 
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-reply-sheet';
@@ -3070,8 +3240,8 @@ export class PlaceModal2 {
       <div class="wp-pm2-rs-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
         <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
         <div class="wp-pm2-rs-header" style="padding:4px 20px 10px">
-          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Respondiendo a ${this._esc(card.ctx.author)}</span>
-          <span style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;color:#8e8e93;margin-top:4px;padding-left:10px;border-left:2px solid #e5e7eb;line-height:1.4">${this._esc(card.ctx.text)}</span>
+          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Respondiendo a ${this._esc(toName)}</span>
+          <span style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;color:#8e8e93;margin-top:4px;padding-left:10px;border-left:2px solid #e5e7eb;line-height:1.4">${this._esc(quote)}</span>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start;padding:0 16px">
           <img src="${this._esc(avatarUrl)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:4px">
@@ -3093,12 +3263,20 @@ export class PlaceModal2 {
     const charEl   = frag.querySelector('.wp-pm2-rs-char');
     const submit   = frag.querySelector('.wp-pm2-rs-submit');
 
-    textarea.oninput = () => {
+    // Texto real sin la @mención del inicio
+    const bodyText = () => {
+      const v = textarea.value;
+      return (prefix && v.startsWith(prefix.trim())) ? v.slice(prefix.trim().length).trim() : v.trim();
+    };
+    const refresh = () => {
       charEl.textContent = textarea.value.length + ' / 500';
-      const ok = textarea.value.trim().length >= 1;
+      const ok = bodyText().length >= 1;
       submit.disabled = !ok;
       submit.style.opacity = ok ? '1' : '0.4';
     };
+    textarea.value = prefix;
+    textarea.oninput = refresh;
+    refresh();
 
     const close = () => {
       textarea.blur();
@@ -3113,10 +3291,13 @@ export class PlaceModal2 {
       if (submit.disabled) return;
       submit.disabled = true;
       submit.textContent = 'Enviando...';
+      // Si borraron la @mención a mano, ya no es respuesta a esa persona
+      const keepsMention = !!(prefix && textarea.value.startsWith(prefix.trim()));
       try {
         const row = await ReviewService.addReply(
           key, this._place.place_id || this._place.id, user.id,
-          textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null
+          textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null,
+          keepsMention ? { id: replyTo.id, name: replyTo.name } : null
         );
         if (!this._social.replies.has(key)) this._social.replies.set(key, []);
         this._social.replies.get(key).push(row);
@@ -3156,8 +3337,13 @@ export class PlaceModal2 {
       overlay.style.opacity = '1';
       menu.style.transform = 'translateY(0)';
     });
-    // Teclado directo: quien toca "Responder" va a escribir
-    setTimeout(() => { if (frag.isConnected) textarea.focus(); }, 340);
+    // Teclado directo, con el cursor al final (después de la @mención)
+    setTimeout(() => {
+      if (!frag.isConnected) return;
+      textarea.focus();
+      const n = textarea.value.length;
+      try { textarea.setSelectionRange(n, n); } catch (_) {}
+    }, 340);
   }
 
   // Panel de reseñas de WhatsPlan (tabla place_reviews vía ReviewService)
