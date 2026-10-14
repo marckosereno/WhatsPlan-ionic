@@ -99,7 +99,7 @@ ion-app::after {
   z-index: 40;
   padding: 12px 0 10px;
   gap: 8px;
-  font-family: 'Inter Tight', system-ui, sans-serif;
+  font-family: var(--wp-font);
   overflow: hidden;
 }
 
@@ -209,7 +209,7 @@ ion-app::after {
 .category-name {
   font-size: 10px; font-weight: 500; color: #94a3b8;
   text-align: center; white-space: nowrap;
-  font-family: 'Yahoo Sans Bold Regular', 'Inter Tight', system-ui, sans-serif;
+  font-family: 'Yahoo Sans Bold Regular', var(--wp-font);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -327,7 +327,7 @@ ion-app::after {
   --vh: 1vh; /* sobreescrito por ios-fixes.js */
 
   /* ── Typography ── */
-  --wp-font: 'Inter Tight', system-ui, sans-serif;
+  /* --wp-font se declara en styles/fonts.css */
 
   /* ── Brand colors ── */
   --wp-blue:       #1a5cf5;
