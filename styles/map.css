@@ -164,7 +164,7 @@
   min-width: 160px;
   -webkit-tap-highlight-color: rgba(0,0,0,0);
   user-select: none;
-  font-family: 'Inter Tight', system-ui, sans-serif;
+  font-family: var(--wp-font);
 }
 .minicard-photo {
   width: 44px; height: 44px;
