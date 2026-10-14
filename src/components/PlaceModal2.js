@@ -278,11 +278,8 @@ export class PlaceModal2 {
            tarjetas, que siguen ahí, pausadas pero visibles). Subida por
            encima de cualquier cosa que el slide pueda dejar viva detrás. */
         z-index: 1500000;
-        /* NO usar var(--wp-font) — esa variable está fijada globalmente a
-           Avenir en styles/app.css:330, así que su fallback nunca se
-           aplicaba y todo lo que hacía font-family:inherit heredaba
-           Avenir igual. Forzamos Inter Tight directo acá. */
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        /* Fuente global: se cambia solo en styles/fonts.css */
+        font-family: var(--wp-font);
         font-weight:400;
       }
       #wp-pm2.visible { display:block; }
@@ -360,7 +357,7 @@ export class PlaceModal2 {
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
         overflow:hidden;
-        font-family:'Inter Tight',sans-serif;
+        font-family:var(--wp-font);
         /* Misma entrada que usa el header del slide (.wp-ce-collage-header
            en MapView.js) — mismos valores exactos (opacity, distancia del
            translateY, duración, curva bouncy) para que se sientan como
@@ -684,7 +681,7 @@ export class PlaceModal2 {
       .wp-pm2-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
         animation: wp-pm2-ai-fadein 0.4s ease both;
-        font-family:'Inter Tight',sans-serif;
+        font-family:var(--wp-font);
       }
       @keyframes wp-pm2-skeleton-shimmer {
         0%   { background-position: -200% 0; }
@@ -1077,7 +1074,7 @@ export class PlaceModal2 {
       .wp-pm2-review-text {
         font-size:13px; color:#374151; margin-top:4px; line-height:1.5; font-weight:400;
         display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
-        overflow:hidden; font-family:'Inter Tight',sans-serif;
+        overflow:hidden; font-family:var(--wp-font);
       }
       .wp-pm2-review-text.wp-pm2-expanded {
         -webkit-line-clamp:unset; overflow:visible;
@@ -1096,7 +1093,7 @@ export class PlaceModal2 {
         padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
         background:transparent;
         pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
-        font-family:'Inter Tight',sans-serif;
+        font-family:var(--wp-font);
       }
       #wp-pm2-footer > * { pointer-events:auto; }
       #wp-pm2-here-btn {
@@ -1296,7 +1293,7 @@ export class PlaceModal2 {
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
-      "font-family:'Inter Tight',sans-serif; font-weight:400;",
+      "font-family:var(--wp-font); font-weight:400;",
       'cursor:pointer', 'box-sizing:border-box',
       'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
     ].join(';');
