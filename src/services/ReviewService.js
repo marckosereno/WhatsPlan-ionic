@@ -70,6 +70,8 @@ export const ReviewService = {
   // Cada reseña se identifica con un review_key de texto:
   //   'wp:<id>'                 → reseña de WhatsPlan (place_reviews.id)
   //   'g:<placeId>:<hash>'      → reseña de Google (no tiene id propio)
+  //   'r:<id>'                  → una respuesta (review_replies.id) — solo
+  //                               para reacciones con emoji
 
   // Trae TODAS las reacciones y respuestas de un lugar en 2 consultas;
   // la ficha las agrupa por review_key del lado del cliente.
@@ -81,7 +83,7 @@ export const ReviewService = {
         .select('review_key, user_id, type')
         .eq('place_id', pid),
       sb.from('review_replies')
-        .select('id, review_key, user_id, display_name, avatar_url, text, created_at')
+        .select('id, review_key, user_id, display_name, avatar_url, text, created_at, reply_to_id, reply_to_name')
         .eq('place_id', pid)
         .order('created_at', { ascending: true }),
     ]);
@@ -120,18 +122,23 @@ export const ReviewService = {
     if (error) throw error;
   },
 
-  async addReply(reviewKey, placeId, userId, text, displayName, avatarUrl) {
+  // replyTo (opcional): { id, name } — cuando se responde a OTRA respuesta.
+  // Queda en el mismo hilo (mismo review_key), solo guarda a quién se
+  // le contestó para mostrar "↳ Luis".
+  async addReply(reviewKey, placeId, userId, text, displayName, avatarUrl, replyTo = null) {
     const { data, error } = await getSupabase()
       .from('review_replies')
       .insert({
-        review_key:   reviewKey,
-        place_id:     String(placeId),
-        user_id:      userId,
+        review_key:    reviewKey,
+        place_id:      String(placeId),
+        user_id:       userId,
         text,
-        display_name: displayName || null,
-        avatar_url:   avatarUrl   || null,
+        display_name:  displayName || null,
+        avatar_url:    avatarUrl   || null,
+        reply_to_id:   replyTo?.id   ?? null,
+        reply_to_name: replyTo?.name ?? null,
       })
-      .select('id, review_key, user_id, display_name, avatar_url, text, created_at')
+      .select('id, review_key, user_id, display_name, avatar_url, text, created_at, reply_to_id, reply_to_name')
       .single();
     if (error) throw error;
     return data;
