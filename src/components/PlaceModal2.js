@@ -278,11 +278,8 @@ export class PlaceModal2 {
            tarjetas, que siguen ahí, pausadas pero visibles). Subida por
            encima de cualquier cosa que el slide pueda dejar viva detrás. */
         z-index: 1500000;
-        /* NO usar var(--wp-font) — esa variable está fijada globalmente a
-           Avenir en styles/app.css:330, así que su fallback nunca se
-           aplicaba y todo lo que hacía font-family:inherit heredaba
-           Avenir igual. Forzamos Inter Tight directo acá. */
-        font-family: 'Inter Tight', system-ui, sans-serif;
+        /* Fuente global: se cambia solo en styles/fonts.css */
+        font-family: var(--wp-font);
         font-weight:400;
       }
       #wp-pm2.visible { display:block; }
@@ -360,7 +357,7 @@ export class PlaceModal2 {
         padding-left:12px; padding-right:12px;
         z-index:10; background:transparent;
         overflow:hidden;
-        font-family:'Inter Tight',sans-serif;
+        font-family:var(--wp-font);
         /* Misma entrada que usa el header del slide (.wp-ce-collage-header
            en MapView.js) — mismos valores exactos (opacity, distancia del
            translateY, duración, curva bouncy) para que se sientan como
@@ -384,13 +381,17 @@ export class PlaceModal2 {
           rgba(255,255,255,0.9) 0%,
           rgba(255,255,255,0.5) 55%,
           rgba(255,255,255,0) 100%);
-        backdrop-filter:blur(0.5px);
-        -webkit-backdrop-filter:blur(0.5px);
+        /* Sin backdrop-filter: el blur de 0.5px casi no se notaba y en
+           Safari (y en Android mientras la ficha hace fade-in) el borde
+           inferior de esa capa de blur se dibujaba como una LÍNEA oscura
+           horizontal — Safari no le aplica el mask-image al blur, así que
+           el corte quedaba duro. Además esa capa se repinta tarde durante
+           el scroll con inercia, que es el "retraso" de la sombra. */
         mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
         z-index:9; pointer-events:none;
-        opacity:0.4; /* JS la sube con el scroll */
-        transition:opacity 0.05s linear;
+        opacity:0.4; /* JS la sube con el scroll — sin transition: la
+                        transición de 0.05s le sumaba retraso al seguir el scroll */
       }
 
       /* Sombra blanca en el borde inferior — igual que la del top pero
@@ -550,12 +551,15 @@ export class PlaceModal2 {
       #wp-pm2.wp-pm2-flip-exit #wp-pm2-hero { border-radius:22px; }
       /* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
          arriba. Imagen + gradiente + título viven aquí y suben juntos. */
+      /* height:100% = alto del hero mientras el JS todavía no fijó fullH
+         en px (los primeros frames de la apertura). Sin esto medían 0 y
+         la foto/gradiente aparecían de golpe un par de frames después. */
       #wp-pm2-hero-inner {
-        position:absolute; top:0; left:0; right:0;
+        position:absolute; top:0; left:0; right:0; height:100%;
         will-change:transform;
       }
       #wp-pm2-hero-overlay-fast {
-        position:absolute; top:0; left:0; right:0;
+        position:absolute; top:0; left:0; right:0; height:100%;
         will-change:transform;
         z-index:2;
       }
@@ -564,12 +568,21 @@ export class PlaceModal2 {
         background-size:cover; background-position:center;
         filter:saturate(1.4);
       }
+      /* bottom:-6px + blanco sólido en los últimos 8px: el borde de
+         recorte del hero (height en px, se ajusta al píxel) y el gradiente
+         (que sube con transform, se posiciona con subpíxeles) nunca
+         coinciden exacto. Esa diferencia de ~1px dejaba ver una fila de la
+         foto debajo del blanco = la línea oscura bajo el header, más
+         visible en Safari al scrollear y durante el pulse de entrada (el
+         scale reacomoda los subpíxeles). Ahora el blanco sobra por debajo
+         del recorte, así que el borde siempre cae sobre blanco. */
       #wp-pm2-hero-gradient {
-        position:absolute; left:0; right:0; bottom:0;
+        position:absolute; left:0; right:0; bottom:-6px;
         height:60%; /* ocupa el 60% inferior del hero */
         background:linear-gradient(to bottom,
           transparent 0%,
           rgba(255,255,255,0.6) 50%,
+          rgba(255,255,255,1) calc(100% - 8px),
           rgba(255,255,255,1) 100%);
         pointer-events:none;
         z-index:2;
@@ -684,7 +697,7 @@ export class PlaceModal2 {
       .wp-pm2-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
         animation: wp-pm2-ai-fadein 0.4s ease both;
-        font-family:'Inter Tight',sans-serif;
+        font-family:var(--wp-font);
       }
       @keyframes wp-pm2-skeleton-shimmer {
         0%   { background-position: -200% 0; }
@@ -1002,13 +1015,13 @@ export class PlaceModal2 {
       }
       .wpr-tab-active .wpr-tab-count { background:rgba(255,255,255,0.2); color:#fff; }
       /* Añadir reseña — naranja motivador, empujado a la derecha */
-      .wpr-tab-add {
+      .wpr-tab.wpr-tab-add {
         margin-left:auto;
         background:linear-gradient(135deg,#f59e0b,#f97316);
-        border-color:transparent; color:#fff !important;
+        border-color:transparent; color:#fff;
         box-shadow:0 2px 8px rgba(249,115,22,0.30);
       }
-      .wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
+      .wpr-tab.wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
       .wpr-empty {
         text-align:center; color:#9ca3af; font-size:13px; padding:24px 20px;
       }
@@ -1077,7 +1090,7 @@ export class PlaceModal2 {
       .wp-pm2-review-text {
         font-size:13px; color:#374151; margin-top:4px; line-height:1.5; font-weight:400;
         display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
-        overflow:hidden; font-family:'Inter Tight',sans-serif;
+        overflow:hidden; font-family:var(--wp-font);
       }
       .wp-pm2-review-text.wp-pm2-expanded {
         -webkit-line-clamp:unset; overflow:visible;
@@ -1096,7 +1109,7 @@ export class PlaceModal2 {
         padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
         background:transparent;
         pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
-        font-family:'Inter Tight',sans-serif;
+        font-family:var(--wp-font);
       }
       #wp-pm2-footer > * { pointer-events:auto; }
       #wp-pm2-here-btn {
@@ -1203,13 +1216,12 @@ export class PlaceModal2 {
         done();
       }
     });
+    // "Añade un comentario..." → popup de reseña (estrellas + texto)
     el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
-      console.log('[PM2] Añadir comentario');
+      this._openReviewModal();
     });
     el.querySelector('#wp-pm2-add-review').addEventListener('click', () => {
-      // Reutiliza el mismo flujo de "Añade un comentario..." que ya existe
-      el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.querySelector('#wp-pm2-comment-box').click();
+      this._openReviewModal();
     });
   }
 
@@ -1296,7 +1308,7 @@ export class PlaceModal2 {
       'border:1px solid rgba(255,255,255,0.6)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
-      "font-family:'Inter Tight',sans-serif; font-weight:400;",
+      "font-family:var(--wp-font); font-weight:400;",
       'cursor:pointer', 'box-sizing:border-box',
       'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
     ].join(';');
@@ -1308,19 +1320,19 @@ export class PlaceModal2 {
 
     const glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent';
     const dotStyle = isOpen === true
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#34c759;box-shadow:0 0 4px rgba(52,199,89,0.6);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 4px rgba(255,255,255,0.8);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
       : isOpen === false
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#ff3b30;box-shadow:0 0 3px rgba(255,59,48,0.5)'
+      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 3px rgba(255,255,255,0.7)'
       : '';
     const badgeDot = isOpen !== null ? `<span style="${dotStyle}"></span>` : '';
     const glassBadge = isOpen === true
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(52,199,89,0.18),rgba(52,199,89,0.10));color:#15803d;border:1px solid rgba(52,199,89,0.25)'
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#34d36b 0%,#16a34a 100%);color:#fff;border:1px solid transparent;background-origin:border-box'
       : isOpen === false
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(135deg,rgba(255,59,48,0.14),rgba(255,59,48,0.08));color:#c0392b;border:1px solid rgba(255,59,48,0.20)'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:rgba(118,118,128,0.12);color:#8e8e93;border:1px solid rgba(118,118,128,0.18)';
+      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%);color:#fff;border:1px solid transparent;background-origin:border-box'
+      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#a3a9b3 0%,#6b7280 100%);color:#fff;border:1px solid transparent;background-origin:border-box';
 
     const photoCardHtml = (url) => `
-      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:center;transform-origin:center;">
+      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:start;">
         <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
       </div>`;
 
@@ -1330,17 +1342,10 @@ export class PlaceModal2 {
       </div>
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:4px;background:rgba(238,240,242,0.65);backdrop-filter:blur(10px) saturate(1.6);-webkit-backdrop-filter:blur(10px) saturate(1.6);border-radius:999px;height:34px;padding:0 4px;overflow:hidden;">
-          <button id="wp-ms-fav-btn" style="width:38px;height:32px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:linear-gradient(180deg,#ffffff 0%,#eef0f3 100%);box-shadow:0 1px 0 rgba(255,255,255,1) inset,0 -2px 3px rgba(0,0,0,0.07) inset,0 3px 8px rgba(0,0,0,0.18),0 1px 2px rgba(0,0,0,0.12);transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.36129 3.46995C6.03579 3.16081 6.76287 3 7.50002 3C8.23718 3 8.96425 3.16081 9.63875 3.46995C10.3129 3.77893 10.9185 4.22861 11.4239 4.78788C11.7322 5.12902 12.2678 5.12902 12.5761 4.78788C13.5979 3.65726 15.0068 3.00001 16.5 3.00001C17.9932 3.00001 19.4021 3.65726 20.4239 4.78788C21.4427 5.91515 22 7.42425 22 8.9792C22 10.5342 21.4427 12.0433 20.4239 13.1705L14.2257 20.0287C13.0346 21.3467 10.9654 21.3467 9.77429 20.0287L3.57613 13.1705C3.07086 12.6115 2.67474 11.9531 2.40602 11.2353C2.13731 10.5175 2 9.75113 2 8.9792C2 8.20728 2.13731 7.44094 2.40602 6.72315C2.67474 6.00531 3.07086 5.34694 3.57613 4.78788C4.08157 4.22861 4.68716 3.77893 5.36129 3.46995Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-          </button>
-          <button id="wp-ms-close-btn" style="width:38px;height:32px;border-radius:999px;border:1px solid rgba(0,0,0,0.08);background:linear-gradient(180deg,#ffffff 0%,#eef0f3 100%);box-shadow:0 1px 0 rgba(255,255,255,1) inset,0 -2px 3px rgba(0,0,0,0.07) inset,0 3px 8px rgba(0,0,0,0.18),0 1px 2px rgba(0,0,0,0.12);transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;color:#374151;padding:0;flex-shrink:0;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M16 16L12 12M12 12L8 8M12 12L16 8M12 12L8 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
+        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:3px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:linear-gradient(180deg,#e3ecf8 0%,#c5d5ea 100%);display:flex;align-items:center;justify-content:center;color:#4a5f7e;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
       </div>
-      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:0 4px;scrollbar-width:none;">
+      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px;scroll-padding:0 14px;scrollbar-width:none;">
         ${photos4.length
           ? photos4.map((u) => photoCardHtml(u)).join('')
           : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:20px">📷</span></div>`}
@@ -1350,7 +1355,7 @@ export class PlaceModal2 {
           <div style="display:flex;align-items:center">${avatarsHtml}</div>
           ${count > 0 ? `<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>` : `<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>`}
         </div>
-        <button id="wp-ms-cta-btn" style="${glassBtn}">Detalles →</button>
+        <button id="wp-ms-cta-btn" aria-label="Detalles" style="flex-shrink:0;width:40px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:#1f2937;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>`;
 
     ms.className = 'wp-minisnap-panel';
@@ -1374,12 +1379,15 @@ export class PlaceModal2 {
       favBtn.classList.toggle('active');
       const svg = favBtn.querySelector('path');
       const active = favBtn.classList.contains('active');
-      svg.setAttribute('fill', active ? '#ef4444' : 'none');
-      favBtn.style.color = active ? '#ef4444' : '#374151';
+      svg.setAttribute('fill', active ? '#fff' : 'none');
+      favBtn.style.color = active ? '#fff' : '#4a5f7e';
+      favBtn.style.background = active
+        ? 'linear-gradient(180deg,#ff7aa8 0%,#ec4899 100%)'
+        : 'linear-gradient(180deg,#e3ecf8 0%,#c5d5ea 100%)';
     };
 
     // Feedback de presión: se hunde como botón físico y rebota al soltar
-    [ms.querySelector('#wp-ms-fav-btn'), ms.querySelector('#wp-ms-close-btn')].forEach(b => {
+    [ms.querySelector('#wp-ms-fav-btn'), ms.querySelector('#wp-ms-close-btn'), ms.querySelector('#wp-ms-cta-btn')].forEach(b => {
       if (!b) return;
       b.addEventListener('pointerdown', () => { b.style.transform = 'scale(0.88,0.82)'; });
       const up = () => { b.style.transform = ''; };
@@ -1399,111 +1407,10 @@ export class PlaceModal2 {
     }
     const cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = goFull;
-    // justSwiped: el navegador dispara un "click" normal después del
-    // pointerup incluso tras un drag largo (esto NO es un scroll nativo
-    // — el movimiento lo maneja transform a mano — así que el browser no
-    // tiene forma de saber que fue un swipe y no un tap). Sin este
-    // guard, un swipe exitoso a otro lugar dispararía IGUAL goFull()
-    // apenas después, abriendo la ficha completa sin que nadie la haya
-    // pedido.
-    let justSwiped = false;
     ms.addEventListener('click', (e) => {
-      if (justSwiped) { justSwiped = false; return; }
       if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
     });
 
-    // ── Parallax en la tira de fotos ─────────────────────────────────
-    // Las fotos cerca del centro de la tira quedan a tamaño completo y
-    // opacidad completa; las que se van acercando a los bordes se achican
-    // y atenúan — mismo principio que el parallax del slide de cluster,
-    // adaptado a una tira chica de miniaturas en vez de tarjetas grandes.
-    const photoStrip = ms.querySelector('#wp-ms-photo-strip');
-    if (photoStrip) {
-      const applyPhotoParallax = () => {
-        const stripRect = photoStrip.getBoundingClientRect();
-        if (!stripRect.width) return;
-        const centerX = stripRect.left + stripRect.width / 2;
-        photoStrip.querySelectorAll('.wp-ms-photo').forEach(photo => {
-          const r = photo.getBoundingClientRect();
-          const dist = Math.abs((r.left + r.width / 2) - centerX);
-          const norm = Math.min(1, dist / (stripRect.width / 2));
-          photo.style.transform = `scale(${1 - norm * 0.18})`;
-          photo.style.opacity   = 1 - norm * 0.35;
-        });
-      };
-      photoStrip.addEventListener('scroll', applyPhotoParallax, { passive: true });
-      requestAnimationFrame(applyPhotoParallax); // estado inicial, una vez que el layout ya midió bien
-    }
-
-    // ── Swipe horizontal entre lugares cercanos ──────────────────────
-    // Usa el mismo índice que ya trackea MapView (mv.miniCardIndex,
-    // dentro de mv.markers) para saber cuál es "el siguiente" y "el
-    // anterior" — la misma idea de continuidad que el slide de cluster
-    // entre lugares, pero para el minisnap de un lugar suelto. Se
-    // excluyen la tira de fotos (tiene su propio scroll), los botones y
-    // el handle — todos manejan su propio gesto.
-    const SWIPE_EXCLUDE = '#wp-ms-photo-strip, #wp-ms-fav-btn, #wp-ms-close-btn, #wp-ms-cta-btn, #wp-ms-handle';
-    let swipeStartX = 0, swipeStartY = 0, swipeLastX = 0, swiping = false;
-    ms.style.touchAction = 'pan-y'; // el navegador se queda con el scroll vertical; el horizontal lo manejamos nosotros sin pointercancel
-    ms.addEventListener('pointerdown', (e) => {
-      if (e.target.closest(SWIPE_EXCLUDE)) return;
-      swipeStartX = swipeLastX = e.clientX; swipeStartY = e.clientY; swiping = true;
-      ms.style.transition = 'none';
-    });
-    ms.addEventListener('pointermove', (e) => {
-      if (!swiping) return;
-      swipeLastX = e.clientX;
-      const dx = e.clientX - swipeStartX;
-      const dy = e.clientY - swipeStartY;
-      // Gesto más vertical que horizontal — probablemente querían tocar
-      // o hacer otra cosa, no swipear de lugar. Se suelta sin animar.
-      if (Math.abs(dy) > Math.abs(dx) * 1.2) { swiping = false; ms.style.transform = ''; return; }
-      ms.style.transform = `translateX(${dx * 0.6}px)`; // con resistencia — sigue al dedo pero no 1:1
-    });
-    const finishPlaceSwipe = (e) => {
-      if (!swiping) return;
-      swiping = false;
-      // pointercancel trae clientX 0 → se usa la última X real y, si se canceló, nunca navega.
-      const cancelled = e.type === 'pointercancel';
-      const dx = cancelled ? 0 : swipeLastX - swipeStartX;
-      const mv = window.wpApp && window.wpApp.mapView;
-      const THRESHOLD = 60;
-      if (mv && Math.abs(dx) > THRESHOLD && mv.miniCardIndex >= 0) {
-        const dir = dx < 0 ? 1 : -1; // izquierda = siguiente, derecha = anterior
-        const nextMarker = mv.markers[mv.miniCardIndex + dir];
-        const nextPlace = nextMarker && nextMarker.getElement && nextMarker.getElement()._place;
-        if (nextPlace) {
-          justSwiped = true;
-          const nextIndex = mv.miniCardIndex + dir;
-          ms.style.transition = 'transform 0.18s ease-in, opacity 0.18s ease-in';
-          ms.style.transform  = `translateX(${dir > 0 ? -40 : 40}px)`; // sigue saliendo en la misma dirección del swipe
-          ms.style.opacity    = '0';
-          setTimeout(() => {
-            mv._showMiniCard(nextPlace, nextIndex); // el pin correspondiente en el mapa también pasa a estar "activo" — mismo lugar, dos vistas en sync
-            self._showMiniSnap(nextPlace);
-            const freshMs = document.getElementById('wp-minisnap-panel');
-            // Entra desde el lado OPUESTO al que salió el anterior —
-            // sensación de continuidad, como si el siguiente lugar ya
-            // estuviera ahí esperando.
-            freshMs.style.transition = 'none';
-            freshMs.style.transform  = `translateX(${dir > 0 ? 40 : -40}px)`;
-            freshMs.style.opacity    = '0';
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              freshMs.style.transition = 'transform 0.26s cubic-bezier(0.22,1,0.36,1), opacity 0.22s ease-out';
-              freshMs.style.transform  = 'translateX(0)';
-              freshMs.style.opacity    = '1';
-            }));
-          }, 170);
-          return;
-        }
-      }
-      // No había lugar siguiente/anterior, o no se llegó al umbral —
-      // vuelve a su lugar con un resorte suave.
-      ms.style.transition = 'transform 0.28s cubic-bezier(0.34,1.4,0.64,1)';
-      ms.style.transform  = 'translateX(0)';
-    };
-    ms.addEventListener('pointerup', finishPlaceSwipe);
-    ms.addEventListener('pointercancel', finishPlaceSwipe);
   }
 
   _hideMiniSnap() {
@@ -1563,6 +1470,7 @@ export class PlaceModal2 {
     heroEl.style.height = '';
     heroEl.style.minHeight = '';   // usar el min-height del CSS SOLO para medir fullH
     heroInner.style.height = '';
+    heroOverlayFast.style.height = '';
     heroInner.style.transform = '';
     heroInner.style.opacity = '';
     heroOverlayFast.style.transform = '';
@@ -2388,10 +2296,7 @@ export class PlaceModal2 {
       };
     });
     const addBtn = headerRow.querySelector('#wpr-add-btn');
-    if (addBtn) addBtn.onclick = () => {
-      this._el.querySelector('#wp-pm2-comment-input-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      this._el.querySelector('#wp-pm2-comment-box').click();
-    };
+    if (addBtn) addBtn.onclick = () => this._openReviewModal();
   }
 
   // Construye una tarjeta de reseña (misma estructura para Google y
@@ -2456,6 +2361,173 @@ export class PlaceModal2 {
       a.textContent = 'Ver todas las reseñas en Google →';
       panel.appendChild(a);
     }
+  }
+
+  // Toast simple — por encima de la ficha (z-index 1500000)
+  _showToast(msg) {
+    const prev = document.getElementById('wp-pm2-toast');
+    if (prev) prev.remove();
+    const t = document.createElement('div');
+    t.id = 'wp-pm2-toast';
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%) translateY(-20px);z-index:1500300;background:rgba(10,10,10,0.88);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);opacity:0;transition:opacity 0.2s ease, transform 0.25s cubic-bezier(0.34,1.4,0.64,1);pointer-events:none;white-space:nowrap';
+    document.body.appendChild(t);
+    void t.offsetHeight;
+    t.style.opacity = '1';
+    t.style.transform = 'translateX(-50%) translateY(0)';
+    setTimeout(() => {
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 250);
+    }, 2200);
+  }
+
+  // Popup de reseña — mismo flujo que _openReviewModal de PlaceModal.js
+  // (estrellas + textarea + publicar vía ReviewService.upsert), con
+  // z-index por encima de la ficha fullscreen (#wp-pm2 = 1500000).
+  async _openReviewModal() {
+    const place = this._place;
+    if (!place) return;
+    const user = this.getCurrentUser?.();
+    if (!user) { this._showToast('Inicia sesión para dejar una reseña'); return; }
+
+    const prevModal = document.getElementById('wp-pm2-review-modal');
+    if (prevModal) prevModal.remove();
+
+    const displayName = user.user_metadata?.display_name
+      || user.user_metadata?.full_name
+      || user.email?.split('@')[0]
+      || 'Usuario';
+    const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+
+    const frag = document.createElement('div');
+    frag.id = 'wp-pm2-review-modal';
+    frag.innerHTML = `
+      <div id="wp-pm2-rm-overlay" style="position:fixed;inset:0;z-index:1500100;background:rgba(0,0,0,0.3);opacity:0;transition:opacity 0.25s ease"></div>
+      <div id="wp-pm2-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
+        <div id="wp-pm2-rm-header" style="display:flex;align-items:center;gap:10px;padding:4px 20px 12px">
+          <img src="${avatarUrl}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">
+          <div style="min-width:0">
+            <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Tu reseña</span>
+            <span style="display:block;font-size:12px;color:#8e8e93;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(place.name || 'Comparte tu experiencia').replace(/</g,'&lt;')}</span>
+          </div>
+        </div>
+        <div id="wp-pm2-rm-stars" style="display:flex;justify-content:center;gap:8px;padding:4px 0 4px">
+          ${[1,2,3,4,5].map(v => `<span class="wp-pm2-rm-star" data-v="${v}" style="font-size:36px;line-height:1;cursor:pointer;color:#d1d5db;transition:transform 0.15s, color 0.15s;-webkit-tap-highlight-color:transparent">★</span>`).join('')}
+        </div>
+        <div id="wp-pm2-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px">Toca para calificar</div>
+        <div style="padding:0 16px">
+          <textarea id="wp-pm2-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+          <div id="wp-pm2-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px">0 / 500</div>
+        </div>
+        <div style="padding:12px 16px 16px">
+          <button id="wp-pm2-rm-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);opacity:0.4;transition:opacity 0.15s, transform 0.15s;-webkit-tap-highlight-color:transparent">Publicar reseña</button>
+        </div>
+      </div>`;
+    document.body.appendChild(frag);
+
+    const overlay  = frag.querySelector('#wp-pm2-rm-overlay');
+    const menu     = frag.querySelector('#wp-pm2-rm-menu');
+    const starsEl  = frag.querySelector('#wp-pm2-rm-stars');
+    const labelEl  = frag.querySelector('#wp-pm2-rm-label');
+    const textarea = frag.querySelector('#wp-pm2-rm-textarea');
+    const charEl   = frag.querySelector('#wp-pm2-rm-char');
+    const submit   = frag.querySelector('#wp-pm2-rm-submit');
+    const rmHeader = frag.querySelector('#wp-pm2-rm-header');
+
+    const LABELS = ['', 'Muy malo', 'Regular', 'Bueno', 'Muy bueno', 'Excelente'];
+    let rating = 0;
+
+    const refreshSubmit = () => {
+      const ok = rating > 0 && textarea.value.trim().length >= 10;
+      submit.disabled = !ok;
+      submit.style.opacity = ok ? '1' : '0.4';
+    };
+    const updateStars = (v) => {
+      rating = v;
+      starsEl.querySelectorAll('.wp-pm2-rm-star').forEach((s, i) => {
+        s.style.color     = i < v ? '#f59e0b' : '#d1d5db';
+        s.style.transform = i < v ? 'scale(1.1)' : 'scale(1)';
+      });
+      labelEl.textContent = LABELS[v] || 'Toca para calificar';
+      refreshSubmit();
+    };
+    starsEl.querySelectorAll('.wp-pm2-rm-star').forEach(s => {
+      s.onclick = () => updateStars(parseInt(s.dataset.v, 10));
+    });
+    textarea.oninput = () => {
+      charEl.textContent = textarea.value.length + ' / 500';
+      refreshSubmit();
+    };
+
+    const closeModal = () => {
+      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
+      menu.style.transform = 'translateY(110%)';
+      overlay.style.opacity = '0';
+      textarea.blur();
+      setTimeout(() => frag.remove(), 320);
+    };
+    overlay.onclick = closeModal;
+
+    // Abrir con reflow forzado para que la transición dispare
+    void menu.offsetHeight;
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      menu.style.transform = 'translateY(0)';
+    });
+
+    // Si ya dejó reseña antes, se precarga para editarla
+    const placeId = place.place_id || place.id || place.placeId;
+    try {
+      const existing = await ReviewService.getUserReview(placeId, user.id);
+      if (existing && document.body.contains(frag)) {
+        textarea.value = existing.text || '';
+        charEl.textContent = textarea.value.length + ' / 500';
+        updateStars(existing.rating || 0);
+        submit.textContent = 'Actualizar reseña';
+      }
+    } catch (_) {}
+
+    submit.onclick = async () => {
+      if (submit.disabled) return;
+      submit.disabled = true;
+      submit.textContent = 'Publicando...';
+      try {
+        if (!placeId) throw new Error('ID del lugar no encontrado');
+        await ReviewService.upsert(String(placeId), user.id, rating, textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null);
+        closeModal();
+        this._showToast('✓ Reseña publicada');
+        // Refresca el tab WhatsPlan y lo deja activo para ver la reseña
+        await this._loadCommunityReviews(place);
+        const headerRow = this._el.querySelector('#wpr-header-row');
+        const wpTab = headerRow?.querySelector('.wpr-tab[data-tab="community"]');
+        if (wpTab) wpTab.click();
+      } catch (err) {
+        console.error('[PM2] Error al publicar reseña:', err);
+        this._showToast(err.message || 'Error al publicar');
+        submit.disabled = false;
+        submit.textContent = 'Publicar reseña';
+      }
+    };
+
+    // Arrastrar el header hacia abajo para cerrar
+    let sy = 0, dy = 0, dragging = false;
+    rmHeader.addEventListener('touchstart', e => {
+      sy = e.touches[0].clientY; dy = 0; dragging = true;
+      menu.style.transition = 'none';
+    }, { passive: true });
+    rmHeader.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      menu.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: true });
+    rmHeader.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      menu.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
+      if (dy > 80) closeModal();
+      else menu.style.transform = 'translateY(0)';
+    });
   }
 
   // Panel de reseñas de WhatsPlan (tabla place_reviews vía ReviewService)
