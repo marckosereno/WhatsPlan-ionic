@@ -934,7 +934,7 @@ export class SearchBar {
         font-size:15px;font-weight:400;color:#111827;min-width:0;
         font-family:var(--wp-font);
       }
-      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
+      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular',var(--wp-font);}
 
       .wps-clear {
         display:none;
@@ -1035,7 +1035,7 @@ export class SearchBar {
         box-shadow:0 2px 6px rgba(107,114,128,0.30), inset 0 1px 0 rgba(255,255,255,0.2);
       }
       .wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
-      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;}
+      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular',var(--wp-font);}
       .wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
       .wps-card-rating{display:flex;align-items:center;gap:4px;}
       .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
@@ -1084,7 +1084,7 @@ export class SearchBar {
           inset 0 -1px 0 rgba(0,0,0,0.05);
         touch-action:manipulation;-webkit-tap-highlight-color:transparent;
         transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        font-family:'Yahoo Sans Bold Regular','Inter Tight',system-ui,sans-serif;
+        font-family:'Yahoo Sans Bold Regular',var(--wp-font);
         backdrop-filter:blur(12px) saturate(1.6);
         -webkit-backdrop-filter:blur(12px) saturate(1.6);
       }
