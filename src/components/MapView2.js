@@ -361,7 +361,7 @@ function injectLandmarkStyles() {
     .wp-ce-cback:active, .wp-ce-cbtn:active { transform: scale(0.92); }
     .wp-ce-ctitle {
       margin-left: 12px; flex: 1 1 auto; min-width: 0;
-      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-family: var(--wp-font);
       font-size: 16px; font-weight: 800; color: #111; letter-spacing: -0.2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
@@ -378,7 +378,7 @@ function injectLandmarkStyles() {
     .wp-ce-collage.wp-ce-chrome-in .wp-ce-ccaption { opacity: 1; transform: translateY(0); }
     .wp-ce-ccaption-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
     .wp-ce-ctag {
-      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-family: var(--wp-font);
       font-size: 12.5px; font-weight: 700; color: #374151;
       background: #f3f4f6; border: none; border-radius: 999px; padding: 7px 13px;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -415,11 +415,11 @@ function injectLandmarkStyles() {
     .wp-ce-editpanel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
     .wp-ce-editpanel:empty { display: none; }
     .wp-ce-editpanel.wp-ce-editpanel-in { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .wp-ce-edithint { color: #e5e7eb; font-size: 12px; font-weight: 600; margin-bottom: 10px; font-family: 'Inter Tight', system-ui, sans-serif; }
+    .wp-ce-edithint { color: #e5e7eb; font-size: 12px; font-weight: 600; margin-bottom: 10px; font-family: var(--wp-font); }
     .wp-ce-editslider {
       display: flex; align-items: center; gap: 10px; color: #9ca3af;
       font-size: 11.5px; font-weight: 700; margin-bottom: 8px;
-      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-family: var(--wp-font);
     }
     .wp-ce-editslider input[type="range"] {
       flex: 1; accent-color: #1a5cf5;
@@ -437,7 +437,7 @@ function injectLandmarkStyles() {
     .wp-ce-editbtn {
       flex: 1; min-width: 70px; padding: 9px; border-radius: 10px; border: none;
       background: rgba(255,255,255,0.1); color: #e5e7eb;
-      font-size: 11.5px; font-weight: 700; font-family: 'Inter Tight', system-ui, sans-serif;
+      font-size: 11.5px; font-weight: 700; font-family: var(--wp-font);
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     .wp-ce-editbtn-primary { background: #1a5cf5; color: #fff; }
@@ -453,7 +453,7 @@ function injectLandmarkStyles() {
     .wp-ce-elist-item {
       text-align: left; padding: 8px 10px; border-radius: 8px; border: none;
       background: rgba(255,255,255,0.06); color: #e5e7eb;
-      font-size: 11.5px; font-weight: 600; font-family: 'Inter Tight', system-ui, sans-serif;
+      font-size: 11.5px; font-weight: 600; font-family: var(--wp-font);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
@@ -1268,27 +1268,6 @@ export class MapView {
   }
   async reloadPinClusters() {
     await this._loadPinClusters();
-    // [DIAG-CLUSTER] Temporal — ver el comentario en
-    // SuperUserPanel.js/_openClusterCustomizePanel. Esto muestra CUÁNTAS
-    // filas hay ahora en la base para cada place_id — si el mismo lugar
-    // aparece en DOS filas distintas de this.pinClusters después de
-    // guardar una edición, ESA es la prueba de que el guardado creó una
-    // fila nueva en vez de actualizar la existente.
-    console.log('[DIAG-CLUSTER] pinClusters recargados', (this.pinClusters || []).map(cd => ({ id: cd.id, placeIds: cd.placeIds, updatedAt: cd.updatedAt })));
-    // Recalcular los umbrales de zoom DESPUÉS de refrescar pinClusters
-    // — _assignZoomThresholds() ahora usa esa data para que los
-    // miembros de un mismo cluster no compitan por espacio entre sí
-    // (ver el comentario largo ahí). Si esto no corriera acá, el fix
-    // recién se aplicaría en la próxima carga completa de categoría,
-    // no apenas se guarda una edición — que es justo cuando hace falta.
-    this._assignZoomThresholds();
-    // _assignZoomThresholds() solo calcula el número (_showAtZoom) —
-    // _updatePinsByZoom() es la que de verdad aplica ese número al DOM
-    // (mostrar/ocultar cada pin). Sin este paso, _updateClusters() de
-    // abajo lee la visibilidad VIEJA (la del último zoom/pan real), no
-    // la recién recalculada, y el fix no se nota hasta el próximo
-    // movimiento del mapa.
-    this._updatePinsByZoom();
     // Los pines con pinStyle 'cluster' renderizan su diseño desde
     // this.pinClusters dentro de _buildPinHtml, así que al cambiar ese
     // dato hay que reconstruir su HTML — si no, el pin sigue mostrando el
@@ -1550,64 +1529,30 @@ export class MapView {
       { zoom: 17, minDist: 0.00015 },
     ];
 
-    // Mapa place_id → índice de fila en pinClusters, para saber si dos
-    // pines son miembros del MISMO cluster curado. Es necesario porque
-    // los miembros de un cluster están cerca entre sí por definición —
-    // sin este mapa, el algoritmo de abajo (que empuja a un pin a un
-    // nivel de zoom MÁS lejano si está "muy cerca" de uno ya colocado)
-    // casi siempre les asigna umbrales DISTINTOS a los miembros de un
-    // mismo cluster, porque cada uno cuenta como "demasiado cerca" del
-    // otro. Resultado: el cluster completo solo se ve armado en la
-    // ventana de zoom donde TODOS sus miembros coinciden en estar
-    // revelados — angosta o casi inexistente si hay 3+ miembros con
-    // umbrales distintos entre sí. Esto es justo lo que se reportó como
-    // "el cluster editado solo se ve un instante" — no es un bug en el
-    // guardado ni en el armado del grupo, es que sus propios miembros
-    // se estaban compitiendo espacio unos a otros en este cálculo.
-    const clusterGroupOf = new Map();
-    (this.pinClusters || []).forEach((cd, gi) => {
-      if ((cd.placeIds || []).length < 2) return; // clusters de 1 lugar no aplican acá
-      (cd.placeIds || []).forEach(pid => clusterGroupOf.set(pid, gi));
-    });
-
     const all = this.markerEls.map((el, i) => ({
       el, m: this.markers[i],
-      prio: el._zoomTier ?? 3,
-      clusterGroup: clusterGroupOf.get(placeIdOf(el._place)) ?? null,
+      prio: el._zoomTier ?? 3
     })).filter(x => x.m);
-    // Setear _clusterGroup en TODOS los marcadores desde ya, no solo en
-    // los que terminan asignados dentro del loop de abajo — si un
-    // miembro cae en el fallback de "no encajó en ningún nivel → zoom
-    // 18", igual necesita su _clusterGroup puesto para que la
-    // sincronización final lo alcance.
-    all.forEach(({ el, clusterGroup }) => { el._clusterGroup = clusterGroup; });
     all.sort((a, b) => a.prio - b.prio);
 
     const assigned = new Set();
 
     levels.forEach(({ zoom, minDist }) => {
       const placed = [];
-      assigned.forEach(el => { if (el._m) placed.push({ ll: el._m.getLngLat(), clusterGroup: el._clusterGroup ?? null }); });
+      assigned.forEach(el => { if (el._m) placed.push(el._m.getLngLat()); });
 
-      all.forEach(({ el, m, clusterGroup }) => {
+      all.forEach(({ el, m }) => {
         if (assigned.has(el)) return;
         const ll = m.getLngLat();
         const tooClose = placed.some(p => {
-          // Miembros del MISMO cluster curado no compiten entre sí por
-          // espacio — están destinados a agruparse juntos, no a
-          // estorbarse. Sin esta excepción, el segundo miembro de un
-          // cluster SIEMPRE queda "demasiado cerca" del primero y se
-          // empuja a un nivel de zoom más lejano.
-          if (clusterGroup !== null && p.clusterGroup === clusterGroup) return false;
-          const dx = p.ll.lng - ll.lng, dy = p.ll.lat - ll.lat;
+          const dx = p.lng - ll.lng, dy = p.lat - ll.lat;
           return Math.sqrt(dx*dx + dy*dy) < minDist;
         });
         if (!tooClose) {
           el._showAtZoom = zoom;
           el._m = m;
-          el._clusterGroup = clusterGroup;
           assigned.add(el);
-          placed.push({ ll, clusterGroup });
+          placed.push(ll);
         }
       });
     });
@@ -1616,27 +1561,6 @@ export class MapView {
     // TODOS los pines deben aparecer — ninguno se oculta permanentemente
     this.markerEls.forEach(el => {
       if (!assigned.has(el)) el._showAtZoom = 18;
-    });
-
-    // Sincronizar a TODOS los miembros de un mismo cluster curado al
-    // MEJOR (más bajo) umbral entre ellos — no alcanza con que no
-    // compitan por espacio entre sí (arriba): cada uno igual podía
-    // terminar en un nivel distinto por culpa de OTROS pines cercanos
-    // que NO son parte del cluster. Sin esta sincronización, el cluster
-    // sigue formándose recién en la ventana donde el ÚLTIMO miembro (el
-    // de umbral más alto) se revela — angosta igual. Ahora todos entran
-    // juntos, desde el momento en que el más favorecido de ellos lo
-    // haría solo.
-    const byGroup = new Map();
-    this.markerEls.forEach(el => {
-      const gi = el._clusterGroup;
-      if (gi === null || gi === undefined) return;
-      if (!byGroup.has(gi)) byGroup.set(gi, []);
-      byGroup.get(gi).push(el);
-    });
-    byGroup.forEach(members => {
-      const best = Math.min(...members.map(el => el._showAtZoom ?? 18));
-      members.forEach(el => { el._showAtZoom = best; });
     });
   }
 
@@ -1869,22 +1793,6 @@ export class MapView {
         return { el, ll, px: this.map.project(ll) };
       });
 
-    // Defensa contra marcadores DOM duplicados del MISMO lugar (si por
-    // algún camino de recarga incremental un place_id termina con dos
-    // elementos en this.markerEls) — sin esto, el clustering los agrupa
-    // igual (están en la posición EXACTA, distancia 0) y el cluster
-    // resultante muestra el doble de miembros de los que en realidad
-    // hay (3 lugares reales → "6" en el sticker, con cada uno repetido).
-    // Se queda con la PRIMERA aparición de cada place_id.
-    const seenPids = new Set();
-    const candidatesDeduped = candidates.filter(c => {
-      const pid = placeIdOf(c.el._place);
-      if (!pid) return true; // sin id no hay como deduplicar con certeza — se deja pasar, no es el caso común
-      if (seenPids.has(pid)) return false;
-      seenPids.add(pid);
-      return true;
-    });
-
     const usedEls = new Set();
     const wanted = [];
 
@@ -1892,15 +1800,6 @@ export class MapView {
     // varios lugares + automáticos por cercanía) solo existen por debajo
     // de este zoom: más cerca ya hay lugar para mostrar cada pin suelto.
     // Los pines de ESTILO ÚNICO no dependen de esto — ver paso 3.
-    //
-    // Dos umbrales distintos a propósito: los clusters CURADOS a mano
-    // (paso 1) aguantan hasta un zoom más alto (18.3) que los AUTOMÁTICOS
-    // por cercanía (paso 2, 17.2) — si alguien arma un cluster a mano, la
-    // intención es que se vea como grupo un rato más antes de desarmarse;
-    // el automático puede seguir desintegrándose antes, ya que ESE
-    // comportamiento dinámico (formarse/deshacerse con el zoom) es
-    // justamente lo esperado para agrupamiento no curado.
-    const curatedClustersActive = this.map.getZoom() < 18.3;
     const clustersActive = this.map.getZoom() < 17.2;
 
     // PRIORIDAD entre filas que compiten por el mismo lugar. Hace falta
@@ -1937,7 +1836,7 @@ export class MapView {
     // en SuperUserPanel.js) — antes había copias locales ligeramente
     // distintas en cada lugar, y esa desincronización era justo lo que
     // rompía la edición para lugares sin place_id/id.
-    if (curatedClustersActive) {
+    if (clustersActive) {
       pinClustersByPriority.forEach(customDef => {
         if ((customDef.placeIds || []).length <= 1) return; // de un solo lugar → paso 3
         // Pool ESTRICTO a propósito (respeta el revelado por zoom). Con el
@@ -1947,7 +1846,7 @@ export class MapView {
         // clustering automático, que es el que hace que los grupos se
         // formen, se disuelvan y se recombinen al hacer zoom. Con el pool
         // estricto vuelve ese comportamiento dinámico.
-        const members = candidatesDeduped.filter(c =>
+        const members = candidates.filter(c =>
           !usedEls.has(c.el) && (customDef.placeIds || []).includes(placeIdOf(c.el._place))
         );
         // .filter() preserva el orden de `candidates` (básicamente el
@@ -1960,27 +1859,20 @@ export class MapView {
         // primero" — se reordena explícitamente para que coincida.
         const order = customDef.placeIds || [];
         members.sort((a, b) => order.indexOf(placeIdOf(a.el._place)) - order.indexOf(placeIdOf(b.el._place)));
-        // Antes exigía el grupo COMPLETO (todos los placeIds del
-        // customDef, sin excepción) — eso arreglaba un bug real (un
-        // cluster de 2+ al que le faltaba UN miembro se rendía como
-        // pin de estilo "cluster" individual, con comportamiento de
-        // tap equivocado — abría un minicard en vez del carrusel). Pero
-        // "todo o nada" traía un problema nuevo: al editar un cluster
-        // existente y sumarle un lugar, ese lugar recién agregado
-        // puede no tener todavía un marcador real visible en pantalla
-        // en ESE instante (recién se agregó como objeto de preview en
-        // el editor, no como pin real del mapa) — y con la exigencia
-        // estricta, el grupo ENTERO se rechazaba acá, mandando a los
-        // demás miembros (que sí estaban listos) al clustering
-        // automático, separados del diseño personalizado — el "cluster
-        // nuevo" que se reportó, en vez de actualizarse el existente.
-        //
-        // Ahora alcanza con 2+ miembros encontrados — sigue evitando
-        // exactamente el bug original (un cluster de 1 solo miembro
-        // nunca llega a formarse acá, cae al paso 3 como antes), pero
-        // ya no tira todo el grupo por un miembro que temporalmente no
-        // tiene marcador en pantalla.
-        if (members.length < 2) return;
+        // Exige el grupo COMPLETO, no "al menos uno". Antes, si a un
+        // cluster de 2+ lugares le faltaba alguno (por ejemplo, oculto
+        // todavía por el revelado de zoom), el resto igual se renderizaba
+        // — pero como "cluster de un solo lugar", que es un ESTILO DE PIN
+        // (pinStyle==='cluster', tap → minicard), no un cluster grupal
+        // (tap → carrusel). El resultado era un pin que abría el
+        // carrusel/slide como si fuera un lugar solo declarado con estilo
+        // cluster, cuando en realidad era un miembro suelto de un grupo.
+        // Si falta alguno, ningún miembro se dibuja como cluster acá: cada
+        // uno cae a su propio render normal (_buildPinHtml), que ya sabe
+        // mostrarlo con estilo cluster individual si ESE lugar en
+        // particular tiene ese estilo declarado — y si no, con lo que
+        // tenga configurado.
+        if (members.length < (customDef.placeIds || []).length) return;
         members.forEach(m => usedEls.add(m.el));
         wanted.push({ key: this._clusterKey(members, customDef), group: members, customDef });
       });
@@ -1993,46 +1885,21 @@ export class MapView {
     // pin y se desagrupan al alejarse. Ese ir y venir con el zoom —
     // clusters que se forman, se disuelven y se recombinan — es el
     // comportamiento buscado; excluirlos los volvía fijos.
-    const remaining = candidatesDeduped.filter(c => !usedEls.has(c.el));
+    const remaining = candidates.filter(c => !usedEls.has(c.el));
     const usedAuto = new Set();
     const groups = [];
     remaining.forEach(item => {
       if (usedAuto.has(item.el)) return;
       const group = [item];
       usedAuto.add(item.el);
-      // Flood-fill TRANSITIVO — antes esto solo medía la distancia
-      // contra `item` (el primero del grupo, la "semilla"), una sola
-      // pasada. Si A y B estaban cerca, y B y C estaban cerca, pero A y
-      // C NO lo suficiente, C se quedaba AFUERA del grupo de A aunque
-      // geográficamente formaran una cadena continua — un cluster
-      // fragmentado en dos. Esto es EXACTAMENTE lo que pasaba al sumar
-      // lugares nuevos cerca de un cluster existente: los nuevos podían
-      // caer cerca de ALGUNO de los viejos sin estar cerca del que la
-      // iteración eligió como semilla, y terminaban en su propio cluster
-      // aparte en vez de sumarse al mismo grupo — el "cluster nuevo,
-      // difícil de ver" que se reportó.
-      //
-      // Ahora seguimos sumando miembros mientras CUALQUIERA de los que
-      // ya están en el grupo (no solo la semilla) tenga a alguien cerca
-      // — como una cadena que se va extendiendo, hasta que no entra
-      // nadie más. Sigue siendo candidatesDeduped (ya sin duplicados),
-      // así que no reintroduce el otro bug.
-      let addedSomething = true;
-      while (addedSomething) {
-        addedSomething = false;
-        remaining.forEach(other => {
-          if (usedAuto.has(other.el)) return;
-          const closeToGroup = group.some(member => {
-            const dx = other.px.x - member.px.x, dy = other.px.y - member.px.y;
-            return Math.sqrt(dx * dx + dy * dy) < CLUSTER_PX;
-          });
-          if (closeToGroup) {
-            group.push(other);
-            usedAuto.add(other.el);
-            addedSomething = true;
-          }
-        });
-      }
+      remaining.forEach(other => {
+        if (usedAuto.has(other.el)) return;
+        const dx = other.px.x - item.px.x, dy = other.px.y - item.px.y;
+        if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_PX) {
+          group.push(other);
+          usedAuto.add(other.el);
+        }
+      });
       groups.push(group);
     });
 
@@ -2067,20 +1934,6 @@ export class MapView {
     // sea que el 100% de ese trabajo era tirar y reconstruir algo idéntico.
     // Con la firma de _clusterKey(), un pan ahora no toca el DOM en
     // absoluto; solo un zoom (que sí reagrupa) construye lo que cambió.
-    // [DIAG-CLUSTER] Temporal — ver los comentarios en
-    // SuperUserPanel.js/_openClusterCustomizePanel y
-    // MapView.js/reloadPinClusters. Esto muestra los grupos que
-    // _updateClusters() terminó armando en ESTA pasada — si acá aparecen
-    // DOS entradas con place_ids superpuestos (el viejo grupo de 3 Y un
-    // grupo nuevo con más), la causa está en el armado/reconciliación de
-    // acá, no en la base de datos.
-    if (wanted.length) {
-      console.log('[DIAG-CLUSTER] grupos armados', wanted.map(w => ({
-        key: w.key,
-        curado: !!w.customDef,
-        placeIds: w.group.map(m => placeIdOf(m.el._place)),
-      })));
-    }
     const wantedKeys = new Set(wanted.map(w => w.key));
     for (const [key, marker] of Array.from(this._clusterByKey)) {
       if (wantedKeys.has(key)) continue;
@@ -2640,7 +2493,7 @@ export class MapView {
         // foto, como un título. display/align/whitespace se completan en
         // applyDecoStyle() cada frame (ahí vive font-size/color/weight/
         // line-height, que sí cambian con la edición).
-        c.style.cssText += 'display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;word-break:break-word;overflow:visible;font-family:\'Inter Tight\',system-ui,sans-serif;';
+        c.style.cssText += 'display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;word-break:break-word;overflow:visible;font-family:var(--wp-font);';
         c.textContent = data.text || '';
       } else {
         const inner = document.createElement('div');
@@ -3577,7 +3430,7 @@ export class MapView {
           const curFontPx = Math.round(TEXT_TAG_BASE[sd.tag || 'p'] * (sd.scale ?? 1));
           panel.innerHTML = `
             <div class="wp-ce-edithint">Texto${isGlobalText ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
-            <textarea data-ctl="text" rows="2" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;resize:none;background:rgba(255,255,255,0.08);border:none;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:'Inter Tight',system-ui,sans-serif;margin-bottom:8px;">${sd.text || ''}</textarea>
+            <textarea data-ctl="text" rows="2" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;resize:none;background:rgba(255,255,255,0.08);border:none;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:var(--wp-font);margin-bottom:8px;">${sd.text || ''}</textarea>
             <div class="wp-ce-editrow" style="margin-bottom:8px;">
               <button type="button" class="wp-ce-editbtn ${(sd.tag || 'p') === 'h1' ? 'wp-ce-editbtn-primary' : ''}" data-act="tagh1">H1</button>
               <button type="button" class="wp-ce-editbtn ${sd.tag === 'h2' ? 'wp-ce-editbtn-primary' : ''}" data-act="tagh2">H2</button>
@@ -4518,7 +4371,7 @@ export class MapView {
     const mcShadowDotHtml = `<div class="wp-mc-shadow-dot" style="position:absolute;left:50%;top:calc(50% + 45px);transform:translate(-50%,-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;z-index:1;"></div>`;
 
     // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2
-    wrapper.innerHTML = `${mcShadowDotHtml}<div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Inter Tight',system-ui,sans-serif;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
+    wrapper.innerHTML = `${mcShadowDotHtml}<div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:var(--wp-font);transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
       ${photoUrl
         ? `<div class="wp-mc-photo-wrap" style="width:44px;height:44px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
             <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
@@ -4840,7 +4693,7 @@ export class MapView {
             'transform:translateY(-60%)', 'white-space:nowrap',
             `background:${labelBg}`, 'color:#fff',
             'font-size:9px', 'font-weight:700',
-            "font-family:'Inter Tight',system-ui,sans-serif",
+            "font-family:var(--wp-font)",
             'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
             'opacity:1', `transition:opacity 0.4s ease ${seed}ms`,
             'max-width:90px', 'overflow:hidden', 'text-overflow:ellipsis',
@@ -4860,7 +4713,7 @@ export class MapView {
         inner.style.cssText = 'gap:3px;';
 
         const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:\'Inter Tight\',system-ui,sans-serif;';
+        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:var(--wp-font);';
         label.textContent = item.title || '';
 
         const borderStyle = borderColor
@@ -4992,7 +4845,7 @@ export class MapView {
         : 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
       nameEl.innerHTML = isBubble
         ? '<div style="font-size:9px;font-weight:700;background:' + badgeBg + ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>'
-        : '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:\'Inter Tight\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
+        : '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:var(--wp-font);text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
           closest.place.name + '</div>' +
           '<div style="font-size:9px;font-weight:700;background:' + badgeBg +
           ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
@@ -5012,7 +4865,7 @@ export class MapView {
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'wp-reposition-banner';
-      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:\'Inter Tight\',system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
+      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
       banner.innerHTML = `<span id="wp-reposition-text">🎯 Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
       document.body.appendChild(banner);
       document.getElementById('wp-reposition-cancel').addEventListener('click', () => this.disableDragMode());
@@ -5449,7 +5302,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     const lColor = label.color || '#1a1a2e';
     const lBg = label.bg || 'rgba(255,255,255,0.92)';
     const lZ = label.z ?? 25;
-    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${4 * lScale}px ${9 * lScale}px;border-radius:${8 * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:'Inter Tight',system-ui,sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
+    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${4 * lScale}px ${9 * lScale}px;border-radius:${8 * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:var(--wp-font);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
   })() : '';
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
@@ -5484,7 +5337,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Inter Tight',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:var(--wp-font);color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   // ── Pin tipo emoji/sticker (elegido en SuperUserPanel) — tiene
   // prioridad sobre la foto si el lugar está configurado así ──
@@ -5665,7 +5518,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       ? place.pinLabelPosition : 'below';
     const textAlign = labelPos === 'below' ? 'center' : (labelPos === 'left' ? 'right' : 'left');
     const textBlockHtml = `<div style="text-align:${textAlign};max-width:120px;">
-      <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+      <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
       ${metaHtml}
     </div>`;
 
@@ -5730,7 +5583,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       <div class="place-pin-bubble-stack" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 4px rgba(0,0,0,0.22)) drop-shadow(0 1px 2px rgba(0,0,0,0.14));">
         <div class="place-pin-bubble-inner" style="position:relative;z-index:0;display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.95);white-space:nowrap;">
           ${iconHtml}
-          <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
+          <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
         </div>
       </div>
     </div>`;
@@ -5774,7 +5627,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
           ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.35));">`
           : `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`)
       // font-family con la pila de fuentes de emoji NATIVAS del sistema —
-      // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
+      // sin esto hereda la fuente global (sin glifos de emoji) y el navegador
       // cae a un fallback que puede rendear distinto al que se ve en el
       // teclado al elegirlo
       : noStroke
