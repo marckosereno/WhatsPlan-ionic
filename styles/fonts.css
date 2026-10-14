@@ -1,0 +1,12 @@
+/* ════════════════════════════════════════════════════════════
+   FUENTE GLOBAL DE WHATSPLAN
+   Para cambiar la fuente de toda la app, edita SOLO este archivo:
+   1. Cambia la URL del @import por la de la nueva fuente.
+   2. Cambia el nombre en --wp-font.
+   ════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.cdnfonts.com/css/montreal');
+
+:root {
+  --wp-font: 'Montreal', system-ui, sans-serif;
+}
