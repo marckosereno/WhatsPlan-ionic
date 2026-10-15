@@ -189,6 +189,14 @@ export const ReviewService = {
     if (error && error.code !== '23505') throw error;
   },
 
+  // Problema con el LUGAR (no con una reseña): cerrado, datos mal, etc.
+  async reportPlace(placeId, userId, reason) {
+    const { error } = await getSupabase()
+      .from('place_reports')
+      .insert({ place_id: String(placeId), reporter_id: userId, reason });
+    if (error && error.code !== '23505') throw error;
+  },
+
   async blockUser(userId, blockedId) {
     const { error } = await getSupabase()
       .from('user_blocks')
