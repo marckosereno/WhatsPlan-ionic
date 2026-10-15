@@ -1252,6 +1252,25 @@ export class PlaceModal2 {
       .wp-pm2-rv-more-sm { top:2px; right:4px; width:28px; height:28px; }
       .wp-pm2-review-name, .wp-pm2-rv-reply-name { padding-right:30px; }
 
+      /* Contenido que ESTE usuario reportó (pendiente de revisión) */
+      .wp-pm2-rv-review-badge {
+        display:inline-block; margin-left:6px; vertical-align:1px;
+        padding:1px 7px; border-radius:999px;
+        background:linear-gradient(180deg,#fde68a 0%,#fbbf24 100%);
+        color:#78350f; font-size:10px; font-weight:700; letter-spacing:0.01em;
+      }
+      .wp-pm2-rv-blur { filter:blur(5px); opacity:0.7; pointer-events:none; }
+      .wp-pm2-rv-reveal {
+        display:inline-block; margin-top:4px; padding:3px 10px; border-radius:999px;
+        border:none; background:#f3f4f6; color:#4b5563;
+        font-size:11px; font-weight:700; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm2-rv-reveal:active { transform:scale(0.9); }
+      .wp-pm2-ms-opt:disabled { color:#9ca3af; cursor:default; }
+      .wp-pm2-ms-opt:disabled:active { background-color:transparent; }
+
       /* Hoja de opciones / reportar / confirmar */
       #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
         position:fixed; inset:0; z-index:1500100;
@@ -2611,6 +2630,7 @@ export class PlaceModal2 {
         e.stopPropagation();
         this._openItemMenu('review', ctx.key);
       };
+      this._applyUnderReview(ctx.key, row.querySelector('.wp-pm2-review-name'), row.querySelector('.wp-pm2-review-text'));
       this._wireReviewGestures(row, ctx.key);
       this._renderReviewSocial(ctx.key);
     }
@@ -3058,6 +3078,7 @@ export class PlaceModal2 {
       e.stopPropagation();
       this._openItemMenu('reply', parentKey, r);
     };
+    this._applyUnderReview(rKey, item.querySelector('.wp-pm2-rv-reply-name'), item.querySelector('.wp-pm2-rv-reply-text'));
 
     this._addSwipeIcon(item);
     this._wireLongPress(item, () => this._openReactionBar(rKey, item, parentKey));
@@ -3530,8 +3551,9 @@ export class PlaceModal2 {
   // ══════════════════════════════════════════════════════════════════
   // MODERACIÓN Y MENÚ "⋯" DE RESEÑAS / RESPUESTAS
   // this._mod = { hidden, myReports, blocked } (Sets):
-  //   hidden    → claves ocultas para todos (3+ reportes o quitadas)
-  //   myReports → lo que ESTE usuario reportó: se le oculta al instante
+  //   hidden    → claves ocultas para todos (el moderador las quitó)
+  //   myReports → lo que ESTE usuario reportó (pendiente): se le sigue
+  //               mostrando, marcado "En revisión" y difuminado
   //   blocked   → ids de usuarios que bloqueó: no ve nada de ellos
   // El autor SIEMPRE sigue viendo lo suyo (aunque esté oculto para el
   // resto), así no parece que la app le borró algo.
@@ -3561,12 +3583,36 @@ export class PlaceModal2 {
     const m = this._mod;
     if (!m) return true;
     if (authorId && m.blocked.has(authorId)) return false;
-    if (m.hidden.has(key) || m.myReports.has(key)) return false;
+    if (m.hidden.has(key)) return false;
     return true;
   }
 
   _isBlockedUser(userId) {
     return !!(userId && this._mod && this._mod.blocked.has(userId));
+  }
+
+  // Si ESTE usuario reportó el contenido (y sigue pendiente): pill
+  // "En revisión" junto al nombre + texto difuminado con "Toca para ver".
+  // El resto de los usuarios lo ve normal hasta que el moderador decida.
+  _applyUnderReview(key, nameEl, textEl) {
+    if (!this._mod || !this._mod.myReports.has(key) || !nameEl || !textEl) return;
+    const badge = document.createElement('span');
+    badge.className = 'wp-pm2-rv-review-badge';
+    badge.textContent = 'En revisión';
+    nameEl.appendChild(badge);
+    if (this._revealed?.has(key)) return;
+    textEl.classList.add('wp-pm2-rv-blur');
+    const reveal = document.createElement('button');
+    reveal.className = 'wp-pm2-rv-reveal';
+    reveal.textContent = 'Lo reportaste · Toca para ver';
+    reveal.onclick = (e) => {
+      e.stopPropagation();
+      if (!this._revealed) this._revealed = new Set();
+      this._revealed.add(key);
+      textEl.classList.remove('wp-pm2-rv-blur');
+      reveal.remove();
+    };
+    textEl.insertAdjacentElement('afterend', reveal);
   }
 
   // Pinta el panel Comunidad a partir de this._communityRaw, aplicando
@@ -3661,6 +3707,7 @@ export class PlaceModal2 {
       const b = document.createElement('button');
       b.className = 'wp-pm2-ms-opt' + (it.danger ? ' wp-pm2-danger' : '');
       b.innerHTML = `<span class="wp-pm2-ms-ico">${it.icon || ''}</span><span>${this._esc(it.label)}</span>`;
+      if (it.disabled) { b.disabled = true; body.appendChild(b); return; }
       b.onclick = () => { close(); setTimeout(it.action, 180); };
       body.appendChild(b);
     });
@@ -3742,7 +3789,11 @@ export class PlaceModal2 {
         else this._confirmDeleteReview();
       } });
     } else if (authorId) {
-      items.push({ label: 'Reportar', icon: ICON.flag, action: () => this._openReportSheet(reportKey, isReply ? key : null) });
+      if (this._mod?.myReports.has(reportKey)) {
+        items.push({ label: 'Reportado · en revisión', icon: ICON.flag, disabled: true });
+      } else {
+        items.push({ label: 'Reportar', icon: ICON.flag, action: () => this._openReportSheet(reportKey, isReply ? key : null) });
+      }
       items.push({ label: `Bloquear a ${name}`, icon: ICON.block, danger: true, action: () => this._confirmBlock(authorId, name) });
     }
 
@@ -3797,6 +3848,8 @@ export class PlaceModal2 {
           if (parentKey) this._renderReviewSocial(parentKey);
           else this._renderCommunityPanel(place);
           this._showToast('Gracias, lo revisaremos');
+          // Ya no se oculta: se redibuja marcado "En revisión" (solo para
+          // quien reportó; los demás lo siguen viendo normal)
         } catch (e) {
           console.error('[PM2] Reportar:', e);
           this._showToast('No se pudo enviar el reporte');
