@@ -1983,6 +1983,7 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = onScrollRaf;
       body.addEventListener('scroll', onScrollRaf, { passive: true });
+      this._diagScroll(body); // [DIAG] temporal
       // Ubicar todo en su posición inicial y RECIÉN después activar la
       // transición de suavizado
       onScroll();
@@ -2949,19 +2950,15 @@ export class PlaceModal2 {
       refreshSubmit();
     };
 
-    // Sin animación al abrir/cerrar (ver el comentario de _openSheet)
     const closeModal = () => {
       textarea.blur();
-      frag.remove();
+      const wait = this._sheetOut(menu, overlay);
+      setTimeout(() => frag.remove(), wait);
     };
     overlay.onclick = closeModal;
 
     // Abrir con reflow forzado para que la transición dispare
-    void menu.offsetHeight;
-    requestAnimationFrame(() => {
-      overlay.style.opacity = '1';
-      menu.style.transform = 'translateY(0)';
-    });
+    this._sheetIn(menu, overlay);
 
     // Si ya dejó reseña antes, se precarga para editarla
     const placeId = place.place_id || place.id || place.placeId;
@@ -3595,10 +3592,10 @@ export class PlaceModal2 {
     textarea.oninput = refresh;
     refresh();
 
-    // Sin animación al abrir/cerrar (ver el comentario de _openSheet)
     const close = () => {
       textarea.blur();
-      frag.remove();
+      const wait = this._sheetOut(menu, overlay);
+      setTimeout(() => frag.remove(), wait);
     };
     overlay.onclick = close;
 
@@ -3664,11 +3661,7 @@ export class PlaceModal2 {
       else menu.style.transform = 'translateY(0)';
     });
 
-    void menu.offsetHeight;
-    requestAnimationFrame(() => {
-      overlay.style.opacity = '1';
-      menu.style.transform = 'translateY(0)';
-    });
+    this._sheetIn(menu, overlay);
     // Teclado directo, con el cursor al final (después de la @mención)
     setTimeout(() => {
       if (!frag.isConnected) return;
@@ -3849,14 +3842,8 @@ export class PlaceModal2 {
 
   // ── Hoja genérica (mismo estilo que la de reseña/responder) ─────────
   // Devuelve { body, close }. body es donde se mete el contenido.
-  // instant=true (por defecto) → la hoja aparece y se va sin animación de
-  // subida/bajada. Animar una hoja sobre las fotos de la ficha exige más
-  // de lo que el procesador gráfico del teléfono aguanta (las fotos se
-  // re-dibujaban a baja resolución un instante = el glitch). Confirmado en
-  // dispositivo con el modo de prueba 'noanim': sin animación, no hay
-  // glitch. Desde que la foto del hero quedó detrás del scroll (para que
-  // no tiemble), afecta a TODAS las hojas, no solo a las altas.
-  _openSheet(title, subtitle = '', { instant = true } = {}) {
+  // Animación de entrada/salida: ver _sheetIn/_sheetOut (modo elegible).
+  _openSheet(title, subtitle = '') {
     const prev = document.getElementById('wp-pm2-menu-sheet');
     // ¿Viene de otra hoja que se cerró dejando el fondo oscuro puesto
     // (opción de un menú que abre otra hoja)? → la nueva arranca con el
@@ -3877,42 +3864,31 @@ export class PlaceModal2 {
         </div>
         <div class="wp-pm2-ms-body"></div>
       </div>`;
-    if (instant) frag.classList.add('wp-pm2-ms-instant');
     document.body.appendChild(frag);
     const overlay = frag.querySelector('.wp-pm2-ms-overlay');
     const menu    = frag.querySelector('.wp-pm2-ms-menu');
     const header  = frag.querySelector('.wp-pm2-ms-header');
 
     let closed = false;
-    // keepDim=true: la hoja baja pero el fondo oscuro se queda, por si la
+    // keepDim=true: la hoja se va pero el fondo oscuro se queda, por si la
     // opción elegida abre otra hoja (la toma sin parpadeo). Si en 450ms no
     // se abrió ninguna (p.ej. "Copiar"), el fondo se apaga normal.
-    const fadeOut = () => {
-      frag.classList.remove('wp-pm2-ms-chained');
-      overlay.style.opacity = '0';
-      setTimeout(() => frag.remove(), instant ? 0 : 300);
-    };
     const close = (keepDim = false) => {
       if (closed) return;
       closed = true;
       frag.classList.remove('wp-pm2-ms-tall'); // sin área de scroll durante la salida
-      if (instant) {
-        // Sin animación también al salir (misma razón que al entrar)
-        menu.style.transition = 'none';
-        menu.style.visibility = 'hidden';
-      } else {
-        menu.style.transition = 'transform 0.26s cubic-bezier(0.32,0.72,0,1)';
-      }
-      menu.style.transform = 'translateY(110%)';
-      if (keepDim === true) {
+      const keep = keepDim === true;
+      const wait = this._sheetOut(menu, overlay, { keepDim: keep });
+      if (keep) {
         frag.dataset.keepDim = '1';
         setTimeout(() => {
           if (!frag.isConnected) return; // otra hoja ya la reemplazó
           frag.dataset.keepDim = '';
-          fadeOut();
-        }, 450);
+          this._sheetDimOff(overlay);
+          setTimeout(() => frag.remove(), 240);
+        }, Math.max(450, wait));
       } else {
-        fadeOut();
+        setTimeout(() => frag.remove(), wait);
       }
     };
     overlay.onclick = () => close();
@@ -3935,15 +3911,13 @@ export class PlaceModal2 {
       else menu.style.transform = 'translateY(0)';
     });
 
-    void menu.offsetHeight;
-    requestAnimationFrame(() => frag.classList.add('wp-pm2-in'));
+    this._sheetIn(menu, overlay, { dimmed: chained });
+    frag.classList.add('wp-pm2-in');
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
   }
 
   // Filas de opciones: [{ label, icon, danger, action }]
   _fillSheetOptions(body, items, close) {
-    // ¿la hoja es instantánea? (entonces la siguiente se abre sin esperar)
-    const frag_isInstant = (el) => !!el.closest('.wp-pm2-ms-instant');
     items.forEach(it => {
       const b = document.createElement('button');
       b.className = 'wp-pm2-ms-opt' + (it.danger ? ' wp-pm2-danger' : '');
@@ -3951,7 +3925,11 @@ export class PlaceModal2 {
       if (it.disabled) { b.disabled = true; body.appendChild(b); return; }
       // La hoja baja completa (0.26s) antes de que la acción abra otra:
       // así la vieja nunca se borra a media salida.
-      b.onclick = () => { close(true); setTimeout(it.action, frag_isInstant(b) ? 0 : 270); };
+      b.onclick = () => {
+        close(true);
+        const m = this._sheetMode();
+        setTimeout(it.action, m === 'instant' ? 0 : (m === 'fade' ? 170 : 270));
+      };
       body.appendChild(b);
     });
   }
@@ -4048,6 +4026,135 @@ export class PlaceModal2 {
       underReview ? `${name} · Tu reporte está en revisión` : name
     );
     this._fillSheetOptions(body, items, close);
+  }
+
+  // ══ ANIMACIÓN DE HOJAS ════════════════════════════════════════════
+  // Todas las hojas (menús ⋯, reseña, responder, reportar, confirmar,
+  // "¿Es tu negocio?") entran y salen con el MISMO mecanismo. Modo (para
+  // elegir en el teléfono, en Eruda):
+  //   localStorage.wpSheetAnim = 'bottom'  → sube animando `bottom` (por defecto)
+  //   localStorage.wpSheetAnim = 'fade'    → aparece con fundido
+  //   localStorage.wpSheetAnim = 'slide'   → sube con transform (la original)
+  //   localStorage.wpSheetAnim = 'instant' → sin animación
+  // El fondo oscuro anima `background-color` (no `opacity`) en todos los
+  // modos. Con 'slide' (transform + opacity) el teléfono mostraba el glitch
+  // sobre las fotos; 'bottom' y 'fade' mueven la hoja por otros caminos.
+  // ── [DIAG] temporal: medir cuadros reales en el teléfono ───────────
+  _diagLT() {
+    if (window.__wpDiagLT) return window.__wpDiagLT;
+    const arr = []; window.__wpDiagLT = arr;
+    try {
+      new PerformanceObserver(l => l.getEntries().forEach(e => arr.push([Math.round(e.startTime), Math.round(e.duration)])))
+        .observe({ type: 'longtask', buffered: false });
+    } catch (_) {}
+    return arr;
+  }
+  _diagSheet(label, menu, overlay) {
+    const lt = this._diagLT(); const lt0 = lt.length;
+    const t0 = performance.now(); let last = t0; const rows = []; let maxDt = 0, slow = 0;
+    const left = {
+      menuSheets: document.querySelectorAll('#wp-pm2-menu-sheet').length,
+      review: document.querySelectorAll('#wp-pm2-review-modal').length,
+      reply: document.querySelectorAll('.wp-pm2-rs-overlay').length,
+      react: document.querySelectorAll('#wp-pm2-react-layer').length,
+    };
+    const tick = (now) => {
+      const dt = now - last; last = now;
+      if (rows.length) { maxDt = Math.max(maxDt, dt); if (dt > 20) slow++; }
+      const r = menu.getBoundingClientRect();
+      const a = (getComputedStyle(overlay).backgroundColor.match(/[\d.]+\)$/) || ['?'])[0].replace(')', '');
+      rows.push(`${Math.round(now - t0)}ms top=${Math.round(r.top)} op=${(+getComputedStyle(menu).opacity).toFixed(2)} dim=${a}`);
+      if (now - t0 < 700 && menu.isConnected) requestAnimationFrame(tick);
+      else console.log(`[DIAG-SHEET] ${label} modo=${this._sheetMode()} cuadros=${rows.length} maxDt=${Math.round(maxDt)}ms lentos(>20ms)=${slow} longtasks=${JSON.stringify(lt.slice(lt0))} restos=${JSON.stringify(left)}\n` + rows.join('\n'));
+    };
+    requestAnimationFrame(tick);
+  }
+  _diagScroll(body) {
+    const lt = this._diagLT();
+    let on = false, t0 = 0, last = 0, n = 0, maxDt = 0, slow = 0, sum = 0, y0 = 0, idle = null, lt0 = 0;
+    const loop = (now) => {
+      if (!on) return;
+      const dt = now - last; last = now; n++; sum += dt; maxDt = Math.max(maxDt, dt); if (dt > 20) slow++;
+      requestAnimationFrame(loop);
+    };
+    body.addEventListener('scroll', () => {
+      if (!on) { on = true; t0 = last = performance.now(); n = 0; maxDt = 0; slow = 0; sum = 0; y0 = body.scrollTop; lt0 = lt.length; requestAnimationFrame(loop); }
+      clearTimeout(idle);
+      idle = setTimeout(() => {
+        on = false;
+        const dur = performance.now() - t0 - 250;
+        console.log(`[DIAG-SCROLL] dur=${Math.round(dur)}ms dist=${Math.round(body.scrollTop - y0)}px cuadros=${n} fps≈${Math.round(n / (dur / 1000))} dtProm=${(sum / Math.max(1, n)).toFixed(1)}ms maxDt=${Math.round(maxDt)}ms lentos(>20ms)=${slow} longtasks=${JSON.stringify(lt.slice(lt0))} nodos=${document.getElementsByTagName('*').length} smooth=${this._el.classList.contains('wp-pm2-hero-smooth')}`);
+      }, 250);
+    }, { passive: true });
+  }
+
+  _sheetMode() {
+    let m = 'bottom';
+    try { m = localStorage.getItem('wpSheetAnim') || 'bottom'; } catch (_) {}
+    return ['bottom', 'fade', 'slide', 'instant'].includes(m) ? m : 'bottom';
+  }
+
+  // dimmed=true → el fondo ya estaba oscuro (viene de otra hoja): no se anima
+  _sheetIn(menu, overlay, { dimmed = false } = {}) {
+    const mode = this._sheetMode();
+    const DIM = 'rgba(0,0,0,0.3)';
+    const REST = 'calc(12px + env(safe-area-inset-bottom,0px))';
+    overlay.style.transition = 'none';
+    overlay.style.opacity = '1';
+    overlay.style.background = dimmed ? DIM : 'rgba(0,0,0,0)';
+    menu.style.transition = 'none';
+    menu.style.visibility = '';
+    menu.style.transform = 'none';
+    menu.style.opacity = '1';
+    menu.style.bottom = REST;
+    if (mode === 'bottom') menu.style.bottom = `-${menu.offsetHeight + 40}px`;
+    else if (mode === 'fade') menu.style.opacity = '0';
+    else if (mode === 'slide') menu.style.transform = 'translateY(110%)';
+    void menu.offsetHeight; // fija el estado inicial antes de animar
+    this._diagSheet(menu.className || menu.id, menu, overlay); // [DIAG] temporal
+    requestAnimationFrame(() => {
+      if (mode !== 'instant') {
+        if (!dimmed) overlay.style.transition = 'background-color 0.25s ease';
+        if (mode === 'bottom') menu.style.transition = 'bottom 0.34s cubic-bezier(0.34,1.15,0.64,1)';
+        if (mode === 'fade')   menu.style.transition = 'opacity 0.2s ease';
+        if (mode === 'slide')  menu.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
+      }
+      overlay.style.background = DIM;
+      menu.style.bottom = REST;
+      menu.style.opacity = '1';
+      menu.style.transform = 'none';
+    });
+  }
+
+  // Devuelve cuántos ms esperar antes de quitar la hoja del DOM.
+  // keepDim=true → la hoja se va pero el fondo oscuro se queda (otra hoja
+  // lo va a tomar sin parpadeo).
+  _sheetOut(menu, overlay, { keepDim = false } = {}) {
+    const mode = this._sheetMode();
+    let wait = 0;
+    if (mode === 'instant') {
+      menu.style.transition = 'none';
+      menu.style.visibility = 'hidden';
+    } else if (mode === 'bottom') {
+      menu.style.transition = 'bottom 0.26s cubic-bezier(0.32,0.72,0,1)';
+      menu.style.bottom = `-${menu.offsetHeight + 40}px`;
+      wait = 270;
+    } else if (mode === 'fade') {
+      menu.style.transition = 'opacity 0.16s ease';
+      menu.style.opacity = '0';
+      wait = 170;
+    } else {
+      menu.style.transition = 'transform 0.26s cubic-bezier(0.32,0.72,0,1)';
+      menu.style.transform = 'translateY(110%)';
+      wait = 270;
+    }
+    if (!keepDim) this._sheetDimOff(overlay);
+    return wait;
+  }
+
+  _sheetDimOff(overlay) {
+    overlay.style.transition = this._sheetMode() === 'instant' ? 'none' : 'background-color 0.22s ease';
+    overlay.style.background = 'rgba(0,0,0,0)';
   }
 
   // ── LUGAR: compartir y menú "⋯" ───────────────────────────────────
@@ -4157,7 +4264,7 @@ export class PlaceModal2 {
     const info = this._placeInfo();
     const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
 
-    const { body, close } = this._openSheet('¿Es tu negocio?', info.name, { instant: true });
+    const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
     // Scroll interno SOLO si el formulario no cabe (p.ej. con el teclado
     // abierto) y nunca durante la animación de subida: un área con scroll
     // dentro de una hoja que se anima hace que el WebView de Android la
