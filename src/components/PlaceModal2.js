@@ -1333,6 +1333,8 @@ export class PlaceModal2 {
         background:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s ease;
       }
       #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-overlay { opacity:1; }
+      /* Hoja abierta desde otra: el fondo arranca ya oscuro, sin fade */
+      #wp-pm2-menu-sheet.wp-pm2-ms-chained .wp-pm2-ms-overlay { opacity:1; transition:none; }
       #wp-pm2-menu-sheet .wp-pm2-ms-menu {
         position:fixed; left:12px; right:12px;
         bottom:calc(12px + env(safe-area-inset-bottom,0px)); z-index:1500200;
@@ -3730,9 +3732,15 @@ export class PlaceModal2 {
   // Devuelve { body, close }. body es donde se mete el contenido.
   _openSheet(title, subtitle = '') {
     const prev = document.getElementById('wp-pm2-menu-sheet');
+    // ¿Viene de otra hoja que se cerró dejando el fondo oscuro puesto
+    // (opción de un menú que abre otra hoja)? → la nueva arranca con el
+    // fondo YA oscuro, sin apagarlo y volverlo a prender (eso era el
+    // parpadeo: el fondo bajaba de 0.95 a 0.05 y volvía a subir).
+    const chained = !!(prev && prev.dataset.keepDim === '1');
     if (prev) prev.remove();
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-menu-sheet';
+    if (chained) frag.classList.add('wp-pm2-ms-chained');
     frag.innerHTML = `
       <div class="wp-pm2-ms-overlay"></div>
       <div class="wp-pm2-ms-menu">
@@ -3749,16 +3757,32 @@ export class PlaceModal2 {
     const header  = frag.querySelector('.wp-pm2-ms-header');
 
     let closed = false;
-    const close = () => {
+    // keepDim=true: la hoja baja pero el fondo oscuro se queda, por si la
+    // opción elegida abre otra hoja (la toma sin parpadeo). Si en 450ms no
+    // se abrió ninguna (p.ej. "Copiar"), el fondo se apaga normal.
+    const fadeOut = () => {
+      frag.classList.remove('wp-pm2-ms-chained');
+      overlay.style.opacity = '0';
+      setTimeout(() => frag.remove(), 300);
+    };
+    const close = (keepDim = false) => {
       if (closed) return;
       closed = true;
       frag.classList.remove('wp-pm2-ms-tall'); // sin área de scroll durante la salida
       menu.style.transition = 'transform 0.26s cubic-bezier(0.32,0.72,0,1)';
       menu.style.transform = 'translateY(110%)';
-      overlay.style.opacity = '0';
-      setTimeout(() => frag.remove(), 300);
+      if (keepDim === true) {
+        frag.dataset.keepDim = '1';
+        setTimeout(() => {
+          if (!frag.isConnected) return; // otra hoja ya la reemplazó
+          frag.dataset.keepDim = '';
+          fadeOut();
+        }, 450);
+      } else {
+        fadeOut();
+      }
     };
-    overlay.onclick = close;
+    overlay.onclick = () => close();
 
     let sy = 0, dy = 0, dragging = false;
     header.addEventListener('touchstart', e => {
@@ -3790,7 +3814,9 @@ export class PlaceModal2 {
       b.className = 'wp-pm2-ms-opt' + (it.danger ? ' wp-pm2-danger' : '');
       b.innerHTML = `<span class="wp-pm2-ms-ico">${it.icon || ''}</span><span>${this._esc(it.label)}</span>`;
       if (it.disabled) { b.disabled = true; body.appendChild(b); return; }
-      b.onclick = () => { close(); setTimeout(it.action, 180); };
+      // La hoja baja completa (0.26s) antes de que la acción abra otra:
+      // así la vieja nunca se borra a media salida.
+      b.onclick = () => { close(true); setTimeout(it.action, 270); };
       body.appendChild(b);
     });
   }
