@@ -83,7 +83,7 @@ export const ReviewService = {
         .select('review_key, user_id, type')
         .eq('place_id', pid),
       sb.from('review_replies')
-        .select('id, review_key, user_id, display_name, avatar_url, text, created_at, reply_to_id, reply_to_name')
+        .select('id, review_key, user_id, display_name, avatar_url, text, created_at, reply_to_id, reply_to_name, edited_at')
         .eq('place_id', pid)
         .order('created_at', { ascending: true }),
     ]);
@@ -142,6 +142,67 @@ export const ReviewService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async updateReply(replyId, userId, text) {
+    const { data, error } = await getSupabase()
+      .from('review_replies')
+      .update({ text, edited_at: new Date().toISOString() })
+      .eq('id', replyId)
+      .eq('user_id', userId)
+      .select('id, review_key, user_id, display_name, avatar_url, text, created_at, reply_to_id, reply_to_name, edited_at')
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // ── MODERACIÓN ─────────────────────────────────────────────────────
+  // Para una ficha: claves ocultas para todos (3+ reportes o quitadas
+  // por el moderador), lo que ESTE usuario reportó (se le oculta al
+  // instante) y los usuarios que bloqueó.
+  async getModerationForPlace(placeId, userId) {
+    const sb = getSupabase();
+    const pid = String(placeId);
+    const hiddenP = sb.rpc('get_hidden_review_keys', { p_place_id: pid });
+    const mineP = userId
+      ? sb.from('review_reports').select('review_key').eq('place_id', pid).eq('reporter_id', userId)
+      : Promise.resolve({ data: [] });
+    const blocksP = userId
+      ? sb.from('user_blocks').select('blocked_id').eq('blocker_id', userId)
+      : Promise.resolve({ data: [] });
+    const [hidden, mine, blocks] = await Promise.all([hiddenP, mineP, blocksP]);
+    if (hidden.error) throw hidden.error;
+    if (mine.error) throw mine.error;
+    if (blocks.error) throw blocks.error;
+    return {
+      hidden:    (hidden.data || []).map(r => (typeof r === 'string' ? r : r.get_hidden_review_keys)),
+      myReports: (mine.data || []).map(r => r.review_key),
+      blocked:   (blocks.data || []).map(r => r.blocked_id),
+    };
+  },
+
+  async report(reviewKey, placeId, userId, reason) {
+    const { error } = await getSupabase()
+      .from('review_reports')
+      .insert({ review_key: reviewKey, place_id: String(placeId), reporter_id: userId, reason });
+    // 23505 = ya lo había reportado antes → no es error para el usuario
+    if (error && error.code !== '23505') throw error;
+  },
+
+  async blockUser(userId, blockedId) {
+    const { error } = await getSupabase()
+      .from('user_blocks')
+      .insert({ blocker_id: userId, blocked_id: blockedId });
+    if (error && error.code !== '23505') throw error;
+  },
+
+  async unblockUser(userId, blockedId) {
+    const { error } = await getSupabase()
+      .from('user_blocks')
+      .delete()
+      .eq('blocker_id', userId)
+      .eq('blocked_id', blockedId);
+    if (error) throw error;
   },
 
   async deleteReply(replyId, userId) {
