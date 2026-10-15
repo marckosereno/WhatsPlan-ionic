@@ -1789,6 +1789,7 @@ export class PlaceModal2 {
     // contenido recién insertado — ver el comentario largo en el listener
     // de las fotos, en _populate().
     this._shownAt = Date.now();
+    this._diagMem('abrir'); // [DIAG] temporal
     // Ver el comentario largo en _populate(): si viene con una foto YA
     // cargada (el flip desde el slide), se usa esa directo, sin el
     // ciclo de skeleton+precarga que se sentía como una recarga.
@@ -2016,6 +2017,7 @@ export class PlaceModal2 {
   // ACTUAL del hero (puede estar colapsado si hubo scroll) y su imagen —
   // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
+    setTimeout(() => this._diagMem('cerrar +1s'), 1000); // [DIAG] temporal
     this._closeLightbox();
     this._closeReactionBar(true);
     ['wp-pm2-review-modal', 'wp-pm2-reply-sheet', 'wp-pm2-menu-sheet'].forEach(id => {
@@ -3916,6 +3918,30 @@ export class PlaceModal2 {
   // Plugin nativo si la app corre en Capacitor y el plugin está instalado
   // (npm i @capacitor/action-sheet @capacitor/dialog … + npx cap sync).
   // En navegador, o sin el plugin, devuelve null → se usa la hoja web.
+  // [DIAG] temporal: memoria/DOM en cada apertura y cierre de la ficha,
+  // y (una vez) qué plugins nativos ve la app.
+  _diagMem(cuando) {
+    try {
+      const C = window.Capacitor;
+      if (!window.__wpDiagNat) {
+        window.__wpDiagNat = true;
+        const av = n => { try { return !!C?.isPluginAvailable?.(n); } catch (_) { return 'err'; } };
+        console.log(`[DIAG-NATIVO] Capacitor=${!!C} nativo=${C?.isNativePlatform?.()} plataforma=${C?.getPlatform?.()} ` +
+          `ActionSheet=${av('ActionSheet')} Dialog=${av('Dialog')} Clipboard=${av('Clipboard')} Share=${av('Share')} ` +
+          `plugins=[${Object.keys(C?.Plugins || {}).join(',')}]`);
+      }
+      const m = performance.memory;
+      const mb = v => Math.round(v / 1048576);
+      const all = document.getElementsByTagName('*').length;
+      const ficha = this._el ? this._el.getElementsByTagName('*').length : 0;
+      const eruda = document.getElementById('eruda');
+      const erudaN = eruda ? (eruda.shadowRoot || eruda).querySelectorAll('*').length : 0;
+      console.log(`[DIAG-MEM] ${cuando} heap=${m ? mb(m.usedJSHeapSize) + '/' + mb(m.jsHeapSizeLimit) + 'MB' : 'n/d'} ` +
+        `nodos=${all} ficha=${ficha} eruda=${erudaN} imgs=${document.images.length} canvas=${document.getElementsByTagName('canvas').length} ` +
+        `hojas=${document.querySelectorAll('#wp-pm2-menu-sheet,#wp-pm2-review-modal,.wp-pm2-rs-overlay').length} t=${Math.round(performance.now() / 1000)}s`);
+    } catch (e) { console.log('[DIAG-MEM] error', e.message); }
+  }
+
   _nativePlugin(name) {
     const C = window.Capacitor;
     try {
