@@ -5,6 +5,7 @@ import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
 import { ActivityService }             from '/src/services/SupabaseService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
+import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -621,7 +622,9 @@ export class PlaceModal2 {
       #wp-pm2-hero-bg {
         position:absolute; inset:0;
         background-size:cover; background-position:center;
-        filter:saturate(1.4);
+        /* SIN filter: un filter:saturate() en la foto del hero hacía que el
+           WebView de Android la re-dibujara con glitch cada vez que una
+           hoja se animaba encima (confirmado en el teléfono quitándolo). */
       }
       /* bottom:-6px + blanco sólido en los últimos 8px: el borde de
          recorte del hero (height en px, se ajusta al píxel) y el gradiente
@@ -1338,6 +1341,54 @@ export class PlaceModal2 {
         background:linear-gradient(180deg,#3a3a3c 0%,#111111 100%);
         color:#fff; font-size:10px; font-weight:700; letter-spacing:0.01em;
       }
+
+      /* Formulario "¿Es tu negocio?" */
+      .wp-pm2-cl { padding:0 20px 6px; }
+      .wp-pm2-cl-intro { margin:0 0 12px; font-size:13px; line-height:1.45; color:#4b5563; }
+      .wp-pm2-cl-intro b { color:#111827; }
+      .wp-pm2-cl-field { display:block; margin-bottom:10px; }
+      .wp-pm2-cl-field > span { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+      .wp-pm2-cl-field em { font-style:normal; font-weight:500; color:#9ca3af; }
+      .wp-pm2-cl-input {
+        width:100%; box-sizing:border-box; border-radius:12px;
+        border:1px solid rgba(0,0,0,0.10); background:#f9f9f9;
+        padding:10px 12px; font-size:14px; color:#0a0a0a;
+        font-family:var(--wp-font); outline:none; resize:none;
+      }
+      .wp-pm2-cl-input:focus { border-color:#93c5fd; background:#fff; }
+      .wp-pm2-cl-roles { display:flex; gap:8px; }
+      .wp-pm2-cl-role {
+        flex:1; height:36px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f3f4f6; color:#4b5563; font-size:13px; font-weight:700;
+        font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm2-cl-role:active { transform:scale(0.92); }
+      .wp-pm2-cl-role.wp-pm2-on {
+        background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+        color:#fff; border-color:transparent;
+      }
+      .wp-pm2-cl-note { margin:4px 0 12px; font-size:11.5px; line-height:1.45; color:#8e8e93; }
+      .wp-pm2-cl-submit {
+        width:100%; height:46px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff; font-size:15px; font-weight:700;
+        font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:opacity 0.15s;
+      }
+      .wp-pm2-cl-submit:disabled { opacity:0.4; }
+      /* Hojas altas (solo el formulario "¿Es tu negocio?"): el scroll va
+         en el CONTENIDO, nunca en .wp-pm2-ms-menu. Ponerle overflow a la
+         hoja que se anima con transform + border-radius hacía que el
+         WebView de Android creara una capa de scroll aparte y la pintara
+         un cuadro tarde, sin recortar las esquinas → destello al abrir
+         TODAS las hojas. */
+      #wp-pm2-menu-sheet.wp-pm2-ms-tall .wp-pm2-ms-body {
+        max-height:calc(100vh - 150px - env(safe-area-inset-top,0px));
+        max-height:calc(100dvh - 150px - env(safe-area-inset-top,0px));
+        overflow-y:auto; overscroll-behavior:contain;
+      }
+
+
 
       /* Hoja de opciones / reportar / confirmar */
       #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
@@ -2586,6 +2637,7 @@ export class PlaceModal2 {
     this._modPromise = this._loadModeration(place); // reportes/bloqueos
     this._loadCommunityReviews(place); // async, comunidad (espera a _modPromise)
     this._loadReviewSocial(place);     // async, reacciones + respuestas
+    this._loadMyClaim(place);          // async, "¿Es tu negocio?"
   }
 
   // ── Calificación combinada (Google + comunidad) ──────────────────
@@ -3825,6 +3877,7 @@ export class PlaceModal2 {
     const close = (keepDim = false) => {
       if (closed) return;
       closed = true;
+      frag.classList.remove('wp-pm2-ms-tall'); // sin área de scroll durante la salida
       const keep = keepDim === true;
       const wait = this._sheetOut(menu, overlay, { keepDim: keep, instant });
       if (keep) {
@@ -3864,22 +3917,9 @@ export class PlaceModal2 {
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
   }
 
-  // ══ HOJAS NATIVAS (Capacitor) ══════════════════════════════════════
-  // Plugin nativo si la app corre en Capacitor y el plugin está instalado
-  // (npm i @capacitor/action-sheet @capacitor/dialog … + npx cap sync).
-  // En navegador, o sin el plugin, devuelve null → se usa la hoja web.
   // [DIAG] temporal: memoria/DOM en cada apertura y cierre de la ficha,
-  // y (una vez) qué plugins nativos ve la app.
   _diagMem(cuando) {
     try {
-      const C = window.Capacitor;
-      if (!window.__wpDiagNat) {
-        window.__wpDiagNat = true;
-        const av = n => { try { return !!C?.isPluginAvailable?.(n); } catch (_) { return 'err'; } };
-        console.log(`[DIAG-NATIVO] Capacitor=${!!C} nativo=${C?.isNativePlatform?.()} plataforma=${C?.getPlatform?.()} ` +
-          `ActionSheet=${av('ActionSheet')} Dialog=${av('Dialog')} Clipboard=${av('Clipboard')} Share=${av('Share')} ` +
-          `plugins=[${Object.keys(C?.Plugins || {}).join(',')}]`);
-      }
       const m = performance.memory;
       const mb = v => Math.round(v / 1048576);
       const all = document.getElementsByTagName('*').length;
@@ -3892,6 +3932,10 @@ export class PlaceModal2 {
     } catch (e) { console.log('[DIAG-MEM] error', e.message); }
   }
 
+  // ══ HOJAS NATIVAS (Capacitor) ══════════════════════════════════════
+  // Plugin nativo si la app corre en Capacitor y el plugin está instalado
+  // (npm i @capacitor/action-sheet @capacitor/dialog … + npx cap sync).
+  // En navegador, o sin el plugin, devuelve null → se usa la hoja web.
   _nativePlugin(name) {
     const C = window.Capacitor;
     try {
@@ -4054,8 +4098,8 @@ export class PlaceModal2 {
   // ══ ANIMACIÓN DE HOJAS WEB (solo formularios y respaldo) ══════════
   // Los menús de opciones y las confirmaciones son NATIVOS cuando la app
   // corre en Capacitor (ver _openOptions / _confirmSheet). Las hojas web
-  // que quedan (escribir reseña, responder y el respaldo en navegador)
-  // suben con transform (la animación original); el fondo oscurece con
+  // que quedan (escribir reseña, responder, "¿Es tu negocio?" y el
+  // respaldo en navegador) suben con transform; el fondo oscurece con
   // `background-color`. _openSheet(…, { instant:true }) = sin animación.
   _sheetMode() { return 'slide'; }
 
@@ -4177,6 +4221,7 @@ export class PlaceModal2 {
       copy:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
       link:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
       alert:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+      store:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>',
     };
     const items = [{ label: 'Compartir', icon: I.share, action: () => this._sharePlace() }];
     if (info.lat && info.lng) {
@@ -4190,7 +4235,138 @@ export class PlaceModal2 {
     if (info.url) items.push({ label: 'Copiar enlace', icon: I.link, action: () => this._copyText(info.url) });
     items.push({ label: 'Reportar un problema', icon: I.alert, action: () => this._openPlaceReportSheet() });
 
+    // "¿Es tu negocio?" — según el estado
+    const uid = this.getCurrentUser?.()?.id || null;
+    const ownerId = this._place.owner_id || null;
+    if (ownerId && uid && ownerId === uid) {
+      items.push({ label: 'Administrar negocio · próximamente', icon: I.store, disabled: true, disabledMsg: 'Administrar negocio estará disponible pronto' });
+    } else if (!ownerId) {
+      if (this._myClaim?.status === 'pending') {
+        items.push({ label: 'Solicitud enviada · en revisión', icon: I.store, disabled: true, disabledMsg: 'Tu solicitud está en revisión' });
+      } else {
+        items.push({ label: '¿Es tu negocio?', icon: I.store, action: () => this._openClaimSheet() });
+      }
+    }
+
     this._openOptions(info.name, info.category, items);
+  }
+
+  // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
+  async _loadMyClaim(place) {
+    this._myClaim = null;
+    const uid = this.getCurrentUser?.()?.id || null;
+    if (!uid || place.owner_id) return;
+    try {
+      const c = await PlaceClaimService.getMyClaim(place.place_id || place.id, uid);
+      if (this._place === place) this._myClaim = c;
+    } catch (e) {
+      console.warn('[PM2] Solicitudes de dueño no disponibles:', e.message || e);
+    }
+  }
+
+  _openClaimSheet() {
+    const user = this._requireUser('Inicia sesión para continuar');
+    if (!user || !this._place) return;
+    const place = this._place;
+    const info = this._placeInfo();
+    const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
+
+    const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
+    // Scroll interno SOLO si el formulario no cabe (p.ej. con el teclado
+    // abierto) y nunca durante la animación de subida: un área con scroll
+    // dentro de una hoja que se anima hace que el WebView de Android la
+    // dibuje con glitch (se confirmó con [DIAG-SHEET]: ningún elemento
+    // tapaba la hoja, y el glitch solo quedaba en esta hoja, la única con
+    // scroll). Se revisa al terminar de subir y en cada resize (teclado).
+    const sheetEl = document.getElementById('wp-pm2-menu-sheet');
+    const menuEl  = sheetEl?.querySelector('.wp-pm2-ms-menu');
+    const fit = () => {
+      if (!sheetEl || !sheetEl.isConnected) { window.removeEventListener('resize', fit); return; }
+      // Alto natural de la hoja (sin el límite que pone .wp-pm2-ms-tall)
+      const natural = menuEl.offsetHeight - body.clientHeight + body.scrollHeight;
+      sheetEl.classList.toggle('wp-pm2-ms-tall', natural > window.innerHeight - 24);
+    };
+    setTimeout(fit, 420); // al terminar de subir
+    window.addEventListener('resize', fit);
+    body.innerHTML = `
+      <div class="wp-pm2-cl">
+        <p class="wp-pm2-cl-intro">Verifícalo para responder reseñas como dueño, mantener la información al día y mostrar la insignia <b>✓ Verificado</b>.</p>
+        <label class="wp-pm2-cl-field">
+          <span>Tu nombre completo</span>
+          <input class="wp-pm2-cl-input" data-f="name" type="text" maxlength="120" autocomplete="name">
+        </label>
+        <div class="wp-pm2-cl-field">
+          <span>Tu rol</span>
+          <div class="wp-pm2-cl-roles">
+            <button type="button" class="wp-pm2-cl-role" data-role="owner">Dueño</button>
+            <button type="button" class="wp-pm2-cl-role" data-role="manager">Gerente</button>
+            <button type="button" class="wp-pm2-cl-role" data-role="staff">Encargado</button>
+          </div>
+        </div>
+        <label class="wp-pm2-cl-field">
+          <span>Teléfono de contacto</span>
+          <input class="wp-pm2-cl-input" data-f="phone" type="tel" maxlength="30" autocomplete="tel" inputmode="tel">
+        </label>
+        <label class="wp-pm2-cl-field">
+          <span>Correo</span>
+          <input class="wp-pm2-cl-input" data-f="email" type="email" maxlength="160" autocomplete="email" inputmode="email">
+        </label>
+        <label class="wp-pm2-cl-field">
+          <span>Mensaje <em>(opcional)</em></span>
+          <textarea class="wp-pm2-cl-input" data-f="msg" rows="2" maxlength="500" placeholder="Ej. Soy el dueño desde 2019"></textarea>
+        </label>
+        <p class="wp-pm2-cl-note">Para confirmar, te contactaremos o llamaremos al teléfono público del negocio. Tus datos solo los ve el equipo de WhatsPlan.</p>
+        <button class="wp-pm2-cl-submit" disabled>Enviar solicitud</button>
+      </div>`;
+
+    const q = (sel) => body.querySelector(sel);
+    const nameI = q('[data-f="name"]'), phoneI = q('[data-f="phone"]'), emailI = q('[data-f="email"]'), msgI = q('[data-f="msg"]');
+    const submit = q('.wp-pm2-cl-submit');
+    nameI.value = displayName;
+    emailI.value = user.email || '';
+    let role = null;
+
+    const valid = () =>
+      nameI.value.trim().length >= 2 &&
+      !!role &&
+      phoneI.value.replace(/\D/g, '').length >= 8 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailI.value.trim());
+    const refresh = () => { submit.disabled = !valid(); };
+    [nameI, phoneI, emailI].forEach(i => i.addEventListener('input', refresh));
+    body.querySelectorAll('.wp-pm2-cl-role').forEach(b => {
+      b.onclick = () => {
+        role = b.dataset.role;
+        body.querySelectorAll('.wp-pm2-cl-role').forEach(x => x.classList.toggle('wp-pm2-on', x === b));
+        refresh();
+      };
+    });
+    refresh();
+
+    submit.onclick = async () => {
+      if (!valid()) return;
+      submit.disabled = true;
+      submit.textContent = 'Enviando...';
+      try {
+        const row = await PlaceClaimService.submit({
+          placeId:   place.place_id || place.id,
+          placeName: info.name,
+          userId:    user.id,
+          fullName:  nameI.value.trim(),
+          role,
+          phone:     phoneI.value.trim(),
+          email:     emailI.value.trim(),
+          message:   msgI.value.trim(),
+        });
+        if (this._place === place) this._myClaim = row || { status: 'pending' };
+        close();
+        this._showToast('Recibimos tu solicitud. Te contactaremos pronto');
+      } catch (e) {
+        console.error('[PM2] Solicitud de dueño:', e);
+        this._showToast('No se pudo enviar la solicitud');
+        submit.disabled = false;
+        submit.textContent = 'Enviar solicitud';
+      }
+    };
   }
 
   _openPlaceReportSheet() {
