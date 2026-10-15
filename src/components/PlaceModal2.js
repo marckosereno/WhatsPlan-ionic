@@ -1394,9 +1394,6 @@ export class PlaceModal2 {
         background:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s ease;
       }
       #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-overlay { opacity:1; }
-      /* Hoja sin animación de subida (hojas altas, ver _openSheet) */
-      #wp-pm2-menu-sheet.wp-pm2-ms-instant .wp-pm2-ms-menu,
-      #wp-pm2-menu-sheet.wp-pm2-ms-instant .wp-pm2-ms-overlay { transition:none; }
       /* Hoja abierta desde otra: el fondo arranca ya oscuro, sin fade */
       #wp-pm2-menu-sheet.wp-pm2-ms-chained .wp-pm2-ms-overlay { opacity:1; transition:none; }
       #wp-pm2-menu-sheet .wp-pm2-ms-menu {
@@ -1983,13 +1980,10 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = onScrollRaf;
       body.addEventListener('scroll', onScrollRaf, { passive: true });
-      this._diagScroll(body); // [DIAG] temporal
       // Ubicar todo en su posición inicial y RECIÉN después activar la
       // transición de suavizado
       onScroll();
-      // [DIAG] temporal: localStorage.wpHeroSmooth = '0' → sin suavizado (la foto sigue al dedo sin retraso)
-      let smoothOn = true; try { smoothOn = localStorage.getItem('wpHeroSmooth') !== '0'; } catch (_) {}
-      if (smoothOn) requestAnimationFrame(() => this._el.classList.add('wp-pm2-hero-smooth'));
+      requestAnimationFrame(() => this._el.classList.add('wp-pm2-hero-smooth'));
     }));
 
     return heroTargetRect;
@@ -3918,6 +3912,45 @@ export class PlaceModal2 {
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
   }
 
+  // ══ HOJAS NATIVAS (Capacitor) ══════════════════════════════════════
+  // Plugin nativo si la app corre en Capacitor y el plugin está instalado
+  // (npm i @capacitor/action-sheet @capacitor/dialog … + npx cap sync).
+  // En navegador, o sin el plugin, devuelve null → se usa la hoja web.
+  _nativePlugin(name) {
+    const C = window.Capacitor;
+    try {
+      if (C?.isNativePlatform?.() && C.isPluginAvailable?.(name)) return C.Plugins?.[name] || null;
+    } catch (_) {}
+    return null;
+  }
+
+  // Menú de opciones: hoja NATIVA de Android/iOS (@capacitor/action-sheet),
+  // con su propia animación del sistema. items: [{ label, icon, danger,
+  // disabled, disabledMsg, action }]. En Android el plugin no muestra el
+  // "message", así que el subtítulo va en una 2ª línea del título.
+  _openOptions(title, subtitle, items) {
+    const AS = this._nativePlugin('ActionSheet');
+    if (!AS?.showActions) {
+      const { body, close } = this._openSheet(title, subtitle);
+      this._fillSheetOptions(body, items, close);
+      return;
+    }
+    const android = window.Capacitor?.getPlatform?.() === 'android';
+    const options = items.map(it => ({ title: it.label, style: it.danger ? 'DESTRUCTIVE' : 'DEFAULT' }));
+    options.push({ title: 'Cancelar', style: 'CANCEL' });
+    AS.showActions({
+      title: android && subtitle ? `${title}\n${subtitle}` : title,
+      message: !android && subtitle ? subtitle : undefined,
+      options,
+      cancelable: true, // tocar fuera cierra (plugin ≥ 8.1; antes lo ignora y queda "Cancelar")
+    }).then(r => {
+      const it = r && !r.canceled ? items[r.index] : null; // "Cancelar" = índice fuera de items
+      if (!it) return;
+      if (it.disabled) { if (it.disabledMsg) this._showToast(it.disabledMsg); return; }
+      it.action?.();
+    }).catch(e => console.warn('[PM2] ActionSheet nativo:', e));
+  }
+
   // Filas de opciones: [{ label, icon, danger, action }]
   _fillSheetOptions(body, items, close) {
     items.forEach(it => {
@@ -3937,7 +3970,14 @@ export class PlaceModal2 {
   }
 
   // Confirmación (para eliminar / bloquear). Devuelve Promise<boolean>.
+  // Nativo: diálogo del sistema (@capacitor/dialog). Respaldo: hoja web.
   _confirmSheet(title, message, confirmLabel, danger = true) {
+    const Dlg = this._nativePlugin('Dialog');
+    if (Dlg?.confirm) {
+      return Dlg.confirm({ title, message, okButtonTitle: confirmLabel, cancelButtonTitle: 'Cancelar' })
+        .then(r => !!r?.value)
+        .catch(e => { console.warn('[PM2] Dialog nativo:', e); return false; });
+    }
     return new Promise(resolve => {
       const { body, close } = this._openSheet(title);
       let done = false;
@@ -3958,6 +3998,11 @@ export class PlaceModal2 {
 
   _copyText(text) {
     const done = () => this._showToast('Texto copiado');
+    const Clip = this._nativePlugin('Clipboard');
+    if (Clip?.write) {
+      Clip.write({ string: text }).then(done).catch(() => this._copyFallback(text, done));
+      return;
+    }
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).then(done).catch(() => this._copyFallback(text, done));
     } else {
@@ -4023,79 +4068,21 @@ export class PlaceModal2 {
     }
 
     const underReview = !!this._mod?.myReports.has(reportKey);
-    const { body, close } = this._openSheet(
+    this._openOptions(
       isReply ? 'Respuesta' : 'Reseña',
-      underReview ? `${name} · Tu reporte está en revisión` : name
+      underReview ? `${name} · Tu reporte está en revisión` : name,
+      items
     );
-    this._fillSheetOptions(body, items, close);
   }
 
-  // ══ ANIMACIÓN DE HOJAS ════════════════════════════════════════════
-  // Todas las hojas (menús ⋯, reseña, responder, reportar, confirmar,
-  // "¿Es tu negocio?") entran y salen con el MISMO mecanismo. Modo (para
-  // elegir en el teléfono, en Eruda):
-  //   localStorage.wpSheetAnim = 'bottom'  → sube animando `bottom` (por defecto)
-  //   localStorage.wpSheetAnim = 'fade'    → aparece con fundido
-  //   localStorage.wpSheetAnim = 'slide'   → sube con transform (la original)
-  //   localStorage.wpSheetAnim = 'instant' → sin animación
-  // El fondo oscuro anima `background-color` (no `opacity`) en todos los
-  // modos. Con 'slide' (transform + opacity) el teléfono mostraba el glitch
-  // sobre las fotos; 'bottom' y 'fade' mueven la hoja por otros caminos.
-  // ── [DIAG] temporal: medir cuadros reales en el teléfono ───────────
-  _diagLT() {
-    if (window.__wpDiagLT) return window.__wpDiagLT;
-    const arr = []; window.__wpDiagLT = arr;
-    try {
-      new PerformanceObserver(l => l.getEntries().forEach(e => arr.push([Math.round(e.startTime), Math.round(e.duration)])))
-        .observe({ type: 'longtask', buffered: false });
-    } catch (_) {}
-    return arr;
-  }
-  _diagSheet(label, menu, overlay) {
-    const lt = this._diagLT(); const lt0 = lt.length;
-    const t0 = performance.now(); let last = t0; const rows = []; let maxDt = 0, slow = 0;
-    const left = {
-      menuSheets: document.querySelectorAll('#wp-pm2-menu-sheet').length,
-      review: document.querySelectorAll('#wp-pm2-review-modal').length,
-      reply: document.querySelectorAll('.wp-pm2-rs-overlay').length,
-      react: document.querySelectorAll('#wp-pm2-react-layer').length,
-    };
-    const tick = (now) => {
-      const dt = now - last; last = now;
-      if (rows.length) { maxDt = Math.max(maxDt, dt); if (dt > 20) slow++; }
-      const r = menu.getBoundingClientRect();
-      const a = (getComputedStyle(overlay).backgroundColor.match(/[\d.]+\)$/) || ['?'])[0].replace(')', '');
-      rows.push(`${Math.round(now - t0)}ms top=${Math.round(r.top)} op=${(+getComputedStyle(menu).opacity).toFixed(2)} dim=${a}`);
-      if (now - t0 < 700 && menu.isConnected) requestAnimationFrame(tick);
-      else console.log(`[DIAG-SHEET] ${label} modo=${this._sheetMode()} cuadros=${rows.length} maxDt=${Math.round(maxDt)}ms lentos(>20ms)=${slow} longtasks=${JSON.stringify(lt.slice(lt0))} restos=${JSON.stringify(left)}\n` + rows.join('\n'));
-    };
-    requestAnimationFrame(tick);
-  }
-  _diagScroll(body) {
-    if (body.__wpDiagScroll) return; body.__wpDiagScroll = true; // una vez por elemento
-    const lt = this._diagLT();
-    let on = false, t0 = 0, last = 0, n = 0, maxDt = 0, slow = 0, sum = 0, y0 = 0, idle = null, lt0 = 0;
-    const loop = (now) => {
-      if (!on) return;
-      const dt = now - last; last = now; n++; sum += dt; maxDt = Math.max(maxDt, dt); if (dt > 20) slow++;
-      requestAnimationFrame(loop);
-    };
-    body.addEventListener('scroll', () => {
-      if (!on) { on = true; t0 = last = performance.now(); n = 0; maxDt = 0; slow = 0; sum = 0; y0 = body.scrollTop; lt0 = lt.length; requestAnimationFrame(loop); }
-      clearTimeout(idle);
-      idle = setTimeout(() => {
-        on = false;
-        const dur = performance.now() - t0 - 250;
-        console.log(`[DIAG-SCROLL] dur=${Math.round(dur)}ms dist=${Math.round(body.scrollTop - y0)}px cuadros=${n} fps≈${Math.round(n / (dur / 1000))} dtProm=${(sum / Math.max(1, n)).toFixed(1)}ms maxDt=${Math.round(maxDt)}ms lentos(>20ms)=${slow} longtasks=${JSON.stringify(lt.slice(lt0))} nodos=${document.getElementsByTagName('*').length} smooth=${this._el.classList.contains('wp-pm2-hero-smooth')}`);
-      }, 250);
-    }, { passive: true });
-  }
-
-  _sheetMode() {
-    let m = 'bottom';
-    try { m = localStorage.getItem('wpSheetAnim') || 'bottom'; } catch (_) {}
-    return ['bottom', 'fade', 'slide', 'instant'].includes(m) ? m : 'bottom';
-  }
+  // ══ ANIMACIÓN DE HOJAS WEB (solo formularios y respaldo) ══════════
+  // Los menús de opciones y las confirmaciones son NATIVOS cuando la app
+  // corre en Capacitor (ver _openOptions / _confirmSheet). Las hojas web
+  // que quedan (escribir reseña, responder, "¿Es tu negocio?" y el
+  // respaldo en navegador) suben animando `bottom` y el fondo oscurece
+  // con `background-color`: con transform+opacity el WebView de Android
+  // re-dibujaba las fotos de la ficha con glitch.
+  _sheetMode() { return 'bottom'; }
 
   // dimmed=true → el fondo ya estaba oscuro (viene de otra hoja): no se anima
   _sheetIn(menu, overlay, { dimmed = false } = {}) {
@@ -4114,7 +4101,6 @@ export class PlaceModal2 {
     else if (mode === 'fade') menu.style.opacity = '0';
     else if (mode === 'slide') menu.style.transform = 'translateY(110%)';
     void menu.offsetHeight; // fija el estado inicial antes de animar
-    this._diagSheet(menu.className || menu.id, menu, overlay); // [DIAG] temporal
     requestAnimationFrame(() => {
       if (mode !== 'instant') {
         if (!dimmed) overlay.style.transition = 'background-color 0.25s ease';
@@ -4234,17 +4220,16 @@ export class PlaceModal2 {
     const uid = this.getCurrentUser?.()?.id || null;
     const ownerId = this._place.owner_id || null;
     if (ownerId && uid && ownerId === uid) {
-      items.push({ label: 'Administrar negocio · próximamente', icon: I.store, disabled: true });
+      items.push({ label: 'Administrar negocio · próximamente', icon: I.store, disabled: true, disabledMsg: 'Administrar negocio estará disponible pronto' });
     } else if (!ownerId) {
       if (this._myClaim?.status === 'pending') {
-        items.push({ label: 'Solicitud enviada · en revisión', icon: I.store, disabled: true });
+        items.push({ label: 'Solicitud enviada · en revisión', icon: I.store, disabled: true, disabledMsg: 'Tu solicitud está en revisión' });
       } else {
         items.push({ label: '¿Es tu negocio?', icon: I.store, action: () => this._openClaimSheet() });
       }
     }
 
-    const { body, close } = this._openSheet(info.name, info.category);
-    this._fillSheetOptions(body, items, close);
+    this._openOptions(info.name, info.category, items);
   }
 
   // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
@@ -4376,8 +4361,7 @@ export class PlaceModal2 {
       ['inappropriate_photos', 'Fotos inapropiadas'],
       ['other',                'Otro problema'],
     ];
-    const { body, close } = this._openSheet('¿Qué problema tiene el lugar?', 'Nos ayuda a mantener la información al día');
-    this._fillSheetOptions(body, REASONS.map(([reason, label]) => ({
+    this._openOptions('¿Qué problema tiene el lugar?', 'Nos ayuda a mantener la información al día', REASONS.map(([reason, label]) => ({
       label,
       action: async () => {
         try {
@@ -4388,7 +4372,7 @@ export class PlaceModal2 {
           this._showToast('No se pudo enviar el reporte');
         }
       },
-    })), close);
+    })));
   }
 
   async _confirmDeleteReview() {
@@ -4425,9 +4409,8 @@ export class PlaceModal2 {
       ['false_info', 'Información falsa'],
       ['other',      'Otro motivo'],
     ];
-    const { body, close } = this._openSheet('¿Por qué lo reportas?', 'Tu reporte es anónimo');
     const place = this._place;
-    this._fillSheetOptions(body, REASONS.map(([reason, label]) => ({
+    this._openOptions('¿Por qué lo reportas?', 'Tu reporte es anónimo', REASONS.map(([reason, label]) => ({
       label,
       action: async () => {
         try {
@@ -4445,7 +4428,7 @@ export class PlaceModal2 {
           this._showToast('No se pudo enviar el reporte');
         }
       },
-    })), close);
+    })));
   }
 
   async _withdrawReport(reportKey, parentKey) {
