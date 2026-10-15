@@ -1395,7 +1395,8 @@ export class PlaceModal2 {
       }
       #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-overlay { opacity:1; }
       /* Hoja sin animación de subida (hojas altas, ver _openSheet) */
-      #wp-pm2-menu-sheet.wp-pm2-ms-instant .wp-pm2-ms-menu { transition:none; }
+      #wp-pm2-menu-sheet.wp-pm2-ms-instant .wp-pm2-ms-menu,
+      #wp-pm2-menu-sheet.wp-pm2-ms-instant .wp-pm2-ms-overlay { transition:none; }
       /* Hoja abierta desde otra: el fondo arranca ya oscuro, sin fade */
       #wp-pm2-menu-sheet.wp-pm2-ms-chained .wp-pm2-ms-overlay { opacity:1; transition:none; }
       #wp-pm2-menu-sheet .wp-pm2-ms-menu {
@@ -2890,8 +2891,8 @@ export class PlaceModal2 {
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-review-modal';
     frag.innerHTML = `
-      <div id="wp-pm2-rm-overlay" style="position:fixed;inset:0;z-index:1500100;background:rgba(0,0,0,0.3);opacity:0;transition:opacity 0.25s ease"></div>
-      <div id="wp-pm2-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
+      <div id="wp-pm2-rm-overlay" style="position:fixed;inset:0;z-index:1500100;background:rgba(0,0,0,0.3);opacity:0;transition:none"></div>
+      <div id="wp-pm2-rm-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:none;font-family:var(--wp-font)">
         <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
         <div id="wp-pm2-rm-header" style="display:flex;align-items:center;gap:10px;padding:4px 20px 12px">
           <img src="${avatarUrl}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">
@@ -2948,12 +2949,10 @@ export class PlaceModal2 {
       refreshSubmit();
     };
 
+    // Sin animación al abrir/cerrar (ver el comentario de _openSheet)
     const closeModal = () => {
-      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
-      menu.style.transform = 'translateY(110%)';
-      overlay.style.opacity = '0';
       textarea.blur();
-      setTimeout(() => frag.remove(), 320);
+      frag.remove();
     };
     overlay.onclick = closeModal;
 
@@ -3554,8 +3553,8 @@ export class PlaceModal2 {
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-reply-sheet';
     frag.innerHTML = `
-      <div class="wp-pm2-rs-overlay" style="position:fixed;inset:0;z-index:1500100;background:rgba(0,0,0,0.3);opacity:0;transition:opacity 0.25s ease"></div>
-      <div class="wp-pm2-rs-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
+      <div class="wp-pm2-rs-overlay" style="position:fixed;inset:0;z-index:1500100;background:rgba(0,0,0,0.3);opacity:0;transition:none"></div>
+      <div class="wp-pm2-rs-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:none;font-family:var(--wp-font)">
         <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
         <div class="wp-pm2-rs-header" style="padding:4px 20px 10px">
           <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">${this._esc(sheetTitle)}</span>
@@ -3596,12 +3595,10 @@ export class PlaceModal2 {
     textarea.oninput = refresh;
     refresh();
 
+    // Sin animación al abrir/cerrar (ver el comentario de _openSheet)
     const close = () => {
       textarea.blur();
-      menu.style.transition = 'transform 0.28s cubic-bezier(0.32,0.72,0,1)';
-      menu.style.transform = 'translateY(110%)';
-      overlay.style.opacity = '0';
-      setTimeout(() => frag.remove(), 320);
+      frag.remove();
     };
     overlay.onclick = close;
 
@@ -3852,12 +3849,14 @@ export class PlaceModal2 {
 
   // ── Hoja genérica (mismo estilo que la de reseña/responder) ─────────
   // Devuelve { body, close }. body es donde se mete el contenido.
-  // instant=true → la hoja aparece y se va sin animación de subida/bajada.
-  // Se usa en hojas ALTAS (formulario "¿Es tu negocio?"): animar una capa
-  // de ese tamaño sobre fotos agotaba la memoria gráfica del teléfono y
-  // las fotos se re-dibujaban a baja resolución un instante (el glitch).
-  // Confirmado en dispositivo: sin animación, no hay glitch.
-  _openSheet(title, subtitle = '', { instant = false } = {}) {
+  // instant=true (por defecto) → la hoja aparece y se va sin animación de
+  // subida/bajada. Animar una hoja sobre las fotos de la ficha exige más
+  // de lo que el procesador gráfico del teléfono aguanta (las fotos se
+  // re-dibujaban a baja resolución un instante = el glitch). Confirmado en
+  // dispositivo con el modo de prueba 'noanim': sin animación, no hay
+  // glitch. Desde que la foto del hero quedó detrás del scroll (para que
+  // no tiemble), afecta a TODAS las hojas, no solo a las altas.
+  _openSheet(title, subtitle = '', { instant = true } = {}) {
     const prev = document.getElementById('wp-pm2-menu-sheet');
     // ¿Viene de otra hoja que se cerró dejando el fondo oscuro puesto
     // (opción de un menú que abre otra hoja)? → la nueva arranca con el
@@ -3891,7 +3890,7 @@ export class PlaceModal2 {
     const fadeOut = () => {
       frag.classList.remove('wp-pm2-ms-chained');
       overlay.style.opacity = '0';
-      setTimeout(() => frag.remove(), 300);
+      setTimeout(() => frag.remove(), instant ? 0 : 300);
     };
     const close = (keepDim = false) => {
       if (closed) return;
@@ -3943,6 +3942,8 @@ export class PlaceModal2 {
 
   // Filas de opciones: [{ label, icon, danger, action }]
   _fillSheetOptions(body, items, close) {
+    // ¿la hoja es instantánea? (entonces la siguiente se abre sin esperar)
+    const frag_isInstant = (el) => !!el.closest('.wp-pm2-ms-instant');
     items.forEach(it => {
       const b = document.createElement('button');
       b.className = 'wp-pm2-ms-opt' + (it.danger ? ' wp-pm2-danger' : '');
@@ -3950,7 +3951,7 @@ export class PlaceModal2 {
       if (it.disabled) { b.disabled = true; body.appendChild(b); return; }
       // La hoja baja completa (0.26s) antes de que la acción abra otra:
       // así la vieja nunca se borra a media salida.
-      b.onclick = () => { close(true); setTimeout(it.action, 270); };
+      b.onclick = () => { close(true); setTimeout(it.action, frag_isInstant(b) ? 0 : 270); };
       body.appendChild(b);
     });
   }
