@@ -2121,13 +2121,22 @@ export class PlaceModal2 {
     const stripEl = $('wp-pm2-strip');
     stripEl.innerHTML = '';
     this._lbPhotos = photos; // para el lightbox
+    // Miniaturas: cada foto se carga YA REDUCIDA al tamaño en que se ve
+    // (150×210 × densidad de pantalla), no el original de 800×1067. Con
+    // los originales la galería ocupaba ~3 MB de memoria gráfica por foto
+    // y el WebView de Android, al aparecer una hoja encima, re-dibujaba
+    // las fotos con glitch (confirmado en el teléfono: ocultando solo la
+    // galería, el glitch desaparecía). El lightbox sigue usando el original.
+    this._revokeThumbs();
+    const thumbToken = (this._thumbToken = (this._thumbToken || 0) + 1);
+    const stripImgs = [];
     photos.forEach((url, i) => {
       const img = document.createElement('img');
-      img.alt = ''; img.loading = 'lazy';
+      img.alt = ''; img.decoding = 'async';
       this._skelOn(img);
       img.onload  = () => this._skelOff(img);
       img.onerror = () => this._skelOff(img);
-      img.src = url;
+      stripImgs.push([img, url]);
       // Guard contra clic-fantasma: cuando la ficha se abre desde el
       // flip del slide, el toque original (touchend/pointerup) puede
       // generar un "click" sintético del navegador que se dispara un
@@ -2144,6 +2153,7 @@ export class PlaceModal2 {
       });
       stripEl.appendChild(img);
     });
+    this._loadThumbs(stripImgs, thumbToken);
 
     // Hero background — primera foto con parallax, con skeleton mientras
     // carga. EXCEPCIÓN: si viene de un flip desde el slide
@@ -2389,6 +2399,55 @@ export class PlaceModal2 {
   // que gana por cascada normal, no por fuerza bruta. El hero (que es un
   // <div> con background-image seteado por JS) usa un ::before aparte para
   // no pisar nunca la foto real.
+  // ── Miniaturas de la galería ───────────────────────────────────────
+  // Una por una (no 12 originales decodificándose a la vez). Si la foto no
+  // permite reducirla (servidor sin CORS) o ya es chica, se usa tal cual.
+  async _loadThumbs(list, token) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    for (const [img, url] of list) {
+      if (token !== this._thumbToken) return; // se abrió otra ficha
+      let src = url;
+      try { src = await this._makeThumb(url, 150 * dpr, 210 * dpr); } catch (_) { src = url; }
+      if (token !== this._thumbToken) { if (src !== url) URL.revokeObjectURL(src); return; }
+      if (src !== url) (this._thumbUrls || (this._thumbUrls = [])).push(src);
+      img.src = src;
+    }
+  }
+
+  _makeThumb(url, W, H) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';  // sin esto el canvas no se puede exportar
+      im.decoding = 'async';
+      im.onerror = () => resolve(url); // sin CORS → original
+      im.onload = () => {
+        try {
+          const nw = im.naturalWidth, nh = im.naturalHeight;
+          const scale = Math.max(W / nw, H / nh);
+          if (!nw || !nh || scale >= 0.9) return resolve(url); // ya es chica
+          // Recorte centrado tipo object-fit:cover, al tamaño de destino
+          const sw = W / scale, sh = H / scale;
+          const sx = (nw - sw) / 2, sy = (nh - sh) / 2;
+          const c = document.createElement('canvas');
+          c.width = Math.round(W); c.height = Math.round(H);
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(im, sx, sy, sw, sh, 0, 0, c.width, c.height);
+          c.toBlob(b => {
+            c.width = c.height = 0; // libera el canvas
+            resolve(b ? URL.createObjectURL(b) : url);
+          }, 'image/jpeg', 0.86);
+        } catch (_) { resolve(url); }
+      };
+      im.src = url;
+    });
+  }
+
+  _revokeThumbs() {
+    (this._thumbUrls || []).forEach(u => URL.revokeObjectURL(u));
+    this._thumbUrls = [];
+  }
+
   _skelOn(el) {
     if (!el) return;
     el.classList.add('wp-pm2-skel');
