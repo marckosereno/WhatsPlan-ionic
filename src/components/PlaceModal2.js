@@ -3841,7 +3841,8 @@ export class PlaceModal2 {
   // ── Hoja genérica (mismo estilo que la de reseña/responder) ─────────
   // Devuelve { body, close }. body es donde se mete el contenido.
   // Animación de entrada/salida: ver _sheetIn/_sheetOut (modo elegible).
-  _openSheet(title, subtitle = '') {
+  // instant=true → aparece y se va sin animación (formulario de reclamo)
+  _openSheet(title, subtitle = '', { instant = false } = {}) {
     const prev = document.getElementById('wp-pm2-menu-sheet');
     // ¿Viene de otra hoja que se cerró dejando el fondo oscuro puesto
     // (opción de un menú que abre otra hoja)? → la nueva arranca con el
@@ -3876,13 +3877,13 @@ export class PlaceModal2 {
       closed = true;
       frag.classList.remove('wp-pm2-ms-tall'); // sin área de scroll durante la salida
       const keep = keepDim === true;
-      const wait = this._sheetOut(menu, overlay, { keepDim: keep });
+      const wait = this._sheetOut(menu, overlay, { keepDim: keep, instant });
       if (keep) {
         frag.dataset.keepDim = '1';
         setTimeout(() => {
           if (!frag.isConnected) return; // otra hoja ya la reemplazó
           frag.dataset.keepDim = '';
-          this._sheetDimOff(overlay);
+          this._sheetDimOff(overlay, instant);
           setTimeout(() => frag.remove(), 240);
         }, Math.max(450, wait));
       } else {
@@ -3909,7 +3910,7 @@ export class PlaceModal2 {
       else menu.style.transform = 'translateY(0)';
     });
 
-    this._sheetIn(menu, overlay, { dimmed: chained });
+    this._sheetIn(menu, overlay, { dimmed: chained, instant });
     frag.classList.add('wp-pm2-in');
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
   }
@@ -4105,14 +4106,14 @@ export class PlaceModal2 {
   // Los menús de opciones y las confirmaciones son NATIVOS cuando la app
   // corre en Capacitor (ver _openOptions / _confirmSheet). Las hojas web
   // que quedan (escribir reseña, responder, "¿Es tu negocio?" y el
-  // respaldo en navegador) suben animando `bottom` y el fondo oscurece
-  // con `background-color`: con transform+opacity el WebView de Android
-  // re-dibujaba las fotos de la ficha con glitch.
-  _sheetMode() { return 'bottom'; }
+  // respaldo en navegador) suben con transform (la animación original);
+  // el fondo oscurece con `background-color`. Excepción: "¿Es tu
+  // negocio?" aparece sin animación (ahí el teléfono mostraba el glitch).
+  _sheetMode() { return 'slide'; }
 
   // dimmed=true → el fondo ya estaba oscuro (viene de otra hoja): no se anima
-  _sheetIn(menu, overlay, { dimmed = false } = {}) {
-    const mode = this._sheetMode();
+  _sheetIn(menu, overlay, { dimmed = false, instant = false } = {}) {
+    const mode = instant ? 'instant' : this._sheetMode();
     const DIM = 'rgba(0,0,0,0.3)';
     const REST = 'calc(12px + env(safe-area-inset-bottom,0px))';
     overlay.style.transition = 'none';
@@ -4144,8 +4145,8 @@ export class PlaceModal2 {
   // Devuelve cuántos ms esperar antes de quitar la hoja del DOM.
   // keepDim=true → la hoja se va pero el fondo oscuro se queda (otra hoja
   // lo va a tomar sin parpadeo).
-  _sheetOut(menu, overlay, { keepDim = false } = {}) {
-    const mode = this._sheetMode();
+  _sheetOut(menu, overlay, { keepDim = false, instant = false } = {}) {
+    const mode = instant ? 'instant' : this._sheetMode();
     let wait = 0;
     if (mode === 'instant') {
       menu.style.transition = 'none';
@@ -4163,12 +4164,12 @@ export class PlaceModal2 {
       menu.style.transform = 'translateY(110%)';
       wait = 270;
     }
-    if (!keepDim) this._sheetDimOff(overlay);
+    if (!keepDim) this._sheetDimOff(overlay, instant);
     return wait;
   }
 
-  _sheetDimOff(overlay) {
-    overlay.style.transition = this._sheetMode() === 'instant' ? 'none' : 'background-color 0.22s ease';
+  _sheetDimOff(overlay, instant = false) {
+    overlay.style.transition = instant || this._sheetMode() === 'instant' ? 'none' : 'background-color 0.22s ease';
     overlay.style.background = 'rgba(0,0,0,0)';
   }
 
@@ -4278,7 +4279,9 @@ export class PlaceModal2 {
     const info = this._placeInfo();
     const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
 
-    const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
+    // Sin animación: en esta hoja (la única alta, con formulario) el
+    // teléfono mostraba el glitch al subir. Las demás sí se animan.
+    const { body, close } = this._openSheet('¿Es tu negocio?', info.name, { instant: true });
     // Scroll interno SOLO si el formulario no cabe (p.ej. con el teclado
     // abierto) y nunca durante la animación de subida: un área con scroll
     // dentro de una hoja que se anima hace que el WebView de Android la
@@ -4293,7 +4296,7 @@ export class PlaceModal2 {
       const natural = menuEl.offsetHeight - body.clientHeight + body.scrollHeight;
       sheetEl.classList.toggle('wp-pm2-ms-tall', natural > window.innerHeight - 24);
     };
-    setTimeout(fit, 420);
+    requestAnimationFrame(fit); // sin animación: se mide ya
     window.addEventListener('resize', fit);
     body.innerHTML = `
       <div class="wp-pm2-cl">
