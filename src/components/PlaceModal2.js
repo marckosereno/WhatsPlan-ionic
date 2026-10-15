@@ -2827,6 +2827,7 @@ export class PlaceModal2 {
 
     const overlay  = frag.querySelector('#wp-pm2-rm-overlay');
     const menu     = frag.querySelector('#wp-pm2-rm-menu');
+    this._diagSheet('reseña', menu, overlay); // [DIAG-SHEET] temporal
     const starsEl  = frag.querySelector('#wp-pm2-rm-stars');
     const labelEl  = frag.querySelector('#wp-pm2-rm-label');
     const textarea = frag.querySelector('#wp-pm2-rm-textarea');
@@ -3486,6 +3487,7 @@ export class PlaceModal2 {
 
     const overlay  = frag.querySelector('.wp-pm2-rs-overlay');
     const menu     = frag.querySelector('.wp-pm2-rs-menu');
+    this._diagSheet('responder', menu, overlay); // [DIAG-SHEET] temporal
     const header   = frag.querySelector('.wp-pm2-rs-header');
     const textarea = frag.querySelector('.wp-pm2-rs-textarea');
     const charEl   = frag.querySelector('.wp-pm2-rs-char');
@@ -3742,6 +3744,7 @@ export class PlaceModal2 {
     document.body.appendChild(frag);
     const overlay = frag.querySelector('.wp-pm2-ms-overlay');
     const menu    = frag.querySelector('.wp-pm2-ms-menu');
+    this._diagSheet('menú: ' + title, menu, overlay); // [DIAG-SHEET] temporal
     const header  = frag.querySelector('.wp-pm2-ms-header');
 
     let closed = false;
@@ -3884,6 +3887,65 @@ export class PlaceModal2 {
     this._fillSheetOptions(body, items, close);
   }
 
+  // ══ [DIAG-SHEET] TEMPORAL — quitar cuando se encuentre el glitch ══
+  // Modos (en Eruda): localStorage.wpDiag = 'noanim' | 'nodim' | 'noclaim'
+  // (se pueden combinar: 'noanim,nodim'). Vacío = normal, solo logs.
+  //   noanim  → la hoja aparece sin animación de subida
+  //   nodim   → sin fondo oscuro detrás de la hoja
+  //   noclaim → el menú del lugar sin "¿Es tu negocio?" (hoja más baja)
+  // Además, durante ~1 s mide qué elemento queda ENCIMA de la hoja en 5
+  // puntos (esquinas y centro); si no es la hoja, lo registra.
+  _diagMode() {
+    try { return localStorage.getItem('wpDiag') || ''; } catch (_) { return ''; }
+  }
+
+  _diagSheet(label, menu, overlay) {
+    const mode = this._diagMode();
+    if (mode.includes('noanim')) {
+      menu.style.transition = 'none';
+      if (overlay) overlay.style.transition = 'none';
+    }
+    if (mode.includes('nodim') && overlay) overlay.style.background = 'transparent';
+    const layers = [...document.querySelectorAll('body > *')]
+      .filter(el => {
+        const cs = getComputedStyle(el);
+        return cs.position === 'fixed' && cs.display !== 'none' && cs.visibility !== 'hidden';
+      })
+      .map(el => (el.id ? '#' + el.id : el.tagName.toLowerCase()) + ' z=' + getComputedStyle(el).zIndex);
+    console.log('[DIAG-SHEET] abre', label, {
+      modo: mode || 'normal',
+      vh: innerHeight, dpr: devicePixelRatio,
+      altoHoja: menu.offsetHeight,
+      capasFijasEnBody: layers.join(' | '),
+    });
+    const t0 = performance.now();
+    const seen = new Set();
+    let frames = 0;
+    const name = (el) => (el.id ? '#' + el.id : el.tagName.toLowerCase())
+      + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).join('.') : '');
+    const tick = () => {
+      frames++;
+      const r = menu.getBoundingClientRect();
+      const pts = [
+        [r.left + 24, r.top + 24], [r.right - 24, r.top + 24],
+        [r.left + r.width / 2, r.top + r.height / 2],
+        [r.left + 24, r.bottom - 24], [r.right - 24, r.bottom - 24],
+      ];
+      pts.forEach(([x, y]) => {
+        if (y < 0 || y > innerHeight || x < 0 || x > innerWidth) return;
+        const el = document.elementFromPoint(x, y);
+        if (!el || menu.contains(el)) return;
+        const k = name(el);
+        if (seen.has(k)) return;
+        seen.add(k);
+        console.log('[DIAG-SHEET] ENCIMA de la hoja', Math.round(performance.now() - t0) + 'ms', k, '@', Math.round(x), Math.round(y));
+      });
+      if (performance.now() - t0 < 1000) requestAnimationFrame(tick);
+      else console.log('[DIAG-SHEET] fin', label, { cuadros: frames, elementosEncima: seen.size });
+    };
+    requestAnimationFrame(tick);
+  }
+
   // ── LUGAR: compartir y menú "⋯" ───────────────────────────────────
   _placeInfo() {
     const p = this._place || {};
@@ -3959,7 +4021,7 @@ export class PlaceModal2 {
     const ownerId = this._place.owner_id || null;
     if (ownerId && uid && ownerId === uid) {
       items.push({ label: 'Administrar negocio · próximamente', icon: I.store, disabled: true });
-    } else if (!ownerId) {
+    } else if (!ownerId && !this._diagMode().includes('noclaim')) {
       if (this._myClaim?.status === 'pending') {
         items.push({ label: 'Solicitud enviada · en revisión', icon: I.store, disabled: true });
       } else {
