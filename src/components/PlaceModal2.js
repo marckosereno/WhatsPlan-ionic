@@ -1332,6 +1332,8 @@ export class PlaceModal2 {
       body.wp-diag-noblur .wp-pm2-tb-btn,
       body.wp-diag-noblur .wp-pm2-activity-date { backdrop-filter:none; -webkit-backdrop-filter:none; }
       body.wp-diag-nomapblur.wp-pm-open .map-container { filter:none; transition:none; }
+      #wp-pm2-menu-sheet.wp-pm2-diag-noanim .wp-pm2-ms-menu,
+      #wp-pm2-menu-sheet.wp-pm2-diag-noanim .wp-pm2-ms-overlay { transition:none; }
 
       /* Hoja de opciones / reportar / confirmar */
       #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
@@ -3797,6 +3799,11 @@ export class PlaceModal2 {
         </div>
         <div class="wp-pm2-ms-body"></div>
       </div>`;
+    // [DIAG] temporal: localStorage.wpDiag = 'noanim' → la hoja aparece sin
+    // animación (sin capa grande en memoria gráfica mientras sube)
+    let diagNoAnim = false;
+    try { diagNoAnim = (localStorage.getItem('wpDiag') || '').includes('noanim'); } catch (_) {}
+    if (diagNoAnim) frag.classList.add('wp-pm2-diag-noanim');
     document.body.appendChild(frag);
     const overlay = frag.querySelector('.wp-pm2-ms-overlay');
     const menu    = frag.querySelector('.wp-pm2-ms-menu');
