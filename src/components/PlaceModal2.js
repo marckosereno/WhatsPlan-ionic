@@ -1315,9 +1315,15 @@ export class PlaceModal2 {
         transition:opacity 0.15s;
       }
       .wp-pm2-cl-submit:disabled { opacity:0.4; }
-      /* Hojas altas (formulario): scroll interno en vez de salirse de la pantalla */
-      #wp-pm2-menu-sheet .wp-pm2-ms-menu {
-        max-height:calc(100% - 24px - env(safe-area-inset-top,0px));
+      /* Hojas altas (solo el formulario "¿Es tu negocio?"): el scroll va
+         en el CONTENIDO, nunca en .wp-pm2-ms-menu. Ponerle overflow a la
+         hoja que se anima con transform + border-radius hacía que el
+         WebView de Android creara una capa de scroll aparte y la pintara
+         un cuadro tarde, sin recortar las esquinas → destello al abrir
+         TODAS las hojas. */
+      #wp-pm2-menu-sheet.wp-pm2-ms-tall .wp-pm2-ms-body {
+        max-height:calc(100vh - 150px - env(safe-area-inset-top,0px));
+        max-height:calc(100dvh - 150px - env(safe-area-inset-top,0px));
         overflow-y:auto; overscroll-behavior:contain;
       }
 
@@ -3986,6 +3992,7 @@ export class PlaceModal2 {
     const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
 
     const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
+    document.getElementById('wp-pm2-menu-sheet')?.classList.add('wp-pm2-ms-tall');
     body.innerHTML = `
       <div class="wp-pm2-cl">
         <p class="wp-pm2-cl-intro">Verifícalo para responder reseñas como dueño, mantener la información al día y mostrar la insignia <b>✓ Verificado</b>.</p>
