@@ -157,15 +157,15 @@ export const ReviewService = {
   },
 
   // ── MODERACIÓN ─────────────────────────────────────────────────────
-  // Para una ficha: claves ocultas para todos (3+ reportes o quitadas
-  // por el moderador), lo que ESTE usuario reportó (se le oculta al
-  // instante) y los usuarios que bloqueó.
+  // Para una ficha: claves ocultas para todos (quitadas por el
+  // moderador), lo que ESTE usuario reportó y sigue pendiente (lo ve
+  // marcado "En revisión") y los usuarios que bloqueó.
   async getModerationForPlace(placeId, userId) {
     const sb = getSupabase();
     const pid = String(placeId);
     const hiddenP = sb.rpc('get_hidden_review_keys', { p_place_id: pid });
     const mineP = userId
-      ? sb.from('review_reports').select('review_key').eq('place_id', pid).eq('reporter_id', userId)
+      ? sb.from('review_reports').select('review_key').eq('place_id', pid).eq('reporter_id', userId).eq('status', 'pending')
       : Promise.resolve({ data: [] });
     const blocksP = userId
       ? sb.from('user_blocks').select('blocked_id').eq('blocker_id', userId)
