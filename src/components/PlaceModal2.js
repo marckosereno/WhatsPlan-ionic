@@ -1987,7 +1987,9 @@ export class PlaceModal2 {
       // Ubicar todo en su posición inicial y RECIÉN después activar la
       // transición de suavizado
       onScroll();
-      requestAnimationFrame(() => this._el.classList.add('wp-pm2-hero-smooth'));
+      // [DIAG] temporal: localStorage.wpHeroSmooth = '0' → sin suavizado (la foto sigue al dedo sin retraso)
+      let smoothOn = true; try { smoothOn = localStorage.getItem('wpHeroSmooth') !== '0'; } catch (_) {}
+      if (smoothOn) requestAnimationFrame(() => this._el.classList.add('wp-pm2-hero-smooth'));
     }));
 
     return heroTargetRect;
@@ -4070,6 +4072,7 @@ export class PlaceModal2 {
     requestAnimationFrame(tick);
   }
   _diagScroll(body) {
+    if (body.__wpDiagScroll) return; body.__wpDiagScroll = true; // una vez por elemento
     const lt = this._diagLT();
     let on = false, t0 = 0, last = 0, n = 0, maxDt = 0, slow = 0, sum = 0, y0 = 0, idle = null, lt0 = 0;
     const loop = (now) => {
