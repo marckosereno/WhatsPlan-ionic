@@ -1327,13 +1327,7 @@ export class PlaceModal2 {
         overflow-y:auto; overscroll-behavior:contain;
       }
 
-      /* [DIAG] temporales — ver _diagHeroToggles */
-      body.wp-diag-noblur #wp-pm2-back,
-      body.wp-diag-noblur .wp-pm2-tb-btn,
-      body.wp-diag-noblur .wp-pm2-activity-date { backdrop-filter:none; -webkit-backdrop-filter:none; }
-      body.wp-diag-nomapblur.wp-pm-open .map-container { filter:none; transition:none; }
-      #wp-pm2-menu-sheet.wp-pm2-diag-noanim .wp-pm2-ms-menu,
-      #wp-pm2-menu-sheet.wp-pm2-diag-noanim .wp-pm2-ms-overlay { transition:none; }
+
 
       /* Hoja de opciones / reportar / confirmar */
       #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
@@ -1341,6 +1335,8 @@ export class PlaceModal2 {
         background:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s ease;
       }
       #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-overlay { opacity:1; }
+      /* Hoja sin animación de subida (hojas altas, ver _openSheet) */
+      #wp-pm2-menu-sheet.wp-pm2-ms-instant .wp-pm2-ms-menu { transition:none; }
       /* Hoja abierta desde otra: el fondo arranca ya oscuro, sin fade */
       #wp-pm2-menu-sheet.wp-pm2-ms-chained .wp-pm2-ms-overlay { opacity:1; transition:none; }
       #wp-pm2-menu-sheet .wp-pm2-ms-menu {
@@ -1794,7 +1790,6 @@ export class PlaceModal2 {
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
-    this._diagHeroToggles(heroInner, heroOverlayFast, heroGradient, topbarFade); // [DIAG-SCROLL] temporal
 
     // ── Modo flip: viene un clon volando desde el slide hasta acá ──────
     // El hero real queda invisible (el clon que vuela lo tapa) hasta que
@@ -1908,10 +1903,7 @@ export class PlaceModal2 {
 
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = onScroll;
-      // [DIAG-SCROLL] temporal: mide cuánto tarda onScroll y cada cuánto llega
-      const onScrollDiag = this._diagWrapScroll(onScroll);
-      body.addEventListener('scroll', onScrollDiag, { passive: true });
-      this._scrollHandler = onScrollDiag;
+      body.addEventListener('scroll', onScroll, { passive: true });
     }));
 
     return heroTargetRect;
@@ -3778,7 +3770,12 @@ export class PlaceModal2 {
 
   // ── Hoja genérica (mismo estilo que la de reseña/responder) ─────────
   // Devuelve { body, close }. body es donde se mete el contenido.
-  _openSheet(title, subtitle = '') {
+  // instant=true → la hoja aparece y se va sin animación de subida/bajada.
+  // Se usa en hojas ALTAS (formulario "¿Es tu negocio?"): animar una capa
+  // de ese tamaño sobre fotos agotaba la memoria gráfica del teléfono y
+  // las fotos se re-dibujaban a baja resolución un instante (el glitch).
+  // Confirmado en dispositivo: sin animación, no hay glitch.
+  _openSheet(title, subtitle = '', { instant = false } = {}) {
     const prev = document.getElementById('wp-pm2-menu-sheet');
     // ¿Viene de otra hoja que se cerró dejando el fondo oscuro puesto
     // (opción de un menú que abre otra hoja)? → la nueva arranca con el
@@ -3799,11 +3796,7 @@ export class PlaceModal2 {
         </div>
         <div class="wp-pm2-ms-body"></div>
       </div>`;
-    // [DIAG] temporal: localStorage.wpDiag = 'noanim' → la hoja aparece sin
-    // animación (sin capa grande en memoria gráfica mientras sube)
-    let diagNoAnim = false;
-    try { diagNoAnim = (localStorage.getItem('wpDiag') || '').includes('noanim'); } catch (_) {}
-    if (diagNoAnim) frag.classList.add('wp-pm2-diag-noanim');
+    if (instant) frag.classList.add('wp-pm2-ms-instant');
     document.body.appendChild(frag);
     const overlay = frag.querySelector('.wp-pm2-ms-overlay');
     const menu    = frag.querySelector('.wp-pm2-ms-menu');
@@ -3822,7 +3815,13 @@ export class PlaceModal2 {
       if (closed) return;
       closed = true;
       frag.classList.remove('wp-pm2-ms-tall'); // sin área de scroll durante la salida
-      menu.style.transition = 'transform 0.26s cubic-bezier(0.32,0.72,0,1)';
+      if (instant) {
+        // Sin animación también al salir (misma razón que al entrar)
+        menu.style.transition = 'none';
+        menu.style.visibility = 'hidden';
+      } else {
+        menu.style.transition = 'transform 0.26s cubic-bezier(0.32,0.72,0,1)';
+      }
       menu.style.transform = 'translateY(110%)';
       if (keepDim === true) {
         frag.dataset.keepDim = '1';
@@ -3968,81 +3967,6 @@ export class PlaceModal2 {
     this._fillSheetOptions(body, items, close);
   }
 
-  // ══ [DIAG-SCROLL] TEMPORAL — quitar al confirmar la causa ══════════
-  // En Eruda: localStorage.wpDiag = 'oldgrad' | 'oldheight' | 'oldfade'
-  // (se pueden combinar, p.ej. 'oldgrad,oldfade'). Vacío = versión actual.
-  //   oldgrad   → degradado blanco del hero como el ORIGINAL (bottom:0, sin
-  //               los 8px de blanco sólido)
-  //   oldheight → foto/overlay del hero sin height:100% inicial (original)
-  //   oldfade   → sombra blanca de arriba con el blur 0.5px y la
-  //               transición de 0.05s del original
-  // Para el glitch al abrir hojas con el hero a la vista:
-  //   nosat     → la foto del hero sin filter:saturate(1.4)
-  //   nowill    → sin will-change en las capas del hero
-  //   noblur    → sin backdrop-filter en los botones del topbar y en las
-  //               mini-tarjetas de actividad
-  //   nomapblur → el mapa de atrás sin el blur(6px) que le pone app.css
-  //               mientras la ficha está abierta (no se ve, pero se procesa)
-  _diagHeroToggles(heroInner, overlayFast, gradient, topbarFade) {
-    let mode = '';
-    try { mode = localStorage.getItem('wpDiag') || ''; } catch (_) {}
-    // Siempre se limpia primero (por si cambió el modo entre aperturas)
-    gradient.style.bottom = ''; gradient.style.background = '';
-    heroInner.style.removeProperty('height'); overlayFast.style.removeProperty('height');
-    topbarFade.style.backdropFilter = ''; topbarFade.style.webkitBackdropFilter = ''; topbarFade.style.transition = '';
-    if (mode.includes('oldgrad')) {
-      gradient.style.bottom = '0px';
-      gradient.style.background = 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,1) 100%)';
-    }
-    if (mode.includes('oldheight')) {
-      heroInner.style.height = 'auto'; overlayFast.style.height = 'auto';
-    }
-    if (mode.includes('oldfade')) {
-      topbarFade.style.backdropFilter = 'blur(0.5px)';
-      topbarFade.style.webkitBackdropFilter = 'blur(0.5px)';
-      topbarFade.style.transition = 'opacity 0.05s linear';
-    }
-    const heroEl = this._el.querySelector('#wp-pm2-hero');
-    const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
-    heroBg.style.filter = mode.includes('nosat') ? 'none' : '';
-    [heroEl, heroInner, overlayFast, gradient].forEach(el => {
-      el.style.willChange = mode.includes('nowill') ? 'auto' : '';
-    });
-    document.body.classList.toggle('wp-diag-noblur', mode.includes('noblur'));
-    document.body.classList.toggle('wp-diag-nomapblur', mode.includes('nomapblur'));
-    this._diagScrollMode = mode || 'actual';
-    console.log('[DIAG-SCROLL] modo hero:', this._diagScrollMode);
-  }
-
-  // Envuelve onScroll: al terminar cada gesto de scroll (150ms sin eventos)
-  // registra cuántos eventos llegaron, cuánto tardó el handler y el mayor
-  // hueco entre eventos (si es >34ms el hero se movió "a saltos").
-  _diagWrapScroll(fn) {
-    let n = 0, total = 0, max = 0, last = 0, gapMax = 0, idle = null, t0 = 0;
-    return () => {
-      const now = performance.now();
-      if (!n) t0 = now;
-      if (last) gapMax = Math.max(gapMax, now - last);
-      last = now;
-      fn();
-      const dt = performance.now() - now;
-      n++; total += dt; max = Math.max(max, dt);
-      clearTimeout(idle);
-      idle = setTimeout(() => {
-        console.log('[DIAG-SCROLL] gesto', {
-          modo: this._diagScrollMode,
-          duracionMs: Math.round(last - t0),
-          eventos: n,
-          eventosPorSeg: Math.round(n / Math.max(0.001, (last - t0) / 1000)),
-          handlerPromMs: +(total / n).toFixed(2),
-          handlerMaxMs: +max.toFixed(2),
-          mayorHuecoMs: Math.round(gapMax),
-        });
-        n = 0; total = 0; max = 0; last = 0; gapMax = 0;
-      }, 150);
-    };
-  }
-
   // ── LUGAR: compartir y menú "⋯" ───────────────────────────────────
   _placeInfo() {
     const p = this._place || {};
@@ -4150,7 +4074,7 @@ export class PlaceModal2 {
     const info = this._placeInfo();
     const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
 
-    const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
+    const { body, close } = this._openSheet('¿Es tu negocio?', info.name, { instant: true });
     // Scroll interno SOLO si el formulario no cabe (p.ej. con el teclado
     // abierto) y nunca durante la animación de subida: un área con scroll
     // dentro de una hoja que se anima hace que el WebView de Android la
