@@ -5,6 +5,7 @@ import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
 import { ActivityService }             from '/src/services/SupabaseService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
+import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -1272,6 +1273,54 @@ export class PlaceModal2 {
       .wp-pm2-ms-opt:disabled { color:#9ca3af; cursor:default; }
       .wp-pm2-ms-opt:disabled:active { background-color:transparent; }
 
+      /* Pill "Dueño" (dueño verificado del lugar) */
+      .wp-pm2-rv-owner-badge {
+        display:inline-block; margin-left:6px; vertical-align:1px;
+        padding:1px 7px; border-radius:999px;
+        background:linear-gradient(180deg,#3a3a3c 0%,#111111 100%);
+        color:#fff; font-size:10px; font-weight:700; letter-spacing:0.01em;
+      }
+
+      /* Formulario "¿Es tu negocio?" */
+      .wp-pm2-cl { padding:0 20px 6px; }
+      .wp-pm2-cl-intro { margin:0 0 12px; font-size:13px; line-height:1.45; color:#4b5563; }
+      .wp-pm2-cl-intro b { color:#111827; }
+      .wp-pm2-cl-field { display:block; margin-bottom:10px; }
+      .wp-pm2-cl-field > span { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+      .wp-pm2-cl-field em { font-style:normal; font-weight:500; color:#9ca3af; }
+      .wp-pm2-cl-input {
+        width:100%; box-sizing:border-box; border-radius:12px;
+        border:1px solid rgba(0,0,0,0.10); background:#f9f9f9;
+        padding:10px 12px; font-size:14px; color:#0a0a0a;
+        font-family:var(--wp-font); outline:none; resize:none;
+      }
+      .wp-pm2-cl-input:focus { border-color:#93c5fd; background:#fff; }
+      .wp-pm2-cl-roles { display:flex; gap:8px; }
+      .wp-pm2-cl-role {
+        flex:1; height:36px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+        background:#f3f4f6; color:#4b5563; font-size:13px; font-weight:700;
+        font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm2-cl-role:active { transform:scale(0.92); }
+      .wp-pm2-cl-role.wp-pm2-on {
+        background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+        color:#fff; border-color:transparent;
+      }
+      .wp-pm2-cl-note { margin:4px 0 12px; font-size:11.5px; line-height:1.45; color:#8e8e93; }
+      .wp-pm2-cl-submit {
+        width:100%; height:46px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff; font-size:15px; font-weight:700;
+        font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:opacity 0.15s;
+      }
+      .wp-pm2-cl-submit:disabled { opacity:0.4; }
+      /* Hojas altas (formulario): scroll interno en vez de salirse de la pantalla */
+      #wp-pm2-menu-sheet .wp-pm2-ms-menu {
+        max-height:calc(100% - 24px - env(safe-area-inset-top,0px));
+        overflow-y:auto; overscroll-behavior:contain;
+      }
+
       /* Hoja de opciones / reportar / confirmar */
       #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
         position:fixed; inset:0; z-index:1500100;
@@ -2491,6 +2540,7 @@ export class PlaceModal2 {
     this._modPromise = this._loadModeration(place); // reportes/bloqueos
     this._loadCommunityReviews(place); // async, comunidad (espera a _modPromise)
     this._loadReviewSocial(place);     // async, reacciones + respuestas
+    this._loadMyClaim(place);          // async, "¿Es tu negocio?"
   }
 
   // ── Calificación combinada (Google + comunidad) ──────────────────
@@ -2631,6 +2681,7 @@ export class PlaceModal2 {
         this._openItemMenu('review', ctx.key);
       };
       this._applyUnderReview(ctx.key, row.querySelector('.wp-pm2-review-name'), row.querySelector('.wp-pm2-review-text'));
+      this._applyOwnerBadge(row.querySelector('.wp-pm2-review-name'), ctx.ownerId);
       this._wireReviewGestures(row, ctx.key);
       this._renderReviewSocial(ctx.key);
     }
@@ -3079,6 +3130,7 @@ export class PlaceModal2 {
       this._openItemMenu('reply', parentKey, r);
     };
     this._applyUnderReview(rKey, item.querySelector('.wp-pm2-rv-reply-name'), item.querySelector('.wp-pm2-rv-reply-text'));
+    this._applyOwnerBadge(item.querySelector('.wp-pm2-rv-reply-name'), r.user_id);
 
     this._addSwipeIcon(item);
     this._wireLongPress(item, () => this._openReactionBar(rKey, item, parentKey));
@@ -3587,6 +3639,18 @@ export class PlaceModal2 {
     return true;
   }
 
+  // Pill "Dueño" si quien escribió es el dueño verificado del lugar
+  _applyOwnerBadge(nameEl, authorId) {
+    const ownerId = this._place?.owner_id;
+    if (!nameEl || !ownerId || !authorId || ownerId !== authorId) return;
+    const b = document.createElement('span');
+    b.className = 'wp-pm2-rv-owner-badge';
+    b.textContent = '✓ Dueño';
+    // Antes del "↳ Fulano" (si es respuesta a alguien) para que quede pegado al nombre
+    const to = nameEl.querySelector('.wp-pm2-rv-reply-to');
+    if (to) nameEl.insertBefore(b, to); else nameEl.appendChild(b);
+  }
+
   _isBlockedUser(userId) {
     return !!(userId && this._mod && this._mod.blocked.has(userId));
   }
@@ -3870,6 +3934,7 @@ export class PlaceModal2 {
       copy:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
       link:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
       alert:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+      store:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>',
     };
     const items = [{ label: 'Compartir', icon: I.share, action: () => this._sharePlace() }];
     if (info.lat && info.lng) {
@@ -3883,8 +3948,123 @@ export class PlaceModal2 {
     if (info.url) items.push({ label: 'Copiar enlace', icon: I.link, action: () => this._copyText(info.url) });
     items.push({ label: 'Reportar un problema', icon: I.alert, action: () => this._openPlaceReportSheet() });
 
+    // "¿Es tu negocio?" — según el estado
+    const uid = this.getCurrentUser?.()?.id || null;
+    const ownerId = this._place.owner_id || null;
+    if (ownerId && uid && ownerId === uid) {
+      items.push({ label: 'Administrar negocio · próximamente', icon: I.store, disabled: true });
+    } else if (!ownerId) {
+      if (this._myClaim?.status === 'pending') {
+        items.push({ label: 'Solicitud enviada · en revisión', icon: I.store, disabled: true });
+      } else {
+        items.push({ label: '¿Es tu negocio?', icon: I.store, action: () => this._openClaimSheet() });
+      }
+    }
+
     const { body, close } = this._openSheet(info.name, info.category);
     this._fillSheetOptions(body, items, close);
+  }
+
+  // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
+  async _loadMyClaim(place) {
+    this._myClaim = null;
+    const uid = this.getCurrentUser?.()?.id || null;
+    if (!uid || place.owner_id) return;
+    try {
+      const c = await PlaceClaimService.getMyClaim(place.place_id || place.id, uid);
+      if (this._place === place) this._myClaim = c;
+    } catch (e) {
+      console.warn('[PM2] Solicitudes de dueño no disponibles:', e.message || e);
+    }
+  }
+
+  _openClaimSheet() {
+    const user = this._requireUser('Inicia sesión para continuar');
+    if (!user || !this._place) return;
+    const place = this._place;
+    const info = this._placeInfo();
+    const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
+
+    const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
+    body.innerHTML = `
+      <div class="wp-pm2-cl">
+        <p class="wp-pm2-cl-intro">Verifícalo para responder reseñas como dueño, mantener la información al día y mostrar la insignia <b>✓ Verificado</b>.</p>
+        <label class="wp-pm2-cl-field">
+          <span>Tu nombre completo</span>
+          <input class="wp-pm2-cl-input" data-f="name" type="text" maxlength="120" autocomplete="name">
+        </label>
+        <div class="wp-pm2-cl-field">
+          <span>Tu rol</span>
+          <div class="wp-pm2-cl-roles">
+            <button type="button" class="wp-pm2-cl-role" data-role="owner">Dueño</button>
+            <button type="button" class="wp-pm2-cl-role" data-role="manager">Gerente</button>
+            <button type="button" class="wp-pm2-cl-role" data-role="staff">Encargado</button>
+          </div>
+        </div>
+        <label class="wp-pm2-cl-field">
+          <span>Teléfono de contacto</span>
+          <input class="wp-pm2-cl-input" data-f="phone" type="tel" maxlength="30" autocomplete="tel" inputmode="tel">
+        </label>
+        <label class="wp-pm2-cl-field">
+          <span>Correo</span>
+          <input class="wp-pm2-cl-input" data-f="email" type="email" maxlength="160" autocomplete="email" inputmode="email">
+        </label>
+        <label class="wp-pm2-cl-field">
+          <span>Mensaje <em>(opcional)</em></span>
+          <textarea class="wp-pm2-cl-input" data-f="msg" rows="2" maxlength="500" placeholder="Ej. Soy el dueño desde 2019"></textarea>
+        </label>
+        <p class="wp-pm2-cl-note">Para confirmar, te contactaremos o llamaremos al teléfono público del negocio. Tus datos solo los ve el equipo de WhatsPlan.</p>
+        <button class="wp-pm2-cl-submit" disabled>Enviar solicitud</button>
+      </div>`;
+
+    const q = (sel) => body.querySelector(sel);
+    const nameI = q('[data-f="name"]'), phoneI = q('[data-f="phone"]'), emailI = q('[data-f="email"]'), msgI = q('[data-f="msg"]');
+    const submit = q('.wp-pm2-cl-submit');
+    nameI.value = displayName;
+    emailI.value = user.email || '';
+    let role = null;
+
+    const valid = () =>
+      nameI.value.trim().length >= 2 &&
+      !!role &&
+      phoneI.value.replace(/\D/g, '').length >= 8 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailI.value.trim());
+    const refresh = () => { submit.disabled = !valid(); };
+    [nameI, phoneI, emailI].forEach(i => i.addEventListener('input', refresh));
+    body.querySelectorAll('.wp-pm2-cl-role').forEach(b => {
+      b.onclick = () => {
+        role = b.dataset.role;
+        body.querySelectorAll('.wp-pm2-cl-role').forEach(x => x.classList.toggle('wp-pm2-on', x === b));
+        refresh();
+      };
+    });
+    refresh();
+
+    submit.onclick = async () => {
+      if (!valid()) return;
+      submit.disabled = true;
+      submit.textContent = 'Enviando...';
+      try {
+        const row = await PlaceClaimService.submit({
+          placeId:   place.place_id || place.id,
+          placeName: info.name,
+          userId:    user.id,
+          fullName:  nameI.value.trim(),
+          role,
+          phone:     phoneI.value.trim(),
+          email:     emailI.value.trim(),
+          message:   msgI.value.trim(),
+        });
+        if (this._place === place) this._myClaim = row || { status: 'pending' };
+        close();
+        this._showToast('Recibimos tu solicitud. Te contactaremos pronto');
+      } catch (e) {
+        console.error('[PM2] Solicitud de dueño:', e);
+        this._showToast('No se pudo enviar la solicitud');
+        submit.disabled = false;
+        submit.textContent = 'Enviar solicitud';
+      }
+    };
   }
 
   _openPlaceReportSheet() {
