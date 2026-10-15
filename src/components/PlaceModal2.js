@@ -2555,6 +2555,7 @@ export class PlaceModal2 {
     this._buildReviewsHeader(place);
     this._renderGooglePanel(place);
     this._mod = { hidden: new Set(), myReports: new Set(), blocked: new Set() };
+    this._reviewsGate = this._makeReviewsGate(place); // dibujar reseñas al acercarse
     this._modPromise = this._loadModeration(place); // reportes/bloqueos
     this._loadCommunityReviews(place); // async, comunidad (espera a _modPromise)
     this._loadReviewSocial(place);     // async, reacciones + respuestas
@@ -3006,6 +3007,7 @@ export class PlaceModal2 {
       return;
     }
     try { await this._modPromise; } catch (_) {}
+    try { await this._reviewsGate; } catch (_) {} // dibujar junto con las tarjetas
     if (this._place !== place) return; // se abrió otra ficha mientras cargaba
     const social = { util: new Map(), emoji: new Map(), replies: new Map() };
     (data.reactions || []).forEach(r => {
@@ -3615,7 +3617,45 @@ export class PlaceModal2 {
     try { await this._modPromise; } catch (_) {}
     if (this._place !== place) return; // llegó tarde: ya hay otra ficha abierta
     this._communityRaw = reviews;
+    // Calificación y total del hero: enseguida (es solo texto, barato)
+    this._communityReviews = reviews.filter(r => this._isVisible('wp:' + r.id, r.user_id));
+    this._renderReviewsSummary(place);
+    this._renderRatingHero(place);
+    // Las TARJETAS se construyen cuando el scroll se acerca a la sección
+    // (o cuando el teléfono está libre). Antes se construían al abrir la
+    // ficha, justo cuando el usuario hace scroll del hero, y ese trabajo
+    // en el hilo principal hacía que el parallax avanzara a saltos (el
+    // primer gesto tras abrir medía 43 actualizaciones/s vs ~110 después).
+    try { await this._reviewsGate; } catch (_) {}
+    if (this._place !== place) return;
     this._renderCommunityPanel(place);
+  }
+
+  // Promesa que se resuelve cuando la sección de reseñas está a <600px de
+  // entrar en pantalla, o cuando el navegador queda libre (máx. 3s).
+  _makeReviewsGate(place) {
+    if (this._reviewsGateObs) { this._reviewsGateObs.disconnect(); this._reviewsGateObs = null; }
+    return new Promise(resolve => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (this._reviewsGateObs) { this._reviewsGateObs.disconnect(); this._reviewsGateObs = null; }
+        resolve();
+      };
+      const section = this._el.querySelector('#wp-pm2-reviews-section');
+      const body = this._el.querySelector('#wp-pm2-body');
+      if (!section || !body || typeof IntersectionObserver === 'undefined') { finish(); return; }
+      this._reviewsGateObs = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting)) finish();
+      }, { root: body, rootMargin: '0px 0px 600px 0px' });
+      this._reviewsGateObs.observe(section);
+      // Respaldo: cuando el teléfono esté libre (o a los 3s como máximo)
+      const idle = window.requestIdleCallback
+        ? (cb) => window.requestIdleCallback(cb, { timeout: 3000 })
+        : (cb) => setTimeout(cb, 1500);
+      setTimeout(() => idle(() => { if (this._place === place) finish(); }), 1200);
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════
