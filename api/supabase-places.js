@@ -67,6 +67,7 @@ try {
         name:                      r.place_name,
         displayName:               r.place_name,
         featured:                  r.featured || null, // string: 'featured', 'verified', 'premium'
+        owner_id:                  r.owner_id || null, // dueño verificado ("¿Es tu negocio?")
         category:                  r.category,
         description:               r.description || '',
         subcategory_tags:          r.subcategory_tags || '',
