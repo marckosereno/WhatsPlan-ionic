@@ -1327,6 +1327,12 @@ export class PlaceModal2 {
         overflow-y:auto; overscroll-behavior:contain;
       }
 
+      /* [DIAG] temporales — ver _diagHeroToggles */
+      body.wp-diag-noblur #wp-pm2-back,
+      body.wp-diag-noblur .wp-pm2-tb-btn,
+      body.wp-diag-noblur .wp-pm2-activity-date { backdrop-filter:none; -webkit-backdrop-filter:none; }
+      body.wp-diag-nomapblur.wp-pm-open .map-container { filter:none; transition:none; }
+
       /* Hoja de opciones / reportar / confirmar */
       #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
         position:fixed; inset:0; z-index:1500100;
@@ -1763,9 +1769,7 @@ export class PlaceModal2 {
     const topbarTitle = this._el.querySelector('#wp-pm2-topbar-title');
     const topbarActions = this._el.querySelector('#wp-pm2-topbar-actions');
 
-    // Reset — cancela las animaciones ligadas al scroll de la apertura
-    // anterior antes de limpiar estilos (si no, seguirían aplicándose)
-    if (this._heroAnims) { this._heroAnims.forEach(a => { try { a.cancel(); } catch (_) {} }); this._heroAnims = null; }
+    // Reset
     heroEl.style.height = '';
     heroEl.style.minHeight = '';   // usar el min-height del CSS SOLO para medir fullH
     heroInner.style.height = '';
@@ -1837,85 +1841,6 @@ export class PlaceModal2 {
       heroOverlayFast.style.height = fullH + 'px';
       spacer.style.height = (travel + topbarH * 1.5) + 'px';
       heroEl.style.minHeight = '0px';
-
-      // ── Parallax en el COMPOSITOR (Chrome 115+, Safari 26) ────────────
-      // Con ScrollTimeline el hero se mueve a la par del scroll nativo,
-      // sin pasar por el hilo principal. Antes lo movía onScroll (JS) y en
-      // el teléfono llegaba a 64 actualizaciones/s con pantalla de 120 Hz
-      // → el título y la sombra avanzaban "a saltos" respecto al
-      // contenido. Mismo resultado visual que el onScroll de abajo:
-      //   - el borde inferior del hero sube 1:1 (antes: height = fullH-sy;
-      //     ahora: translateY del hero entero, mismo borde)
-      //   - la foto sube al 22% (HERO_PARALLAX) y se desvanece
-      //   - degradado + título suben 1:1 hasta `travel` y ahí se quedan
-      // El onScroll queda de respaldo si el navegador no lo soporta, o
-      // forzándolo con localStorage.wpDiag = 'jshero' (comparar).
-      let forceJs = false;
-      try { forceJs = (localStorage.getItem('wpDiag') || '').includes('jshero'); } catch (_) {}
-      const canSDA = !forceJs && typeof ScrollTimeline !== 'undefined' && !!heroEl.animate;
-      if (canSDA) {
-        try {
-          const P = 0.22;
-          const f = travel / fullH; // punto donde termina el recorrido del título
-          const tl = new ScrollTimeline({ source: body, axis: 'block' });
-          const opt = (endPx) => ({ timeline: tl, rangeStart: '0px', rangeEnd: endPx + 'px', fill: 'both', easing: 'linear' });
-          heroEl.style.height = fullH + 'px'; // alto fijo: ya no se encoge, se traslada
-          const anims = [
-            heroEl.animate([{ transform: 'translateY(0px)' }, { transform: `translateY(${-fullH}px)` }], opt(fullH)),
-            // foto: neto -22% del recorrido (relativo al hero que sube 1:1)
-            heroInner.animate([
-              { offset: 0, transform: 'translateY(0px)' },
-              { offset: f, transform: `translateY(${travel * (1 - P)}px)` },
-              { offset: 1, transform: `translateY(${fullH - travel * P}px)` },
-            ], opt(fullH)),
-            heroInner.animate([{ opacity: 1 }, { opacity: 0 }], opt(travel)),
-            // degradado + título: neto 1:1 hasta travel, después quietos
-            heroOverlayFast.animate([
-              { offset: 0, transform: 'translateY(0px)' },
-              { offset: f, transform: 'translateY(0px)' },
-              { offset: 1, transform: `translateY(${fullH - travel}px)` },
-            ], opt(fullH)),
-            nameEl.animate([{ opacity: 1 }, { opacity: 0 }], opt(travel / 2.2)),
-            topbarFade.animate([{ opacity: 0.4 }, { opacity: 1 }], opt(travel * (0.6 / 2.2))),
-          ];
-          if (topbarActions) {
-            anims.push(topbarActions.animate([
-              { offset: 0, opacity: 0 }, { offset: 0.5, opacity: 0 },
-              { offset: 0.9, opacity: 1 }, { offset: 1, opacity: 1 },
-            ], opt(travel)));
-          }
-          if (this._activityStack) {
-            anims.push(this._activityStack.animate([
-              { transform: 'translateX(0px) scale(1)' },
-              { transform: 'translateX(46px) scale(0.4)' },
-            ], opt(travel)));
-            anims.push(this._activityStack.animate([
-              { offset: 0, opacity: 1 }, { offset: 0.8, opacity: 0.6 }, { offset: 1, opacity: 0.6 },
-            ], opt(travel)));
-          }
-          this._heroAnims = anims;
-
-          // JS solo para lo que es discreto (clases / pointer-events) — se
-          // ejecuta poco y no mueve nada en pantalla
-          const onScrollLite = () => {
-            const prog = Math.min(1, Math.max(0, body.scrollTop / travel));
-            if (topbarActions) topbarActions.style.pointerEvents = prog > 0.7 ? 'auto' : 'none';
-            topbar.classList.toggle('scrolled', prog >= 1);
-          };
-          if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
-          const lite = this._diagWrapScroll(onScrollLite); // [DIAG-SCROLL] temporal
-          this._diagScrollMode = (this._diagScrollMode || 'actual') + ' · hero=compositor';
-          body.addEventListener('scroll', lite, { passive: true });
-          this._scrollHandler = lite;
-          onScrollLite();
-          return;
-        } catch (e) {
-          console.warn('[PM2] Parallax por compositor no disponible, uso JS:', e);
-          if (this._heroAnims) { this._heroAnims.forEach(a => { try { a.cancel(); } catch (_) {} }); this._heroAnims = null; }
-          heroEl.style.height = '';
-        }
-      }
-      this._diagScrollMode = (this._diagScrollMode || 'actual') + ' · hero=JS';
 
       const onScroll = () => {
         const sy    = body.scrollTop;
@@ -4004,6 +3929,13 @@ export class PlaceModal2 {
   //   oldheight → foto/overlay del hero sin height:100% inicial (original)
   //   oldfade   → sombra blanca de arriba con el blur 0.5px y la
   //               transición de 0.05s del original
+  // Para el glitch al abrir hojas con el hero a la vista:
+  //   nosat     → la foto del hero sin filter:saturate(1.4)
+  //   nowill    → sin will-change en las capas del hero
+  //   noblur    → sin backdrop-filter en los botones del topbar y en las
+  //               mini-tarjetas de actividad
+  //   nomapblur → el mapa de atrás sin el blur(6px) que le pone app.css
+  //               mientras la ficha está abierta (no se ve, pero se procesa)
   _diagHeroToggles(heroInner, overlayFast, gradient, topbarFade) {
     let mode = '';
     try { mode = localStorage.getItem('wpDiag') || ''; } catch (_) {}
@@ -4023,6 +3955,14 @@ export class PlaceModal2 {
       topbarFade.style.webkitBackdropFilter = 'blur(0.5px)';
       topbarFade.style.transition = 'opacity 0.05s linear';
     }
+    const heroEl = this._el.querySelector('#wp-pm2-hero');
+    const heroBg = this._el.querySelector('#wp-pm2-hero-bg');
+    heroBg.style.filter = mode.includes('nosat') ? 'none' : '';
+    [heroEl, heroInner, overlayFast, gradient].forEach(el => {
+      el.style.willChange = mode.includes('nowill') ? 'auto' : '';
+    });
+    document.body.classList.toggle('wp-diag-noblur', mode.includes('noblur'));
+    document.body.classList.toggle('wp-diag-nomapblur', mode.includes('nomapblur'));
     this._diagScrollMode = mode || 'actual';
     console.log('[DIAG-SCROLL] modo hero:', this._diagScrollMode);
   }
