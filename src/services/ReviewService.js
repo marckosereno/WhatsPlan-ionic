@@ -189,6 +189,20 @@ export const ReviewService = {
     if (error && error.code !== '23505') throw error;
   },
 
+  // Retira el reporte propio si sigue pendiente. Devuelve false si ya no
+  // había nada que borrar (el moderador ya lo revisó).
+  async withdrawReport(reviewKey, userId) {
+    const { data, error } = await getSupabase()
+      .from('review_reports')
+      .delete()
+      .eq('review_key', reviewKey)
+      .eq('reporter_id', userId)
+      .eq('status', 'pending')
+      .select('id');
+    if (error) throw error;
+    return (data || []).length > 0;
+  },
+
   // Problema con el LUGAR (no con una reseña): cerrado, datos mal, etc.
   async reportPlace(placeId, userId, reason) {
     const { error } = await getSupabase()
