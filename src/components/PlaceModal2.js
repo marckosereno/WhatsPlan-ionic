@@ -237,6 +237,16 @@ export class PlaceModal2 {
         <div id="wp-pm2-lb-track"></div>
       </div>
     `;
+    // El hero vive DENTRO del área que hace scroll (#wp-pm2-body): así su
+    // borde inferior y el título se desplazan con el scroll NATIVO del
+    // sistema, pegados al contenido, sin depender de JS (antes JS los movía
+    // y en el teléfono se escalonaban o, con suavizado, se separaban del
+    // contenido dejando un hueco). JS solo mueve la foto (parallax lento)
+    // y las opacidades. Sigue siendo position:absolute top:0, ahora
+    // relativo al contenido del body, encima del spacer.
+    const heroNode = el.querySelector('#wp-pm2-hero');
+    const bodyNode = el.querySelector('#wp-pm2-body');
+    if (heroNode && bodyNode) bodyNode.prepend(heroNode);
     document.body.appendChild(el);
     this._el = el;
     this._lightboxEl = el.querySelector('#wp-pm2-lightbox'); // vive adentro de nuevo
@@ -550,21 +560,17 @@ export class PlaceModal2 {
         transition:border-radius 0.15s ease-out;
       }
       #wp-pm2.wp-pm2-flip-exit #wp-pm2-hero { border-radius:22px; }
-      /* PARALLAX SUAVIZADO — misma arquitectura que el activity stack
-         ("Crear actividad en este lugar"): JS pone la posición SOLO con
-         transform/opacity y una transición corta interpola entre
-         posiciones, así los cuadros que el hilo principal pierde no se
-         ven como saltos. 0.16s (el stack usa 0.35s) para que el título
-         siga de cerca al contenido. La clase se pone recién después de
-         ubicar todo al abrir (si no, al reabrir animaría desde la
-         posición de la ficha anterior). */
-      #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero {
-        will-change:transform;
-        transition:border-radius 0.15s ease-out, transform 0.16s cubic-bezier(0.22,1,0.36,1);
-      }
-      #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-inner,
-      #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-overlay-fast {
-        transition:transform 0.16s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease;
+      /* PARALLAX — el hero está DENTRO de #wp-pm2-body y se desplaza con
+         el scroll nativo (borde inferior y título pegados al contenido).
+         Como en el activity stack ("Crear actividad en este lugar"), lo
+         que mueve JS (la foto y las opacidades) usa solo transform/opacity
+         con una transición corta que tapa los cuadros perdidos. La clase
+         se pone después de ubicar todo al abrir (si no, al reabrir
+         animaría desde la posición de la ficha anterior). */
+      /* Solo la FOTO se suaviza (su parallax lo calcula JS): el borde del
+         hero y el título ya se mueven con el scroll nativo, sin retraso. */
+      #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-inner {
+        transition:transform 0.14s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease;
       }
       #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-bottom,
       #wp-pm2.wp-pm2-hero-smooth #wp-pm2-topbar-fade,
@@ -1861,11 +1867,7 @@ export class PlaceModal2 {
       heroOverlayFast.style.height = fullH + 'px';
       spacer.style.height = (travel + topbarH * 1.5) + 'px';
       heroEl.style.minHeight = '0px';
-      // Parallax suavizado (por defecto). Para comparar con el anterior:
-      // localStorage.wpHeroOld = '1'
-      let smoothHero = true;
-      try { smoothHero = localStorage.getItem('wpHeroOld') !== '1'; } catch (_) {}
-      if (smoothHero) heroEl.style.height = fullH + 'px'; // alto fijo: se traslada, no se encoge
+      heroEl.style.height = fullH + 'px'; // alto fijo: se desplaza con el scroll, no se encoge
 
       const onScroll = () => {
         const sy    = body.scrollTop;
@@ -1882,27 +1884,18 @@ export class PlaceModal2 {
         const HERO_PARALLAX = 0.22;
         const innerShift = shift * HERO_PARALLAX;
 
-        if (smoothHero) {
-          // Solo transform (sin cambiar el alto → sin recalcular diseño).
-          // El hero entero sube `clip` px: su borde inferior queda en
-          // fullH - clip, igual que antes con height = newH. Adentro, foto
-          // y overlay compensan para quedar en la MISMA posición neta que
-          // la versión anterior (foto -22%, overlay -shift).
-          const clip = Math.min(sy, fullH);
-          heroEl.style.transform = `translate3d(0,${-clip}px,0)`;
-          heroInner.style.transform = `translate3d(0,${clip - innerShift}px,0)`;
-          heroOverlayFast.style.transform = `translate3d(0,${clip - shift}px,0)`;
-        } else {
-          heroEl.style.height = newH + 'px';
-          heroInner.style.transform = `translateY(-${innerShift}px)`; // SOLO la foto, lenta
-        }
+        // El hero ya sube `sy` con el scroll nativo (su borde inferior queda
+        // en fullH - sy, igual que antes con height = newH). Adentro, foto
+        // y overlay compensan para quedar en la MISMA posición neta que la
+        // versión anterior: foto -22% del recorrido, overlay -shift.
+        heroInner.style.transform = `translate3d(0,${sy - innerShift}px,0)`;
+        heroOverlayFast.style.transform = sy > travel ? `translate3d(0,${sy - travel}px,0)` : '';
         heroInner.style.opacity   = Math.max(0, 1 - prog);          // la foto se desvanece
 
         // Overlay (sombra/gradiente) + título/rating: viajan a la MISMA
         // velocidad que el contenido real (shift, 1:1 con el scroll) — no
         // con el parallax lento de la foto. Así llegan junto con el resto
         // del contenido hasta arriba y se disuelven en la sombra del topbar
-        if (!smoothHero) heroOverlayFast.style.transform = `translateY(-${shift}px)`;
         // El overlay (gradiente blanco) NO se desvanece por opacity — así
         // siempre hace de "puente" blanco entre la foto y el contenido de
         // abajo. Se pierde de vista solo por posición (viaja rápido, junto
@@ -1955,7 +1948,7 @@ export class PlaceModal2 {
       // Ubicar todo en su posición inicial y RECIÉN después activar la
       // transición de suavizado
       onScroll();
-      if (smoothHero) requestAnimationFrame(() => this._el.classList.add('wp-pm2-hero-smooth'));
+      requestAnimationFrame(() => this._el.classList.add('wp-pm2-hero-smooth'));
     }));
 
     return heroTargetRect;
