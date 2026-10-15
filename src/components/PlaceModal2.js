@@ -1261,7 +1261,8 @@ export class PlaceModal2 {
       }
       .wp-pm2-rv-blur { filter:blur(5px); opacity:0.7; pointer-events:none; }
       .wp-pm2-rv-reveal {
-        display:inline-block; margin-top:4px; padding:3px 10px; border-radius:999px;
+        display:inline-flex; align-items:center; gap:5px;
+        margin-top:4px; padding:3px 10px; border-radius:999px;
         border:none; background:#f3f4f6; color:#4b5563;
         font-size:11px; font-weight:700; font-family:var(--wp-font);
         cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -1412,14 +1413,13 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-fuiste').addEventListener('click', () => {
       console.log('[PM2] ¿Fuiste?:', this._place);
     });
-    el.querySelector('#wp-pm2-share').addEventListener('click', () => {
-      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
-    });
-    el.querySelector('#wp-pm2-topbar-share').addEventListener('click', () => {
-      if (navigator.share && this._place) navigator.share({ title: this._place.name, url: window.location.href });
-    });
-    el.querySelector('#wp-pm2-topbar-more').addEventListener('click', () => {
-      console.log('[PM2] Más opciones (topbar)');
+    el.querySelector('#wp-pm2-share').addEventListener('click', () => this._sharePlace());
+    el.querySelector('#wp-pm2-topbar-share').addEventListener('click', () => this._sharePlace());
+    // Los dos "⋯" (topbar y el de las pills bajo la descripción) abren
+    // el mismo menú del lugar
+    el.querySelector('#wp-pm2-topbar-more').addEventListener('click', () => this._openPlaceMenu());
+    el.querySelector('#wp-pm2-more-btn').addEventListener('click', (e) => {
+      this._pulseTap(e.currentTarget, () => this._openPlaceMenu());
     });
     el.querySelector('#wp-pm2-map-preview').addEventListener('click', () => {
       const p = this._place;
@@ -3592,27 +3592,34 @@ export class PlaceModal2 {
   }
 
   // Si ESTE usuario reportó el contenido (y sigue pendiente): pill
-  // "En revisión" junto al nombre + texto difuminado con "Toca para ver".
-  // El resto de los usuarios lo ve normal hasta que el moderador decida.
+  // "En revisión" junto al nombre + texto difuminado. El botón alterna
+  // entre "Toca para ver" y "Ocultar" (se recuerda mientras la app esté
+  // abierta). El resto de los usuarios lo ve normal hasta que el
+  // moderador decida.
   _applyUnderReview(key, nameEl, textEl) {
     if (!this._mod || !this._mod.myReports.has(key) || !nameEl || !textEl) return;
     const badge = document.createElement('span');
     badge.className = 'wp-pm2-rv-review-badge';
     badge.textContent = 'En revisión';
     nameEl.appendChild(badge);
-    if (this._revealed?.has(key)) return;
-    textEl.classList.add('wp-pm2-rv-blur');
-    const reveal = document.createElement('button');
-    reveal.className = 'wp-pm2-rv-reveal';
-    reveal.textContent = 'Lo reportaste · Toca para ver';
-    reveal.onclick = (e) => {
-      e.stopPropagation();
-      if (!this._revealed) this._revealed = new Set();
-      this._revealed.add(key);
-      textEl.classList.remove('wp-pm2-rv-blur');
-      reveal.remove();
+    if (!this._revealed) this._revealed = new Set();
+    const toggle = document.createElement('button');
+    toggle.className = 'wp-pm2-rv-reveal';
+    const paint = () => {
+      const shown = this._revealed.has(key);
+      textEl.classList.toggle('wp-pm2-rv-blur', !shown);
+      toggle.innerHTML = shown
+        ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="m1 1 22 22"/></svg> Ocultar'
+        : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Lo reportaste · Toca para ver';
     };
-    textEl.insertAdjacentElement('afterend', reveal);
+    toggle.onclick = (e) => {
+      e.stopPropagation();
+      if (this._revealed.has(key)) this._revealed.delete(key);
+      else this._revealed.add(key);
+      paint();
+    };
+    paint();
+    textEl.insertAdjacentElement('afterend', toggle);
   }
 
   // Pinta el panel Comunidad a partir de this._communityRaw, aplicando
@@ -3799,6 +3806,105 @@ export class PlaceModal2 {
 
     const { body, close } = this._openSheet(isReply ? 'Respuesta' : 'Reseña', name);
     this._fillSheetOptions(body, items, close);
+  }
+
+  // ── LUGAR: compartir y menú "⋯" ───────────────────────────────────
+  _placeInfo() {
+    const p = this._place || {};
+    const name = p.name || p.displayName || 'Lugar';
+    const address = p.formattedAddress || p.formatted_address || p.address || '';
+    const lat = p.location?.lat || p.lat;
+    const lng = p.location?.lng || p.lng;
+    // place_id de Google (ChIJ...) → el link abre la ficha exacta en Maps
+    const gid = typeof p.place_id === 'string' && p.place_id.length > 20 ? p.place_id : null;
+    let url = '';
+    if (gid) url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${gid}`;
+    else if (lat && lng) url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    return { name, address, lat, lng, gid, url, category: p.category || p.primaryTypeDisplayName || '' };
+  }
+
+  // Compartir: hoja nativa de Capacitor (si el plugin Share está), si no
+  // la Web Share API, y si tampoco existe (WebView de Android) se copia
+  // al portapapeles. Se comparte un link de Google Maps: abre en
+  // cualquier teléfono aunque no tenga la app.
+  async _sharePlace() {
+    if (!this._place) return;
+    const { name, address, url } = this._placeInfo();
+    const text = address ? `${name}\n${address}` : name;
+    const capShare = window.Capacitor?.Plugins?.Share;
+    try {
+      if (capShare?.share) {
+        await capShare.share({ title: name, text, url: url || undefined, dialogTitle: 'Compartir lugar' });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title: name, text, url: url || undefined });
+        return;
+      }
+    } catch (e) {
+      // El usuario cerró la hoja sin compartir → no es error
+      if (e?.name === 'AbortError' || /cancel/i.test(e?.message || '')) return;
+      console.warn('[PM2] Compartir falló, se copia al portapapeles:', e);
+    }
+    const full = url ? `${text}\n${url}` : text;
+    const done = () => this._showToast('Enlace copiado para compartir');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(full).then(done).catch(() => this._copyFallback(full, done));
+    } else {
+      this._copyFallback(full, done);
+    }
+  }
+
+  _openPlaceMenu() {
+    if (!this._place) return;
+    const info = this._placeInfo();
+    const I = {
+      share:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>',
+      route:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>',
+      copy:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+      link:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+      alert:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+    };
+    const items = [{ label: 'Compartir', icon: I.share, action: () => this._sharePlace() }];
+    if (info.lat && info.lng) {
+      items.push({ label: 'Cómo llegar', icon: I.route, action: () => {
+        const dest = `${info.lat},${info.lng}`;
+        const gid = info.gid ? `&destination_place_id=${info.gid}` : '';
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}${gid}`, '_blank', 'noopener');
+      } });
+    }
+    if (info.address) items.push({ label: 'Copiar dirección', icon: I.copy, action: () => this._copyText(info.address) });
+    if (info.url) items.push({ label: 'Copiar enlace', icon: I.link, action: () => this._copyText(info.url) });
+    items.push({ label: 'Reportar un problema', icon: I.alert, action: () => this._openPlaceReportSheet() });
+
+    const { body, close } = this._openSheet(info.name, info.category);
+    this._fillSheetOptions(body, items, close);
+  }
+
+  _openPlaceReportSheet() {
+    const user = this._requireUser('Inicia sesión para reportar');
+    if (!user || !this._place) return;
+    const place = this._place;
+    const REASONS = [
+      ['closed',               'Cerró permanentemente'],
+      ['wrong_info',           'Horario o datos incorrectos'],
+      ['wrong_location',       'Ubicación incorrecta'],
+      ['inappropriate_photos', 'Fotos inapropiadas'],
+      ['other',                'Otro problema'],
+    ];
+    const { body, close } = this._openSheet('¿Qué problema tiene el lugar?', 'Nos ayuda a mantener la información al día');
+    this._fillSheetOptions(body, REASONS.map(([reason, label]) => ({
+      label,
+      action: async () => {
+        try {
+          await ReviewService.reportPlace(place.place_id || place.id, user.id, reason);
+          this._showToast('Gracias, lo revisaremos');
+        } catch (e) {
+          console.error('[PM2] Reportar lugar:', e);
+          this._showToast('No se pudo enviar el reporte');
+        }
+      },
+    })), close);
   }
 
   async _confirmDeleteReview() {
