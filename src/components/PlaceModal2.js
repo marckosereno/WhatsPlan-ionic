@@ -3777,6 +3777,7 @@ export class PlaceModal2 {
       trash:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
       flag:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>',
       block:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
+      undo:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>',
       google: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
     };
 
@@ -3797,14 +3798,19 @@ export class PlaceModal2 {
       } });
     } else if (authorId) {
       if (this._mod?.myReports.has(reportKey)) {
-        items.push({ label: 'Reportado · en revisión', icon: ICON.flag, disabled: true });
+        // Reporte pendiente → se puede retirar (vuelve a verse normal)
+        items.push({ label: 'Retirar reporte', icon: ICON.undo, action: () => this._withdrawReport(reportKey, isReply ? key : null) });
       } else {
         items.push({ label: 'Reportar', icon: ICON.flag, action: () => this._openReportSheet(reportKey, isReply ? key : null) });
       }
       items.push({ label: `Bloquear a ${name}`, icon: ICON.block, danger: true, action: () => this._confirmBlock(authorId, name) });
     }
 
-    const { body, close } = this._openSheet(isReply ? 'Respuesta' : 'Reseña', name);
+    const underReview = !!this._mod?.myReports.has(reportKey);
+    const { body, close } = this._openSheet(
+      isReply ? 'Respuesta' : 'Reseña',
+      underReview ? `${name} · Tu reporte está en revisión` : name
+    );
     this._fillSheetOptions(body, items, close);
   }
 
@@ -3962,6 +3968,27 @@ export class PlaceModal2 {
         }
       },
     })), close);
+  }
+
+  async _withdrawReport(reportKey, parentKey) {
+    const user = this._requireUser('Inicia sesión');
+    if (!user || !this._place) return;
+    const place = this._place;
+    const unmark = () => {
+      this._mod?.myReports.delete(reportKey);
+      this._revealed?.delete(reportKey);
+      if (this._place !== place) return;
+      if (parentKey) this._renderReviewSocial(parentKey);
+      else this._renderCommunityPanel(place);
+    };
+    try {
+      const removed = await ReviewService.withdrawReport(reportKey, user.id);
+      unmark();
+      this._showToast(removed ? 'Reporte retirado' : 'Ese reporte ya fue revisado');
+    } catch (e) {
+      console.error('[PM2] Retirar reporte:', e);
+      this._showToast('No se pudo retirar el reporte');
+    }
   }
 
   async _confirmBlock(blockedId, name) {
