@@ -1784,6 +1784,7 @@ export class PlaceModal2 {
     if (topbarTitle) topbarTitle.style.opacity = '0';
     if (topbarActions) { topbarActions.style.opacity = '0'; topbarActions.style.pointerEvents = 'none'; }
     body.scrollTop = 0;
+    this._diagHeroToggles(heroInner, heroOverlayFast, heroGradient, topbarFade); // [DIAG-SCROLL] temporal
 
     // ── Modo flip: viene un clon volando desde el slide hasta acá ──────
     // El hero real queda invisible (el clon que vuela lo tapa) hasta que
@@ -1897,7 +1898,10 @@ export class PlaceModal2 {
 
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = onScroll;
-      body.addEventListener('scroll', onScroll, { passive: true });
+      // [DIAG-SCROLL] temporal: mide cuánto tarda onScroll y cada cuánto llega
+      const onScrollDiag = this._diagWrapScroll(onScroll);
+      body.addEventListener('scroll', onScrollDiag, { passive: true });
+      this._scrollHandler = onScrollDiag;
     }));
 
     return heroTargetRect;
@@ -3883,6 +3887,66 @@ export class PlaceModal2 {
       underReview ? `${name} · Tu reporte está en revisión` : name
     );
     this._fillSheetOptions(body, items, close);
+  }
+
+  // ══ [DIAG-SCROLL] TEMPORAL — quitar al confirmar la causa ══════════
+  // En Eruda: localStorage.wpDiag = 'oldgrad' | 'oldheight' | 'oldfade'
+  // (se pueden combinar, p.ej. 'oldgrad,oldfade'). Vacío = versión actual.
+  //   oldgrad   → degradado blanco del hero como el ORIGINAL (bottom:0, sin
+  //               los 8px de blanco sólido)
+  //   oldheight → foto/overlay del hero sin height:100% inicial (original)
+  //   oldfade   → sombra blanca de arriba con el blur 0.5px y la
+  //               transición de 0.05s del original
+  _diagHeroToggles(heroInner, overlayFast, gradient, topbarFade) {
+    let mode = '';
+    try { mode = localStorage.getItem('wpDiag') || ''; } catch (_) {}
+    // Siempre se limpia primero (por si cambió el modo entre aperturas)
+    gradient.style.bottom = ''; gradient.style.background = '';
+    heroInner.style.removeProperty('height'); overlayFast.style.removeProperty('height');
+    topbarFade.style.backdropFilter = ''; topbarFade.style.webkitBackdropFilter = ''; topbarFade.style.transition = '';
+    if (mode.includes('oldgrad')) {
+      gradient.style.bottom = '0px';
+      gradient.style.background = 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,1) 100%)';
+    }
+    if (mode.includes('oldheight')) {
+      heroInner.style.height = 'auto'; overlayFast.style.height = 'auto';
+    }
+    if (mode.includes('oldfade')) {
+      topbarFade.style.backdropFilter = 'blur(0.5px)';
+      topbarFade.style.webkitBackdropFilter = 'blur(0.5px)';
+      topbarFade.style.transition = 'opacity 0.05s linear';
+    }
+    this._diagScrollMode = mode || 'actual';
+    console.log('[DIAG-SCROLL] modo hero:', this._diagScrollMode);
+  }
+
+  // Envuelve onScroll: al terminar cada gesto de scroll (150ms sin eventos)
+  // registra cuántos eventos llegaron, cuánto tardó el handler y el mayor
+  // hueco entre eventos (si es >34ms el hero se movió "a saltos").
+  _diagWrapScroll(fn) {
+    let n = 0, total = 0, max = 0, last = 0, gapMax = 0, idle = null, t0 = 0;
+    return () => {
+      const now = performance.now();
+      if (!n) t0 = now;
+      if (last) gapMax = Math.max(gapMax, now - last);
+      last = now;
+      fn();
+      const dt = performance.now() - now;
+      n++; total += dt; max = Math.max(max, dt);
+      clearTimeout(idle);
+      idle = setTimeout(() => {
+        console.log('[DIAG-SCROLL] gesto', {
+          modo: this._diagScrollMode,
+          duracionMs: Math.round(last - t0),
+          eventos: n,
+          eventosPorSeg: Math.round(n / Math.max(0.001, (last - t0) / 1000)),
+          handlerPromMs: +(total / n).toFixed(2),
+          handlerMaxMs: +max.toFixed(2),
+          mayorHuecoMs: Math.round(gapMax),
+        });
+        n = 0; total = 0; max = 0; last = 0; gapMax = 0;
+      }, 150);
+    };
   }
 
   // ── LUGAR: compartir y menú "⋯" ───────────────────────────────────
