@@ -4271,7 +4271,9 @@ export class PlaceModal2 {
     const info = this._placeInfo();
     const displayName = user.user_metadata?.full_name || user.user_metadata?.display_name || '';
 
-    const { body, close } = this._openSheet('¿Es tu negocio?', info.name);
+    // Sin animación: es la única hoja alta (formulario) y con animación el
+    // teléfono la mostraba con glitch (confirmado antes con 'noanim').
+    const { body, close } = this._openSheet('¿Es tu negocio?', info.name, { instant: true });
     // Scroll interno SOLO si el formulario no cabe (p.ej. con el teclado
     // abierto) y nunca durante la animación de subida: un área con scroll
     // dentro de una hoja que se anima hace que el WebView de Android la
@@ -4286,7 +4288,7 @@ export class PlaceModal2 {
       const natural = menuEl.offsetHeight - body.clientHeight + body.scrollHeight;
       sheetEl.classList.toggle('wp-pm2-ms-tall', natural > window.innerHeight - 24);
     };
-    setTimeout(fit, 420); // al terminar de subir
+    requestAnimationFrame(fit); // sin animación: se mide ya
     window.addEventListener('resize', fit);
     body.innerHTML = `
       <div class="wp-pm2-cl">
