@@ -1238,10 +1238,63 @@ export class PlaceModal2 {
         font-family:var(--wp-font); word-wrap:break-word;
       }
       .wp-pm2-rv-reply-meta { display:flex; gap:10px; margin-top:2px; font-size:11px; color:#9ca3af; }
-      .wp-pm2-rv-reply-del {
-        background:none; border:none; padding:0; cursor:pointer;
-        font-size:11px; font-weight:600; color:#ef4444; font-family:var(--wp-font);
+
+      /* Botón ⋯ (Copiar / Editar / Eliminar / Reportar / Bloquear) */
+      .wp-pm2-rv-more {
+        position:absolute; top:4px; right:6px; z-index:3;
+        width:32px; height:32px; border-radius:50%; border:none;
+        background:transparent; color:#9ca3af;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1), background-color 0.15s;
       }
+      .wp-pm2-rv-more:active { transform:scale(0.85); background-color:#f3f4f6; }
+      .wp-pm2-rv-more-sm { top:2px; right:4px; width:28px; height:28px; }
+      .wp-pm2-review-name, .wp-pm2-rv-reply-name { padding-right:30px; }
+
+      /* Hoja de opciones / reportar / confirmar */
+      #wp-pm2-menu-sheet .wp-pm2-ms-overlay {
+        position:fixed; inset:0; z-index:1500100;
+        background:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s ease;
+      }
+      #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-overlay { opacity:1; }
+      #wp-pm2-menu-sheet .wp-pm2-ms-menu {
+        position:fixed; left:12px; right:12px;
+        bottom:calc(12px + env(safe-area-inset-bottom,0px)); z-index:1500200;
+        background:#fff; border-radius:24px; padding:8px 0 10px;
+        box-shadow:0 8px 40px rgba(0,0,0,0.18);
+        transform:translateY(110%);
+        transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+        font-family:var(--wp-font);
+      }
+      #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-menu { transform:translateY(0); }
+      .wp-pm2-ms-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
+      .wp-pm2-ms-header { padding:4px 20px 8px; }
+      .wp-pm2-ms-title { display:block; font-size:16px; font-weight:700; color:#0a0a0a; }
+      .wp-pm2-ms-sub { display:block; font-size:12px; color:#8e8e93; margin-top:2px; }
+      .wp-pm2-ms-opt {
+        width:100%; display:flex; align-items:center; gap:12px;
+        padding:13px 20px; border:none; background:transparent;
+        font-size:15px; font-weight:600; color:#111827; font-family:var(--wp-font);
+        text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.12s;
+      }
+      .wp-pm2-ms-opt:active { background-color:#f3f4f6; }
+      .wp-pm2-ms-opt.wp-pm2-danger { color:#e60000; }
+      .wp-pm2-ms-ico { display:flex; width:20px; justify-content:center; color:inherit; opacity:0.85; }
+      .wp-pm2-ms-ico:empty { display:none; }
+      .wp-pm2-ms-msg { margin:0; padding:0 20px 14px; font-size:14px; line-height:1.45; color:#4b5563; }
+      .wp-pm2-ms-actions { display:flex; gap:10px; padding:0 16px 6px; }
+      .wp-pm2-ms-btn {
+        flex:1; height:46px; border-radius:999px; border:none;
+        font-size:15px; font-weight:700; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      .wp-pm2-ms-btn:active { transform:scale(0.94); }
+      .wp-pm2-ms-cancel { background:#f3f4f6; color:#111827; }
+      .wp-pm2-ms-danger-btn { background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%); color:#fff; }
+      .wp-pm2-ms-primary-btn { background:#0a0a0a; color:#fff; }
 
       /* Barra flotante de reacciones (long-press) — vive en <body>,
          por encima de la ficha (#wp-pm2 = 1500000) */
@@ -1805,7 +1858,7 @@ export class PlaceModal2 {
   hide() {
     this._closeLightbox();
     this._closeReactionBar(true);
-    ['wp-pm2-review-modal', 'wp-pm2-reply-sheet'].forEach(id => {
+    ['wp-pm2-review-modal', 'wp-pm2-reply-sheet', 'wp-pm2-menu-sheet'].forEach(id => {
       const n = document.getElementById(id);
       if (n) n.remove();
     });
@@ -2415,7 +2468,9 @@ export class PlaceModal2 {
     this._social = { util: new Map(), emoji: new Map(), replies: new Map() };
     this._buildReviewsHeader(place);
     this._renderGooglePanel(place);
-    this._loadCommunityReviews(place); // async, WhatsPlan
+    this._mod = { hidden: new Set(), myReports: new Set(), blocked: new Set() };
+    this._modPromise = this._loadModeration(place); // reportes/bloqueos
+    this._loadCommunityReviews(place); // async, comunidad (espera a _modPromise)
     this._loadReviewSocial(place);     // async, reacciones + respuestas
   }
 
@@ -2535,6 +2590,7 @@ export class PlaceModal2 {
     // _esc: nombre y texto los escriben usuarios — sin escapar, una
     // reseña con "<img onerror=...>" se ejecutaba como HTML.
     row.innerHTML = `
+      ${ctx ? `<button class="wp-pm2-rv-more" aria-label="Más opciones"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>` : ''}
       <img class="wp-pm2-review-avatar">
       <div class="wp-pm2-review-body">
         <div class="wp-pm2-review-name">${this._esc(name)}</div>
@@ -2548,7 +2604,13 @@ export class PlaceModal2 {
       </div>`;
     if (ctx) {
       if (!this._reviewCards) this._reviewCards = new Map();
-      this._reviewCards.set(ctx.key, { row, ctx, repliesOpen: false });
+      // Conserva el hilo abierto/cerrado si la tarjeta se vuelve a crear
+      const prevCard = this._reviewCards.get(ctx.key);
+      this._reviewCards.set(ctx.key, { row, ctx, repliesOpen: prevCard ? prevCard.repliesOpen : false });
+      row.querySelector('.wp-pm2-rv-more').onclick = (e) => {
+        e.stopPropagation();
+        this._openItemMenu('review', ctx.key);
+      };
       this._wireReviewGestures(row, ctx.key);
       this._renderReviewSocial(ctx.key);
     }
@@ -2854,6 +2916,7 @@ export class PlaceModal2 {
       console.warn('[PM2] Reacciones/respuestas no disponibles:', e.message || e);
       return;
     }
+    try { await this._modPromise; } catch (_) {}
     if (this._place !== place) return; // se abrió otra ficha mientras cargaba
     const social = { util: new Map(), emoji: new Map(), replies: new Map() };
     (data.reactions || []).forEach(r => {
@@ -2883,7 +2946,7 @@ export class PlaceModal2 {
     const mine = uid ? em.get(uid) : null;
     PlaceModal2.REACTIONS.forEach(({ type, emoji }) => {
       let n = 0;
-      em.forEach(t => { if (t === type) n++; });
+      em.forEach((t, u) => { if (t === type && !this._isBlockedUser(u)) n++; });
       if (!n) return;
       const chip = document.createElement('button');
       chip.className = 'wp-pm2-rv-chip' + (mine === type ? ' wp-pm2-mine' : '')
@@ -2914,10 +2977,12 @@ export class PlaceModal2 {
     const actionsEl = row.querySelector('.wp-pm2-rv-actions');
     const utilSet = this._social.util.get(key) || new Set();
     const utilOn = !!(uid && utilSet.has(uid));
+    let utilCount = 0;
+    utilSet.forEach(u => { if (!this._isBlockedUser(u)) utilCount++; });
     actionsEl.innerHTML = `
       <button class="wp-pm2-rv-btn wp-pm2-rv-util${utilOn ? ' wp-pm2-on' : ''}${pop === 'util:' + key ? ' wp-pm2-rv-pop' : ''}">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="${utilOn ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-        Útil${utilSet.size ? ' · ' + utilSet.size : ''}
+        Útil${utilCount ? ' · ' + utilCount : ''}
       </button>
       ${isWp ? `<button class="wp-pm2-rv-btn wp-pm2-rv-reply-btn">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
@@ -2933,7 +2998,8 @@ export class PlaceModal2 {
     // ── Hilo de respuestas ──
     const repliesEl = row.querySelector('.wp-pm2-rv-replies');
     repliesEl.innerHTML = '';
-    const replies = this._social.replies.get(key) || [];
+    const replies = (this._social.replies.get(key) || [])
+      .filter(r => this._isVisible('r:' + r.id, r.user_id));
     if (!isWp || !replies.length) return;
     const toggle = document.createElement('button');
     toggle.className = 'wp-pm2-rv-toggle';
@@ -2970,15 +3036,15 @@ export class PlaceModal2 {
     const item = document.createElement('div');
     item.className = 'wp-pm2-rv-reply';
     item.innerHTML = `
+      <button class="wp-pm2-rv-more wp-pm2-rv-more-sm" aria-label="Más opciones"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
       <img alt="">
       <div class="wp-pm2-rv-reply-body">
         <div class="wp-pm2-rv-reply-name">${this._esc(name)}${r.reply_to_name ? `<span class="wp-pm2-rv-reply-to">↳ ${this._esc(r.reply_to_name)}</span>` : ''}</div>
         <div class="wp-pm2-rv-reply-text">${textHtml}</div>
         <div class="wp-pm2-rv-chips wp-pm2-rv-chips-sm"></div>
         <div class="wp-pm2-rv-reply-meta">
-          <span>${this._esc(this._timeAgo(r.created_at))}</span>
+          <span>${this._esc(this._timeAgo(r.created_at))}${r.edited_at ? ' · editado' : ''}</span>
           <button class="wp-pm2-rv-reply-act">Responder</button>
-          ${uid && r.user_id === uid ? '<button class="wp-pm2-rv-reply-del">Eliminar</button>' : ''}
         </div>
       </div>`;
     item.querySelector('img').src = r.avatar_url || getAvatarUrl(name);
@@ -2988,21 +3054,10 @@ export class PlaceModal2 {
       e.stopPropagation();
       this._openReplySheet(parentKey, target);
     };
-    const del = item.querySelector('.wp-pm2-rv-reply-del');
-    if (del) {
-      // Dos toques: el primero pide confirmación, el segundo borra
-      let armed = false, t = null;
-      del.onclick = (e) => {
-        e.stopPropagation();
-        if (!armed) {
-          armed = true; del.textContent = '¿Eliminar?';
-          t = setTimeout(() => { armed = false; del.textContent = 'Eliminar'; }, 3000);
-          return;
-        }
-        clearTimeout(t);
-        this._deleteReply(parentKey, r.id);
-      };
-    }
+    item.querySelector('.wp-pm2-rv-more').onclick = (e) => {
+      e.stopPropagation();
+      this._openItemMenu('reply', parentKey, r);
+    };
 
     this._addSwipeIcon(item);
     this._wireLongPress(item, () => this._openReactionBar(rKey, item, parentKey));
@@ -3306,7 +3361,8 @@ export class PlaceModal2 {
 
   // Hoja para responder. replyTo (opcional): { id, name, text } cuando se
   // contesta a una respuesta del hilo → arranca con "@Nombre ".
-  _openReplySheet(key, replyTo = null) {
+  // editing (opcional): fila de una respuesta PROPIA → modo "Editar".
+  _openReplySheet(key, replyTo = null, editing = null) {
     const card = this._reviewCards?.get(key);
     if (!card || !this._place) return;
     const user = this._requireUser('Inicia sesión para responder');
@@ -3321,8 +3377,10 @@ export class PlaceModal2 {
       || 'Usuario';
     const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
     const toName = replyTo ? replyTo.name : card.ctx.author;
-    const quote  = replyTo ? replyTo.text : card.ctx.text;
-    const prefix = replyTo ? '@' + replyTo.name + ' ' : '';
+    const quote  = editing ? '' : (replyTo ? replyTo.text : card.ctx.text);
+    const prefix = (!editing && replyTo) ? '@' + replyTo.name + ' ' : '';
+    const sheetTitle = editing ? 'Editar respuesta' : `Respondiendo a ${toName}`;
+    const submitLabel = editing ? 'Guardar' : 'Responder';
 
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-reply-sheet';
@@ -3331,8 +3389,8 @@ export class PlaceModal2 {
       <div class="wp-pm2-rs-menu" style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1500200;background:#fff;border-radius:24px;padding:8px 0 4px;box-shadow:0 8px 40px rgba(0,0,0,0.18);transform:translateY(110%);transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);font-family:var(--wp-font)">
         <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.15);margin:0 auto 8px"></div>
         <div class="wp-pm2-rs-header" style="padding:4px 20px 10px">
-          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">Respondiendo a ${this._esc(toName)}</span>
-          <span style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;color:#8e8e93;margin-top:4px;padding-left:10px;border-left:2px solid #e5e7eb;line-height:1.4">${this._esc(quote)}</span>
+          <span style="display:block;font-size:16px;font-weight:700;color:#0a0a0a">${this._esc(sheetTitle)}</span>
+          <span style="display:${quote ? '-webkit-box' : 'none'};-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;color:#8e8e93;margin-top:4px;padding-left:10px;border-left:2px solid #e5e7eb;line-height:1.4">${this._esc(quote)}</span>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start;padding:0 16px">
           <img src="${this._esc(avatarUrl)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:4px">
@@ -3342,7 +3400,7 @@ export class PlaceModal2 {
           </div>
         </div>
         <div style="padding:10px 16px 16px">
-          <button class="wp-pm2-rs-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);opacity:0.4;transition:opacity 0.15s;-webkit-tap-highlight-color:transparent">Responder</button>
+          <button class="wp-pm2-rs-submit" disabled style="width:100%;height:46px;border-radius:999px;border:none;background:#0a0a0a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--wp-font);opacity:0.4;transition:opacity 0.15s;-webkit-tap-highlight-color:transparent">${submitLabel}</button>
         </div>
       </div>`;
     document.body.appendChild(frag);
@@ -3365,7 +3423,7 @@ export class PlaceModal2 {
       submit.disabled = !ok;
       submit.style.opacity = ok ? '1' : '0.4';
     };
-    textarea.value = prefix;
+    textarea.value = editing ? (editing.text || '') : prefix;
     textarea.oninput = refresh;
     refresh();
 
@@ -3381,7 +3439,24 @@ export class PlaceModal2 {
     submit.onclick = async () => {
       if (submit.disabled) return;
       submit.disabled = true;
-      submit.textContent = 'Enviando...';
+      submit.textContent = editing ? 'Guardando...' : 'Enviando...';
+      if (editing) {
+        try {
+          const updated = await ReviewService.updateReply(editing.id, user.id, textarea.value.trim());
+          const list = this._social.replies.get(key) || [];
+          const i = list.findIndex(x => x.id === editing.id);
+          if (i >= 0) list[i] = { ...list[i], ...updated };
+          this._renderReviewSocial(key);
+          close();
+          this._showToast('✓ Respuesta editada');
+        } catch (e) {
+          console.error('[PM2] Editar respuesta:', e);
+          this._showToast('No se pudo guardar');
+          submit.disabled = false;
+          submit.textContent = submitLabel;
+        }
+        return;
+      }
       // Si borraron la @mención a mano, ya no es respuesta a esa persona
       const keepsMention = !!(prefix && textarea.value.startsWith(prefix.trim()));
       try {
@@ -3400,7 +3475,7 @@ export class PlaceModal2 {
         console.error('[PM2] Responder:', e);
         this._showToast(e.message || 'No se pudo enviar');
         submit.disabled = false;
-        submit.textContent = 'Responder';
+        submit.textContent = submitLabel;
       }
     };
 
@@ -3439,38 +3514,319 @@ export class PlaceModal2 {
 
   // Panel de reseñas de WhatsPlan (tabla place_reviews vía ReviewService)
   async _loadCommunityReviews(place) {
-    const panel = this._el.querySelector('#wpr-panel-community');
+    let reviews = [];
     try {
-      const reviews = await ReviewService.getForPlace(place.place_id || place.id);
-      if (this._place !== place) return; // llegó tarde: ya hay otra ficha abierta
-      this._communityReviews = reviews || [];
-      panel.innerHTML = '';
-      if (!this._communityReviews.length) {
-        panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
-      } else {
-        this._communityReviews.forEach(r => {
-          panel.appendChild(this._buildReviewCard(
-            r.display_name || 'Usuario',
-            r.rating, r.text, this._timeAgo(r.created_at),
-            getAvatarUrl(r.display_name || 'user'),
-            r.id != null ? {
-              key: 'wp:' + r.id,
-              source: 'wp',
-              author: r.display_name || 'Usuario',
-              text: r.text || '',
-              ownerId: r.user_id || null,
-            } : null
-          ));
-        });
-      }
+      reviews = await ReviewService.getForPlace(place.place_id || place.id) || [];
     } catch (e) {
-      this._communityReviews = [];
-      panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
+      reviews = [];
     }
-    if (this._place !== place) return; // se abrió otra ficha mientras cargaba
-    this._buildReviewsHeader(place);  // conteo + pestaña por defecto
+    // Espera la moderación para no pintar algo que hay que ocultar
+    try { await this._modPromise; } catch (_) {}
+    if (this._place !== place) return; // llegó tarde: ya hay otra ficha abierta
+    this._communityRaw = reviews;
+    this._renderCommunityPanel(place);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // MODERACIÓN Y MENÚ "⋯" DE RESEÑAS / RESPUESTAS
+  // this._mod = { hidden, myReports, blocked } (Sets):
+  //   hidden    → claves ocultas para todos (3+ reportes o quitadas)
+  //   myReports → lo que ESTE usuario reportó: se le oculta al instante
+  //   blocked   → ids de usuarios que bloqueó: no ve nada de ellos
+  // El autor SIEMPRE sigue viendo lo suyo (aunque esté oculto para el
+  // resto), así no parece que la app le borró algo.
+  // ══════════════════════════════════════════════════════════════════
+
+  async _loadModeration(place) {
+    const pid = place.place_id || place.id;
+    const uid = this.getCurrentUser?.()?.id || null;
+    if (!pid) return;
+    try {
+      const m = await ReviewService.getModerationForPlace(pid, uid);
+      if (this._place !== place) return;
+      this._mod = {
+        hidden:    new Set(m.hidden),
+        myReports: new Set(m.myReports),
+        blocked:   new Set(m.blocked),
+      };
+    } catch (e) {
+      // Sin las tablas de moderación (falta el SQL) se muestra todo
+      console.warn('[PM2] Moderación no disponible:', e.message || e);
+    }
+  }
+
+  _isVisible(key, authorId) {
+    const uid = this.getCurrentUser?.()?.id || null;
+    if (authorId && uid && authorId === uid) return true;
+    const m = this._mod;
+    if (!m) return true;
+    if (authorId && m.blocked.has(authorId)) return false;
+    if (m.hidden.has(key) || m.myReports.has(key)) return false;
+    return true;
+  }
+
+  _isBlockedUser(userId) {
+    return !!(userId && this._mod && this._mod.blocked.has(userId));
+  }
+
+  // Pinta el panel Comunidad a partir de this._communityRaw, aplicando
+  // la moderación. Se vuelve a llamar después de reportar/bloquear/borrar.
+  _renderCommunityPanel(place) {
+    const panel = this._el.querySelector('#wpr-panel-community');
+    this._communityReviews = (this._communityRaw || [])
+      .filter(r => this._isVisible('wp:' + r.id, r.user_id));
+    panel.innerHTML = '';
+    if (!this._communityReviews.length) {
+      panel.innerHTML = '<p class="wpr-empty">Sé el primero en reseñar este lugar</p>';
+    } else {
+      this._communityReviews.forEach(r => {
+        panel.appendChild(this._buildReviewCard(
+          r.display_name || 'Usuario',
+          r.rating, r.text, this._timeAgo(r.created_at),
+          getAvatarUrl(r.display_name || 'user'),
+          r.id != null ? {
+            key: 'wp:' + r.id,
+            source: 'wp',
+            author: r.display_name || 'Usuario',
+            text: r.text || '',
+            ownerId: r.user_id || null,
+          } : null
+        ));
+      });
+    }
+    this._buildReviewsHeader(place);   // conteo + pestaña por defecto
     this._renderReviewsSummary(place); // total combinado
     this._renderRatingHero(place);     // calificación combinada
+  }
+
+  // ── Hoja genérica (mismo estilo que la de reseña/responder) ─────────
+  // Devuelve { body, close }. body es donde se mete el contenido.
+  _openSheet(title, subtitle = '') {
+    const prev = document.getElementById('wp-pm2-menu-sheet');
+    if (prev) prev.remove();
+    const frag = document.createElement('div');
+    frag.id = 'wp-pm2-menu-sheet';
+    frag.innerHTML = `
+      <div class="wp-pm2-ms-overlay"></div>
+      <div class="wp-pm2-ms-menu">
+        <div class="wp-pm2-ms-handle"></div>
+        <div class="wp-pm2-ms-header">
+          <span class="wp-pm2-ms-title">${this._esc(title)}</span>
+          ${subtitle ? `<span class="wp-pm2-ms-sub">${this._esc(subtitle)}</span>` : ''}
+        </div>
+        <div class="wp-pm2-ms-body"></div>
+      </div>`;
+    document.body.appendChild(frag);
+    const overlay = frag.querySelector('.wp-pm2-ms-overlay');
+    const menu    = frag.querySelector('.wp-pm2-ms-menu');
+    const header  = frag.querySelector('.wp-pm2-ms-header');
+
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      menu.style.transition = 'transform 0.26s cubic-bezier(0.32,0.72,0,1)';
+      menu.style.transform = 'translateY(110%)';
+      overlay.style.opacity = '0';
+      setTimeout(() => frag.remove(), 300);
+    };
+    overlay.onclick = close;
+
+    let sy = 0, dy = 0, dragging = false;
+    header.addEventListener('touchstart', e => {
+      sy = e.touches[0].clientY; dy = 0; dragging = true;
+      menu.style.transition = 'none';
+    }, { passive: true });
+    header.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      menu.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: true });
+    header.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      menu.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
+      if (dy > 80) close();
+      else menu.style.transform = 'translateY(0)';
+    });
+
+    void menu.offsetHeight;
+    requestAnimationFrame(() => frag.classList.add('wp-pm2-in'));
+    return { body: frag.querySelector('.wp-pm2-ms-body'), close };
+  }
+
+  // Filas de opciones: [{ label, icon, danger, action }]
+  _fillSheetOptions(body, items, close) {
+    items.forEach(it => {
+      const b = document.createElement('button');
+      b.className = 'wp-pm2-ms-opt' + (it.danger ? ' wp-pm2-danger' : '');
+      b.innerHTML = `<span class="wp-pm2-ms-ico">${it.icon || ''}</span><span>${this._esc(it.label)}</span>`;
+      b.onclick = () => { close(); setTimeout(it.action, 180); };
+      body.appendChild(b);
+    });
+  }
+
+  // Confirmación (para eliminar / bloquear). Devuelve Promise<boolean>.
+  _confirmSheet(title, message, confirmLabel, danger = true) {
+    return new Promise(resolve => {
+      const { body, close } = this._openSheet(title);
+      let done = false;
+      const finish = (v) => { if (done) return; done = true; close(); resolve(v); };
+      body.innerHTML = `
+        <p class="wp-pm2-ms-msg">${this._esc(message)}</p>
+        <div class="wp-pm2-ms-actions">
+          <button class="wp-pm2-ms-btn wp-pm2-ms-cancel">Cancelar</button>
+          <button class="wp-pm2-ms-btn ${danger ? 'wp-pm2-ms-danger-btn' : 'wp-pm2-ms-primary-btn'}">${this._esc(confirmLabel)}</button>
+        </div>`;
+      body.querySelector('.wp-pm2-ms-cancel').onclick = () => finish(false);
+      body.querySelector('.wp-pm2-ms-danger-btn, .wp-pm2-ms-primary-btn').onclick = () => finish(true);
+      // Tocar fuera = cancelar
+      const sheet = document.getElementById('wp-pm2-menu-sheet');
+      sheet?.querySelector('.wp-pm2-ms-overlay')?.addEventListener('click', () => finish(false));
+    });
+  }
+
+  _copyText(text) {
+    const done = () => this._showToast('Texto copiado');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => this._copyFallback(text, done));
+    } else {
+      this._copyFallback(text, done);
+    }
+  }
+  _copyFallback(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    document.body.removeChild(ta);
+    done();
+  }
+
+  // Menú "⋯". kind: 'review' (key = reseña) | 'reply' (key = reseña que
+  // contiene el hilo, reply = fila de la respuesta).
+  _openItemMenu(kind, key, reply = null) {
+    const card = this._reviewCards?.get(key);
+    if (!card) return;
+    const uid = this.getCurrentUser?.()?.id || null;
+    const isReply  = kind === 'reply';
+    const isGoogle = !isReply && card.ctx.source === 'google';
+    const text     = isReply ? (reply.text || '') : (card.ctx.text || '');
+    const authorId = isReply ? reply.user_id : card.ctx.ownerId;
+    const name     = isReply ? (reply.display_name || 'Usuario') : card.ctx.author;
+    const reportKey = isReply ? 'r:' + reply.id : key;
+    const isOwn    = !!(uid && authorId && authorId === uid);
+
+    const ICON = {
+      copy:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+      edit:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      trash:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+      flag:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>',
+      block:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
+      google: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+    };
+
+    const items = [{ label: 'Copiar texto', icon: ICON.copy, action: () => this._copyText(text) }];
+    if (isGoogle) {
+      const pid = this._place?.place_id || this._place?.id;
+      if (pid) items.push({ label: 'Ver en Google', icon: ICON.google, action: () => {
+        window.open(`https://search.google.com/local/reviews?placeid=${pid}`, '_blank', 'noopener');
+      } });
+    } else if (isOwn) {
+      items.push({ label: 'Editar', icon: ICON.edit, action: () => {
+        if (isReply) this._openReplySheet(key, null, reply);
+        else this._openReviewModal();
+      } });
+      items.push({ label: 'Eliminar', icon: ICON.trash, danger: true, action: () => {
+        if (isReply) this._confirmDeleteReply(key, reply);
+        else this._confirmDeleteReview();
+      } });
+    } else if (authorId) {
+      items.push({ label: 'Reportar', icon: ICON.flag, action: () => this._openReportSheet(reportKey, isReply ? key : null) });
+      items.push({ label: `Bloquear a ${name}`, icon: ICON.block, danger: true, action: () => this._confirmBlock(authorId, name) });
+    }
+
+    const { body, close } = this._openSheet(isReply ? 'Respuesta' : 'Reseña', name);
+    this._fillSheetOptions(body, items, close);
+  }
+
+  async _confirmDeleteReview() {
+    const user = this._requireUser('Inicia sesión');
+    if (!user || !this._place) return;
+    const ok = await this._confirmSheet('¿Eliminar tu reseña?', 'También se borrarán sus reacciones y respuestas de la vista. No se puede deshacer.', 'Eliminar');
+    if (!ok) return;
+    const place = this._place;
+    try {
+      await ReviewService.delete(place.place_id || place.id, user.id);
+      this._communityRaw = (this._communityRaw || []).filter(r => r.user_id !== user.id);
+      this._renderCommunityPanel(place);
+      this._showToast('Reseña eliminada');
+    } catch (e) {
+      console.error('[PM2] Eliminar reseña:', e);
+      this._showToast('No se pudo eliminar');
+    }
+  }
+
+  async _confirmDeleteReply(key, reply) {
+    const ok = await this._confirmSheet('¿Eliminar tu respuesta?', 'No se puede deshacer.', 'Eliminar');
+    if (ok) this._deleteReply(key, reply.id);
+  }
+
+  // parentKey: si es una respuesta, la reseña donde vive (para redibujar
+  // solo ese hilo); null si se reporta una reseña.
+  _openReportSheet(reportKey, parentKey) {
+    const user = this._requireUser('Inicia sesión para reportar');
+    if (!user || !this._place) return;
+    const REASONS = [
+      ['spam',       'Spam o publicidad'],
+      ['offensive',  'Ofensivo o acoso'],
+      ['off_topic',  'No es sobre este lugar'],
+      ['false_info', 'Información falsa'],
+      ['other',      'Otro motivo'],
+    ];
+    const { body, close } = this._openSheet('¿Por qué lo reportas?', 'Tu reporte es anónimo');
+    const place = this._place;
+    this._fillSheetOptions(body, REASONS.map(([reason, label]) => ({
+      label,
+      action: async () => {
+        try {
+          await ReviewService.report(reportKey, place.place_id || place.id, user.id, reason);
+          if (this._mod) this._mod.myReports.add(reportKey);
+          else this._mod = { hidden: new Set(), myReports: new Set([reportKey]), blocked: new Set() };
+          if (this._place !== place) return;
+          if (parentKey) this._renderReviewSocial(parentKey);
+          else this._renderCommunityPanel(place);
+          this._showToast('Gracias, lo revisaremos');
+        } catch (e) {
+          console.error('[PM2] Reportar:', e);
+          this._showToast('No se pudo enviar el reporte');
+        }
+      },
+    })), close);
+  }
+
+  async _confirmBlock(blockedId, name) {
+    const user = this._requireUser('Inicia sesión');
+    if (!user || !this._place) return;
+    const ok = await this._confirmSheet(
+      `¿Bloquear a ${name}?`,
+      'Dejarás de ver sus reseñas, respuestas y reacciones en todos los lugares. No se le notificará.',
+      'Bloquear'
+    );
+    if (!ok) return;
+    const place = this._place;
+    try {
+      await ReviewService.blockUser(user.id, blockedId);
+      if (!this._mod) this._mod = { hidden: new Set(), myReports: new Set(), blocked: new Set() };
+      this._mod.blocked.add(blockedId);
+      if (this._place !== place) return;
+      this._renderCommunityPanel(place);
+      (this._reviewCards || new Map()).forEach((_, k) => this._renderReviewSocial(k));
+      this._showToast(`${name} bloqueado`);
+    } catch (e) {
+      console.error('[PM2] Bloquear:', e);
+      this._showToast('No se pudo bloquear');
+    }
   }
 
   // Lightbox — carrusel de fotos a pantalla completa. Arranca en el índice
