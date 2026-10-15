@@ -244,9 +244,31 @@ export class PlaceModal2 {
     // contenido dejando un hueco). JS solo mueve la foto (parallax lento)
     // y las opacidades. Sigue siendo position:absolute top:0, ahora
     // relativo al contenido del body, encima del spacer.
-    const heroNode = el.querySelector('#wp-pm2-hero');
-    const bodyNode = el.querySelector('#wp-pm2-body');
-    if (heroNode && bodyNode) bodyNode.prepend(heroNode);
+    // Capas del hero (de atrás hacia adelante):
+    //  1. #wp-pm2-hero-inner (FOTO): fuera del scroll, detrás de todo. JS
+    //     la mueve despacio (parallax 22%) con suavizado. Nunca pelea con
+    //     el scroll nativo (si estuviera dentro, el sistema la subiría y JS
+    //     la bajaría un cuadro tarde → temblor).
+    //  2. #wp-pm2-body (scroll, fondo transparente) con:
+    //     - #wp-pm2-hero (degradado blanco + título): se desplaza con el
+    //       scroll nativo, pegado al contenido.
+    //     - #wp-pm2-sheet (todo el contenido, fondo blanco): al subir tapa
+    //       la foto de forma nativa.
+    const heroNode   = el.querySelector('#wp-pm2-hero');
+    const bodyNode   = el.querySelector('#wp-pm2-body');
+    const photoNode  = el.querySelector('#wp-pm2-hero-inner');
+    const areaNode   = el.querySelector('#wp-pm2-content-area');
+    const spacerNode = el.querySelector('#wp-pm2-scroll-spacer');
+    if (heroNode && bodyNode && photoNode && areaNode && spacerNode) {
+      areaNode.insertBefore(photoNode, areaNode.firstChild);
+      bodyNode.prepend(heroNode);
+      const sheet = document.createElement('div');
+      sheet.id = 'wp-pm2-sheet';
+      [...bodyNode.children].forEach(c => {
+        if (c !== heroNode && c !== spacerNode) sheet.appendChild(c);
+      });
+      bodyNode.appendChild(sheet);
+    }
     document.body.appendChild(el);
     this._el = el;
     this._lightboxEl = el.querySelector('#wp-pm2-lightbox'); // vive adentro de nuevo
@@ -570,7 +592,7 @@ export class PlaceModal2 {
       /* Solo la FOTO se suaviza (su parallax lo calcula JS): el borde del
          hero y el título ya se mueven con el scroll nativo, sin retraso. */
       #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-inner {
-        transition:transform 0.14s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease;
+        transition:border-radius 0.15s ease-out, transform 0.14s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease;
       }
       #wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-bottom,
       #wp-pm2.wp-pm2-hero-smooth #wp-pm2-topbar-fade,
@@ -582,10 +604,16 @@ export class PlaceModal2 {
       /* height:100% = alto del hero mientras el JS todavía no fijó fullH
          en px (los primeros frames de la apertura). Sin esto medían 0 y
          la foto/gradiente aparecían de golpe un par de frames después. */
+      /* FOTO del hero — capa de fondo, fuera del scroll (ver _build).
+         Mismo alto inicial que #wp-pm2-hero; JS lo fija en px al abrir. */
       #wp-pm2-hero-inner {
-        position:absolute; top:0; left:0; right:0; height:100%;
+        position:absolute; top:0; left:0; right:0; z-index:0;
+        height:88vw; min-height:320px; max-height:460px;
+        overflow:hidden; border-radius:0px;
+        transition:border-radius 0.15s ease-out;
         will-change:transform;
       }
+      #wp-pm2.wp-pm2-flip-exit #wp-pm2-hero-inner { border-radius:22px; }
       #wp-pm2-hero-overlay-fast {
         position:absolute; top:0; left:0; right:0; height:100%;
         will-change:transform;
@@ -659,8 +687,12 @@ export class PlaceModal2 {
         overflow-y:auto; overscroll-behavior:contain;
         overflow-x:hidden; /* el swipe de responder desplaza tarjetas a la derecha */
         -webkit-overflow-scrolling:touch;
-        background:#fff;
+        background:transparent; /* deja ver la foto; el blanco lo pone #wp-pm2-sheet */
       }
+      /* Todo el contenido debajo del hero: fondo blanco que al subir tapa la
+         foto. padding-top (JS) = el aire entre el borde del hero y el primer
+         contenido, para que el blanco empiece justo donde termina el hero. */
+      #wp-pm2-sheet { position:relative; background:#fff; min-height:100%; }
       #wp-pm2-scroll-spacer {
         width:100%; height:0; /* alto real (=travel) seteado por JS */
       }
@@ -1865,7 +1897,12 @@ export class PlaceModal2 {
       const travel = fullH - topbarH;
       heroInner.style.height = fullH + 'px';
       heroOverlayFast.style.height = fullH + 'px';
-      spacer.style.height = (travel + topbarH * 1.5) + 'px';
+      // spacer = alto del hero (lo tapa el hero); el aire extra que antes
+      // tenía el spacer ahora es padding del sheet blanco, así el blanco
+      // arranca justo en el borde del hero y la foto no asoma por ahí
+      spacer.style.height = fullH + 'px';
+      const sheetEl = this._el.querySelector('#wp-pm2-sheet');
+      if (sheetEl) sheetEl.style.paddingTop = (topbarH * 0.5) + 'px';
       heroEl.style.minHeight = '0px';
       heroEl.style.height = fullH + 'px'; // alto fijo: se desplaza con el scroll, no se encoge
 
@@ -1884,11 +1921,11 @@ export class PlaceModal2 {
         const HERO_PARALLAX = 0.22;
         const innerShift = shift * HERO_PARALLAX;
 
-        // El hero ya sube `sy` con el scroll nativo (su borde inferior queda
-        // en fullH - sy, igual que antes con height = newH). Adentro, foto
-        // y overlay compensan para quedar en la MISMA posición neta que la
-        // versión anterior: foto -22% del recorrido, overlay -shift.
-        heroInner.style.transform = `translate3d(0,${sy - innerShift}px,0)`;
+        // El hero (degradado+título) sube `sy` con el scroll nativo; la foto
+        // está fuera del scroll y solo sube el 22% (innerShift). El overlay
+        // se queda quieto al llegar a `travel` (compensa lo que sigue
+        // subiendo el hero), igual que la versión anterior.
+        heroInner.style.transform = `translate3d(0,${-innerShift}px,0)`; // fuera del scroll: solo el parallax
         heroOverlayFast.style.transform = sy > travel ? `translate3d(0,${sy - travel}px,0)` : '';
         heroInner.style.opacity   = Math.max(0, 1 - prog);          // la foto se desvanece
 
