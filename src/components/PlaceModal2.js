@@ -101,7 +101,7 @@ export class PlaceModal2 {
           <div id="wp-pm2-reviews-summary" style="display:none">
             <div id="wp-pm2-reviews-avatars"></div>
             <span id="wp-pm2-reviews-count"></span>
-            <button id="wp-pm2-add-review" class="wp-pm2-pill-btn">Añadir reseña</button>
+            <button id="wp-pm2-add-review" class="wp-pm2-pill-btn">✦ Añadir reseña</button>
           </div>
 
           <!-- AI DESCRIPTION — generada con IA en base a las reseñas de Google,
@@ -849,9 +849,31 @@ export class PlaceModal2 {
       #wp-pm2-reviews-count {
         font-size:13px; font-weight:600; color:#374151;
       }
+      /* Mismo estilo que el "✦ Añadir reseña" de las pestañas (naranja
+         con gradiente): es la misma acción, se ve igual en los dos lugares */
       #wp-pm2-add-review {
-        margin-left:auto; padding:6px 12px; font-size:12px; flex-shrink:0;
+        margin-left:auto; padding:6px 12px; font-size:12px; font-weight:700; flex-shrink:0;
+        background:linear-gradient(135deg,#f59e0b,#f97316);
+        border-color:transparent; color:#fff;
+        box-shadow:0 2px 8px rgba(249,115,22,0.30);
       }
+
+      /* PULSE al tocar — se hunde y rebota. Lo dispara _pulseTap() y la
+         acción (abrir la hoja) espera a que se vea el rebote. */
+      @keyframes wpPm2TapPulse {
+        0%   { transform:scale(1); }
+        35%  { transform:scale(0.92); }
+        70%  { transform:scale(1.04); }
+        100% { transform:scale(1); }
+      }
+      @keyframes wpPm2TapPulseWide {
+        0%   { transform:scale(1); }
+        35%  { transform:scale(0.97); }
+        70%  { transform:scale(1.015); }
+        100% { transform:scale(1); }
+      }
+      .wp-pm2-tap-pulse      { animation:wpPm2TapPulse 0.34s cubic-bezier(0.34,1.4,0.64,1); }
+      .wp-pm2-tap-pulse-wide { animation:wpPm2TapPulseWide 0.34s cubic-bezier(0.34,1.4,0.64,1); }
 
       #wp-pm2-cta-row { gap:8px; }
       #wp-pm2-fuiste {
@@ -1069,6 +1091,8 @@ export class PlaceModal2 {
         background:#e5e7eb;
       }
       #wp-pm2-comment-box {
+        transition:transform 0.15s ease, background-color 0.15s ease;
+        -webkit-tap-highlight-color:transparent;
         flex:1; display:flex; align-items:center; justify-content:space-between;
         background:#f3f4f6; border-radius:999px; padding:10px 8px 10px 16px;
         font-size:14px; color:#9ca3af; cursor:pointer;
@@ -1361,11 +1385,11 @@ export class PlaceModal2 {
       }
     });
     // "Añade un comentario..." → popup de reseña (estrellas + texto)
-    el.querySelector('#wp-pm2-comment-box').addEventListener('click', () => {
-      this._openReviewModal();
+    el.querySelector('#wp-pm2-comment-box').addEventListener('click', (e) => {
+      this._pulseTap(e.currentTarget, () => this._openReviewModal(), true);
     });
-    el.querySelector('#wp-pm2-add-review').addEventListener('click', () => {
-      this._openReviewModal();
+    el.querySelector('#wp-pm2-add-review').addEventListener('click', (e) => {
+      this._pulseTap(e.currentTarget, () => this._openReviewModal());
     });
   }
 
@@ -2492,7 +2516,7 @@ export class PlaceModal2 {
       };
     });
     const addBtn = headerRow.querySelector('#wpr-add-btn');
-    if (addBtn) addBtn.onclick = () => this._openReviewModal();
+    if (addBtn) addBtn.onclick = () => this._pulseTap(addBtn, () => this._openReviewModal());
   }
 
   _applyReviewTab(tab) {
@@ -2582,6 +2606,21 @@ export class PlaceModal2 {
       a.textContent = 'Ver todas las reseñas en Google →';
       panel.appendChild(a);
     }
+  }
+
+  // Pulse al tocar (se hunde y rebota) + acción con un pequeño retraso
+  // para que el rebote se vea antes de que la hoja tape la pantalla.
+  // wide=true → pulse más suave, para elementos anchos como el campo
+  // "Escribe una reseña" (el mismo % de escala en algo ancho se nota
+  // mucho más).
+  _pulseTap(el, action, wide = false) {
+    const cls = wide ? 'wp-pm2-tap-pulse-wide' : 'wp-pm2-tap-pulse';
+    el.classList.remove(cls);
+    void el.offsetWidth; // reinicia la animación si se toca dos veces seguidas
+    el.classList.add(cls);
+    el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+    if (this._pulseActionTimer) clearTimeout(this._pulseActionTimer);
+    this._pulseActionTimer = setTimeout(() => { this._pulseActionTimer = null; action(); }, 150);
   }
 
   // Toast simple — por encima de la ficha (z-index 1500000)
