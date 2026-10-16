@@ -716,10 +716,12 @@ export class PlaceModal2 {
         border:1px solid rgba(180,180,180,0.5); padding:3px 9px; border-radius:999px;
         font-family:inherit; box-shadow:0 2px 6px rgba(28,28,30,0.15);
       }
+      /* Solo color (antes también animaba filter:drop-shadow, que obliga
+         a re-dibujar la sombra en cada cuadro) */
       @keyframes wp-pm2-ai-pulse {
-        0%   { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
-        50%  { color:#818cf8; filter:drop-shadow(0 0 10px rgba(129,140,248,0.7)); }
-        100% { color:#60a5fa; filter:drop-shadow(0 0 6px rgba(96,165,250,0.5)); }
+        0%   { color:#60a5fa; }
+        50%  { color:#818cf8; }
+        100% { color:#60a5fa; }
       }
       .wp-pm2-ai-pulse { animation: wp-pm2-ai-pulse 1.4s ease-in-out infinite; }
       /* Cada sparkle tiene SU PROPIO color cíclico + SU PROPIO pulse, con
@@ -762,6 +764,9 @@ export class PlaceModal2 {
         animation: wp-pm2-ai-fadein 0.4s ease both;
         font-family:var(--wp-font);
       }
+      /* steps(28): el brillo avanza a ~20 cuadros/s en vez de 120. Es una
+         animación de background-position (se re-dibuja en cada cuadro);
+         a 120 cuadros/s, con varios skeletons a la vez, cargaba la ficha. */
       @keyframes wp-pm2-skeleton-shimmer {
         0%   { background-position: -200% 0; }
         100% { background-position:  200% 0; }
@@ -771,7 +776,7 @@ export class PlaceModal2 {
         height:12px; border-radius:6px; width:100%;
         background:linear-gradient(90deg,#e8eaed 25%,#f3f4f6 50%,#e8eaed 75%);
         background-size:200% 100%;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+        animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
       }
       /* Skeleton de imágenes — sin !important: cada regla iguala/supera la
          especificidad de la regla base del elemento que targetea, así gana
@@ -781,12 +786,12 @@ export class PlaceModal2 {
         content:''; position:absolute; inset:0;
         background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
         background-size:400% 100%;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+        animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
       }
       #wp-pm2-strip img.wp-pm2-skel {
         background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
         background-size:400% 100%;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+        animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
       }
       #wp-pm2-strip img { cursor:pointer; }
 
@@ -829,17 +834,17 @@ export class PlaceModal2 {
       #wp-pm2-reviews-avatars .wp-pm2-fp-avatar.wp-pm2-skel {
         background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
         background-size:400% 100%;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+        animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
       }
       .wp-pm2-review-avatar.wp-pm2-skel {
         background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
         background-size:400% 100%;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+        animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
       }
       #wp-pm2-user-avatar.wp-pm2-skel {
         background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
         background-size:400% 100%;
-        animation: wp-pm2-skeleton-shimmer 1.4s ease-in-out infinite;
+        animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
       }
 
       /* ROWS */
@@ -2387,23 +2392,46 @@ export class PlaceModal2 {
       .catch(() => { if (!aborted) block.style.display = 'none'; });
   }
 
+  // Efecto "se va escribiendo". Antes agregaba UNA letra cada 16ms: ~500
+  // cambios en ~8s, y como el párrafo crecía renglón por renglón, TODO lo
+  // de abajo se movía y la ficha se re-dibujaba completa ~60 veces por
+  // segundo (scroll pesado y glitch mientras duraba). Ahora el texto
+  // completo está desde el inicio (lo que falta va transparente, así el
+  // alto ya es el final y nada de abajo se mueve) y avanza por palabras,
+  // ~30 veces por segundo, en máximo 1.8s.
   _typewrite(el, text, onStart, onDone) {
     el.textContent = '';
-    let i = 0;
-    let cancelled = false;
-    let timer = null;
-    const step = () => {
+    const shown = document.createElement('span');
+    const rest  = document.createElement('span');
+    rest.style.color = 'transparent';
+    rest.textContent = text;
+    el.append(shown, rest);
+    const parts = text.split(/(\s+)/);           // palabras + espacios
+    const DUR = Math.min(1800, Math.max(500, parts.length * 18));
+    let cancelled = false, raf = 0, t0 = 0, lastT = 0, lastN = 0;
+    const finish = () => { el.textContent = text; if (onDone) onDone(); };
+    const step = (now) => {
       if (cancelled) return;
-      if (i < text.length) {
-        el.textContent += text[i++];
-        timer = setTimeout(step, 16);
-      } else if (onDone) onDone();
+      if (!t0) t0 = now;
+      const k = Math.min(1, (now - t0) / DUR);
+      if (k >= 1) return finish();
+      if (now - lastT >= 33) {                     // ~30 actualizaciones/s
+        const n = Math.round(parts.length * k);
+        if (n !== lastN) {
+          const head = parts.slice(0, n).join('');
+          shown.textContent = head;
+          rest.textContent  = text.slice(head.length);
+          lastN = n;
+        }
+        lastT = now;
+      }
+      raf = requestAnimationFrame(step);
     };
     if (onStart) onStart();
-    timer = setTimeout(step, 16);
+    raf = requestAnimationFrame(step);
     return function cancel() {
       cancelled = true;
-      if (timer) clearTimeout(timer);
+      if (raf) cancelAnimationFrame(raf);
     };
   }
 
@@ -2528,14 +2556,21 @@ export class PlaceModal2 {
   // permite reducirla (servidor sin CORS) o ya es chica, se usa tal cual.
   async _loadThumbs(list, token) {
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    for (const [img, url] of list) {
-      if (token !== this._thumbToken) return; // se abrió otra ficha
-      let src = url;
-      try { src = await this._makeThumb(url, 150 * dpr, 210 * dpr); } catch (_) { src = url; }
-      if (token !== this._thumbToken) { if (src !== url) URL.revokeObjectURL(src); return; }
-      if (src !== url) (this._thumbUrls || (this._thumbUrls = [])).push(src);
-      img.src = src;
-    }
+    const queue = list.slice();
+    // De 3 en 3: el skeleton de cada foto dura poco y no se decodifican
+    // las 12 a la vez
+    const worker = async () => {
+      while (queue.length) {
+        const [img, url] = queue.shift();
+        if (token !== this._thumbToken) return; // se abrió otra ficha
+        let src = url;
+        try { src = await this._makeThumb(url, 150 * dpr, 210 * dpr); } catch (_) { src = url; }
+        if (token !== this._thumbToken) { if (src !== url) URL.revokeObjectURL(src); return; }
+        if (src !== url) (this._thumbUrls || (this._thumbUrls = [])).push(src);
+        img.src = src;
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
   }
 
   _makeThumb(url, W, H) {
