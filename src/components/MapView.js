@@ -361,7 +361,7 @@ function injectLandmarkStyles() {
     .wp-ce-cback:active, .wp-ce-cbtn:active { transform: scale(0.92); }
     .wp-ce-ctitle {
       margin-left: 12px; flex: 1 1 auto; min-width: 0;
-      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-family: var(--wp-font);
       font-size: 16px; font-weight: 800; color: #111; letter-spacing: -0.2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
@@ -378,7 +378,7 @@ function injectLandmarkStyles() {
     .wp-ce-collage.wp-ce-chrome-in .wp-ce-ccaption { opacity: 1; transform: translateY(0); }
     .wp-ce-ccaption-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
     .wp-ce-ctag {
-      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-family: var(--wp-font);
       font-size: 12.5px; font-weight: 700; color: #374151;
       background: #f3f4f6; border: none; border-radius: 999px; padding: 7px 13px;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -391,6 +391,10 @@ function injectLandmarkStyles() {
 
     /* ── Editor de posiciones (SuperUser) ─────────────────────────────── */
     .wp-ce-cedit { color: #1a5cf5; }
+    /* Lo que queda DETRÁS del slide abierto (mapa con sus pins animados,
+       minicard, paneles): oculto mientras el fondo blanco del slide lo
+       tapa completo. Ver _coverBehindSlide. */
+    .wp-ce-under { visibility: hidden; }
     .wp-ce-editing .wp-ce-cstage { cursor: crosshair; }
     .wp-ce-editpanel {
       position: fixed; left: 12px; right: 12px;
@@ -415,11 +419,11 @@ function injectLandmarkStyles() {
     .wp-ce-editpanel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
     .wp-ce-editpanel:empty { display: none; }
     .wp-ce-editpanel.wp-ce-editpanel-in { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .wp-ce-edithint { color: #e5e7eb; font-size: 12px; font-weight: 600; margin-bottom: 10px; font-family: 'Inter Tight', system-ui, sans-serif; }
+    .wp-ce-edithint { color: #e5e7eb; font-size: 12px; font-weight: 600; margin-bottom: 10px; font-family: var(--wp-font); }
     .wp-ce-editslider {
       display: flex; align-items: center; gap: 10px; color: #9ca3af;
       font-size: 11.5px; font-weight: 700; margin-bottom: 8px;
-      font-family: 'Inter Tight', system-ui, sans-serif;
+      font-family: var(--wp-font);
     }
     .wp-ce-editslider input[type="range"] {
       flex: 1; accent-color: #1a5cf5;
@@ -437,7 +441,7 @@ function injectLandmarkStyles() {
     .wp-ce-editbtn {
       flex: 1; min-width: 70px; padding: 9px; border-radius: 10px; border: none;
       background: rgba(255,255,255,0.1); color: #e5e7eb;
-      font-size: 11.5px; font-weight: 700; font-family: 'Inter Tight', system-ui, sans-serif;
+      font-size: 11.5px; font-weight: 700; font-family: var(--wp-font);
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
     .wp-ce-editbtn-primary { background: #1a5cf5; color: #fff; }
@@ -453,7 +457,7 @@ function injectLandmarkStyles() {
     .wp-ce-elist-item {
       text-align: left; padding: 8px 10px; border-radius: 8px; border: none;
       background: rgba(255,255,255,0.06); color: #e5e7eb;
-      font-size: 11.5px; font-weight: 600; font-family: 'Inter Tight', system-ui, sans-serif;
+      font-size: 11.5px; font-weight: 600; font-family: var(--wp-font);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
@@ -2139,6 +2143,9 @@ export class MapView {
     // cluster simplemente se ignora.
     if (this._slideFlipActive) return;
     if (this._clusterExpandEl) this._closeClusterExpand();
+    // Lo que ya estaba en pantalla ANTES del slide (para ocultarlo cuando
+    // termine de abrir; lo que crea el slide no está en esta lista)
+    const beforeSlide = new Set(document.body.children);
 
     // Cancelar YA cualquier timer de long-press que haya quedado corriendo
     // en el sticker que se está por abrir. Llegar hasta acá significa que
@@ -2493,7 +2500,7 @@ export class MapView {
         // foto, como un título. display/align/whitespace se completan en
         // applyDecoStyle() cada frame (ahí vive font-size/color/weight/
         // line-height, que sí cambian con la edición).
-        c.style.cssText += 'display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;word-break:break-word;overflow:visible;font-family:\'Inter Tight\',system-ui,sans-serif;';
+        c.style.cssText += 'display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;word-break:break-word;overflow:visible;font-family:var(--wp-font);';
         c.textContent = data.text || '';
       } else {
         const inner = document.createElement('div');
@@ -3198,6 +3205,7 @@ export class MapView {
     // después de que arrancó el FLIP — así el ojo primero sigue a las
     // fotos y el texto llega como remate, no todo junto de golpe.
     setTimeout(() => wrap.classList.add('wp-ce-chrome-in'), 260);
+    this._coverBehindSlide(wrap, beforeSlide);
 
     // ── Drag real, 1:1 con el dedo, con parallax entre lugares ─────────
     // Los clones NO son hijos de `stage` (viven en document.body para
@@ -3430,7 +3438,7 @@ export class MapView {
           const curFontPx = Math.round(TEXT_TAG_BASE[sd.tag || 'p'] * (sd.scale ?? 1));
           panel.innerHTML = `
             <div class="wp-ce-edithint">Texto${isGlobalText ? ' (todos los slides)' : ` de "${group[editPlace]?.el._place?.name || ''}"`} — pellizcá para girar/agrandar</div>
-            <textarea data-ctl="text" rows="2" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;resize:none;background:rgba(255,255,255,0.08);border:none;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:'Inter Tight',system-ui,sans-serif;margin-bottom:8px;">${sd.text || ''}</textarea>
+            <textarea data-ctl="text" rows="2" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;resize:none;background:rgba(255,255,255,0.08);border:none;border-radius:8px;color:#fff;padding:8px;font-size:13px;font-family:var(--wp-font);margin-bottom:8px;">${sd.text || ''}</textarea>
             <div class="wp-ce-editrow" style="margin-bottom:8px;">
               <button type="button" class="wp-ce-editbtn ${(sd.tag || 'p') === 'h1' ? 'wp-ce-editbtn-primary' : ''}" data-act="tagh1">H1</button>
               <button type="button" class="wp-ce-editbtn ${sd.tag === 'h2' ? 'wp-ce-editbtn-primary' : ''}" data-act="tagh2">H2</button>
@@ -4133,6 +4141,50 @@ export class MapView {
     this._clusterExpandFlip = { clones, pieces, stickerEl };
   }
 
+  // ── Lo de atrás del slide ───────────────────────────────────────────
+  // El slide tiene un fondo blanco opaco a pantalla completa, pero el mapa
+  // (WebGL), los pins con animaciones infinitas (pulsos, flotado,
+  // shimmer), el minicard y los paneles seguían vivos detrás, gastando
+  // GPU en cada cuadro. Mismo arreglo que la ficha (PlaceModal2
+  // _coverBehind): cuando el slide terminó de abrir (~1s, el FLIP de
+  // entrada ya midió el mapa), se ocultan y se congelan sus animaciones;
+  // al cerrar vuelven antes del FLIP de regreso.
+  _coverBehindSlide(wrap, beforeSlide) {
+    clearTimeout(this._slideCoverTimer);
+    this._slideCoverTimer = setTimeout(() => {
+      if (this._clusterExpandEl !== wrap) return; // ya se cerró
+      beforeSlide.forEach(n => {
+        if (!n.isConnected || n.parentNode !== document.body) return;
+        if (n.id === 'eruda') return;
+        if (/^(SCRIPT|STYLE|LINK|TEMPLATE|SVG)$/i.test(n.tagName)) return;
+        if (n.id && n.id.startsWith('wp-pm2')) return; // la ficha y sus hojas
+        n.classList.add('wp-ce-under');
+      });
+      // Congelar sus animaciones (también las de style="" inline)
+      try {
+        this._slidePausedAnims = document.getAnimations().filter(a => {
+          const t = a.effect?.target;
+          return t && t.closest?.('.wp-ce-under') && a.playState === 'running';
+        });
+        this._slidePausedAnims.forEach(a => a.pause());
+      } catch (_) { this._slidePausedAnims = []; }
+      // Red de seguridad: si el slide desaparece por un camino que no pase
+      // por _closeClusterExpand, el mapa vuelve a mostrarse solo
+      clearInterval(this._slideCoverWatch);
+      this._slideCoverWatch = setInterval(() => {
+        if (!wrap.isConnected || this._clusterExpandEl !== wrap) this._uncoverBehindSlide();
+      }, 500);
+    }, 1000);
+  }
+
+  _uncoverBehindSlide() {
+    clearTimeout(this._slideCoverTimer);
+    clearInterval(this._slideCoverWatch);
+    document.querySelectorAll('.wp-ce-under').forEach(n => n.classList.remove('wp-ce-under'));
+    (this._slidePausedAnims || []).forEach(a => { try { a.play(); } catch (_) {} });
+    this._slidePausedAnims = [];
+  }
+
   // NOTA: el FLIP tarjeta→ficha (_flipCardToFicha) vive ahora como
   // función LOCAL dentro de _openClusterExpand() — necesita acceso
   // directo a `clones`/`wrap`/`applyLayout` de esa función para poder
@@ -4141,6 +4193,7 @@ export class MapView {
 
   _closeClusterExpand(restoreCamera = true) {
     if (!this._clusterExpandEl) return;
+    this._uncoverBehindSlide(); // el mapa vuelve ANTES del FLIP de regreso
     if (this._slideBackdropWatchdog) { clearInterval(this._slideBackdropWatchdog); this._slideBackdropWatchdog = null; }
     const wrap = this._clusterExpandEl;
     const flip = this._clusterExpandFlip;
@@ -4371,7 +4424,7 @@ export class MapView {
     const mcShadowDotHtml = `<div class="wp-mc-shadow-dot" style="position:absolute;left:50%;top:calc(50% + 45px);transform:translate(-50%,-50%);width:10px;height:4px;border-radius:50%;background:#1a1a1a;pointer-events:none;z-index:1;"></div>`;
 
     // Minicard — mismo estilo que las cards "sugeridos" del ActivityModal paso 2
-    wrapper.innerHTML = `${mcShadowDotHtml}<div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:'Inter Tight',system-ui,sans-serif;transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
+    wrapper.innerHTML = `${mcShadowDotHtml}<div class="minicard-marker-content" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border-radius:20px;border:1.5px solid rgba(255,255,255,0.7);box-shadow:0 8px 28px rgba(0,0,0,0.13),inset 0 1px 0 rgba(255,255,255,0.9);cursor:pointer;max-width:230px;min-width:180px;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none;font-family:var(--wp-font);transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);">
       ${photoUrl
         ? `<div class="wp-mc-photo-wrap" style="width:44px;height:44px;border-radius:9px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:400% 100%;animation:wp-mc-skeleton 1.4s ease-in-out infinite;">
             <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
@@ -4693,7 +4746,7 @@ export class MapView {
             'transform:translateY(-60%)', 'white-space:nowrap',
             `background:${labelBg}`, 'color:#fff',
             'font-size:9px', 'font-weight:700',
-            "font-family:'Inter Tight',system-ui,sans-serif",
+            "font-family:var(--wp-font)",
             'padding:2px 6px', 'border-radius:20px', 'pointer-events:none',
             'opacity:1', `transition:opacity 0.4s ease ${seed}ms`,
             'max-width:90px', 'overflow:hidden', 'text-overflow:ellipsis',
@@ -4713,7 +4766,7 @@ export class MapView {
         inner.style.cssText = 'gap:3px;';
 
         const label = document.createElement('div');
-        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:\'Inter Tight\',system-ui,sans-serif;';
+        label.style.cssText = 'background:white;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:800;color:#1a1a2e;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);max-width:90px;overflow:hidden;text-overflow:ellipsis;font-family:var(--wp-font);';
         label.textContent = item.title || '';
 
         const borderStyle = borderColor
@@ -4845,7 +4898,7 @@ export class MapView {
         : 'position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;white-space:nowrap;animation:featuredNameIn 0.2s ease;';
       nameEl.innerHTML = isBubble
         ? '<div style="font-size:9px;font-weight:700;background:' + badgeBg + ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>'
-        : '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:\'Inter Tight\',system-ui,sans-serif;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
+        : '<div style="font-size:13px;font-weight:800;color:#1f2937;font-family:var(--wp-font);text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">' +
           closest.place.name + '</div>' +
           '<div style="font-size:9px;font-weight:700;background:' + badgeBg +
           ';color:white;padding:2px 7px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + badge + '</div>';
@@ -4865,7 +4918,7 @@ export class MapView {
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'wp-reposition-banner';
-      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:\'Inter Tight\',system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
+      banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
       banner.innerHTML = `<span id="wp-reposition-text">🎯 Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
       document.body.appendChild(banner);
       document.getElementById('wp-reposition-cancel').addEventListener('click', () => this.disableDragMode());
@@ -5302,7 +5355,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     const lColor = label.color || '#1a1a2e';
     const lBg = label.bg || 'rgba(255,255,255,0.92)';
     const lZ = label.z ?? 25;
-    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${4 * lScale}px ${9 * lScale}px;border-radius:${8 * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:'Inter Tight',system-ui,sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
+    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${4 * lScale}px ${9 * lScale}px;border-radius:${8 * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:var(--wp-font);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
   })() : '';
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
@@ -5337,7 +5390,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   const activeShadow = isFeat ? featShadow : liquidShadow;
 
   // Label: más grande, más ancho
-  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:'Inter Tight',system-ui,sans-serif;color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
+  const labelHtml = `<div class="place-pin-label" style="position:absolute;left:26px;top:50%;transform:translateY(-50%);display:none;opacity:0;font-size:13px;font-weight:700;line-height:1.05;font-family:var(--wp-font);color:#1a1a2e;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:90px;max-height:2.4em;white-space:normal;pointer-events:none;letter-spacing:-0.1px;text-transform:capitalize;text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff;transition:opacity 0.22s ease;">${shortName}</div>`;
 
   // ── Pin tipo emoji/sticker (elegido en SuperUserPanel) — tiene
   // prioridad sobre la foto si el lugar está configurado así ──
@@ -5518,7 +5571,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       ? place.pinLabelPosition : 'below';
     const textAlign = labelPos === 'below' ? 'center' : (labelPos === 'left' ? 'right' : 'left');
     const textBlockHtml = `<div style="text-align:${textAlign};max-width:120px;">
-      <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+      <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
       ${metaHtml}
     </div>`;
 
@@ -5583,7 +5636,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       <div class="place-pin-bubble-stack" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 4px rgba(0,0,0,0.22)) drop-shadow(0 1px 2px rgba(0,0,0,0.14));">
         <div class="place-pin-bubble-inner" style="position:relative;z-index:0;display:flex;align-items:center;gap:4px;background:linear-gradient(180deg,#ffffff 0%,#f2f3f5 100%);border-radius:999px;padding:4px 8px 4px 6px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.95);white-space:nowrap;">
           ${iconHtml}
-          <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
+          <span style="font-size:10px;font-weight:700;color:#1a1a2e;font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">${name}</span>
         </div>
       </div>
     </div>`;
@@ -5627,7 +5680,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
           ? `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.35));">`
           : `<img src="${place.pinIconUrl}" style="width:${pinPx}px;height:${pinPx}px;object-fit:contain;display:block;filter:drop-shadow(${outlineW}px 0 0 ${strokeColor}) drop-shadow(-${outlineW}px 0 0 ${strokeColor}) drop-shadow(0 ${outlineW}px 0 ${strokeColor}) drop-shadow(0 -${outlineW}px 0 ${strokeColor}) drop-shadow(${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px ${diag}px 0 ${strokeColor}) drop-shadow(${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(-${diag}px -${diag}px 0 ${strokeColor}) drop-shadow(0 3px 6px rgba(0,0,0,0.3));">`)
       // font-family con la pila de fuentes de emoji NATIVAS del sistema —
-      // sin esto hereda 'Inter Tight' (sin glifos de emoji) y el navegador
+      // sin esto hereda la fuente global (sin glifos de emoji) y el navegador
       // cae a un fallback que puede rendear distinto al que se ve en el
       // teclado al elegirlo
       : noStroke
