@@ -316,6 +316,11 @@ export class PlaceModal2 {
         font-weight:400;
       }
       #wp-pm2.visible { display:block; }
+      /* Todo lo que queda DETRÁS de la ficha abierta (mapa con sus pins
+         animados, slide de clusters pausado, minicard, paneles): se oculta
+         y se congelan sus animaciones mientras la ficha lo tapa completo.
+         Ver _coverBehind. */
+      .wp-pm2-under { visibility:hidden; }
       #wp-pm2-backdrop { opacity:0; transition:opacity 0.32s ease-out; }
       #wp-pm2.wp-pm2-in #wp-pm2-backdrop { opacity:1; }
       #wp-pm2-card {
@@ -1900,6 +1905,7 @@ export class PlaceModal2 {
     // puede colapsar ambos estados en uno y la entrada no se ve.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       this._el.classList.add('wp-pm2-in');
+      this._coverBehind(true);
     }));
 
     // El rect destino del hero se puede medir YA — sus dimensiones salen
@@ -2040,6 +2046,7 @@ export class PlaceModal2 {
   // ACTUAL del hero (puede estar colapsado si hubo scroll) y su imagen —
   // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
+    this._coverBehind(false); // lo de atrás vuelve a verse ANTES del fade de salida
     setTimeout(() => this._diagMem('cerrar +1s'), 1000); // [DIAG] temporal
     this._closeLightbox();
     this._closeReactionBar(true);
@@ -4148,6 +4155,44 @@ export class PlaceModal2 {
         `nodos=${all} ficha=${ficha} eruda=${erudaN} imgs=${document.images.length} canvas=${document.getElementsByTagName('canvas').length} ` +
         `hojas=${document.querySelectorAll('#wp-pm2-menu-sheet,#wp-pm2-review-modal,.wp-pm2-rs-overlay').length} t=${Math.round(performance.now() / 1000)}s`);
     } catch (e) { console.log('[DIAG-MEM] error', e.message); }
+  }
+
+  // ── Lo de atrás de la ficha ────────────────────────────────────────
+  // La ficha es opaca y cubre toda la pantalla, pero el mapa (WebGL), sus
+  // pins con animaciones infinitas (pulsos, flotado, shimmer), el slide
+  // de clusters "pausado" y los paneles seguían vivos detrás, gastando
+  // GPU en cada cuadro. Con la GPU ocupada, el scroll de la ficha se
+  // ponía pesado y al aparecer una hoja las fotos se re-dibujaban con
+  // glitch (y al salir/volver a la app, Android liberaba todo → fluido).
+  // Se ocultan cuando la ficha ya terminó de entrar y vuelven al cerrar.
+  // Lo que se crea DESPUÉS (hojas, toast, reacciones) no se marca.
+  _coverBehind(on) {
+    clearTimeout(this._coverTimer);
+    if (!on) {
+      document.querySelectorAll('.wp-pm2-under').forEach(n => n.classList.remove('wp-pm2-under'));
+      (this._pausedAnims || []).forEach(a => { try { a.play(); } catch (_) {} });
+      this._pausedAnims = [];
+      return;
+    }
+    this._coverTimer = setTimeout(() => {
+      if (!this._el.classList.contains('wp-pm2-in')) return;
+      [...document.body.children].forEach(n => {
+        if (n === this._el) return;
+        if (n.id === 'eruda') return;
+        if (/^(SCRIPT|STYLE|LINK|TEMPLATE|SVG)$/i.test(n.tagName)) return;
+        if (n.id && n.id.startsWith('wp-pm2-')) return; // hojas/toast de la ficha
+        n.classList.add('wp-pm2-under');
+      });
+      // Congelar sus animaciones (con la API: también las que están en
+      // style="" inline, que una regla CSS no alcanza sin !important)
+      try {
+        this._pausedAnims = document.getAnimations().filter(a => {
+          const t = a.effect?.target;
+          return t && t.closest?.('.wp-pm2-under') && a.playState === 'running';
+        });
+        this._pausedAnims.forEach(a => a.pause());
+      } catch (_) { this._pausedAnims = []; }
+    }, 450);
   }
 
   // ══ HOJAS NATIVAS (Capacitor) ══════════════════════════════════════
