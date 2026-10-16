@@ -1006,9 +1006,17 @@ export class PlaceModal2 {
       .wp-pm2-hours-today .wp-pm2-hours-time { color:#0a0a0a; font-weight:600; }
 
       /* PHOTO STRIP */
+      /* overflow:hidden (NO auto): una franja con scroll horizontal propio
+         dentro del scroll de la ficha hacía que el WebView de Android
+         re-dibujara la galería con glitch cada vez que una hoja aparecía
+         encima (confirmado en el teléfono: con overflow hidden, sin
+         glitch). El deslizamiento horizontal lo hace JS
+         (_wireStripDrag) moviendo scrollLeft; pan-y deja el scroll
+         vertical de la ficha en manos del sistema. */
       #wp-pm2-strip {
         display:flex; gap:6px; padding:14px 18px;
-        overflow-x:auto; scrollbar-width:none;
+        overflow:hidden; scrollbar-width:none;
+        touch-action:pan-y;
       }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
@@ -1494,6 +1502,7 @@ export class PlaceModal2 {
   // ── WIRE EVENTS ────────────────────────────────────────────────────
   _wireEvents() {
     const el = this._el;
+    this._wireStripDrag(el.querySelector('#wp-pm2-strip'));
 
     // Destello tipo GPS en los botones del topbar — se dispara en
     // pointerdown (no click) para que arranque en el mismo instante que
@@ -2119,6 +2128,7 @@ export class PlaceModal2 {
 
     // Photo strip
     const stripEl = $('wp-pm2-strip');
+    this._stripStop?.(); // sin inercia de la ficha anterior, al inicio
     stripEl.innerHTML = '';
     this._lbPhotos = photos; // para el lightbox
     // Miniaturas: cada foto se carga YA REDUCIDA al tamaño en que se ve
@@ -2399,6 +2409,63 @@ export class PlaceModal2 {
   // que gana por cascada normal, no por fuerza bruta. El hero (que es un
   // <div> con background-image seteado por JS) usa un ::before aparte para
   // no pisar nunca la foto real.
+  // ── Galería: deslizamiento horizontal hecho a mano ─────────────────
+  // La franja tiene overflow:hidden (ver CSS); aquí se mueve scrollLeft
+  // con el dedo y luego sigue por inercia, como un scroll normal. Un
+  // arrastre de más de 6px no cuenta como toque (no abre el lightbox).
+  _wireStripDrag(strip) {
+    if (!strip) return;
+    let id = null, x0 = 0, y0 = 0, left0 = 0, dragging = false, moved = false;
+    let lastX = 0, lastT = 0, vel = 0, raf = 0;
+    const max = () => Math.max(0, strip.scrollWidth - strip.clientWidth);
+    const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
+    this._stripStop = () => { stop(); strip.scrollLeft = 0; };
+
+    strip.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      stop();
+      id = e.pointerId; x0 = lastX = e.clientX; y0 = e.clientY;
+      left0 = strip.scrollLeft; lastT = e.timeStamp; vel = 0;
+      dragging = false; moved = false;
+    });
+    strip.addEventListener('pointermove', e => {
+      if (e.pointerId !== id) return;
+      const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (!dragging) {
+        if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy)) return;
+        dragging = true; moved = true;
+        try { strip.setPointerCapture(id); } catch (_) {}
+      }
+      strip.scrollLeft = Math.min(max(), Math.max(0, left0 - dx));
+      const dt = e.timeStamp - lastT;
+      if (dt > 0) vel = 0.8 * ((lastX - e.clientX) / dt) + 0.2 * vel; // px/ms
+      lastX = e.clientX; lastT = e.timeStamp;
+    });
+    const end = e => {
+      if (e.pointerId !== id) return;
+      id = null;
+      if (!dragging) return;
+      dragging = false;
+      if (e.timeStamp - lastT > 80) vel = 0; // se detuvo antes de soltar
+      let t = performance.now();
+      const step = now => {
+        const dt = Math.min(32, now - t); t = now;
+        vel *= Math.pow(0.996, dt);          // fricción
+        const next = strip.scrollLeft + vel * dt;
+        strip.scrollLeft = Math.min(max(), Math.max(0, next));
+        if (Math.abs(vel) > 0.02 && next > 0 && next < max()) raf = requestAnimationFrame(step);
+        else raf = 0;
+      };
+      if (Math.abs(vel) > 0.05) raf = requestAnimationFrame(step);
+    };
+    strip.addEventListener('pointerup', end);
+    strip.addEventListener('pointercancel', end);
+    // Después de arrastrar, el "click" que sigue no abre la foto
+    strip.addEventListener('click', e => {
+      if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+    }, true);
+  }
+
   // ── Miniaturas de la galería ───────────────────────────────────────
   // Una por una (no 12 originales decodificándose a la vez). Si la foto no
   // permite reducirla (servidor sin CORS) o ya es chica, se usa tal cual.
