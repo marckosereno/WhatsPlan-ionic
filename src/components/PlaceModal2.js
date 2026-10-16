@@ -766,8 +766,23 @@ export class PlaceModal2 {
       }
       .wp-pm2-ai-text {
         font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
-        animation: wp-pm2-ai-fadein 0.4s ease both;
         font-family:var(--wp-font);
+      }
+      /* Revelado suave (estilo Apple Intelligence): el texto completo ya
+         está puesto (su alto es el final, nada de abajo se mueve) y una
+         máscara con borde difuminado baja de arriba hacia abajo. Solo se
+         re-dibuja el párrafo ~1.3s; sin transform/filter (sin capas
+         nuevas). Al terminar se quita la clase: en reposo no hay máscara. */
+      .wp-pm2-ai-text.wp-pm2-ai-reveal {
+        -webkit-mask-image:linear-gradient(to bottom, #000 0%, #000 44%, transparent 56%, transparent 100%);
+        mask-image:linear-gradient(to bottom, #000 0%, #000 44%, transparent 56%, transparent 100%);
+        -webkit-mask-size:100% 260%; mask-size:100% 260%;
+        -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+        animation: wp-pm2-ai-reveal 1.3s cubic-bezier(0.25,0.6,0.3,1) both;
+      }
+      @keyframes wp-pm2-ai-reveal {
+        from { -webkit-mask-position:0 100%; mask-position:0 100%; }
+        to   { -webkit-mask-position:0 0%;   mask-position:0 0%; }
       }
       /* steps(28): el brillo avanza a ~20 cuadros/s en vez de 120. Es una
          animación de background-position (se re-dibuja en cada cuadro);
@@ -1220,13 +1235,18 @@ export class PlaceModal2 {
       .wp-pm2-review-row {
         -webkit-user-select:none; user-select:none;
         -webkit-touch-callout:none;
-        transition:transform 0.18s cubic-bezier(0.34,1.4,0.64,1), background-color 0.2s ease;
+        transition:background-color 0.2s ease;
         border-radius:16px;
       }
       /* touch-action:pan-y → el scroll vertical lo maneja el navegador y
          el gesto horizontal (swipe para responder) llega al JS */
       .wp-pm2-review-row { position:relative; touch-action:pan-y; }
-      .wp-pm2-review-row.wp-pm2-rv-pressing { transform:scale(0.97); background-color:#f6f7f9; }
+      /* Long-press: solo se tiñe el fondo. Antes también se encogía
+         (transform:scale), y eso convertía la tarjeta en una capa aparte
+         y obligaba al teléfono a separar en capas todo lo que tiene
+         encima/debajo (las demás respuestas) → parpadeo en esa zona, más
+         notorio con 3+ respuestas. */
+      .wp-pm2-review-row.wp-pm2-rv-pressing { background-color:#f6f7f9; }
       .wp-pm2-review-row.wp-pm2-rv-focus { background-color:#f3f4f6; }
       .wp-pm2-emoji {
         font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;
@@ -1286,9 +1306,9 @@ export class PlaceModal2 {
            deja aire alrededor del avatar en vez de pegarse a él */
         display:flex; gap:8px; padding:8px 10px; margin:0 -10px;
         position:relative; touch-action:pan-y; border-radius:12px;
-        transition:transform 0.18s cubic-bezier(0.34,1.4,0.64,1), background-color 0.2s ease;
+        transition:background-color 0.2s ease;
       }
-      .wp-pm2-rv-reply.wp-pm2-rv-pressing { transform:scale(0.97); background-color:#f3f4f6; }
+      .wp-pm2-rv-reply.wp-pm2-rv-pressing { background-color:#f3f4f6; }
       .wp-pm2-rv-reply.wp-pm2-rv-focus { background-color:#eef0f3; }
       .wp-pm2-rv-reply-to { margin-left:6px; font-size:11px; font-weight:600; color:#9ca3af; }
       .wp-pm2-rv-mention { color:#2563eb; font-weight:600; }
@@ -2359,23 +2379,21 @@ export class PlaceModal2 {
     textEl.style.display = 'none';
     skelEl.style.display = '';
 
-    const showText = (desc, animate) => {
+    // Revelado suave + brillo en los destellos ✨ mientras aparece
+    const showText = (desc) => {
       skelEl.style.display = 'none';
       textEl.style.display = '';
-      if (animate) {
-        if (icon) icon.classList.add('wp-pm2-ai-pulse');
-        return this._typewrite(textEl, desc, null, () => {
-          if (icon) icon.classList.remove('wp-pm2-ai-pulse');
-        });
-      }
-      this._typewrite(textEl, desc);
-      return null;
+      if (icon) icon.classList.add('wp-pm2-ai-pulse');
+      return this._revealText(textEl, desc, null, () => {
+        if (icon) icon.classList.remove('wp-pm2-ai-pulse');
+      });
     };
 
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
     if (existing.length > 0) {
       const desc = existing[Math.floor(Math.random() * existing.length)];
-      showText(desc, false);
+      const cancel = showText(desc);
+      this._aiAbort = () => { cancel(); if (icon) icon.classList.remove('wp-pm2-ai-pulse'); };
       return;
     }
 
@@ -2394,52 +2412,32 @@ export class PlaceModal2 {
       .then(({ ok, data }) => {
         if (aborted) return;
         if (!ok || !data || !data.description) { block.style.display = 'none'; return; }
-        cancelTypewrite = showText(data.description, true);
+        cancelTypewrite = showText(data.description);
       })
       .catch(() => { if (!aborted) block.style.display = 'none'; });
   }
 
-  // Efecto "se va escribiendo". Antes agregaba UNA letra cada 16ms: ~500
-  // cambios en ~8s, y como el párrafo crecía renglón por renglón, TODO lo
-  // de abajo se movía y la ficha se re-dibujaba completa ~60 veces por
-  // segundo (scroll pesado y glitch mientras duraba). Ahora el texto
-  // completo está desde el inicio (lo que falta va transparente, así el
-  // alto ya es el final y nada de abajo se mueve) y avanza por palabras,
-  // ~30 veces por segundo, en máximo 1.8s.
-  _typewrite(el, text, onStart, onDone) {
-    el.textContent = '';
-    const shown = document.createElement('span');
-    const rest  = document.createElement('span');
-    rest.style.color = 'transparent';
-    rest.textContent = text;
-    el.append(shown, rest);
-    const parts = text.split(/(\s+)/);           // palabras + espacios
-    const DUR = Math.min(1800, Math.max(500, parts.length * 18));
-    let cancelled = false, raf = 0, t0 = 0, lastT = 0, lastN = 0;
-    const finish = () => { el.textContent = text; if (onDone) onDone(); };
-    const step = (now) => {
-      if (cancelled) return;
-      if (!t0) t0 = now;
-      const k = Math.min(1, (now - t0) / DUR);
-      if (k >= 1) return finish();
-      if (now - lastT >= 33) {                     // ~30 actualizaciones/s
-        const n = Math.round(parts.length * k);
-        if (n !== lastN) {
-          const head = parts.slice(0, n).join('');
-          shown.textContent = head;
-          rest.textContent  = text.slice(head.length);
-          lastN = n;
-        }
-        lastT = now;
-      }
-      raf = requestAnimationFrame(step);
+  // Revelado suave de la descripción (ver CSS .wp-pm2-ai-reveal).
+  // Antes era "máquina de escribir" letra por letra: re-dibujaba la ficha
+  // completa decenas de veces por segundo. Devuelve cancel().
+  _revealText(el, text, onStart, onDone) {
+    el.classList.remove('wp-pm2-ai-reveal');
+    el.textContent = text;
+    void el.offsetWidth; // reinicia la animación si se reabre la ficha
+    let done = false;
+    const finish = () => {
+      if (done) return; done = true;
+      el.classList.remove('wp-pm2-ai-reveal');
+      el.removeEventListener('animationend', onEnd);
+      clearTimeout(safety);
+      if (onDone) onDone();
     };
+    const onEnd = (e) => { if (e.animationName === 'wp-pm2-ai-reveal') finish(); };
+    el.addEventListener('animationend', onEnd);
+    const safety = setTimeout(finish, 1800); // por si animationend no llega
     if (onStart) onStart();
-    raf = requestAnimationFrame(step);
-    return function cancel() {
-      cancelled = true;
-      if (raf) cancelAnimationFrame(raf);
-    };
+    el.classList.add('wp-pm2-ai-reveal');
+    return function cancel() { done = true; clearTimeout(safety); el.removeEventListener('animationend', onEnd); el.classList.remove('wp-pm2-ai-reveal'); };
   }
 
   // Google Reviews — vienen embebidas en el propio `place.reviews` (columna
