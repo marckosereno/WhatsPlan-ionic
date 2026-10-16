@@ -1010,14 +1010,21 @@ export class PlaceModal2 {
          dentro del scroll de la ficha hacía que el WebView de Android
          re-dibujara la galería con glitch cada vez que una hoja aparecía
          encima (confirmado en el teléfono: con overflow hidden, sin
-         glitch). El deslizamiento horizontal lo hace JS
-         (_wireStripDrag) moviendo scrollLeft; pan-y deja el scroll
-         vertical de la ficha en manos del sistema. */
+         glitch). El deslizamiento lo hace JS (_wireStripDrag) moviendo
+         la tira interna con transform; pan-y deja el scroll vertical de
+         la ficha en manos del sistema. */
       #wp-pm2-strip {
-        display:flex; gap:6px; padding:14px 18px;
-        overflow:hidden; scrollbar-width:none;
+        padding:14px 18px;
+        overflow:hidden;
         touch-action:pan-y;
       }
+      .wp-pm2-strip-track {
+        display:flex; gap:6px; width:max-content;
+      }
+      /* Solo mientras se arrastra / sigue por inercia: capa propia para
+         que el movimiento lo haga la GPU sin re-dibujar. Al terminar se
+         quita (sin capa en reposo = sin glitch al abrir hojas). */
+      .wp-pm2-strip-track.wp-pm2-moving { will-change:transform; }
       #wp-pm2-strip::-webkit-scrollbar { display:none; }
       #wp-pm2-strip img {
         width:150px; height:210px; object-fit:cover;
@@ -2130,6 +2137,10 @@ export class PlaceModal2 {
     const stripEl = $('wp-pm2-strip');
     this._stripStop?.(); // sin inercia de la ficha anterior, al inicio
     stripEl.innerHTML = '';
+    const trackEl = document.createElement('div');
+    trackEl.className = 'wp-pm2-strip-track';
+    stripEl.appendChild(trackEl);
+    stripEl.style.display = photos.length ? '' : 'none';
     this._lbPhotos = photos; // para el lightbox
     // Miniaturas: cada foto se carga YA REDUCIDA al tamaño en que se ve
     // (150×210 × densidad de pantalla), no el original de 800×1067. Con
@@ -2161,7 +2172,7 @@ export class PlaceModal2 {
         if (Date.now() - (this._shownAt || 0) < 400) return;
         this._openLightbox(i);
       });
-      stripEl.appendChild(img);
+      trackEl.appendChild(img);
     });
     this._loadThumbs(stripImgs, thumbToken);
 
@@ -2410,22 +2421,34 @@ export class PlaceModal2 {
   // <div> con background-image seteado por JS) usa un ::before aparte para
   // no pisar nunca la foto real.
   // ── Galería: deslizamiento horizontal hecho a mano ─────────────────
-  // La franja tiene overflow:hidden (ver CSS); aquí se mueve scrollLeft
-  // con el dedo y luego sigue por inercia, como un scroll normal. Un
-  // arrastre de más de 6px no cuenta como toque (no abre el lightbox).
+  // La franja tiene overflow:hidden (ver CSS). La tira interna se mueve
+  // con transform: el dedo la arrastra 1:1 y al soltar sigue por inercia,
+  // con rebote suave en los extremos. Un arrastre de más de 6px no cuenta
+  // como toque (no abre el lightbox).
   _wireStripDrag(strip) {
     if (!strip) return;
-    let id = null, x0 = 0, y0 = 0, left0 = 0, dragging = false, moved = false;
-    let lastX = 0, lastT = 0, vel = 0, raf = 0;
-    const max = () => Math.max(0, strip.scrollWidth - strip.clientWidth);
+    const track = () => strip.firstElementChild;
+    let pos = 0;                 // desplazamiento actual (px, >= 0)
+    let id = null, x0 = 0, y0 = 0, pos0 = 0, dragging = false, moved = false;
+    let samples = [], raf = 0;
+    const max = () => {
+      const t = track(); if (!t) return 0;
+      const cs = getComputedStyle(strip);
+      const inner = strip.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      return Math.max(0, t.offsetWidth - inner);
+    };
+    const apply = (x) => { const t = track(); if (t) t.style.transform = `translate3d(${-x}px,0,0)`; };
+    const moving = (on) => track()?.classList.toggle('wp-pm2-moving', on);
     const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
-    this._stripStop = () => { stop(); strip.scrollLeft = 0; };
+    // Fuera de los límites se mueve a la mitad (resistencia)
+    const rubber = (x, m) => x < 0 ? x * 0.35 : x > m ? m + (x - m) * 0.35 : x;
+    this._stripStop = () => { stop(); pos = 0; moving(false); };
 
     strip.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       stop();
-      id = e.pointerId; x0 = lastX = e.clientX; y0 = e.clientY;
-      left0 = strip.scrollLeft; lastT = e.timeStamp; vel = 0;
+      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; pos0 = pos;
+      samples = [[e.timeStamp, e.clientX]];
       dragging = false; moved = false;
     });
     strip.addEventListener('pointermove', e => {
@@ -2434,29 +2457,51 @@ export class PlaceModal2 {
       if (!dragging) {
         if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy)) return;
         dragging = true; moved = true;
+        x0 = e.clientX; // sin salto de 6px al arrancar
+        moving(true);
         try { strip.setPointerCapture(id); } catch (_) {}
       }
-      strip.scrollLeft = Math.min(max(), Math.max(0, left0 - dx));
-      const dt = e.timeStamp - lastT;
-      if (dt > 0) vel = 0.8 * ((lastX - e.clientX) / dt) + 0.2 * vel; // px/ms
-      lastX = e.clientX; lastT = e.timeStamp;
+      const m = max();
+      pos = rubber(pos0 - (e.clientX - x0), m);
+      apply(pos);
+      samples.push([e.timeStamp, e.clientX]);
+      if (samples.length > 6) samples.shift();
     });
     const end = e => {
       if (e.pointerId !== id) return;
       id = null;
       if (!dragging) return;
       dragging = false;
-      if (e.timeStamp - lastT > 80) vel = 0; // se detuvo antes de soltar
+      // Velocidad con los últimos ~100ms de movimiento (px/ms)
+      const now = e.timeStamp;
+      const recent = samples.filter(s => now - s[0] < 100);
+      let vel = 0;
+      if (recent.length >= 2) {
+        const a = recent[0], b = recent[recent.length - 1];
+        if (b[0] > a[0]) vel = (a[1] - b[1]) / (b[0] - a[0]);
+      }
+      vel = Math.max(-6, Math.min(6, vel));
+      const m = max();
       let t = performance.now();
-      const step = now => {
-        const dt = Math.min(32, now - t); t = now;
-        vel *= Math.pow(0.996, dt);          // fricción
-        const next = strip.scrollLeft + vel * dt;
-        strip.scrollLeft = Math.min(max(), Math.max(0, next));
-        if (Math.abs(vel) > 0.02 && next > 0 && next < max()) raf = requestAnimationFrame(step);
-        else raf = 0;
+      const step = (tn) => {
+        const dt = Math.min(32, tn - t); t = tn;
+        if (pos < 0 || pos > m) {
+          // Fuera del límite: vuelve con resorte
+          const target = pos < 0 ? 0 : m;
+          vel = 0;
+          pos += (target - pos) * Math.min(1, dt * 0.018);
+          if (Math.abs(target - pos) < 0.5) pos = target;
+        } else {
+          vel *= Math.pow(0.9975, dt);      // fricción tipo scroll nativo
+          pos += vel * dt;
+          if (pos < 0 || pos > m) vel *= 0.4; // al chocar con el borde, frena
+        }
+        apply(pos);
+        const settled = Math.abs(vel) < 0.02 && pos >= 0 && pos <= m;
+        if (settled) { raf = 0; moving(false); }
+        else raf = requestAnimationFrame(step);
       };
-      if (Math.abs(vel) > 0.05) raf = requestAnimationFrame(step);
+      raf = requestAnimationFrame(step);
     };
     strip.addEventListener('pointerup', end);
     strip.addEventListener('pointercancel', end);
