@@ -960,18 +960,12 @@ export class PlaceModal2 {
         100% { transform:scale(1); }
       }
       .wp-pm2-tap-pulse      { animation:wpPm2TapPulse 0.34s cubic-bezier(0.34,1.4,0.64,1); }
-      /* PULSE SIN CAPAS (todo lo que está dentro del scroll de la ficha:
-         reseñas, respuestas, chips, "Escribe una reseña"). Un anillo que
-         se expande y se desvanece usando outline: solo se re-dibuja, no
-         usa transform → no crea capas ni separa en capas lo de alrededor
-         (eso era el parpadeo del long-press con 3+ respuestas). */
-      @keyframes wpPm2Ring {
-        0%   { outline:2px solid var(--wp-pm2-ring, rgba(37,99,235,0.35)); outline-offset:0px; }
-        100% { outline:2px solid rgba(37,99,235,0); outline-offset:var(--wp-pm2-ring-size, 7px); }
-      }
-      .wp-pm2-ring { animation:wpPm2Ring 0.45s cubic-bezier(0.22,1,0.36,1); }
-      .wp-pm2-review-row.wp-pm2-ring, .wp-pm2-rv-reply.wp-pm2-ring { --wp-pm2-ring-size:4px; }
-      #wp-pm2-add-review.wp-pm2-ring, .wpr-tab-add.wp-pm2-ring { --wp-pm2-ring:rgba(249,115,22,0.5); }
+      /* Dentro del scroll de la ficha (reseñas, chips, "Escribe una
+         reseña"…) el pulse lo hace JS cuadro por cuadro con un transform
+         2D sin transición/animación CSS (ver _scaleKeys): se ve igual
+         que el rebote de siempre, pero el teléfono lo re-dibuja en vez de
+         crear capas — y no separa en capas lo de alrededor (eso era el
+         parpadeo del long-press con 3+ respuestas). */
       .wp-pm2-tap-pulse-wide { animation:wpPm2TapPulseWide 0.34s cubic-bezier(0.34,1.4,0.64,1); }
 
       #wp-pm2-cta-row { gap:8px; }
@@ -1278,9 +1272,7 @@ export class PlaceModal2 {
       }
       .wp-pm2-rv-chip .wp-pm2-emoji { font-size:13px; }
       .wp-pm2-rv-chip.wp-pm2-mine { background:#eef4ff; border-color:#bfd4fb; color:#1d4ed8; }
-      .wp-pm2-rv-chip:active { background-color:#e5e7eb; }
-      .wp-pm2-rv-chip.wp-pm2-rv-pop { animation:wpPm2Ring 0.45s cubic-bezier(0.22,1,0.36,1); --wp-pm2-ring-size:5px; }
-
+      
       /* Fila de acciones: Útil · Responder */
       .wp-pm2-rv-actions { display:flex; align-items:center; gap:8px; margin-top:8px; }
       .wp-pm2-rv-btn {
@@ -1292,13 +1284,10 @@ export class PlaceModal2 {
         transition:background-color 0.15s ease;
       }
       .wp-pm2-rv-btn svg { flex-shrink:0; }
-      .wp-pm2-rv-btn:active { background-color:#e5e7eb; }
-      .wp-pm2-rv-btn.wp-pm2-on {
+            .wp-pm2-rv-btn.wp-pm2-on {
         background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
         color:#fff;
       }
-      .wp-pm2-rv-btn.wp-pm2-on:active { background:linear-gradient(180deg,#3b7ff0 0%,#1d4ed8 100%); }
-      .wp-pm2-rv-btn.wp-pm2-rv-pop { animation:wpPm2Ring 0.45s cubic-bezier(0.22,1,0.36,1); --wp-pm2-ring-size:5px; }
 
       /* Respuestas — un solo nivel, colapsadas por defecto */
       .wp-pm2-rv-replies { margin-top:6px; }
@@ -1387,8 +1376,7 @@ export class PlaceModal2 {
         cursor:pointer; -webkit-tap-highlight-color:transparent;
         transition:background-color 0.15s;
       }
-      .wp-pm2-rv-reveal:active { background-color:#e5e7eb; }
-      .wp-pm2-ms-opt:disabled { color:#9ca3af; cursor:default; }
+            .wp-pm2-ms-opt:disabled { color:#9ca3af; cursor:default; }
       .wp-pm2-ms-opt:disabled:active { background-color:transparent; }
 
       /* Pill "Dueño" (dueño verificado del lugar) */
@@ -1552,6 +1540,7 @@ export class PlaceModal2 {
   _wireEvents() {
     const el = this._el;
     this._wireStripDrag(el.querySelector('#wp-pm2-strip'));
+    this._wirePressSquish(el.querySelector('#wp-pm2-body'));
 
     // Destello tipo GPS en los botones del topbar — se dispara en
     // pointerdown (no click) para que arranque en el mismo instante que
@@ -3080,10 +3069,14 @@ export class PlaceModal2 {
   // mucho más).
   _pulseTap(el, action, wide = false) {
     this._haptic('light');
-    // Dentro del scroll de la ficha: anillo sin capas (ver .wp-pm2-ring).
-    // Fuera (topbar): el rebote con escala de siempre.
-    const cls = el.closest('#wp-pm2-body') ? 'wp-pm2-ring'
-      : (wide ? 'wp-pm2-tap-pulse-wide' : 'wp-pm2-tap-pulse');
+    if (el.closest('#wp-pm2-body')) {
+      // Dentro del scroll: el mismo rebote, hecho por JS (sin capas)
+      this._scaleKeys(el, wide ? [1, 0.97, 1.015, 1] : [1, 0.92, 1.04, 1], 340);
+      if (this._pulseActionTimer) clearTimeout(this._pulseActionTimer);
+      this._pulseActionTimer = setTimeout(() => { this._pulseActionTimer = null; action(); }, 150);
+      return;
+    }
+    const cls = wide ? 'wp-pm2-tap-pulse-wide' : 'wp-pm2-tap-pulse';
     el.classList.remove(cls);
     void el.offsetWidth; // reinicia la animación si se toca dos veces seguidas
     el.classList.add(cls);
@@ -3111,13 +3104,48 @@ export class PlaceModal2 {
     } catch (_) {}
   }
 
-  // Anillo de pulse sin capas sobre cualquier elemento
-  _ring(el) {
+  // ── Pulse sin capas ────────────────────────────────────────────────
+  // Escala por puntos clave [1, 0.92, 1.04, 1] repartidos en `dur` ms,
+  // escribiendo transform:scale() 2D en cada cuadro. Sin transición ni
+  // animación CSS → el teléfono no crea capa: solo re-dibuja el elemento.
+  _scaleKeys(el, keys, dur) {
     if (!el) return;
-    el.classList.remove('wp-pm2-ring');
-    void el.offsetWidth;
-    el.classList.add('wp-pm2-ring');
-    el.addEventListener('animationend', () => el.classList.remove('wp-pm2-ring'), { once: true });
+    if (el.__wpScaleRaf) cancelAnimationFrame(el.__wpScaleRaf);
+    const seg = keys.length - 1, t0 = performance.now();
+    const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const step = (now) => {
+      if (el.__wpSwiping) { el.__wpScaleRaf = 0; return; } // el swipe manda
+      const k = Math.min(1, (now - t0) / dur);
+      const pos = k * seg, i = Math.min(seg - 1, Math.floor(pos));
+      const v = keys[i] + (keys[i + 1] - keys[i]) * ease(pos - i);
+      el.style.transform = k >= 1 && keys[seg] === 1 ? '' : `scale(${v.toFixed(4)})`;
+      el.__wpScale = v;
+      el.__wpScaleRaf = k < 1 ? requestAnimationFrame(step) : 0;
+    };
+    el.__wpScaleRaf = requestAnimationFrame(step);
+  }
+  _scaleTo(el, to, dur) { this._scaleKeys(el, [el.__wpScale || 1, to], dur); }
+
+  // Squish al presionar los botones de las reseñas (chips, Útil,
+  // Responder, ⋯, "Toca para ver"): se hunde al apoyar y rebota al soltar.
+  _wirePressSquish(root) {
+    const SEL = '.wp-pm2-rv-chip, .wp-pm2-rv-btn, .wp-pm2-rv-more, .wp-pm2-rv-reveal, .wp-pm2-rv-reply-del';
+    let cur = null;
+    const up = () => {
+      if (!cur) return;
+      const el = cur; cur = null;
+      this._scaleKeys(el, [el.__wpScale || 0.9, 1.05, 1], 260);
+    };
+    root.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest(SEL);
+      if (!el || !root.contains(el)) return;
+      cur = el;
+      this._scaleTo(el, 0.88, 90);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => root.addEventListener(ev, up));
+    root.addEventListener('pointermove', (e) => {
+      if (cur && !cur.contains(document.elementFromPoint(e.clientX, e.clientY))) up();
+    }, { passive: true });
   }
 
   // Toast simple — por encima de la ficha (z-index 1500000).
@@ -3391,6 +3419,7 @@ export class PlaceModal2 {
         this._setEmoji(reactKey, mine === type ? null : type, renderKey);
       };
       container.appendChild(chip);
+      if (chip.classList.contains('wp-pm2-rv-pop')) this._scaleKeys(chip, [0.7, 1.12, 1], 320);
     });
   }
 
@@ -3422,6 +3451,8 @@ export class PlaceModal2 {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
         Responder
       </button>` : ''}`;
+    const utilBtn = actionsEl.querySelector('.wp-pm2-rv-util');
+    if (utilBtn.classList.contains('wp-pm2-rv-pop')) this._scaleKeys(utilBtn, [0.85, 1.08, 1], 300);
     actionsEl.querySelector('.wp-pm2-rv-util').onclick = (e) => {
       e.stopPropagation();
       this._toggleUseful(key);
@@ -3606,10 +3637,13 @@ export class PlaceModal2 {
   // o swipe) o se suelta antes. ignoreSel: zonas internas que no cuentan.
   _wireLongPress(el, onFire, ignoreSel = null) {
     let timer = null, visualTimer = null, sx = 0, sy = 0, fired = false;
-    const cancel = () => {
+    const cancel = (bounce = false) => {
+      const wasPressing = el.classList.contains('wp-pm2-rv-pressing');
       clearTimeout(timer); clearTimeout(visualTimer);
       timer = visualTimer = null;
       el.classList.remove('wp-pm2-rv-pressing');
+      if (bounce) this._scaleKeys(el, [el.__wpScale || 0.97, 1.02, 1], 280);
+      else if (wasPressing) this._scaleTo(el, 1, 140);
     };
     el.addEventListener('pointerdown', (e) => {
       // Se resetea ANTES de cualquier return: si el long-press anterior
@@ -3621,12 +3655,14 @@ export class PlaceModal2 {
       if (ignoreSel && e.target.closest(ignoreSel)) return;
       sx = e.clientX; sy = e.clientY;
       // El squish aparece un poco después para no parpadear en cada scroll
-      visualTimer = setTimeout(() => el.classList.add('wp-pm2-rv-pressing'), 140);
+      visualTimer = setTimeout(() => {
+        el.classList.add('wp-pm2-rv-pressing');
+        this._scaleTo(el, 0.97, 220);           // se hunde mientras mantienes
+      }, 140);
       timer = setTimeout(() => {
-        cancel();
+        cancel(true);                          // rebote al disparar
         fired = true;
         this._haptic('medium');
-        this._ring(el);
         onFire();
       }, 450);
     });
@@ -3634,7 +3670,7 @@ export class PlaceModal2 {
       if (!timer) return;
       if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) cancel();
     });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, cancel));
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => cancel()));
     // Android abre el menú contextual con el long-press — se bloquea
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     // El click que llega al soltar después de un long-press no debe
@@ -3675,6 +3711,7 @@ export class PlaceModal2 {
         const e = 1 - Math.pow(1 - k, 3);          // ease-out
         paint(k >= 1 ? 0 : from * (1 - e), (1 - e) * Math.min(1, from / TH));
         if (k < 1) rafBack = requestAnimationFrame(step);
+        else el.__wpSwiping = false;
       };
       rafBack = requestAnimationFrame(step);
     };
@@ -3695,6 +3732,9 @@ export class PlaceModal2 {
         mode = (mx > 0 && mx > 2 * Math.abs(my)) ? 'h' : 'v';
         if (mode === 'v') { pid = null; mode = null; return; }
         cancelAnimationFrame(rafBack);
+        el.__wpSwiping = true;
+        if (el.__wpScaleRaf) { cancelAnimationFrame(el.__wpScaleRaf); el.__wpScaleRaf = 0; }
+        el.__wpScale = 1;
         el.style.transition = 'none';
         if (icon) icon.style.transition = 'background-color 0.15s, color 0.15s';
         try { el.setPointerCapture(e.pointerId); } catch (_) {}
