@@ -960,6 +960,18 @@ export class PlaceModal2 {
         100% { transform:scale(1); }
       }
       .wp-pm2-tap-pulse      { animation:wpPm2TapPulse 0.34s cubic-bezier(0.34,1.4,0.64,1); }
+      /* PULSE SIN CAPAS (todo lo que está dentro del scroll de la ficha:
+         reseñas, respuestas, chips, "Escribe una reseña"). Un anillo que
+         se expande y se desvanece usando outline: solo se re-dibuja, no
+         usa transform → no crea capas ni separa en capas lo de alrededor
+         (eso era el parpadeo del long-press con 3+ respuestas). */
+      @keyframes wpPm2Ring {
+        0%   { outline:2px solid var(--wp-pm2-ring, rgba(37,99,235,0.35)); outline-offset:0px; }
+        100% { outline:2px solid rgba(37,99,235,0); outline-offset:var(--wp-pm2-ring-size, 7px); }
+      }
+      .wp-pm2-ring { animation:wpPm2Ring 0.45s cubic-bezier(0.22,1,0.36,1); }
+      .wp-pm2-review-row.wp-pm2-ring, .wp-pm2-rv-reply.wp-pm2-ring { --wp-pm2-ring-size:4px; }
+      #wp-pm2-add-review.wp-pm2-ring, .wpr-tab-add.wp-pm2-ring { --wp-pm2-ring:rgba(249,115,22,0.5); }
       .wp-pm2-tap-pulse-wide { animation:wpPm2TapPulseWide 0.34s cubic-bezier(0.34,1.4,0.64,1); }
 
       #wp-pm2-cta-row { gap:8px; }
@@ -1146,7 +1158,7 @@ export class PlaceModal2 {
         border-color:transparent; color:#fff;
         box-shadow:0 2px 8px rgba(249,115,22,0.30);
       }
-      .wpr-tab.wpr-tab-add:active { transform:scale(0.95); filter:brightness(0.92); }
+      .wpr-tab.wpr-tab-add:active { filter:brightness(0.92); }
       .wpr-empty {
         text-align:center; color:#9ca3af; font-size:13px; padding:24px 20px;
       }
@@ -1193,7 +1205,7 @@ export class PlaceModal2 {
         background:#e5e7eb;
       }
       #wp-pm2-comment-box {
-        transition:transform 0.15s ease, background-color 0.15s ease;
+        transition:background-color 0.15s ease;
         -webkit-tap-highlight-color:transparent;
         flex:1; display:flex; align-items:center; justify-content:space-between;
         background:#f3f4f6; border-radius:999px; padding:10px 8px 10px 16px;
@@ -1262,13 +1274,12 @@ export class PlaceModal2 {
         font-size:11px; font-weight:700; color:#4b5563;
         font-family:var(--wp-font); cursor:pointer;
         -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+        transition:background-color 0.15s ease;
       }
       .wp-pm2-rv-chip .wp-pm2-emoji { font-size:13px; }
       .wp-pm2-rv-chip.wp-pm2-mine { background:#eef4ff; border-color:#bfd4fb; color:#1d4ed8; }
-      .wp-pm2-rv-chip:active { transform:scale(0.88,0.82); }
-      .wp-pm2-rv-chip.wp-pm2-rv-pop { animation:wpPm2RvPop 0.32s cubic-bezier(0.34,1.56,0.64,1); }
-      @keyframes wpPm2RvPop { 0% { transform:scale(0.6); } 100% { transform:scale(1); } }
+      .wp-pm2-rv-chip:active { background-color:#e5e7eb; }
+      .wp-pm2-rv-chip.wp-pm2-rv-pop { animation:wpPm2Ring 0.45s cubic-bezier(0.22,1,0.36,1); --wp-pm2-ring-size:5px; }
 
       /* Fila de acciones: Útil · Responder */
       .wp-pm2-rv-actions { display:flex; align-items:center; gap:8px; margin-top:8px; }
@@ -1278,15 +1289,16 @@ export class PlaceModal2 {
         background:#f3f4f6; color:#6b7280;
         font-size:11.5px; font-weight:700; font-family:var(--wp-font);
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+        transition:background-color 0.15s ease;
       }
       .wp-pm2-rv-btn svg { flex-shrink:0; }
-      .wp-pm2-rv-btn:active { transform:scale(0.88,0.82); }
+      .wp-pm2-rv-btn:active { background-color:#e5e7eb; }
       .wp-pm2-rv-btn.wp-pm2-on {
         background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
         color:#fff;
       }
-      .wp-pm2-rv-btn.wp-pm2-rv-pop { animation:wpPm2RvPop 0.32s cubic-bezier(0.34,1.56,0.64,1); }
+      .wp-pm2-rv-btn.wp-pm2-on:active { background:linear-gradient(180deg,#3b7ff0 0%,#1d4ed8 100%); }
+      .wp-pm2-rv-btn.wp-pm2-rv-pop { animation:wpPm2Ring 0.45s cubic-bezier(0.22,1,0.36,1); --wp-pm2-ring-size:5px; }
 
       /* Respuestas — un solo nivel, colapsadas por defecto */
       .wp-pm2-rv-replies { margin-top:6px; }
@@ -1353,9 +1365,9 @@ export class PlaceModal2 {
         background:transparent; color:#9ca3af;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1), background-color 0.15s;
+        transition:background-color 0.15s;
       }
-      .wp-pm2-rv-more:active { transform:scale(0.85); background-color:#f3f4f6; }
+      .wp-pm2-rv-more:active { background-color:#e5e7eb; }
       .wp-pm2-rv-more-sm { top:2px; right:4px; width:28px; height:28px; }
       .wp-pm2-review-name, .wp-pm2-rv-reply-name { padding-right:30px; }
 
@@ -1373,9 +1385,9 @@ export class PlaceModal2 {
         border:none; background:#f3f4f6; color:#4b5563;
         font-size:11px; font-weight:700; font-family:var(--wp-font);
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+        transition:background-color 0.15s;
       }
-      .wp-pm2-rv-reveal:active { transform:scale(0.9); }
+      .wp-pm2-rv-reveal:active { background-color:#e5e7eb; }
       .wp-pm2-ms-opt:disabled { color:#9ca3af; cursor:default; }
       .wp-pm2-ms-opt:disabled:active { background-color:transparent; }
 
@@ -3067,7 +3079,11 @@ export class PlaceModal2 {
   // "Escribe una reseña" (el mismo % de escala en algo ancho se nota
   // mucho más).
   _pulseTap(el, action, wide = false) {
-    const cls = wide ? 'wp-pm2-tap-pulse-wide' : 'wp-pm2-tap-pulse';
+    this._haptic('light');
+    // Dentro del scroll de la ficha: anillo sin capas (ver .wp-pm2-ring).
+    // Fuera (topbar): el rebote con escala de siempre.
+    const cls = el.closest('#wp-pm2-body') ? 'wp-pm2-ring'
+      : (wide ? 'wp-pm2-tap-pulse-wide' : 'wp-pm2-tap-pulse');
     el.classList.remove(cls);
     void el.offsetWidth; // reinicia la animación si se toca dos veces seguidas
     el.classList.add(cls);
@@ -3076,8 +3092,40 @@ export class PlaceModal2 {
     this._pulseActionTimer = setTimeout(() => { this._pulseActionTimer = null; action(); }, 150);
   }
 
-  // Toast simple — por encima de la ficha (z-index 1500000)
+  // ── Vibración (Capacitor Haptics; si no, navigator.vibrate) ─────────
+  // light: toques (útil, reacción, estrellas, abrir) · medium: long-press
+  // success / warning / error: resultado de una acción
+  _haptic(kind = 'light') {
+    const H = this._nativePlugin('Haptics');
+    try {
+      if (H) {
+        if (kind === 'success' || kind === 'warning' || kind === 'error') {
+          H.notification({ type: kind.toUpperCase() });
+        } else {
+          H.impact({ style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' });
+        }
+        return;
+      }
+      const ms = { light: 8, medium: 14, success: [10, 40, 10], warning: 20, error: [20, 40, 20] }[kind] || 8;
+      navigator.vibrate?.(ms);
+    } catch (_) {}
+  }
+
+  // Anillo de pulse sin capas sobre cualquier elemento
+  _ring(el) {
+    if (!el) return;
+    el.classList.remove('wp-pm2-ring');
+    void el.offsetWidth;
+    el.classList.add('wp-pm2-ring');
+    el.addEventListener('animationend', () => el.classList.remove('wp-pm2-ring'), { once: true });
+  }
+
+  // Toast simple — por encima de la ficha (z-index 1500000).
+  // La vibración va según el mensaje: ✓/gracias = éxito, "No se pudo" = error.
   _showToast(msg) {
+    if (/^(✓|Recibimos|Gracias|Reseña eliminada|Reporte retirado)|bloqueado$/.test(msg)) this._haptic('success');
+    else if (/^(No se pudo|Error)/.test(msg)) this._haptic('error');
+    else if (/copiado/i.test(msg)) this._haptic('light');
     const prev = document.getElementById('wp-pm2-toast');
     if (prev) prev.remove();
     const t = document.createElement('div');
@@ -3166,7 +3214,7 @@ export class PlaceModal2 {
       refreshSubmit();
     };
     starsEl.querySelectorAll('.wp-pm2-rm-star').forEach(s => {
-      s.onclick = () => updateStars(parseInt(s.dataset.v, 10));
+      s.onclick = () => { this._haptic('light'); updateStars(parseInt(s.dataset.v, 10)); };
     });
     textarea.oninput = () => {
       charEl.textContent = textarea.value.length + ' / 500';
@@ -3467,6 +3515,7 @@ export class PlaceModal2 {
       this._showToast('No puedes marcar tu propia reseña');
       return;
     }
+    this._haptic('light');
     this._socialBusy = this._socialBusy || new Set();
     const busyKey = key + '|util';
     if (this._socialBusy.has(busyKey)) return;
@@ -3495,6 +3544,7 @@ export class PlaceModal2 {
   async _setEmoji(key, type, renderKey = key) {
     const user = this._requireUser('Inicia sesión para reaccionar');
     if (!user || !this._place) return;
+    this._haptic('light');
     this._socialBusy = this._socialBusy || new Set();
     const busyKey = key + '|emoji';
     if (this._socialBusy.has(busyKey)) return;
@@ -3575,7 +3625,8 @@ export class PlaceModal2 {
       timer = setTimeout(() => {
         cancel();
         fired = true;
-        try { navigator.vibrate?.(12); } catch (_) {}
+        this._haptic('medium');
+        this._ring(el);
         onFire();
       }, 450);
     });
@@ -3610,15 +3661,22 @@ export class PlaceModal2 {
       icon.style.opacity = String(k);
       icon.style.transform = `translateX(${off}px) translateY(-50%) scale(${0.6 + 0.4 * k})`;
     };
+    // Regreso a su lugar cuadro por cuadro con JS (translateX 2D sin
+    // transición CSS): una transición de transform convierte la tarjeta
+    // en capa aparte mientras dura → parpadeo en la zona de reseñas.
+    let rafBack = 0;
     const release = () => {
-      const tr = 'transform 0.35s cubic-bezier(0.34,1.4,0.64,1), opacity 0.2s ease';
-      el.style.transition = tr;
-      if (icon) { icon.style.transition = tr; icon.classList.remove('wp-pm2-on'); }
-      paint(0, 0);
-      setTimeout(() => {
-        el.style.transition = '';
-        if (icon) icon.style.transition = '';
-      }, 360);
+      if (icon) icon.classList.remove('wp-pm2-on');
+      const from = parseFloat((el.style.transform.match(/-?[\d.]+/) || [0])[0]) || 0;
+      const t0 = performance.now(), D = 260;
+      cancelAnimationFrame(rafBack);
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / D);
+        const e = 1 - Math.pow(1 - k, 3);          // ease-out
+        paint(k >= 1 ? 0 : from * (1 - e), (1 - e) * Math.min(1, from / TH));
+        if (k < 1) rafBack = requestAnimationFrame(step);
+      };
+      rafBack = requestAnimationFrame(step);
     };
 
     el.addEventListener('pointerdown', (e) => {
@@ -3636,6 +3694,7 @@ export class PlaceModal2 {
         if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
         mode = (mx > 0 && mx > 2 * Math.abs(my)) ? 'h' : 'v';
         if (mode === 'v') { pid = null; mode = null; return; }
+        cancelAnimationFrame(rafBack);
         el.style.transition = 'none';
         if (icon) icon.style.transition = 'background-color 0.15s, color 0.15s';
         try { el.setPointerCapture(e.pointerId); } catch (_) {}
@@ -3646,7 +3705,7 @@ export class PlaceModal2 {
       if (!passed && dx >= TH) {
         passed = true;
         icon?.classList.add('wp-pm2-on');
-        try { navigator.vibrate?.(10); } catch (_) {}
+        this._haptic('light');
       } else if (passed && dx < TH) {
         passed = false;
         icon?.classList.remove('wp-pm2-on');
