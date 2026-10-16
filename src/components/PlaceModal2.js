@@ -2437,8 +2437,20 @@ export class PlaceModal2 {
       const inner = strip.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       return Math.max(0, t.offsetWidth - inner);
     };
-    const apply = (x) => { const t = track(); if (t) t.style.transform = `translate3d(${-x}px,0,0)`; };
-    const moving = (on) => track()?.classList.toggle('wp-pm2-moving', on);
+    // En movimiento: translate3d + will-change (capa propia, fluido).
+    // En reposo: translateX 2D sin will-change → SIN capa propia. Un
+    // translate3d en reposo deja la tira como capa aparte y con eso
+    // volvía el glitch al abrir hojas (igual que con el scroll nativo).
+    let isMoving = false;
+    const apply = (x) => {
+      const t = track(); if (!t) return;
+      t.style.transform = isMoving ? `translate3d(${-x}px,0,0)` : (x ? `translateX(${-x}px)` : '');
+    };
+    const moving = (on) => {
+      isMoving = on;
+      track()?.classList.toggle('wp-pm2-moving', on);
+      if (!on) apply(Math.round(pos));
+    };
     const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
     // Fuera de los límites se mueve a la mitad (resistencia)
     const rubber = (x, m) => x < 0 ? x * 0.35 : x > m ? m + (x - m) * 0.35 : x;
@@ -2446,7 +2458,7 @@ export class PlaceModal2 {
 
     strip.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      stop();
+      if (raf) { stop(); pos = Math.min(max(), Math.max(0, pos)); moving(false); } // toque durante la inercia: se detiene ahí
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; pos0 = pos;
       samples = [[e.timeStamp, e.clientX]];
       dragging = false; moved = false;
