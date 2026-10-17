@@ -3088,6 +3088,17 @@ export class MapView {
         preloadedHeroUrl: rawUrl,
         flipContext: {
           onDismiss: () => {
+            // El header del slide (volver / compartir / ⋯) responde YA al
+            // cerrar la ficha: es fijo, no se mueve con el pulse-in de las
+            // tarjetas, así que no hay riesgo de tocar algo desacomodado.
+            // Antes TODO el slide quedaba sin responder ~0.7s y el primer
+            // toque en "volver" se perdía (había que tocar 2 veces).
+            const slideHeader = wrap.querySelector('.wp-ce-collage-header');
+            if (slideHeader) slideHeader.style.pointerEvents = 'auto';
+            // Si la persona cierra el slide antes de que termine el
+            // pulse-in, los pasos pendientes ya no deben tocar nada (un
+            // applyLayout tardío volvía a poner el fondo blanco del slide).
+            const alive = () => this._clusterExpandEl === wrap;
             // try/finally: el cleanup de abajo (destrabar el slide)
             // tiene que correr SIEMPRE, incluso si el pulse-in fallara.
             try {
@@ -3118,6 +3129,7 @@ export class MapView {
               // el pulse de las tarjetas evita que "aparezcan" antes de
               // que haya algo de pantalla libre para mostrarlas.
               setTimeout(() => {
+                if (!alive()) return;
                 cardClone.style.visibility = '';
                 cardClone.style.border = startBorder;
                 pulseIn(cardClone, cardClone.style.transform || '');
@@ -3127,6 +3139,7 @@ export class MapView {
                 // grupo "entrando desde el mapa" (igual que la apertura
                 // original del cluster), no como dos eventos separados.
                 setTimeout(() => {
+                  if (!alive()) return;
                   const others = clones.filter(c => c.clone !== cardClone);
                   others.forEach(({ clone }) => {
                     // El transform base real (sin el " scale(0.88)" que
@@ -3143,15 +3156,17 @@ export class MapView {
                   // afina valores exactos (opacidad real por distancia,
                   // etc.) sin arriesgarse a pisar el pulso a mitad de
                   // camino.
-                  requestAnimationFrame(() => applyLayout(activeIdx, true));
+                  requestAnimationFrame(() => { if (alive()) applyLayout(activeIdx, true); });
                 }, 35);
               }, 70);
             } catch (err) {
               console.error('[FLIP] error en el pulse-in de vuelta hacia el slide', err);
             } finally {
               setTimeout(() => {
-                cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
+                if (slideHeader) slideHeader.style.pointerEvents = '';
+                if (!alive()) return; // el slide ya se cerró
+                cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 // wrap (con el botón de editar en su header) se reactiva
                 // con un pequeño margen EXTRA aparte del resto del
                 // cleanup — un toque que llega justo cuando el layout
@@ -4193,6 +4208,7 @@ export class MapView {
 
   _closeClusterExpand(restoreCamera = true) {
     if (!this._clusterExpandEl) return;
+    this._slideFlipActive = false; // cerrar a mitad del regreso desde la ficha no deja nada trabado
     this._uncoverBehindSlide(); // el mapa vuelve ANTES del FLIP de regreso
     if (this._slideBackdropWatchdog) { clearInterval(this._slideBackdropWatchdog); this._slideBackdropWatchdog = null; }
     const wrap = this._clusterExpandEl;
