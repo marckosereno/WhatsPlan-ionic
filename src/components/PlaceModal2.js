@@ -1912,6 +1912,7 @@ export class PlaceModal2 {
     this._pendingHeroReveal = !!opts.flipFromRect;
 
     this._el.classList.add('visible');
+    this._el.style.pointerEvents = ''; // (hide() lo apaga durante su salida)
     this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
     this._el.classList.remove('wp-pm2-flip-exit'); // por si quedó de un cierre anterior — la próxima entrada usa el pulse normal, no la salida deslizada
     // Cuando viene del flip, el card NO hace su propio pop de
@@ -2073,6 +2074,9 @@ export class PlaceModal2 {
   // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
     this._coverBehind(false); // lo de atrás vuelve a verse ANTES del fade de salida
+    // Mientras la ficha se desvanece (350ms) ya no debe atrapar toques: el
+    // primer toque en lo de atrás (p.ej. "volver" del slide) se perdía.
+    this._el.style.pointerEvents = 'none';
     setTimeout(() => this._diagMem('cerrar +1s'), 1000); // [DIAG] temporal
     this._closeLightbox();
     this._closeReactionBar(true);
