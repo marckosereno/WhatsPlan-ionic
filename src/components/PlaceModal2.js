@@ -6,6 +6,7 @@ import { ReviewService }               from '/src/services/ReviewService.js';
 import { ActivityService }             from '/src/services/SupabaseService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
+import { FavoriteService }             from '/src/services/FavoriteService.js';
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -75,6 +76,7 @@ export class PlaceModal2 {
               <div id="wp-pm2-hero-gradient"></div>
               <div id="wp-pm2-hero-bottom">
                 <span id="wp-pm2-featured-badge" class="wp-pm2-featured-badge" style="display:none"></span>
+                <span id="wp-pm2-fav-badge" class="wp-pm2-featured-badge wp-pm2-fav-badge" style="display:none"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>En tus favoritos</span>
                 <h1 id="wp-pm2-name"></h1>
                 <div id="wp-pm2-meta">
                   <span id="wp-pm2-cat"></span>
@@ -102,7 +104,7 @@ export class PlaceModal2 {
           <div id="wp-pm2-reviews-summary" style="display:none">
             <div id="wp-pm2-reviews-avatars"></div>
             <span id="wp-pm2-reviews-count"></span>
-            <button id="wp-pm2-add-review" class="wp-pm2-pill-btn">✦ Añadir reseña</button>
+            <button id="wp-pm2-add-review" class="wp-pm2-pill-btn wp-pm2-fav-add"></button>
           </div>
 
           <!-- AI DESCRIPTION — generada con IA en base a las reseñas de Google,
@@ -954,12 +956,60 @@ export class PlaceModal2 {
       }
       /* Mismo estilo que el "✦ Añadir reseña" de las pestañas (naranja
          con gradiente): es la misma acción, se ve igual en los dos lugares */
+      /* Botón bajo el hero: "Añadir a favoritos" → (ya guardado) "Añadir a
+         una colección". Antes era "Añadir reseña" (sigue en la sección de
+         reseñas y en "Escribe una reseña"). */
       #wp-pm2-add-review {
         margin-left:auto; padding:6px 12px; font-size:12px; font-weight:700; flex-shrink:0;
-        background:linear-gradient(135deg,#f59e0b,#f97316);
-        border-color:transparent; color:#fff;
-        box-shadow:0 2px 8px rgba(249,115,22,0.30);
+        white-space:nowrap; border-color:transparent;
+        display:inline-flex; align-items:center; gap:5px;
       }
+      #wp-pm2-add-review.wp-pm2-fav-add {
+        background:linear-gradient(135deg,#fb7185,#e11d48); color:#fff;
+        box-shadow:0 2px 8px rgba(225,29,72,0.30);
+      }
+      #wp-pm2-add-review.wp-pm2-fav-coll {
+        background:#0a0a0a; color:#fff;
+        box-shadow:0 2px 8px rgba(0,0,0,0.18);
+      }
+      #wp-pm2-reviews-count { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      /* Pill "♥ En tus favoritos" en el hero (junto a Destacado/Verificado) */
+      .wp-pm2-fav-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        background:linear-gradient(135deg,#ffe4ea,#fecdd6);
+        color:#be123c; border:1px solid rgba(251,113,133,0.5);
+        box-shadow:0 2px 6px rgba(225,29,72,0.18);
+      }
+      /* Hoja "Añadir a una colección" */
+      .wp-pm2-col-meta { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:#9ca3af; }
+      .wp-pm2-col-check {
+        width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db;
+        display:flex; align-items:center; justify-content:center; color:transparent;
+        transition:background-color 0.15s, border-color 0.15s;
+      }
+      .wp-pm2-col-check.wp-pm2-on { background:#0a0a0a; border-color:#0a0a0a; color:#fff; }
+      .wp-pm2-ms-ico.wp-pm2-col-fav-ico { color:#e11d48; opacity:1; }
+      div.wp-pm2-ms-opt { box-sizing:border-box; }
+      .wp-pm2-col-unfav {
+        margin-left:auto; border:none; background:#f3f4f6; color:#4b5563;
+        font-size:12px; font-weight:700; font-family:var(--wp-font);
+        padding:6px 12px; border-radius:999px; cursor:pointer;
+      }
+      .wp-pm2-col-sep { height:1px; background:#f0f0f2; margin:4px 20px; }
+      .wp-pm2-col-new { display:flex; gap:8px; padding:8px 16px 4px; }
+      .wp-pm2-col-input {
+        flex:1; min-width:0; height:42px; border-radius:12px;
+        border:1px solid rgba(0,0,0,0.12); background:#f9f9f9;
+        padding:0 12px; font-size:15px; font-family:var(--wp-font); outline:none;
+      }
+      .wp-pm2-col-input:focus { border-color:#93c5fd; background:#fff; }
+      .wp-pm2-col-create {
+        height:42px; padding:0 16px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff; font-size:14px; font-weight:700;
+        font-family:var(--wp-font); cursor:pointer;
+      }
+      .wp-pm2-col-create:disabled { opacity:0.4; }
+      .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
       /* PULSE al tocar — se hunde y rebota. Lo dispara _pulseTap() y la
          acción (abrir la hoja) espera a que se vea el rebote. */
@@ -1645,7 +1695,11 @@ export class PlaceModal2 {
       this._pulseTap(e.currentTarget, () => this._openReviewModal(), true);
     });
     el.querySelector('#wp-pm2-add-review').addEventListener('click', (e) => {
-      this._pulseTap(e.currentTarget, () => this._openReviewModal());
+      const btn = e.currentTarget;
+      this._pulseTap(btn, () => {
+        if (this._isFav) this._openCollectionsSheet();
+        else this._setFavorite(true);
+      });
     });
   }
 
@@ -1797,17 +1851,44 @@ export class PlaceModal2 {
       ms.style.opacity = '1';
     }
 
+    // Corazón del minisnap: el MISMO favorito que el botón de la ficha
+    // (guardado en Supabase, ver FavoriteService)
     const favBtn = ms.querySelector('#wp-ms-fav-btn');
-    if (favBtn) favBtn.onclick = (e) => {
-      e.stopPropagation();
-      favBtn.classList.toggle('active');
+    const paintFav = (active) => {
+      if (!favBtn) return;
+      favBtn.classList.toggle('active', active);
       const svg = favBtn.querySelector('path');
-      const active = favBtn.classList.contains('active');
-      svg.setAttribute('fill', active ? '#fff' : 'none');
+      if (svg) svg.setAttribute('fill', active ? '#fff' : 'none');
       favBtn.style.color = active ? '#fff' : '#4a5f7e';
       favBtn.style.background = active
         ? 'linear-gradient(180deg,#ff7aa8 0%,#ec4899 100%)'
         : 'linear-gradient(180deg,#e3ecf8 0%,#c5d5ea 100%)';
+    };
+    paintFav(false);
+    const msUid = this.getCurrentUser?.()?.id || null;
+    const msPid = place.place_id || place.id;
+    if (msUid && msPid) {
+      FavoriteService.isFavorite(msPid, msUid)
+        .then(f => { if (ms.isConnected) paintFav(f); })
+        .catch(() => {});
+    }
+    if (favBtn) favBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const user = this._requireUser('Inicia sesión para guardar en favoritos');
+      if (!user || !msPid) return;
+      const on = !favBtn.classList.contains('active');
+      paintFav(on);
+      this._haptic(on ? 'success' : 'light');
+      try {
+        if (on) await FavoriteService.add(msPid, user.id);
+        else    await FavoriteService.remove(msPid, user.id);
+        if (this._place && (this._place.place_id || this._place.id) === msPid) { this._isFav = on; this._renderFavUI(false); }
+        this._showToast(on ? '♥ Guardado en favoritos' : 'Quitado de favoritos');
+      } catch (err) {
+        console.error('[PM2] Favoritos (minisnap):', err);
+        paintFav(!on);
+        this._showToast('No se pudo guardar');
+      }
     };
 
     // Feedback de presión: se hunde como botón físico y rebota al soltar
@@ -3060,6 +3141,7 @@ export class PlaceModal2 {
     this._loadCommunityReviews(place); // async, comunidad (espera a _modPromise)
     this._loadReviewSocial(place);     // async, reacciones + respuestas
     this._loadMyClaim(place);          // async, "¿Es tu negocio?"
+    this._loadFavorite(place);         // async, favoritos (botón + pill del hero)
   }
 
   // ── Calificación combinada (Google + comunidad) ──────────────────
@@ -3102,7 +3184,15 @@ export class PlaceModal2 {
       ...(this._communityReviews || []).map(r => r.display_name || 'user'),
       ...(this._googleReviews || []).map(r => r.author_name || 'user'),
     ];
-    if (!total || !names.length) { summaryEl.style.display = 'none'; return; }
+    // La fila siempre se ve: ahí vive el botón de favoritos. Sin reseñas
+    // solo se ocultan los avatares y el contador.
+    summaryEl.style.display = '';
+    if (!total || !names.length) {
+      avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
+      countEl.textContent = ''; countEl.style.display = 'none';
+      return;
+    }
+    avatarsEl.style.display = ''; countEl.style.display = '';
     avatarsEl.innerHTML = '';
     const shown = names.slice(0, 3);
     shown.forEach((n, i) => {
@@ -4812,6 +4902,174 @@ export class PlaceModal2 {
     }
 
     this._openOptions(info.name, info.category, items);
+  }
+
+  // ── FAVORITOS Y COLECCIONES ────────────────────────────────────────
+  // Botón bajo el hero: "♡ Añadir a favoritos" → al guardarlo cambia a
+  // "+ Añadir a una colección" y aparece la pill "♥ En tus favoritos" en
+  // el hero. Quitar de favoritos: desde la hoja de colecciones.
+  async _loadFavorite(place) {
+    this._isFav = false;
+    this._renderFavUI(false);
+    const uid = this.getCurrentUser?.()?.id || null;
+    if (!uid) return;
+    try {
+      const fav = await FavoriteService.isFavorite(place.place_id || place.id, uid);
+      if (this._place !== place) return;
+      this._isFav = fav;
+      this._renderFavUI(false);
+    } catch (e) {
+      console.warn('[PM2] Favoritos no disponibles:', e.message || e);
+    }
+  }
+
+  _renderFavUI(animate) {
+    const btn = this._el.querySelector('#wp-pm2-add-review');
+    const pill = this._el.querySelector('#wp-pm2-fav-badge');
+    const HEART = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
+    const PLUS = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    if (btn) {
+      btn.classList.toggle('wp-pm2-fav-add', !this._isFav);
+      btn.classList.toggle('wp-pm2-fav-coll', !!this._isFav);
+      btn.innerHTML = this._isFav ? `${PLUS}Añadir a una colección` : `${HEART}Añadir a favoritos`;
+      if (animate) this._scaleKeys(btn, [0.85, 1.08, 1], 320);
+    }
+    if (pill) {
+      pill.style.display = this._isFav ? '' : 'none';
+      const feat = this._el.querySelector('#wp-pm2-featured-badge');
+      pill.style.marginLeft = feat && feat.style.display !== 'none' ? '6px' : '0';
+      if (animate && this._isFav) this._scaleKeys(pill, [0.6, 1.12, 1], 360);
+    }
+  }
+
+  async _setFavorite(on) {
+    const user = this._requireUser('Inicia sesión para guardar en favoritos');
+    if (!user || !this._place) return;
+    if (this._favBusy) return;
+    this._favBusy = true;
+    const place = this._place;
+    const prev = this._isFav;
+    this._isFav = on;
+    this._renderFavUI(true);
+    if (on) this._haptic('success'); else this._haptic('light');
+    try {
+      if (on) await FavoriteService.add(place.place_id || place.id, user.id);
+      else    await FavoriteService.remove(place.place_id || place.id, user.id);
+      if (this._place === place) this._showToast(on ? '♥ Guardado en favoritos' : 'Quitado de favoritos');
+    } catch (e) {
+      console.error('[PM2] Favoritos:', e);
+      if (this._place === place) { this._isFav = prev; this._renderFavUI(false); }
+      this._showToast('No se pudo guardar');
+    } finally {
+      this._favBusy = false;
+    }
+  }
+
+  // Hoja "Añadir a una colección": favorito (con opción de quitarlo),
+  // tus colecciones (tocar = meter/sacar el lugar) y "+ Nueva colección".
+  async _openCollectionsSheet() {
+    const user = this._requireUser('Inicia sesión para usar colecciones');
+    if (!user || !this._place) return;
+    const place = this._place;
+    const pid = place.place_id || place.id;
+    const info = this._placeInfo();
+    const { body, close } = this._openSheet('Añadir a una colección', info.name);
+    const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    const FOLDER = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+    const HEART = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
+    const PLUS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+
+    let cols = null;
+    const render = () => {
+      body.innerHTML = '';
+      // Favorito
+      const favRow = document.createElement('div');
+      favRow.className = 'wp-pm2-ms-opt';
+      favRow.style.cursor = 'default';
+      favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span><button class="wp-pm2-col-unfav">Quitar</button>`;
+      favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false); };
+      body.appendChild(favRow);
+      const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; body.appendChild(sep);
+
+      if (cols === null) {
+        const p = document.createElement('p'); p.className = 'wp-pm2-col-empty'; p.textContent = 'Cargando colecciones…';
+        body.appendChild(p);
+        return;
+      }
+      if (!cols.length) {
+        const p = document.createElement('p'); p.className = 'wp-pm2-col-empty';
+        p.textContent = 'Aún no tienes colecciones. Crea una para agrupar lugares (p. ej. "Cafés para trabajar").';
+        body.appendChild(p);
+      }
+      cols.forEach(c => {
+        const row = document.createElement('button');
+        row.className = 'wp-pm2-ms-opt';
+        row.innerHTML = `<span class="wp-pm2-ms-ico">${FOLDER}</span><span></span>
+          <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
+        row.children[1].textContent = c.name;
+        row.onclick = () => toggle(c);
+        body.appendChild(row);
+      });
+      // Nueva colección
+      const newRow = document.createElement('button');
+      newRow.className = 'wp-pm2-ms-opt';
+      newRow.innerHTML = `<span class="wp-pm2-ms-ico">${PLUS}</span><span>Nueva colección</span>`;
+      newRow.onclick = () => showNewInput(newRow);
+      body.appendChild(newRow);
+    };
+
+    const toggle = async (c) => {
+      const was = c.has;
+      c.has = !was; c.count += was ? -1 : 1;
+      this._haptic('light');
+      render();
+      try {
+        if (was) await FavoriteService.removeFromCollection(c.id, pid);
+        else     await FavoriteService.addToCollection(c.id, pid);
+        this._showToast(was ? `Quitado de "${c.name}"` : `✓ Añadido a "${c.name}"`);
+      } catch (e) {
+        console.error('[PM2] Colección:', e);
+        c.has = was; c.count += was ? 1 : -1; render();
+        this._showToast('No se pudo guardar');
+      }
+    };
+
+    const showNewInput = (rowEl) => {
+      const wrapEl = document.createElement('div');
+      wrapEl.className = 'wp-pm2-col-new';
+      wrapEl.innerHTML = `<input class="wp-pm2-col-input" maxlength="60" placeholder="Nombre de la colección"><button class="wp-pm2-col-create" disabled>Crear</button>`;
+      rowEl.replaceWith(wrapEl);
+      const input = wrapEl.querySelector('input'), btn = wrapEl.querySelector('button');
+      input.oninput = () => { btn.disabled = !input.value.trim(); };
+      input.onkeydown = (e) => { if (e.key === 'Enter' && !btn.disabled) btn.click(); };
+      setTimeout(() => input.focus(), 50);
+      btn.onclick = async () => {
+        const name = input.value.trim();
+        if (!name) return;
+        btn.disabled = true; btn.textContent = 'Creando…';
+        try {
+          const c = await FavoriteService.createCollection(user.id, name);
+          await FavoriteService.addToCollection(c.id, pid);
+          cols = [...(cols || []), { id: c.id, name: c.name, count: 1, has: true }];
+          render();
+          this._showToast(`✓ Añadido a "${c.name}"`);
+        } catch (e) {
+          console.error('[PM2] Nueva colección:', e);
+          btn.disabled = false; btn.textContent = 'Crear';
+          this._showToast('No se pudo crear la colección');
+        }
+      };
+    };
+
+    render();
+    try {
+      cols = await FavoriteService.getCollections(user.id, pid);
+    } catch (e) {
+      console.error('[PM2] Colecciones:', e);
+      cols = [];
+      this._showToast('No se pudieron cargar tus colecciones');
+    }
+    if (body.isConnected) render();
   }
 
   // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
