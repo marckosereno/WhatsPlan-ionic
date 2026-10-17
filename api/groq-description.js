@@ -54,24 +54,52 @@ async function generateGroq(place, index) {
     `Responde ÚNICAMENTE con la descripción. Sin comillas ni prefijos.`,
   ].filter(Boolean).join('\n');
 
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
-      max_tokens: 150,
-      temperature: 0.8,
-      messages: [
-        { role: 'system', content: 'Eres un experto en turismo local de México. Respondes solo en español.' },
-        { role: 'user',   content: parts },
-      ],
-    }),
-  });
-  if (!r.ok) throw new Error(`Groq ${r.status}: ${await r.text()}`);
-  const data = await r.json();
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error('Groq empty response');
-  return text;
+  const messages = [
+    { role: 'system', content: 'Eres un experto en turismo local de México. Respondes solo en español.' },
+    { role: 'user',   content: parts },
+  ];
+
+  // Groq dio de baja llama-3.1-8b-instant (16 ago 2026 → error 404
+  // "model_not_found"). Su reemplazo oficial es openai/gpt-oss-20b. Si algún
+  // día también lo retiran, se prueba el siguiente de la lista, y se puede
+  // fijar otro sin tocar código con la variable GROQ_MODEL en Vercel.
+  const models = [process.env.GROQ_MODEL, 'openai/gpt-oss-20b', 'openai/gpt-oss-120b']
+    .filter((m, i, a) => m && a.indexOf(m) === i);
+
+  let lastErr = null;
+  for (const model of models) {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.8,
+        // gpt-oss "piensa" antes de responder: esfuerzo bajo (es una
+        // descripción corta) y margen de tokens para que el razonamiento
+        // no se coma la respuesta. include_reasoning:false → solo el texto.
+        reasoning_effort: 'low',
+        include_reasoning: false,
+        max_completion_tokens: 700,
+      }),
+    });
+    if (!r.ok) {
+      const body = await r.text();
+      lastErr = new Error(`Groq ${r.status} (${model}): ${body}`);
+      // Modelo inexistente/retirado → probar el siguiente; otro error → cortar
+      if (r.status === 404 || /model_not_found|decommissioned/i.test(body)) {
+        console.warn('[groq] modelo no disponible, se prueba el siguiente:', model);
+        continue;
+      }
+      throw lastErr;
+    }
+    const data = await r.json();
+    let text = data.choices?.[0]?.message?.content?.trim();
+    if (!text) { lastErr = new Error(`Groq empty response (${model})`); continue; }
+    text = text.replace(/^["“'«]+|["”'»]+$/g, '').trim(); // sin comillas alrededor
+    return text;
+  }
+  throw lastErr || new Error('Groq: ningún modelo disponible');
 }
 
 export default async function handler(req, res) {
