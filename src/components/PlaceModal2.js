@@ -165,7 +165,7 @@ export class PlaceModal2 {
           </div>
 
           <!-- PHOTO STRIP -->
-          <div class="wp-pm2-section-heading">Fotos</div>
+          <div class="wp-pm2-section-heading" id="wp-pm2-photos-heading">Fotos</div>
           <div id="wp-pm2-strip"></div>
 
           <!-- ADDRESS + MAP — misma fuente que el trigger de horarios -->
@@ -498,6 +498,20 @@ export class PlaceModal2 {
       }
       .wp-pm2-activity-people span {
         font-size:10px; font-weight:700; color:rgba(255,255,255,0.9);
+      }
+      /* Abanico de fotos (experimento PHOTO_STACK) */
+      #wp-pm2-activity-stack .wp-pm2-photo-card {
+        padding:0;
+        background-color:#e5e7eb; background-size:cover; background-position:center;
+        border:2.5px solid #fff;
+        box-shadow:0 8px 20px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.12);
+      }
+      .wp-pm2-photo-count {
+        position:absolute; left:6px; bottom:6px;
+        display:inline-flex; align-items:center; gap:4px;
+        padding:3px 7px; border-radius:999px;
+        background:rgba(0,0,0,0.55); color:#fff;
+        font-size:10.5px; font-weight:700; font-family:var(--wp-font);
       }
       /* Estado vacío: invitación a crear actividad */
       .wp-pm2-activity-empty {
@@ -2182,7 +2196,10 @@ export class PlaceModal2 {
     const trackEl = document.createElement('div');
     trackEl.className = 'wp-pm2-strip-track';
     stripEl.appendChild(trackEl);
-    stripEl.style.display = photos.length ? '' : 'none';
+    const useStack = PlaceModal2.PHOTO_STACK;
+    stripEl.style.display = photos.length && !useStack ? '' : 'none';
+    const photosHeading = $('wp-pm2-photos-heading');
+    if (photosHeading) photosHeading.style.display = photos.length && !useStack ? '' : 'none';
     this._lbPhotos = photos; // para el lightbox
     // Miniaturas: cada foto se carga YA REDUCIDA al tamaño en que se ve
     // (150×210 × densidad de pantalla), no el original de 800×1067. Con
@@ -2193,7 +2210,7 @@ export class PlaceModal2 {
     this._revokeThumbs();
     const thumbToken = (this._thumbToken = (this._thumbToken || 0) + 1);
     const stripImgs = [];
-    photos.forEach((url, i) => {
+    (useStack ? [] : photos).forEach((url, i) => {
       const img = document.createElement('img');
       img.alt = ''; img.decoding = 'async';
       this._skelOn(img);
@@ -2816,6 +2833,10 @@ export class PlaceModal2 {
   // un getForPlace propio) y filtra client-side por el place_id de esta
   // ficha. Si falla o no hay match, cae al estado vacío (invitar a crear).
   async _loadPlaceActivities(place) {
+    if (PlaceModal2.PHOTO_STACK && (this._lbPhotos || []).length) {
+      this._renderPhotoStack(this._lbPhotos);
+      return;
+    }
     const placeId = place.place_id || place.id;
     let matched = [];
     try {
@@ -2825,6 +2846,58 @@ export class PlaceModal2 {
       matched = [];
     }
     this._renderActivityStack(place, matched);
+  }
+
+  // Abanico de fotos (estilo cluster del mapa) en la esquina derecha del
+  // hero. Hasta 3 fotos giradas una sobre otra, con el total encima; al
+  // tocar abre el visor a pantalla completa. Usa las mismas posiciones,
+  // giro y animación de entrada que las tarjetas de actividades, y se
+  // encoge con el scroll igual que ellas. Las fotos se cargan reducidas
+  // al tamaño de la tarjeta (ver _makeThumb).
+  _renderPhotoStack(photos) {
+    const stack = this._el.querySelector('#wp-pm2-activity-stack');
+    if (!stack) return;
+    stack.innerHTML = '';
+    // La primera foto ya es el hero: el abanico arranca en la segunda
+    // (si solo hay una, se muestra esa)
+    const start = photos.length > 1 ? 1 : 0;
+    const shown = photos.slice(start, start + 3);
+    // La de hasta arriba (la primera) queda al frente
+    const ROT = ['8deg', '-6deg', '-15deg'];
+    const OFFSET = [
+      { tx: '-4px', ty: '0px' },
+      { tx: '2px',  ty: '-5px' },
+      { tx: '7px',  ty: '4px' },
+    ];
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const token = this._thumbToken;
+    shown.forEach((url, i) => {
+      const card = document.createElement('div');
+      card.className = 'wp-pm2-activity-card wp-pm2-photo-card';
+      card.style.setProperty('--rot', ROT[i]);
+      card.style.setProperty('--tx', OFFSET[i].tx);
+      card.style.setProperty('--ty', OFFSET[i].ty);
+      card.style.setProperty('--delay', ((shown.length - 1 - i) * 0.08) + 's');
+      card.style.zIndex = String(shown.length - i);
+      if (i === 0 && photos.length > 1) {
+        card.innerHTML = `<span class="wp-pm2-photo-count">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="3"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>
+          ${photos.length}</span>`;
+      }
+      card.addEventListener('click', () => {
+        if (Date.now() - (this._shownAt || 0) < 400) return; // clic fantasma al abrir
+        this._haptic('light');
+        this._openLightbox(start + i);
+      });
+      stack.appendChild(card);
+      // Foto reducida al tamaño de la tarjeta (92×118)
+      this._makeThumb(url, 92 * dpr, 118 * dpr).then(src => {
+        if (token !== this._thumbToken || !card.isConnected) { if (src !== url) URL.revokeObjectURL(src); return; }
+        if (src !== url) (this._thumbUrls || (this._thumbUrls = [])).push(src);
+        card.style.backgroundImage = `url("${src}")`;
+        card.classList.add('wp-pm2-photo-ready');
+      }).catch(() => { card.style.backgroundImage = `url("${url}")`; });
+    });
   }
 
   _renderActivityStack(place, activitiesRaw) {
@@ -3479,6 +3552,11 @@ export class PlaceModal2 {
     for (let i = 0; i < base.length; i++) h = ((h << 5) + h + base.charCodeAt(i)) >>> 0;
     return `g:${placeId}:${h.toString(36)}`;
   }
+
+  // EXPERIMENTO: las fotos van en abanico (estilo cluster) en la esquina
+  // derecha del hero, en lugar de las tarjetas de actividades, y se quita
+  // la sección "Fotos". false = vuelve todo como estaba.
+  static get PHOTO_STACK() { return true; }
 
   static get REACTIONS() {
     return [
