@@ -1885,6 +1885,7 @@ export class PlaceModal2 {
     heroInner.style.height = '';
     heroOverlayFast.style.height = '';
     heroInner.style.transform = '';
+    this._heroShift = 0; this._heroStretch = 1;
     heroInner.style.opacity = '';
     heroOverlayFast.style.transform = '';
     heroGradient.style.opacity = '';
@@ -1977,7 +1978,8 @@ export class PlaceModal2 {
         // está fuera del scroll y solo sube el 22% (innerShift). El overlay
         // se queda quieto al llegar a `travel` (compensa lo que sigue
         // subiendo el hero), igual que la versión anterior.
-        heroInner.style.transform = `translate3d(0,${-innerShift}px,0)`; // fuera del scroll: solo el parallax
+        this._heroShift = innerShift;
+        heroInner.style.transform = this._heroPhotoTransform(); // parallax (+ estirado si se está jalando)
         heroOverlayFast.style.transform = sy > travel ? `translate3d(0,${sy - travel}px,0)` : '';
         heroInner.style.opacity   = Math.max(0, 1 - prog);          // la foto se desvanece
 
@@ -2457,6 +2459,16 @@ export class PlaceModal2 {
   // que gana por cascada normal, no por fuerza bruta. El hero (que es un
   // <div> con background-image seteado por JS) usa un ::before aparte para
   // no pisar nunca la foto real.
+  // Transform de la foto del hero = parallax del scroll + estirado del
+  // rebote elástico. Los DOS escriben aquí, así uno nunca borra al otro
+  // (antes, si jalabas y a la vez se movía el scroll, el parallax pisaba
+  // el estirado: la foto volvía a su tamaño con la ficha todavía abajo
+  // → línea dura y hueco blanco bajo el hero).
+  _heroPhotoTransform() {
+    const shift = this._heroShift || 0, st = this._heroStretch || 1;
+    return `translate3d(0,${-shift}px,0)` + (st > 1.0005 ? ` scale(${st.toFixed(4)})` : '');
+  }
+
   // ── Rebote elástico de la ficha (estilo iOS) ───────────────────────
   // Arriba: al jalar hacia abajo la ficha baja con resistencia y la foto
   // del hero se agranda (sin dejar hueco). Abajo: al seguir empujando
@@ -2476,25 +2488,12 @@ export class PlaceModal2 {
       const D = window.innerHeight, r = Math.min(0.95, Math.abs(o) / D);
       return Math.sign(o) * (r / (1 - r)) * D / 0.55;
     };
-    // [DIAG] temporal: geometría real del hero mientras se jala (una vez por gesto)
-    let diagDone = false;
-    const diag = (label) => {
-      try {
-        const q = id => this._el.querySelector('#' + id);
-        const R = id => { const e = q(id); if (!e) return 'x'; const r = e.getBoundingClientRect(); return Math.round(r.top) + '-' + Math.round(r.bottom); };
-        const cs = id => { const e = q(id); return e ? getComputedStyle(e) : null; };
-        console.log(`[DIAG-ELASTIC] ${label} off=${Math.round(off)} dir=${dir} scrollTop=${Math.round(body.scrollTop)} ` +
-          `foto=${R('wp-pm2-hero-inner')} fotoT=${cs('wp-pm2-hero-inner')?.transform} fotoOp=${cs('wp-pm2-hero-inner')?.opacity} fotoTr=${cs('wp-pm2-hero-inner')?.transitionDuration} ` +
-          `hero=${R('wp-pm2-hero')} sombra=${R('wp-pm2-hero-gradient')} sombraOp=${cs('wp-pm2-hero-gradient')?.opacity} ` +
-          `overlay=${R('wp-pm2-hero-overlay-fast')} overlayT=${cs('wp-pm2-hero-overlay-fast')?.transform} contenido=${R('wp-pm2-sheet')} bodyT=${cs('wp-pm2-body')?.transform}`);
-      } catch (e) { console.log('[DIAG-ELASTIC] error', e.message); }
-    };
     const apply = (o) => {
       off = o;
-      if (!diagDone && dir === 1 && o > 50) { diagDone = true; requestAnimationFrame(() => diag('jalando')); }
       body.style.transform = o ? `translate3d(0,${o.toFixed(1)}px,0)` : '';
       if (photo && dir === 1) {
-        photo.style.transform = o > 0 ? `translate3d(0,0,0) scale(${(1 + o / photoH).toFixed(4)})` : '';
+        this._heroStretch = o > 0 ? 1 + o / photoH : 1;
+        photo.style.transform = this._heroPhotoTransform();
       }
     };
     const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
@@ -2502,13 +2501,20 @@ export class PlaceModal2 {
       body.style.transform = '';
       // La foto solo se toca al jalar ARRIBA (ahí su parallax vale 0); abajo
       // su transform es el del parallax y no se debe borrar
-      if (photo && dir === 1) { photo.style.transform = ''; photo.style.transformOrigin = ''; photo.style.transition = ''; }
+      if (photo && dir === 1) {
+        this._heroStretch = 1;
+        photo.style.transform = this._heroPhotoTransform();
+        photo.style.transformOrigin = '';
+        // El suavizado del parallax vuelve un cuadro DESPUÉS: si vuelve en
+        // el mismo cuadro, el último paso del regreso se animaría (parpadeo)
+        requestAnimationFrame(() => { if (!dir) photo.style.transition = ''; });
+      }
       off = 0; dir = 0; active = false;
     };
-    const springBack = () => {
+    const springBack = (D = 420) => {
       stop();
       if (!off) { finish(); return; }
-      const from = off, t0 = performance.now(), D = 420;
+      const from = off, t0 = performance.now();
       const step = (now) => {
         const k = Math.min(1, (now - t0) / D);
         apply(from * Math.pow(1 - k, 3));       // ease-out, sin rebote extra
@@ -2521,7 +2527,7 @@ export class PlaceModal2 {
       if (e.touches.length !== 1 || this._lightboxEl?.classList.contains('visible')) return;
       if (e.target.closest?.('#wp-pm2-strip')) return; // la galería tiene su propio arrastre
       lastY = y0 = e.touches[0].clientY; x0 = e.touches[0].clientX;
-      active = true; diagDone = false;
+      active = true;
       if (raf && off) {
         // Lo toca mientras regresa: lo "agarra" donde va, sin salto
         stop();
@@ -2556,6 +2562,17 @@ export class PlaceModal2 {
     const end = () => { if (!active) return; active = false; if (dir) springBack(); };
     body.addEventListener('touchend', end, { passive: true });
     body.addEventListener('touchcancel', end, { passive: true });
+    // Si con la ficha estirada el dedo cambia de sentido, el scroll normal
+    // toma el control: el estirado se recoge rápido (sin sumar los dos
+    // movimientos ni dejar la foto desfasada)
+    body.addEventListener('scroll', () => {
+      if (!dir || !off || raf) return;
+      const max = body.scrollHeight - body.clientHeight;
+      if ((dir === 1 && body.scrollTop > 0) || (dir === -1 && body.scrollTop < max - 1)) {
+        active = false;
+        springBack(160);
+      }
+    }, { passive: true });
   }
 
   // ── Galería: deslizamiento horizontal hecho a mano ─────────────────
