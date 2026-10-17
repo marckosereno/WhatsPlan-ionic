@@ -691,7 +691,9 @@ export class PlaceModal2 {
          spacer de adentro queda tapado por el hero mientras esté grande */
       #wp-pm2-body {
         position:absolute; inset:0; z-index:1;
-        overflow-y:auto; overscroll-behavior:contain;
+        /* none: sin el estirado/brillo propio de Android en los bordes —
+           el rebote elástico lo hace _wireElastic (y no hay dos a la vez) */
+        overflow-y:auto; overscroll-behavior:none;
         overflow-x:hidden; /* el swipe de responder desplaza tarjetas a la derecha */
         -webkit-overflow-scrolling:touch;
         background:transparent; /* deja ver la foto; el blanco lo pone #wp-pm2-sheet */
@@ -1541,6 +1543,7 @@ export class PlaceModal2 {
     const el = this._el;
     this._wireStripDrag(el.querySelector('#wp-pm2-strip'));
     this._wirePressSquish(el.querySelector('#wp-pm2-body'));
+    this._wireElastic(el.querySelector('#wp-pm2-body'));
 
     // Destello tipo GPS en los botones del topbar — se dispara en
     // pointerdown (no click) para que arranque en el mismo instante que
@@ -2454,6 +2457,93 @@ export class PlaceModal2 {
   // que gana por cascada normal, no por fuerza bruta. El hero (que es un
   // <div> con background-image seteado por JS) usa un ::before aparte para
   // no pisar nunca la foto real.
+  // ── Rebote elástico de la ficha (estilo iOS) ───────────────────────
+  // Arriba: al jalar hacia abajo la ficha baja con resistencia y la foto
+  // del hero se agranda (sin dejar hueco). Abajo: al seguir empujando
+  // hacia arriba la ficha sube con resistencia. Al soltar regresa suave.
+  // Listeners PASIVOS (no frenan el scroll): en los bordes el scroll
+  // nativo ya no se mueve, así que no hay nada que bloquear. El transform
+  // solo existe mientras dura el gesto; al terminar se quita.
+  _wireElastic(body) {
+    if (!body) return;
+    const photo = this._el.querySelector('#wp-pm2-hero-inner');
+    let lastY = 0, anchor = 0, dir = 0, off = 0, photoH = 1, raf = 0, active = false, x0 = 0, y0 = 0;
+    const rubber = (d) => {                     // fórmula de rebote de iOS
+      const D = window.innerHeight, a = Math.abs(d);
+      return Math.sign(d) * (1 - 1 / ((a * 0.55 / D) + 1)) * D;
+    };
+    const unrubber = (o) => {                   // inversa: cuánto dedo da ese desplazamiento
+      const D = window.innerHeight, r = Math.min(0.95, Math.abs(o) / D);
+      return Math.sign(o) * (r / (1 - r)) * D / 0.55;
+    };
+    const apply = (o) => {
+      off = o;
+      body.style.transform = o ? `translate3d(0,${o.toFixed(1)}px,0)` : '';
+      if (photo && dir === 1) {
+        photo.style.transform = o > 0 ? `translate3d(0,0,0) scale(${(1 + o / photoH).toFixed(4)})` : '';
+      }
+    };
+    const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
+    const finish = () => {
+      body.style.transform = '';
+      // La foto solo se toca al jalar ARRIBA (ahí su parallax vale 0); abajo
+      // su transform es el del parallax y no se debe borrar
+      if (photo && dir === 1) { photo.style.transform = ''; photo.style.transformOrigin = ''; photo.style.transition = ''; }
+      off = 0; dir = 0; active = false;
+    };
+    const springBack = () => {
+      stop();
+      if (!off) { finish(); return; }
+      const from = off, t0 = performance.now(), D = 420;
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / D);
+        apply(from * Math.pow(1 - k, 3));       // ease-out, sin rebote extra
+        if (k < 1) raf = requestAnimationFrame(step);
+        else { raf = 0; finish(); }
+      };
+      raf = requestAnimationFrame(step);
+    };
+    body.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1 || this._lightboxEl?.classList.contains('visible')) return;
+      if (e.target.closest?.('#wp-pm2-strip')) return; // la galería tiene su propio arrastre
+      lastY = y0 = e.touches[0].clientY; x0 = e.touches[0].clientX;
+      active = true;
+      if (raf && off) {
+        // Lo toca mientras regresa: lo "agarra" donde va, sin salto
+        stop();
+        anchor = lastY - unrubber(off);
+      } else { stop(); if (off) finish(); dir = 0; }
+    }, { passive: true });
+    body.addEventListener('touchmove', (e) => {
+      if (!active || e.touches.length !== 1) return;
+      const y = e.touches[0].clientY;
+      if (!dir) {
+        // Solo gestos claramente verticales (no el swipe de responder)
+        if (Math.abs(y - y0) < 4 || Math.abs(y - y0) < Math.abs(e.touches[0].clientX - x0)) { lastY = y; return; }
+        const max = body.scrollHeight - body.clientHeight;
+        if (body.scrollTop <= 0 && y > lastY) {
+          dir = 1; anchor = lastY;
+          if (photo) {
+            photoH = photo.offsetHeight || 1;
+            photo.style.transition = 'none';
+            photo.style.transformOrigin = '50% 0';
+          }
+        } else if (body.scrollTop >= max - 1 && y < lastY) {
+          dir = -1; anchor = lastY;
+        }
+      }
+      if (dir) {
+        const d = y - anchor;
+        if ((dir === 1 && d < 0) || (dir === -1 && d > 0)) { apply(0); finish(); }
+        else apply(rubber(d));
+      }
+      lastY = y;
+    }, { passive: true });
+    const end = () => { if (!active) return; active = false; if (dir) springBack(); };
+    body.addEventListener('touchend', end, { passive: true });
+    body.addEventListener('touchcancel', end, { passive: true });
+  }
+
   // ── Galería: deslizamiento horizontal hecho a mano ─────────────────
   // La franja tiene overflow:hidden (ver CSS). La tira interna se mueve
   // con transform: el dedo la arrastra 1:1 y al soltar sigue por inercia,
