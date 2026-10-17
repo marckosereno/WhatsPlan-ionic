@@ -2476,8 +2476,22 @@ export class PlaceModal2 {
       const D = window.innerHeight, r = Math.min(0.95, Math.abs(o) / D);
       return Math.sign(o) * (r / (1 - r)) * D / 0.55;
     };
+    // [DIAG] temporal: geometría real del hero mientras se jala (una vez por gesto)
+    let diagDone = false;
+    const diag = (label) => {
+      try {
+        const q = id => this._el.querySelector('#' + id);
+        const R = id => { const e = q(id); if (!e) return 'x'; const r = e.getBoundingClientRect(); return Math.round(r.top) + '-' + Math.round(r.bottom); };
+        const cs = id => { const e = q(id); return e ? getComputedStyle(e) : null; };
+        console.log(`[DIAG-ELASTIC] ${label} off=${Math.round(off)} dir=${dir} scrollTop=${Math.round(body.scrollTop)} ` +
+          `foto=${R('wp-pm2-hero-inner')} fotoT=${cs('wp-pm2-hero-inner')?.transform} fotoOp=${cs('wp-pm2-hero-inner')?.opacity} fotoTr=${cs('wp-pm2-hero-inner')?.transitionDuration} ` +
+          `hero=${R('wp-pm2-hero')} sombra=${R('wp-pm2-hero-gradient')} sombraOp=${cs('wp-pm2-hero-gradient')?.opacity} ` +
+          `overlay=${R('wp-pm2-hero-overlay-fast')} overlayT=${cs('wp-pm2-hero-overlay-fast')?.transform} contenido=${R('wp-pm2-sheet')} bodyT=${cs('wp-pm2-body')?.transform}`);
+      } catch (e) { console.log('[DIAG-ELASTIC] error', e.message); }
+    };
     const apply = (o) => {
       off = o;
+      if (!diagDone && dir === 1 && o > 50) { diagDone = true; requestAnimationFrame(() => diag('jalando')); }
       body.style.transform = o ? `translate3d(0,${o.toFixed(1)}px,0)` : '';
       if (photo && dir === 1) {
         photo.style.transform = o > 0 ? `translate3d(0,0,0) scale(${(1 + o / photoH).toFixed(4)})` : '';
@@ -2507,7 +2521,7 @@ export class PlaceModal2 {
       if (e.touches.length !== 1 || this._lightboxEl?.classList.contains('visible')) return;
       if (e.target.closest?.('#wp-pm2-strip')) return; // la galería tiene su propio arrastre
       lastY = y0 = e.touches[0].clientY; x0 = e.touches[0].clientX;
-      active = true;
+      active = true; diagDone = false;
       if (raf && off) {
         // Lo toca mientras regresa: lo "agarra" donde va, sin salto
         stop();
