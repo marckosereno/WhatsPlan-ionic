@@ -3095,18 +3095,6 @@ export class MapView {
             // toque en "volver" se perdía (había que tocar 2 veces).
             const slideHeader = wrap.querySelector('.wp-ce-collage-header');
             if (slideHeader) slideHeader.style.pointerEvents = 'auto';
-            // [DIAG] temporal: qué pasa con el primer toque después de cerrar la ficha
-            window.__wpDiagDismissAt = performance.now();
-            console.log(`[DIAG-CLOSE] ficha cerrada · tarjetas=${clones.length}`);
-            try {
-              if (!window.__wpDiagLTObs) {
-                window.__wpDiagLTObs = new PerformanceObserver(l => l.getEntries().forEach(en => {
-                  const dt = Math.round(en.startTime - (window.__wpDiagDismissAt || 0));
-                  if (dt > -200 && dt < 4000) console.log(`[DIAG-CLOSE] tarea larga +${dt}ms dura ${Math.round(en.duration)}ms`);
-                }));
-                window.__wpDiagLTObs.observe({ type: 'longtask', buffered: false });
-              }
-            } catch (_) {}
             // Si la persona cierra el slide antes de que termine el
             // pulse-in, los pasos pendientes ya no deben tocar nada (un
             // applyLayout tardío volvía a poner el fondo blanco del slide).
@@ -3176,7 +3164,6 @@ export class MapView {
             } finally {
               setTimeout(() => {
                 clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
-                if (slideHeader) slideHeader.style.pointerEvents = '';
                 if (!alive()) return; // el slide ya se cerró
                 cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 // wrap (con el botón de editar en su header) se reactiva
@@ -3187,7 +3174,16 @@ export class MapView {
                 // ve en pantalla. 120ms de margen no se notan como
                 // demora, pero alcanzan para que todo esté quieto antes
                 // de aceptar el próximo toque.
-                setTimeout(() => { wrap.style.pointerEvents = ''; }, 120);
+                // El header vuelve a heredar del wrap RECIÉN cuando el wrap
+                // ya responde: si se le quitaba antes, un toque en "volver"
+                // que empezaba con el header activo terminaba (pointerup)
+                // con el header desactivado → no había click y había que
+                // tocar de nuevo (visto con [DIAG-CLOSE]: toque a +534ms
+                // sin doClose).
+                setTimeout(() => {
+                  wrap.style.pointerEvents = '';
+                  if (slideHeader) slideHeader.style.pointerEvents = '';
+                }, 120);
               }, 70 + 35 + 420 + 30); // retraso inicial + desfase de las demás + duración del pulso más largo + margen chico
             }
           },
@@ -4160,24 +4156,8 @@ export class MapView {
       };
     }
 
-    const doClose = () => {
-      console.log(`[DIAG-CLOSE] doClose +${Math.round(performance.now() - (window.__wpDiagDismissAt || 0))}ms`); // [DIAG]
-      this._closeClusterExpand();
-    };
+    const doClose = () => this._closeClusterExpand();
     wrap.querySelector('.wp-ce-cback').addEventListener('click', doClose);
-    // [DIAG] temporal: cada toque en la zona del botón volver, a dónde llega
-    if (this._diagTapHandler) document.removeEventListener('pointerdown', this._diagTapHandler, { capture: true });
-    this._diagTapHandler = (e) => {
-      if (!this._clusterExpandEl || this._clusterExpandEl !== wrap) return;
-      const b = wrap.querySelector('.wp-ce-cback'); if (!b) return;
-      const r = b.getBoundingClientRect();
-      if (e.clientX < r.left - 20 || e.clientX > r.right + 20 || e.clientY < r.top - 20 || e.clientY > r.bottom + 20) return;
-      const hit = document.elementFromPoint(e.clientX, e.clientY);
-      const desc = hit ? (hit.id ? '#' + hit.id : (typeof hit.className === 'string' ? '.' + hit.className.split(' ')[0] : hit.tagName)) : 'nada';
-      const lag = Math.round(performance.now() - e.timeStamp);
-      console.log(`[DIAG-CLOSE] toque en volver +${Math.round(performance.now() - (window.__wpDiagDismissAt || 0))}ms · llega a ${desc} · retraso del evento ${lag}ms · wrapPE=${wrap.style.pointerEvents || 'auto'} headerPE=${wrap.querySelector('.wp-ce-collage-header')?.style.pointerEvents || '-'} fichaVisible=${document.getElementById('wp-pm2')?.classList.contains('visible')}`);
-    };
-    document.addEventListener('pointerdown', this._diagTapHandler, { capture: true });
 
     this._clusterExpandCleanup = () => { cleanupClones(); cleanupDrag(); if (this._clusterExpandEditCleanup) { this._clusterExpandEditCleanup(); this._clusterExpandEditCleanup = null; } };
     this._clusterExpandStickerEl = stickerEl;
