@@ -1000,13 +1000,6 @@ export class PlaceModal2 {
       .wp-pm2-col-emoji { width:22px; text-align:center; font-size:19px; line-height:1;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
       .wp-pm2-col-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-pm2-col-cta {
-        width:100%; height:48px; border-radius:999px; border:none;
-        background:#0a0a0a; color:#fff; font-size:15px; font-weight:700; font-family:var(--wp-font);
-        display:flex; align-items:center; justify-content:center; gap:8px;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-      }
-      .wp-pm2-col-cta:disabled { opacity:0.35; }
       /* Nueva colección: [ícono] [campo], cada uno con su propio redondeado */
       .wp-pm2-col-list.wp-pm2-col-list-clip { overflow:hidden; }
       .wp-pm2-col-list.wp-pm2-col-list-scroll { overflow-y:auto; overscroll-behavior:contain; }
@@ -1015,54 +1008,58 @@ export class PlaceModal2 {
         border-top:1px solid rgba(0,0,0,0.06); margin-top:4px;
       }
       .wp-pm2-col-row { display:flex; align-items:center; gap:10px; }
-      .wp-pm2-col-pick {
-        position:relative; flex:none; width:52px; height:52px; padding:0;
-        border-radius:17px; border:1px solid rgba(0,0,0,0.07);
-        background:linear-gradient(160deg, #ffffff 0%, #eef0f3 100%);
-        box-shadow:0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 #fff;
-        display:flex; align-items:center; justify-content:center;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background-color 0.15s, border-color 0.15s;
-      }
-      .wp-pm2-col-pick.wp-pm2-on { background:#0a0a0a; border-color:#0a0a0a; box-shadow:none; }
-      .wp-pm2-col-preview-emoji {
-        font-size:25px; line-height:1;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
-      }
-      .wp-pm2-col-pick-badge {
-        position:absolute; right:-4px; bottom:-4px; width:20px; height:20px;
-        border-radius:999px; background:#0a0a0a; color:#fff;
-        border:2px solid #fff; box-sizing:border-box;
-        display:flex; align-items:center; justify-content:center;
-      }
-      .wp-pm2-col-pick.wp-pm2-on .wp-pm2-col-pick-badge { background:#fff; color:#0a0a0a; border-color:#0a0a0a; }
+      /* Campo pill con el ícono (redondo) adentro, a la izquierda */
       .wp-pm2-col-field {
         position:relative; flex:1; min-width:0; height:52px;
-        display:flex; align-items:center; padding:0 18px;
+        display:flex; align-items:center; gap:10px; padding:0 16px 0 6px;
         border-radius:999px; background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
         transition:background-color 0.15s, border-color 0.15s;
       }
       .wp-pm2-col-field:focus-within { background:#fff; border-color:#93c5fd; }
+      .wp-pm2-col-pick {
+        position:relative; z-index:1; flex:none; width:40px; height:40px; padding:0;
+        border-radius:999px; border:none; background:#fff;
+        box-shadow:0 1px 3px rgba(0,0,0,0.14);
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.15s;
+      }
+      .wp-pm2-col-pick.wp-pm2-on { background:#0a0a0a; box-shadow:0 0 0 2px #fff, 0 0 0 4px #0a0a0a; }
+      .wp-pm2-col-preview-emoji {
+        font-size:21px; line-height:1;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+      }
       .wp-pm2-col-input2 {
         flex:1; min-width:0; height:100%; padding:0; border:none; background:transparent; outline:none;
         font-size:15px; font-weight:500; font-family:var(--wp-font); color:#0a0a0a;
       }
-      /* Tira de íconos: ocupa el campo; difuminada al principio y al final
-         para que los íconos entren y salgan suave, sin cortarse de golpe */
+      /* Tira de íconos: a la derecha del ícono, dentro del campo;
+         difuminada al principio y al final */
       .wp-pm2-col-strip {
-        position:absolute; inset:0; border-radius:inherit;
+        position:absolute; top:0; bottom:0; left:50px; right:0;
+        border-radius:0 999px 999px 0;
         overflow:hidden; touch-action:pan-y;
         display:flex; align-items:center;
-        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
-        mask-image:linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
+        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 26px), transparent 100%);
+        mask-image:linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 26px), transparent 100%);
       }
       .wp-pm2-col-strip[hidden] { display:none; }
       .wp-pm2-col-strip-track { display:flex; gap:2px; width:max-content; padding:0 26px 0 12px; }
       .wp-pm2-col-strip-track button {
-        width:40px; height:40px; border:none; border-radius:13px; background:transparent; padding:0;
+        width:40px; height:40px; border:none; border-radius:999px; background:transparent; padding:0;
         font-size:22px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
       }
+      /* Listo: botón redondo fuera del campo */
+      .wp-pm2-col-ok {
+        flex:none; width:52px; height:52px; padding:0; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.15s, color 0.15s, opacity 0.15s;
+      }
+      .wp-pm2-col-ok:disabled { background:#e5e7eb; color:#9ca3af; }
+      .wp-pm2-col-ok.wp-pm2-busy { opacity:0.5; }
       .wp-pm2-col-strip-track button.wp-pm2-on { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12); }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
@@ -5071,16 +5068,15 @@ export class PlaceModal2 {
       <div class="wp-pm2-col-list"></div>
       <div class="wp-pm2-col-composer">
         <div class="wp-pm2-col-row">
-          <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono">
-            <span class="wp-pm2-col-preview-emoji"></span>
-            <span class="wp-pm2-col-pick-badge"></span>
-          </button>
           <div class="wp-pm2-col-field">
+            <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span></button>
             <input class="wp-pm2-col-input2" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
             <div class="wp-pm2-col-strip" hidden><div class="wp-pm2-col-strip-track"></div></div>
           </div>
+          <button type="button" class="wp-pm2-col-ok" aria-label="Crear colección" disabled>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
         </div>
-        <button class="wp-pm2-col-cta" disabled>Crear colección</button>
       </div>`;
     const listEl  = body.querySelector('.wp-pm2-col-list');
     const pick    = body.querySelector('.wp-pm2-col-pick');
@@ -5088,11 +5084,7 @@ export class PlaceModal2 {
     const input   = body.querySelector('.wp-pm2-col-input2');
     const strip   = body.querySelector('.wp-pm2-col-strip');
     const track   = body.querySelector('.wp-pm2-col-strip-track');
-    const cta     = body.querySelector('.wp-pm2-col-cta');
-    const badge   = body.querySelector('.wp-pm2-col-pick-badge');
-    const ICO_OPEN  = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
-    const ICO_CLOSE = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    badge.innerHTML = ICO_OPEN;
+    const cta     = body.querySelector('.wp-pm2-col-ok');
 
     // ── Que la hoja quepa con el teclado abierto ──
     // La lista de colecciones tiene scroll SOLO cuando no cabe, y nunca
@@ -5208,11 +5200,14 @@ export class PlaceModal2 {
       strip.hidden = !on;
       input.style.visibility = on ? 'hidden' : '';
       pick.classList.toggle('wp-pm2-on', on);
-      badge.innerHTML = on ? ICO_CLOSE : ICO_OPEN;
       if (on) input.blur(); else input.focus();
     };
     pick.onclick = () => { this._haptic('light'); setPicking(strip.hidden); };
-    input.oninput = () => { cta.disabled = !input.value.trim(); };
+    input.oninput = () => {
+      const was = cta.disabled;
+      cta.disabled = !input.value.trim();
+      if (was && !cta.disabled) this._scaleKeys(cta, [0.85, 1.08, 1], 260); // se "enciende"
+    };
     input.onkeydown = (e) => { if (e.key === 'Enter' && !cta.disabled) cta.click(); };
 
     // Primera letra en mayúscula (el teclado ya la propone; esto la
@@ -5228,7 +5223,7 @@ export class PlaceModal2 {
     cta.onclick = async () => {
       const name = cap(input.value.trim());
       if (!name) return;
-      cta.disabled = true; cta.textContent = 'Creando…';
+      cta.disabled = true; cta.classList.add('wp-pm2-busy');
       try {
         const c = await FavoriteService.createCollection(user.id, name, emoji);
         await FavoriteService.addToCollection(c.id, pid);
@@ -5239,10 +5234,10 @@ export class PlaceModal2 {
         input.value = ''; input.blur();
         emoji = EMOJIS[0]; paint();
         if (!strip.hidden) setPicking(false), input.blur();
-        cta.textContent = 'Crear colección'; cta.disabled = true;
+        cta.classList.remove('wp-pm2-busy'); cta.disabled = true;
       } catch (e) {
         console.error('[PM2] Nueva colección:', e);
-        cta.disabled = false; cta.textContent = 'Crear colección';
+        cta.classList.remove('wp-pm2-busy'); cta.disabled = false;
         this._showToast('No se pudo crear la colección');
       }
     };
