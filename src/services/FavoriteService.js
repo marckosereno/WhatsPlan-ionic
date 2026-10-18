@@ -36,11 +36,18 @@ export const FavoriteService = {
   // Colecciones del usuario, con cuántos lugares tiene cada una y si ya
   // incluye este lugar → [{ id, name, count, has }]
   async getCollections(userId, placeId) {
-    const { data, error } = await getSupabase()
-      .from('place_collections')
-      .select('id, name, emoji, created_at, place_collection_items(place_id)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+    // Orden: el que eligió el usuario (position) y, sin orden, por fecha.
+    // Si aún no se corrió el SQL que agrega "position", se pide sin ella.
+    const q = (withPos) => {
+      let r = getSupabase()
+        .from('place_collections')
+        .select('id, name, emoji, created_at, place_collection_items(place_id)')
+        .eq('user_id', userId);
+      if (withPos) r = r.order('position', { ascending: true, nullsFirst: false });
+      return r.order('created_at', { ascending: true });
+    };
+    let { data, error } = await q(true);
+    if (error && /position/i.test(error.message || '')) ({ data, error } = await q(false));
     if (error) throw error;
     const pid = String(placeId);
     return (data || []).map(c => {
@@ -64,6 +71,23 @@ export const FavoriteService = {
       .from('place_collection_items')
       .upsert({ collection_id: collectionId, place_id: String(placeId) }, { onConflict: 'collection_id,place_id' });
     if (error) throw error;
+  },
+
+  async updateCollection(collectionId, { name, emoji }) {
+    const { error } = await getSupabase()
+      .from('place_collections')
+      .update({ name: name.trim().slice(0, 60), emoji: emoji || null })
+      .eq('id', collectionId);
+    if (error) throw error;
+  },
+
+  // Guarda el orden de las colecciones (ids en el orden nuevo)
+  async reorderCollections(ids) {
+    const sb = getSupabase();
+    const res = await Promise.all(ids.map((id, i) =>
+      sb.from('place_collections').update({ position: i }).eq('id', id)));
+    const bad = res.find(r => r.error);
+    if (bad) throw bad.error;
   },
 
   // Borra la colección; sus lugares se quitan solos (on delete cascade).
