@@ -1030,6 +1030,9 @@ export class PlaceModal2 {
         transition:background-color 0.15s, border-color 0.15s;
       }
       .wp-pm2-col-field:focus-within { background:#fff; border-color:#93c5fd; }
+      /* Eligiendo ícono: sin el borde azul, se queda el gris suave */
+      .wp-pm2-col-field.wp-pm2-picking,
+      .wp-pm2-col-field.wp-pm2-picking:focus-within { background:#f3f4f6; border-color:rgba(0,0,0,0.06); }
       /* Botón del ícono estilo "push button": sobresale con su borde de
          abajo y al tocarlo / con los íconos abiertos se queda hundido.
          Se mueve con top (no transform) para no crear capas. */
@@ -1178,7 +1181,7 @@ export class PlaceModal2 {
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
       /* El elegido crece un poco respecto a los demás */
       .wp-pm2-col-strip-track button.wp-pm2-on {
-        width:40px; height:40px; font-size:23px; background:#fff;
+        width:54px; height:36px; font-size:23px; background:#fff; margin:0 3px;
         box-shadow:0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
       }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
@@ -5435,7 +5438,7 @@ export class PlaceModal2 {
       mode = m;
       selected.clear();
       openRow?.close(false);
-      if (m !== 'normal') { input.blur(); if (editing) setEditing(null); if (!strip.hidden) { strip.hidden = true; input.style.visibility = ''; pick.classList.remove('wp-pm2-on'); } }
+      if (m !== 'normal') { input.blur(); if (editing) setEditing(null); if (!strip.hidden) { strip.hidden = true; input.style.visibility = ''; pick.classList.remove('wp-pm2-on'); pick.parentElement.classList.remove('wp-pm2-picking'); } }
       composer.hidden = m !== 'normal'; // en "Editar" aparece al tocar una
       bulk.hidden = m !== 'delete';
       paintBulk();
@@ -5853,6 +5856,7 @@ export class PlaceModal2 {
       strip.hidden = !on;
       input.style.visibility = on ? 'hidden' : '';
       pick.classList.toggle('wp-pm2-on', on);
+      pick.parentElement.classList.toggle('wp-pm2-picking', on);
       if (on) input.blur(); else input.focus();
     };
     pick.onclick = () => { this._haptic('light'); setPicking(strip.hidden); };
