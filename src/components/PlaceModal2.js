@@ -1085,13 +1085,16 @@ export class PlaceModal2 {
       .wp-pm2-col-sw { position:relative; margin:0 8px; border-radius:16px; overflow:hidden; }
       .wp-pm2-col-sw .wp-pm2-ms-opt.wp-pm2-col-row-item {
         position:relative; width:100%; margin:0; padding:11px 12px; border-radius:16px;
-        background:#fff; touch-action:pan-y;
+        background:#fff; touch-action:pan-y; transition:background-color 0.25s ease;
         user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
       }
+      /* Al tocar y al deslizar se ve la tarjeta redonda completa */
+      .wp-pm2-col-sw.wp-pm2-tap .wp-pm2-ms-opt.wp-pm2-col-row-item,
+      .wp-pm2-col-sw.wp-pm2-swiping .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#f4f5f7; transition:none; }
       /* Botones que aparecen al deslizar a la izquierda */
-      .wp-pm2-col-acts { position:absolute; right:6px; top:0; bottom:0; display:flex; align-items:center; gap:8px; }
+      .wp-pm2-col-acts { position:absolute; right:8px; top:0; bottom:0; display:flex; align-items:center; gap:8px; }
       .wp-pm2-col-act {
-        width:42px; height:42px; padding:0; border:none; border-radius:999px;
+        width:34px; height:34px; padding:0; border:none; border-radius:999px;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
       }
@@ -1111,14 +1114,24 @@ export class PlaceModal2 {
       .wp-pm2-col-sw.wp-pm2-dragging { z-index:5; border-radius:16px; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
       .wp-pm2-col-sw.wp-pm2-dragging .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff; }
       /* Botón del header: ⋯ / ✓ (listo) / ✕ */
-      .wp-pm2-ms-header.wp-pm2-col-header { position:relative; padding-right:64px; }
+      .wp-pm2-ms-header.wp-pm2-col-header { position:relative; padding-right:110px; }
       .wp-pm2-col-hbtn {
         position:absolute; right:14px; top:2px; width:36px; height:36px; padding:0;
-        border:none; border-radius:999px; background:#f3f4f6; color:#374151;
+        border:none; border-radius:999px; background:transparent; color:#374151;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.15s;
       }
-      .wp-pm2-col-hbtn.wp-pm2-done { background:#0a0a0a; color:#fff; }
+      .wp-pm2-col-hbtn:active { background:#eef0f3; }
+      /* En Ordenar / Eliminar: pill con texto ("Listo" / "Cancelar") */
+      .wp-pm2-col-hbtn.wp-pm2-pill {
+        width:auto; height:34px; padding:0 16px;
+        font-size:14px; font-weight:700; font-family:var(--wp-font);
+        background:#f3f4f6; color:#111827;
+      }
+      .wp-pm2-col-hbtn.wp-pm2-pill.wp-pm2-done { background:#0a0a0a; color:#fff; }
+      .wp-pm2-col-hbtn.wp-pm2-pill:active { background:#e5e7eb; }
+      .wp-pm2-col-hbtn.wp-pm2-pill.wp-pm2-done:active { background:#262626; }
       /* Barra de abajo del modo Eliminar */
       .wp-pm2-col-composer[hidden], .wp-pm2-col-bulk[hidden] { display:none; }
       .wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
@@ -5257,11 +5270,9 @@ export class PlaceModal2 {
     const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
     const HEART = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
     const DOTS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
-    const OK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    const X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
     const GRIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 9h14M5 15h14"/></svg>';
-    const PEN = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-    const TRASH = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+    const PEN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    const TRASH = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
     const EMOJIS = PlaceModal2.COLLECTION_EMOJIS;
 
     // Todo en UNA hoja: arriba la lista (se redibuja sola), abajo el
@@ -5383,7 +5394,8 @@ export class PlaceModal2 {
     const paintHeader = () => {
       hbtn.classList.toggle('wp-pm2-done', mode === 'order');
       hbtn.classList.toggle('wp-pm2-x', mode === 'delete');
-      hbtn.innerHTML = mode === 'order' ? OK : mode === 'delete' ? X : DOTS;
+      hbtn.classList.toggle('wp-pm2-pill', mode !== 'normal');
+      hbtn.innerHTML = mode === 'order' ? 'Listo' : mode === 'delete' ? 'Cancelar' : DOTS;
       hbtn.setAttribute('aria-label', mode === 'order' ? 'Listo' : mode === 'delete' ? 'Cancelar' : 'Opciones');
       hbtn.style.display = (mode === 'normal' && !(cols && cols.length)) ? 'none' : '';
       if (titleEl) titleEl.textContent = mode === 'order' ? 'Ordenar colecciones' : mode === 'delete' ? 'Eliminar colecciones' : 'Añadir a una colección';
@@ -5392,6 +5404,7 @@ export class PlaceModal2 {
     hbtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); // no arrastra la hoja
     hbtn.onclick = (e) => {
       e.stopPropagation();
+      this._scaleKeys(hbtn, [0.88, 1.06, 1], 240);
       if (mode !== 'normal') { setMode('normal'); return; }
       this._haptic('light');
       this._openPopMenu(hbtn, [
@@ -5452,7 +5465,8 @@ export class PlaceModal2 {
           if (!api.open) return;
           api.open = false;
           if (openRow === api) openRow = null;
-          if (anim) animX(content, x, 0); else content.style.transform = '';
+          const off = () => wrap.classList.remove('wp-pm2-swiping');
+          if (anim) animX(content, x, 0, off); else { content.style.transform = ''; off(); }
           x = 0;
         },
       };
@@ -5470,6 +5484,7 @@ export class PlaceModal2 {
           horiz = Math.abs(dx) > Math.abs(dy) * 1.3;
           if (!horiz) { id = null; return; }
           moved = true;
+          wrap.classList.add('wp-pm2-swiping');
           if (openRow && openRow !== api) openRow.close();
           try { content.setPointerCapture(id); } catch (_) {}
         }
@@ -5489,12 +5504,16 @@ export class PlaceModal2 {
         const a = samples[0], b = samples[samples.length - 1];
         const vel = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0; // px/ms
         const open = vel < -0.4 ? true : vel > 0.4 ? false : x < -w / 2;
-        animX(content, x, open ? -w : 0);
+        const wasOpen = api.open;
+        animX(content, x, open ? -w : 0, open ? null : () => wrap.classList.remove('wp-pm2-swiping'));
         x = open ? -w : 0;
         api.open = open;
         if (open) {
           openRow = api;
           this._haptic('light');
+          // Los botones aparecen con pulse, uno tras otro
+          if (!wasOpen) acts.querySelectorAll('.wp-pm2-col-act').forEach((b, i) =>
+            setTimeout(() => this._scaleKeys(b, [0.5, 1.15, 1], 260), i * 50));
           try { localStorage.setItem('wp_col_swipe_hint', '1'); } catch (_) {}
         } else if (openRow === api) openRow = null;
       };
@@ -5614,6 +5633,7 @@ export class PlaceModal2 {
       cols.forEach(c => {
         const wrap = document.createElement('div');
         wrap.className = 'wp-pm2-col-sw';
+        wrap.dataset.id = c.id;
         const row = document.createElement('div');
         row.className = 'wp-pm2-ms-opt wp-pm2-col-row-item';
         row.setAttribute('role', 'button');
@@ -5632,6 +5652,7 @@ export class PlaceModal2 {
           row.onclick = () => {
             if (sw.open) { sw.close(); return; }       // tocar la fila abierta = cerrar
             if (openRow) { openRow.close(); return; }  // otra abierta: solo se cierra
+            pulseTile(c.id);
             toggle(c);
           };
         } else {
@@ -5736,6 +5757,15 @@ export class PlaceModal2 {
         },
       });
     };
+
+    // Pulse + gris suave en la tarjeta tocada (después de redibujar la lista)
+    const pulseTile = (id) => requestAnimationFrame(() => {
+      const w = listEl.querySelector(`.wp-pm2-col-sw[data-id="${CSS.escape(String(id))}"]`);
+      if (!w) return;
+      w.classList.add('wp-pm2-tap');
+      this._scaleKeys(w, [0.96, 1.015, 1], 260);
+      setTimeout(() => w.classList.remove('wp-pm2-tap'), 220);
+    });
 
     const toggle = async (c) => {
       const was = c.has;
