@@ -6298,6 +6298,8 @@ if (typeof window !== 'undefined') window.wpCapTest = (on = true) => {
     ['3 + autocomplete off', 'autocapitalize="sentences" autocomplete="off"'],
     ['4 + autocorrect/spellcheck', 'autocapitalize="sentences" autocorrect="on" spellcheck="true"'],
     ['5 igual al campo', 'type="text" inputmode="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off"'],
+    ['7 palabras (words)', 'autocapitalize="words"'],
+    ['8 TODO (characters)', 'autocapitalize="characters"'],
   ];
   box.innerHTML = v.map(([l, a]) => `<input ${a} placeholder="${l}" style="height:38px;border:1px solid #ddd;border-radius:10px;padding:0 10px;font-size:15px">`).join('') +
     '<textarea autocapitalize="sentences" rows="1" placeholder="6 textarea" style="height:38px;border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:15px"></textarea>' +
