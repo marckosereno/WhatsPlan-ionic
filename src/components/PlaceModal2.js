@@ -1037,7 +1037,7 @@ export class PlaceModal2 {
          abajo y al tocarlo / con los íconos abiertos se queda hundido.
          Se mueve con top (no transform) para no crear capas. */
       .wp-pm2-col-pick {
-        position:relative; top:-1px; z-index:1; flex:none; width:36px; height:36px; padding:0;
+        position:relative; top:-1px; z-index:1; flex:none; width:50px; height:36px; padding:0;
         border-radius:999px; border:1px solid #e5e7eb; background:linear-gradient(180deg,#ffffff 0%,#f6f7f9 100%);
         box-shadow:0 3px 0 #d6d9de, 0 4px 8px rgba(0,0,0,0.10);
         display:flex; align-items:center; justify-content:center;
@@ -1060,7 +1060,7 @@ export class PlaceModal2 {
       /* Tira de íconos: a la derecha del ícono, dentro del campo;
          difuminada al principio y al final */
       .wp-pm2-col-strip {
-        position:absolute; top:0; bottom:0; left:46px; right:0;
+        position:absolute; top:0; bottom:0; left:60px; right:0;
         border-radius:0 999px 999px 0;
         overflow:hidden; touch-action:pan-y;
         display:flex; align-items:center;
@@ -1079,7 +1079,7 @@ export class PlaceModal2 {
       }
       /* Listo: botón redondo fuera del campo */
       .wp-pm2-col-ok {
-        flex:none; width:48px; height:48px; padding:0; border-radius:999px; border:none;
+        flex:none; width:64px; height:48px; padding:0; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -1142,7 +1142,16 @@ export class PlaceModal2 {
       .wp-pm2-col-hbtn.wp-pm2-pill:active { background:#e5e7eb; }
       .wp-pm2-col-hbtn.wp-pm2-pill.wp-pm2-done:active { background:#262626; }
       /* Barra de abajo del modo Eliminar */
-      .wp-pm2-col-composer[hidden], .wp-pm2-col-bulk[hidden] { display:none; }
+      .wp-pm2-col-composer[hidden], .wp-pm2-col-bulk[hidden],
+      .wp-pm2-col-newbtn[hidden], .wp-pm2-col-row[hidden] { display:none; }
+      .wp-pm2-col-newbtn {
+        width:100%; height:48px; border:none; border-radius:999px;
+        background:#f3f4f6; color:#111827;
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        font-size:15px; font-weight:700; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background-color 0.12s;
+      }
+      .wp-pm2-col-newbtn:active { background:#e5e7eb; }
       .wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
       .wp-pm2-col-bulk-del {
         width:100%; height:48px; border:none; border-radius:999px;
@@ -5295,14 +5304,18 @@ export class PlaceModal2 {
     body.innerHTML = `
       <div class="wp-pm2-col-list"></div>
       <div class="wp-pm2-col-composer">
+        <button type="button" class="wp-pm2-col-newbtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Crear nueva colección
+        </button>
         <div class="wp-pm2-col-editing" hidden>
-          <span>Editando colección</span>
+          <span class="wp-pm2-col-editing-t">Editando colección</span>
           <button type="button" class="wp-pm2-col-editing-x">Cancelar</button>
         </div>
         <div class="wp-pm2-col-row">
           <div class="wp-pm2-col-field">
             <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span></button>
-            <input class="wp-pm2-col-input2" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
+            <input class="wp-pm2-col-input2" type="text" inputmode="text" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off">
             <div class="wp-pm2-col-strip" hidden><div class="wp-pm2-col-strip-track"></div></div>
           </div>
           <button type="button" class="wp-pm2-col-ok" aria-label="Crear colección" disabled>
@@ -5382,8 +5395,20 @@ export class PlaceModal2 {
       fitReady = true; fit();
       // El cursor ya parpadea en el campo al abrir la hoja (después de
       // subir, no durante la animación)
-      if (sheetEl?.isConnected && strip.hidden && mode === 'normal') { try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); } }
+      if (cols) autoFocus();
     }, 380);
+    // El cursor ya parpadea en el campo SOLO si aún no hay colecciones
+    // (el campo está abierto). Con colecciones se ve "+ Crear nueva colección".
+    let autoFocused = false;
+    const autoFocus = () => {
+      if (autoFocused || !fitReady || !cols) return;
+      autoFocused = true;
+      if (sheetEl?.isConnected && strip.hidden && mode === 'normal' && !cols.length) focusInput();
+    };
+    const focusInput = () => {
+      try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+      console.log('[DIAG-CAP] autocapitalize=' + input.autocapitalize + ' attr=' + input.getAttribute('autocapitalize') + ' value="' + input.value + '" ua=' + navigator.userAgent); // [DIAG] temporal
+    };
     input.addEventListener('focus', () => setTimeout(fit, 350));
 
     let cols = null;
@@ -5440,6 +5465,8 @@ export class PlaceModal2 {
       openRow?.close(false);
       if (m !== 'normal') { input.blur(); if (editing) setEditing(null); if (!strip.hidden) { strip.hidden = true; input.style.visibility = ''; pick.classList.remove('wp-pm2-on'); pick.parentElement.classList.remove('wp-pm2-picking'); } }
       composer.hidden = m !== 'normal'; // en "Editar" aparece al tocar una
+      if (m !== 'normal') expanded = false;
+      paintComposer();
       bulk.hidden = m !== 'delete';
       paintBulk();
       paintHeader();
@@ -5734,10 +5761,31 @@ export class PlaceModal2 {
     // Editar: usa el mismo campo de abajo, ya lleno con el nombre y el ícono
     let editing = null;
     const editBar = body.querySelector('.wp-pm2-col-editing');
+    const editT   = body.querySelector('.wp-pm2-col-editing-t');
+    const newBtn  = body.querySelector('.wp-pm2-col-newbtn');
+    const rowEl   = body.querySelector('.wp-pm2-col-row');
+    // Con colecciones ya creadas el campo se esconde tras "+ Crear nueva
+    // colección"; sin ninguna, el campo está abierto de una.
+    let expanded = false;
+    const paintComposer = () => {
+      const collapsed = mode === 'normal' && !editing && !expanded && (cols === null || cols.length > 0);
+      newBtn.hidden = !collapsed;
+      rowEl.hidden = collapsed;
+      const showBar = !!editing || (expanded && !!cols && cols.length > 0);
+      editBar.hidden = !showBar;
+      editT.textContent = editing ? 'Editando colección' : 'Nueva colección';
+      fit();
+    };
+    newBtn.onclick = () => {
+      this._haptic('light');
+      expanded = true;
+      paintComposer();
+      this._scaleKeys(rowEl, [0.94, 1.02, 1], 240);
+      focusInput();
+    };
     const setEditing = (c) => {
       const prev = editing;
       editing = c;
-      editBar.hidden = !c;
       if (mode === 'edit') {
         composer.hidden = !c;
         if (prev && !c) renderList(); // se quita el resaltado
@@ -5753,14 +5801,18 @@ export class PlaceModal2 {
       }
       if (!strip.hidden) setPicking(false);
       cta.disabled = !input.value.trim();
-      fit();
+      paintComposer();
     };
     const startEdit = (c) => {
       setEditing(c);
-      try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+      focusInput();
       try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
     };
-    body.querySelector('.wp-pm2-col-editing-x').onclick = () => { setEditing(null); input.blur(); };
+    body.querySelector('.wp-pm2-col-editing-x').onclick = () => {
+      expanded = false;
+      if (editing) setEditing(null); else { input.value = ''; emoji = EMOJIS[0]; paint(); if (!strip.hidden) setPicking(false); cta.disabled = true; paintComposer(); }
+      input.blur();
+    };
 
     // ── Eliminar (una o varias) con "Deshacer" ──
     // Desaparecen de la lista al momento; se borran de verdad cuando se
@@ -5771,6 +5823,7 @@ export class PlaceModal2 {
       const ids = new Set(list.map(c => c.id));
       cols = cols.filter(c => !ids.has(c.id));
       if (editing && ids.has(editing.id)) setEditing(null);
+      paintComposer();
       this._haptic('warning');
       renderList(); syncBtn();
       const pend = {
@@ -5904,11 +5957,12 @@ export class PlaceModal2 {
         cols = [...(cols || []), { id: c.id, name: c.name, emoji: c.emoji || emoji, count: 1, has: true }];
         renderList(); syncBtn();
         this._showToast(`✓ Añadido a ${emoji} ${c.name}`);
-        // Campo listo para otra
+        // Campo listo para otra (y se recoge tras "+ Crear nueva colección")
         input.value = ''; input.blur();
         emoji = EMOJIS[0]; paint();
         if (!strip.hidden) setPicking(false), input.blur();
         cta.classList.remove('wp-pm2-busy'); cta.disabled = true;
+        expanded = false; paintComposer();
       } catch (e) {
         console.error('[PM2] Nueva colección:', e);
         cta.classList.remove('wp-pm2-busy'); cta.disabled = false;
@@ -5917,6 +5971,7 @@ export class PlaceModal2 {
     };
 
     renderList();
+    paintComposer();
     try {
       cols = await FavoriteService.getCollections(user.id, pid);
     } catch (e) {
@@ -5924,7 +5979,7 @@ export class PlaceModal2 {
       cols = [];
       this._showToast('No se pudieron cargar tus colecciones');
     }
-    if (body.isConnected) { renderList(); syncBtn(); }
+    if (body.isConnected) { renderList(); syncBtn(); paintComposer(); autoFocus(); }
   }
 
   // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
