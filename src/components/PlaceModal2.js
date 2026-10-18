@@ -1080,26 +1080,54 @@ export class PlaceModal2 {
       }
       .wp-pm2-col-ok:disabled { background:#e5e7eb; color:#9ca3af; }
       .wp-pm2-col-ok.wp-pm2-busy { opacity:0.5; }
-      /* Filas de colecciones como "tarjeta" redondeada: el hundido del
-         long-press se ve redondo, no como franja de lado a lado */
-      .wp-pm2-ms-opt.wp-pm2-col-row-item {
-        width:auto; margin:0 8px; padding:11px 8px 11px 12px; border-radius:16px;
+      /* Cada colección va en una "tarjeta" redondeada (.wp-pm2-col-sw):
+         el hundido, el swipe y el arrastre se ven redondos */
+      .wp-pm2-col-sw { position:relative; margin:0 8px; border-radius:16px; overflow:hidden; }
+      .wp-pm2-col-sw .wp-pm2-ms-opt.wp-pm2-col-row-item {
+        position:relative; width:100%; margin:0; padding:11px 12px; border-radius:16px;
+        background:#fff; touch-action:pan-y;
         user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
       }
-      .wp-pm2-col-row-item.wp-pm2-rv-pressing { background-color:#f3f4f6; }
-      .wp-pm2-col-more {
-        flex:none; width:32px; height:32px; margin-left:2px; padding:0; border:none; border-radius:999px;
-        background:transparent; color:#6b7280; display:flex; align-items:center; justify-content:center;
+      /* Botones que aparecen al deslizar a la izquierda */
+      .wp-pm2-col-acts { position:absolute; right:6px; top:0; bottom:0; display:flex; align-items:center; gap:8px; }
+      .wp-pm2-col-act {
+        width:42px; height:42px; padding:0; border:none; border-radius:999px;
+        display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
       }
-      .wp-pm2-col-more:active { background:#e5e7eb; }
-      .wp-pm2-col-confirm { background:#fff1f2; cursor:pointer; }
-      .wp-pm2-col-confirm-yes {
-        flex:none; margin-left:auto; height:34px; padding:0 16px; border-radius:999px; border:none;
-        background:#e11d48; color:#fff;
-        font-size:13px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
-        -webkit-tap-highlight-color:transparent;
+      .wp-pm2-col-act-edit { background:#e5e7eb; color:#111827; }
+      .wp-pm2-col-act-del  { background:#e11d48; color:#fff; }
+      /* Modos Ordenar / Eliminar: tarjetas gris claro (se ven tocables) */
+      .wp-pm2-col-sw.wp-pm2-col-tile { margin:0 8px 6px; overflow:visible; }
+      .wp-pm2-col-tile .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#f4f5f7; transition:background-color 0.15s; }
+      .wp-pm2-col-tile.wp-pm2-sel .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff1f2; }
+      .wp-pm2-col-selbox {
+        flex:none; width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; box-sizing:border-box;
+        display:flex; align-items:center; justify-content:center; color:transparent; background:#fff;
       }
+      .wp-pm2-sel .wp-pm2-col-selbox { background:#e11d48; border-color:#e11d48; color:#fff; }
+      .wp-pm2-col-grip { margin-left:auto; padding:6px; color:#9ca3af; display:flex; touch-action:none; }
+      .wp-pm2-col-sw.wp-pm2-shift { transition:top 0.16s ease; }
+      .wp-pm2-col-sw.wp-pm2-dragging { z-index:5; border-radius:16px; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
+      .wp-pm2-col-sw.wp-pm2-dragging .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff; }
+      /* Botón del header: ⋯ / ✓ (listo) / ✕ */
+      .wp-pm2-ms-header.wp-pm2-col-header { position:relative; padding-right:64px; }
+      .wp-pm2-col-hbtn {
+        position:absolute; right:14px; top:2px; width:36px; height:36px; padding:0;
+        border:none; border-radius:999px; background:#f3f4f6; color:#374151;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-col-hbtn.wp-pm2-done { background:#0a0a0a; color:#fff; }
+      /* Barra de abajo del modo Eliminar */
+      .wp-pm2-col-composer[hidden], .wp-pm2-col-bulk[hidden] { display:none; }
+      .wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
+      .wp-pm2-col-bulk-del {
+        width:100%; height:48px; border:none; border-radius:999px;
+        background:#e11d48; color:#fff; font-size:15px; font-weight:700; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent; transition:opacity 0.15s;
+      }
+      .wp-pm2-col-bulk-del:disabled { opacity:0.35; }
       .wp-pm2-col-editing {
         display:flex; align-items:center; justify-content:space-between;
         padding:0 4px; font-size:12.5px; font-weight:700; color:#2563eb;
@@ -5149,6 +5177,7 @@ export class PlaceModal2 {
       edit:  '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
       up:    '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
       down:  '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+      order: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
       trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
     };
     const wrap = document.createElement('div');
@@ -5221,15 +5250,24 @@ export class PlaceModal2 {
     const place = this._place;
     const pid = place.place_id || place.id;
     const info = this._placeInfo();
+    // Si quedó un "eliminar" esperando el Deshacer, se aplica ya (si no,
+    // la colección volvería a aparecer al cargar)
+    if (this._colDelPending) { try { await this._colDelPending.commit(); } catch (_) {} }
     const { body, close } = this._openSheet('Añadir a una colección', info.name);
     const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
     const HEART = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
-    const EMOJIS = PlaceModal2.COLLECTION_EMOJIS;
     const DOTS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+    const OK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    const X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+    const GRIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 9h14M5 15h14"/></svg>';
+    const PEN = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    const TRASH = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+    const EMOJIS = PlaceModal2.COLLECTION_EMOJIS;
 
     // Todo en UNA hoja: arriba la lista (se redibuja sola), abajo el
     // campo para crear una colección (no se redibuja: no se pierde lo
-    // escrito al marcar/desmarcar otra colección).
+    // escrito al marcar/desmarcar otra colección). En modo "Eliminar",
+    // el campo se cambia por el botón rojo.
     body.innerHTML = `
       <div class="wp-pm2-col-list"></div>
       <div class="wp-pm2-col-composer">
@@ -5247,14 +5285,20 @@ export class PlaceModal2 {
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
           </button>
         </div>
+      </div>
+      <div class="wp-pm2-col-bulk" hidden>
+        <button type="button" class="wp-pm2-col-bulk-del" disabled>Eliminar</button>
       </div>`;
-    const listEl  = body.querySelector('.wp-pm2-col-list');
-    const pick    = body.querySelector('.wp-pm2-col-pick');
-    const prevEl  = body.querySelector('.wp-pm2-col-preview-emoji');
-    const input   = body.querySelector('.wp-pm2-col-input2');
-    const strip   = body.querySelector('.wp-pm2-col-strip');
-    const track   = body.querySelector('.wp-pm2-col-strip-track');
-    const cta     = body.querySelector('.wp-pm2-col-ok');
+    const listEl   = body.querySelector('.wp-pm2-col-list');
+    const composer = body.querySelector('.wp-pm2-col-composer');
+    const bulk     = body.querySelector('.wp-pm2-col-bulk');
+    const bulkDel  = body.querySelector('.wp-pm2-col-bulk-del');
+    const pick     = body.querySelector('.wp-pm2-col-pick');
+    const prevEl   = body.querySelector('.wp-pm2-col-preview-emoji');
+    const input    = body.querySelector('.wp-pm2-col-input2');
+    const strip    = body.querySelector('.wp-pm2-col-strip');
+    const track    = body.querySelector('.wp-pm2-col-strip-track');
+    const cta      = body.querySelector('.wp-pm2-col-ok');
 
     // ── Que la hoja quepa con el teclado abierto ──
     // La lista de colecciones tiene scroll SOLO cuando no cabe, y nunca
@@ -5265,6 +5309,9 @@ export class PlaceModal2 {
     // sube lo que tape el teclado.
     const sheetEl = document.getElementById('wp-pm2-menu-sheet');
     const menuEl  = sheetEl?.querySelector('.wp-pm2-ms-menu');
+    const header  = sheetEl?.querySelector('.wp-pm2-ms-header');
+    const titleEl = header?.querySelector('.wp-pm2-ms-title');
+    const subEl   = header?.querySelector('.wp-pm2-ms-sub');
     let fitReady = false, lastDiag = '';
     // Alto de la barra de estado (y de la barra de abajo), el mismo
     // env(safe-area-inset-*) que usa el header de la ficha
@@ -5311,114 +5358,315 @@ export class PlaceModal2 {
       fitReady = true; fit();
       // El cursor ya parpadea en el campo al abrir la hoja (después de
       // subir, no durante la animación)
-      if (sheetEl?.isConnected && strip.hidden) { try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); } }
+      if (sheetEl?.isConnected && strip.hidden && mode === 'normal') { try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); } }
     }, 380);
     input.addEventListener('focus', () => setTimeout(fit, 350));
 
     let cols = null;
-    let confirmId = null; // colección con "Eliminar colección" a la vista
-    let confirmAt = 0;    // cuándo apareció (el "click" de soltar el long-press no la cancela)
-    const askDelete = (c) => { confirmId = c.id; confirmAt = performance.now(); renderList(); };
+    // 'normal' | 'order' (ordenar arrastrando) | 'delete' (elegir cuáles)
+    let mode = 'normal';
+    const selected = new Set();
     // Lo que muestra el botón de abajo del hero
     const syncBtn = () => {
       if (!cols || this._place !== place) return;
       this._placeCols = cols.filter(c => c.has).map(c => ({ id: c.id, name: c.name, emoji: c.emoji }));
       this._renderFavUI(false);
     };
+
+    // ── Botón del header (arriba a la derecha) ──
+    // Normal: ⋯ con "Ordenar" y "Eliminar". En un modo: ✓ (listo) o ✕.
+    const hbtn = document.createElement('button');
+    hbtn.type = 'button';
+    hbtn.className = 'wp-pm2-col-hbtn';
+    header?.classList.add('wp-pm2-col-header');
+    header?.appendChild(hbtn);
+    const paintHeader = () => {
+      hbtn.classList.toggle('wp-pm2-done', mode === 'order');
+      hbtn.classList.toggle('wp-pm2-x', mode === 'delete');
+      hbtn.innerHTML = mode === 'order' ? OK : mode === 'delete' ? X : DOTS;
+      hbtn.setAttribute('aria-label', mode === 'order' ? 'Listo' : mode === 'delete' ? 'Cancelar' : 'Opciones');
+      hbtn.style.display = (mode === 'normal' && !(cols && cols.length)) ? 'none' : '';
+      if (titleEl) titleEl.textContent = mode === 'order' ? 'Ordenar colecciones' : mode === 'delete' ? 'Eliminar colecciones' : 'Añadir a una colección';
+      if (subEl) subEl.textContent = mode === 'order' ? 'Mantén presionada una y arrástrala' : mode === 'delete' ? 'Elige cuáles quieres eliminar' : info.name;
+    };
+    hbtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); // no arrastra la hoja
+    hbtn.onclick = (e) => {
+      e.stopPropagation();
+      if (mode !== 'normal') { setMode('normal'); return; }
+      this._haptic('light');
+      this._openPopMenu(hbtn, [
+        { label: 'Ordenar colecciones', icon: 'order', disabled: cols.length < 2, onClick: () => setMode('order') },
+        { label: 'Eliminar colecciones', icon: 'trash', danger: true, onClick: () => setMode('delete') },
+      ]);
+    };
+    const setMode = (m) => {
+      if (m === mode) return;
+      mode = m;
+      selected.clear();
+      openRow?.close(false);
+      if (m !== 'normal') { input.blur(); if (editing) setEditing(null); if (!strip.hidden) { strip.hidden = true; input.style.visibility = ''; pick.classList.remove('wp-pm2-on'); } }
+      composer.hidden = m !== 'normal';
+      bulk.hidden = m !== 'delete';
+      paintBulk();
+      paintHeader();
+      this._haptic('light');
+      renderList();
+      // Las colecciones "despiertan" con un pulse escalonado: se ve que
+      // ahora se pueden tocar / arrastrar
+      if (m !== 'normal') listEl.querySelectorAll('.wp-pm2-col-sw').forEach((el, i) =>
+        setTimeout(() => el.isConnected && this._scaleKeys(el, [0.96, 1.015, 1], 240), i * 35));
+    };
+    const paintBulk = () => {
+      const n = selected.size;
+      bulkDel.disabled = !n;
+      bulkDel.textContent = !n ? 'Eliminar' : n === 1 ? 'Eliminar 1 colección' : `Eliminar ${n} colecciones`;
+    };
+    bulkDel.onclick = () => {
+      const list = cols.filter(c => selected.has(c.id));
+      if (!list.length) return;
+      setMode('normal');
+      deleteCols(list);
+    };
+
+    // ── Swipe a la izquierda en una colección → [Editar] [Eliminar] ──
+    // Una abierta a la vez. Se mueve con translate3d solo mientras el dedo
+    // la arrastra o se anima; en reposo queda en translateX 2D (sin capa
+    // propia, igual que la galería).
+    let openRow = null;
+    const animX = (el, from, to, done) => {
+      const t0 = performance.now(), D = 200;
+      const step = (now) => {
+        const t = Math.min(1, (now - t0) / D), k = 1 - Math.pow(1 - t, 3);
+        const x = from + (to - from) * k;
+        el.style.transform = t < 1 ? `translate3d(${x}px,0,0)` : (to ? `translateX(${to}px)` : '');
+        if (t < 1) requestAnimationFrame(step); else done?.();
+      };
+      requestAnimationFrame(step);
+    };
+    const wireSwipe = (wrap, content, acts) => {
+      let id = null, x0 = 0, y0 = 0, base = 0, x = 0, horiz = null, moved = false, samples = [];
+      const W = () => acts.offsetWidth + 10;
+      const api = {
+        open: false,
+        close: (anim = true) => {
+          if (!api.open) return;
+          api.open = false;
+          if (openRow === api) openRow = null;
+          if (anim) animX(content, x, 0); else content.style.transform = '';
+          x = 0;
+        },
+      };
+      content.addEventListener('pointerdown', e => {
+        if (mode !== 'normal' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        id = e.pointerId; x0 = e.clientX; y0 = e.clientY;
+        base = api.open ? -W() : 0; x = base; horiz = null; moved = false;
+        samples = [[e.timeStamp, e.clientX]];
+      });
+      content.addEventListener('pointermove', e => {
+        if (e.pointerId !== id) return;
+        const dx = e.clientX - x0, dy = e.clientY - y0;
+        if (horiz === null) {
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          horiz = Math.abs(dx) > Math.abs(dy) * 1.3;
+          if (!horiz) { id = null; return; }
+          moved = true;
+          if (openRow && openRow !== api) openRow.close();
+          try { content.setPointerCapture(id); } catch (_) {}
+        }
+        const w = W();
+        let nx = base + dx;
+        if (nx > 0) nx *= 0.3;                       // hacia la derecha: resistencia
+        if (nx < -w) nx = -w + (nx + w) * 0.35;      // más allá de los botones: resistencia
+        x = nx;
+        content.style.transform = `translate3d(${x}px,0,0)`;
+        samples.push([e.timeStamp, e.clientX]); if (samples.length > 5) samples.shift();
+      });
+      const end = e => {
+        if (e.pointerId !== id) return;
+        id = null;
+        if (!horiz) return;
+        const w = W();
+        const a = samples[0], b = samples[samples.length - 1];
+        const vel = b && a && b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0; // px/ms
+        const open = vel < -0.4 ? true : vel > 0.4 ? false : x < -w / 2;
+        animX(content, x, open ? -w : 0);
+        x = open ? -w : 0;
+        api.open = open;
+        if (open) {
+          openRow = api;
+          this._haptic('light');
+          try { localStorage.setItem('wp_col_swipe_hint', '1'); } catch (_) {}
+        } else if (openRow === api) openRow = null;
+      };
+      content.addEventListener('pointerup', end);
+      content.addEventListener('pointercancel', end);
+      // El "click" que llega después de deslizar no marca la colección
+      content.addEventListener('click', e => {
+        if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+      }, true);
+      return api;
+    };
+
+    // ── Modo ordenar: mantener presionada (o tomar de ≡) y arrastrar ──
+    let drag = null;
+    const blockScroll = (e) => { if (drag?.active) e.preventDefault(); };
+    listEl.addEventListener('touchmove', blockScroll, { passive: false });
+    const wireOrder = (wrap, c) => {
+      let timer = null, sx = 0, sy = 0;
+      const begin = (e) => {
+        const wraps = [...listEl.querySelectorAll('.wp-pm2-col-sw')];
+        const from = wraps.indexOf(wrap);
+        if (from < 0) return;
+        const h = wrap.offsetHeight + (parseFloat(getComputedStyle(wrap).marginBottom) || 0);
+        drag = { active: true, c, wrap, wraps, from, to: from, h, y0: e.clientY, s0: listEl.scrollTop, y: e.clientY, raf: 0 };
+        wrap.classList.add('wp-pm2-dragging');
+        wraps.forEach(w => { if (w !== wrap) w.classList.add('wp-pm2-shift'); });
+        try { wrap.setPointerCapture(e.pointerId); } catch (_) {}
+        this._haptic('medium');
+        place_(e.clientY);
+        // Auto-scroll al acercarse a la orilla de la lista
+        const tick = () => {
+          if (!drag?.active) return;
+          const r = listEl.getBoundingClientRect();
+          const edge = 44;
+          let v = 0;
+          if (drag.y < r.top + edge) v = -Math.ceil((r.top + edge - drag.y) / 6);
+          else if (drag.y > r.bottom - edge) v = Math.ceil((drag.y - (r.bottom - edge)) / 6);
+          if (v && listEl.scrollHeight > listEl.clientHeight) { listEl.scrollTop += v; place_(drag.y); }
+          drag.raf = requestAnimationFrame(tick);
+        };
+        drag.raf = requestAnimationFrame(tick);
+      };
+      const place_ = (y) => {
+        drag.y = y;
+        const dy = y - drag.y0 + (listEl.scrollTop - drag.s0);
+        const n = drag.wraps.length;
+        const to = Math.max(0, Math.min(n - 1, Math.round(drag.from + dy / drag.h)));
+        drag.wrap.style.transform = `translate3d(0,${dy}px,0)`;
+        if (to !== drag.to) { drag.to = to; this._haptic('light'); }
+        // Los demás se recorren con "top" (no transform → sin capas)
+        drag.wraps.forEach((w, i) => {
+          if (w === drag.wrap) return;
+          let shift = 0;
+          if (drag.from < to && i > drag.from && i <= to) shift = -drag.h;
+          if (drag.from > to && i >= to && i < drag.from) shift = drag.h;
+          w.style.top = shift ? `${shift}px` : '';
+        });
+      };
+      const finish = async () => {
+        clearTimeout(timer); timer = null;
+        if (!drag?.active || drag.wrap !== wrap) return;
+        const d = drag; drag = null;
+        cancelAnimationFrame(d.raf);
+        if (d.to !== d.from) {
+          cols.splice(d.from, 1);
+          cols.splice(d.to, 0, d.c);
+        }
+        renderList();
+        const moved = listEl.querySelectorAll('.wp-pm2-col-sw')[d.to];
+        if (moved) this._scaleKeys(moved, [1.03, 0.98, 1], 240);
+        if (d.to !== d.from) {
+          try { await FavoriteService.reorderCollections(cols.map(x => x.id)); }
+          catch (e) { console.error('[PM2] Ordenar colecciones:', e); this._showToast('No se pudo guardar el orden'); }
+        }
+      };
+      wrap.addEventListener('pointerdown', e => {
+        if (mode !== 'order' || drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        sx = e.clientX; sy = e.clientY;
+        // Desde ≡ arranca de una; desde la fila, después de mantener
+        if (e.target.closest('.wp-pm2-col-grip')) { begin(e); return; }
+        timer = setTimeout(() => { timer = null; begin(e); }, 220);
+      });
+      wrap.addEventListener('pointermove', e => {
+        if (drag?.active && drag.wrap === wrap) { place_(e.clientY); return; }
+        if (timer && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) { clearTimeout(timer); timer = null; }
+      });
+      wrap.addEventListener('pointerup', finish);
+      wrap.addEventListener('pointercancel', finish);
+      wrap.addEventListener('contextmenu', e => e.preventDefault());
+    };
+
     const renderList = () => {
+      openRow = null;
       listEl.innerHTML = '';
-      const favRow = document.createElement('div');
-      favRow.className = 'wp-pm2-ms-opt';
-      favRow.style.cursor = 'default';
-      favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span><button class="wp-pm2-col-unfav">Quitar</button>`;
-      favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false, { undo: true }); };
-      listEl.appendChild(favRow);
-      const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; listEl.appendChild(sep);
+      if (mode === 'normal') {
+        const favRow = document.createElement('div');
+        favRow.className = 'wp-pm2-ms-opt';
+        favRow.style.cursor = 'default';
+        favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span><button class="wp-pm2-col-unfav">Quitar</button>`;
+        favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false, { undo: true }); };
+        listEl.appendChild(favRow);
+        const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; listEl.appendChild(sep);
+      }
       if (cols === null) {
         const p = document.createElement('p'); p.className = 'wp-pm2-col-empty'; p.textContent = 'Cargando colecciones…';
         listEl.appendChild(p);
+        paintHeader();
         return;
       }
       if (!cols.length) {
         const p = document.createElement('p'); p.className = 'wp-pm2-col-empty';
         p.textContent = 'Aún no tienes colecciones. Crea una abajo para agrupar lugares, por ejemplo "☕ Cafés para trabajar".';
         listEl.appendChild(p);
+        paintHeader(); fit();
         return;
       }
       cols.forEach(c => {
-        // ¿Eliminar? en la misma fila (después de mantener presionado)
-        if (confirmId === c.id) {
-          // Se ve la colección y, a la derecha, solo "Eliminar colección".
-          // Tocar en cualquier otra parte de la fila = cancelar.
-          const row = document.createElement('div');
-          row.className = 'wp-pm2-ms-opt wp-pm2-col-row-item wp-pm2-col-confirm';
-          row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
-            <button type="button" class="wp-pm2-col-confirm-yes">Eliminar colección</button>`;
-          row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '❤️';
-          row.querySelector('.wp-pm2-col-name').textContent = c.name;
-          row.onclick = (e) => {
-            if (performance.now() - confirmAt < 450) return; // el soltar del long-press
-            if (e.target.closest('.wp-pm2-col-confirm-yes')) { remove(c); return; }
-            confirmId = null; renderList();
-          };
-          listEl.appendChild(row);
-          if (!row.__wpPopped) { row.__wpPopped = true; this._scaleKeys(row.querySelector('.wp-pm2-col-confirm-yes'), [0.6, 1.08, 1], 260); }
-          return;
-        }
-        // div (no <button>): el long-press ignora toques sobre botones
+        const wrap = document.createElement('div');
+        wrap.className = 'wp-pm2-col-sw';
         const row = document.createElement('div');
         row.className = 'wp-pm2-ms-opt wp-pm2-col-row-item';
         row.setAttribute('role', 'button');
-        row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
-          <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>
-          <button type="button" class="wp-pm2-col-more" aria-label="Opciones de la colección">${DOTS}</button>`;
+        if (mode === 'normal') {
+          row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
+            <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
+          const acts = document.createElement('div');
+          acts.className = 'wp-pm2-col-acts';
+          acts.innerHTML = `<button type="button" class="wp-pm2-col-act wp-pm2-col-act-edit" aria-label="Editar">${PEN}</button>
+            <button type="button" class="wp-pm2-col-act wp-pm2-col-act-del" aria-label="Eliminar">${TRASH}</button>`;
+          wrap.appendChild(acts);
+          wrap.appendChild(row);
+          const sw = wireSwipe(wrap, row, acts);
+          acts.querySelector('.wp-pm2-col-act-edit').onclick = () => { sw.close(); startEdit(c); };
+          acts.querySelector('.wp-pm2-col-act-del').onclick = () => deleteCols([c]);
+          row.onclick = () => {
+            if (sw.open) { sw.close(); return; }       // tocar la fila abierta = cerrar
+            if (openRow) { openRow.close(); return; }  // otra abierta: solo se cierra
+            toggle(c);
+          };
+        } else {
+          const sel = mode === 'delete' && selected.has(c.id);
+          wrap.classList.add('wp-pm2-col-tile');
+          if (sel) wrap.classList.add('wp-pm2-sel');
+          row.innerHTML = (mode === 'delete' ? `<span class="wp-pm2-col-selbox">${CHECK}</span>` : '') +
+            `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>` +
+            (mode === 'order' ? `<span class="wp-pm2-col-grip" aria-hidden="true">${GRIP}</span>` : `<span class="wp-pm2-col-meta"><span>${c.count}</span></span>`);
+          wrap.appendChild(row);
+          if (mode === 'delete') {
+            row.onclick = () => {
+              if (selected.has(c.id)) selected.delete(c.id); else selected.add(c.id);
+              this._haptic('light');
+              wrap.classList.toggle('wp-pm2-sel', selected.has(c.id));
+              this._scaleKeys(row.querySelector('.wp-pm2-col-selbox'), [0.7, 1.15, 1], 240);
+              paintBulk();
+            };
+          } else {
+            wireOrder(wrap, c);
+          }
+        }
         row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '❤️';
         row.querySelector('.wp-pm2-col-name').textContent = c.name;
-        const more = row.querySelector('.wp-pm2-col-more');
-        more.onclick = (e) => { e.stopPropagation(); openMenu(c, more); };
-        row.onclick = () => { if (confirmId) { confirmId = null; renderList(); return; } toggle(c); };
-        this._wireLongPress(row, () => { input.blur(); askDelete(c); });
-        listEl.appendChild(row);
+        listEl.appendChild(wrap);
       });
-      // Pista de cómo eliminar, hasta que se use la primera vez
-      let hintDone = false; try { hintDone = localStorage.getItem('wp_col_del_hint') === '1'; } catch (_) {}
-      if (cols.length && !hintDone) {
+      // Pista del swipe, hasta que se use la primera vez
+      let hintDone = false; try { hintDone = localStorage.getItem('wp_col_swipe_hint') === '1'; } catch (_) {}
+      if (mode === 'normal' && !hintDone) {
         const p = document.createElement('p'); p.className = 'wp-pm2-col-hint';
-        p.textContent = 'Mantén presionada una colección para eliminarla, o toca ⋯ para más opciones';
+        p.textContent = 'Desliza una colección a la izquierda para editarla o eliminarla';
         listEl.appendChild(p);
       }
+      paintHeader();
       fit();
-    };
-
-    // ── Menú ⋯ (pequeño, junto al botón, como el de iOS; no es otra hoja) ──
-    const openMenu = (c, anchor) => {
-      const i = cols.indexOf(c);
-      this._haptic('light');
-      this._openPopMenu(anchor, [
-        { label: 'Editar nombre e ícono', icon: 'edit', onClick: () => startEdit(c) },
-        { label: 'Mover arriba', icon: 'up', disabled: i <= 0, onClick: () => move(c, -1) },
-        { label: 'Mover abajo', icon: 'down', disabled: i >= cols.length - 1, onClick: () => move(c, 1) },
-        { sep: true },
-        { label: 'Eliminar colección', icon: 'trash', danger: true, onClick: () => askDelete(c) },
-      ], { scrollEl: listEl });
-    };
-
-    // Mover: cambia el orden y lo guarda (columna position)
-    const move = async (c, dir) => {
-      const i = cols.indexOf(c), j = i + dir;
-      if (i < 0 || j < 0 || j >= cols.length) return;
-      const prevOrder = cols.slice();
-      cols.splice(i, 1); cols.splice(j, 0, c);
-      renderList();
-      const moved = listEl.querySelectorAll('.wp-pm2-col-row-item')[j];
-      if (moved) this._scaleKeys(moved, [0.96, 1.02, 1], 260);
-      try {
-        await FavoriteService.reorderCollections(cols.map(x => x.id));
-      } catch (e) {
-        console.error('[PM2] Mover colección:', e);
-        cols = prevOrder; renderList();
-        this._showToast('No se pudo mover');
-      }
     };
 
     // Editar: usa el mismo campo de abajo, ya lleno con el nombre y el ícono
@@ -5441,29 +5689,52 @@ export class PlaceModal2 {
       fit();
     };
     const startEdit = (c) => {
-      confirmId = null; renderList();
       setEditing(c);
       try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
       try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
     };
     body.querySelector('.wp-pm2-col-editing-x').onclick = () => { setEditing(null); input.blur(); };
 
-    const remove = async (c) => {
-      const idx = cols.indexOf(c);
-      confirmId = null;
-      if (editing === c) setEditing(null);
-      cols = cols.filter(x => x !== c);
-      try { localStorage.setItem('wp_col_del_hint', '1'); } catch (_) {}
+    // ── Eliminar (una o varias) con "Deshacer" ──
+    // Desaparecen de la lista al momento; se borran de verdad cuando se
+    // va el aviso (≈4s). Deshacer las regresa a su lugar.
+    const deleteCols = (list) => {
+      if (this._colDelPending) this._colDelPending.commit();
+      const snap = list.map(c => [c, cols.indexOf(c)]).sort((a, b) => a[1] - b[1]);
+      const ids = new Set(list.map(c => c.id));
+      cols = cols.filter(c => !ids.has(c.id));
+      if (editing && ids.has(editing.id)) setEditing(null);
       this._haptic('warning');
       renderList(); syncBtn();
-      try {
-        await FavoriteService.deleteCollection(c.id);
-        this._showToast(`Colección "${c.name}" eliminada`);
-      } catch (e) {
-        console.error('[PM2] Eliminar colección:', e);
-        cols.splice(Math.max(0, idx), 0, c); renderList(); syncBtn();
-        this._showToast('No se pudo eliminar');
-      }
+      const pend = {
+        commit: async () => {
+          if (this._colDelPending !== pend) return;
+          clearTimeout(pend.timer);
+          this._colDelPending = null;
+          try {
+            await Promise.all(list.map(c => FavoriteService.deleteCollection(c.id)));
+          } catch (e) {
+            console.error('[PM2] Eliminar colección:', e);
+            this._showToast('No se pudo eliminar');
+            if (body.isConnected) { snap.forEach(([c, i]) => cols.splice(Math.min(i, cols.length), 0, c)); renderList(); syncBtn(); }
+          }
+        },
+      };
+      pend.timer = setTimeout(() => pend.commit(), 4300);
+      this._colDelPending = pend;
+      const msg = list.length === 1 ? `"${list[0].name}" eliminada` : `${list.length} colecciones eliminadas`;
+      this._showToast(msg, {
+        label: 'Deshacer',
+        onClick: () => {
+          if (this._colDelPending !== pend) return;
+          clearTimeout(pend.timer);
+          this._colDelPending = null;
+          if (body.isConnected) {
+            snap.forEach(([c, i]) => cols.splice(Math.min(i, cols.length), 0, c));
+            renderList(); syncBtn();
+          }
+        },
+      });
     };
 
     const toggle = async (c) => {
