@@ -976,6 +976,7 @@ export class PlaceModal2 {
       /* Pill "♥ En tus favoritos" en el hero (junto a Destacado/Verificado) */
       .wp-pm2-fav-badge {
         display:inline-flex; align-items:center; gap:4px;
+        cursor:pointer; -webkit-tap-highlight-color:transparent; pointer-events:auto;
         background:linear-gradient(135deg,#ffe4ea,#fecdd6);
         color:#be123c; border:1px solid rgba(251,113,133,0.5);
         box-shadow:0 2px 6px rgba(225,29,72,0.18);
@@ -996,6 +997,37 @@ export class PlaceModal2 {
         padding:6px 12px; border-radius:999px; cursor:pointer;
       }
       .wp-pm2-col-sep { height:1px; background:#f0f0f2; margin:4px 20px; }
+      .wp-pm2-col-emoji { width:22px; text-align:center; font-size:19px; line-height:1;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+      .wp-pm2-col-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-pm2-col-cta-wrap { padding:10px 16px 4px; display:flex; flex-direction:column; gap:4px; }
+      .wp-pm2-col-cta {
+        width:100%; height:48px; border-radius:999px; border:none;
+        background:#0a0a0a; color:#fff; font-size:15px; font-weight:700; font-family:var(--wp-font);
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-col-cta:disabled { opacity:0.35; }
+      .wp-pm2-col-cancel {
+        height:40px; border:none; background:none; color:#6b7280;
+        font-size:14px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
+      }
+      .wp-pm2-col-form { padding:4px 16px 0; display:flex; flex-direction:column; gap:12px; }
+      .wp-pm2-col-preview { display:flex; justify-content:center; }
+      .wp-pm2-col-preview-emoji {
+        width:64px; height:64px; border-radius:20px; background:#f3f4f6;
+        display:flex; align-items:center; justify-content:center; font-size:34px;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+      }
+      .wp-pm2-col-emojis { display:grid; grid-template-columns:repeat(10, minmax(0,1fr)); gap:2px; }
+      .wp-pm2-col-form .wp-pm2-col-input { flex:none; width:100%; box-sizing:border-box; }
+      .wp-pm2-col-emojis button {
+        aspect-ratio:1; border:none; border-radius:10px; background:transparent;
+        padding:0; min-width:0; font-size:20px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+        transition:background-color 0.12s;
+      }
+      .wp-pm2-col-emojis button.wp-pm2-on { background:#e5e7eb; box-shadow:inset 0 0 0 2px #0a0a0a; }
       .wp-pm2-col-new { display:flex; gap:8px; padding:8px 16px 4px; }
       .wp-pm2-col-input {
         flex:1; min-width:0; height:42px; border-radius:12px;
@@ -1693,6 +1725,13 @@ export class PlaceModal2 {
     // "Añade un comentario..." → popup de reseña (estrellas + texto)
     el.querySelector('#wp-pm2-comment-box').addEventListener('click', (e) => {
       this._pulseTap(e.currentTarget, () => this._openReviewModal(), true);
+    });
+    // Tocar la pill "♥ En tus favoritos" la quita al instante, con
+    // "Deshacer" en el aviso (sin pedir confirmación)
+    el.querySelector('#wp-pm2-fav-badge').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._scaleKeys(e.currentTarget, [1, 0.88, 1], 220);
+      this._setFavorite(false, { undo: true });
     });
     el.querySelector('#wp-pm2-add-review').addEventListener('click', (e) => {
       const btn = e.currentTarget;
@@ -3438,7 +3477,9 @@ export class PlaceModal2 {
 
   // Toast simple — por encima de la ficha (z-index 1500000).
   // La vibración va según el mensaje: ✓/gracias = éxito, "No se pudo" = error.
-  _showToast(msg) {
+  // action: { label, onClick } → botón dentro del aviso (p. ej. "Deshacer");
+  // con acción el aviso dura más y sí recibe toques.
+  _showToast(msg, action = null) {
     if (/^(✓|Recibimos|Gracias|Reseña eliminada|Reporte retirado)|bloqueado$/.test(msg)) this._haptic('success');
     else if (/^(No se pudo|Error)/.test(msg)) this._haptic('error');
     else if (/copiado/i.test(msg)) this._haptic('light');
@@ -3447,15 +3488,25 @@ export class PlaceModal2 {
     const t = document.createElement('div');
     t.id = 'wp-pm2-toast';
     t.textContent = msg;
-    t.style.cssText = 'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%) translateY(-20px);z-index:1500300;background:rgba(10,10,10,0.88);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);opacity:0;transition:opacity 0.2s ease, transform 0.25s cubic-bezier(0.34,1.4,0.64,1);pointer-events:none;white-space:nowrap';
+    t.style.cssText = 'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%) translateY(-20px);z-index:1500300;background:rgba(10,10,10,0.88);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);opacity:0;transition:opacity 0.2s ease, transform 0.25s cubic-bezier(0.34,1.4,0.64,1);pointer-events:none;white-space:nowrap;display:flex;align-items:center;gap:12px';
+    const hide = () => {
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 250);
+    };
+    if (action) {
+      const b = document.createElement('button');
+      b.textContent = action.label;
+      b.style.cssText = 'border:none;background:rgba(255,255,255,0.18);color:#fff;font-size:12.5px;font-weight:800;font-family:var(--wp-font);padding:5px 11px;border-radius:999px;cursor:pointer;-webkit-tap-highlight-color:transparent';
+      b.onclick = (e) => { e.stopPropagation(); clearTimeout(timer); hide(); action.onClick?.(); };
+      t.appendChild(b);
+      t.style.pointerEvents = 'auto';
+      t.style.padding = '7px 8px 7px 18px';
+    }
     document.body.appendChild(t);
     void t.offsetHeight;
     t.style.opacity = '1';
     t.style.transform = 'translateX(-50%) translateY(0)';
-    setTimeout(() => {
-      t.style.opacity = '0';
-      setTimeout(() => t.remove(), 250);
-    }, 2200);
+    const timer = setTimeout(hide, action ? 4000 : 2200);
   }
 
   // Popup de reseña — mismo flujo que _openReviewModal de PlaceModal.js
@@ -4942,7 +4993,7 @@ export class PlaceModal2 {
     }
   }
 
-  async _setFavorite(on) {
+  async _setFavorite(on, { undo = false } = {}) {
     const user = this._requireUser('Inicia sesión para guardar en favoritos');
     if (!user || !this._place) return;
     if (this._favBusy) return;
@@ -4955,7 +5006,10 @@ export class PlaceModal2 {
     try {
       if (on) await FavoriteService.add(place.place_id || place.id, user.id);
       else    await FavoriteService.remove(place.place_id || place.id, user.id);
-      if (this._place === place) this._showToast(on ? '♥ Guardado en favoritos' : 'Quitado de favoritos');
+      if (this._place === place) {
+        if (!on && undo) this._showToast('Quitado de favoritos', { label: 'Deshacer', onClick: () => { if (this._place === place) this._setFavorite(true); } });
+        else this._showToast(on ? '♥ Guardado en favoritos' : 'Quitado de favoritos');
+      }
     } catch (e) {
       console.error('[PM2] Favoritos:', e);
       if (this._place === place) { this._isFav = prev; this._renderFavUI(false); }
@@ -4965,8 +5019,13 @@ export class PlaceModal2 {
     }
   }
 
-  // Hoja "Añadir a una colección": favorito (con opción de quitarlo),
-  // tus colecciones (tocar = meter/sacar el lugar) y "+ Nueva colección".
+  // Hoja "Añadir a una colección": favorito (con opción de quitarlo), tus
+  // colecciones (tocar = meter/sacar el lugar) y, abajo, el botón grande
+  // "+ Nueva colección" → vista para elegir un emoji y escribir el nombre.
+  static get COLLECTION_EMOJIS() {
+    return ['⭐','❤️','☕','🍔','🌮','🍕','🍣','🍰','🍻','🍷','🎉','🎵','🌳','🏖️','🛍️','🎨','🏋️','👨‍👩‍👧','💼','📍'];
+  }
+
   async _openCollectionsSheet() {
     const user = this._requireUser('Inicia sesión para usar colecciones');
     if (!user || !this._place) return;
@@ -4975,93 +5034,119 @@ export class PlaceModal2 {
     const info = this._placeInfo();
     const { body, close } = this._openSheet('Añadir a una colección', info.name);
     const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    const FOLDER = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
     const HEART = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
-    const PLUS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    const PLUS = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    const EMOJIS = PlaceModal2.COLLECTION_EMOJIS;
 
     let cols = null;
-    const render = () => {
+    const renderList = () => {
       body.innerHTML = '';
-      // Favorito
       const favRow = document.createElement('div');
       favRow.className = 'wp-pm2-ms-opt';
       favRow.style.cursor = 'default';
       favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span><button class="wp-pm2-col-unfav">Quitar</button>`;
-      favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false); };
+      favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false, { undo: true }); };
       body.appendChild(favRow);
       const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; body.appendChild(sep);
 
       if (cols === null) {
         const p = document.createElement('p'); p.className = 'wp-pm2-col-empty'; p.textContent = 'Cargando colecciones…';
         body.appendChild(p);
-        return;
-      }
-      if (!cols.length) {
+      } else if (!cols.length) {
         const p = document.createElement('p'); p.className = 'wp-pm2-col-empty';
-        p.textContent = 'Aún no tienes colecciones. Crea una para agrupar lugares (p. ej. "Cafés para trabajar").';
+        p.textContent = 'Aún no tienes colecciones. Crea una para agrupar lugares, por ejemplo "☕ Cafés para trabajar".';
         body.appendChild(p);
+      } else {
+        cols.forEach(c => {
+          const row = document.createElement('button');
+          row.className = 'wp-pm2-ms-opt';
+          row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
+            <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
+          row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '📍';
+          row.querySelector('.wp-pm2-col-name').textContent = c.name;
+          row.onclick = () => toggle(c);
+          body.appendChild(row);
+        });
       }
-      cols.forEach(c => {
-        const row = document.createElement('button');
-        row.className = 'wp-pm2-ms-opt';
-        row.innerHTML = `<span class="wp-pm2-ms-ico">${FOLDER}</span><span></span>
-          <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
-        row.children[1].textContent = c.name;
-        row.onclick = () => toggle(c);
-        body.appendChild(row);
-      });
-      // Nueva colección
-      const newRow = document.createElement('button');
-      newRow.className = 'wp-pm2-ms-opt';
-      newRow.innerHTML = `<span class="wp-pm2-ms-ico">${PLUS}</span><span>Nueva colección</span>`;
-      newRow.onclick = () => showNewInput(newRow);
-      body.appendChild(newRow);
+      // CTA grande abajo
+      const cta = document.createElement('div');
+      cta.className = 'wp-pm2-col-cta-wrap';
+      cta.innerHTML = `<button class="wp-pm2-col-cta">${PLUS}Nueva colección</button>`;
+      cta.querySelector('button').onclick = () => renderNew();
+      body.appendChild(cta);
     };
 
     const toggle = async (c) => {
       const was = c.has;
       c.has = !was; c.count += was ? -1 : 1;
       this._haptic('light');
-      render();
+      renderList();
       try {
         if (was) await FavoriteService.removeFromCollection(c.id, pid);
         else     await FavoriteService.addToCollection(c.id, pid);
-        this._showToast(was ? `Quitado de "${c.name}"` : `✓ Añadido a "${c.name}"`);
+        this._showToast(was ? `Quitado de "${c.name}"` : `✓ Añadido a ${c.emoji || ''} ${c.name}`.replace(/\s+/g, ' '));
       } catch (e) {
         console.error('[PM2] Colección:', e);
-        c.has = was; c.count += was ? 1 : -1; render();
+        c.has = was; c.count += was ? 1 : -1; renderList();
         this._showToast('No se pudo guardar');
       }
     };
 
-    const showNewInput = (rowEl) => {
-      const wrapEl = document.createElement('div');
-      wrapEl.className = 'wp-pm2-col-new';
-      wrapEl.innerHTML = `<input class="wp-pm2-col-input" maxlength="60" placeholder="Nombre de la colección"><button class="wp-pm2-col-create" disabled>Crear</button>`;
-      rowEl.replaceWith(wrapEl);
-      const input = wrapEl.querySelector('input'), btn = wrapEl.querySelector('button');
+    // Vista "Nueva colección": emoji + nombre + botón grande "Crear"
+    const renderNew = () => {
+      let emoji = EMOJIS[0];
+      body.innerHTML = `
+        <div class="wp-pm2-col-form">
+          <div class="wp-pm2-col-preview"><span class="wp-pm2-col-preview-emoji"></span></div>
+          <div class="wp-pm2-col-emojis"></div>
+          <input class="wp-pm2-col-input" maxlength="60" placeholder="Nombre de la colección">
+        </div>
+        <div class="wp-pm2-col-cta-wrap">
+          <button class="wp-pm2-col-cta" disabled>Crear colección</button>
+          <button class="wp-pm2-col-cancel">Cancelar</button>
+        </div>`;
+      const prev = body.querySelector('.wp-pm2-col-preview-emoji');
+      const grid = body.querySelector('.wp-pm2-col-emojis');
+      const input = body.querySelector('.wp-pm2-col-input');
+      const btn = body.querySelector('.wp-pm2-col-cta');
+      const paint = () => {
+        prev.textContent = emoji;
+        grid.querySelectorAll('button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.e === emoji));
+      };
+      EMOJIS.forEach(e => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.dataset.e = e; b.textContent = e;
+        b.onclick = () => {
+          emoji = e; this._haptic('light'); paint();
+          this._scaleKeys(prev, [0.7, 1.15, 1], 300);
+        };
+        grid.appendChild(b);
+      });
+      paint();
       input.oninput = () => { btn.disabled = !input.value.trim(); };
       input.onkeydown = (e) => { if (e.key === 'Enter' && !btn.disabled) btn.click(); };
-      setTimeout(() => input.focus(), 50);
+      body.querySelector('.wp-pm2-col-cancel').onclick = () => renderList();
+      setTimeout(() => input.focus(), 60);
       btn.onclick = async () => {
         const name = input.value.trim();
         if (!name) return;
         btn.disabled = true; btn.textContent = 'Creando…';
         try {
-          const c = await FavoriteService.createCollection(user.id, name);
+          const c = await FavoriteService.createCollection(user.id, name, emoji);
           await FavoriteService.addToCollection(c.id, pid);
-          cols = [...(cols || []), { id: c.id, name: c.name, count: 1, has: true }];
-          render();
-          this._showToast(`✓ Añadido a "${c.name}"`);
+          cols = [...(cols || []), { id: c.id, name: c.name, emoji: c.emoji || emoji, count: 1, has: true }];
+          input.blur();
+          renderList();
+          this._showToast(`✓ Añadido a ${emoji} ${c.name}`);
         } catch (e) {
           console.error('[PM2] Nueva colección:', e);
-          btn.disabled = false; btn.textContent = 'Crear';
+          btn.disabled = false; btn.textContent = 'Crear colección';
           this._showToast('No se pudo crear la colección');
         }
       };
     };
 
-    render();
+    renderList();
     try {
       cols = await FavoriteService.getCollections(user.id, pid);
     } catch (e) {
@@ -5069,7 +5154,8 @@ export class PlaceModal2 {
       cols = [];
       this._showToast('No se pudieron cargar tus colecciones');
     }
-    if (body.isConnected) render();
+    // Solo redibuja si sigue en la lista (no si ya abrió "Nueva colección")
+    if (body.isConnected && !body.querySelector('.wp-pm2-col-form')) renderList();
   }
 
   // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
