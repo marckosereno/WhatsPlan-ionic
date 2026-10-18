@@ -972,6 +972,19 @@ export class PlaceModal2 {
         background:#0a0a0a; color:#fff;
         box-shadow:0 2px 8px rgba(0,0,0,0.18);
       }
+      /* Ya está en una colección: muestra cuál (estado, no acción) */
+      #wp-pm2-add-review.wp-pm2-fav-in {
+        background:#f3f4f6; color:#111827; border:1px solid rgba(0,0,0,0.08);
+        box-shadow:none; flex-shrink:1; min-width:0; max-width:58%;
+      }
+      .wp-pm2-fav-in-emoji { font-size:13px; line-height:1;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+      .wp-pm2-fav-in-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-pm2-fav-in-more {
+        flex:none; padding:1px 6px; border-radius:999px; background:#0a0a0a; color:#fff;
+        font-size:10.5px; font-weight:800;
+      }
+      .wp-pm2-fav-chev { flex:none; opacity:0.55; }
       #wp-pm2-reviews-count { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       /* Pill "♥ En tus favoritos" en el hero (junto a Destacado/Verificado) */
       .wp-pm2-fav-badge {
@@ -1010,8 +1023,8 @@ export class PlaceModal2 {
       .wp-pm2-col-row { display:flex; align-items:center; gap:10px; }
       /* Campo pill con el ícono (redondo) adentro, a la izquierda */
       .wp-pm2-col-field {
-        position:relative; flex:1; min-width:0; height:52px;
-        display:flex; align-items:center; gap:10px; padding:0 16px 0 6px;
+        position:relative; flex:1; min-width:0; height:48px; box-sizing:border-box;
+        display:flex; align-items:center; gap:10px; padding:0 16px 0 5px;
         border-radius:999px; background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
         transition:background-color 0.15s, border-color 0.15s;
       }
@@ -1020,7 +1033,7 @@ export class PlaceModal2 {
          abajo y al tocarlo / con los íconos abiertos se queda hundido.
          Se mueve con top (no transform) para no crear capas. */
       .wp-pm2-col-pick {
-        position:relative; top:-1px; z-index:1; flex:none; width:40px; height:40px; padding:0;
+        position:relative; top:-1px; z-index:1; flex:none; width:36px; height:36px; padding:0;
         border-radius:999px; border:1px solid #e5e7eb; background:linear-gradient(180deg,#ffffff 0%,#f6f7f9 100%);
         box-shadow:0 3px 0 #d6d9de, 0 4px 8px rgba(0,0,0,0.10);
         display:flex; align-items:center; justify-content:center;
@@ -1043,7 +1056,7 @@ export class PlaceModal2 {
       /* Tira de íconos: a la derecha del ícono, dentro del campo;
          difuminada al principio y al final */
       .wp-pm2-col-strip {
-        position:absolute; top:0; bottom:0; left:50px; right:0;
+        position:absolute; top:0; bottom:0; left:46px; right:0;
         border-radius:0 999px 999px 0;
         overflow:hidden; touch-action:pan-y;
         display:flex; align-items:center;
@@ -1059,7 +1072,7 @@ export class PlaceModal2 {
       }
       /* Listo: botón redondo fuera del campo */
       .wp-pm2-col-ok {
-        flex:none; width:52px; height:52px; padding:0; border-radius:999px; border:none;
+        flex:none; width:48px; height:48px; padding:0; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -1067,6 +1080,19 @@ export class PlaceModal2 {
       }
       .wp-pm2-col-ok:disabled { background:#e5e7eb; color:#9ca3af; }
       .wp-pm2-col-ok.wp-pm2-busy { opacity:0.5; }
+      .wp-pm2-col-row-item { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+      .wp-pm2-col-row-item.wp-pm2-rv-pressing { background-color:#f3f4f6; }
+      .wp-pm2-col-confirm { background:#fff1f2; gap:8px; cursor:default; }
+      .wp-pm2-col-confirm-txt { flex:1; min-width:0; font-size:14px; font-weight:600; color:#111827;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-pm2-col-confirm-no, .wp-pm2-col-confirm-yes {
+        flex:none; height:34px; padding:0 14px; border-radius:999px; border:none;
+        font-size:13px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pm2-col-confirm-no { background:#fff; color:#374151; border:1px solid rgba(0,0,0,0.1); }
+      .wp-pm2-col-confirm-yes { background:#e11d48; color:#fff; }
+      .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
       .wp-pm2-col-strip-track button.wp-pm2-on { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12); }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
@@ -4991,14 +5017,24 @@ export class PlaceModal2 {
   // el hero. Quitar de favoritos: desde la hoja de colecciones.
   async _loadFavorite(place) {
     this._isFav = false;
+    this._placeCols = [];
     this._renderFavUI(false);
     const uid = this.getCurrentUser?.()?.id || null;
     if (!uid) return;
     try {
-      const fav = await FavoriteService.isFavorite(place.place_id || place.id, uid);
+      const pid = place.place_id || place.id;
+      const fav = await FavoriteService.isFavorite(pid, uid);
       if (this._place !== place) return;
       this._isFav = fav;
       this._renderFavUI(false);
+      // ¿En qué colecciones está? (solo si es favorito: es lo que muestra
+      // el botón de abajo del hero)
+      if (fav) {
+        const cols = await FavoriteService.getCollections(uid, pid);
+        if (this._place !== place) return;
+        this._placeCols = cols.filter(c => c.has).map(c => ({ id: c.id, name: c.name, emoji: c.emoji }));
+        this._renderFavUI(false);
+      }
     } catch (e) {
       console.warn('[PM2] Favoritos no disponibles:', e.message || e);
     }
@@ -5009,10 +5045,24 @@ export class PlaceModal2 {
     const pill = this._el.querySelector('#wp-pm2-fav-badge');
     const HEART = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
     const PLUS = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    const CHEV = '<svg class="wp-pm2-fav-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
     if (btn) {
+      // Sin favorito → "♥ Añadir a favoritos"
+      // Favorito sin colección → "+ Añadir a una colección"
+      // Favorito en colección(es) → "☕ Cafés para trabajar +1 ⌄" (abre la hoja)
+      const inCols = this._isFav ? (this._placeCols || []) : [];
       btn.classList.toggle('wp-pm2-fav-add', !this._isFav);
-      btn.classList.toggle('wp-pm2-fav-coll', !!this._isFav);
-      btn.innerHTML = this._isFav ? `${PLUS}Añadir a una colección` : `${HEART}Añadir a favoritos`;
+      btn.classList.toggle('wp-pm2-fav-coll', !!this._isFav && !inCols.length);
+      btn.classList.toggle('wp-pm2-fav-in', inCols.length > 0);
+      if (!this._isFav) btn.innerHTML = `${HEART}Añadir a favoritos`;
+      else if (!inCols.length) btn.innerHTML = `${PLUS}Añadir a una colección`;
+      else {
+        const c = inCols[inCols.length - 1]; // la más reciente
+        btn.innerHTML = `<span class="wp-pm2-fav-in-emoji">${this._esc(c.emoji || '❤️')}</span>` +
+          `<span class="wp-pm2-fav-in-name">${this._esc(c.name)}</span>` +
+          (inCols.length > 1 ? `<span class="wp-pm2-fav-in-more">+${inCols.length - 1}</span>` : '') + CHEV;
+      }
+      btn.setAttribute('aria-label', inCols.length ? `En ${inCols.length} ${inCols.length > 1 ? 'colecciones' : 'colección'}` : btn.textContent.trim());
       if (animate) this._scaleKeys(btn, [0.85, 1.08, 1], 320);
     }
     if (pill) {
@@ -5154,6 +5204,13 @@ export class PlaceModal2 {
     input.addEventListener('focus', () => setTimeout(fit, 350));
 
     let cols = null;
+    let confirmId = null; // colección con "¿Eliminar?" abierto
+    // Lo que muestra el botón de abajo del hero
+    const syncBtn = () => {
+      if (!cols || this._place !== place) return;
+      this._placeCols = cols.filter(c => c.has).map(c => ({ id: c.id, name: c.name, emoji: c.emoji }));
+      this._renderFavUI(false);
+    };
     const renderList = () => {
       listEl.innerHTML = '';
       const favRow = document.createElement('div');
@@ -5175,30 +5232,70 @@ export class PlaceModal2 {
         return;
       }
       cols.forEach(c => {
-        const row = document.createElement('button');
-        row.className = 'wp-pm2-ms-opt';
+        // ¿Eliminar? en la misma fila (después de mantener presionado)
+        if (confirmId === c.id) {
+          const row = document.createElement('div');
+          row.className = 'wp-pm2-ms-opt wp-pm2-col-confirm';
+          row.innerHTML = `<span class="wp-pm2-col-confirm-txt">¿Eliminar <b></b>?</span>
+            <button type="button" class="wp-pm2-col-confirm-no">Cancelar</button>
+            <button type="button" class="wp-pm2-col-confirm-yes">Eliminar</button>`;
+          row.querySelector('b').textContent = `${c.emoji || '❤️'} ${c.name}`;
+          row.querySelector('.wp-pm2-col-confirm-no').onclick = () => { confirmId = null; renderList(); };
+          row.querySelector('.wp-pm2-col-confirm-yes').onclick = () => remove(c);
+          listEl.appendChild(row);
+          return;
+        }
+        // div (no <button>): el long-press ignora toques sobre botones
+        const row = document.createElement('div');
+        row.className = 'wp-pm2-ms-opt wp-pm2-col-row-item';
+        row.setAttribute('role', 'button');
         row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
           <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
         row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '❤️';
         row.querySelector('.wp-pm2-col-name').textContent = c.name;
-        row.onclick = () => toggle(c);
+        row.onclick = () => { if (confirmId) { confirmId = null; renderList(); return; } toggle(c); };
+        this._wireLongPress(row, () => { confirmId = c.id; input.blur(); renderList(); });
         listEl.appendChild(row);
       });
+      // Pista de cómo eliminar, hasta que se use la primera vez
+      let hintDone = false; try { hintDone = localStorage.getItem('wp_col_del_hint') === '1'; } catch (_) {}
+      if (cols.length && !hintDone) {
+        const p = document.createElement('p'); p.className = 'wp-pm2-col-hint';
+        p.textContent = 'Mantén presionada una colección para eliminarla';
+        listEl.appendChild(p);
+      }
       fit();
+    };
+
+    const remove = async (c) => {
+      const idx = cols.indexOf(c);
+      confirmId = null;
+      cols = cols.filter(x => x !== c);
+      try { localStorage.setItem('wp_col_del_hint', '1'); } catch (_) {}
+      this._haptic('warning');
+      renderList(); syncBtn();
+      try {
+        await FavoriteService.deleteCollection(c.id);
+        this._showToast(`Colección "${c.name}" eliminada`);
+      } catch (e) {
+        console.error('[PM2] Eliminar colección:', e);
+        cols.splice(Math.max(0, idx), 0, c); renderList(); syncBtn();
+        this._showToast('No se pudo eliminar');
+      }
     };
 
     const toggle = async (c) => {
       const was = c.has;
       c.has = !was; c.count += was ? -1 : 1;
       this._haptic('light');
-      renderList();
+      renderList(); syncBtn();
       try {
         if (was) await FavoriteService.removeFromCollection(c.id, pid);
         else     await FavoriteService.addToCollection(c.id, pid);
         this._showToast(was ? `Quitado de "${c.name}"` : `✓ Añadido a ${c.emoji || ''} ${c.name}`.replace(/\s+/g, ' '));
       } catch (e) {
         console.error('[PM2] Colección:', e);
-        c.has = was; c.count += was ? 1 : -1; renderList();
+        c.has = was; c.count += was ? 1 : -1; renderList(); syncBtn();
         this._showToast('No se pudo guardar');
       }
     };
@@ -5257,7 +5354,7 @@ export class PlaceModal2 {
         const c = await FavoriteService.createCollection(user.id, name, emoji);
         await FavoriteService.addToCollection(c.id, pid);
         cols = [...(cols || []), { id: c.id, name: c.name, emoji: c.emoji || emoji, count: 1, has: true }];
-        renderList();
+        renderList(); syncBtn();
         this._showToast(`✓ Añadido a ${emoji} ${c.name}`);
         // Campo listo para otra
         input.value = ''; input.blur();
@@ -5279,7 +5376,7 @@ export class PlaceModal2 {
       cols = [];
       this._showToast('No se pudieron cargar tus colecciones');
     }
-    if (body.isConnected) renderList();
+    if (body.isConnected) { renderList(); syncBtn(); }
   }
 
   // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
