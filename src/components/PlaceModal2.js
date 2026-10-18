@@ -1004,6 +1004,7 @@ export class PlaceModal2 {
       .wp-pm2-col-check.wp-pm2-on { background:#0a0a0a; border-color:#0a0a0a; color:#fff; }
       .wp-pm2-ms-ico.wp-pm2-col-fav-ico { color:#e11d48; opacity:1; }
       div.wp-pm2-ms-opt { box-sizing:border-box; }
+      .wp-pm2-col-unfav.wp-pm2-col-done { background:#0a0a0a; color:#fff; }
       .wp-pm2-col-unfav {
         margin-left:auto; border:none; background:#f3f4f6; color:#4b5563;
         font-size:12px; font-weight:700; font-family:var(--wp-font);
@@ -1068,10 +1069,10 @@ export class PlaceModal2 {
       /* Íconos de la tira: los no elegidos un poco más chicos y suaves;
          el elegido completo, en una pastilla blanca con un puntito abajo */
       .wp-pm2-col-strip-track button {
-        position:relative; width:38px; height:38px; border:none; border-radius:999px; background:transparent; padding:0;
-        font-size:19px; line-height:1; opacity:0.6; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        position:relative; width:34px; height:38px; border:none; border-radius:999px; background:transparent; padding:0;
+        font-size:17px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
-        transition:opacity 0.15s, font-size 0.15s;
+        transition:font-size 0.15s, width 0.15s;
       }
       /* Listo: botón redondo fuera del campo */
       .wp-pm2-col-ok {
@@ -1175,13 +1176,10 @@ export class PlaceModal2 {
       .wp-pm2-pop-item.wp-pm2-danger { color:#e11d48; }
       .wp-pm2-pop-sep { height:6px; background:#f3f4f6; }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
+      /* El elegido crece un poco respecto a los demás */
       .wp-pm2-col-strip-track button.wp-pm2-on {
-        opacity:1; font-size:22px; background:#fff;
+        width:40px; height:40px; font-size:23px; background:#fff;
         box-shadow:0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
-      }
-      .wp-pm2-col-strip-track button.wp-pm2-on::after {
-        content:''; position:absolute; left:50%; bottom:2px; width:4px; height:4px; margin-left:-2px;
-        border-radius:999px; background:#0a0a0a;
       }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
@@ -5266,7 +5264,7 @@ export class PlaceModal2 {
   static get COLLECTION_EMOJIS() {
     // Sin 👨‍👩‍👧 ni 📍 (pedido: nunca usarlos)
     // El primero es el ícono por defecto
-    return ['❤️','⭐','💙','🤩','✌️','☕','🌮','🍕','🍣','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🛍️','🎨','🏋️','🦷','🛺','🛸','👽','👻'];
+    return ['❤️','⭐','💙','🤩','✌️','☕','🥐','🍔','🌮','🍕','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🛍️','🎨','🏋️','🦷','🛺','🛸','👽','👻'];
   }
 
   async _openCollectionsSheet() {
@@ -5388,6 +5386,7 @@ export class PlaceModal2 {
     let cols = null;
     // 'normal' | 'order' (ordenar arrastrando) | 'delete' (elegir cuáles)
     let mode = 'normal';
+    let lastAnyOn = null; // para el pulse cuando "Quitar" cambia a "Listo" y viceversa
     const selected = new Set();
     // Lo que muestra el botón de abajo del hero
     const syncBtn = () => {
@@ -5631,8 +5630,18 @@ export class PlaceModal2 {
         const favRow = document.createElement('div');
         favRow.className = 'wp-pm2-ms-opt';
         favRow.style.cursor = 'default';
-        favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span><button class="wp-pm2-col-unfav">Quitar</button>`;
-        favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false, { undo: true }); };
+        // Con alguna colección marcada el botón es "Listo" (todo ya se
+        // guardó al tocar; solo cierra). Sin ninguna, "Quitar" de favoritos.
+        const anyOn = !!(cols && cols.some(c => c.has));
+        favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span>` +
+          `<button class="wp-pm2-col-unfav${anyOn ? ' wp-pm2-col-done' : ''}">${anyOn ? 'Listo' : 'Quitar'}</button>`;
+        const fb = favRow.querySelector('.wp-pm2-col-unfav');
+        fb.onclick = () => {
+          if (anyOn) { this._scaleKeys(fb, [0.88, 1.06, 1], 200); close(); return; }
+          close(); this._setFavorite(false, { undo: true });
+        };
+        if (lastAnyOn !== null && lastAnyOn !== anyOn) this._scaleKeys(fb, [0.7, 1.12, 1], 280);
+        lastAnyOn = anyOn;
         listEl.appendChild(favRow);
         const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; listEl.appendChild(sep);
       }
