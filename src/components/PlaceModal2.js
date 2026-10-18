@@ -1064,11 +1064,14 @@ export class PlaceModal2 {
         mask-image:linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 26px), transparent 100%);
       }
       .wp-pm2-col-strip[hidden] { display:none; }
-      .wp-pm2-col-strip-track { display:flex; gap:2px; width:max-content; padding:0 26px 0 12px; }
+      .wp-pm2-col-strip-track { display:flex; align-items:center; gap:2px; width:max-content; padding:0 26px 0 12px; }
+      /* Íconos de la tira: los no elegidos un poco más chicos y suaves;
+         el elegido completo, en una pastilla blanca con un puntito abajo */
       .wp-pm2-col-strip-track button {
-        width:40px; height:40px; border:none; border-radius:999px; background:transparent; padding:0;
-        font-size:22px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        position:relative; width:38px; height:38px; border:none; border-radius:999px; background:transparent; padding:0;
+        font-size:19px; line-height:1; opacity:0.6; cursor:pointer; -webkit-tap-highlight-color:transparent;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+        transition:opacity 0.15s, font-size 0.15s;
       }
       /* Listo: botón redondo fuera del campo */
       .wp-pm2-col-ok {
@@ -1082,9 +1085,9 @@ export class PlaceModal2 {
       .wp-pm2-col-ok.wp-pm2-busy { opacity:0.5; }
       /* Cada colección va en una "tarjeta" redondeada (.wp-pm2-col-sw):
          el hundido, el swipe y el arrastre se ven redondos */
-      .wp-pm2-col-sw { position:relative; margin:0 8px; border-radius:16px; overflow:hidden; }
+      .wp-pm2-col-sw { position:relative; margin:0 8px; border-radius:999px; overflow:hidden; }
       .wp-pm2-col-sw .wp-pm2-ms-opt.wp-pm2-col-row-item {
-        position:relative; width:100%; margin:0; padding:11px 12px; border-radius:16px;
+        position:relative; width:100%; margin:0; padding:11px 16px; border-radius:999px;
         background:#fff; touch-action:pan-y; transition:background-color 0.25s ease;
         user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
       }
@@ -1104,6 +1107,8 @@ export class PlaceModal2 {
       .wp-pm2-col-sw.wp-pm2-col-tile { margin:0 8px 6px; overflow:visible; }
       .wp-pm2-col-tile .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#f4f5f7; transition:background-color 0.15s; }
       .wp-pm2-col-tile.wp-pm2-sel .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff1f2; }
+      .wp-pm2-col-tile.wp-pm2-editing .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#eaf2ff; box-shadow:inset 0 0 0 1.5px #93c5fd; }
+      .wp-pm2-col-pen { color:#6b7280; }
       .wp-pm2-col-selbox {
         flex:none; width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; box-sizing:border-box;
         display:flex; align-items:center; justify-content:center; color:transparent; background:#fff;
@@ -1111,7 +1116,7 @@ export class PlaceModal2 {
       .wp-pm2-sel .wp-pm2-col-selbox { background:#e11d48; border-color:#e11d48; color:#fff; }
       .wp-pm2-col-grip { margin-left:auto; padding:6px; color:#9ca3af; display:flex; touch-action:none; }
       .wp-pm2-col-sw.wp-pm2-shift { transition:top 0.16s ease; }
-      .wp-pm2-col-sw.wp-pm2-dragging { z-index:5; border-radius:16px; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
+      .wp-pm2-col-sw.wp-pm2-dragging { z-index:5; border-radius:999px; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
       .wp-pm2-col-sw.wp-pm2-dragging .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff; }
       /* Botón del header: ⋯ / ✓ (listo) / ✕ */
       .wp-pm2-ms-header.wp-pm2-col-header { position:relative; padding-right:110px; }
@@ -1170,7 +1175,14 @@ export class PlaceModal2 {
       .wp-pm2-pop-item.wp-pm2-danger { color:#e11d48; }
       .wp-pm2-pop-sep { height:6px; background:#f3f4f6; }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
-      .wp-pm2-col-strip-track button.wp-pm2-on { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12); }
+      .wp-pm2-col-strip-track button.wp-pm2-on {
+        opacity:1; font-size:22px; background:#fff;
+        box-shadow:0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+      }
+      .wp-pm2-col-strip-track button.wp-pm2-on::after {
+        content:''; position:absolute; left:50%; bottom:2px; width:4px; height:4px; margin-left:-2px;
+        border-radius:999px; background:#0a0a0a;
+      }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
       /* PULSE al tocar — se hunde y rebota. Lo dispara _pulseTap() y la
@@ -5254,7 +5266,7 @@ export class PlaceModal2 {
   static get COLLECTION_EMOJIS() {
     // Sin 👨‍👩‍👧 ni 📍 (pedido: nunca usarlos)
     // El primero es el ícono por defecto
-    return ['❤️','⭐','☕','🍔','🌮','🍕','🍣','🍜','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🏖️','🛍️','🎨','🏋️','💼'];
+    return ['❤️','⭐','💙','🤩','✌️','☕','🌮','🍕','🍣','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🛍️','🎨','🏋️','🦷','🛺','🛸','👽','👻'];
   }
 
   async _openCollectionsSheet() {
@@ -5392,14 +5404,20 @@ export class PlaceModal2 {
     header?.classList.add('wp-pm2-col-header');
     header?.appendChild(hbtn);
     const paintHeader = () => {
-      hbtn.classList.toggle('wp-pm2-done', mode === 'order');
+      hbtn.classList.toggle('wp-pm2-done', mode === 'order' || mode === 'edit');
       hbtn.classList.toggle('wp-pm2-x', mode === 'delete');
       hbtn.classList.toggle('wp-pm2-pill', mode !== 'normal');
-      hbtn.innerHTML = mode === 'order' ? 'Listo' : mode === 'delete' ? 'Cancelar' : DOTS;
-      hbtn.setAttribute('aria-label', mode === 'order' ? 'Listo' : mode === 'delete' ? 'Cancelar' : 'Opciones');
+      const done = mode === 'order' || mode === 'edit';
+      hbtn.innerHTML = done ? 'Listo' : mode === 'delete' ? 'Cancelar' : DOTS;
+      hbtn.setAttribute('aria-label', done ? 'Listo' : mode === 'delete' ? 'Cancelar' : 'Opciones');
       hbtn.style.display = (mode === 'normal' && !(cols && cols.length)) ? 'none' : '';
-      if (titleEl) titleEl.textContent = mode === 'order' ? 'Ordenar colecciones' : mode === 'delete' ? 'Eliminar colecciones' : 'Añadir a una colección';
-      if (subEl) subEl.textContent = mode === 'order' ? 'Mantén presionada una y arrástrala' : mode === 'delete' ? 'Elige cuáles quieres eliminar' : info.name;
+      const T = {
+        order:  ['Ordenar colecciones', 'Mantén presionada una y arrástrala'],
+        edit:   ['Editar colecciones', 'Toca una para cambiar su nombre o ícono'],
+        delete: ['Eliminar colecciones', 'Elige cuáles quieres eliminar'],
+      }[mode] || ['Añadir a una colección', info.name];
+      if (titleEl) titleEl.textContent = T[0];
+      if (subEl) subEl.textContent = T[1];
     };
     hbtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); // no arrastra la hoja
     hbtn.onclick = (e) => {
@@ -5408,6 +5426,7 @@ export class PlaceModal2 {
       if (mode !== 'normal') { setMode('normal'); return; }
       this._haptic('light');
       this._openPopMenu(hbtn, [
+        { label: 'Editar colecciones', icon: 'edit', onClick: () => setMode('edit') },
         { label: 'Ordenar colecciones', icon: 'order', disabled: cols.length < 2, onClick: () => setMode('order') },
         { label: 'Eliminar colecciones', icon: 'trash', danger: true, onClick: () => setMode('delete') },
       ]);
@@ -5418,7 +5437,7 @@ export class PlaceModal2 {
       selected.clear();
       openRow?.close(false);
       if (m !== 'normal') { input.blur(); if (editing) setEditing(null); if (!strip.hidden) { strip.hidden = true; input.style.visibility = ''; pick.classList.remove('wp-pm2-on'); } }
-      composer.hidden = m !== 'normal';
+      composer.hidden = m !== 'normal'; // en "Editar" aparece al tocar una
       bulk.hidden = m !== 'delete';
       paintBulk();
       paintHeader();
@@ -5661,9 +5680,19 @@ export class PlaceModal2 {
           if (sel) wrap.classList.add('wp-pm2-sel');
           row.innerHTML = (mode === 'delete' ? `<span class="wp-pm2-col-selbox">${CHECK}</span>` : '') +
             `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>` +
-            (mode === 'order' ? `<span class="wp-pm2-col-grip" aria-hidden="true">${GRIP}</span>` : `<span class="wp-pm2-col-meta"><span>${c.count}</span></span>`);
+            (mode === 'order' ? `<span class="wp-pm2-col-grip" aria-hidden="true">${GRIP}</span>`
+              : mode === 'edit' ? `<span class="wp-pm2-col-grip wp-pm2-col-pen" aria-hidden="true">${PEN}</span>`
+              : `<span class="wp-pm2-col-meta"><span>${c.count}</span></span>`);
+          if (mode === 'edit' && editing === c) wrap.classList.add('wp-pm2-editing');
           wrap.appendChild(row);
-          if (mode === 'delete') {
+          if (mode === 'edit') {
+            row.onclick = () => {
+              this._haptic('light');
+              startEdit(c);
+              renderList();
+              pulseTile(c.id);
+            };
+          } else if (mode === 'delete') {
             row.onclick = () => {
               if (selected.has(c.id)) selected.delete(c.id); else selected.add(c.id);
               this._haptic('light');
@@ -5694,8 +5723,13 @@ export class PlaceModal2 {
     let editing = null;
     const editBar = body.querySelector('.wp-pm2-col-editing');
     const setEditing = (c) => {
+      const prev = editing;
       editing = c;
       editBar.hidden = !c;
+      if (mode === 'edit') {
+        composer.hidden = !c;
+        if (prev && !c) renderList(); // se quita el resaltado
+      }
       input.placeholder = c ? 'Nombre de la colección' : 'Nueva colección';
       cta.setAttribute('aria-label', c ? 'Guardar cambios' : 'Crear colección');
       if (c) {
@@ -5799,6 +5833,7 @@ export class PlaceModal2 {
         emoji = e; paint();
         this._haptic('light');
         this._scaleKeys(pick, [0.75, 1.15, 1], 300);
+        this._scaleKeys(b, [0.7, 1.18, 1], 280);   // el elegido también late
       };
       track.appendChild(b);
     });
