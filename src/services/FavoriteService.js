@@ -66,6 +66,16 @@ export const FavoriteService = {
     if (error) throw error;
   },
 
+  // Borra la colección; sus lugares se quitan solos (on delete cascade).
+  // Los lugares siguen en favoritos.
+  async deleteCollection(collectionId) {
+    const { error } = await getSupabase()
+      .from('place_collections')
+      .delete()
+      .eq('id', collectionId);
+    if (error) throw error;
+  },
+
   async removeFromCollection(collectionId, placeId) {
     const { error } = await getSupabase()
       .from('place_collection_items')
