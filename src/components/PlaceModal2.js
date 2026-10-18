@@ -1000,7 +1000,6 @@ export class PlaceModal2 {
       .wp-pm2-col-emoji { width:22px; text-align:center; font-size:19px; line-height:1;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
       .wp-pm2-col-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-pm2-col-cta-wrap { padding:10px 16px 4px; display:flex; flex-direction:column; gap:4px; }
       .wp-pm2-col-cta {
         width:100%; height:48px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff; font-size:15px; font-weight:700; font-family:var(--wp-font);
@@ -1008,86 +1007,63 @@ export class PlaceModal2 {
         cursor:pointer; -webkit-tap-highlight-color:transparent;
       }
       .wp-pm2-col-cta:disabled { opacity:0.35; }
-      .wp-pm2-col-cancel {
-        height:40px; border:none; background:none; color:#6b7280;
-        font-size:14px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
+      /* Nueva colección: [ícono] [campo], cada uno con su propio redondeado */
+      .wp-pm2-col-list.wp-pm2-col-list-clip { overflow:hidden; }
+      .wp-pm2-col-list.wp-pm2-col-list-scroll { overflow-y:auto; overscroll-behavior:contain; }
+      .wp-pm2-col-composer {
+        padding:12px 16px 4px; display:flex; flex-direction:column; gap:10px;
+        border-top:1px solid rgba(0,0,0,0.06); margin-top:4px;
       }
-      .wp-pm2-col-form { padding:4px 16px 0; display:flex; flex-direction:column; gap:12px; }
       .wp-pm2-col-row { display:flex; align-items:center; gap:10px; }
-      .wp-pm2-col-row .wp-pm2-col-input { flex:1; min-width:0; }
       .wp-pm2-col-pick {
-        position:relative; flex-shrink:0; width:46px; height:46px; border-radius:14px;
-        border:1px solid rgba(0,0,0,0.12); background:#f3f4f6; padding:0;
+        position:relative; flex:none; width:52px; height:52px; padding:0;
+        border-radius:17px; border:1px solid rgba(0,0,0,0.07);
+        background:linear-gradient(160deg, #ffffff 0%, #eef0f3 100%);
+        box-shadow:0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 #fff;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:border-color 0.15s, background-color 0.15s;
+        transition:background-color 0.15s, border-color 0.15s;
       }
-      .wp-pm2-col-pick.wp-pm2-on { border-color:#0a0a0a; background:#fff; }
+      .wp-pm2-col-pick.wp-pm2-on { background:#0a0a0a; border-color:#0a0a0a; box-shadow:none; }
       .wp-pm2-col-preview-emoji {
-        font-size:24px; line-height:1;
+        font-size:25px; line-height:1;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
       }
       .wp-pm2-col-pick-badge {
-        position:absolute; right:-4px; bottom:-4px; width:16px; height:16px; border-radius:50%;
-        background:#0a0a0a; color:#fff; display:flex; align-items:center; justify-content:center;
-        border:2px solid #fff;
+        position:absolute; right:-4px; bottom:-4px; width:20px; height:20px;
+        border-radius:999px; background:#0a0a0a; color:#fff;
+        border:2px solid #fff; box-sizing:border-box;
+        display:flex; align-items:center; justify-content:center;
       }
-      .wp-pm2-col-emojis[hidden] { display:none; }
-      /* Campo de nueva colección: [emoji] dentro del campo, a la izquierda */
-      .wp-pm2-col-composer { padding:10px 16px 4px; display:flex; flex-direction:column; gap:10px; }
+      .wp-pm2-col-pick.wp-pm2-on .wp-pm2-col-pick-badge { background:#fff; color:#0a0a0a; border-color:#0a0a0a; }
       .wp-pm2-col-field {
-        position:relative; display:flex; align-items:center; gap:8px;
-        height:52px; padding:0 6px; border-radius:999px;
-        background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
+        position:relative; flex:1; min-width:0; height:52px;
+        display:flex; align-items:center; padding:0 18px;
+        border-radius:999px; background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
+        transition:background-color 0.15s, border-color 0.15s;
       }
       .wp-pm2-col-field:focus-within { background:#fff; border-color:#93c5fd; }
-      .wp-pm2-col-field .wp-pm2-col-pick {
-        width:40px; height:40px; border-radius:999px; border:none;
-        background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12);
-      }
-      .wp-pm2-col-field .wp-pm2-col-pick.wp-pm2-on { box-shadow:0 0 0 2px #0a0a0a; }
-      .wp-pm2-col-field .wp-pm2-col-preview-emoji { font-size:21px; }
       .wp-pm2-col-input2 {
-        flex:1; min-width:0; height:100%; border:none; background:transparent; outline:none;
-        font-size:15px; font-family:var(--wp-font); color:#0a0a0a;
+        flex:1; min-width:0; height:100%; padding:0; border:none; background:transparent; outline:none;
+        font-size:15px; font-weight:500; font-family:var(--wp-font); color:#0a0a0a;
       }
+      /* Tira de íconos: ocupa el campo; difuminada al principio y al final
+         para que los íconos entren y salgan suave, sin cortarse de golpe */
       .wp-pm2-col-strip {
-        position:absolute; left:52px; right:6px; top:0; bottom:0;
+        position:absolute; inset:0; border-radius:inherit;
         overflow:hidden; touch-action:pan-y;
         display:flex; align-items:center;
-        -webkit-mask-image:linear-gradient(to right, #000 85%, transparent);
-        mask-image:linear-gradient(to right, #000 85%, transparent);
+        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
+        mask-image:linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
       }
       .wp-pm2-col-strip[hidden] { display:none; }
-      .wp-pm2-col-strip-track { display:flex; gap:2px; width:max-content; padding-right:24px; }
+      .wp-pm2-col-strip-track { display:flex; gap:2px; width:max-content; padding:0 26px 0 12px; }
       .wp-pm2-col-strip-track button {
-        width:38px; height:38px; border:none; border-radius:999px; background:transparent; padding:0;
-        font-size:21px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        width:40px; height:40px; border:none; border-radius:13px; background:transparent; padding:0;
+        font-size:22px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
       }
-      .wp-pm2-col-strip-track button.wp-pm2-on { background:#e5e7eb; }
-      .wp-pm2-col-emojis { display:grid; grid-template-columns:repeat(10, minmax(0,1fr)); gap:2px; }
-      .wp-pm2-col-form .wp-pm2-col-input { box-sizing:border-box; height:46px; }
-      .wp-pm2-col-emojis button {
-        aspect-ratio:1; border:none; border-radius:10px; background:transparent;
-        padding:0; min-width:0; font-size:20px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
-        transition:background-color 0.12s;
-      }
-      .wp-pm2-col-emojis button.wp-pm2-on { background:#e5e7eb; box-shadow:inset 0 0 0 2px #0a0a0a; }
-      .wp-pm2-col-new { display:flex; gap:8px; padding:8px 16px 4px; }
-      .wp-pm2-col-input {
-        flex:1; min-width:0; height:42px; border-radius:12px;
-        border:1px solid rgba(0,0,0,0.12); background:#f9f9f9;
-        padding:0 12px; font-size:15px; font-family:var(--wp-font); outline:none;
-      }
-      .wp-pm2-col-input:focus { border-color:#93c5fd; background:#fff; }
-      .wp-pm2-col-create {
-        height:42px; padding:0 16px; border-radius:999px; border:none;
-        background:#0a0a0a; color:#fff; font-size:14px; font-weight:700;
-        font-family:var(--wp-font); cursor:pointer;
-      }
-      .wp-pm2-col-create:disabled { opacity:0.4; }
+      .wp-pm2-col-strip-track button.wp-pm2-on { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12); }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
       /* PULSE al tocar — se hunde y rebota. Lo dispara _pulseTap() y la
@@ -5094,10 +5070,15 @@ export class PlaceModal2 {
     body.innerHTML = `
       <div class="wp-pm2-col-list"></div>
       <div class="wp-pm2-col-composer">
-        <div class="wp-pm2-col-field">
-          <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span></button>
-          <input class="wp-pm2-col-input2" maxlength="60" placeholder="Nueva colección" enterkeyhint="done">
-          <div class="wp-pm2-col-strip" hidden><div class="wp-pm2-col-strip-track"></div></div>
+        <div class="wp-pm2-col-row">
+          <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono">
+            <span class="wp-pm2-col-preview-emoji"></span>
+            <span class="wp-pm2-col-pick-badge"></span>
+          </button>
+          <div class="wp-pm2-col-field">
+            <input class="wp-pm2-col-input2" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
+            <div class="wp-pm2-col-strip" hidden><div class="wp-pm2-col-strip-track"></div></div>
+          </div>
         </div>
         <button class="wp-pm2-col-cta" disabled>Crear colección</button>
       </div>`;
@@ -5108,6 +5089,48 @@ export class PlaceModal2 {
     const strip   = body.querySelector('.wp-pm2-col-strip');
     const track   = body.querySelector('.wp-pm2-col-strip-track');
     const cta     = body.querySelector('.wp-pm2-col-cta');
+    const badge   = body.querySelector('.wp-pm2-col-pick-badge');
+    const ICO_OPEN  = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+    const ICO_CLOSE = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    badge.innerHTML = ICO_OPEN;
+
+    // ── Que la hoja quepa con el teclado abierto ──
+    // La lista de colecciones tiene scroll SOLO cuando no cabe, y nunca
+    // mientras la hoja sube (un área con scroll dentro de una hoja que se
+    // anima es lo que daba glitch en el formulario "¿Es tu negocio?").
+    // El alto disponible sale de visualViewport (lo que se ve arriba del
+    // teclado); si el WebView no se encoge con el teclado, la hoja se
+    // sube lo que tape el teclado.
+    const sheetEl = document.getElementById('wp-pm2-menu-sheet');
+    const menuEl  = sheetEl?.querySelector('.wp-pm2-ms-menu');
+    let fitReady = false, lastDiag = '';
+    const fit = () => {
+      if (!sheetEl || !sheetEl.isConnected) {
+        window.removeEventListener('resize', fit);
+        window.visualViewport?.removeEventListener('resize', fit);
+        return;
+      }
+      const vv = window.visualViewport;
+      const visH = vv ? vv.height : window.innerHeight;
+      const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+      menuEl.style.bottom = kb ? `${kb + 8}px` : '';
+      // Lo que ocupa la hoja sin la lista + márgenes arriba/abajo
+      const rest = menuEl.offsetHeight - listEl.offsetHeight;
+      const room = Math.floor(visH - rest - (kb ? 16 : 24) - 12);
+      const need = listEl.scrollHeight;
+      const scroll = need > room;
+      // Mientras sube la hoja: solo recorta (sin área de scroll); al
+      // terminar de subir ya se puede deslizar
+      listEl.classList.toggle('wp-pm2-col-list-clip', scroll && !fitReady);
+      listEl.classList.toggle('wp-pm2-col-list-scroll', scroll && fitReady);
+      listEl.style.maxHeight = scroll ? `${Math.max(96, room)}px` : '';
+      const d = `inner=${window.innerHeight} vv=${Math.round(visH)} kb=${kb} lista=${need}/${room} scroll=${scroll}`;
+      if (d !== lastDiag) { lastDiag = d; console.log('[DIAG-KB]', d); } // [DIAG] temporal
+    };
+    window.addEventListener('resize', fit);
+    window.visualViewport?.addEventListener('resize', fit);
+    setTimeout(() => { fitReady = true; fit(); }, 380); // al terminar de subir
+    input.addEventListener('focus', () => setTimeout(fit, 350));
 
     let cols = null;
     const renderList = () => {
@@ -5140,6 +5163,7 @@ export class PlaceModal2 {
         row.onclick = () => toggle(c);
         listEl.appendChild(row);
       });
+      fit();
     };
 
     const toggle = async (c) => {
@@ -5184,14 +5208,25 @@ export class PlaceModal2 {
       strip.hidden = !on;
       input.style.visibility = on ? 'hidden' : '';
       pick.classList.toggle('wp-pm2-on', on);
+      badge.innerHTML = on ? ICO_CLOSE : ICO_OPEN;
       if (on) input.blur(); else input.focus();
     };
     pick.onclick = () => { this._haptic('light'); setPicking(strip.hidden); };
     input.oninput = () => { cta.disabled = !input.value.trim(); };
     input.onkeydown = (e) => { if (e.key === 'Enter' && !cta.disabled) cta.click(); };
 
+    // Primera letra en mayúscula (el teclado ya la propone; esto la
+    // asegura aunque se escriba o pegue en minúsculas)
+    const cap = (v) => v.replace(/^(\s*)(\S)/, (m, sp, ch) => sp + ch.toLocaleUpperCase('es'));
+    input.addEventListener('input', () => {
+      const v = cap(input.value);
+      if (v !== input.value) {
+        const a = input.selectionStart, b = input.selectionEnd;
+        input.value = v; try { input.setSelectionRange(a, b); } catch (_) {}
+      }
+    });
     cta.onclick = async () => {
-      const name = input.value.trim();
+      const name = cap(input.value.trim());
       if (!name) return;
       cta.disabled = true; cta.textContent = 'Creando…';
       try {
