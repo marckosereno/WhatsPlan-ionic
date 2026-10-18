@@ -1016,15 +1016,22 @@ export class PlaceModal2 {
         transition:background-color 0.15s, border-color 0.15s;
       }
       .wp-pm2-col-field:focus-within { background:#fff; border-color:#93c5fd; }
+      /* Botón del ícono estilo "push button": sobresale con su borde de
+         abajo y al tocarlo / con los íconos abiertos se queda hundido.
+         Se mueve con top (no transform) para no crear capas. */
       .wp-pm2-col-pick {
-        position:relative; z-index:1; flex:none; width:40px; height:40px; padding:0;
-        border-radius:999px; border:none; background:#fff;
-        box-shadow:0 1px 3px rgba(0,0,0,0.14);
+        position:relative; top:-1px; z-index:1; flex:none; width:40px; height:40px; padding:0;
+        border-radius:999px; border:1px solid #e5e7eb; background:linear-gradient(180deg,#ffffff 0%,#f6f7f9 100%);
+        box-shadow:0 3px 0 #d6d9de, 0 4px 8px rgba(0,0,0,0.10);
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background-color 0.15s;
+        transition:top 0.08s ease, box-shadow 0.08s ease, background 0.12s;
       }
-      .wp-pm2-col-pick.wp-pm2-on { background:#0a0a0a; box-shadow:0 0 0 2px #fff, 0 0 0 4px #0a0a0a; }
+      .wp-pm2-col-pick:active,
+      .wp-pm2-col-pick.wp-pm2-on {
+        top:2px; background:#eef0f3;
+        box-shadow:0 0 0 #d6d9de, inset 0 2px 4px rgba(0,0,0,0.12);
+      }
       .wp-pm2-col-preview-emoji {
         font-size:21px; line-height:1;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
@@ -5043,11 +5050,12 @@ export class PlaceModal2 {
   }
 
   // Hoja "Añadir a una colección": favorito (con opción de quitarlo), tus
-  // colecciones (tocar = meter/sacar el lugar) y, abajo, el botón grande
-  // "+ Nueva colección" → vista para elegir un emoji y escribir el nombre.
+  // colecciones (tocar = meter/sacar el lugar) y, abajo, el campo para
+  // crear una nueva (ícono + nombre + ✓), todo en la misma hoja.
   static get COLLECTION_EMOJIS() {
     // Sin 👨‍👩‍👧 ni 📍 (pedido: nunca usarlos)
-    return ['⭐','❤️','☕','🍔','🌮','🍕','🍣','🍜','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🏖️','🛍️','🎨','🏋️','💼'];
+    // El primero es el ícono por defecto
+    return ['❤️','⭐','☕','🍔','🌮','🍕','🍣','🍜','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🏖️','🛍️','🎨','🏋️','💼'];
   }
 
   async _openCollectionsSheet() {
@@ -5096,6 +5104,18 @@ export class PlaceModal2 {
     const sheetEl = document.getElementById('wp-pm2-menu-sheet');
     const menuEl  = sheetEl?.querySelector('.wp-pm2-ms-menu');
     let fitReady = false, lastDiag = '';
+    // Alto de la barra de estado (y de la barra de abajo), el mismo
+    // env(safe-area-inset-*) que usa el header de la ficha
+    const safe = (() => {
+      const pr = document.createElement('div');
+      pr.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;' +
+        'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
+      document.body.appendChild(pr);
+      const cs = getComputedStyle(pr);
+      const r = { top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 };
+      pr.remove();
+      return r;
+    })();
     const fit = () => {
       if (!sheetEl || !sheetEl.isConnected) {
         window.removeEventListener('resize', fit);
@@ -5106,9 +5126,13 @@ export class PlaceModal2 {
       const visH = vv ? vv.height : window.innerHeight;
       const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
       menuEl.style.bottom = kb ? `${kb + 8}px` : '';
-      // Lo que ocupa la hoja sin la lista + márgenes arriba/abajo
-      const rest = menuEl.offsetHeight - listEl.offsetHeight;
-      const room = Math.floor(visH - rest - (kb ? 16 : 24) - 12);
+      // Dónde queda el borde de abajo de la hoja y hasta dónde puede subir
+      // (siempre DEBAJO de la barra de estado, con 12px de aire)
+      const vTop = vv ? vv.offsetTop : 0;
+      const bottomY = kb ? vTop + visH - 8 : window.innerHeight - 12 - safe.bottom;
+      const topY = vTop + safe.top + 12;
+      const rest = menuEl.offsetHeight - listEl.offsetHeight; // hoja sin la lista
+      const room = Math.floor(bottomY - topY - rest);
       const need = listEl.scrollHeight;
       const scroll = need > room;
       // Mientras sube la hoja: solo recorta (sin área de scroll); al
@@ -5116,12 +5140,17 @@ export class PlaceModal2 {
       listEl.classList.toggle('wp-pm2-col-list-clip', scroll && !fitReady);
       listEl.classList.toggle('wp-pm2-col-list-scroll', scroll && fitReady);
       listEl.style.maxHeight = scroll ? `${Math.max(96, room)}px` : '';
-      const d = `inner=${window.innerHeight} vv=${Math.round(visH)} kb=${kb} lista=${need}/${room} scroll=${scroll}`;
+      const d = `inner=${window.innerHeight} vv=${Math.round(visH)} kb=${kb} safeTop=${safe.top} lista=${need}/${room} scroll=${scroll}`;
       if (d !== lastDiag) { lastDiag = d; console.log('[DIAG-KB]', d); } // [DIAG] temporal
     };
     window.addEventListener('resize', fit);
     window.visualViewport?.addEventListener('resize', fit);
-    setTimeout(() => { fitReady = true; fit(); }, 380); // al terminar de subir
+    setTimeout(() => {
+      fitReady = true; fit();
+      // El cursor ya parpadea en el campo al abrir la hoja (después de
+      // subir, no durante la animación)
+      if (sheetEl?.isConnected && strip.hidden) { try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); } }
+    }, 380);
     input.addEventListener('focus', () => setTimeout(fit, 350));
 
     let cols = null;
@@ -5150,7 +5179,7 @@ export class PlaceModal2 {
         row.className = 'wp-pm2-ms-opt';
         row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
           <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
-        row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '⭐';
+        row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '❤️';
         row.querySelector('.wp-pm2-col-name').textContent = c.name;
         row.onclick = () => toggle(c);
         listEl.appendChild(row);
