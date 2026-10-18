@@ -1013,14 +1013,28 @@ export class PlaceModal2 {
         font-size:14px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
       }
       .wp-pm2-col-form { padding:4px 16px 0; display:flex; flex-direction:column; gap:12px; }
-      .wp-pm2-col-preview { display:flex; justify-content:center; }
+      .wp-pm2-col-row { display:flex; align-items:center; gap:10px; }
+      .wp-pm2-col-row .wp-pm2-col-input { flex:1; min-width:0; }
+      .wp-pm2-col-pick {
+        position:relative; flex-shrink:0; width:46px; height:46px; border-radius:14px;
+        border:1px solid rgba(0,0,0,0.12); background:#f3f4f6; padding:0;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:border-color 0.15s, background-color 0.15s;
+      }
+      .wp-pm2-col-pick.wp-pm2-on { border-color:#0a0a0a; background:#fff; }
       .wp-pm2-col-preview-emoji {
-        width:64px; height:64px; border-radius:20px; background:#f3f4f6;
-        display:flex; align-items:center; justify-content:center; font-size:34px;
+        font-size:24px; line-height:1;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
       }
+      .wp-pm2-col-pick-badge {
+        position:absolute; right:-4px; bottom:-4px; width:16px; height:16px; border-radius:50%;
+        background:#0a0a0a; color:#fff; display:flex; align-items:center; justify-content:center;
+        border:2px solid #fff;
+      }
+      .wp-pm2-col-emojis[hidden] { display:none; }
       .wp-pm2-col-emojis { display:grid; grid-template-columns:repeat(10, minmax(0,1fr)); gap:2px; }
-      .wp-pm2-col-form .wp-pm2-col-input { flex:none; width:100%; box-sizing:border-box; }
+      .wp-pm2-col-form .wp-pm2-col-input { box-sizing:border-box; height:46px; }
       .wp-pm2-col-emojis button {
         aspect-ratio:1; border:none; border-radius:10px; background:transparent;
         padding:0; min-width:0; font-size:20px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -5023,7 +5037,8 @@ export class PlaceModal2 {
   // colecciones (tocar = meter/sacar el lugar) y, abajo, el botón grande
   // "+ Nueva colección" → vista para elegir un emoji y escribir el nombre.
   static get COLLECTION_EMOJIS() {
-    return ['⭐','❤️','☕','🍔','🌮','🍕','🍣','🍰','🍻','🍷','🎉','🎵','🌳','🏖️','🛍️','🎨','🏋️','👨‍👩‍👧','💼','📍'];
+    // Sin 👨‍👩‍👧 ni 📍 (pedido: nunca usarlos)
+    return ['⭐','❤️','☕','🍔','🌮','🍕','🍣','🍜','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🏖️','🛍️','🎨','🏋️','💼'];
   }
 
   async _openCollectionsSheet() {
@@ -5062,7 +5077,7 @@ export class PlaceModal2 {
           row.className = 'wp-pm2-ms-opt';
           row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
             <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
-          row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '📍';
+          row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '⭐';
           row.querySelector('.wp-pm2-col-name').textContent = c.name;
           row.onclick = () => toggle(c);
           body.appendChild(row);
@@ -5095,11 +5110,14 @@ export class PlaceModal2 {
     // Vista "Nueva colección": emoji + nombre + botón grande "Crear"
     const renderNew = () => {
       let emoji = EMOJIS[0];
+      // [emoji][nombre]: tocar el emoji abre/cierra el selector debajo
       body.innerHTML = `
         <div class="wp-pm2-col-form">
-          <div class="wp-pm2-col-preview"><span class="wp-pm2-col-preview-emoji"></span></div>
-          <div class="wp-pm2-col-emojis"></div>
-          <input class="wp-pm2-col-input" maxlength="60" placeholder="Nombre de la colección">
+          <div class="wp-pm2-col-row">
+            <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span><span class="wp-pm2-col-pick-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button>
+            <input class="wp-pm2-col-input" maxlength="60" placeholder="Nombre de la colección">
+          </div>
+          <div class="wp-pm2-col-emojis" hidden></div>
         </div>
         <div class="wp-pm2-col-cta-wrap">
           <button class="wp-pm2-col-cta" disabled>Crear colección</button>
@@ -5107,6 +5125,12 @@ export class PlaceModal2 {
         </div>`;
       const prev = body.querySelector('.wp-pm2-col-preview-emoji');
       const grid = body.querySelector('.wp-pm2-col-emojis');
+      const pick = body.querySelector('.wp-pm2-col-pick');
+      pick.onclick = () => {
+        grid.hidden = !grid.hidden;
+        pick.classList.toggle('wp-pm2-on', !grid.hidden);
+        this._haptic('light');
+      };
       const input = body.querySelector('.wp-pm2-col-input');
       const btn = body.querySelector('.wp-pm2-col-cta');
       const paint = () => {
@@ -5119,6 +5143,7 @@ export class PlaceModal2 {
         b.onclick = () => {
           emoji = e; this._haptic('light'); paint();
           this._scaleKeys(prev, [0.7, 1.15, 1], 300);
+          grid.hidden = true; pick.classList.remove('wp-pm2-on'); // elegido → se cierra
         };
         grid.appendChild(b);
       });
