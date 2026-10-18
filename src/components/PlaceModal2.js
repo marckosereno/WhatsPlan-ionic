@@ -100,8 +100,10 @@ export class PlaceModal2 {
                fácil el día que se defina su lugar — por eso no se borró,
                solo se sacó el nodo del DOM para no dejar espacio vacío. -->
 
-          <!-- REVIEWS SUMMARY — avatares (máx 6) + cantidad de reseñas -->
+          <!-- REVIEWS SUMMARY — "N personas lo guardaron" (si alguien lo
+               guardó) o, si no, avatares de reseñas + cantidad -->
           <div id="wp-pm2-reviews-summary" style="display:none">
+            <span id="wp-pm2-saves-ico" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg></span>
             <div id="wp-pm2-reviews-avatars"></div>
             <span id="wp-pm2-reviews-count"></span>
             <button id="wp-pm2-add-review" class="wp-pm2-pill-btn wp-pm2-fav-add"></button>
@@ -953,6 +955,18 @@ export class PlaceModal2 {
       #wp-pm2-reviews-avatars .wp-pm2-fp-avatar:first-child { margin-left:0; }
       #wp-pm2-reviews-count {
         font-size:13px; font-weight:600; color:#374151;
+      }
+      /* "N personas lo guardaron" */
+      #wp-pm2-saves-ico {
+        width:28px; height:28px; border-radius:999px; flex-shrink:0;
+        background:#ffe4ea; color:#e11d48;
+        display:inline-flex; align-items:center; justify-content:center;
+      }
+      #wp-pm2-reviews-count b { color:#111827; font-weight:700; }
+      /* Con el botón largo al lado, el texto pasa a 2 renglones en vez de cortarse */
+      #wp-pm2-reviews-count.wp-pm2-saves {
+        white-space:normal; font-size:12.5px; line-height:1.25;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
       }
       /* Mismo estilo que el "✦ Añadir reseña" de las pestañas (naranja
          con gradiente): es la misma acción, se ve igual en los dos lugares */
@@ -2076,7 +2090,7 @@ export class PlaceModal2 {
       try {
         if (on) await FavoriteService.add(msPid, user.id);
         else    await FavoriteService.remove(msPid, user.id);
-        if (this._place && (this._place.place_id || this._place.id) === msPid) { this._isFav = on; this._renderFavUI(false); }
+        if (this._place && (this._place.place_id || this._place.id) === msPid) { const was = this._isFav; this._isFav = on; this._bumpSaves(was, on); this._renderFavUI(false); }
         this._showToast(on ? '♥ Guardado en favoritos' : 'Quitado de favoritos');
       } catch (err) {
         console.error('[PM2] Favoritos (minisnap):', err);
@@ -3339,6 +3353,7 @@ export class PlaceModal2 {
     this._loadReviewSocial(place);     // async, reacciones + respuestas
     this._loadMyClaim(place);          // async, "¿Es tu negocio?"
     this._loadFavorite(place);         // async, favoritos (botón + pill del hero)
+    this._loadSaveCount(place);        // async, "N personas lo guardaron"
   }
 
   // ── Calificación combinada (Google + comunidad) ──────────────────
@@ -3376,6 +3391,23 @@ export class PlaceModal2 {
     const avatarsEl = this._el.querySelector('#wp-pm2-reviews-avatars');
     const countEl   = this._el.querySelector('#wp-pm2-reviews-count');
     if (!summaryEl) return;
+    const savesIco = this._el.querySelector('#wp-pm2-saves-ico');
+    // ¿Alguien lo guardó? Eso va primero (las reseñas ya están en el hero)
+    const saves = this._saveCount || 0;
+    if (saves > 0) {
+      summaryEl.style.display = '';
+      avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
+      if (savesIco) savesIco.style.display = '';
+      countEl.style.display = '';
+      countEl.classList.add('wp-pm2-saves');
+      const others = saves - (this._isFav ? 1 : 0);
+      if (this._isFav && others <= 0) countEl.innerHTML = '<b>Tú</b> lo guardaste';
+      else if (this._isFav) countEl.innerHTML = `<b>Tú</b> y ${others} ${others === 1 ? 'persona más' : 'más'} lo guardaron`;
+      else countEl.innerHTML = `<b>${saves}</b> ${saves === 1 ? 'persona lo guardó' : 'personas lo guardaron'}`;
+      return;
+    }
+    if (savesIco) savesIco.style.display = 'none';
+    countEl.classList.remove('wp-pm2-saves');
     const { total } = this._ratingSummary(place);
     const names = [
       ...(this._communityReviews || []).map(r => r.display_name || 'user'),
@@ -5118,6 +5150,25 @@ export class PlaceModal2 {
   // Botón bajo el hero: "♡ Añadir a favoritos" → al guardarlo cambia a
   // "+ Añadir a una colección" y aparece la pill "♥ En tus favoritos" en
   // el hero. Quitar de favoritos: desde la hoja de colecciones.
+  // Cuántas personas guardaron el lugar (solo el número; no dice quiénes)
+  async _loadSaveCount(place) {
+    this._saveCount = 0;
+    try {
+      const n = await FavoriteService.getSaveCount(place.place_id || place.id);
+      if (this._place !== place) return;
+      this._saveCount = n;
+      this._renderReviewsSummary(place);
+    } catch (e) {
+      console.warn('[PM2] Conteo de guardados no disponible:', e.message || e);
+    }
+  }
+  // El usuario guardó / quitó: el número cambia al momento
+  _bumpSaves(was, now) {
+    if (was === now) return;
+    this._saveCount = Math.max(0, (this._saveCount || 0) + (now ? 1 : -1));
+    if (this._place) this._renderReviewsSummary(this._place);
+  }
+
   async _loadFavorite(place) {
     this._isFav = false;
     this._placeCols = [];
@@ -5130,6 +5181,7 @@ export class PlaceModal2 {
       if (this._place !== place) return;
       this._isFav = fav;
       this._renderFavUI(false);
+      this._renderReviewsSummary(place); // "Tú y N más…"
       // ¿En qué colecciones está? (solo si es favorito: es lo que muestra
       // el botón de abajo del hero)
       if (fav) {
@@ -5185,6 +5237,7 @@ export class PlaceModal2 {
     const prev = this._isFav;
     this._isFav = on;
     this._renderFavUI(true);
+    this._bumpSaves(prev, on);
     if (on) this._haptic('success'); else this._haptic('light');
     try {
       if (on) await FavoriteService.add(place.place_id || place.id, user.id);
@@ -5195,7 +5248,7 @@ export class PlaceModal2 {
       }
     } catch (e) {
       console.error('[PM2] Favoritos:', e);
-      if (this._place === place) { this._isFav = prev; this._renderFavUI(false); }
+      if (this._place === place) { this._bumpSaves(on, prev); this._isFav = prev; this._renderFavUI(false); }
       this._showToast('No se pudo guardar');
     } finally {
       this._favBusy = false;
