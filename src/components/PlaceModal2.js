@@ -1029,7 +1029,7 @@ export class PlaceModal2 {
         border-radius:999px; background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
         transition:background-color 0.15s, border-color 0.15s;
       }
-      .wp-pm2-col-field:focus-within { background:#fff; border-color:#93c5fd; }
+      .wp-pm2-col-field:focus-within { background:#fff; border-color:#d1d5db; }
       /* Eligiendo ícono: sin el borde azul, se queda el gris suave */
       .wp-pm2-col-field.wp-pm2-picking,
       .wp-pm2-col-field.wp-pm2-picking:focus-within { background:#f3f4f6; border-color:rgba(0,0,0,0.06); }
@@ -1161,13 +1161,16 @@ export class PlaceModal2 {
       .wp-pm2-col-bulk-del:disabled { opacity:0.35; }
       .wp-pm2-col-editing {
         display:flex; align-items:center; justify-content:space-between;
-        padding:0 4px; font-size:12.5px; font-weight:700; color:#2563eb;
+        padding:0 2px 0 4px; font-size:13px; font-weight:600; color:#6b7280;
       }
       .wp-pm2-col-editing[hidden] { display:none; }
+      .wp-pm2-col-editing-t { display:flex; align-items:center; gap:6px; }
       .wp-pm2-col-editing-x {
-        border:none; background:none; padding:4px 6px; color:#6b7280;
+        border:none; background:#f3f4f6; padding:5px 12px; border-radius:999px; color:#111827;
         font-size:12.5px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
       }
+      .wp-pm2-col-editing-x:active { background:#e5e7eb; }
       /* Menú ⋯ tipo iOS */
       .wp-pm2-pop { position:fixed; inset:0; z-index:1500400; }
       .wp-pm2-pop-catch { position:absolute; inset:0; }
@@ -5773,7 +5776,9 @@ export class PlaceModal2 {
       rowEl.hidden = collapsed;
       const showBar = !!editing || (expanded && !!cols && cols.length > 0);
       editBar.hidden = !showBar;
-      editT.textContent = editing ? 'Editando colección' : 'Nueva colección';
+      editT.innerHTML = editing
+        ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Editando colección'
+        : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva colección';
       fit();
     };
     newBtn.onclick = () => {
@@ -6277,3 +6282,26 @@ export class PlaceModal2 {
 }
 
 export { PlaceModal2 as PlaceModal };
+
+// [DIAG] temporal — prueba de mayúscula del teclado. En Eruda: wpCapTest()
+// Muestra 6 campos arriba; toca cada uno y anota cuáles abren el teclado
+// con la mayúscula puesta. wpCapTest(false) los quita.
+if (typeof window !== 'undefined') window.wpCapTest = (on = true) => {
+  document.getElementById('wp-captest')?.remove();
+  if (!on) return;
+  const box = document.createElement('div');
+  box.id = 'wp-captest';
+  box.style.cssText = 'position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:2000000;background:#fff;border-radius:16px;padding:10px;box-shadow:0 8px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:6px;font:13px sans-serif';
+  const v = [
+    ['1 sin atributos', ''],
+    ['2 autocapitalize', 'autocapitalize="sentences"'],
+    ['3 + autocomplete off', 'autocapitalize="sentences" autocomplete="off"'],
+    ['4 + autocorrect/spellcheck', 'autocapitalize="sentences" autocorrect="on" spellcheck="true"'],
+    ['5 igual al campo', 'type="text" inputmode="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off"'],
+  ];
+  box.innerHTML = v.map(([l, a]) => `<input ${a} placeholder="${l}" style="height:38px;border:1px solid #ddd;border-radius:10px;padding:0 10px;font-size:15px">`).join('') +
+    '<textarea autocapitalize="sentences" rows="1" placeholder="6 textarea" style="height:38px;border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:15px"></textarea>' +
+    '<button style="height:32px;border:none;border-radius:999px;background:#111;color:#fff">Cerrar</button>';
+  box.querySelector('button').onclick = () => box.remove();
+  document.body.appendChild(box);
+};
