@@ -1033,6 +1033,39 @@ export class PlaceModal2 {
         border:2px solid #fff;
       }
       .wp-pm2-col-emojis[hidden] { display:none; }
+      /* Campo de nueva colección: [emoji] dentro del campo, a la izquierda */
+      .wp-pm2-col-composer { padding:10px 16px 4px; display:flex; flex-direction:column; gap:10px; }
+      .wp-pm2-col-field {
+        position:relative; display:flex; align-items:center; gap:8px;
+        height:52px; padding:0 6px; border-radius:999px;
+        background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
+      }
+      .wp-pm2-col-field:focus-within { background:#fff; border-color:#93c5fd; }
+      .wp-pm2-col-field .wp-pm2-col-pick {
+        width:40px; height:40px; border-radius:999px; border:none;
+        background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12);
+      }
+      .wp-pm2-col-field .wp-pm2-col-pick.wp-pm2-on { box-shadow:0 0 0 2px #0a0a0a; }
+      .wp-pm2-col-field .wp-pm2-col-preview-emoji { font-size:21px; }
+      .wp-pm2-col-input2 {
+        flex:1; min-width:0; height:100%; border:none; background:transparent; outline:none;
+        font-size:15px; font-family:var(--wp-font); color:#0a0a0a;
+      }
+      .wp-pm2-col-strip {
+        position:absolute; left:52px; right:6px; top:0; bottom:0;
+        overflow:hidden; touch-action:pan-y;
+        display:flex; align-items:center;
+        -webkit-mask-image:linear-gradient(to right, #000 85%, transparent);
+        mask-image:linear-gradient(to right, #000 85%, transparent);
+      }
+      .wp-pm2-col-strip[hidden] { display:none; }
+      .wp-pm2-col-strip-track { display:flex; gap:2px; width:max-content; padding-right:24px; }
+      .wp-pm2-col-strip-track button {
+        width:38px; height:38px; border:none; border-radius:999px; background:transparent; padding:0;
+        font-size:21px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+      }
+      .wp-pm2-col-strip-track button.wp-pm2-on { background:#e5e7eb; }
       .wp-pm2-col-emojis { display:grid; grid-template-columns:repeat(10, minmax(0,1fr)); gap:2px; }
       .wp-pm2-col-form .wp-pm2-col-input { box-sizing:border-box; height:46px; }
       .wp-pm2-col-emojis button {
@@ -2735,7 +2768,9 @@ export class PlaceModal2 {
   // con transform: el dedo la arrastra 1:1 y al soltar sigue por inercia,
   // con rebote suave en los extremos. Un arrastre de más de 6px no cuenta
   // como toque (no abre el lightbox).
-  _wireStripDrag(strip) {
+  // register=false: otra tira (p. ej. los emojis de colección) que no debe
+  // pisar el "stop" de la galería
+  _wireStripDrag(strip, { register = true } = {}) {
     if (!strip) return;
     const track = () => strip.firstElementChild;
     let pos = 0;                 // desplazamiento actual (px, >= 0)
@@ -2764,7 +2799,8 @@ export class PlaceModal2 {
     const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
     // Fuera de los límites se mueve a la mitad (resistencia)
     const rubber = (x, m) => x < 0 ? x * 0.35 : x > m ? m + (x - m) * 0.35 : x;
-    this._stripStop = () => { stop(); pos = 0; moving(false); };
+    const stopAll = () => { stop(); pos = 0; moving(false); };
+    if (register) this._stripStop = stopAll;
 
     strip.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -5050,45 +5086,60 @@ export class PlaceModal2 {
     const { body, close } = this._openSheet('Añadir a una colección', info.name);
     const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
     const HEART = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
-    const PLUS = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
     const EMOJIS = PlaceModal2.COLLECTION_EMOJIS;
+
+    // Todo en UNA hoja: arriba la lista (se redibuja sola), abajo el
+    // campo para crear una colección (no se redibuja: no se pierde lo
+    // escrito al marcar/desmarcar otra colección).
+    body.innerHTML = `
+      <div class="wp-pm2-col-list"></div>
+      <div class="wp-pm2-col-composer">
+        <div class="wp-pm2-col-field">
+          <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span></button>
+          <input class="wp-pm2-col-input2" maxlength="60" placeholder="Nueva colección" enterkeyhint="done">
+          <div class="wp-pm2-col-strip" hidden><div class="wp-pm2-col-strip-track"></div></div>
+        </div>
+        <button class="wp-pm2-col-cta" disabled>Crear colección</button>
+      </div>`;
+    const listEl  = body.querySelector('.wp-pm2-col-list');
+    const pick    = body.querySelector('.wp-pm2-col-pick');
+    const prevEl  = body.querySelector('.wp-pm2-col-preview-emoji');
+    const input   = body.querySelector('.wp-pm2-col-input2');
+    const strip   = body.querySelector('.wp-pm2-col-strip');
+    const track   = body.querySelector('.wp-pm2-col-strip-track');
+    const cta     = body.querySelector('.wp-pm2-col-cta');
 
     let cols = null;
     const renderList = () => {
-      body.innerHTML = '';
+      listEl.innerHTML = '';
       const favRow = document.createElement('div');
       favRow.className = 'wp-pm2-ms-opt';
       favRow.style.cursor = 'default';
       favRow.innerHTML = `<span class="wp-pm2-ms-ico wp-pm2-col-fav-ico">${HEART}</span><span>En tus favoritos</span><button class="wp-pm2-col-unfav">Quitar</button>`;
       favRow.querySelector('.wp-pm2-col-unfav').onclick = () => { close(); this._setFavorite(false, { undo: true }); };
-      body.appendChild(favRow);
-      const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; body.appendChild(sep);
-
+      listEl.appendChild(favRow);
+      const sep = document.createElement('div'); sep.className = 'wp-pm2-col-sep'; listEl.appendChild(sep);
       if (cols === null) {
         const p = document.createElement('p'); p.className = 'wp-pm2-col-empty'; p.textContent = 'Cargando colecciones…';
-        body.appendChild(p);
-      } else if (!cols.length) {
-        const p = document.createElement('p'); p.className = 'wp-pm2-col-empty';
-        p.textContent = 'Aún no tienes colecciones. Crea una para agrupar lugares, por ejemplo "☕ Cafés para trabajar".';
-        body.appendChild(p);
-      } else {
-        cols.forEach(c => {
-          const row = document.createElement('button');
-          row.className = 'wp-pm2-ms-opt';
-          row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
-            <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
-          row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '⭐';
-          row.querySelector('.wp-pm2-col-name').textContent = c.name;
-          row.onclick = () => toggle(c);
-          body.appendChild(row);
-        });
+        listEl.appendChild(p);
+        return;
       }
-      // CTA grande abajo
-      const cta = document.createElement('div');
-      cta.className = 'wp-pm2-col-cta-wrap';
-      cta.innerHTML = `<button class="wp-pm2-col-cta">${PLUS}Nueva colección</button>`;
-      cta.querySelector('button').onclick = () => renderNew();
-      body.appendChild(cta);
+      if (!cols.length) {
+        const p = document.createElement('p'); p.className = 'wp-pm2-col-empty';
+        p.textContent = 'Aún no tienes colecciones. Crea una abajo para agrupar lugares, por ejemplo "☕ Cafés para trabajar".';
+        listEl.appendChild(p);
+        return;
+      }
+      cols.forEach(c => {
+        const row = document.createElement('button');
+        row.className = 'wp-pm2-ms-opt';
+        row.innerHTML = `<span class="wp-pm2-col-emoji"></span><span class="wp-pm2-col-name"></span>
+          <span class="wp-pm2-col-meta"><span>${c.count}</span><span class="wp-pm2-col-check${c.has ? ' wp-pm2-on' : ''}">${CHECK}</span></span>`;
+        row.querySelector('.wp-pm2-col-emoji').textContent = c.emoji || '⭐';
+        row.querySelector('.wp-pm2-col-name').textContent = c.name;
+        row.onclick = () => toggle(c);
+        listEl.appendChild(row);
+      });
     };
 
     const toggle = async (c) => {
@@ -5107,68 +5158,58 @@ export class PlaceModal2 {
       }
     };
 
-    // Vista "Nueva colección": emoji + nombre + botón grande "Crear"
-    const renderNew = () => {
-      let emoji = EMOJIS[0];
-      // [emoji][nombre]: tocar el emoji abre/cierra el selector debajo
-      body.innerHTML = `
-        <div class="wp-pm2-col-form">
-          <div class="wp-pm2-col-row">
-            <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span><span class="wp-pm2-col-pick-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button>
-            <input class="wp-pm2-col-input" maxlength="60" placeholder="Nombre de la colección">
-          </div>
-          <div class="wp-pm2-col-emojis" hidden></div>
-        </div>
-        <div class="wp-pm2-col-cta-wrap">
-          <button class="wp-pm2-col-cta" disabled>Crear colección</button>
-          <button class="wp-pm2-col-cancel">Cancelar</button>
-        </div>`;
-      const prev = body.querySelector('.wp-pm2-col-preview-emoji');
-      const grid = body.querySelector('.wp-pm2-col-emojis');
-      const pick = body.querySelector('.wp-pm2-col-pick');
-      pick.onclick = () => {
-        grid.hidden = !grid.hidden;
-        pick.classList.toggle('wp-pm2-on', !grid.hidden);
+    // ── Campo: [emoji] Nueva colección ──
+    // Tocar el emoji abre los demás a su derecha (dentro del mismo campo)
+    // con deslizamiento horizontal; cada uno que tocas se pone en el
+    // botón con un pulse. Tocar el emoji otra vez regresa a escribir.
+    let emoji = EMOJIS[0];
+    const paint = () => {
+      prevEl.textContent = emoji;
+      track.querySelectorAll('button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.e === emoji));
+    };
+    EMOJIS.forEach(e => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.e = e; b.textContent = e;
+      b.onclick = () => {
+        emoji = e; paint();
         this._haptic('light');
+        this._scaleKeys(pick, [0.75, 1.15, 1], 300);
       };
-      const input = body.querySelector('.wp-pm2-col-input');
-      const btn = body.querySelector('.wp-pm2-col-cta');
-      const paint = () => {
-        prev.textContent = emoji;
-        grid.querySelectorAll('button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.e === emoji));
-      };
-      EMOJIS.forEach(e => {
-        const b = document.createElement('button');
-        b.type = 'button'; b.dataset.e = e; b.textContent = e;
-        b.onclick = () => {
-          emoji = e; this._haptic('light'); paint();
-          this._scaleKeys(prev, [0.7, 1.15, 1], 300);
-          grid.hidden = true; pick.classList.remove('wp-pm2-on'); // elegido → se cierra
-        };
-        grid.appendChild(b);
-      });
-      paint();
-      input.oninput = () => { btn.disabled = !input.value.trim(); };
-      input.onkeydown = (e) => { if (e.key === 'Enter' && !btn.disabled) btn.click(); };
-      body.querySelector('.wp-pm2-col-cancel').onclick = () => renderList();
-      setTimeout(() => input.focus(), 60);
-      btn.onclick = async () => {
-        const name = input.value.trim();
-        if (!name) return;
-        btn.disabled = true; btn.textContent = 'Creando…';
-        try {
-          const c = await FavoriteService.createCollection(user.id, name, emoji);
-          await FavoriteService.addToCollection(c.id, pid);
-          cols = [...(cols || []), { id: c.id, name: c.name, emoji: c.emoji || emoji, count: 1, has: true }];
-          input.blur();
-          renderList();
-          this._showToast(`✓ Añadido a ${emoji} ${c.name}`);
-        } catch (e) {
-          console.error('[PM2] Nueva colección:', e);
-          btn.disabled = false; btn.textContent = 'Crear colección';
-          this._showToast('No se pudo crear la colección');
-        }
-      };
+      track.appendChild(b);
+    });
+    paint();
+    // Arrastre hecho con JS (sin scroll nativo: no crea capa → sin glitch)
+    this._wireStripDrag(strip, { register: false });
+    const setPicking = (on) => {
+      strip.hidden = !on;
+      input.style.visibility = on ? 'hidden' : '';
+      pick.classList.toggle('wp-pm2-on', on);
+      if (on) input.blur(); else input.focus();
+    };
+    pick.onclick = () => { this._haptic('light'); setPicking(strip.hidden); };
+    input.oninput = () => { cta.disabled = !input.value.trim(); };
+    input.onkeydown = (e) => { if (e.key === 'Enter' && !cta.disabled) cta.click(); };
+
+    cta.onclick = async () => {
+      const name = input.value.trim();
+      if (!name) return;
+      cta.disabled = true; cta.textContent = 'Creando…';
+      try {
+        const c = await FavoriteService.createCollection(user.id, name, emoji);
+        await FavoriteService.addToCollection(c.id, pid);
+        cols = [...(cols || []), { id: c.id, name: c.name, emoji: c.emoji || emoji, count: 1, has: true }];
+        renderList();
+        this._showToast(`✓ Añadido a ${emoji} ${c.name}`);
+        // Campo listo para otra
+        input.value = ''; input.blur();
+        emoji = EMOJIS[0]; paint();
+        if (!strip.hidden) setPicking(false), input.blur();
+        cta.textContent = 'Crear colección'; cta.disabled = true;
+      } catch (e) {
+        console.error('[PM2] Nueva colección:', e);
+        cta.disabled = false; cta.textContent = 'Crear colección';
+        this._showToast('No se pudo crear la colección');
+      }
     };
 
     renderList();
@@ -5179,8 +5220,7 @@ export class PlaceModal2 {
       cols = [];
       this._showToast('No se pudieron cargar tus colecciones');
     }
-    // Solo redibuja si sigue en la lista (no si ya abrió "Nueva colección")
-    if (body.isConnected && !body.querySelector('.wp-pm2-col-form')) renderList();
+    if (body.isConnected) renderList();
   }
 
   // ── "¿ES TU NEGOCIO?" ──────────────────────────────────────────────
