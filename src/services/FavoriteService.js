@@ -38,22 +38,22 @@ export const FavoriteService = {
   async getCollections(userId, placeId) {
     const { data, error } = await getSupabase()
       .from('place_collections')
-      .select('id, name, created_at, place_collection_items(place_id)')
+      .select('id, name, emoji, created_at, place_collection_items(place_id)')
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
     if (error) throw error;
     const pid = String(placeId);
     return (data || []).map(c => {
       const items = c.place_collection_items || [];
-      return { id: c.id, name: c.name, count: items.length, has: items.some(i => i.place_id === pid) };
+      return { id: c.id, name: c.name, emoji: c.emoji || null, count: items.length, has: items.some(i => i.place_id === pid) };
     });
   },
 
-  async createCollection(userId, name) {
+  async createCollection(userId, name, emoji = null) {
     const { data, error } = await getSupabase()
       .from('place_collections')
-      .insert({ user_id: userId, name: name.trim().slice(0, 60) })
-      .select('id, name')
+      .insert({ user_id: userId, name: name.trim().slice(0, 60), emoji: emoji || null })
+      .select('id, name, emoji')
       .single();
     if (error) throw error;
     return data;
