@@ -17,6 +17,15 @@ export const FavoriteService = {
     return !!data;
   },
 
+  // Cuántas personas guardaron el lugar (función place_save_count en
+  // place_save_count.sql: devuelve solo el número, no quiénes)
+  async getSaveCount(placeId) {
+    const { data, error } = await getSupabase()
+      .rpc('place_save_count', { p_place_id: String(placeId) });
+    if (error) throw error;
+    return Number(data) || 0;
+  },
+
   async add(placeId, userId) {
     const { error } = await getSupabase()
       .from('place_favorites')
