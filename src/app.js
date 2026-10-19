@@ -15,6 +15,7 @@ import { FooterMenu }      from '/src/components/FooterMenu.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
+import { ProfileSheet }     from '/src/components/ProfileSheet.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 import { appState }         from '/src/state/AppState.js';
@@ -154,9 +155,73 @@ function setupTopBar(authModal) {
   const btn = document.getElementById('topbar-auth-btn');
   if (!btn) return;
   btn.addEventListener('click', () => {
-    if (window.wpApp.currentUser) _showProfileMenu();
+    if (window.wpApp.currentUser) _getProfileSheet().open();
     else authModal.show();
   });
+}
+
+// ── Perfil (hoja sobre el mapa) ───────────────────────────────────────
+function _getProfileSheet() {
+  if (window.wpApp.profileSheet) return window.wpApp.profileSheet;
+  const mv = () => window.wpApp.mapView;
+  const ps = new ProfileSheet({
+    getCurrentUser: () => window.wpApp.currentUser,
+    getPlaceModal:  () => window.wpApp.placeModal,
+    proxyPhoto: (url) => url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null,
+    onOpenPlace: (place) => {
+      const pm = window.wpApp.placeModal;
+      if (!pm) return;
+      pm._fromSearch = false;
+      pm.show(place);
+    },
+    onShowOnMap: (places, label) => showPlacesOnMap(mv(), places, label),
+    onOpenActivity: (act) => {
+      const map = mv()?.getMap?.();
+      if (map && act?.lat && act?.lng) map.flyTo({ center: [act.lng, act.lat], zoom: 16, essential: true });
+    },
+    onLogout: async () => {
+      await AuthService.logout();
+      window.wpApp._cachedAvatarUrl = '';
+    },
+    onAvatarChanged: (url) => {
+      window.wpApp._cachedAvatarUrl = url;
+      renderAuthButton(window.wpApp.currentUser);
+    },
+  });
+  window.wpApp.profileSheet = ps;
+  return ps;
+}
+
+// "Ver en el mapa" desde el perfil (todos tus guardados o una colección):
+// el mapa muestra SOLO esos lugares y arriba aparece un chip para salir y
+// volver a la categoría en la que estabas.
+function showPlacesOnMap(mv, places, label) {
+  if (!mv || !places?.length) return;
+  if (!('_savedPrevCat' in window.wpApp)) window.wpApp._savedPrevCat = mv.currentCatId || null;
+  mv._clearPlaceMarkers();
+  mv.allPlaces = places.slice();
+  mv._renderPlaceMarkers(mv.allPlaces);
+
+  document.getElementById('wp-saved-chip')?.remove();
+  const chip = document.createElement('div');
+  chip.id = 'wp-saved-chip';
+  chip.style.cssText = 'position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:1300;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border-radius:999px;background:#0a0a0a;color:#fff;font:700 13px var(--wp-font);box-shadow:0 6px 20px rgba(0,0,0,0.25);white-space:nowrap;';
+  chip.innerHTML = '<span></span><button type="button" aria-label="Salir" style="width:28px;height:28px;border:none;border-radius:999px;background:rgba(255,255,255,0.18);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
+  chip.querySelector('span').textContent = `${label || 'Tus guardados'} · ${places.length}`;
+  const exit = (reload = true) => {
+    chip.remove();
+    const prev = window.wpApp._savedPrevCat;
+    delete window.wpApp._savedPrevCat;
+    document.getElementById('map-categories-footer')?.removeEventListener('click', onCat, true);
+    if (!reload) return;
+    if (prev) mv.loadCategory(prev);
+    else { mv._clearPlaceMarkers(); mv.allPlaces = []; }
+  };
+  // Si elige una categoría mientras tanto, el chip se va solo (la categoría ya recarga el mapa)
+  const onCat = (e) => { if (e.target.closest('.category-footer-chip')) exit(false); };
+  document.getElementById('map-categories-footer')?.addEventListener('click', onCat, true);
+  chip.querySelector('button').onclick = () => exit(true);
+  document.body.appendChild(chip);
 }
 
 function _showProfileMenu() {
