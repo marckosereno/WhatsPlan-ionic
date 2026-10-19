@@ -281,9 +281,13 @@ function injectLandmarkStyles() {
        traba: el drag "no engancha" hasta soltar y volver a tocar.
        La transición sigue existiendo para lo único que se la quería: el
        regreso suave a 0 al soltar, cuando esta clase ya se removió. */
-    body.map-dragging .place-marker-el > * {
+    /* Solo los pines VISIBLES que reciben el parallax (clase .wp-px, la
+       pone JS al arrancar el drag). Antes esto iba en body.map-dragging
+       para TODOS los pines: cada uno se volvía una capa aparte durante
+       el drag aunque estuviera fuera de la pantalla. */
+    .place-marker-el.wp-px > * {
       transition: none;
-      will-change: transform; /* hint de compositor solo mientras se usa */
+      will-change: transform;
     }
 
     /* ── Transición FLIP: sticker de cluster → pantalla collage ────────
@@ -687,25 +691,61 @@ export class MapView {
       let _parallaxAnchor = null, _parallaxStartPx = null;
       const PARALLAX_LAG = 0.14;   // fracción del desplazamiento — sutil a propósito
       const PIN_SHRINK    = 0.97;  // achique MÍNIMO pedido — casi imperceptible
-      const _applyPinParallax = (dx, dy) => {
-        const t = `translate3d(${(-dx * PARALLAX_LAG).toFixed(1)}px,${(-dy * PARALLAX_LAG).toFixed(1)}px,0) scale(${PIN_SHRINK})`;
+      // El efecto se aplica SOLO a los pines que están en pantalla al
+      // arrancar el drag (más un margen), y como máximo PX_MAX — los más
+      // cercanos al centro. Antes se escribía en TODOS los pines en cada
+      // frame (y todos se volvían capa aparte), aunque estuvieran lejos.
+      const PX_MARGIN = 120;  // px fuera de pantalla que todavía cuentan
+      const PX_MAX    = 60;
+      let _pxEls = [], _pxRaf = 0, _pxDx = 0, _pxDy = 0;
+      const _pickParallaxPins = () => {
+        const t0 = performance.now();
+        const cv = this.map.getCanvas();
+        const W = cv.clientWidth, H = cv.clientHeight;
+        const cx = W / 2, cy = H / 2;
+        const picked = [];
         for (const el of this.markerEls) {
-          if (el.style.display === 'none') continue; // oculto por estar agrupado en un cluster
-          if (el.style.visibility === 'hidden') continue; // no revelado aún por zoom — no vale gastar en él
-          const root = el.firstElementChild; // siempre .place-pin-root — ver _buildPinHtml
-          if (root) root.style.transform = t;
+          if (el.style.display === 'none') continue;      // agrupado en un cluster
+          if (el.style.visibility === 'hidden') continue; // no revelado aún por zoom
+          const ll = el._marker?.getLngLat?.();
+          if (!ll) continue;
+          const p = this.map.project(ll);
+          if (p.x < -PX_MARGIN || p.y < -PX_MARGIN || p.x > W + PX_MARGIN || p.y > H + PX_MARGIN) continue;
+          picked.push([(p.x - cx) * (p.x - cx) + (p.y - cy) * (p.y - cy), el]);
         }
+        picked.sort((a, b) => a[0] - b[0]);
+        _pxEls = picked.slice(0, PX_MAX).map(x => x[1]);
+        _pxEls.forEach(el => el.classList.add('wp-px'));
+        console.log(`[DIAG-PARALLAX] pines=${this.markerEls.length} en pantalla=${picked.length} con efecto=${_pxEls.length} (${(performance.now() - t0).toFixed(1)}ms)`); // [DIAG] temporal
+      };
+      const _applyPinParallax = (dx, dy) => {
+        // Un solo write por frame aunque 'drag' dispare más seguido
+        _pxDx = dx; _pxDy = dy;
+        if (_pxRaf) return;
+        _pxRaf = requestAnimationFrame(() => {
+          _pxRaf = 0;
+          const t = `translate3d(${(-_pxDx * PARALLAX_LAG).toFixed(1)}px,${(-_pxDy * PARALLAX_LAG).toFixed(1)}px,0) scale(${PIN_SHRINK})`;
+          for (const el of _pxEls) {
+            const root = el.firstElementChild; // siempre .place-pin-root — ver _buildPinHtml
+            if (root) root.style.transform = t;
+          }
+        });
       };
       const _clearPinParallax = () => {
-        for (const el of this.markerEls) {
+        if (_pxRaf) { cancelAnimationFrame(_pxRaf); _pxRaf = 0; }
+        for (const el of _pxEls) {
+          el.classList.remove('wp-px'); // vuelve la transición → regreso suave a 0
           const root = el.firstElementChild;
           if (root && root.style.transform) root.style.transform = '';
         }
+        _pxEls = [];
       };
       this.map.on('dragstart', () => {
         document.body.classList.add('map-dragging');
         _parallaxAnchor = this.map.getCenter();
         _parallaxStartPx = this.map.project(_parallaxAnchor);
+        _clearPinParallax();
+        _pickParallaxPins();
         // Si el drag del mapa arrancó justo encima de un sticker de
         // cluster, el pointermove local de ese elemento puede no llegar a
         // dispararse (MapLibre se queda con el gesto táctil primero) — el
