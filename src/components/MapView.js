@@ -1055,6 +1055,9 @@ export class MapView {
       style.layers.forEach(layer => {
         const id  = layer.id;
         const idL = id.toLowerCase();
+        // Capas que agrega este mismo método (si se vuelve a aplicar el
+        // estilo no deben tratarse como calles/edificios otra vez)
+        if (/-wp-(case|dash|outline)$/.test(id)) return;
 
         // ── Edificios 3D (building-3d, fill-extrusion) → aplanar, NO eliminar ──
         if (layer.type === 'fill-extrusion') {
@@ -1062,8 +1065,8 @@ export class MapView {
             try {
               map.setPaintProperty(id,'fill-extrusion-height',0);
               map.setPaintProperty(id,'fill-extrusion-base',0);
-              map.setPaintProperty(id,'fill-extrusion-color','#d8d2c4');
-              map.setPaintProperty(id,'fill-extrusion-opacity',0.85);
+              map.setPaintProperty(id,'fill-extrusion-color','#f6ecdc');
+              map.setPaintProperty(id,'fill-extrusion-opacity',1);
             } catch(_){}
             // Outline manual — fill-extrusion no soporta line-color nativo
             const outlineId = id + '-wp-outline';
@@ -1073,7 +1076,7 @@ export class MapView {
                   id: outlineId, type: 'line',
                   source: layer.source, 'source-layer': layer['source-layer'],
                   minzoom: layer.minzoom || 0,
-                  paint: { 'line-color':'#c4bdaf', 'line-opacity':0.6, 'line-width':0.5 }
+                  paint: { 'line-color':'#ead9bf', 'line-opacity':1, 'line-width':0.8 }
                 });
               } catch(_){}
             }
@@ -1087,23 +1090,27 @@ export class MapView {
 
         // ── Fondo ──────────────────────────────────────────────
         if (layer.type === 'background')
-          { try { map.setPaintProperty(id,'background-color','#f2efe8'); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'background-color','#f7f6f3'); } catch(_){} return; }
 
         // ── Agua ────────────────────────────────────────────────
         if (layer.type === 'fill' && (idL.includes('water') || idL.includes('ocean') || idL.includes('lake')))
-          { try { map.setPaintProperty(id,'fill-color','#5bb8f5'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#b3e5f8'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
         if (layer.type === 'line' && (idL.startsWith('water') || idL.includes('waterway') || idL.includes('river')))
-          { try { map.setPaintProperty(id,'line-color','#5bb8f5'); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'line-color','#b3e5f8'); } catch(_){} return; }
 
         // ── Parques / vegetación — tono suave ──────────────────
         if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
-          { try { map.setPaintProperty(id,'fill-color','#a8d5a2'); map.setPaintProperty(id,'fill-opacity',0.65); } catch(_){} return; }
+          { try {
+              map.setPaintProperty(id,'fill-color','#eef6e7');
+              map.setPaintProperty(id,'fill-opacity',1);
+              map.setPaintProperty(id,'fill-outline-color','#c3e6b8'); // contorno verde fino
+            } catch(_){} return; }
 
         // ── Landuse / manzanas — relleno sutil tipo Apple Maps ──
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
           { try {
-              map.setPaintProperty(id,'fill-color','#e6e1d6');
-              map.setPaintProperty(id,'fill-opacity',0.5);
+              map.setPaintProperty(id,'fill-color','#f1ece3');
+              map.setPaintProperty(id,'fill-opacity',0.55);
               map.setLayerZoomRange(id, layer.minzoom || 0, 24); // quitar maxzoom:12 del estilo original
             } catch(_){} return; }
         // Boundaries administrativos — ocultar (no son manzanas)
@@ -1113,9 +1120,9 @@ export class MapView {
         // ── Edificios fill (zoom bajo) — color + outline nativo ──
         if (layer.type === 'fill' && idL.includes('building'))
           { try {
-              map.setPaintProperty(id,'fill-color','#d8d2c4');
-              map.setPaintProperty(id,'fill-opacity',0.85);
-              map.setPaintProperty(id,'fill-outline-color','#c4bdaf');
+              map.setPaintProperty(id,'fill-color','#f6ecdc');
+              map.setPaintProperty(id,'fill-opacity',1);
+              map.setPaintProperty(id,'fill-outline-color','#ead9bf');
             } catch(_){} return; }
 
         // ── Calles: casing — ocultar para look plano (sin doble sombra 3D) ──
@@ -1130,12 +1137,29 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            let fillWidth, dashColor;
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]; dashColor = 'rgba(255,255,255,0.85)'; }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]; dashColor = 'rgba(255,255,255,0.85)'; }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = 'rgba(180,172,156,0.7)'; }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = 'rgba(180,172,156,0.7)'; }
+            // Calles gris lavanda con un contorno un tono más oscuro (capa
+            // "-wp-case" debajo, 2px más ancha). Sin la rayita central.
+            let fillWidth, caseWidth;
+            if (isMoto)      { fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,14,16,20,18,26]; caseWidth = ['interpolate',['linear'],['zoom'],10,8,14,16,16,22,18,28]; }
+            else if (isPrim) { fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,11,16,16,18,22]; caseWidth = ['interpolate',['linear'],['zoom'],11,7,14,13,16,18,18,24]; }
+            else if (isSec)  { fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,13,18,18]; caseWidth = ['interpolate',['linear'],['zoom'],12,6,14,10,16,15,18,20]; }
+            else             { fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,9,18,14]; caseWidth = ['interpolate',['linear'],['zoom'],13,4,14,7,16,11,18,16]; }
+            map.setPaintProperty(id,'line-color', isMoto || isPrim ? '#cfd6e4' : '#d9deea');
             map.setPaintProperty(id,'line-width',fillWidth);
+            const caseId = id + '-wp-case';
+            if (!map.getLayer(caseId)) {
+              try {
+                map.addLayer({
+                  id: caseId, type: 'line',
+                  source: layer.source, 'source-layer': layer['source-layer'],
+                  filter: layer.filter,
+                  minzoom: layer.minzoom || 0,
+                  layout: { 'line-cap': 'round', 'line-join': 'round' },
+                  paint: { 'line-color': '#c3cadb', 'line-width': caseWidth },
+                }, id); // justo debajo de la calle
+              } catch(_){}
+            }
+            const dashColor = 'rgba(0,0,0,0)';
 
             // ── Línea central punteada (look Petal/Huawei Maps) ──────
             // No se puede lograr con line-dasharray en la MISMA capa: eso
@@ -1149,7 +1173,7 @@ export class MapView {
             // real); gris suave sobre las calles blancas (ahí el blanco
             // sería invisible contra blanco).
             const dashId = id + '-wp-dash';
-            if (!map.getLayer(dashId)) {
+            if (dashColor !== 'rgba(0,0,0,0)' && !map.getLayer(dashId)) {
               try {
                 map.addLayer({
                   id: dashId, type: 'line',
@@ -1169,7 +1193,7 @@ export class MapView {
                   }
                 }, firstSymbolId); // debajo de los nombres de calle — si no, la rayita tapaba el texto
               } catch(_){}
-            } else {
+            } else if (map.getLayer(dashId)) {
               map.setPaintProperty(dashId,'line-color',dashColor);
             }
           } catch(_){} return;
@@ -1185,10 +1209,14 @@ export class MapView {
             const isWaterL = idL.includes('water');
 
             if (isRoad) {
-              map.setLayoutProperty(id,'text-size',9);
-              map.setPaintProperty(id,'text-color','#9a9080');
-              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
-              map.setPaintProperty(id,'text-halo-width',1.2);
+              // Nombres de calle en MAYÚSCULAS espaciadas, gris oscuro
+              map.setLayoutProperty(id,'text-transform','uppercase');
+              map.setLayoutProperty(id,'text-letter-spacing',0.18);
+              map.setLayoutProperty(id,'text-font',['Noto Sans Bold']);
+              map.setLayoutProperty(id,'text-size',['interpolate',['linear'],['zoom'],14,9,17,12]);
+              map.setPaintProperty(id,'text-color','#55585f');
+              map.setPaintProperty(id,'text-halo-color','rgba(247,246,243,0.95)');
+              map.setPaintProperty(id,'text-halo-width',1.6);
             } else if (isWaterL) {
               map.setLayoutProperty(id,'text-size',10);
               map.setPaintProperty(id,'text-color','#2a6db5');
@@ -1397,6 +1425,22 @@ export class MapView {
     this._drainCullQueue();
     if (removed || add.length) console.log(`[DIAG-CULL] pines=${this.markerEls.length} ya en pantalla=${inDom} entran=${add.length} salen=${removed}`); // [DIAG] temporal
   }
+  // ¿El nombre del pin necesita 2 renglones? Se mide una vez, cuando el
+  // pin ya está en el DOM (antes se medía al crearlo; ahora el pin puede
+  // entrar al mapa más tarde)
+  _measurePinLabel(el) {
+    if (el._labelMultiline !== undefined) return;
+    requestAnimationFrame(() => {
+      const label = el.querySelector('.place-pin-label');
+      if (!label || !el.isConnected) return;
+      // Medir con nowrap — el label ya tiene max-width:90px del buildPinHtml
+      const prev = label.style.cssText;
+      label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
+      el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
+      label.style.cssText = prev; // restaurar estado inicial
+    });
+  }
+
   _drainCullQueue() {
     if (this._cullRaf) return;
     const step = () => {
@@ -1408,6 +1452,7 @@ export class MapView {
         if (!el._wpCulled || !el._marker || !this.markerEls.includes(el)) continue;
         el._marker.addTo(this.map);
         el._wpCulled = false;
+        this._measurePinLabel(el);
         el.classList.remove('wp-pin-enter');
         void el.offsetWidth;               // re-dispara el pop
         el.classList.add('wp-pin-enter');
@@ -1565,25 +1610,13 @@ export class MapView {
         }
       });
 
+      // El marker se crea pero NO se agrega al mapa todavía: al terminar
+      // el recorrido se agregan solo los que caen en la vista inicial
+      // (ver abajo); el resto entra después, progresivo (_cullMarkers).
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .addTo(this.map);
+        .setLngLat([lng, lat]);
 
       el._marker = marker;
-
-      // Pre-calcular modo del label una sola vez — el elemento ya está en el DOM
-      // (addTo lo insertó), invisible (opacity:0/visibility:hidden del CSS inicial),
-      // pero medible. Guardamos si necesita 1 o 2 líneas en el elemento para que
-      // _updateLabelsProgressive solo aplique, nunca mida.
-      requestAnimationFrame(() => {
-        const label = el.querySelector('.place-pin-label');
-        if (!label) return;
-        // Medir con nowrap — el label ya tiene max-width:90px del buildPinHtml
-        const prev = label.style.cssText;
-        label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
-        el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
-        label.style.cssText = prev; // restaurar estado inicial
-      });
 
       // Foto lazy con IntersectionObserver
       if (photoUrl) {
@@ -1613,11 +1646,36 @@ export class MapView {
       hasCoords = true;
     });
 
+    // Vista inicial de la categoría: centro de todos sus lugares, con un
+    // zoom más cercano (antes 15) para que de entrada se carguen pocos
+    // pines; los demás van entrando al moverte por el mapa.
+    const OPEN_ZOOM = 16;
     if (hasCoords) {
+      const c = bounds.getCenter();
+      const cv = this.map.getCanvas();
+      const W = cv.clientWidth, H = cv.clientHeight, M = Math.max(W, H) * 0.35;
+      // Posición en pantalla que tendrá cada pin en esa vista (Mercator,
+      // sin esperar a que la cámara llegue)
+      const ws = 512 * Math.pow(2, OPEN_ZOOM);
+      const X = (lng) => (lng + 180) / 360 * ws;
+      const Y = (lat) => { const sn = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)) * ws; };
+      const cx = X(c.lng), cy = Y(c.lat);
+      let added = 0;
+      this.markerEls.forEach(el => {
+        const ll = el._marker.getLngLat();
+        const dx = X(ll.lng) - cx, dy = Y(ll.lat) - cy;
+        if (Math.abs(dx) < W / 2 + M && Math.abs(dy) < H / 2 + M) {
+          el._marker.addTo(this.map); el._wpCulled = false; added++;
+          this._measurePinLabel(el);
+        } else {
+          el._wpCulled = true;
+        }
+      });
+      console.log(`[DIAG-CULL] categoría: ${this.markerEls.length} pines, ${added} en la vista inicial (zoom ${OPEN_ZOOM})`); // [DIAG] temporal
       this.map.fitBounds(bounds, {
         padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: 15,
-        minZoom: 15
+        maxZoom: OPEN_ZOOM,
+        minZoom: OPEN_ZOOM
       });
     }
     this._refreshActivityBadges();
