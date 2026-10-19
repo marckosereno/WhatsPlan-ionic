@@ -1056,10 +1056,10 @@ export class PlaceModal2 {
       .wp-pm2-col-strip {
         position:relative; height:46px; overflow:hidden; touch-action:pan-y;
         display:flex; align-items:center; margin:0 -16px;
-        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 48px, #000 calc(100% - 48px), transparent 100%);
-        mask-image:linear-gradient(to right, transparent 0, #000 48px, #000 calc(100% - 48px), transparent 100%);
+        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+        mask-image:linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
       }
-      .wp-pm2-col-strip-track { position:relative; display:flex; align-items:center; gap:2px; width:max-content; }
+      .wp-pm2-col-strip-track { position:relative; display:flex; align-items:center; gap:2px; width:max-content; padding:0 14px; }
       .wp-pm2-col-strip-track button {
         position:relative; flex:none; width:34px; height:34px; border:none; border-radius:999px; background:transparent; padding:0;
         font-size:17px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -5366,7 +5366,7 @@ export class PlaceModal2 {
           <div class="wp-pm2-col-strip"><div class="wp-pm2-col-strip-track"></div></div>
           <div class="wp-pm2-col-row">
             <div class="wp-pm2-col-field">
-              <input class="wp-pm2-col-input2" type="text" inputmode="text" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off">
+              <input class="wp-pm2-col-input2" type="text" inputmode="text" maxlength="60" placeholder="+ Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off">
             </div>
             <button type="button" class="wp-pm2-col-x" aria-label="Cancelar">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -5839,7 +5839,7 @@ export class PlaceModal2 {
         composer.hidden = !c;
         if (prev && !c) renderList(); // se quita el resaltado
       }
-      input.placeholder = c ? 'Nombre de la colección' : 'Nueva colección';
+      input.placeholder = c ? 'Nombre de la colección' : '+ Nueva colección';
       cta.setAttribute('aria-label', c ? 'Guardar cambios' : 'Crear colección');
       if (c) {
         input.value = c.name;
@@ -5937,9 +5937,9 @@ export class PlaceModal2 {
     };
 
     // ── Tira de íconos arriba del campo ──
-    // Se arrastra en horizontal; el que tocas crece con pulse y se va al
-    // centro. Los extremos llevan relleno para que también el primero y
-    // el último puedan quedar centrados.
+    // Va de orilla a orilla (difuminada en los dos lados) y se arrastra en
+    // horizontal; el que tocas crece con pulse y se acerca al centro
+    // (en las puntas se queda donde está).
     let emoji = EMOJIS[0];
     const paint = () => {
       track.querySelectorAll('button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.e === emoji));
@@ -5963,8 +5963,6 @@ export class PlaceModal2 {
     strip.addEventListener('scroll', () => { if (strip.scrollLeft) strip.scrollLeft = 0; }, { passive: true });
     const centerEmoji = (anim) => {
       if (rowEl.hidden || !strip.clientWidth) return;
-      const pad = Math.max(0, Math.round(strip.clientWidth / 2 - 24));
-      track.style.paddingLeft = track.style.paddingRight = `${pad}px`;
       const b = track.querySelector('button.wp-pm2-on');
       if (b) stripCtl?.scrollTo(b.offsetLeft + b.offsetWidth / 2 - strip.clientWidth / 2, anim);
     };
