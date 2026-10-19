@@ -272,6 +272,11 @@ function injectLandmarkStyles() {
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
     }
+    /* Pin que vuelve a entrar a la pantalla (ver _cullMarkers): aparece
+       con un pop chico. Usa la propiedad "scale" (no transform) para no
+       pelearse con el parallax del drag, que escribe transform. */
+    @keyframes wpPinEnter { from { opacity:0; scale:0.6; } to { opacity:1; scale:1; } }
+    .place-marker-el.wp-pin-enter > * { animation: wpPinEnter 0.26s cubic-bezier(0.34,1.4,0.64,1) both; }
     /* Durante el drag la transición se APAGA. El parallax escribe un
        transform nuevo en cada frame; con la transición activa, cada una
        de esas escrituras arranca una animación de 0.32s por pin — en el
@@ -769,6 +774,13 @@ export class MapView {
           this._cancelActiveClusterPress = null;
         }
       });
+      // Mientras se mueve el mapa, cada ~200ms entran los pines que se
+      // acercan a la pantalla (y salen los que quedaron lejos)
+      let _cullT = 0;
+      this.map.on('move', () => {
+        if (_cullT) return;
+        _cullT = setTimeout(() => { _cullT = 0; this._cullMarkers(); }, 200);
+      });
       this.map.on('drag', () => {
         if (!_parallaxAnchor) return;
         const curPx = this.map.project(_parallaxAnchor);
@@ -901,6 +913,7 @@ export class MapView {
       this._lastLabelZoom = null;
       this.map.on('zoomend', () => {
         if (this._clusterExpandEl) return; // el carrusel expandido mueve la cámara solo — no recalcular nada mientras está abierto
+        this._cullMarkers();
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
@@ -908,6 +921,7 @@ export class MapView {
       });
       this.map.on('moveend', () => {
         if (this._clusterExpandEl) return;
+        this._cullMarkers();
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
@@ -1346,8 +1360,68 @@ export class MapView {
     if (this._allLandmarks) this._renderLandmarks([]);
   }
 
+  // ── Solo los pines de la pantalla viven en el mapa ─────────────────
+  // MapLibre reposiciona TODOS los markers en cada cuadro del drag/zoom,
+  // estén donde estén. Los que quedan lejos de la pantalla se quitan del
+  // mapa (marker.remove(): el elemento sale del DOM, pero se conserva con
+  // todo su estado en markerEls) y vuelven a entrar cuando la pantalla se
+  // acerca: de a pocos por cuadro, primero los más cercanos al centro y
+  // con un pop chico. Los datos (allPlaces, clusters, labels) no cambian.
+  _cullMarkers() {
+    if (!this.map || this._clusterExpandEl || !this.markerEls?.length) return;
+    const cv = this.map.getCanvas();
+    const W = cv.clientWidth, H = cv.clientHeight;
+    const M = Math.max(W, H) * 0.35; // margen: se cargan un poco antes de llegar
+    const keep = this.markerEls[this.miniCardIndex]; // el del minicard abierto nunca se quita
+    const add = [];
+    let removed = 0, inDom = 0;
+    for (const el of this.markerEls) {
+      const m = el._marker;
+      if (!m) continue;
+      let inView = el === keep || el.classList.contains('marker-highlighted');
+      let d = 0;
+      if (!inView) {
+        const p = this.map.project(m.getLngLat());
+        inView = p.x > -M && p.y > -M && p.x < W + M && p.y < H + M;
+        d = (p.x - W / 2) ** 2 + (p.y - H / 2) ** 2;
+      }
+      if (inView) {
+        if (el._wpCulled) add.push([d, el]); else inDom++;
+      } else if (!el._wpCulled && !this._activeTouchMarkerEls?.has(el)) {
+        // (nunca uno con un dedo encima: ver _activeTouchMarkerEls)
+        m.remove(); el._wpCulled = true; removed++;
+      }
+    }
+    add.sort((a, b) => a[0] - b[0]);
+    this._cullQueue = add.map(x => x[1]);
+    this._drainCullQueue();
+    if (removed || add.length) console.log(`[DIAG-CULL] pines=${this.markerEls.length} ya en pantalla=${inDom} entran=${add.length} salen=${removed}`); // [DIAG] temporal
+  }
+  _drainCullQueue() {
+    if (this._cullRaf) return;
+    const step = () => {
+      this._cullRaf = 0;
+      const q = this._cullQueue || [];
+      let n = 0;
+      while (q.length && n < 12) {         // máx. 12 pines nuevos por cuadro
+        const el = q.shift();
+        if (!el._wpCulled || !el._marker || !this.markerEls.includes(el)) continue;
+        el._marker.addTo(this.map);
+        el._wpCulled = false;
+        el.classList.remove('wp-pin-enter');
+        void el.offsetWidth;               // re-dispara el pop
+        el.classList.add('wp-pin-enter');
+        n++;
+      }
+      if (q.length) this._cullRaf = requestAnimationFrame(step);
+    };
+    this._cullRaf = requestAnimationFrame(step);
+  }
+
   // ── Markers ───────────────────────────────────────────────────────
   _clearPlaceMarkers() {
+    if (this._cullRaf) { cancelAnimationFrame(this._cullRaf); this._cullRaf = 0; }
+    this._cullQueue = [];
     if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
     this._labelTimers = [];
     this.markers.forEach(m => m?.remove());
@@ -1551,6 +1625,9 @@ export class MapView {
     this._assignZoomThresholds();
     this._updatePinsByZoom();
     this._updateClusters();
+    // Si el encuadre no movió la cámara (no hay moveend), igual se quitan
+    // los pines que quedaron fuera de la pantalla
+    setTimeout(() => this._cullMarkers(), 500);
     // Re-aplicar tras fitBounds (el zoom puede cambiar)
     this.map.once('moveend', () => {
       this._updatePinsByZoom();
