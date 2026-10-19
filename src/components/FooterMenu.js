@@ -87,7 +87,7 @@ export class FooterMenu {
         font-size: 15px;
         font-weight: 700;
         color: #374151;
-        font-family:var(--wp-font); font-weight: 300;
+        font-family:var(--wp-font); font-weight: 800;
         white-space: nowrap;
       }
 
