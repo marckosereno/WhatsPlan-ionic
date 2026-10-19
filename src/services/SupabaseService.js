@@ -174,13 +174,13 @@ export const ProfileService = {
     if (error) throw error;
 
     const { data } = sb.storage.from('avatars').getPublicUrl(path);
-    const cleanUrl = data.publicUrl; // URL sin timestamp — cacheable por el browser
-
-    // Guardar en BD siempre sin timestamp para que sea cacheable
-    await ProfileService.updateProfile(userId, { avatar_url: cleanUrl });
-
-    // Devolver con bust solo para el refresh inmediato en esta sesión
-    return cleanUrl + '?t=' + Date.now();
+    // La foto siempre se sube al MISMO archivo (userId.jpg), así que la URL
+    // limpia no cambia y el teléfono/CDN seguían mostrando la foto vieja
+    // desde la 2da vez. Se guarda con ?v=<fecha>: sigue siendo cacheable
+    // (solo cambia cuando subes otra foto) y cada foto nueva tiene su URL.
+    const versionedUrl = data.publicUrl + '?v=' + Date.now();
+    await ProfileService.updateProfile(userId, { avatar_url: versionedUrl });
+    return versionedUrl;
   },
 
   async sendVerificationEmail(email) {
