@@ -32,6 +32,30 @@ const ACT_GRADIENTS = [
   'linear-gradient(145deg,#34d399,#059669)', 'linear-gradient(145deg,#60a5fa,#2563eb)',
 ];
 const STACK_FALLBACK = ['#fde68a', '#bfdbfe', '#ddd6fe', '#fecdd3', '#bbf7d0', '#fed7aa'];
+// Emoji → sticker 3D (Fluent Emoji de Microsoft, mismo origen que los
+// íconos 3D que ya usa la app)
+const FLUENT = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
+const STICKER3D = {
+  '❤️': 'Red%20heart/3D/red_heart_3d.png', '⭐': 'Star/3D/star_3d.png', '💙': 'Blue%20heart/3D/blue_heart_3d.png',
+  '🤩': 'Star-struck/3D/star-struck_3d.png', '✌️': 'Victory%20hand/Default/3D/victory_hand_3d_default.png',
+  '☕': 'Hot%20beverage/3D/hot_beverage_3d.png', '🥐': 'Croissant/3D/croissant_3d.png', '🍔': 'Hamburger/3D/hamburger_3d.png',
+  '🌮': 'Taco/3D/taco_3d.png', '🍕': 'Pizza/3D/pizza_3d.png', '🍰': 'Shortcake/3D/shortcake_3d.png',
+  '🍦': 'Soft%20ice%20cream/3D/soft_ice_cream_3d.png', '🍻': 'Clinking%20beer%20mugs/3D/clinking_beer_mugs_3d.png',
+  '🍷': 'Wine%20glass/3D/wine_glass_3d.png', '🎉': 'Party%20popper/3D/party_popper_3d.png', '🎵': 'Musical%20note/3D/musical_note_3d.png',
+  '🌳': 'Deciduous%20tree/3D/deciduous_tree_3d.png', '🛍️': 'Shopping%20bags/3D/shopping_bags_3d.png', '🎨': 'Artist%20palette/3D/artist_palette_3d.png',
+  '🏋️': 'Person%20lifting%20weights/Default/3D/person_lifting_weights_3d_default.png', '🦷': 'Tooth/3D/tooth_3d.png',
+  '🛺': 'Auto%20rickshaw/3D/auto_rickshaw_3d.png', '🛸': 'Flying%20saucer/3D/flying_saucer_3d.png', '👽': 'Alien/3D/alien_3d.png',
+  '👻': 'Ghost/3D/ghost_3d.png', '🍿': 'Popcorn/3D/popcorn_3d.png', '🪩': 'Mirror%20ball/3D/mirror_ball_3d.png',
+};
+// Si no hay suficientes colecciones con emoji, se completa con estos
+const STICKER_FILL = ['☕', '🍦', '🥐', '🍿'];
+// Posición de cada sticker (desde la esquina inferior derecha del banner)
+const STICKER_SLOTS = [
+  { r: -4,  b: -12, s: 80, rot: 8 },    // derecha, saliéndose del borde
+  { r: 58,  b: 24,  s: 62, rot: -12 },  // arriba
+  { r: 104, b: -16, s: 74, rot: 6 },    // centro abajo
+  { r: 160, b: 4,   s: 60, rot: -8 },   // izquierda
+];
 const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
 export class ProfileSheet {
@@ -242,8 +266,21 @@ export class ProfileSheet {
         <div class="wp-pf-actions"></div>
       </div>
       ${isMe ? `<button type="button" class="wp-pf-banner">
-          <div class="wp-pf-banner-l"><span>Lugares guardados</span><b class="wp-pf-saved-n">–</b>
-            <span class="wp-pf-banner-pill">${ICON.map} Ver en el mapa</span></div>
+          <svg class="wp-pf-banner-map" viewBox="0 0 360 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <g fill="none" stroke="#fff" stroke-linecap="round">
+              <path d="M-10 32 H380 M-10 104 H380 M52 -10 V160 M140 -10 V160 M236 -10 V160 M300 -10 V160" stroke-width="5" opacity="0.13"/>
+              <path d="M-10 68 C60 60 90 80 160 70 S270 58 380 66 M96 -10 C102 50 88 100 104 160 M190 -10 L206 160" stroke-width="3" opacity="0.16"/>
+            </g>
+            <path d="M-10 128 C40 112 70 130 120 118 C170 106 210 128 260 114 C300 104 330 120 380 110 V160 H-10Z" fill="#fff" opacity="0.12"/>
+            <path d="M200 46 l14 -8 14 8 v16 l-14 8 -14 -8z M230 62 l14 -8 14 8 v16 l-14 8 -14 -8z M170 64 l14 -8 14 8 v16 l-14 8 -14 -8z" fill="#fff" opacity="0.14"/>
+            <path d="M38 96 c8 -14 16 -26 24 -16 s10 -24 20 -18 s12 -18 22 -10 s14 -16 24 -6 s12 -12 22 -4 s16 -14 24 -2 s14 -10 22 0 s12 -14 22 -4 s16 -10 26 2 s14 -16 26 -6"
+              fill="none" stroke="#1e2a78" stroke-width="2.6" stroke-linejoin="round" opacity="0.55"/>
+            <g class="wp-pf-banner-labels" font-family="Arimo, Arial, sans-serif" font-weight="700" font-size="13"
+               fill="#1f2a5a" fill-opacity="0.72" stroke="#fff" stroke-width="3.5" stroke-opacity="0.75" paint-order="stroke"></g>
+          </svg>
+          <div class="wp-pf-banner-l"><span>Guardados</span><b class="wp-pf-saved-n">–</b>
+            <span class="wp-pf-banner-pill">${ICON.map} Ver mapa</span></div>
+          <span class="wp-pf-banner-dot"></span>
           <div class="wp-pf-stickers"></div>
         </button>` : ''}
       <div class="wp-pf-sec"><span>Colecciones</span><span class="wp-pf-sec-n"></span></div>
@@ -335,9 +372,22 @@ export class ProfileSheet {
       const banner = view.querySelector('.wp-pf-banner');
       const saved = favIds.map(id => places.get(String(id))).filter(Boolean);
       view.querySelector('.wp-pf-saved-n').textContent = String(favIds.length);
-      const top = cols.slice().sort((a, b) => b.items.length - a.items.length).filter(c => c.emoji).slice(0, 3);
-      view.querySelector('.wp-pf-stickers').innerHTML = top.map((c, i) =>
-        `<span style="--r:${[-10, 6, -3][i]}deg">${this._esc(c.emoji)}</span>`).join('');
+      // Stickers 3D: emojis de tus colecciones con más lugares (sin
+      // repetir), completados con unos de comida/plan
+      const fromCols = cols.slice().sort((a, b) => b.items.length - a.items.length).map(c => c.emoji).filter(e => e && STICKER3D[e]);
+      const emojis = [...new Set([...fromCols, ...STICKER_FILL])].slice(0, STICKER_SLOTS.length);
+      view.querySelector('.wp-pf-stickers').innerHTML = emojis.map((e, i) => {
+        const sl = STICKER_SLOTS[i];
+        return `<img class="wp-pf-sticker" alt="" draggable="false" src="${FLUENT + STICKER3D[e]}"
+          style="right:${sl.r}px;bottom:${sl.b}px;width:${sl.s}px;height:${sl.s}px;--r:${sl.rot}deg;z-index:${10 - i}"
+          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wp-pf-sticker wp-pf-sticker-txt',textContent:'${e}',style:this.getAttribute('style')}))">`;
+      }).join('');
+      // Etiquetas tipo mapa: nombres de tus lugares guardados
+      const LBL = [[176, 26], [204, 56]];
+      view.querySelector('.wp-pf-banner-labels').innerHTML = saved.slice(0, LBL.length).map((p, i) => {
+        const n = String(p.name || '').slice(0, 14);
+        return `<text x="${LBL[i][0]}" y="${LBL[i][1]}">${this._esc(n)}</text>`;
+      }).join('');
       banner.onclick = () => {
         this._pulse(banner);
         if (!saved.length) { this._toast('Aún no tienes lugares guardados'); return; }
@@ -763,6 +813,13 @@ export class ProfileSheet {
   // ── Estilos ────────────────────────────────────────────────────────
   _injectStyles() {
     if (document.getElementById('wp-pf-styles')) return;
+    // Número grande del banner (letra condensada y gruesa)
+    if (!document.getElementById('wp-pf-font')) {
+      const l = document.createElement('link');
+      l.id = 'wp-pf-font'; l.rel = 'stylesheet';
+      l.href = 'https://cdn.jsdelivr.net/npm/@fontsource/anton@5.2.7/400.css';
+      document.head.appendChild(l);
+    }
     const s = document.createElement('style');
     s.id = 'wp-pf-styles';
     s.textContent = `
@@ -836,23 +893,38 @@ export class ProfileSheet {
       .wp-pf-pill-dark:active { background:#262626; }
       .wp-pf-pill-sm { height:32px; padding:0 14px; font-size:13px; margin-left:auto; flex:none; }
 
+      /* Banner "Lugares guardados": mapa de fondo en azul → lavanda, número
+         grande y stickers 3D con borde blanco (como recortados) */
       .wp-pf-banner {
-        width:100%; margin-top:18px; position:relative; display:flex; align-items:center; justify-content:space-between;
-        border:none; border-radius:24px; padding:16px 18px; text-align:left; color:#fff; cursor:pointer;
-        background:linear-gradient(135deg,#60a5fa 0%,#2563eb 60%,#1d4ed8 100%);
-        box-shadow:0 8px 22px rgba(37,99,235,0.28); font-family:inherit; -webkit-tap-highlight-color:transparent;
+        width:100%; height:150px; margin-top:18px; position:relative; overflow:hidden; display:block;
+        border:none; border-radius:26px; padding:0; text-align:left; color:#fff; cursor:pointer;
+        background:linear-gradient(100deg,#3557ff 0%,#4f6cff 30%,#8f9ff2 66%,#c9cbf2 100%);
+        box-shadow:0 10px 26px rgba(53,87,255,0.28); font-family:inherit; -webkit-tap-highlight-color:transparent;
       }
-      .wp-pf-banner-l { display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
-      .wp-pf-banner-l > span:first-child { font-size:13px; font-weight:600; opacity:0.92; }
-      .wp-pf-banner-l b { font-size:40px; line-height:1; font-weight:800; }
-      .wp-pf-banner-pill { margin-top:8px; display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
-        background:rgba(255,255,255,0.22); font-size:12.5px; font-weight:700; }
-      .wp-pf-stickers { display:flex; }
-      .wp-pf-stickers span {
-        width:46px; height:46px; margin-left:-10px; border-radius:999px; background:#fff; display:flex; align-items:center; justify-content:center;
-        font-size:24px; transform:rotate(var(--r)); box-shadow:0 4px 12px rgba(0,0,0,0.18);
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+      .wp-pf-banner-map { position:absolute; inset:0; width:100%; height:100%; }
+      .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
+      .wp-pf-banner-l > span:first-child { font-size:17px; font-weight:700; color:rgba(255,255,255,0.78); }
+      .wp-pf-banner-l b {
+        font-family:'Anton','Arimo',Arial,sans-serif; font-weight:400; font-size:68px; line-height:0.95; margin-top:2px;
+        color:#fff; text-shadow:0 2px 10px rgba(20,30,120,0.25);
       }
+      .wp-pf-banner-pill { margin-top:4px; display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
+        background:rgba(255,255,255,0.22); font-size:12px; font-weight:700; color:#fff; }
+      /* Punto azul de ubicación con brillo */
+      .wp-pf-banner-dot {
+        position:absolute; right:40px; top:22px; z-index:3; width:32px; height:32px; border-radius:999px;
+        background:radial-gradient(circle at 38% 35%, #6aa8ff 0%, #1f5cff 55%, #1440d6 100%);
+        box-shadow:0 0 0 4px rgba(255,255,255,0.85), 0 0 0 11px rgba(120,160,255,0.35), 0 6px 14px rgba(20,40,160,0.35);
+      }
+      .wp-pf-stickers { position:absolute; inset:0; z-index:4; pointer-events:none; }
+      /* Borde blanco tipo sticker: 4 sombras sólidas + una suave */
+      .wp-pf-sticker {
+        position:absolute; object-fit:contain; transform:rotate(var(--r));
+        filter:drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff)
+               drop-shadow(0 5px 6px rgba(20,30,90,0.28));
+      }
+      .wp-pf-sticker-txt { display:flex; align-items:center; justify-content:center; font-size:46px; line-height:1;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
 
       .wp-pf-sec { display:flex; justify-content:space-between; align-items:baseline; margin:22px 2px 10px; font-size:17px; font-weight:800; color:#0a0a0a; }
       .wp-pf-sec-n { font-size:13px; font-weight:600; color:#9ca3af; border:none; background:none; padding:0; font-family:inherit; }
