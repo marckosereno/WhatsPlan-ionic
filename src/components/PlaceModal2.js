@@ -1037,63 +1037,50 @@ export class PlaceModal2 {
       }
       .wp-pm2-col-row { display:flex; align-items:center; gap:10px; }
       /* Campo pill con el ícono (redondo) adentro, a la izquierda */
+      .wp-pm2-col-form { display:flex; flex-direction:column; gap:8px; }
+      .wp-pm2-col-form[hidden] { display:none; }
+      .wp-pm2-col-row { gap:8px; }
+      /* Campo: pill del mismo alto que ✕ y ✓ */
       .wp-pm2-col-field {
-        position:relative; flex:1; min-width:0; height:48px; box-sizing:border-box;
-        display:flex; align-items:center; gap:10px; padding:0 16px 0 5px;
+        position:relative; flex:1; min-width:0; height:40px; box-sizing:border-box;
+        display:flex; align-items:center; padding:0 16px;
         border-radius:999px; background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
         transition:background-color 0.15s, border-color 0.15s;
       }
       .wp-pm2-col-field:focus-within { background:#fff; border-color:#d1d5db; }
-      /* Eligiendo ícono: sin el borde azul, se queda el gris suave */
-      .wp-pm2-col-field.wp-pm2-picking,
-      .wp-pm2-col-field.wp-pm2-picking:focus-within { background:#f3f4f6; border-color:rgba(0,0,0,0.06); }
-      /* Botón del ícono estilo "push button": sobresale con su borde de
-         abajo y al tocarlo / con los íconos abiertos se queda hundido.
-         Se mueve con top (no transform) para no crear capas. */
-      .wp-pm2-col-pick {
-        position:relative; top:-1px; z-index:1; flex:none; width:50px; height:36px; padding:0;
-        border-radius:999px; border:1px solid #e5e7eb; background:linear-gradient(180deg,#ffffff 0%,#f6f7f9 100%);
-        box-shadow:0 3px 0 #d6d9de, 0 4px 8px rgba(0,0,0,0.10);
-        display:flex; align-items:center; justify-content:center;
-        cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:top 0.08s ease, box-shadow 0.08s ease, background 0.12s;
-      }
-      .wp-pm2-col-pick:active,
-      .wp-pm2-col-pick.wp-pm2-on {
-        top:2px; background:#eef0f3;
-        box-shadow:0 0 0 #d6d9de, inset 0 2px 4px rgba(0,0,0,0.12);
-      }
-      .wp-pm2-col-preview-emoji {
-        font-size:21px; line-height:1;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
-      }
       .wp-pm2-col-input2 {
         flex:1; min-width:0; height:100%; padding:0; border:none; background:transparent; outline:none;
         font-size:15px; font-weight:500; font-family:var(--wp-font); color:#0a0a0a;
       }
-      /* Tira de íconos: a la derecha del ícono, dentro del campo;
-         difuminada al principio y al final */
+      /* Tira de íconos (arriba del campo), difuminada en los dos lados */
       .wp-pm2-col-strip {
-        position:absolute; top:0; bottom:0; left:60px; right:0;
-        border-radius:0 999px 999px 0;
-        overflow:hidden; touch-action:pan-y;
-        display:flex; align-items:center;
-        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 26px), transparent 100%);
-        mask-image:linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 26px), transparent 100%);
+        position:relative; height:46px; overflow:hidden; touch-action:pan-y;
+        display:flex; align-items:center; margin:0 -16px;
+        -webkit-mask-image:linear-gradient(to right, transparent 0, #000 48px, #000 calc(100% - 48px), transparent 100%);
+        mask-image:linear-gradient(to right, transparent 0, #000 48px, #000 calc(100% - 48px), transparent 100%);
       }
-      .wp-pm2-col-strip[hidden] { display:none; }
-      .wp-pm2-col-strip-track { display:flex; align-items:center; gap:2px; width:max-content; padding:0 26px 0 12px; }
-      /* Íconos de la tira: los no elegidos un poco más chicos y suaves;
-         el elegido completo, en una pastilla blanca con un puntito abajo */
+      .wp-pm2-col-strip-track { position:relative; display:flex; align-items:center; gap:2px; width:max-content; }
       .wp-pm2-col-strip-track button {
-        position:relative; width:34px; height:38px; border:none; border-radius:999px; background:transparent; padding:0;
+        position:relative; flex:none; width:34px; height:34px; border:none; border-radius:999px; background:transparent; padding:0;
         font-size:17px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
         font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
-        transition:font-size 0.15s, width 0.15s;
+        transition:font-size 0.15s;
       }
-      /* Listo: botón redondo fuera del campo */
+      /* El elegido crece en un pill gris suave */
+      .wp-pm2-col-strip-track button.wp-pm2-on {
+        width:52px; height:38px; margin:0 4px; font-size:23px;
+        background:#f3f4f6; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05);
+      }
+      /* ✕ y ✓: pills del mismo tamaño que el campo */
+      .wp-pm2-col-x {
+        flex:none; width:52px; height:40px; padding:0; border:none; border-radius:999px;
+        background:#f3f4f6; color:#374151; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background-color 0.12s;
+      }
+      .wp-pm2-col-x:active { background:#e5e7eb; }
+      /* ✓: pill negro fuera del campo */
       .wp-pm2-col-ok {
-        flex:none; width:64px; height:48px; padding:0; border-radius:999px; border:none;
+        flex:none; width:52px; height:40px; padding:0; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff;
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -1205,11 +1192,6 @@ export class PlaceModal2 {
       .wp-pm2-pop-item.wp-pm2-danger { color:#e11d48; }
       .wp-pm2-pop-sep { height:6px; background:#f3f4f6; }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
-      /* El elegido crece un poco respecto a los demás */
-      .wp-pm2-col-strip-track button.wp-pm2-on {
-        width:54px; height:36px; font-size:23px; background:#fff; margin:0 3px;
-        box-shadow:0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
-      }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
       /* PULSE al tocar — se hunde y rebota. Lo dispara _pulseTap() y la
@@ -2989,6 +2971,22 @@ export class PlaceModal2 {
     strip.addEventListener('click', e => {
       if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
     }, true);
+    // Llevar la tira a una posición (p. ej. centrar el ícono elegido)
+    const scrollTo = (target, anim = true) => {
+      stop();
+      const to = Math.max(0, Math.min(max(), target));
+      if (!anim) { pos = to; moving(false); return; }
+      const from = pos, t0 = performance.now(), D = 280;
+      moving(true);
+      const step = (now) => {
+        const t = Math.min(1, (now - t0) / D), k = 1 - Math.pow(1 - t, 3);
+        pos = from + (to - from) * k;
+        apply(pos);
+        if (t < 1) raf = requestAnimationFrame(step); else { raf = 0; moving(false); }
+      };
+      raf = requestAnimationFrame(step);
+    };
+    return { scrollTo };
   }
 
   // ── Miniaturas de la galería ───────────────────────────────────────
@@ -5364,19 +5362,19 @@ export class PlaceModal2 {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           Crear nueva colección
         </button>
-        <div class="wp-pm2-col-editing" hidden>
-          <span class="wp-pm2-col-editing-t">Editando colección</span>
-          <button type="button" class="wp-pm2-col-editing-x">Cancelar</button>
-        </div>
-        <div class="wp-pm2-col-row">
-          <div class="wp-pm2-col-field">
-            <button type="button" class="wp-pm2-col-pick" aria-label="Elegir ícono"><span class="wp-pm2-col-preview-emoji"></span></button>
-            <input class="wp-pm2-col-input2" type="text" inputmode="text" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off">
-            <div class="wp-pm2-col-strip" hidden><div class="wp-pm2-col-strip-track"></div></div>
+        <div class="wp-pm2-col-form">
+          <div class="wp-pm2-col-strip"><div class="wp-pm2-col-strip-track"></div></div>
+          <div class="wp-pm2-col-row">
+            <div class="wp-pm2-col-field">
+              <input class="wp-pm2-col-input2" type="text" inputmode="text" maxlength="60" placeholder="Nueva colección" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" autocomplete="off">
+            </div>
+            <button type="button" class="wp-pm2-col-x" aria-label="Cancelar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+            <button type="button" class="wp-pm2-col-ok" aria-label="Crear colección" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
           </div>
-          <button type="button" class="wp-pm2-col-ok" aria-label="Crear colección" disabled>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          </button>
         </div>
       </div>
       <div class="wp-pm2-col-bulk" hidden>
@@ -5386,8 +5384,6 @@ export class PlaceModal2 {
     const composer = body.querySelector('.wp-pm2-col-composer');
     const bulk     = body.querySelector('.wp-pm2-col-bulk');
     const bulkDel  = body.querySelector('.wp-pm2-col-bulk-del');
-    const pick     = body.querySelector('.wp-pm2-col-pick');
-    const prevEl   = body.querySelector('.wp-pm2-col-preview-emoji');
     const input    = body.querySelector('.wp-pm2-col-input2');
     const strip    = body.querySelector('.wp-pm2-col-strip');
     const track    = body.querySelector('.wp-pm2-col-strip-track');
@@ -5459,7 +5455,7 @@ export class PlaceModal2 {
     const autoFocus = () => {
       if (autoFocused || !fitReady || !cols) return;
       autoFocused = true;
-      if (sheetEl?.isConnected && strip.hidden && mode === 'normal' && !cols.length) focusInput();
+      if (sheetEl?.isConnected && mode === 'normal' && !cols.length) focusInput();
     };
     const focusInput = () => {
       try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
@@ -5519,7 +5515,7 @@ export class PlaceModal2 {
       mode = m;
       selected.clear();
       openRow?.close(false);
-      if (m !== 'normal') { input.blur(); if (editing) setEditing(null); if (!strip.hidden) { strip.hidden = true; input.style.visibility = ''; pick.classList.remove('wp-pm2-on'); pick.parentElement.classList.remove('wp-pm2-picking'); } }
+      if (m !== 'normal') { input.blur(); if (editing) setEditing(null); }
       composer.hidden = m !== 'normal'; // en "Editar" aparece al tocar una
       if (m !== 'normal') expanded = false;
       paintComposer();
@@ -5816,22 +5812,17 @@ export class PlaceModal2 {
 
     // Editar: usa el mismo campo de abajo, ya lleno con el nombre y el ícono
     let editing = null;
-    const editBar = body.querySelector('.wp-pm2-col-editing');
-    const editT   = body.querySelector('.wp-pm2-col-editing-t');
     const newBtn  = body.querySelector('.wp-pm2-col-newbtn');
-    const rowEl   = body.querySelector('.wp-pm2-col-row');
+    const rowEl   = body.querySelector('.wp-pm2-col-form'); // tira de íconos + campo + ✕ + ✓
     // Con colecciones ya creadas el campo se esconde tras "+ Crear nueva
     // colección"; sin ninguna, el campo está abierto de una.
     let expanded = false;
     const paintComposer = () => {
       const collapsed = mode === 'normal' && !editing && !expanded && (cols === null || cols.length > 0);
+      const wasHidden = rowEl.hidden;
       newBtn.hidden = !collapsed;
       rowEl.hidden = collapsed;
-      const showBar = !!editing || (expanded && !!cols && cols.length > 0);
-      editBar.hidden = !showBar;
-      editT.innerHTML = editing
-        ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Editando colección'
-        : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva colección';
+      if (!collapsed && wasHidden) centerEmoji(false); // al aparecer, el elegido ya centrado
       fit();
     };
     newBtn.onclick = () => {
@@ -5857,18 +5848,23 @@ export class PlaceModal2 {
         input.value = '';
         emoji = EMOJIS[0]; paint();
       }
-      if (!strip.hidden) setPicking(false);
       cta.disabled = !input.value.trim();
       paintComposer();
+      centerEmoji(false);
     };
     const startEdit = (c) => {
       setEditing(c);
       focusInput();
       try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
     };
-    body.querySelector('.wp-pm2-col-editing-x').onclick = () => {
+    // ✕ = cancelar: limpia y (si ya hay colecciones) se recoge
+    const xBtn = body.querySelector('.wp-pm2-col-x');
+    xBtn.onclick = () => {
+      this._scaleKeys(xBtn, [0.85, 1.06, 1], 220);
+      this._haptic('light');
       expanded = false;
-      if (editing) setEditing(null); else { input.value = ''; emoji = EMOJIS[0]; paint(); if (!strip.hidden) setPicking(false); cta.disabled = true; paintComposer(); }
+      if (editing) setEditing(null);
+      else { input.value = ''; emoji = EMOJIS[0]; paint(); cta.disabled = true; paintComposer(); centerEmoji(false); }
       input.blur();
     };
 
@@ -5940,13 +5936,12 @@ export class PlaceModal2 {
       }
     };
 
-    // ── Campo: [emoji] Nueva colección ──
-    // Tocar el emoji abre los demás a su derecha (dentro del mismo campo)
-    // con deslizamiento horizontal; cada uno que tocas se pone en el
-    // botón con un pulse. Tocar el emoji otra vez regresa a escribir.
+    // ── Tira de íconos arriba del campo ──
+    // Se arrastra en horizontal; el que tocas crece con pulse y se va al
+    // centro. Los extremos llevan relleno para que también el primero y
+    // el último puedan quedar centrados.
     let emoji = EMOJIS[0];
     const paint = () => {
-      prevEl.textContent = emoji;
       track.querySelectorAll('button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.e === emoji));
     };
     EMOJIS.forEach(e => {
@@ -5955,22 +5950,25 @@ export class PlaceModal2 {
       b.onclick = () => {
         emoji = e; paint();
         this._haptic('light');
-        this._scaleKeys(pick, [0.75, 1.15, 1], 300);
-        this._scaleKeys(b, [0.7, 1.18, 1], 280);   // el elegido también late
+        this._scaleKeys(b, [0.7, 1.18, 1], 280);
+        centerEmoji(true);
       };
       track.appendChild(b);
     });
     paint();
     // Arrastre hecho con JS (sin scroll nativo: no crea capa → sin glitch)
-    this._wireStripDrag(strip, { register: false });
-    const setPicking = (on) => {
-      strip.hidden = !on;
-      input.style.visibility = on ? 'hidden' : '';
-      pick.classList.toggle('wp-pm2-on', on);
-      pick.parentElement.classList.toggle('wp-pm2-picking', on);
-      if (on) input.blur(); else input.focus();
+    const stripCtl = this._wireStripDrag(strip, { register: false });
+    // La tira se mueve solo con transform; si algo la desplaza por su
+    // cuenta (enfocar un ícono, scrollIntoView) se regresa a 0
+    strip.addEventListener('scroll', () => { if (strip.scrollLeft) strip.scrollLeft = 0; }, { passive: true });
+    const centerEmoji = (anim) => {
+      if (rowEl.hidden || !strip.clientWidth) return;
+      const pad = Math.max(0, Math.round(strip.clientWidth / 2 - 24));
+      track.style.paddingLeft = track.style.paddingRight = `${pad}px`;
+      const b = track.querySelector('button.wp-pm2-on');
+      if (b) stripCtl?.scrollTo(b.offsetLeft + b.offsetWidth / 2 - strip.clientWidth / 2, anim);
     };
-    pick.onclick = () => { this._haptic('light'); setPicking(strip.hidden); };
+    const setPicking = () => {}; // (ya no hay modo "elegir ícono": la tira siempre se ve)
     input.oninput = () => {
       const was = cta.disabled;
       cta.disabled = !input.value.trim();
@@ -6018,7 +6016,7 @@ export class PlaceModal2 {
         // Campo listo para otra (y se recoge tras "+ Crear nueva colección")
         input.value = ''; input.blur();
         emoji = EMOJIS[0]; paint();
-        if (!strip.hidden) setPicking(false), input.blur();
+        centerEmoji(false);
         cta.classList.remove('wp-pm2-busy'); cta.disabled = true;
         expanded = false; paintComposer();
       } catch (e) {
