@@ -664,7 +664,7 @@ export class ProfileSheet {
       try {
         const url = await ProfileService.uploadAvatar(me.id, file);
         avEl.style.backgroundImage = `url("${url}")`;
-        if (this._lastProfile) this._lastProfile.avatar_url = url.split('?')[0];
+        if (this._lastProfile) this._lastProfile.avatar_url = url;
         this.onAvatarChanged(url);
         this._toast('✓ Foto actualizada');
       } catch (e) {
@@ -771,24 +771,38 @@ export class ProfileSheet {
       #wp-pf.wp-pf-in .wp-pf-overlay { opacity:1; }
       #wp-pf .wp-pf-sheet {
         position:absolute; left:0; right:0; bottom:0;
-        top:calc(env(safe-area-inset-top,0px) + 56px);
+        top:calc(env(safe-area-inset-top,0px) + 6px);
         background:#fff; border-radius:28px 28px 0 0;
         box-shadow:0 -8px 40px rgba(0,0,0,0.16);
         display:flex; flex-direction:column;
         transform:translateY(105%); transition:transform 0.38s cubic-bezier(0.32,0.9,0.36,1);
       }
       #wp-pf.wp-pf-in .wp-pf-sheet { transform:translateY(0); }
-      .wp-pf-head { position:relative; flex:none; height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 12px; }
+      /* Encabezado transparente encima del contenido, con un degradado
+         blanco que se desvanece hacia abajo (mismo principio que el
+         topbar de la ficha): el contenido pasa por debajo sin cortarse */
+      .wp-pf-head {
+        position:absolute; top:0; left:0; right:0; z-index:3; height:58px;
+        display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+        border-radius:28px 28px 0 0;
+        background:linear-gradient(to bottom, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.88) 100%);
+      }
+      .wp-pf-head::after {
+        content:''; position:absolute; left:0; right:0; top:100%; height:30px; pointer-events:none;
+        background:linear-gradient(to bottom, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0) 100%);
+      }
       .wp-pf-handle { position:absolute; left:50%; top:8px; width:38px; height:4px; margin-left:-19px; border-radius:999px; background:rgba(0,0,0,0.14); }
+      /* ✕ / ⚙ / ← / ⋯ en pills gris suave */
       .wp-pf-hbtn {
-        width:38px; height:38px; padding:0; border:none; border-radius:999px; background:transparent; color:#374151;
+        position:relative; z-index:1;
+        width:48px; height:36px; padding:0; border:none; border-radius:999px; background:#f3f4f6; color:#374151;
         display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent;
         transition:background-color 0.12s;
       }
-      .wp-pf-hbtn:active { background:#f3f4f6; }
+      .wp-pf-hbtn:active { background:#e5e7eb; }
       .wp-pf-htitle { flex:1; min-width:0; text-align:center; font-size:16px; font-weight:800; color:#111827;
         overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 6px; }
-      .wp-pf-body { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+      .wp-pf-body { flex:1; min-height:0; padding-top:58px; border-radius:28px 28px 0 0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
       .wp-pf-body.wp-pf-noscroll { overflow:hidden; }
       .wp-pf-view { padding:0 16px calc(16px + env(safe-area-inset-bottom,0px)); }
 
