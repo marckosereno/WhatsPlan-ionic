@@ -16,6 +16,7 @@ import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { ProfileSheet }     from '/src/components/ProfileSheet.js';
+import { setMapTint }       from '/src/utils/map-tint.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 import { appState }         from '/src/state/AppState.js';
@@ -341,6 +342,7 @@ function setupCategories(mv) {
       container.querySelectorAll('.category-footer-chip').forEach(c => c.classList.remove('active'));
 
       if (isActive) {
+        setMapTint({ cat: null }); // sombras del mapa de vuelta a blanco
         mv._clearPlaceMarkers();
         mv.currentCatId = null;
         window.wpApp.subcatRow?.hide();
@@ -350,6 +352,7 @@ function setupCategories(mv) {
       }
 
       newChip.classList.add('active');
+      setMapTint({ cat: menuKey }); // sombras del mapa con el color de la categoría
       window.wpApp.subcatRow?.showLoading(menuKey);
       await mv.loadCategory(menuKey);
       await window.wpApp.subcatRow?.showSubcats(menuKey);
@@ -594,6 +597,15 @@ try {
         onSubcatSelect: (value) => filterBySubcat(mv, value),
       });
       window.wpApp.subcatRow = subcatRow;
+      // GPS en vivo → sombras verdes (se engancha a su bandera _gpsActive)
+      {
+        let gpsOn = !!subcatRow._gpsActive;
+        Object.defineProperty(subcatRow, '_gpsActive', {
+          configurable: true,
+          get: () => gpsOn,
+          set: (v) => { gpsOn = !!v; setMapTint({ gps: gpsOn }); },
+        });
+      }
 
       // SearchBar — se crea aquí para tener acceso a mv y categories
       const searchBar = new SearchBar({
@@ -608,6 +620,12 @@ try {
         }
       });
       window.wpApp.searchBar = searchBar;
+      // Búsqueda activa → sombras azules
+      {
+        const act = searchBar.activate.bind(searchBar), deact = searchBar.deactivate.bind(searchBar);
+        searchBar.activate   = (...a) => { setMapTint({ search: true });  return act(...a); };
+        searchBar.deactivate = (...a) => { setMapTint({ search: false }); return deact(...a); };
+      }
 
       // Pill buscar — ahora el topbar-right-chip activa la searchbar
       const searchBtn = document.getElementById('topbar-right-chip');
