@@ -140,7 +140,7 @@ export class FooterMenu {
             ${ICON_ACTIVIDADES}
           </div>
           <div class="wp-pill wp-pill-label" id="wpm-act-label" data-item="actividades">
-            Activ...
+            Planes
           </div>
         </div>
 
