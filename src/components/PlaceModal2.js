@@ -1954,14 +1954,66 @@ export class PlaceModal2 {
     const statusTxt   = isOpen === true ? 'Abierto' : isOpen === false ? 'Cerrado' : 'Sin horario';
 
     const photosAll = place.photosUrls || place.photos_urls || (place.photoUrl || place.photo_url ? [place.photoUrl || place.photo_url] : []);
-    // Antes se cortaba a las primeras 4 con un "+N" en la última — eso
-    // no dejaba nada para scrollear de verdad. Ahora se muestran todas
-    // (tope de 12 por performance, casi ningún lugar tiene más fotos
-    // que eso cargadas) en una tira horizontal con scroll real.
-    const photos4 = photosAll.slice(0, 12);
-
     const panelEl = document.querySelector('.map-results-panel-float');
-    const panelHeight = panelEl ? panelEl.offsetHeight : 156;
+    const panelHeight = Math.max(panelEl ? panelEl.offsetHeight : 156, 192);
+
+    // ── Tema por categoría (fondo de color + sticker 3D) ──
+    const cat = String(place.category || '').toUpperCase();
+    const THEMES = {
+      RESTAURANTS:   { bg: 'linear-gradient(135deg,#fff3df 0%,#ffe2bf 100%)', ink: '#3b2205', sub: '#9a5a12', dark: '#3b2205', emoji: '😋' },
+      HEALTH:        { bg: 'linear-gradient(135deg,#eaf3ff 0%,#d4e6ff 100%)', ink: '#0b2a52', sub: '#2a63b0', dark: '#0b2a52', emoji: '👌' },
+      SHOPPING:      { bg: 'linear-gradient(135deg,#f1edff 0%,#e1d9ff 100%)', ink: '#251a5c', sub: '#5b47c2', dark: '#251a5c', emoji: '👗' },
+      ENTERTAINMENT: { bg: 'linear-gradient(135deg,#ffeaf3 0%,#ffd6e8 100%)', ink: '#4f1030', sub: '#b4386f', dark: '#4f1030', emoji: '🎵' },
+      PARKS:         { bg: 'linear-gradient(135deg,#ecf8e6 0%,#d8f0cc 100%)', ink: '#163d0b', sub: '#3f7d22', dark: '#163d0b', emoji: '🌳' },
+    };
+    const th = THEMES[cat] || { bg: 'linear-gradient(135deg,#f4f5f7 0%,#e8eaee 100%)', ink: '#111827', sub: '#4b5563', dark: '#111827', emoji: '📍' };
+    const catInfo = (window.wpApp?._categories || []).find(c => c.key === place.category) || null;
+    const sticker3d = catInfo?.icon3d_url || '';
+    const catLabel = (Array.isArray(place.subcategoryTags) && place.subcategoryTags[0]) || catInfo?.label_es || '';
+
+    // Fotos solo si hay 3+ y la categoría vive de sus fotos (salud y
+    // talleres usan el sticker: sus fotos casi nunca ayudan a decidir)
+    const photoCats = ['RESTAURANTS', 'ENTERTAINMENT', 'PARKS', 'SHOPPING'];
+    const usePhotos = photosAll.length >= 3 && (photoCats.includes(cat) || !cat);
+
+    // ── Dato grande: tiempo caminando si hay GPS; si no, la calificación ──
+    const gps = window.wpApp?.subcatRow?._lastGpsPos || null;
+    const lat = place.location?.lat ?? place.lat, lng = place.location?.lng ?? place.lng;
+    let bigHtml, bigSub;
+    if (gps && lat && lng) {
+      const R = 6371000, toR = Math.PI / 180;
+      const dLat = (lat - gps.lat) * toR, dLng = (lng - gps.lng) * toR;
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(gps.lat * toR) * Math.cos(lat * toR) * Math.sin(dLng / 2) ** 2;
+      const m = 2 * R * Math.asin(Math.sqrt(h)) * 1.25; // calles ≈ 25% más que en línea recta
+      const walk = Math.max(1, Math.round(m / 80));    // ~4.8 km/h
+      if (walk <= 30) { bigHtml = `${walk}<span class="u"> min</span>`; bigSub = `${m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 1000).toFixed(1) + ' km'} caminando`; }
+      else { const car = Math.max(1, Math.round(m / 500)); bigHtml = `${car}<span class="u"> min</span>`; bigSub = `${(m / 1000).toFixed(1)} km en coche`; }
+    } else if (rating) {
+      bigHtml = `${rating.toFixed(1)}<span class="u"> ★</span>`;
+      bigSub = count ? `${count} ${count === 1 ? 'reseña' : 'reseñas'}` : 'Calificación';
+    } else {
+      bigHtml = '<span class="u">Nuevo</span>'; bigSub = 'Aún sin reseñas';
+    }
+    const metaBits = [];
+    if (gps && rating) metaBits.push(`★ ${rating.toFixed(1)}${count ? ` (${count})` : ''}`);
+    if (catLabel) metaBits.push(this._esc(String(catLabel)));
+
+    const statusHtml = isOpen === null ? '' :
+      `<span class="wp-ms2-chip"><i style="background:${isOpen ? '#22c55e' : '#ef4444'}"></i>${isOpen ? 'Abierto' : 'Cerrado'}</span>`;
+
+    // Visual de la derecha: abanico de fotos o sticker 3D
+    const fan = photosAll.slice(0, 3).map((u, i) =>
+      `<span class="wp-ms2-ph" style="--r:${[-10, 6, -2][i]}deg;right:${[66, 34, 6][i]}px;z-index:${i + 1}"><img src="${this._esc(u)}" alt="" onload="this.style.opacity=1"></span>`).join('');
+    const visualHtml = usePhotos
+      ? `<div class="wp-ms2-fan">${fan}</div>`
+      : `<div class="wp-ms2-stk">${sticker3d
+          ? `<img src="${this._esc(sticker3d)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${th.emoji}'}))">`
+          : `<span>${th.emoji}</span>`}</div>`;
+
+    const phone = place.internationalPhoneNumber || place.phone || '';
+    const HEART = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+    const PHONE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>';
+    const ROUTE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>';
 
     ms.style.cssText = [
       'position:fixed',
@@ -1969,62 +2021,46 @@ export class PlaceModal2 {
       'left:12px', 'right:12px',
       'height:' + panelHeight + 'px',
       'border-radius:32px',
-      'background:rgba(255,255,255,0.82)',
-      'backdrop-filter:blur(24px) saturate(1.6)',
-      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
-      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
-      'border:1px solid rgba(255,255,255,0.6)',
+      `background:${th.bg}`,
+      'box-shadow:0 14px 44px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.7)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
-      "font-family:var(--wp-font); font-weight:400;",
+      'font-family:var(--wp-font)',
       'cursor:pointer', 'box-sizing:border-box',
-      'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
+      `--ink:${th.ink}`, `--sub:${th.sub}`, `--dark:${th.dark}`,
     ].join(';');
 
-    const avatarCount = Math.min(count || 4, 5);
-    const avatarsHtml = Array.from({ length: avatarCount }, (_, i) =>
-      `<img src="${getAvatarUrl('guest_' + i)}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i > 0 ? '-7px' : '0'};object-fit:cover;position:relative;z-index:${avatarCount - i};background:#e2e8f0">`
-    ).join('');
-
-    const glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent';
-    const dotStyle = isOpen === true
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 4px rgba(255,255,255,0.8);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
-      : isOpen === false
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 3px rgba(255,255,255,0.7)'
-      : '';
-    const badgeDot = isOpen !== null ? `<span style="${dotStyle}"></span>` : '';
-    const glassBadge = isOpen === true
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#34d36b 0%,#16a34a 100%);color:#fff;border:1px solid transparent;background-origin:border-box'
-      : isOpen === false
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%);color:#fff;border:1px solid transparent;background-origin:border-box'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#a3a9b3 0%,#6b7280 100%);color:#fff;border:1px solid transparent;background-origin:border-box';
-
-    const photoCardHtml = (url) => `
-      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:start;">
-        <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
-      </div>`;
-
+    this._injectMiniSnapStyles();
     ms.innerHTML = `
-      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:20px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
+      <div id="wp-ms-handle"><i></i></div>
+      ${visualHtml}
+      <div class="wp-ms2-top">${statusHtml}
+        <button id="wp-ms-close-btn" class="wp-ms2-btn wp-ms2-x" aria-label="Cerrar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
-        <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:3px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:linear-gradient(180deg,#e3ecf8 0%,#c5d5ea 100%);display:flex;align-items:center;justify-content:center;color:#4a5f7e;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+      <div class="wp-ms2-info">
+        <div class="wp-ms2-big">${bigHtml}</div>
+        <div class="wp-ms2-bigsub">${bigSub}</div>
+        <div class="wp-ms2-name">${this._esc(name)}</div>
+        ${metaBits.length ? `<div class="wp-ms2-meta">${metaBits.join(' · ')}</div>` : ''}
       </div>
-      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px;scroll-padding:0 14px;scrollbar-width:none;">
-        ${photos4.length
-          ? photos4.map((u) => photoCardHtml(u)).join('')
-          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:20px">📷</span></div>`}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:7px">
-          <div style="display:flex;align-items:center">${avatarsHtml}</div>
-          ${count > 0 ? `<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>` : `<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>`}
-        </div>
-        <button id="wp-ms-cta-btn" aria-label="Detalles" style="flex-shrink:0;width:40px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:#1f2937;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="wp-ms2-actions">
+        <button id="wp-ms-cta-btn" class="wp-ms2-btn wp-ms2-cta">Ver lugar</button>
+        <button id="wp-ms-fav-btn" class="wp-ms2-btn wp-ms2-ic" aria-label="Guardar">${HEART}</button>
+        ${!usePhotos && phone ? `<button class="wp-ms2-btn wp-ms2-ic" data-a="call" aria-label="Llamar">${PHONE}</button>` : ''}
+        ${!usePhotos && lat && lng ? `<button class="wp-ms2-btn wp-ms2-ic" data-a="route" aria-label="Cómo llegar">${ROUTE}</button>` : ''}
       </div>`;
+
+    // Llamar / Cómo llegar (solo en la versión con sticker)
+    const callBtn = ms.querySelector('[data-a=call]');
+    if (callBtn) callBtn.onclick = (e) => { e.stopPropagation(); this._haptic('light'); window.open('tel:' + String(phone).replace(/[^\d+]/g, ''), '_system'); };
+    const routeBtn = ms.querySelector('[data-a=route]');
+    if (routeBtn) routeBtn.onclick = (e) => {
+      e.stopPropagation(); this._haptic('light');
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_system');
+    };
+    // Mientras está el minisnap, el globo del mapa (misma info) se esconde
+    const mcEl = this.mapView?.miniCardMarker?.getElement?.();
+    if (mcEl) { mcEl.style.visibility = 'hidden'; this._msHiddenMiniCard = mcEl; }
 
     ms.className = 'wp-minisnap-panel';
     document.dispatchEvent(new CustomEvent('wp:minisnap:show'));
@@ -2048,11 +2084,9 @@ export class PlaceModal2 {
       if (!favBtn) return;
       favBtn.classList.toggle('active', active);
       const svg = favBtn.querySelector('path');
-      if (svg) svg.setAttribute('fill', active ? '#fff' : 'none');
-      favBtn.style.color = active ? '#fff' : '#4a5f7e';
-      favBtn.style.background = active
-        ? 'linear-gradient(180deg,#ff7aa8 0%,#ec4899 100%)'
-        : 'linear-gradient(180deg,#e3ecf8 0%,#c5d5ea 100%)';
+      if (svg) svg.setAttribute('fill', active ? 'currentColor' : 'none');
+      favBtn.style.color = active ? '#e11d48' : '';
+      favBtn.style.background = active ? '#ffe4ea' : '';
     };
     paintFav(false);
     const msUid = this.getCurrentUser?.()?.id || null;
@@ -2082,7 +2116,7 @@ export class PlaceModal2 {
     };
 
     // Feedback de presión: se hunde como botón físico y rebota al soltar
-    [ms.querySelector('#wp-ms-fav-btn'), ms.querySelector('#wp-ms-close-btn'), ms.querySelector('#wp-ms-cta-btn')].forEach(b => {
+    ms.querySelectorAll('.wp-ms2-btn').forEach(b => {
       if (!b) return;
       b.addEventListener('pointerdown', () => { b.style.transform = 'scale(0.88,0.82)'; });
       const up = () => { b.style.transform = ''; };
@@ -2103,9 +2137,51 @@ export class PlaceModal2 {
     const cta = ms.querySelector('#wp-ms-cta-btn');
     if (cta) cta.onclick = goFull;
     ms.addEventListener('click', (e) => {
-      if (!e.target.closest('#wp-ms-cta-btn') && !e.target.closest('#wp-ms-fav-btn') && !e.target.closest('#wp-ms-close-btn') && !e.target.closest('#wp-ms-handle')) goFull();
+      if (!e.target.closest('.wp-ms2-btn') && !e.target.closest('#wp-ms-handle')) goFull();
     });
 
+  }
+
+  _injectMiniSnapStyles() {
+    if (document.getElementById('wp-ms2-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'wp-ms2-styles';
+    st.textContent = `
+      #wp-minisnap-panel #wp-ms-handle { position:absolute; top:0; left:0; right:0; height:22px; z-index:6; display:flex; justify-content:center; padding-top:8px; box-sizing:border-box; cursor:grab; }
+      #wp-minisnap-panel #wp-ms-handle i { width:36px; height:4px; border-radius:2px; background:var(--ink); opacity:0.22; }
+      .wp-ms2-top { position:absolute; top:14px; right:14px; z-index:6; display:flex; align-items:center; gap:6px; }
+      .wp-ms2-chip { display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 10px; border-radius:999px;
+        background:rgba(255,255,255,0.85); color:var(--ink); font-size:12px; font-weight:700; }
+      .wp-ms2-chip i { width:7px; height:7px; border-radius:999px; }
+      .wp-ms2-info { position:absolute; left:18px; top:16px; right:44%; z-index:4; }
+      .wp-ms2-big { font-size:38px; line-height:0.95; font-weight:800; letter-spacing:-0.03em; color:var(--ink); }
+      .wp-ms2-big .u { font-size:16px; font-weight:800; letter-spacing:0; }
+      .wp-ms2-bigsub { margin-top:3px; font-size:12px; font-weight:600; color:var(--sub); }
+      .wp-ms2-name { margin-top:6px; font-size:14.5px; font-weight:800; color:var(--ink); line-height:1.15;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .wp-ms2-meta { margin-top:2px; font-size:12px; color:var(--sub); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .wp-ms2-actions { position:absolute; left:14px; bottom:14px; z-index:6; display:flex; gap:6px; }
+      .wp-ms2-btn { height:36px; border:none; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+        font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1); }
+      .wp-ms2-cta { padding:0 18px; background:var(--dark); color:#fff; }
+      .wp-ms2-ic { width:40px; padding:0; background:rgba(255,255,255,0.9); color:var(--ink); }
+      .wp-ms2-x { width:30px; height:26px; background:rgba(255,255,255,0.85); color:var(--ink); }
+      /* Abanico de fotos que sale por la esquina */
+      .wp-ms2-fan { position:absolute; right:-10px; bottom:-14px; width:180px; height:150px; z-index:2; pointer-events:none; }
+      .wp-ms2-ph { position:absolute; bottom:12px; width:98px; height:124px; border-radius:20px; overflow:hidden; background:rgba(255,255,255,0.6);
+        border:3px solid #fff; box-shadow:0 8px 20px rgba(0,0,0,0.18); transform:rotate(var(--r)); }
+      .wp-ms2-ph img { width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 0.25s; display:block; }
+      /* Sticker 3D de la categoría */
+      .wp-ms2-stk { position:absolute; right:4px; bottom:-6px; width:140px; height:140px; z-index:2; pointer-events:none;
+        display:flex; align-items:center; justify-content:center; }
+      .wp-ms2-stk::before { content:''; position:absolute; inset:14px; border-radius:999px; background:rgba(255,255,255,0.55); }
+      .wp-ms2-stk img, .wp-ms2-stk span { position:relative; width:104px; height:104px; object-fit:contain; transform:rotate(-8deg);
+        font-size:78px; line-height:104px; text-align:center;
+        filter:drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 6px 8px rgba(0,0,0,0.22));
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+    `;
+    document.head.appendChild(st);
   }
 
   _hideMiniSnap() {
@@ -2115,6 +2191,7 @@ export class PlaceModal2 {
     ms.style.transition = 'opacity 0.2s ease';
     ms.style.opacity = '0';
     this._miniSnapPlace = null;
+    if (this._msHiddenMiniCard) { this._msHiddenMiniCard.style.visibility = ''; this._msHiddenMiniCard = null; }
     document.dispatchEvent(new CustomEvent('wp:minisnap:hide'));
     setTimeout(() => { if (ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
   }
