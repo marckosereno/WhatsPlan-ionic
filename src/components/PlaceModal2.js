@@ -1963,13 +1963,26 @@ export class PlaceModal2 {
     const panelEl = document.querySelector('.map-results-panel-float');
     const panelHeight = panelEl ? panelEl.offsetHeight : 156;
 
+    // Tinte por categoría (mismo color que las sombras del mapa): el fondo
+    // pasa de blanco arriba al color de la categoría abajo, y la ✕ y el ♥
+    // apagado toman un tono de ese color
+    const MS_TINT = {
+      RESTAURANTS:   { tint: '#ffe6c7', ink: '#9a5a12' },
+      HEALTH:        { tint: '#d9e8ff', ink: '#2a63b0' },
+      SHOPPING:      { tint: '#e6defe', ink: '#5b47c2' },
+      ENTERTAINMENT: { tint: '#ffdeeb', ink: '#b4386f' },
+      PARKS:         { tint: '#ddf2d2', ink: '#3f7d22' },
+    }[String(place.category || '').toUpperCase()] || null;
+    const msBtnBg  = MS_TINT ? MS_TINT.ink + '1f' : 'rgba(0,0,0,0.05)';
+    const msBtnInk = MS_TINT ? MS_TINT.ink : '#6b7280';
+
     ms.style.cssText = [
       'position:fixed',
       'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
       'left:12px', 'right:12px',
       'height:' + panelHeight + 'px',
       'border-radius:32px',
-      'background:rgba(255,255,255,0.82)',
+      MS_TINT ? `background:linear-gradient(180deg,rgba(255,255,255,0.86) 0%,${MS_TINT.tint}e6 100%)` : 'background:rgba(255,255,255,0.82)',
       'backdrop-filter:blur(24px) saturate(1.6)',
       '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
       'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
@@ -2011,7 +2024,7 @@ export class PlaceModal2 {
       <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
         <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
         <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:3px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+        <div style="position:absolute;right:0;display:flex;align-items:center;gap:3px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:${msBtnBg};display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:34px;height:30px;padding:0;border-radius:999px;border:none;background:${msBtnBg};display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
       </div>
       <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px;scroll-padding:0 14px;scrollbar-width:none;">
         ${photos4.length
@@ -2049,10 +2062,10 @@ export class PlaceModal2 {
       favBtn.classList.toggle('active', active);
       const svg = favBtn.querySelector('path');
       if (svg) svg.setAttribute('fill', active ? '#fff' : 'none');
-      favBtn.style.color = active ? '#fff' : '#9ca3af';
+      favBtn.style.color = active ? '#fff' : msBtnInk;
       favBtn.style.background = active
         ? 'linear-gradient(180deg,#ff7aa8 0%,#ec4899 100%)'
-        : 'rgba(0,0,0,0.05)';
+        : msBtnBg;
     };
     paintFav(false);
     const msUid = this.getCurrentUser?.()?.id || null;
