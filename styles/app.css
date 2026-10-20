@@ -447,7 +447,7 @@ ion-app {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
-  font-size: 15px; font-weight: 400; color: #374151;
+  font-size: 15px; font-weight: 800; color: #111827;
   font-family: var(--wp-font);
   white-space: nowrap;
 }
