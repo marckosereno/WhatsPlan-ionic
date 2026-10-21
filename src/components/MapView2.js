@@ -272,6 +272,11 @@ function injectLandmarkStyles() {
     .place-marker-el > * {
       transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
     }
+    /* Pin que vuelve a entrar a la pantalla (ver _cullMarkers): aparece
+       con un pop chico. Usa la propiedad "scale" (no transform) para no
+       pelearse con el parallax del drag, que escribe transform. */
+    @keyframes wpPinEnter { from { opacity:0; scale:0.6; } to { opacity:1; scale:1; } }
+    .place-marker-el.wp-pin-enter > * { animation: wpPinEnter 0.26s cubic-bezier(0.34,1.4,0.64,1) both; }
     /* Durante el drag la transición se APAGA. El parallax escribe un
        transform nuevo en cada frame; con la transición activa, cada una
        de esas escrituras arranca una animación de 0.32s por pin — en el
@@ -281,9 +286,13 @@ function injectLandmarkStyles() {
        traba: el drag "no engancha" hasta soltar y volver a tocar.
        La transición sigue existiendo para lo único que se la quería: el
        regreso suave a 0 al soltar, cuando esta clase ya se removió. */
-    body.map-dragging .place-marker-el > * {
+    /* Solo los pines VISIBLES que reciben el parallax (clase .wp-px, la
+       pone JS al arrancar el drag). Antes esto iba en body.map-dragging
+       para TODOS los pines: cada uno se volvía una capa aparte durante
+       el drag aunque estuviera fuera de la pantalla. */
+    .place-marker-el.wp-px > * {
       transition: none;
-      will-change: transform; /* hint de compositor solo mientras se usa */
+      will-change: transform;
     }
 
     /* ── Transición FLIP: sticker de cluster → pantalla collage ────────
@@ -391,6 +400,10 @@ function injectLandmarkStyles() {
 
     /* ── Editor de posiciones (SuperUser) ─────────────────────────────── */
     .wp-ce-cedit { color: #1a5cf5; }
+    /* Lo que queda DETRÁS del slide abierto (mapa con sus pins animados,
+       minicard, paneles): oculto mientras el fondo blanco del slide lo
+       tapa completo. Ver _coverBehindSlide. */
+    .wp-ce-under { visibility: hidden; }
     .wp-ce-editing .wp-ce-cstage { cursor: crosshair; }
     .wp-ce-editpanel {
       position: fixed; left: 12px; right: 12px;
@@ -683,25 +696,61 @@ export class MapView {
       let _parallaxAnchor = null, _parallaxStartPx = null;
       const PARALLAX_LAG = 0.14;   // fracción del desplazamiento — sutil a propósito
       const PIN_SHRINK    = 0.97;  // achique MÍNIMO pedido — casi imperceptible
-      const _applyPinParallax = (dx, dy) => {
-        const t = `translate3d(${(-dx * PARALLAX_LAG).toFixed(1)}px,${(-dy * PARALLAX_LAG).toFixed(1)}px,0) scale(${PIN_SHRINK})`;
+      // El efecto se aplica SOLO a los pines que están en pantalla al
+      // arrancar el drag (más un margen), y como máximo PX_MAX — los más
+      // cercanos al centro. Antes se escribía en TODOS los pines en cada
+      // frame (y todos se volvían capa aparte), aunque estuvieran lejos.
+      const PX_MARGIN = 120;  // px fuera de pantalla que todavía cuentan
+      const PX_MAX    = 60;
+      let _pxEls = [], _pxRaf = 0, _pxDx = 0, _pxDy = 0;
+      const _pickParallaxPins = () => {
+        const t0 = performance.now();
+        const cv = this.map.getCanvas();
+        const W = cv.clientWidth, H = cv.clientHeight;
+        const cx = W / 2, cy = H / 2;
+        const picked = [];
         for (const el of this.markerEls) {
-          if (el.style.display === 'none') continue; // oculto por estar agrupado en un cluster
-          if (el.style.visibility === 'hidden') continue; // no revelado aún por zoom — no vale gastar en él
-          const root = el.firstElementChild; // siempre .place-pin-root — ver _buildPinHtml
-          if (root) root.style.transform = t;
+          if (el.style.display === 'none') continue;      // agrupado en un cluster
+          if (el.style.visibility === 'hidden') continue; // no revelado aún por zoom
+          const ll = el._marker?.getLngLat?.();
+          if (!ll) continue;
+          const p = this.map.project(ll);
+          if (p.x < -PX_MARGIN || p.y < -PX_MARGIN || p.x > W + PX_MARGIN || p.y > H + PX_MARGIN) continue;
+          picked.push([(p.x - cx) * (p.x - cx) + (p.y - cy) * (p.y - cy), el]);
         }
+        picked.sort((a, b) => a[0] - b[0]);
+        _pxEls = picked.slice(0, PX_MAX).map(x => x[1]);
+        _pxEls.forEach(el => el.classList.add('wp-px'));
+        console.log(`[DIAG-PARALLAX] pines=${this.markerEls.length} en pantalla=${picked.length} con efecto=${_pxEls.length} (${(performance.now() - t0).toFixed(1)}ms)`); // [DIAG] temporal
+      };
+      const _applyPinParallax = (dx, dy) => {
+        // Un solo write por frame aunque 'drag' dispare más seguido
+        _pxDx = dx; _pxDy = dy;
+        if (_pxRaf) return;
+        _pxRaf = requestAnimationFrame(() => {
+          _pxRaf = 0;
+          const t = `translate3d(${(-_pxDx * PARALLAX_LAG).toFixed(1)}px,${(-_pxDy * PARALLAX_LAG).toFixed(1)}px,0) scale(${PIN_SHRINK})`;
+          for (const el of _pxEls) {
+            const root = el.firstElementChild; // siempre .place-pin-root — ver _buildPinHtml
+            if (root) root.style.transform = t;
+          }
+        });
       };
       const _clearPinParallax = () => {
-        for (const el of this.markerEls) {
+        if (_pxRaf) { cancelAnimationFrame(_pxRaf); _pxRaf = 0; }
+        for (const el of _pxEls) {
+          el.classList.remove('wp-px'); // vuelve la transición → regreso suave a 0
           const root = el.firstElementChild;
           if (root && root.style.transform) root.style.transform = '';
         }
+        _pxEls = [];
       };
       this.map.on('dragstart', () => {
         document.body.classList.add('map-dragging');
         _parallaxAnchor = this.map.getCenter();
         _parallaxStartPx = this.map.project(_parallaxAnchor);
+        _clearPinParallax();
+        _pickParallaxPins();
         // Si el drag del mapa arrancó justo encima de un sticker de
         // cluster, el pointermove local de ese elemento puede no llegar a
         // dispararse (MapLibre se queda con el gesto táctil primero) — el
@@ -724,6 +773,13 @@ export class MapView {
           this._cancelActiveClusterPress();
           this._cancelActiveClusterPress = null;
         }
+      });
+      // Mientras se mueve el mapa, cada ~200ms entran los pines que se
+      // acercan a la pantalla (y salen los que quedaron lejos)
+      let _cullT = 0;
+      this.map.on('move', () => {
+        if (_cullT) return;
+        _cullT = setTimeout(() => { _cullT = 0; this._cullMarkers(); }, 200);
       });
       this.map.on('drag', () => {
         if (!_parallaxAnchor) return;
@@ -857,6 +913,7 @@ export class MapView {
       this._lastLabelZoom = null;
       this.map.on('zoomend', () => {
         if (this._clusterExpandEl) return; // el carrusel expandido mueve la cámara solo — no recalcular nada mientras está abierto
+        this._cullMarkers();
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
@@ -864,6 +921,7 @@ export class MapView {
       });
       this.map.on('moveend', () => {
         if (this._clusterExpandEl) return;
+        this._cullMarkers();
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
@@ -1302,8 +1360,85 @@ export class MapView {
     if (this._allLandmarks) this._renderLandmarks([]);
   }
 
+  // ── Solo los pines de la pantalla viven en el mapa ─────────────────
+  // MapLibre reposiciona TODOS los markers en cada cuadro del drag/zoom,
+  // estén donde estén. Los que quedan lejos de la pantalla se quitan del
+  // mapa (marker.remove(): el elemento sale del DOM, pero se conserva con
+  // todo su estado en markerEls) y vuelven a entrar cuando la pantalla se
+  // acerca: de a pocos por cuadro, primero los más cercanos al centro y
+  // con un pop chico. Los datos (allPlaces, clusters, labels) no cambian.
+  _cullMarkers() {
+    if (!this.map || this._clusterExpandEl || !this.markerEls?.length) return;
+    const cv = this.map.getCanvas();
+    const W = cv.clientWidth, H = cv.clientHeight;
+    const M = Math.max(W, H) * 0.35; // margen: se cargan un poco antes de llegar
+    const keep = this.markerEls[this.miniCardIndex]; // el del minicard abierto nunca se quita
+    const add = [];
+    let removed = 0, inDom = 0;
+    for (const el of this.markerEls) {
+      const m = el._marker;
+      if (!m) continue;
+      let inView = el === keep || el.classList.contains('marker-highlighted');
+      let d = 0;
+      if (!inView) {
+        const p = this.map.project(m.getLngLat());
+        inView = p.x > -M && p.y > -M && p.x < W + M && p.y < H + M;
+        d = (p.x - W / 2) ** 2 + (p.y - H / 2) ** 2;
+      }
+      if (inView) {
+        if (el._wpCulled) add.push([d, el]); else inDom++;
+      } else if (!el._wpCulled && !this._activeTouchMarkerEls?.has(el)) {
+        // (nunca uno con un dedo encima: ver _activeTouchMarkerEls)
+        m.remove(); el._wpCulled = true; removed++;
+      }
+    }
+    add.sort((a, b) => a[0] - b[0]);
+    this._cullQueue = add.map(x => x[1]);
+    this._drainCullQueue();
+    if (removed || add.length) console.log(`[DIAG-CULL] pines=${this.markerEls.length} ya en pantalla=${inDom} entran=${add.length} salen=${removed}`); // [DIAG] temporal
+  }
+  // ¿El nombre del pin necesita 2 renglones? Se mide una vez, cuando el
+  // pin ya está en el DOM (antes se medía al crearlo; ahora el pin puede
+  // entrar al mapa más tarde)
+  _measurePinLabel(el) {
+    if (el._labelMultiline !== undefined) return;
+    requestAnimationFrame(() => {
+      const label = el.querySelector('.place-pin-label');
+      if (!label || !el.isConnected) return;
+      // Medir con nowrap — el label ya tiene max-width:90px del buildPinHtml
+      const prev = label.style.cssText;
+      label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
+      el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
+      label.style.cssText = prev; // restaurar estado inicial
+    });
+  }
+
+  _drainCullQueue() {
+    if (this._cullRaf) return;
+    const step = () => {
+      this._cullRaf = 0;
+      const q = this._cullQueue || [];
+      let n = 0;
+      while (q.length && n < 12) {         // máx. 12 pines nuevos por cuadro
+        const el = q.shift();
+        if (!el._wpCulled || !el._marker || !this.markerEls.includes(el)) continue;
+        el._marker.addTo(this.map);
+        el._wpCulled = false;
+        this._measurePinLabel(el);
+        el.classList.remove('wp-pin-enter');
+        void el.offsetWidth;               // re-dispara el pop
+        el.classList.add('wp-pin-enter');
+        n++;
+      }
+      if (q.length) this._cullRaf = requestAnimationFrame(step);
+    };
+    this._cullRaf = requestAnimationFrame(step);
+  }
+
   // ── Markers ───────────────────────────────────────────────────────
   _clearPlaceMarkers() {
+    if (this._cullRaf) { cancelAnimationFrame(this._cullRaf); this._cullRaf = 0; }
+    this._cullQueue = [];
     if (this._labelTimers) this._labelTimers.forEach(t => clearTimeout(t));
     this._labelTimers = [];
     this.markers.forEach(m => m?.remove());
@@ -1447,25 +1582,13 @@ export class MapView {
         }
       });
 
+      // El marker se crea pero NO se agrega al mapa todavía: al terminar
+      // el recorrido se agregan solo los que caen en la vista inicial
+      // (ver abajo); el resto entra después, progresivo (_cullMarkers).
       const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .addTo(this.map);
+        .setLngLat([lng, lat]);
 
       el._marker = marker;
-
-      // Pre-calcular modo del label una sola vez — el elemento ya está en el DOM
-      // (addTo lo insertó), invisible (opacity:0/visibility:hidden del CSS inicial),
-      // pero medible. Guardamos si necesita 1 o 2 líneas en el elemento para que
-      // _updateLabelsProgressive solo aplique, nunca mida.
-      requestAnimationFrame(() => {
-        const label = el.querySelector('.place-pin-label');
-        if (!label) return;
-        // Medir con nowrap — el label ya tiene max-width:90px del buildPinHtml
-        const prev = label.style.cssText;
-        label.style.cssText = prev + ';white-space:nowrap;display:block;visibility:hidden;opacity:0;';
-        el._labelMultiline = label.scrollWidth > label.offsetWidth + 2;
-        label.style.cssText = prev; // restaurar estado inicial
-      });
 
       // Foto lazy con IntersectionObserver
       if (photoUrl) {
@@ -1495,11 +1618,36 @@ export class MapView {
       hasCoords = true;
     });
 
+    // Vista inicial de la categoría: centro de todos sus lugares, con un
+    // zoom más cercano (antes 15) para que de entrada se carguen pocos
+    // pines; los demás van entrando al moverte por el mapa.
+    const OPEN_ZOOM = 16;
     if (hasCoords) {
+      const c = bounds.getCenter();
+      const cv = this.map.getCanvas();
+      const W = cv.clientWidth, H = cv.clientHeight, M = Math.max(W, H) * 0.35;
+      // Posición en pantalla que tendrá cada pin en esa vista (Mercator,
+      // sin esperar a que la cámara llegue)
+      const ws = 512 * Math.pow(2, OPEN_ZOOM);
+      const X = (lng) => (lng + 180) / 360 * ws;
+      const Y = (lat) => { const sn = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)) * ws; };
+      const cx = X(c.lng), cy = Y(c.lat);
+      let added = 0;
+      this.markerEls.forEach(el => {
+        const ll = el._marker.getLngLat();
+        const dx = X(ll.lng) - cx, dy = Y(ll.lat) - cy;
+        if (Math.abs(dx) < W / 2 + M && Math.abs(dy) < H / 2 + M) {
+          el._marker.addTo(this.map); el._wpCulled = false; added++;
+          this._measurePinLabel(el);
+        } else {
+          el._wpCulled = true;
+        }
+      });
+      console.log(`[DIAG-CULL] categoría: ${this.markerEls.length} pines, ${added} en la vista inicial (zoom ${OPEN_ZOOM})`); // [DIAG] temporal
       this.map.fitBounds(bounds, {
         padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: 15,
-        minZoom: 15
+        maxZoom: OPEN_ZOOM,
+        minZoom: OPEN_ZOOM
       });
     }
     this._refreshActivityBadges();
@@ -1507,6 +1655,9 @@ export class MapView {
     this._assignZoomThresholds();
     this._updatePinsByZoom();
     this._updateClusters();
+    // Si el encuadre no movió la cámara (no hay moveend), igual se quitan
+    // los pines que quedaron fuera de la pantalla
+    setTimeout(() => this._cullMarkers(), 500);
     // Re-aplicar tras fitBounds (el zoom puede cambiar)
     this.map.once('moveend', () => {
       this._updatePinsByZoom();
@@ -2139,6 +2290,9 @@ export class MapView {
     // cluster simplemente se ignora.
     if (this._slideFlipActive) return;
     if (this._clusterExpandEl) this._closeClusterExpand();
+    // Lo que ya estaba en pantalla ANTES del slide (para ocultarlo cuando
+    // termine de abrir; lo que crea el slide no está en esta lista)
+    const beforeSlide = new Set(document.body.children);
 
     // Cancelar YA cualquier timer de long-press que haya quedado corriendo
     // en el sticker que se está por abrir. Llegar hasta acá significa que
@@ -3081,6 +3235,17 @@ export class MapView {
         preloadedHeroUrl: rawUrl,
         flipContext: {
           onDismiss: () => {
+            // El header del slide (volver / compartir / ⋯) responde YA al
+            // cerrar la ficha: es fijo, no se mueve con el pulse-in de las
+            // tarjetas, así que no hay riesgo de tocar algo desacomodado.
+            // Antes TODO el slide quedaba sin responder ~0.7s y el primer
+            // toque en "volver" se perdía (había que tocar 2 veces).
+            const slideHeader = wrap.querySelector('.wp-ce-collage-header');
+            if (slideHeader) slideHeader.style.pointerEvents = 'auto';
+            // Si la persona cierra el slide antes de que termine el
+            // pulse-in, los pasos pendientes ya no deben tocar nada (un
+            // applyLayout tardío volvía a poner el fondo blanco del slide).
+            const alive = () => this._clusterExpandEl === wrap;
             // try/finally: el cleanup de abajo (destrabar el slide)
             // tiene que correr SIEMPRE, incluso si el pulse-in fallara.
             try {
@@ -3111,6 +3276,7 @@ export class MapView {
               // el pulse de las tarjetas evita que "aparezcan" antes de
               // que haya algo de pantalla libre para mostrarlas.
               setTimeout(() => {
+                if (!alive()) return;
                 cardClone.style.visibility = '';
                 cardClone.style.border = startBorder;
                 pulseIn(cardClone, cardClone.style.transform || '');
@@ -3120,6 +3286,7 @@ export class MapView {
                 // grupo "entrando desde el mapa" (igual que la apertura
                 // original del cluster), no como dos eventos separados.
                 setTimeout(() => {
+                  if (!alive()) return;
                   const others = clones.filter(c => c.clone !== cardClone);
                   others.forEach(({ clone }) => {
                     // El transform base real (sin el " scale(0.88)" que
@@ -3136,15 +3303,16 @@ export class MapView {
                   // afina valores exactos (opacidad real por distancia,
                   // etc.) sin arriesgarse a pisar el pulso a mitad de
                   // camino.
-                  requestAnimationFrame(() => applyLayout(activeIdx, true));
+                  requestAnimationFrame(() => { if (alive()) applyLayout(activeIdx, true); });
                 }, 35);
               }, 70);
             } catch (err) {
               console.error('[FLIP] error en el pulse-in de vuelta hacia el slide', err);
             } finally {
               setTimeout(() => {
-                cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 clusterEditing = false; flipInProgress = false; this._slideFlipActive = false;
+                if (!alive()) return; // el slide ya se cerró
+                cardClone.style.opacity = ''; cardClone.style.visibility = ''; cardClone.style.border = startBorder; // la tarjeta real vuelve a mostrarse, con su borde original
                 // wrap (con el botón de editar en su header) se reactiva
                 // con un pequeño margen EXTRA aparte del resto del
                 // cleanup — un toque que llega justo cuando el layout
@@ -3153,7 +3321,16 @@ export class MapView {
                 // ve en pantalla. 120ms de margen no se notan como
                 // demora, pero alcanzan para que todo esté quieto antes
                 // de aceptar el próximo toque.
-                setTimeout(() => { wrap.style.pointerEvents = ''; }, 120);
+                // El header vuelve a heredar del wrap RECIÉN cuando el wrap
+                // ya responde: si se le quitaba antes, un toque en "volver"
+                // que empezaba con el header activo terminaba (pointerup)
+                // con el header desactivado → no había click y había que
+                // tocar de nuevo (visto con [DIAG-CLOSE]: toque a +534ms
+                // sin doClose).
+                setTimeout(() => {
+                  wrap.style.pointerEvents = '';
+                  if (slideHeader) slideHeader.style.pointerEvents = '';
+                }, 120);
               }, 70 + 35 + 420 + 30); // retraso inicial + desfase de las demás + duración del pulso más largo + margen chico
             }
           },
@@ -3198,6 +3375,7 @@ export class MapView {
     // después de que arrancó el FLIP — así el ojo primero sigue a las
     // fotos y el texto llega como remate, no todo junto de golpe.
     setTimeout(() => wrap.classList.add('wp-ce-chrome-in'), 260);
+    this._coverBehindSlide(wrap, beforeSlide);
 
     // ── Drag real, 1:1 con el dedo, con parallax entre lugares ─────────
     // Los clones NO son hijos de `stage` (viven en document.body para
@@ -4133,6 +4311,50 @@ export class MapView {
     this._clusterExpandFlip = { clones, pieces, stickerEl };
   }
 
+  // ── Lo de atrás del slide ───────────────────────────────────────────
+  // El slide tiene un fondo blanco opaco a pantalla completa, pero el mapa
+  // (WebGL), los pins con animaciones infinitas (pulsos, flotado,
+  // shimmer), el minicard y los paneles seguían vivos detrás, gastando
+  // GPU en cada cuadro. Mismo arreglo que la ficha (PlaceModal2
+  // _coverBehind): cuando el slide terminó de abrir (~1s, el FLIP de
+  // entrada ya midió el mapa), se ocultan y se congelan sus animaciones;
+  // al cerrar vuelven antes del FLIP de regreso.
+  _coverBehindSlide(wrap, beforeSlide) {
+    clearTimeout(this._slideCoverTimer);
+    this._slideCoverTimer = setTimeout(() => {
+      if (this._clusterExpandEl !== wrap) return; // ya se cerró
+      beforeSlide.forEach(n => {
+        if (!n.isConnected || n.parentNode !== document.body) return;
+        if (n.id === 'eruda') return;
+        if (/^(SCRIPT|STYLE|LINK|TEMPLATE|SVG)$/i.test(n.tagName)) return;
+        if (n.id && n.id.startsWith('wp-pm2')) return; // la ficha y sus hojas
+        n.classList.add('wp-ce-under');
+      });
+      // Congelar sus animaciones (también las de style="" inline)
+      try {
+        this._slidePausedAnims = document.getAnimations().filter(a => {
+          const t = a.effect?.target;
+          return t && t.closest?.('.wp-ce-under') && a.playState === 'running';
+        });
+        this._slidePausedAnims.forEach(a => a.pause());
+      } catch (_) { this._slidePausedAnims = []; }
+      // Red de seguridad: si el slide desaparece por un camino que no pase
+      // por _closeClusterExpand, el mapa vuelve a mostrarse solo
+      clearInterval(this._slideCoverWatch);
+      this._slideCoverWatch = setInterval(() => {
+        if (!wrap.isConnected || this._clusterExpandEl !== wrap) this._uncoverBehindSlide();
+      }, 500);
+    }, 1000);
+  }
+
+  _uncoverBehindSlide() {
+    clearTimeout(this._slideCoverTimer);
+    clearInterval(this._slideCoverWatch);
+    document.querySelectorAll('.wp-ce-under').forEach(n => n.classList.remove('wp-ce-under'));
+    (this._slidePausedAnims || []).forEach(a => { try { a.play(); } catch (_) {} });
+    this._slidePausedAnims = [];
+  }
+
   // NOTA: el FLIP tarjeta→ficha (_flipCardToFicha) vive ahora como
   // función LOCAL dentro de _openClusterExpand() — necesita acceso
   // directo a `clones`/`wrap`/`applyLayout` de esa función para poder
@@ -4141,6 +4363,8 @@ export class MapView {
 
   _closeClusterExpand(restoreCamera = true) {
     if (!this._clusterExpandEl) return;
+    this._slideFlipActive = false; // cerrar a mitad del regreso desde la ficha no deja nada trabado
+    this._uncoverBehindSlide(); // el mapa vuelve ANTES del FLIP de regreso
     if (this._slideBackdropWatchdog) { clearInterval(this._slideBackdropWatchdog); this._slideBackdropWatchdog = null; }
     const wrap = this._clusterExpandEl;
     const flip = this._clusterExpandFlip;
@@ -4377,10 +4601,9 @@ export class MapView {
             <img src="${photoUrl}" data-fb-icon="${mcIcon3d}" data-fb-emoji="${mcEmoji}" data-fb-bg="${cardGrad}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1;this.parentNode.style.animation='none';this.parentNode.style.background='none'" onerror="window._wpMcImgError(this)">
           </div>`
         : `<div style="width:44px;height:44px;border-radius:9px;background:${cardGrad};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;">${mcIconInner}</div>`}
-      <div style="flex:1;min-width:0;overflow:hidden;">
-        <div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">${place.name}</div>
-        ${rating  ? `<div style="font-size:12px;color:#f59e0b;margin-top:1px;line-height:1.3;">${rating}</div>` : ''}
-        ${address ? `<div style="font-size:11px;color:#9ca3af;margin-top:1px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${address}</div>` : ''}
+      <div style="flex:1;min-width:0;overflow:hidden;text-align:center;">
+        <!-- Solo el nombre: calificación, dirección y lo demás van en el minisnap -->
+        <div style="font-size:14px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">${place.name}</div>
       </div>
       <div style="width:28px;height:28px;border-radius:50%;background:#e5e5e5;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#9ca3af;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
