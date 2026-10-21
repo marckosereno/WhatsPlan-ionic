@@ -1055,9 +1055,6 @@ export class MapView {
       style.layers.forEach(layer => {
         const id  = layer.id;
         const idL = id.toLowerCase();
-        // Capas que agrega este mismo método (si se vuelve a aplicar el
-        // estilo no deben tratarse como calles/edificios otra vez)
-        if (/-wp-(case|dash|outline)$/.test(id)) return;
 
         // ── Edificios 3D (building-3d, fill-extrusion) → aplanar, NO eliminar ──
         if (layer.type === 'fill-extrusion') {
@@ -1065,8 +1062,8 @@ export class MapView {
             try {
               map.setPaintProperty(id,'fill-extrusion-height',0);
               map.setPaintProperty(id,'fill-extrusion-base',0);
-              map.setPaintProperty(id,'fill-extrusion-color','#f6ecdc');
-              map.setPaintProperty(id,'fill-extrusion-opacity',1);
+              map.setPaintProperty(id,'fill-extrusion-color','#d8d2c4');
+              map.setPaintProperty(id,'fill-extrusion-opacity',0.85);
             } catch(_){}
             // Outline manual — fill-extrusion no soporta line-color nativo
             const outlineId = id + '-wp-outline';
@@ -1076,7 +1073,7 @@ export class MapView {
                   id: outlineId, type: 'line',
                   source: layer.source, 'source-layer': layer['source-layer'],
                   minzoom: layer.minzoom || 0,
-                  paint: { 'line-color':'#ead9bf', 'line-opacity':1, 'line-width':0.8 }
+                  paint: { 'line-color':'#c4bdaf', 'line-opacity':0.6, 'line-width':0.5 }
                 });
               } catch(_){}
             }
@@ -1090,27 +1087,23 @@ export class MapView {
 
         // ── Fondo ──────────────────────────────────────────────
         if (layer.type === 'background')
-          { try { map.setPaintProperty(id,'background-color','#f7f6f3'); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'background-color','#f2efe8'); } catch(_){} return; }
 
         // ── Agua ────────────────────────────────────────────────
         if (layer.type === 'fill' && (idL.includes('water') || idL.includes('ocean') || idL.includes('lake')))
-          { try { map.setPaintProperty(id,'fill-color','#b3e5f8'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#5bb8f5'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
         if (layer.type === 'line' && (idL.startsWith('water') || idL.includes('waterway') || idL.includes('river')))
-          { try { map.setPaintProperty(id,'line-color','#b3e5f8'); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'line-color','#5bb8f5'); } catch(_){} return; }
 
         // ── Parques / vegetación — tono suave ──────────────────
         if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
-          { try {
-              map.setPaintProperty(id,'fill-color','#eef6e7');
-              map.setPaintProperty(id,'fill-opacity',1);
-              map.setPaintProperty(id,'fill-outline-color','#c3e6b8'); // contorno verde fino
-            } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color','#a8d5a2'); map.setPaintProperty(id,'fill-opacity',0.65); } catch(_){} return; }
 
         // ── Landuse / manzanas — relleno sutil tipo Apple Maps ──
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
           { try {
-              map.setPaintProperty(id,'fill-color','#f1ece3');
-              map.setPaintProperty(id,'fill-opacity',0.55);
+              map.setPaintProperty(id,'fill-color','#e6e1d6');
+              map.setPaintProperty(id,'fill-opacity',0.5);
               map.setLayerZoomRange(id, layer.minzoom || 0, 24); // quitar maxzoom:12 del estilo original
             } catch(_){} return; }
         // Boundaries administrativos — ocultar (no son manzanas)
@@ -1120,9 +1113,9 @@ export class MapView {
         // ── Edificios fill (zoom bajo) — color + outline nativo ──
         if (layer.type === 'fill' && idL.includes('building'))
           { try {
-              map.setPaintProperty(id,'fill-color','#f6ecdc');
-              map.setPaintProperty(id,'fill-opacity',1);
-              map.setPaintProperty(id,'fill-outline-color','#ead9bf');
+              map.setPaintProperty(id,'fill-color','#d8d2c4');
+              map.setPaintProperty(id,'fill-opacity',0.85);
+              map.setPaintProperty(id,'fill-outline-color','#c4bdaf');
             } catch(_){} return; }
 
         // ── Calles: casing — ocultar para look plano (sin doble sombra 3D) ──
@@ -1137,29 +1130,12 @@ export class MapView {
             const isSec  = idL.includes('secondary') || idL.includes('tertiary');
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
-            // Calles gris lavanda con un contorno un tono más oscuro (capa
-            // "-wp-case" debajo, 2px más ancha). Sin la rayita central.
-            let fillWidth, caseWidth;
-            if (isMoto)      { fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,14,16,20,18,26]; caseWidth = ['interpolate',['linear'],['zoom'],10,8,14,16,16,22,18,28]; }
-            else if (isPrim) { fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,11,16,16,18,22]; caseWidth = ['interpolate',['linear'],['zoom'],11,7,14,13,16,18,18,24]; }
-            else if (isSec)  { fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,13,18,18]; caseWidth = ['interpolate',['linear'],['zoom'],12,6,14,10,16,15,18,20]; }
-            else             { fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,9,18,14]; caseWidth = ['interpolate',['linear'],['zoom'],13,4,14,7,16,11,18,16]; }
-            map.setPaintProperty(id,'line-color', isMoto || isPrim ? '#cfd6e4' : '#d9deea');
+            let fillWidth, dashColor;
+            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]; dashColor = 'rgba(255,255,255,0.85)'; }
+            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]; dashColor = 'rgba(255,255,255,0.85)'; }
+            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = 'rgba(180,172,156,0.7)'; }
+            else             { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = 'rgba(180,172,156,0.7)'; }
             map.setPaintProperty(id,'line-width',fillWidth);
-            const caseId = id + '-wp-case';
-            if (!map.getLayer(caseId)) {
-              try {
-                map.addLayer({
-                  id: caseId, type: 'line',
-                  source: layer.source, 'source-layer': layer['source-layer'],
-                  filter: layer.filter,
-                  minzoom: layer.minzoom || 0,
-                  layout: { 'line-cap': 'round', 'line-join': 'round' },
-                  paint: { 'line-color': '#c3cadb', 'line-width': caseWidth },
-                }, id); // justo debajo de la calle
-              } catch(_){}
-            }
-            const dashColor = 'rgba(0,0,0,0)';
 
             // ── Línea central punteada (look Petal/Huawei Maps) ──────
             // No se puede lograr con line-dasharray en la MISMA capa: eso
@@ -1173,7 +1149,7 @@ export class MapView {
             // real); gris suave sobre las calles blancas (ahí el blanco
             // sería invisible contra blanco).
             const dashId = id + '-wp-dash';
-            if (dashColor !== 'rgba(0,0,0,0)' && !map.getLayer(dashId)) {
+            if (!map.getLayer(dashId)) {
               try {
                 map.addLayer({
                   id: dashId, type: 'line',
@@ -1193,7 +1169,7 @@ export class MapView {
                   }
                 }, firstSymbolId); // debajo de los nombres de calle — si no, la rayita tapaba el texto
               } catch(_){}
-            } else if (map.getLayer(dashId)) {
+            } else {
               map.setPaintProperty(dashId,'line-color',dashColor);
             }
           } catch(_){} return;
@@ -1209,14 +1185,10 @@ export class MapView {
             const isWaterL = idL.includes('water');
 
             if (isRoad) {
-              // Nombres de calle en MAYÚSCULAS espaciadas, gris oscuro
-              map.setLayoutProperty(id,'text-transform','uppercase');
-              map.setLayoutProperty(id,'text-letter-spacing',0.18);
-              map.setLayoutProperty(id,'text-font',['Noto Sans Bold']);
-              map.setLayoutProperty(id,'text-size',['interpolate',['linear'],['zoom'],14,9,17,12]);
-              map.setPaintProperty(id,'text-color','#55585f');
-              map.setPaintProperty(id,'text-halo-color','rgba(247,246,243,0.95)');
-              map.setPaintProperty(id,'text-halo-width',1.6);
+              map.setLayoutProperty(id,'text-size',9);
+              map.setPaintProperty(id,'text-color','#9a9080');
+              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
+              map.setPaintProperty(id,'text-halo-width',1.2);
             } else if (isWaterL) {
               map.setLayoutProperty(id,'text-size',10);
               map.setPaintProperty(id,'text-color','#2a6db5');
