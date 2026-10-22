@@ -854,6 +854,12 @@ export class SuperUserPanel {
         <div style="display:flex;flex-direction:column;gap:12px;max-height:38vh;overflow-y:auto;">
 
           <div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:5px;">Forma de las tarjetas</div>
+            <div id="su-cluster-shape-row" style="display:flex;gap:6px;margin-bottom:10px;">
+              <button type="button" class="su-cluster-shape-btn" data-val="portrait" style="flex:1;padding:7px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10.5px;font-weight:700;cursor:pointer;">▯ Portrait</button>
+              <button type="button" class="su-cluster-shape-btn" data-val="square" style="flex:1;padding:7px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10.5px;font-weight:700;cursor:pointer;">▢ Square</button>
+              <button type="button" class="su-cluster-shape-btn" data-val="mixed" style="flex:1;padding:7px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10.5px;font-weight:700;cursor:pointer;">▯▢ Mixto</button>
+            </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
               <div id="su-cluster-cards-count" style="font-size:10px;color:#6b7280;">Tarjetas (${shownPlaces.length} de ${groupPlaces.length} lugares)</div>
             </div>
@@ -1200,7 +1206,7 @@ export class SuperUserPanel {
           <div><div style="font-size:9px;color:#6b7280;">Border radius</div><input id="scf-radius" type="range" min="0" max="30" step="1" value="${ov.borderRadius}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Color de borde</div><input id="scf-bcolor" type="color" value="${ov.borderColor}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Grosor de borde</div><input id="scf-bwidth" type="range" min="0" max="6" step="0.5" value="${ov.borderWidth}" style="width:100%;accent-color:#1a5cf5;"></div>`;
-        modal.querySelector('#scf-shape').addEventListener('change', (e) => { ov.shape = e.target.value; renderPreview(); });
+        modal.querySelector('#scf-shape').addEventListener('change', (e) => { ov.shape = e.target.value; renderPreview(); paintShapeBtns(); });
         modal.querySelector('#scf-scale').addEventListener('input', (e) => { ov.scale = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-rot').addEventListener('input', (e) => { ov.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-radius').addEventListener('input', (e) => { ov.borderRadius = parseFloat(e.target.value); renderPreview(); });
@@ -1363,6 +1369,38 @@ export class SuperUserPanel {
     }
 
     // ── Chips (atajo para seleccionar sin buscar en el preview) ──
+    // ── Forma de TODAS las tarjetas: Portrait / Square / Mixto ──────
+    // Portrait y Square cambian todas de una; Mixto alterna (una sí,
+    // una no) como punto de partida — después cada tarjeta se puede
+    // ajustar sola desde su "Forma" en las propiedades.
+    const shapeBtns = modal.querySelectorAll('.su-cluster-shape-btn');
+    const currentShapeMode = () => {
+      const shapes = shownPlaces.map(p => (cards.find(c => c.placeId === placeIdOf(p))?.shape) || 'portrait');
+      if (shapes.every(s => s === 'portrait')) return 'portrait';
+      if (shapes.every(s => s === 'square')) return 'square';
+      return 'mixed';
+    };
+    const paintShapeBtns = () => {
+      const mode = currentShapeMode();
+      shapeBtns.forEach(b => {
+        const on = b.dataset.val === mode;
+        b.style.background = on ? '#1a5cf5' : 'transparent';
+        b.style.color = on ? '#fff' : '#9ca3af';
+        b.style.borderColor = on ? '#1a5cf5' : 'rgba(255,255,255,0.12)';
+      });
+    };
+    shapeBtns.forEach(b => b.addEventListener('click', () => {
+      const val = b.dataset.val;
+      shownPlaces.forEach((p, i) => {
+        const ov = getCardOverride(placeIdOf(p));
+        ov.shape = val === 'mixed' ? (i % 2 ? 'square' : 'portrait') : val;
+      });
+      paintShapeBtns();
+      renderPreview();
+      if (sel && sel.kind === 'card') renderSelProps();
+    }));
+    paintShapeBtns();
+
     const cardChipsEl = modal.querySelector('#su-cluster-cards-chips');
     function renderCardChips() {
       cardChipsEl.innerHTML = '';
