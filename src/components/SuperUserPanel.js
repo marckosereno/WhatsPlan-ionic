@@ -1549,6 +1549,8 @@ export class SuperUserPanel {
         });
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
+        // [DIAG-LABEL] Temporal — lo que mandamos vs. lo que la base guardó.
+        console.log('[DIAG-LABEL] guardado', { enviado: label, base: json.cluster?.label, tipoBase: typeof json.cluster?.label });
         closeModal();
         // Si es de UN solo lugar, además de guardar el diseño hay que
         // marcar ese lugar con pin_style='cluster' para que el mapa lo
