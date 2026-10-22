@@ -816,6 +816,7 @@ export class SuperUserPanel {
       color: l && typeof l.color === 'string' ? l.color : '#1a1a2e',
       bg: l && typeof l.bg === 'string' ? l.bg : 'rgba(255,255,255,0.92)',
       z: l && Number.isFinite(l.z) ? l.z : 25,
+      radius: l && Number.isFinite(l.radius) ? l.radius : 8,
     });
 
     let cards    = isEdit ? (existingCluster.cards || []).map(sanitizeCard).filter(Boolean) : [];
@@ -1350,6 +1351,7 @@ export class SuperUserPanel {
           <div id="scf-label-colors" style="display:flex;gap:6px;"></div></div>
           <div><div style="font-size:9px;color:#6b7280;">Fondo</div><input id="scf-label-bg" type="color" value="${(() => { const m = (label.bg||'').match(/#[0-9a-fA-F]{6}/); return m ? m[0] : '#ffffff'; })()}" style="width:100%;height:28px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:none;cursor:pointer;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Tamaño (preciso)</div><input id="scf-lscale" type="range" min="0.5" max="2" step="0.02" value="${label.scale ?? 1}" style="width:100%;accent-color:#1a5cf5;"></div>
+          <div><div style="font-size:9px;color:#6b7280;">Bordes redondeados</div><input id="scf-lrad" type="range" min="0" max="20" step="1" value="${label.radius ?? 8}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div><div style="font-size:9px;color:#6b7280;">Giro (preciso)</div><input id="scf-lrot" type="range" min="-180" max="180" step="1" value="${label.rotation || 0}" style="width:100%;accent-color:#1a5cf5;"></div>
           <div style="grid-column:1 / -1;"><button type="button" id="scf-label-remove" style="width:100%;padding:6px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer;">🗑️ Quitar etiqueta</button></div>`;
         modal.querySelector('#scf-label-text').addEventListener('input', (e) => { label.text = e.target.value; renderPreview(); });
@@ -1363,6 +1365,7 @@ export class SuperUserPanel {
           lrow.appendChild(b);
         });
         modal.querySelector('#scf-lscale').addEventListener('input', (e) => { label.scale = parseFloat(e.target.value); renderPreview(); });
+        modal.querySelector('#scf-lrad').addEventListener('input', (e) => { label.radius = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-lrot').addEventListener('input', (e) => { label.rotation = parseFloat(e.target.value); renderPreview(); });
         modal.querySelector('#scf-label-remove').addEventListener('click', () => { label.text = ''; sel = null; renderPreview(); renderSelProps(); });
       }
