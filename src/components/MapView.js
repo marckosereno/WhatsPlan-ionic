@@ -5543,7 +5543,9 @@ export function _buildClusterStickerHtml(group, customDef) {
     const lColor = label.color || '#1a1a2e';
     const lBg = label.bg || 'rgba(255,255,255,0.92)';
     const lZ = label.z ?? 25;
-    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${4 * lScale}px ${9 * lScale}px;border-radius:${8 * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:var(--wp-font);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
+    // Radio: 0 = esquinas rectas … 999 = pill. Escala con el tamaño.
+    const lRad = Number.isFinite(label.radius) ? label.radius : 8;
+    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${1.5 * lScale}px ${8 * lScale}px;line-height:1.2;border-radius:${lRad * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:var(--wp-font);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
   })() : '';
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
