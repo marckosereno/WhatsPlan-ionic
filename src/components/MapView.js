@@ -2043,8 +2043,12 @@ export class MapView {
       });
     }
 
-    // 2) Clustering automático por cercanía en pantalla para el resto
-    if (clustersActive) {
+    // 2) Clustering automático por cercanía en pantalla para el resto.
+    // En Salud NO se agrupa: cada clínica/farmacia se ve como pin suelto
+    // (los clusters curados del SuperUser del paso 1 siguen funcionando).
+    const NO_AUTO_CLUSTER_CATS = ['HEALTH'];
+    const autoClusterOn = !NO_AUTO_CLUSTER_CATS.includes(this.currentCatId);
+    if (clustersActive && autoClusterOn) {
     // Los pines con estilo único NO se excluyen de acá a propósito: si
     // están lo bastante cerca de otros, se agrupan como cualquier otro
     // pin y se desagrupan al alejarse. Ese ir y venir con el zoom —
