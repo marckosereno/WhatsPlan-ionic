@@ -1319,6 +1319,20 @@ export class MapView {
       const res  = await fetch('/api/supabase-clusters');
       const json = await res.json();
       this.pinClusters = json.success ? (json.clusters || []) : [];
+      // Normaliza la etiqueta: si llega como string (columna text en la
+      // base) se convierte a objeto — si no, _buildClusterStickerHtml no
+      // encuentra label.text y no dibuja nada.
+      this.pinClusters.forEach(cd => {
+        const raw = cd.label;
+        if (typeof raw === 'string') {
+          try { cd.label = JSON.parse(raw); } catch (_) { cd.label = raw.trim() ? { text: raw } : null; }
+        }
+        if (cd.label && typeof cd.label !== 'object') cd.label = null;
+      });
+      // [DIAG-LABEL] Temporal — qué etiqueta trae cada cluster desde la base.
+      console.log('[DIAG-LABEL] clusters', this.pinClusters.map(cd => ({
+        id: cd.id, n: (cd.placeIds || []).length, label: cd.label ? (cd.label.text ?? '(sin text)') : null,
+      })));
     } catch (e) {
       console.warn('⚠️ pin_clusters:', e.message);
       this.pinClusters = this.pinClusters || [];
