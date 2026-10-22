@@ -12,6 +12,18 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
+// La columna `label` puede venir como jsonb (objeto) o, si en la base
+// quedó creada como text, como STRING con el JSON adentro — en ese caso
+// `typeof === 'object'` daba false y la etiqueta se perdía al listar.
+function _asObj(v) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim()) {
+    try { const o = JSON.parse(v); if (o && typeof o === 'object' && !Array.isArray(o)) return o; } catch (_) {}
+    return { text: v }; // texto plano viejo → se usa como texto de la etiqueta
+  }
+  return null;
+}
+
 async function listClusters(res) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/pin_clusters?select=*`, {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
@@ -36,7 +48,7 @@ async function listClusters(res) {
     // slideGlobal: badge/sticker "título" — fijo, igual en TODOS los
     // slides de este cluster, independiente de cuál sea el héroe.
     slideGlobal: r.slide_global && typeof r.slide_global === 'object' ? r.slide_global : null,
-    label:     r.label && typeof r.label === 'object' ? r.label : null,
+    label:     _asObj(r.label),
     // Necesario en el cliente para resolver el conflicto cuando VARIAS
     // filas reclaman el mismo place_id (pasa fácil: cada vez que se
     // personaliza un grupo se crea una fila nueva, y las viejas quedan).
