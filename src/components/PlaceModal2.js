@@ -2357,16 +2357,20 @@ export class PlaceModal2 {
     }
   }
 
-  // Hoja con lugares parecidos: misma categoría, primero los que comparten
-  // subcategoría/etiquetas y luego los más cercanos.
+  // ── Hoja "Lugares similares" ───────────────────────────────────────
+  // Se abre al soltar el pull-up de abajo. Sube hasta debajo del status
+  // bar (como la hoja del perfil) con un "swoosh": una onda del color de
+  // la categoría sale desde la burbuja y la hoja entra con un pequeño
+  // rebote. Adentro: buscador, chips de subcategoría y tarjetas.
+  // Orden: misma categoría → comparten subcategoría → más cercanos.
   _openSimilar() {
     const cur = this._place;
     if (!cur) return;
     const all = (window.wpApp && window.wpApp.mapView && window.wpApp.mapView.allPlaces) || [];
     const pid = (p) => p.place_id || p.id;
     const ll  = (p) => ({ lat: p.location?.lat ?? p.lat, lng: p.location?.lng ?? p.lng });
-    const tags = (p) => new Set([...(p.subcategoryTags || []), p.subcategory, p.subcategory_name].filter(Boolean).map(t => String(t).toLowerCase()));
-    const c = ll(cur), cTags = tags(cur);
+    const tagList = (p) => [...(p.subcategoryTags || []), p.subcategory, p.subcategory_name].filter(Boolean).map(t => String(t).trim());
+    const c = ll(cur), cTags = new Set(tagList(cur).map(t => t.toLowerCase()));
     const dist = (p) => {
       const q = ll(p);
       if (!c.lat || !q.lat) return Infinity;
@@ -2378,37 +2382,220 @@ export class PlaceModal2 {
     const list = all
       .filter(p => p && pid(p) !== pid(cur) && (!cur.category || !p.category || p.category === cur.category))
       .map(p => {
-        let share = 0; tags(p).forEach(t => { if (cTags.has(t)) share++; });
-        return { p, share, d: dist(p) };
+        const tags = tagList(p);
+        let share = 0; tags.forEach(t => { if (cTags.has(t.toLowerCase())) share++; });
+        return { p, tags, share, d: dist(p) };
       })
       .sort((a, b) => (b.share - a.share) || (a.d - b.d))
-      .slice(0, 12);
+      .slice(0, 40);
     if (!list.length) { this._showToast('No hay lugares similares cerca'); return; }
 
-    this._haptic('success');
-    const { body, close } = this._openSheet('Lugares similares', `Parecidos a ${cur.name || 'este lugar'}`);
-    const fmtD = (d) => !isFinite(d) ? '' : d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(d < 10000 ? 1 : 0)} km`;
-    body.innerHTML = list.map(({ p, d }, i) => {
-      const photo = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
-      const r = parseFloat(p.rating) || 0;
-      const open = this._isOpenNow(p);
-      const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
-      const bits = [st, r > 0 ? `★ ${r.toFixed(1)}` : '', fmtD(d)].filter(Boolean).join(' · ');
-      return `<button type="button" data-sim="${i}" style="display:flex;align-items:center;gap:12px;width:100%;padding:9px 4px;border:none;background:none;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-        <div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;overflow:hidden;background:#f1f2f4;">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : ''}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(p.name || '')}</div>
-          <div style="margin-top:2px;font-size:12.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${bits}</div>
+    // Chips: "Todos" + las subcategorías más frecuentes (las del lugar actual primero)
+    const freq = new Map();
+    list.forEach(({ tags }) => tags.forEach(t => { const k = t.toLowerCase(); const f = freq.get(k) || { label: t, n: 0 }; f.n++; freq.set(k, f); }));
+    const chips = [...freq.entries()]
+      .sort((a, b) => ((cTags.has(b[0]) ? 1 : 0) - (cTags.has(a[0]) ? 1 : 0)) || (b[1].n - a[1].n))
+      .slice(0, 8).map(([k, v]) => ({ k, label: v.label }));
+
+    const TINT = {
+      RESTAURANTS: '#ffe3c2', HEALTH: '#d6e6ff', SHOPPING: '#e4dcff',
+      ENTERTAINMENT: '#ffdcea', PARKS: '#dcf1cf', WORKSHOPS: '#e6e8ec',
+    }[String(cur.category || '').toUpperCase()] || '#e3e7ff';
+    const ACCENT = '#1a5cf5';
+
+    if (!document.getElementById('wp-pm2-sim-css')) {
+      const st = document.createElement('style');
+      st.id = 'wp-pm2-sim-css';
+      st.textContent = `
+        #wp-pm2-sim { position:fixed; inset:0; z-index:1500100; font-family:var(--wp-font); }
+        #wp-pm2-sim .wp-sim-dim { position:absolute; inset:0; background:rgba(15,23,42,0.32); opacity:0; transition:opacity 0.3s ease; }
+        #wp-pm2-sim.in .wp-sim-dim { opacity:1; }
+        #wp-pm2-sim .wp-sim-wave {
+          position:absolute; width:60px; height:60px; margin:-30px 0 0 -30px; border-radius:50%;
+          pointer-events:none; opacity:0.9; transform:scale(0);
+        }
+        #wp-pm2-sim.in .wp-sim-wave { animation:wpSimWave 0.55s cubic-bezier(0.2,0.8,0.3,1) forwards; }
+        @keyframes wpSimWave { 0% { transform:scale(0); opacity:0.95; } 70% { opacity:0.55; } 100% { transform:scale(30); opacity:0; } }
+        #wp-pm2-sim .wp-sim-sheet {
+          position:absolute; left:0; right:0; bottom:0; top:calc(env(safe-area-inset-top,0px) + 6px);
+          border-radius:28px 28px 0 0; overflow:hidden; display:flex; flex-direction:column;
+          box-shadow:0 -10px 40px rgba(0,0,0,0.18);
+          transform:translateY(105%);
+        }
+        #wp-pm2-sim.in .wp-sim-sheet { animation:wpSimIn 0.56s cubic-bezier(0.22,1.12,0.36,1) 0.06s forwards; }
+        @keyframes wpSimIn {
+          0%   { transform:translateY(105%) scale(0.94); filter:blur(6px); }
+          55%  { filter:blur(0); }
+          100% { transform:translateY(0) scale(1); filter:none; }
+        }
+        #wp-pm2-sim .wp-sim-head { flex-shrink:0; padding:8px 16px 10px; touch-action:none; }
+        #wp-pm2-sim .wp-sim-handle { width:38px; height:5px; border-radius:3px; background:rgba(0,0,0,0.16); margin:0 auto 8px; }
+        #wp-pm2-sim .wp-sim-bar { display:flex; align-items:center; height:44px; position:relative; }
+        #wp-pm2-sim .wp-sim-back {
+          width:44px; height:40px; border:none; border-radius:999px; background:rgba(255,255,255,0.7);
+          display:flex; align-items:center; justify-content:center; color:#111827; cursor:pointer;
+          -webkit-tap-highlight-color:transparent; transition:transform 0.15s;
+        }
+        #wp-pm2-sim .wp-sim-back:active { transform:scale(0.9); }
+        #wp-pm2-sim .wp-sim-title { position:absolute; left:60px; right:60px; text-align:center; font-size:17px; font-weight:700; color:#111827; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-sub { text-align:center; font-size:12.5px; color:#6b7280; margin-top:-4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-search {
+          margin-top:12px; height:48px; border-radius:999px; background:#fff; display:flex; align-items:center; gap:10px; padding:0 16px;
+          box-shadow:0 2px 10px rgba(0,0,0,0.05);
+        }
+        #wp-pm2-sim .wp-sim-search input { flex:1; min-width:0; border:none; outline:none; background:none; font-family:inherit; font-size:15px; color:#111827; }
+        #wp-pm2-sim .wp-sim-search input::placeholder { color:#9ca3af; }
+        #wp-pm2-sim .wp-sim-chips { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; margin:12px -16px 0; padding:0 16px 2px; }
+        #wp-pm2-sim .wp-sim-chips::-webkit-scrollbar { display:none; }
+        #wp-pm2-sim .wp-sim-chip {
+          flex-shrink:0; height:36px; padding:0 16px; border:none; border-radius:999px; background:#fff; color:#111827;
+          font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent;
+          transition:background 0.18s, color 0.18s, transform 0.15s;
+        }
+        #wp-pm2-sim .wp-sim-chip:active { transform:scale(0.94); }
+        #wp-pm2-sim .wp-sim-chip.on { background:#111827; color:#fff; }
+        #wp-pm2-sim .wp-sim-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:6px 16px calc(20px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:10px; }
+        #wp-pm2-sim .wp-sim-card {
+          display:flex; align-items:center; gap:12px; padding:10px; border:none; border-radius:20px; background:#fff; width:100%;
+          text-align:left; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
+          box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:transform 0.15s;
+          opacity:0; transform:translateY(14px);
+        }
+        #wp-pm2-sim.in .wp-sim-card { animation:wpSimCard 0.42s cubic-bezier(0.22,1,0.36,1) forwards; }
+        @keyframes wpSimCard { to { opacity:1; transform:none; } }
+        #wp-pm2-sim .wp-sim-card:active { transform:scale(0.97); }
+        #wp-pm2-sim .wp-sim-ph { flex-shrink:0; width:72px; height:72px; border-radius:14px; overflow:hidden; background:#eef0f3; display:flex; align-items:center; justify-content:center; font-size:28px; }
+        #wp-pm2-sim .wp-sim-ph img { width:100%; height:100%; object-fit:cover; }
+        #wp-pm2-sim .wp-sim-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+        #wp-pm2-sim .wp-sim-name { font-size:15.5px; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-row { display:flex; align-items:center; gap:5px; font-size:12.5px; color:#6b7280; white-space:nowrap; overflow:hidden; }
+        #wp-pm2-sim .wp-sim-row span { overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-row b { color:#111827; font-weight:700; }
+        #wp-pm2-sim .wp-sim-empty { text-align:center; color:#9ca3af; font-size:14px; padding:40px 0; }
+      `;
+      document.head.appendChild(st);
+    }
+
+    document.getElementById('wp-pm2-sim')?.remove();
+    const root = document.createElement('div');
+    root.id = 'wp-pm2-sim';
+    const PIN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+    root.innerHTML = `
+      <div class="wp-sim-dim"></div>
+      <div class="wp-sim-wave" style="background:${TINT}"></div>
+      <div class="wp-sim-sheet" style="background:linear-gradient(180deg,${TINT} 0px,#f4f5f7 230px)">
+        <div class="wp-sim-head">
+          <div class="wp-sim-handle"></div>
+          <div class="wp-sim-bar">
+            <button class="wp-sim-back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <div class="wp-sim-title">Lugares similares</div>
+          </div>
+          <div class="wp-sim-sub">Parecidos a ${this._esc(cur.name || 'este lugar')}</div>
+          <label class="wp-sim-search">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Buscar entre similares…" autocomplete="off" enterkeyhint="search">
+          </label>
+          ${chips.length ? `<div class="wp-sim-chips">
+            <button class="wp-sim-chip on" data-chip="">Todos</button>
+            ${chips.map(ch => `<button class="wp-sim-chip" data-chip="${this._esc(ch.k)}">${this._esc(ch.label)}</button>`).join('')}
+          </div>` : ''}
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;color:#9ca3af"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>`;
-    }).join('');
-    body.querySelectorAll('[data-sim]').forEach(btn => btn.addEventListener('click', () => {
-      const it = list[+btn.getAttribute('data-sim')];
-      if (!it) return;
-      close();
-      setTimeout(() => this.show(it.p), 220); // abre la ficha del elegido
+        <div class="wp-sim-list"></div>
+      </div>`;
+    document.body.appendChild(root);
+
+    // La onda sale desde la burbuja (o del centro de abajo)
+    const wave = root.querySelector('.wp-sim-wave');
+    const br = this._moreBubble?.getBoundingClientRect();
+    wave.style.left = (br && br.width ? br.left + br.width / 2 : innerWidth / 2) + 'px';
+    wave.style.top  = (br && br.height ? br.top + br.height / 2 : innerHeight - 120) + 'px';
+
+    const fmtD = (d) => !isFinite(d) ? '' : d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(d < 10000 ? 1 : 0)} km`;
+    const listEl = root.querySelector('.wp-sim-list');
+    const input  = root.querySelector('input');
+    let chip = '', q = '';
+    const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const render = (animate) => {
+      const nq = norm(q);
+      const shown = list.filter(({ p, tags }) =>
+        (!chip || tags.some(t => t.toLowerCase() === chip)) &&
+        (!nq || norm(p.name).includes(nq) || norm(p.vicinity || p.formattedAddress || p.address).includes(nq)));
+      if (!shown.length) { listEl.innerHTML = '<div class="wp-sim-empty">Sin resultados</div>'; return; }
+      listEl.innerHTML = shown.map((it, i) => {
+        const { p, d } = it;
+        const photo = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
+        const r = parseFloat(p.rating) || 0;
+        const addr = String(p.vicinity || p.formattedAddress || p.address || '').trim();
+        const open = this._isOpenNow(p);
+        const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
+        const meta = [r > 0 ? `Rating <b>${r.toFixed(1)}/5</b>` : 'Sin reseñas', fmtD(d), st].filter(Boolean).join(' · ');
+        return `<button type="button" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${0.16 + Math.min(i, 8) * 0.045}s` : 'opacity:1;transform:none;animation:none'}">
+          <div class="wp-sim-ph">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy">` : '⭐'}</div>
+          <div class="wp-sim-info">
+            <div class="wp-sim-name">${this._esc(p.name || '')}</div>
+            ${addr ? `<div class="wp-sim-row">${PIN}<span>${this._esc(addr)}</span></div>` : ''}
+            <div class="wp-sim-row"><span>${meta}</span></div>
+          </div>
+        </button>`;
+      }).join('');
+    };
+    render(true);
+
+    let closing = false;
+    const close = (after) => {
+      if (closing) return; closing = true;
+      // Fija la posición actual (fin de la animación de entrada) y desde ahí baja
+      const sh = root.querySelector('.wp-sim-sheet');
+      const cur = getComputedStyle(sh).transform;
+      sh.style.animation = 'none';
+      sh.style.transform = cur === 'none' ? 'translateY(0)' : cur;
+      void sh.offsetHeight;
+      sh.style.transition = 'transform 0.28s cubic-bezier(0.4,0,1,1)';
+      sh.style.transform = 'translateY(105%)';
+      root.querySelector('.wp-sim-dim').style.opacity = '0';
+      setTimeout(() => { root.remove(); if (after) after(); }, 280);
+    };
+    root.querySelector('.wp-sim-dim').addEventListener('click', () => close());
+    root.querySelector('.wp-sim-back').addEventListener('click', () => close());
+    input.addEventListener('input', () => { q = input.value; render(false); });
+    root.querySelectorAll('.wp-sim-chip').forEach(b => b.addEventListener('click', () => {
+      chip = b.getAttribute('data-chip') || '';
+      root.querySelectorAll('.wp-sim-chip').forEach(x => x.classList.toggle('on', x === b));
+      this._haptic('light');
+      render(false);
     }));
+    listEl.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-sim]');
+      if (!card) return;
+      const it = list[+card.getAttribute('data-sim')];
+      if (!it) return;
+      this._haptic('select');
+      close(() => this.show(it.p)); // abre la ficha del elegido
+    });
+
+    // Arrastrar la cabecera hacia abajo para cerrar
+    const head = root.querySelector('.wp-sim-head');
+    const sheet = root.querySelector('.wp-sim-sheet');
+    let y0 = 0, dy = 0, drag = false;
+    head.addEventListener('touchstart', (e) => {
+      if (e.target.closest('input,button')) return;
+      drag = true; y0 = e.touches[0].clientY; dy = 0;
+      sheet.style.animation = 'none'; sheet.style.transform = 'translateY(0)'; sheet.style.transition = 'none';
+    }, { passive: true });
+    head.addEventListener('touchmove', (e) => {
+      if (!drag) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    head.addEventListener('touchend', () => {
+      if (!drag) return; drag = false;
+      sheet.style.transition = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1)';
+      if (dy > 90) close();
+      else sheet.style.transform = 'translateY(0)';
+    });
+
+    this._haptic('success');
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
   }
 
   _hideMiniSnap() {
