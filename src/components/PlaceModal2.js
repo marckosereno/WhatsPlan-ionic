@@ -1967,9 +1967,9 @@ export class PlaceModal2 {
     // nombre + estado arriba, y abajo una tarjeta interior con "Ver
     // detalles" y un abanico chico de 3 fotos (las fotos no son
     // protagonistas). Fondo blanco → tinte de la categoría.
-    const msBtnBg  = 'linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%)';
+    const msBtnBg  = '#ffffff';
     const msBtnInk = '#1f2937';
-    const msBtnBorder = 'rgba(0,0,0,0.06)';
+    const msBtnBorder = 'transparent';
     const MS_LIGHT = {
       RESTAURANTS:   { tint: '#ffe6c7', ink: '#9a5a12', star: '#f59e0b' },
       HEALTH:        { tint: '#d9e8ff', ink: '#2a63b0', star: '#3b82f6' },
@@ -1985,11 +1985,11 @@ export class PlaceModal2 {
       'left:12px', 'right:12px',
       'height:' + panelHeight + 'px',
       'border-radius:32px',
-      `background:linear-gradient(180deg,rgba(255,255,255,0.90) 0%,${MS_LIGHT.tint}f0 100%)`,
+      `background:${MS_LIGHT.tint}`,
       'backdrop-filter:blur(24px) saturate(1.6)',
       '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
-      'box-shadow:0 12px 40px rgba(0,0,0,0.14),0 2px 6px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.95)',
-      'border:1px solid rgba(255,255,255,0.7)',
+      'box-shadow:0 8px 24px rgba(0,0,0,0.10)',
+      'border:none',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
       "font-family:var(--wp-font); font-weight:400;",
@@ -2010,13 +2010,25 @@ export class PlaceModal2 {
 
     // Mosaico de rating: número + 5 estrellas que se llenan en fracción
     // (3.7 → 3 llenas y la 4ª al 70%). Sin rating → emoji + "Nuevo".
+    // Una sola SVG con las 5 estrellas + clipPath para la fracción: más
+    // confiable en WebView que spans anidados (que se desalineaban).
     const STAR_PATH = 'M12 2.5l2.9 6.2 6.6.7-4.9 4.5 1.4 6.6L12 17.2l-6 3.3 1.4-6.6-4.9-4.5 6.6-.7z';
-    const star = (fill) => `<span style="position:relative;display:inline-block;width:8px;height:8px;"><svg width="8" height="8" viewBox="0 0 24 24" style="position:absolute;inset:0"><path d="${STAR_PATH}" fill="rgba(0,0,0,0.12)"/></svg><span style="position:absolute;inset:0;width:${Math.round(fill * 100)}%;overflow:hidden;"><svg width="8" height="8" viewBox="0 0 24 24"><path d="${STAR_PATH}" fill="${MS_LIGHT.star}"/></svg></span></span>`;
-    const stars = Array.from({ length: 5 }, (_, i) => star(Math.max(0, Math.min(1, rating - i)))).join('');
+    const SS = 9, SG = 1.25; // tamaño y separación de cada estrella (px)
+    const starsW = 5 * SS + 4 * SG;
+    const rr = Math.max(0, Math.min(5, rating));
+    const fillW = Math.floor(rr) * (SS + SG) + (rr % 1) * SS;
+    const clipId = 'wpMsStars' + Math.random().toString(36).slice(2, 8);
+    const starRow = (color) => Array.from({ length: 5 }, (_, i) =>
+      `<path d="${STAR_PATH}" fill="${color}" transform="translate(${(i * (SS + SG)).toFixed(2)},0) scale(${SS / 24})"/>`).join('');
+    const stars = `<svg width="${starsW}" height="${SS}" viewBox="0 0 ${starsW} ${SS}" style="display:block;overflow:visible;">
+      <defs><clipPath id="${clipId}"><rect x="0" y="-1" width="${fillW.toFixed(2)}" height="${SS + 2}"/></clipPath></defs>
+      ${starRow('#d9dce1')}
+      <g clip-path="url(#${clipId})">${starRow(MS_LIGHT.star)}</g>
+    </svg>`;
     const tileHtml = `
-      <div style="flex-shrink:0;width:52px;height:52px;border-radius:16px;box-sizing:border-box;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f3f4f7 100%);box-shadow:0 3px 10px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1;">
+      <div style="flex-shrink:0;width:56px;height:52px;border-radius:16px;box-sizing:border-box;background:#ffffff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1;">
         ${rating > 0
-          ? `<span style="font-size:19px;font-weight:800;color:#0a0a0a;letter-spacing:-0.4px;">${rating.toFixed(1)}</span><span style="display:flex;gap:1px;">${stars}</span>`
+          ? `<span style="font-size:19px;font-weight:800;color:#0a0a0a;letter-spacing:-0.4px;">${rating.toFixed(1)}</span>${stars}`
           : `<span style="font-size:19px;">${CAT_INFO.emoji}</span><span style="font-size:8px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:${MS_LIGHT.ink};">Nuevo</span>`}
       </div>`;
 
@@ -2030,14 +2042,14 @@ export class PlaceModal2 {
         <span style="overflow:hidden;text-overflow:ellipsis;">${count > 0 ? count + ' reseñas' : CAT_INFO.name}</span>
       </div>`;
 
-    const reliefBtn = `flex-shrink:0;width:36px;height:28px;padding:0;border-radius:999px;border:1px solid ${msBtnBorder};background:${msBtnBg};box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
+    const reliefBtn = `flex-shrink:0;width:36px;height:28px;padding:0;border-radius:999px;border:1px solid ${msBtnBorder};background:${msBtnBg};box-shadow:none;display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
 
     // Abanico de hasta 3 fotos chicas (la de en medio al frente)
     const fan = photos4.slice(0, 3);
     const fanRot = [-11, 2, 12], fanX = [0, 22, 44], fanZ = [1, 3, 2];
     const fanHtml = fan.length
-      ? fan.map((u, i) => `<div style="position:absolute;top:50%;left:${fanX[i]}px;width:42px;height:42px;margin-top:-21px;border-radius:11px;padding:2px;box-sizing:border-box;background:#fff;box-shadow:0 4px 10px rgba(0,0,0,0.18);transform:rotate(${fanRot[i]}deg);z-index:${fanZ[i]};"><div style="width:100%;height:100%;border-radius:9px;overflow:hidden;background:#eef0f3;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div></div>`).join('')
-      : `<div style="position:absolute;top:50%;left:22px;width:42px;height:42px;margin-top:-21px;border-radius:11px;background:linear-gradient(180deg,#fff,#f3f4f7);border:1px solid rgba(0,0,0,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(4deg);">${CAT_INFO.emoji}</div>`;
+      ? fan.map((u, i) => `<div style="position:absolute;top:50%;left:${fanX[i]}px;width:42px;height:42px;margin-top:-21px;border-radius:11px;padding:2px;box-sizing:border-box;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.12);transform:rotate(${fanRot[i]}deg);z-index:${fanZ[i]};"><div style="width:100%;height:100%;border-radius:9px;overflow:hidden;background:#eef0f3;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div></div>`).join('')
+      : `<div style="position:absolute;top:50%;left:22px;width:42px;height:42px;margin-top:-21px;border-radius:11px;background:#fff;border:none;box-shadow:none;display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(4deg);">${CAT_INFO.emoji}</div>`;
     const fanW = fan.length ? 42 + fanX[fan.length - 1] : 86;
 
     ms.innerHTML = `
@@ -2055,11 +2067,11 @@ export class PlaceModal2 {
           <button id="wp-ms-close-btn" aria-label="Cerrar" style="${reliefBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>
       </div>
-      <div style="height:1px;margin:0 -10px;background:rgba(0,0,0,0.06);box-shadow:0 1px 0 rgba(255,255,255,0.8);flex-shrink:0;"></div>
-      <div style="flex:1;min-height:0;margin-top:9px;border-radius:22px;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.75);box-shadow:0 2px 8px rgba(0,0,0,0.05),inset 0 1px 0 #fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;gap:10px;overflow:hidden;">
+      <div style="height:1px;margin:0 2px;background:rgba(0,0,0,0.07);flex-shrink:0;"></div>
+      <div style="flex:1;min-height:0;margin-top:9px;border-radius:22px;background:rgba(255,255,255,0.6);border:none;box-shadow:none;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;gap:10px;overflow:hidden;">
         <div style="min-width:0;display:flex;flex-direction:column;gap:6px;">
           <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#111827;">Fotos</span><span style="color:${MS_LIGHT.ink};opacity:0.85;"> y reseñas</span></div>
-          <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="align-self:flex-start;height:30px;padding:0 5px 0 13px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;gap:8px;color:#1f2937;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);white-space:nowrap;">Ver detalles<span style="width:21px;height:21px;border-radius:50%;background:#1f2937;color:#fff;display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+          <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="align-self:flex-start;height:30px;padding:0 5px 0 13px;border-radius:999px;border:none;background:#ffffff;box-shadow:none;display:flex;align-items:center;gap:8px;color:#1f2937;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);white-space:nowrap;">Ver detalles<span style="width:21px;height:21px;border-radius:50%;background:#1f2937;color:#fff;display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
         </div>
         <div style="position:relative;flex-shrink:0;width:${fanW}px;height:100%;">${fanHtml}</div>
       </div>`;
@@ -2089,7 +2101,7 @@ export class PlaceModal2 {
       if (svg) svg.setAttribute('fill', active ? '#fff' : 'none');
       favBtn.style.color = active ? '#fff' : msBtnInk;
       favBtn.style.background = active
-        ? 'linear-gradient(180deg,#ff7aa8 0%,#ec4899 100%)'
+        ? '#ec4899'
         : msBtnBg;
       favBtn.style.borderColor = active ? 'transparent' : msBtnBorder;
     };
