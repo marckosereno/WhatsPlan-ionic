@@ -1963,23 +1963,21 @@ export class PlaceModal2 {
     const panelEl = document.querySelector('.map-results-panel-float');
     const panelHeight = panelEl ? panelEl.offsetHeight : 156;
 
-    // Tinte por categoría (mismo color que las sombras del mapa): el fondo
-    // pasa de blanco arriba al color de la categoría abajo, y la ✕ y el ♥
-    // apagado toman un tono de ese color
-    const MS_TINT = {
-      RESTAURANTS:   { tint: '#ffe6c7', ink: '#9a5a12' },
-      HEALTH:        { tint: '#d9e8ff', ink: '#2a63b0' },
-      SHOPPING:      { tint: '#e6defe', ink: '#5b47c2' },
-      ENTERTAINMENT: { tint: '#ffdeeb', ink: '#b4386f' },
-      PARKS:         { tint: '#ddf2d2', ink: '#3f7d22' },
-    }[String(place.category || '').toUpperCase()] || null;
-    // Estilo "tarjeta grafito" (tipo widget): mosaico con el rating a la
-    // izquierda, nombre + estado arriba, y abajo una tarjeta interior con
-    // el botón "Ver detalles" y un abanico chico de 3 fotos — las fotos
-    // dejan de ser protagonistas (no importa tanto si son malas).
-    const msBtnBg  = 'linear-gradient(180deg,#3a3d44 0%,#26282d 100%)';
-    const msBtnInk = '#e5e7eb';
-    const msBtnBorder = 'rgba(255,255,255,0.10)';
+    // Estilo widget claro: mosaico de rating (estrellas) a la izquierda,
+    // nombre + estado arriba, y abajo una tarjeta interior con "Ver
+    // detalles" y un abanico chico de 3 fotos (las fotos no son
+    // protagonistas). Fondo blanco → tinte de la categoría.
+    const msBtnBg  = 'linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%)';
+    const msBtnInk = '#1f2937';
+    const msBtnBorder = 'rgba(0,0,0,0.06)';
+    const MS_LIGHT = {
+      RESTAURANTS:   { tint: '#ffe6c7', ink: '#9a5a12', star: '#f59e0b' },
+      HEALTH:        { tint: '#d9e8ff', ink: '#2a63b0', star: '#3b82f6' },
+      SHOPPING:      { tint: '#e6defe', ink: '#5b47c2', star: '#8b5cf6' },
+      ENTERTAINMENT: { tint: '#ffdeeb', ink: '#b4386f', star: '#ec4899' },
+      PARKS:         { tint: '#ddf2d2', ink: '#3f7d22', star: '#22c55e' },
+      WORKSHOPS:     { tint: '#e3e6ea', ink: '#4b5563', star: '#6b7280' },
+    }[String(place.category || '').toUpperCase()] || { tint: '#eef0f3', ink: '#4b5563', star: '#f59e0b' };
 
     ms.style.cssText = [
       'position:fixed',
@@ -1987,15 +1985,17 @@ export class PlaceModal2 {
       'left:12px', 'right:12px',
       'height:' + panelHeight + 'px',
       'border-radius:32px',
-      'background:linear-gradient(180deg,#2e3036 0%,#1c1e22 100%)',
-      'box-shadow:0 14px 40px rgba(0,0,0,0.32),0 2px 8px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.09)',
-      'border:1px solid rgba(255,255,255,0.06)',
+      `background:linear-gradient(180deg,rgba(255,255,255,0.90) 0%,${MS_LIGHT.tint}f0 100%)`,
+      'backdrop-filter:blur(24px) saturate(1.6)',
+      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
+      'box-shadow:0 12px 40px rgba(0,0,0,0.14),0 2px 6px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.95)',
+      'border:1px solid rgba(255,255,255,0.7)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
       "font-family:var(--wp-font); font-weight:400;",
       'cursor:pointer', 'box-sizing:border-box',
       'padding:10px 10px 10px', 'display:flex', 'flex-direction:column', 'gap:0',
-      'color:#fff',
+      'color:#0a0a0a',
     ].join(';');
 
     const CAT = String(place.category || '').toUpperCase();
@@ -2008,63 +2008,58 @@ export class PlaceModal2 {
       WORKSHOPS:     { name: 'Taller',          emoji: '🔧' },
     }[CAT] || { name: 'Lugar', emoji: '⭐' };
 
-    // Mosaico izquierdo (el "16 DAYS" de la referencia): rating grande, o
-    // el emoji de la categoría si todavía no tiene calificación.
-    const tileTop = rating > 0
-      ? `<span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1;">${rating.toFixed(1)}</span>`
-      : `<span style="font-size:22px;line-height:1;">${CAT_INFO.emoji}</span>`;
-    const tileBottom = rating > 0 ? '★ Rating' : 'Nuevo';
+    // Mosaico de rating: número + 5 estrellas que se llenan en fracción
+    // (3.7 → 3 llenas y la 4ª al 70%). Sin rating → emoji + "Nuevo".
+    const STAR_PATH = 'M12 2.5l2.9 6.2 6.6.7-4.9 4.5 1.4 6.6L12 17.2l-6 3.3 1.4-6.6-4.9-4.5 6.6-.7z';
+    const star = (fill) => `<span style="position:relative;display:inline-block;width:8px;height:8px;"><svg width="8" height="8" viewBox="0 0 24 24" style="position:absolute;inset:0"><path d="${STAR_PATH}" fill="rgba(0,0,0,0.12)"/></svg><span style="position:absolute;inset:0;width:${Math.round(fill * 100)}%;overflow:hidden;"><svg width="8" height="8" viewBox="0 0 24 24"><path d="${STAR_PATH}" fill="${MS_LIGHT.star}"/></svg></span></span>`;
+    const stars = Array.from({ length: 5 }, (_, i) => star(Math.max(0, Math.min(1, rating - i)))).join('');
     const tileHtml = `
-      <div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;padding:1.5px;box-sizing:border-box;background:linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.18));box-shadow:0 3px 8px rgba(0,0,0,0.35);">
-        <div style="width:100%;height:100%;border-radius:12.5px;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(180deg,#45484f 0%,#2a2c31 100%);">
-          <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;">
-            ${tileTop}
-            <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,0.25);"></div>
-          </div>
-          <div style="height:15px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.10);font-size:8px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#e5e7eb;">${tileBottom}</div>
-        </div>
+      <div style="flex-shrink:0;width:52px;height:52px;border-radius:16px;box-sizing:border-box;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f3f4f7 100%);box-shadow:0 3px 10px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1;">
+        ${rating > 0
+          ? `<span style="font-size:19px;font-weight:800;color:#0a0a0a;letter-spacing:-0.4px;">${rating.toFixed(1)}</span><span style="display:flex;gap:1px;">${stars}</span>`
+          : `<span style="font-size:19px;">${CAT_INFO.emoji}</span><span style="font-size:8px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:${MS_LIGHT.ink};">Nuevo</span>`}
       </div>`;
 
-    const dotColor = isOpen === true ? '#34d36b' : isOpen === false ? '#ff5a5a' : '#9ca3af';
+    const dotColor = isOpen === true ? '#22c55e' : isOpen === false ? '#ef4444' : '#9ca3af';
     const dotAnim  = isOpen === true ? 'animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite;' : '';
     const subHtml = `
-      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c7cad1;white-space:nowrap;overflow:hidden;">
-        <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};box-shadow:0 0 6px ${dotColor};flex-shrink:0;${dotAnim}"></span>
-        <span style="font-weight:600;color:#e5e7eb;">${statusTxt}</span>
-        <span style="color:#6b7280;">·</span>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280;white-space:nowrap;overflow:hidden;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};box-shadow:0 0 5px ${dotColor}99;flex-shrink:0;${dotAnim}"></span>
+        <span style="font-weight:600;color:#1f2937;">${statusTxt}</span>
+        <span style="color:#9ca3af;">·</span>
         <span style="overflow:hidden;text-overflow:ellipsis;">${count > 0 ? count + ' reseñas' : CAT_INFO.name}</span>
       </div>`;
 
-    const darkBtn = `flex-shrink:0;width:36px;height:28px;padding:0;border-radius:999px;border:1px solid ${msBtnBorder};background:${msBtnBg};box-shadow:0 2px 6px rgba(0,0,0,0.30),inset 0 1px 0 rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
+    const reliefBtn = `flex-shrink:0;width:36px;height:28px;padding:0;border-radius:999px;border:1px solid ${msBtnBorder};background:${msBtnBg};box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
 
     // Abanico de hasta 3 fotos chicas (la de en medio al frente)
     const fan = photos4.slice(0, 3);
     const fanRot = [-11, 2, 12], fanX = [0, 22, 44], fanZ = [1, 3, 2];
     const fanHtml = fan.length
-      ? fan.map((u, i) => `<div style="position:absolute;top:50%;left:${fanX[i]}px;width:42px;height:42px;margin-top:-21px;border-radius:11px;padding:2px;box-sizing:border-box;background:#f4f4f5;box-shadow:0 4px 10px rgba(0,0,0,0.45);transform:rotate(${fanRot[i]}deg);z-index:${fanZ[i]};"><div style="width:100%;height:100%;border-radius:9px;overflow:hidden;background:#3a3d44;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div></div>`).join('')
-      : `<div style="position:absolute;top:50%;left:22px;width:42px;height:42px;margin-top:-21px;border-radius:11px;background:linear-gradient(180deg,#45484f,#2a2c31);border:1.5px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(4deg);">${CAT_INFO.emoji}</div>`;
+      ? fan.map((u, i) => `<div style="position:absolute;top:50%;left:${fanX[i]}px;width:42px;height:42px;margin-top:-21px;border-radius:11px;padding:2px;box-sizing:border-box;background:#fff;box-shadow:0 4px 10px rgba(0,0,0,0.18);transform:rotate(${fanRot[i]}deg);z-index:${fanZ[i]};"><div style="width:100%;height:100%;border-radius:9px;overflow:hidden;background:#eef0f3;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div></div>`).join('')
+      : `<div style="position:absolute;top:50%;left:22px;width:42px;height:42px;margin-top:-21px;border-radius:11px;background:linear-gradient(180deg,#fff,#f3f4f7);border:1px solid rgba(0,0,0,0.06);box-shadow:0 4px 10px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(4deg);">${CAT_INFO.emoji}</div>`;
     const fanW = fan.length ? 42 + fanX[fan.length - 1] : 86;
 
     ms.innerHTML = `
       <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:9px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-        <div style="width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,0.22);pointer-events:none"></div>
+        <div style="width:32px;height:3px;border-radius:2px;background:#1a5cf5;opacity:0.55;pointer-events:none"></div>
       </div>
       <div style="display:flex;align-items:center;gap:11px;padding:2px 2px 9px;flex-shrink:0;position:relative;">
         ${tileHtml}
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding-right:80px;">
-          <div style="font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+          <div style="font-size:17px;font-weight:700;color:#0a0a0a;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
           ${subHtml}
         </div>
         <div style="position:absolute;right:2px;top:2px;display:flex;align-items:center;gap:4px;z-index:3;">
-          <button id="wp-ms-fav-btn" aria-label="Favorito" style="${darkBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
-          <button id="wp-ms-close-btn" aria-label="Cerrar" style="${darkBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button id="wp-ms-fav-btn" aria-label="Favorito" style="${reliefBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+          <button id="wp-ms-close-btn" aria-label="Cerrar" style="${reliefBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>
       </div>
-      <div style="height:1px;margin:0 -10px;background:rgba(0,0,0,0.35);box-shadow:0 1px 0 rgba(255,255,255,0.06);flex-shrink:0;"></div>
-      <div style="flex:1;min-height:0;margin-top:9px;border-radius:22px;background:linear-gradient(180deg,#2a2c31 0%,#24262a 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),inset 0 -1px 0 rgba(0,0,0,0.25),0 1px 2px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;gap:10px;overflow:hidden;">
+      <div style="height:1px;margin:0 -10px;background:rgba(0,0,0,0.06);box-shadow:0 1px 0 rgba(255,255,255,0.8);flex-shrink:0;"></div>
+      <div style="flex:1;min-height:0;margin-top:9px;border-radius:22px;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.75);box-shadow:0 2px 8px rgba(0,0,0,0.05),inset 0 1px 0 #fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;gap:10px;overflow:hidden;">
         <div style="min-width:0;display:flex;flex-direction:column;gap:6px;">
-          <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#f3f4f6;">Fotos</span><span style="color:#9ca3af;"> y reseñas</span></div>
-          <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="align-self:flex-start;height:30px;padding:0 5px 0 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.07);background:linear-gradient(180deg,#17181b 0%,#101113 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;gap:8px;color:#f3f4f6;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);white-space:nowrap;">Ver detalles<span style="width:21px;height:21px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+          <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#111827;">Fotos</span><span style="color:${MS_LIGHT.ink};opacity:0.85;"> y reseñas</span></div>
+          <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="align-self:flex-start;height:30px;padding:0 5px 0 13px;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;gap:8px;color:#1f2937;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);white-space:nowrap;">Ver detalles<span style="width:21px;height:21px;border-radius:50%;background:#1f2937;color:#fff;display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
         </div>
         <div style="position:relative;flex-shrink:0;width:${fanW}px;height:100%;">${fanHtml}</div>
       </div>`;
