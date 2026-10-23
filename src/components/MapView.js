@@ -4692,7 +4692,11 @@ export class MapView {
       const msRect    = msEl ? msEl.getBoundingClientRect() : null;
       const msTop     = msRect && msRect.top > topEdge && msRect.top < visibleH ? msRect.top : 9999;
 
-      const candidates = [panelTop, scatsTop, msTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
+      // La ficha abierta como hoja (altura chica) también tapa la parte de abajo
+      const pkEl   = document.querySelector('#wp-pm2.wp-pm2-sheet.visible #wp-pm2-peek');
+      const pkTop0 = pkEl ? pkEl.getBoundingClientRect().top : 9999;
+      const pkTop  = pkTop0 > topEdge && pkTop0 < visibleH ? pkTop0 : 9999;
+      const candidates = [panelTop, scatsTop, msTop, pkTop].filter(v => v > topEdge + 50 && v < visibleH + 200);
       botEdge = candidates.length > 0 ? Math.min(...candidates) - 8 : visibleH - 8;
 
       const areaCenter = topEdge + (botEdge - topEdge) / 2;
