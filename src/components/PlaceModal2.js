@@ -542,7 +542,7 @@ export class PlaceModal2 {
         box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
         color:#111; display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s, padding 0.26s cubic-bezier(0.4,0,0.2,1); flex-shrink:0;
+        transition:transform 0.15s, padding 0.22s cubic-bezier(0.4,0,0.2,1); flex-shrink:0;
       }
       #wp-pm2-back:active { transform:scale(0.92); }
       /* Al tocar: "Volver" se retrae hacia el ícono y el pill se encoge
@@ -550,7 +550,7 @@ export class PlaceModal2 {
       #wp-pm2-back .wp-pm2-back-label {
         display:inline-block; max-width:80px; margin-left:6px;
         overflow:hidden; white-space:nowrap;
-        transition:max-width 0.26s cubic-bezier(0.4,0,0.2,1), margin-left 0.26s cubic-bezier(0.4,0,0.2,1), opacity 0.18s ease-out;
+        transition:max-width 0.22s cubic-bezier(0.4,0,0.2,1), margin-left 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.16s ease-out;
       }
       #wp-pm2-back.wp-pm2-back-collapsed { padding:0 10px; }
       #wp-pm2-back.wp-pm2-back-collapsed .wp-pm2-back-label { max-width:0; margin-left:0; opacity:0; }
@@ -1823,13 +1823,15 @@ export class PlaceModal2 {
       btn.addEventListener('pointerdown', () => triggerTapFlash(btn));
     });
 
-    // "Volver": la palabra se retrae (el pill se encoge hasta el ícono) AL
-    // MISMO TIEMPO que la ficha se cierra — sin esperar a la animación
+    // "Volver": la palabra se retrae (el pill se encoge hasta el ícono) y,
+    // con un retraso mínimo (lo justo para que se note de dónde se
+    // retrae), la ficha empieza a cerrarse mientras termina el efecto
     el.querySelector('#wp-pm2-back').addEventListener('click', (e) => {
       const b = e.currentTarget;
       if (b.classList.contains('wp-pm2-back-collapsed')) return; // doble toque
       b.classList.add('wp-pm2-back-collapsed');
-      this.hide();
+      clearTimeout(this._backTimer);
+      this._backTimer = setTimeout(() => this.hide(), 110);
     });
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
