@@ -1973,9 +1973,13 @@ export class PlaceModal2 {
       ENTERTAINMENT: { tint: '#ffdeeb', ink: '#b4386f' },
       PARKS:         { tint: '#ddf2d2', ink: '#3f7d22' },
     }[String(place.category || '').toUpperCase()] || null;
-    // ♥ y ✕ con el mismo estilo que el botón → de abajo (blanco con relieve)
-    const msBtnBg  = 'linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%)';
-    const msBtnInk = '#1f2937';
+    // Estilo "tarjeta grafito" (tipo widget): mosaico con el rating a la
+    // izquierda, nombre + estado arriba, y abajo una tarjeta interior con
+    // el botón "Ver detalles" y un abanico chico de 3 fotos — las fotos
+    // dejan de ser protagonistas (no importa tanto si son malas).
+    const msBtnBg  = 'linear-gradient(180deg,#3a3d44 0%,#26282d 100%)';
+    const msBtnInk = '#e5e7eb';
+    const msBtnBorder = 'rgba(255,255,255,0.10)';
 
     ms.style.cssText = [
       'position:fixed',
@@ -1983,61 +1987,86 @@ export class PlaceModal2 {
       'left:12px', 'right:12px',
       'height:' + panelHeight + 'px',
       'border-radius:32px',
-      MS_TINT ? `background:linear-gradient(180deg,rgba(255,255,255,0.86) 0%,${MS_TINT.tint}e6 100%)` : 'background:rgba(255,255,255,0.82)',
-      'backdrop-filter:blur(24px) saturate(1.6)',
-      '-webkit-backdrop-filter:blur(24px) saturate(1.6)',
-      'box-shadow:0 12px 48px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.9)',
-      'border:1px solid rgba(255,255,255,0.6)',
+      'background:linear-gradient(180deg,#2e3036 0%,#1c1e22 100%)',
+      'box-shadow:0 14px 40px rgba(0,0,0,0.32),0 2px 8px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.09)',
+      'border:1px solid rgba(255,255,255,0.06)',
       'overflow:hidden', 'z-index:2000', 'opacity:0',
       'transition:opacity 0.22s ease',
       "font-family:var(--wp-font); font-weight:400;",
       'cursor:pointer', 'box-sizing:border-box',
-      'padding:8px 14px 8px', 'display:flex', 'flex-direction:column', 'gap:6px',
+      'padding:10px 10px 10px', 'display:flex', 'flex-direction:column', 'gap:0',
+      'color:#fff',
     ].join(';');
 
-    const avatarCount = Math.min(count || 4, 5);
-    const avatarsHtml = Array.from({ length: avatarCount }, (_, i) =>
-      `<img src="${getAvatarUrl('guest_' + i)}" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;margin-left:${i > 0 ? '-7px' : '0'};object-fit:cover;position:relative;z-index:${avatarCount - i};background:#e2e8f0">`
-    ).join('');
+    const CAT = String(place.category || '').toUpperCase();
+    const CAT_INFO = {
+      RESTAURANTS:   { name: 'Restaurante',     emoji: '🍽️' },
+      HEALTH:        { name: 'Salud',           emoji: '🩺' },
+      SHOPPING:      { name: 'Compras',         emoji: '🛍️' },
+      ENTERTAINMENT: { name: 'Entretenimiento', emoji: '🎉' },
+      PARKS:         { name: 'Parque',          emoji: '🌳' },
+      WORKSHOPS:     { name: 'Taller',          emoji: '🔧' },
+    }[CAT] || { name: 'Lugar', emoji: '⭐' };
 
-    const glassBtn = 'height:28px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 2px 8px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.9);color:#0a0a0a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent';
-    const dotStyle = isOpen === true
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 4px rgba(255,255,255,0.8);animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite'
-      : isOpen === false
-      ? 'display:inline-block;width:5px;height:5px;border-radius:50%;flex-shrink:0;background:#fff;box-shadow:0 0 3px rgba(255,255,255,0.7)'
-      : '';
-    const badgeDot = isOpen !== null ? `<span style="${dotStyle}"></span>` : '';
-    const glassBadge = isOpen === true
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#34d36b 0%,#16a34a 100%);color:#fff;border:1px solid transparent;background-origin:border-box'
-      : isOpen === false
-      ? 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%);color:#fff;border:1px solid transparent;background-origin:border-box'
-      : 'display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;font-family:inherit;background:linear-gradient(180deg,#a3a9b3 0%,#6b7280 100%);color:#fff;border:1px solid transparent;background-origin:border-box';
-
-    const photoCardHtml = (url) => `
-      <div class="wp-ms-photo" style="width:68px;height:68px;flex-shrink:0;border-radius:22px;overflow:hidden;position:relative;scroll-snap-align:start;">
-        <img src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">
+    // Mosaico izquierdo (el "16 DAYS" de la referencia): rating grande, o
+    // el emoji de la categoría si todavía no tiene calificación.
+    const tileTop = rating > 0
+      ? `<span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1;">${rating.toFixed(1)}</span>`
+      : `<span style="font-size:22px;line-height:1;">${CAT_INFO.emoji}</span>`;
+    const tileBottom = rating > 0 ? '★ Rating' : 'Nuevo';
+    const tileHtml = `
+      <div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;padding:1.5px;box-sizing:border-box;background:linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.18));box-shadow:0 3px 8px rgba(0,0,0,0.35);">
+        <div style="width:100%;height:100%;border-radius:12.5px;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(180deg,#45484f 0%,#2a2c31 100%);">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;">
+            ${tileTop}
+            <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,0.25);"></div>
+          </div>
+          <div style="height:15px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.10);font-size:8px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#e5e7eb;">${tileBottom}</div>
+        </div>
       </div>`;
 
+    const dotColor = isOpen === true ? '#34d36b' : isOpen === false ? '#ff5a5a' : '#9ca3af';
+    const dotAnim  = isOpen === true ? 'animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite;' : '';
+    const subHtml = `
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c7cad1;white-space:nowrap;overflow:hidden;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};box-shadow:0 0 6px ${dotColor};flex-shrink:0;${dotAnim}"></span>
+        <span style="font-weight:600;color:#e5e7eb;">${statusTxt}</span>
+        <span style="color:#6b7280;">·</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;">${count > 0 ? count + ' reseñas' : CAT_INFO.name}</span>
+      </div>`;
+
+    const darkBtn = `flex-shrink:0;width:36px;height:28px;padding:0;border-radius:999px;border:1px solid ${msBtnBorder};background:${msBtnBg};box-shadow:0 2px 6px rgba(0,0,0,0.30),inset 0 1px 0 rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
+
+    // Abanico de hasta 3 fotos chicas (la de en medio al frente)
+    const fan = photos4.slice(0, 3);
+    const fanRot = [-11, 2, 12], fanX = [0, 22, 44], fanZ = [1, 3, 2];
+    const fanHtml = fan.length
+      ? fan.map((u, i) => `<div style="position:absolute;top:50%;left:${fanX[i]}px;width:42px;height:42px;margin-top:-21px;border-radius:11px;padding:2px;box-sizing:border-box;background:#f4f4f5;box-shadow:0 4px 10px rgba(0,0,0,0.45);transform:rotate(${fanRot[i]}deg);z-index:${fanZ[i]};"><div style="width:100%;height:100%;border-radius:9px;overflow:hidden;background:#3a3d44;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div></div>`).join('')
+      : `<div style="position:absolute;top:50%;left:22px;width:42px;height:42px;margin-top:-21px;border-radius:11px;background:linear-gradient(180deg,#45484f,#2a2c31);border:1.5px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(4deg);">${CAT_INFO.emoji}</div>`;
+    const fanW = fan.length ? 42 + fanX[fan.length - 1] : 86;
+
     ms.innerHTML = `
-      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:20px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-        <div style="width:36px;height:4px;border-radius:2px;background:#1a5cf5;opacity:0.75;pointer-events:none"></div>
+      <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:9px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
+        <div style="width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,0.22);pointer-events:none"></div>
       </div>
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:2px;min-height:32px">
-        <span style="position:absolute;left:0;${glassBadge}">${badgeDot}${statusTxt}</span>
-        <span style="font-size:15px;font-weight:800;color:#0a0a0a;text-align:center;padding:0 100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;box-sizing:border-box">${name}</span>
-        <div style="position:absolute;right:0;display:flex;align-items:center;gap:3px;"><button id="wp-ms-fav-btn" style="flex-shrink:0;width:40px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button id="wp-ms-close-btn" style="flex-shrink:0;width:40px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
-      </div>
-      <div id="wp-ms-photo-strip" style="display:flex;gap:8px;height:68px;flex-shrink:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px;scroll-padding:0 14px;scrollbar-width:none;">
-        ${photos4.length
-          ? photos4.map((u) => photoCardHtml(u)).join('')
-          : `<div style="width:68px;height:68px;border-radius:22px;background:#f4f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:20px">📷</span></div>`}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:7px">
-          <div style="display:flex;align-items:center">${avatarsHtml}</div>
-          ${count > 0 ? `<span style="font-size:11px;font-weight:600;color:#6b7280">${count} reseñas</span>` : `<span style="font-size:11px;color:#9ca3af">Sin reseñas</span>`}
+      <div style="display:flex;align-items:center;gap:11px;padding:2px 2px 9px;flex-shrink:0;position:relative;">
+        ${tileHtml}
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding-right:80px;">
+          <div style="font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+          ${subHtml}
         </div>
-        <button id="wp-ms-cta-btn" aria-label="Detalles" style="flex-shrink:0;width:40px;height:30px;padding:0;border-radius:999px;border:1px solid rgba(0,0,0,0.06);background:linear-gradient(180deg,#ffffff 0%,#f1f3f6 100%);box-shadow:0 2px 6px rgba(0,0,0,0.10),inset 0 1.5px 1px #fff,inset 0 -2px 3px rgba(148,163,184,0.20);display:flex;align-items:center;justify-content:center;color:#1f2937;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div style="position:absolute;right:2px;top:2px;display:flex;align-items:center;gap:4px;z-index:3;">
+          <button id="wp-ms-fav-btn" aria-label="Favorito" style="${darkBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+          <button id="wp-ms-close-btn" aria-label="Cerrar" style="${darkBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        </div>
+      </div>
+      <div style="height:1px;margin:0 -10px;background:rgba(0,0,0,0.35);box-shadow:0 1px 0 rgba(255,255,255,0.06);flex-shrink:0;"></div>
+      <div style="flex:1;min-height:0;margin-top:9px;border-radius:22px;background:linear-gradient(180deg,#2a2c31 0%,#24262a 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),inset 0 -1px 0 rgba(0,0,0,0.25),0 1px 2px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 14px;gap:10px;overflow:hidden;">
+        <div style="min-width:0;display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#f3f4f6;">Fotos</span><span style="color:#9ca3af;"> y reseñas</span></div>
+          <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="align-self:flex-start;height:30px;padding:0 5px 0 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.07);background:linear-gradient(180deg,#17181b 0%,#101113 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;gap:8px;color:#f3f4f6;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);white-space:nowrap;">Ver detalles<span style="width:21px;height:21px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+        </div>
+        <div style="position:relative;flex-shrink:0;width:${fanW}px;height:100%;">${fanHtml}</div>
       </div>`;
 
     ms.className = 'wp-minisnap-panel';
@@ -2067,7 +2096,7 @@ export class PlaceModal2 {
       favBtn.style.background = active
         ? 'linear-gradient(180deg,#ff7aa8 0%,#ec4899 100%)'
         : msBtnBg;
-      favBtn.style.borderColor = active ? 'transparent' : 'rgba(0,0,0,0.06)';
+      favBtn.style.borderColor = active ? 'transparent' : msBtnBorder;
     };
     paintFav(false);
     const msUid = this.getCurrentUser?.()?.id || null;
