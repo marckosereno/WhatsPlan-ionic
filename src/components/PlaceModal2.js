@@ -31,8 +31,9 @@ export class PlaceModal2 {
         <!-- WHITE OVERLAY grows upward on scroll -->
 <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
-          <button id="wp-pm2-back">
-            <svg width="13" height="13" viewBox="0 0 32.75 32.75" fill="#000000" xmlns="http://www.w3.org/2000/svg"><path d="M32.75,16.377c0,2.209-1.791,4-4,4H12.646l3.754,4.42c1.431,1.684,1.224,4.207-0.46,5.638 c-0.752,0.64-1.672,0.95-2.587,0.95c-1.134,0-2.26-0.479-3.051-1.41l-9.351-11.01c-1.268-1.492-1.268-3.687,0-5.178l9.351-11.01 c1.431-1.684,3.954-1.89,5.638-0.459s1.891,3.954,0.46,5.638l-3.754,4.42H28.75C30.959,12.376,32.75,14.167,32.75,16.377z"/></svg>
+          <button id="wp-pm2-back" aria-label="Volver">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Volver</span>
           </button>
           <span id="wp-pm2-topbar-title"></span>
           <div id="wp-pm2-topbar-actions">
@@ -531,7 +532,9 @@ export class PlaceModal2 {
 
       #wp-pm2-back {
         position:relative; z-index:1;
-        width:44px; height:44px; border-radius:9999px; border:none; flex-shrink:0;
+        /* Pill: flecha + "Volver" */
+        height:40px; padding:0 16px 0 12px; gap:6px; border-radius:9999px; border:none; flex-shrink:0;
+        font-family:inherit; font-size:14px; font-weight:600; letter-spacing:-0.1px;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
@@ -554,7 +557,9 @@ export class PlaceModal2 {
         position:relative; z-index:1;
       }
       .wp-pm2-tb-btn {
-        width:40px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
+        /* Pill (más ancho que alto), igual de alto que "Volver" */
+        position:relative;
+        width:54px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
@@ -1808,11 +1813,7 @@ export class PlaceModal2 {
       btn.addEventListener('pointerdown', () => triggerTapFlash(btn));
     });
 
-    // Si la ficha se abrió como hoja, "atrás" la regresa a la altura chica
-    el.querySelector('#wp-pm2-back').addEventListener('click', () => {
-      if (this._sheetState === 'full') this._sheetSnap('peek');
-      else this.hide();
-    });
+    el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
     this._wireTagToggle(el);
@@ -1923,13 +1924,13 @@ export class PlaceModal2 {
     this._place = place;
     // El minicard de MapView se queda abierto (no se cierra) — el minisnap
     // aparece encima de él, no lo reemplaza
-    // Ya no hay minisnap: la ficha misma se abre como hoja (estilo Maps
-    // de iOS) en su altura chica "peek"; arrastrando hacia arriba sube a
-    // la ficha completa. (_showMiniSnap queda sin uso por ahora.)
+    // Minisnap excluido por ahora: tocar el minicard abre directo la ficha
+    // completa. (_showMiniSnap sigue en el archivo, sin uso, por si vuelve.)
     try {
-      this._sheetShow(place);
+      this._hideMiniSnap();
+      this.show(place);
     } catch (e) {
-      console.error('[PM2] Error al abrir la hoja:', e);
+      console.error('[PM2] Error al abrir la ficha:', e);
     }
   }
 
@@ -2083,178 +2084,94 @@ export class PlaceModal2 {
         <div style="position:relative;flex-shrink:0;width:${fanW}px;height:100%;">${fanHtml}</div>
       </div>`;
 
-    // ── Estilo 'track' (tipo widget de progreso): fondo oscuro con el
-    // tinte de la categoría, nombre arriba con el estado, una barra de 5
-    // estrellas que se llena hasta el rating, y abajo foto + datos con
-    // los botones ♥ y →. Mismos ids/medidas, así que todo lo de abajo
-    // (favorito, cerrar, abrir ficha) funciona igual. 'flat' = el claro.
-    const MS_STYLE = window.__wpMsStyle || 'ticket';
-    // ── Estilo 'ticket' (boleto): talón de color de la categoría con su
-    // emoji 3D y el rating, línea perforada con muescas, y a la derecha
-    // nombre + estado + mini fotos redondas + ♥ y "Ver lugar". Las fotos
-    // quedan como detalle (círculos de 28px): una foto mala ya no arruina
-    // la tarjeta, el protagonista es el talón.
-    if (MS_STYLE === 'ticket') {
-      const F3D = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
-      const TT = {
-        RESTAURANTS:   { tint: '#ffe3bf', ink: '#9a5a12', icon: 'Taco/3D/taco_3d.png' },
-        HEALTH:        { tint: '#d6e6ff', ink: '#2a63b0', icon: 'Stethoscope/3D/stethoscope_3d.png' },
-        SHOPPING:      { tint: '#e4dbff', ink: '#5b47c2', icon: 'Shopping%20bags/3D/shopping_bags_3d.png' },
-        ENTERTAINMENT: { tint: '#ffdbe9', ink: '#b4386f', icon: 'Party%20popper/3D/party_popper_3d.png' },
-        PARKS:         { tint: '#d9f0cc', ink: '#3f7d22', icon: 'Deciduous%20tree/3D/deciduous_tree_3d.png' },
-        WORKSHOPS:     { tint: '#e3e6ea', ink: '#4b5563', icon: 'Wrench/3D/wrench_3d.png' },
-      }[CAT] || { tint: '#fff1c2', ink: '#8a6a00', icon: 'Glowing%20star/3D/glowing_star_3d.png' };
-      msBtnBg = '#f2f3f5'; msBtnInk = '#1f2937'; msBtnBorder = 'transparent';
+    // ── Estilo 'card' (default): la misma minificha del autocompletado de
+    // la búsqueda global (.wps-card de SearchBar.js) — foto cuadrada a la
+    // izquierda, badge de estado con degradado + precio, nombre, dirección
+    // y rating — escalada al tamaño del minisnap. 'flat' = el anterior.
+    const MS_STYLE = window.__wpMsStyle || 'card';
+    if (MS_STYLE === 'card') {
+      msBtnBg = '#f3f4f6'; msBtnInk = '#374151'; msBtnBorder = 'transparent';
+      const PAD = 14;
+      const PH = Math.max(96, panelHeight - PAD * 2 - 4); // lado de la foto (4 = borde 2px x2)
 
-      const STUB = 100;      // ancho del talón
-      const NOTCH = 9;       // radio de las muescas
-      ms.style.cssText = [
-        'position:fixed',
-        'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
-        'left:12px', 'right:12px',
-        'height:' + panelHeight + 'px',
-        'background:transparent',
-        // la sombra va con drop-shadow porque la máscara de las muescas
-        // recortaría un box-shadow normal
-        'filter:drop-shadow(0 8px 18px rgba(0,0,0,0.13)) drop-shadow(0 1px 2px rgba(0,0,0,0.06))',
-        'z-index:2000', 'opacity:0',
-        'transition:opacity 0.22s ease',
-        "font-family:var(--wp-font); font-weight:400;",
-        'cursor:pointer', 'box-sizing:border-box',
-        'color:#0a0a0a',
-      ].join(';');
-
-      const mask = `radial-gradient(circle ${NOTCH}px at ${STUB}px 0,#0000 97%,#000 100%) top/100% 51% no-repeat,radial-gradient(circle ${NOTCH}px at ${STUB}px 100%,#0000 97%,#000 100%) bottom/100% 51% no-repeat`;
-      const stDot = isOpen === true ? '#22c55e' : isOpen === false ? '#ef4444' : '#9ca3af';
-      const stInk = isOpen === true ? '#15803d' : isOpen === false ? '#dc2626' : '#6b7280';
-
-      const mini = photos4.slice(0, 3);
-      const extra = Math.max(0, photosAll.length - mini.length);
-      const miniHtml = mini.length
-        ? `<div style="display:flex;align-items:center;">${mini.map((u, i) => `<div style="width:28px;height:28px;border-radius:50%;border:2px solid #fff;overflow:hidden;background:${TT.tint};margin-left:${i ? -9 : 0}px;position:relative;z-index:${3 - i};box-sizing:border-box;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div>`).join('')}${extra ? `<div style="height:28px;min-width:28px;padding:0 6px;margin-left:-9px;border-radius:999px;border:2px solid #fff;background:${TT.tint};color:${TT.ink};font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box;">+${extra}</div>` : ''}</div>`
-        : `<span style="font-size:11.5px;color:#9ca3af;">Sin fotos aún</span>`;
-
-      ms.innerHTML = `
-        <div style="position:absolute;inset:0;border-radius:30px;background:#fff;overflow:hidden;-webkit-mask:${mask};mask:${mask};display:flex;">
-          <div id="wp-ms-handle" style="position:absolute;top:0;left:${STUB}px;right:0;height:9px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-            <div style="width:32px;height:3px;border-radius:2px;background:#1a5cf5;opacity:0.5;pointer-events:none"></div>
-          </div>
-          <!-- Talón -->
-          <div style="flex-shrink:0;width:${STUB}px;height:100%;background:${TT.tint};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;">
-            <img src="${F3D}${TT.icon}" alt="" style="width:58px;height:58px;object-fit:contain;transform:rotate(-8deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,0.15));">
-            <div style="display:flex;flex-direction:column;align-items:center;line-height:1.05;">
-              ${rating > 0
-                ? `<span style="font-size:17px;font-weight:800;color:${TT.ink};letter-spacing:-0.3px;">★ ${rating.toFixed(1)}</span><span style="font-size:10.5px;font-weight:600;color:${TT.ink};opacity:0.7;margin-top:2px;">${count > 0 ? count + ' reseñas' : 'sin reseñas'}</span>`
-                : `<span style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${TT.ink};">Nuevo</span>`}
-            </div>
-          </div>
-          <!-- Perforado -->
-          <div style="position:absolute;left:${STUB - 1}px;top:${NOTCH + 6}px;bottom:${NOTCH + 6}px;border-left:2px dashed rgba(0,0,0,0.10);"></div>
-          <!-- Cuerpo -->
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;padding:14px 12px 12px 16px;box-sizing:border-box;">
-            <div style="display:flex;align-items:flex-start;gap:8px;">
-              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
-                <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:0.9px;text-transform:uppercase;white-space:nowrap;overflow:hidden;">
-                  <span style="color:${TT.ink};">${CAT_INFO.name}</span>
-                  <span style="color:#d1d5db;">•</span>
-                  <span style="display:inline-flex;align-items:center;gap:4px;color:${stInk};"><span style="width:6px;height:6px;border-radius:50%;background:${stDot};${isOpen === true ? 'animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite;' : ''}"></span>${statusTxt}</span>
-                </div>
-                <div style="font-size:18px;font-weight:700;line-height:1.15;letter-spacing:-0.3px;color:#0a0a0a;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${name}</div>
-              </div>
-              <button id="wp-ms-close-btn" aria-label="Cerrar" style="flex-shrink:0;width:28px;height:28px;padding:0;border-radius:50%;border:none;background:#f2f3f5;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="flex:1;min-width:0;">${miniHtml}</div>
-              <button id="wp-ms-fav-btn" aria-label="Favorito" style="flex-shrink:0;width:38px;height:36px;padding:0;border-radius:999px;border:none;background:${msBtnBg};display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg></button>
-              <button id="wp-ms-cta-btn" aria-label="Ver lugar" style="flex-shrink:0;height:36px;padding:0 6px 0 14px;border-radius:999px;border:none;background:#111827;color:#fff;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);white-space:nowrap;">Ver lugar<span style="width:24px;height:24px;border-radius:50%;background:${TT.tint};color:${TT.ink};display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
-            </div>
-          </div>
-        </div>`;
-    }
-    else if (MS_STYLE === 'track') {
-      const TK = {
-        RESTAURANTS:   { deep: '#5a3210', acc: '#ffad4d', soft: '#ffd6a3' },
-        HEALTH:        { deep: '#0c2f66', acc: '#4fa3ff', soft: '#a8d4ff' },
-        SHOPPING:      { deep: '#2e1d66', acc: '#a58bff', soft: '#d2c6ff' },
-        ENTERTAINMENT: { deep: '#55143a', acc: '#ff74b4', soft: '#ffbcdb' },
-        PARKS:         { deep: '#123f20', acc: '#5fd47a', soft: '#b0efbf' },
-        WORKSHOPS:     { deep: '#2b3038', acc: '#b8c0cc', soft: '#e3e7ee' },
-      }[CAT] || { deep: '#1d2a44', acc: '#7aa7ff', soft: '#c6d8ff' };
-      msBtnBg = 'rgba(255,255,255,0.12)';
-      msBtnInk = '#ffffff';
-      msBtnBorder = 'rgba(255,255,255,0.16)';
+      // Badge: mismo cálculo que la búsqueda (incluye "Cierra 9:00 PM" si
+      // falta una hora o menos para cerrar)
+      let bClass = 'no', bText = 'Sin horario';
+      const oh = place.regularOpeningHours;
+      if (oh && oh.periods && oh.periods.length) {
+        const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+        let open = false, soon = false, closeTime = '';
+        oh.periods.filter(pp => pp.open && pp.open.day === day).forEach(pp => {
+          if (!pp.open || !pp.close) return;
+          const oM = pp.open.hour * 60 + (pp.open.minute || 0);
+          const cM = pp.close.hour * 60 + (pp.close.minute || 0);
+          if (mins >= oM && mins < cM) {
+            open = true;
+            const h12 = pp.close.hour > 12 ? pp.close.hour - 12 : (pp.close.hour || 12);
+            closeTime = h12 + ':' + String(pp.close.minute || 0).padStart(2, '0') + ' ' + (pp.close.hour >= 12 ? 'PM' : 'AM');
+            if (cM - mins > 0 && cM - mins <= 60) soon = true;
+          }
+        });
+        if (open) { bClass = soon ? 'soon' : 'open'; bText = soon && closeTime ? 'Cierra ' + closeTime : 'Abierto'; }
+        else { bClass = 'closed'; bText = 'Cerrado'; }
+      } else if (isOpen === true) { bClass = 'open'; bText = 'Abierto'; }
+      else if (isOpen === false) { bClass = 'closed'; bText = 'Cerrado'; }
+      const BADGE = {
+        open:   'background:linear-gradient(135deg,#34d399,#10b981);box-shadow:0 2px 8px rgba(16,185,129,0.35),inset 0 1px 0 rgba(255,255,255,0.25);',
+        soon:   'background:linear-gradient(135deg,#fbbf24,#f59e0b);box-shadow:0 2px 8px rgba(245,158,11,0.35),inset 0 1px 0 rgba(255,255,255,0.25);',
+        closed: 'background:linear-gradient(135deg,#f87171,#ef4444);box-shadow:0 2px 8px rgba(239,68,68,0.35),inset 0 1px 0 rgba(255,255,255,0.25);',
+        no:     'background:linear-gradient(135deg,#9ca3af,#6b7280);box-shadow:0 2px 6px rgba(107,114,128,0.30),inset 0 1px 0 rgba(255,255,255,0.2);',
+      }[bClass];
+      const price = '$'.repeat(Math.min(place.priceLevel || 1, 3));
+      const addr  = String(place.vicinity || place.formattedAddress || place.address || '').trim();
+      const photo = photosAll[0] || null;
 
       ms.style.cssText = [
         'position:fixed',
         'bottom:calc(84px + env(safe-area-inset-bottom,0px))',
         'left:12px', 'right:12px',
         'height:' + panelHeight + 'px',
-        'border-radius:32px',
-        `background:radial-gradient(120% 90% at 50% 120%,${TK.deep} 0%,rgba(0,0,0,0) 70%),linear-gradient(180deg,#05070c 0%,${TK.deep} 140%)`,
-        'box-shadow:0 14px 34px rgba(0,0,0,0.32),inset 0 1px 0 rgba(255,255,255,0.10)',
-        'border:1px solid rgba(255,255,255,0.07)',
+        'border-radius:24px',
+        'background:#ffffff',
+        'border:2px solid #e5e7eb',
+        'box-shadow:0 8px 24px rgba(0,0,0,0.12)',
         'overflow:hidden', 'z-index:2000', 'opacity:0',
-        'transition:opacity 0.22s ease',
+        'transition:opacity 0.22s ease, transform 0.15s ease',
         "font-family:var(--wp-font); font-weight:400;",
         'cursor:pointer', 'box-sizing:border-box',
-        'padding:13px 16px 13px', 'display:flex', 'flex-direction:column', 'justify-content:space-between',
-        'color:#fff',
+        `padding:${PAD}px`, 'display:flex', 'align-items:center', 'gap:14px',
+        'color:#111827', '-webkit-tap-highlight-color:transparent',
       ].join(';');
 
-      // Nombre en dos tonos: la primera palabra en el tono claro de la categoría
-      const nm = String(name).trim();
-      const sp = nm.indexOf(' ');
-      const nameHtml = sp > 0
-        ? `<span style="color:${TK.soft};">${nm.slice(0, sp)}</span><span style="color:#fff;">${nm.slice(sp)}</span>`
-        : `<span style="color:#fff;">${nm}</span>`;
-      const stDot = isOpen === true ? '#34d36b' : isOpen === false ? '#ff5a5a' : '#9ca3af';
-
-      // Barra de 5 nodos (estrellas). Progreso continuo hasta el rating:
-      // 1 → primer nodo, 5 → último; un 3.7 llega al 67% entre el 3 y el 4.
-      const rt = Math.max(0, Math.min(5, rating));
-      const prog = rt <= 1 ? 0 : (rt - 1) / 4; // 0..1 entre centros del 1º y 5º nodo
-      const NODE = 28;
-      const starSvg = (fill) => `<svg width="13" height="13" viewBox="0 0 24 24"><path d="${STAR_PATH}" fill="${fill ? '#fff' : 'none'}" stroke="${fill ? '#fff' : 'rgba(255,255,255,0.55)'}" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
-      const nodes = Array.from({ length: 5 }, (_, i) => {
-        const on = rt >= i + 1 - 0.001;
-        const half = !on && rt > i; // estrella parcial: nodo con anillo de color
-        return `<div style="position:relative;z-index:2;width:${NODE}px;height:${NODE}px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;${on
-          ? `background:radial-gradient(circle at 50% 35%,${TK.soft} 0%,${TK.acc} 70%);box-shadow:0 0 12px ${TK.acc}aa,inset 0 1px 0 rgba(255,255,255,0.5);`
-          : `background:rgba(255,255,255,0.07);border:1px solid ${half ? TK.acc : 'rgba(255,255,255,0.14)'};box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);`}">${starSvg(on)}</div>`;
-      }).join('');
-      const trackHtml = `
-        <div style="position:relative;height:${NODE}px;display:flex;align-items:center;justify-content:space-between;">
-          <div style="position:absolute;left:${NODE / 2}px;right:${NODE / 2}px;top:50%;height:4px;margin-top:-2px;border-radius:2px;background:rgba(255,255,255,0.09);"></div>
-          ${rt > 0 ? `<div style="position:absolute;left:${NODE / 2}px;top:50%;height:4px;margin-top:-2px;border-radius:2px;width:calc((100% - ${NODE}px) * ${prog.toFixed(3)});background:linear-gradient(90deg,${TK.acc} 0%,${TK.soft} 85%,#ffffff 100%);box-shadow:0 0 10px ${TK.acc}cc;z-index:1;"></div>` : ''}
-          ${nodes}
-        </div>`;
-
-      const thumb = photos4[0]
-        ? `<img src="${photos4[0]}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1">`
-        : `<span style="font-size:20px;">${CAT_INFO.emoji}</span>`;
-      const pillBtn = `flex-shrink:0;width:54px;height:32px;padding:0;border-radius:999px;border:1px solid ${msBtnBorder};background:${msBtnBg};box-shadow:inset 0 1px 0 rgba(255,255,255,0.14),0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
-
+      const iconBtn = `flex-shrink:0;width:30px;height:30px;padding:0;border-radius:50%;border:none;background:${msBtnBg};display:flex;align-items:center;justify-content:center;color:${msBtnInk};cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);`;
       ms.innerHTML = `
-        <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:9px;display:flex;align-items:center;justify-content:center;cursor:grab;z-index:2">
-          <div style="width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,0.22);pointer-events:none"></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;min-height:26px;">
-          <div style="flex:1;min-width:0;font-size:17px;font-weight:600;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nameHtml}</div>
-          <div style="flex-shrink:0;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#fff;">
-            <span style="width:7px;height:7px;border-radius:50%;background:${stDot};box-shadow:0 0 6px ${stDot};${isOpen === true ? 'animation:wp-pm2-dot-pulse 1.8s ease-in-out infinite;' : ''}"></span>${statusTxt}
+        <div id="wp-ms-handle" style="position:absolute;top:0;left:0;right:0;height:8px;z-index:2"></div>
+        ${photo
+          ? `<div style="flex-shrink:0;width:${PH}px;height:${PH}px;border-radius:18px;overflow:hidden;background:#f3f4f6;"><img src="${photo}" alt="" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.25s" onload="this.style.opacity=1"></div>`
+          : `<div style="flex-shrink:0;width:${PH}px;height:${PH}px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--wp-blue,#1a5cf5),var(--wp-blue-dark,#1540cc));font-size:${Math.round(PH * 0.42)}px;">${CAT_INFO.emoji}</div>`}
+        <div style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <span style="padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;letter-spacing:0.01em;white-space:nowrap;${BADGE}">${bText}</span>
+              <span style="font-size:15px;font-weight:700;color:#1f2937;">${price}</span>
+              <span style="flex:1"></span>
+              <button id="wp-ms-fav-btn" aria-label="Favorito" style="${iconBtn}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+              <button id="wp-ms-close-btn" aria-label="Cerrar" style="${iconBtn}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:#111827;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px;font-family:'Yahoo Sans Bold Regular',var(--wp-font);">${name}</div>
+            ${addr ? `<div style="font-size:13px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${addr}</div>` : ''}
           </div>
-          <button id="wp-ms-close-btn" aria-label="Cerrar" style="flex-shrink:0;width:26px;height:26px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.85);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
-        </div>
-        ${trackHtml}
-        <div style="display:flex;align-items:center;gap:11px;">
-          <div style="flex-shrink:0;width:40px;height:40px;border-radius:11px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">${thumb}</div>
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;line-height:1.15;">
-            <span style="font-size:14.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${CAT_INFO.name}</span>
-            <span style="font-size:12px;color:rgba(255,255,255,0.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${rating > 0 ? `${rating.toFixed(1)} ★` : 'Nuevo'}<span style="display:inline-block;width:1px;height:10px;background:rgba(255,255,255,0.25);margin:0 8px;vertical-align:-1px;"></span>${count > 0 ? count + ' reseñas' : 'Sin reseñas'}</span>
+          <div style="display:flex;align-items:center;gap:5px;">
+            ${rating > 0
+              ? `<span style="font-size:14px;">⭐</span><span style="font-size:15px;font-weight:700;color:#f59e0b;">${rating.toFixed(1)}</span>${count ? `<span style="font-size:12.5px;color:#9ca3af;">(${count})</span>` : ''}`
+              : `<span style="font-size:12.5px;color:#9ca3af;">Sin reseñas</span>`}
+            <span style="flex:1"></span>
+            <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="flex-shrink:0;width:32px;height:32px;padding:0;border-radius:50%;border:none;background:#e5e5e5;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
-          <button id="wp-ms-fav-btn" aria-label="Favorito" style="${pillBtn}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg></button>
-          <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="${pillBtn}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>`;
+      // Presión de toda la tarjeta (como .wps-card:active)
+      ms.onpointerdown = (e) => { if (!e.target.closest('button')) ms.style.transform = 'scale(0.97)'; };
+      ms.onpointerup = ms.onpointercancel = ms.onpointerleave = () => { ms.style.transform = ''; };
     }
 
     ms.className = 'wp-minisnap-panel';
@@ -2340,330 +2257,6 @@ export class PlaceModal2 {
 
   }
 
-  // ══ FICHA COMO HOJA (estilo Maps de iOS) ════════════════════════════
-  // Reemplaza al minisnap. Tocar el minicard abre ESTA MISMA ficha como
-  // hoja en altura chica ("peek"): solo una cabecera con lo básico
-  // (nombre, categoría, estado, rating y acciones). Arrastrar hacia
-  // arriba (o tocar la cabecera) la sube hasta la ficha completa de
-  // siempre; arrastrar hacia abajo la regresa a peek o la cierra.
-  //
-  // Posición = translateY del card (#wp-pm2-card):
-  //   0             → completa
-  //   this._sheetYPeek → peek (solo se ve la cabecera)
-  //   innerHeight   → cerrada
-  // En peek el resto de la pantalla (mapa) sigue tocable: #wp-pm2 queda
-  // con pointer-events:none y solo el card los recibe.
-  _sheetEnsure() {
-    if (!document.getElementById('wp-pm2-sheet-css')) {
-      const st = document.createElement('style');
-      st.id = 'wp-pm2-sheet-css';
-      st.textContent = `
-        #wp-pm2.wp-pm2-sheet #wp-pm2-card { box-shadow:0 -4px 28px rgba(0,0,0,0.14); will-change:transform; }
-        #wp-pm2-peek {
-          display:none; position:absolute; left:0; right:0; top:0; z-index:40;
-          background:#fff; box-sizing:border-box;
-          padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));
-          touch-action:none; user-select:none; -webkit-user-select:none;
-          font-family:var(--wp-font);
-        }
-        #wp-pm2.wp-pm2-sheet #wp-pm2-peek { display:block; }
-        #wp-pm2-peek .wp-pk-handle { width:38px; height:5px; border-radius:3px; background:#d4d7dd; margin:0 auto 10px; }
-        #wp-pm2-peek .wp-pk-top { display:flex; align-items:flex-start; gap:8px; }
-        #wp-pm2-peek .wp-pk-titles { flex:1; min-width:0; }
-        #wp-pm2-peek .wp-pk-name {
-          font-size:22px; font-weight:700; color:#0a0a0a; letter-spacing:-0.4px; line-height:1.15;
-          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        }
-        #wp-pm2-peek .wp-pk-sub {
-          margin-top:4px; display:flex; align-items:center; gap:6px; flex-wrap:nowrap;
-          font-size:13.5px; color:#6b7280; white-space:nowrap; overflow:hidden;
-        }
-        #wp-pm2-peek .wp-pk-sub b { font-weight:600; }
-        #wp-pm2-peek .wp-pk-sub > span:last-child { min-width:0; overflow:hidden; text-overflow:ellipsis; }
-        #wp-pm2-peek .wp-pk-sep { color:#c4c8cf; }
-        #wp-pm2-peek .wp-pk-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-        #wp-pm2-peek .wp-pk-ic {
-          flex-shrink:0; width:34px; height:34px; padding:0; border:none; border-radius:50%;
-          background:#f1f2f4; color:#374151; display:flex; align-items:center; justify-content:center;
-          cursor:pointer; -webkit-tap-highlight-color:transparent;
-        }
-        #wp-pm2-peek .wp-pk-ic.on { background:#ec4899; color:#fff; }
-        #wp-pm2-peek .wp-pk-actions { display:flex; gap:8px; margin-top:14px; }
-        #wp-pm2-peek .wp-pk-act {
-          flex:1; min-width:0; height:58px; border:none; border-radius:16px; padding:0 4px;
-          background:#f1f2f4; color:#1f2937; font-family:inherit; font-size:11.5px; font-weight:600;
-          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
-          cursor:pointer; -webkit-tap-highlight-color:transparent;
-        }
-        #wp-pm2-peek .wp-pk-act.primary { background:#1a5cf5; color:#fff; }
-        #wp-pm2-peek .wp-pk-act span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-      `;
-      document.head.appendChild(st);
-    }
-    const card = this._el.querySelector('#wp-pm2-card');
-    let peek = this._el.querySelector('#wp-pm2-peek');
-    if (!peek && card) {
-      peek = document.createElement('div');
-      peek.id = 'wp-pm2-peek';
-      card.appendChild(peek);
-      this._sheetWireDrag(peek);
-    }
-    return peek;
-  }
-
-  _sheetShow(place) {
-    this._hideMiniSnap(); // por si quedó uno viejo en pantalla
-    const peek = this._sheetEnsure();
-    const card = this._el.querySelector('#wp-pm2-card');
-    const wasOpen = !!this._sheetState && this._sheetState !== 'closing' && this._el.classList.contains('visible');
-    this._sheetState = 'peek';
-    this._el.classList.add('wp-pm2-sheet');
-    this.show(place, { sheet: true });
-    this._sheetRenderPeek(place);
-    card.style.opacity = '1';      // la hoja entra deslizando, sin el fade del card
-    card.style.pointerEvents = 'auto';
-    this._sheetYPeek = Math.max(120, window.innerHeight - peek.offsetHeight);
-    if (!wasOpen) {
-      card.style.transition = 'none';
-      card.style.transform = `translate3d(0,${window.innerHeight}px,0)`;
-      void card.offsetHeight;
-    }
-    this._sheetApply(this._sheetYPeek, true);
-    // Al entrar a la búsqueda la hoja se cierra (antes lo hacía el minisnap)
-    if (!this._sheetObs) {
-      this._sheetObs = new MutationObserver(() => {
-        if (this._sheetState && document.body.classList.contains('wp-search-active')) this.hide();
-      });
-      this._sheetObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    }
-  }
-
-  _sheetRenderPeek(place) {
-    const peek = this._el.querySelector('#wp-pm2-peek');
-    if (!peek) return;
-    const esc = (t) => this._esc(String(t ?? ''));
-    const name   = place.name || place.displayName || '';
-    const rating = parseFloat(place.rating) || 0;
-    const count  = place.userRatingCount || place.user_ratings_total || 0;
-    const isOpen = this._isOpenNow(place);
-    const stTxt  = isOpen === true ? 'Abierto' : isOpen === false ? 'Cerrado' : 'Sin horario';
-    const stCol  = isOpen === true ? '#16a34a' : isOpen === false ? '#dc2626' : '#9ca3af';
-    const catTxt = (this._el.querySelector('#wp-pm2-cat')?.textContent || '').trim();
-    const info   = this._placeInfo ? this._placeInfo() : {};
-    const lat = info.lat ?? place.location?.lat ?? place.lat;
-    const lng = info.lng ?? place.location?.lng ?? place.lng;
-    const phone = place.phone || place.phone_number;
-    const web   = place.website;
-
-    const sub = [];
-    if (catTxt) sub.push(`<span>${esc(catTxt)}</span>`);
-    sub.push(`<span style="display:inline-flex;align-items:center;gap:5px;"><span class="wp-pk-dot" style="background:${stCol}"></span><b style="color:${stCol}">${stTxt}</b></span>`);
-    if (rating > 0) sub.push(`<span><b style="color:#1f2937">★ ${rating.toFixed(1)}</b>${count ? ` (${count})` : ''}</span>`);
-
-    const IC = {
-      route: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>',
-      call:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
-      web:   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
-      share: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>',
-      more:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
-    };
-    const acts = [];
-    if (lat && lng) acts.push({ k: 'route', label: 'Cómo llegar', primary: true, run: () => {
-      const gid = info.gid ? `&destination_place_id=${info.gid}` : '';
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${gid}`, '_blank', 'noopener');
-    } });
-    if (phone) acts.push({ k: 'call', label: 'Llamar', run: () => window.open('tel:' + phone) });
-    if (web && acts.length < 3) acts.push({ k: 'web', label: 'Sitio web', run: () => window.open(web, '_blank') });
-    if (acts.length < 3) acts.push({ k: 'share', label: 'Compartir', run: () => this._sharePlace() });
-    acts.push({ k: 'more', label: 'Detalles', run: () => this._sheetSnap('full') });
-
-    const HEART = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
-    peek.innerHTML = `
-      <div class="wp-pk-handle"></div>
-      <div class="wp-pk-top">
-        <div class="wp-pk-titles">
-          <div class="wp-pk-name">${esc(name)}</div>
-          <div class="wp-pk-sub">${sub.join('<span class="wp-pk-sep">·</span>')}</div>
-        </div>
-        <button class="wp-pk-ic" data-pk="fav" aria-label="Favorito">${HEART}</button>
-        <button class="wp-pk-ic" data-pk="close" aria-label="Cerrar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 7l10 10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
-      </div>
-      <div class="wp-pk-actions">
-        ${acts.map((a, i) => `<button class="wp-pk-act${a.primary ? ' primary' : ''}" data-pk-act="${i}">${IC[a.k]}<span>${a.label}</span></button>`).join('')}
-      </div>`;
-    this._sheetActs = acts;
-    this._sheetPaintFav(false);
-  }
-
-  _sheetPaintFav(animate) {
-    const b = this._el?.querySelector('#wp-pm2-peek [data-pk="fav"]');
-    if (!b) return;
-    b.classList.toggle('on', !!this._isFav);
-    const path = b.querySelector('path');
-    if (path) path.setAttribute('fill', this._isFav ? 'currentColor' : 'none');
-    if (animate) this._scaleKeys(b, [0.8, 1.12, 1], 300);
-  }
-
-  // y → todo lo visual de la hoja (sin cambiar de estado)
-  _sheetApply(y, animate) {
-    const card = this._el.querySelector('#wp-pm2-card');
-    if (!card) return;
-    const yPeek = this._sheetYPeek || (window.innerHeight * 0.7);
-    this._sheetY = y;
-    const p = Math.max(0, Math.min(1, 1 - y / yPeek)); // 0 = peek (o más abajo), 1 = completa
-    const EASE = 'cubic-bezier(0.22,1,0.36,1)';
-    const T = animate ? `transform 0.42s ${EASE}, border-radius 0.42s ${EASE}` : 'none';
-    card.style.transition = T;
-    card.style.transform = `translate3d(0,${y.toFixed(1)}px,0)`;
-    const r = (26 * (1 - p)).toFixed(1);
-    card.style.borderRadius = `${r}px ${r}px 0 0`;
-
-    const fade = (el, v, pe) => {
-      if (!el) return;
-      el.style.transition = animate ? `opacity 0.3s ${EASE}` : 'none';
-      el.style.opacity = String(v);
-      if (pe !== undefined) el.style.pointerEvents = pe;
-    };
-    fade(this._el.querySelector('#wp-pm2-peek'), Math.max(0, 1 - p * 2.4), p < 0.4 ? 'auto' : 'none');
-    fade(this._el.querySelector('#wp-pm2-topbar'), Math.max(0, Math.min(1, (p - 0.55) / 0.45)), p > 0.9 ? '' : 'none');
-    fade(this._el.querySelector('#wp-pm2-backdrop'), p * 0.9);
-    const stack = this._el.querySelector('#wp-pm2-activity-stack');
-    if (stack) stack.style.visibility = p < 0.15 ? 'hidden' : '';
-
-    // En peek el mapa sigue siendo tocable y la hoja queda por debajo de
-    // overlays como el slide de clusters (mismo nivel que tenía el minisnap)
-    const low = p < 0.02;
-    this._el.style.pointerEvents = low ? 'none' : '';
-    this._el.style.zIndex = low ? '2000' : '';
-    const body = this._el.querySelector('#wp-pm2-body');
-    if (body) body.style.overflowY = p > 0.98 ? '' : 'hidden';
-  }
-
-  _sheetSnap(state) {
-    if (!this._sheetState || this._sheetState === 'closing') return;
-    if (state === 'closed') { this.hide(); return; }
-    const full = state === 'full';
-    this._sheetApply(full ? 0 : this._sheetYPeek, true);
-    const prev = this._sheetState;
-    this._sheetState = full ? 'full' : 'peek';
-    if (full && prev !== 'full') {
-      document.body.classList.add('wp-pm-open');
-      this._coverBehind(true);
-      this._haptic('light');
-    } else if (!full) {
-      document.body.classList.remove('wp-pm-open');
-      this._coverBehind(false);
-      const body = this._el.querySelector('#wp-pm2-body');
-      if (body && body.scrollTop) body.scrollTop = 0; // al volver a subir, arranca desde el hero
-    }
-  }
-
-  // Al empezar a arrastrar: la hoja tiene que verse por encima de todo
-  // (z-index alto) y lo de atrás todavía visible
-  _sheetDragStart() {
-    this._el.style.zIndex = '';
-    if (this._sheetState === 'full') {
-      document.body.classList.remove('wp-pm-open');
-      this._coverBehind(false);
-    }
-  }
-
-  // Suelta el dedo: decide a dónde ir según posición y velocidad
-  _sheetRelease(startY) {
-    const v = (() => {
-      const s = this._sheetVel || [];
-      if (s.length < 2) return 0;
-      const a = s[0], b = s[s.length - 1];
-      const dt = Math.max(1, b[1] - a[1]);
-      return (b[0] - a[0]) / dt; // px/ms, + = hacia abajo
-    })();
-    this._sheetVel = [];
-    const y = this._sheetY || 0, yPeek = this._sheetYPeek;
-    const fromPeek = startY >= yPeek - 2;
-    let target;
-    if (v < -0.35) target = 'full';
-    else if (v > 0.35) target = (fromPeek && y > yPeek) ? 'closed' : 'peek';
-    else if (y < yPeek * 0.55) target = 'full';
-    else if (y > yPeek + 70) target = 'closed';
-    else target = 'peek';
-    // _sheetSnap no hace nada si el estado no cambia → forzar re-aplicar
-    if ((target === 'full') === (this._sheetState === 'full') && target !== 'closed') {
-      this._sheetApply(target === 'full' ? 0 : yPeek, true);
-      if (target === 'full') { document.body.classList.add('wp-pm-open'); this._coverBehind(true); }
-      return;
-    }
-    this._sheetSnap(target);
-  }
-
-  _sheetWireDrag(peek) {
-    let y0 = 0, x0 = 0, startY = 0, moved = false, tracking = false;
-    peek.addEventListener('touchstart', (e) => {
-      if (e.touches.length !== 1 || !this._sheetState || this._sheetState === 'closing') return;
-      y0 = e.touches[0].clientY; x0 = e.touches[0].clientX;
-      startY = this._sheetY ?? this._sheetYPeek;
-      moved = false; tracking = true;
-      this._sheetVel = [[y0, performance.now()]];
-    }, { passive: true });
-    peek.addEventListener('touchmove', (e) => {
-      if (!tracking) return;
-      const y = e.touches[0].clientY, dy = y - y0;
-      if (!moved) {
-        if (Math.abs(dy) < 6 || Math.abs(dy) < Math.abs(e.touches[0].clientX - x0)) return;
-        moved = true;
-        this._sheetDragStart();
-      }
-      e.preventDefault();
-      let ny = startY + dy;
-      if (ny < 0) ny = -Math.sqrt(-ny) * 2; // un poquito de rebote arriba
-      this._sheetApply(Math.max(-24, ny), false);
-      this._sheetVel.push([y, performance.now()]);
-      if (this._sheetVel.length > 6) this._sheetVel.shift();
-    }, { passive: false });
-    const end = () => {
-      if (!tracking) return;
-      tracking = false;
-      if (!moved) return; // fue un toque: lo maneja el click
-      this._pkNoClickUntil = Date.now() + 350;
-      this._sheetRelease(startY);
-    };
-    peek.addEventListener('touchend', end, { passive: true });
-    peek.addEventListener('touchcancel', end, { passive: true });
-
-    peek.addEventListener('click', (e) => {
-      if (Date.now() < (this._pkNoClickUntil || 0)) return;
-      const fav = e.target.closest('[data-pk="fav"]');
-      const cls = e.target.closest('[data-pk="close"]');
-      const act = e.target.closest('[data-pk-act]');
-      if (fav) { e.stopPropagation(); this._setFavorite(!this._isFav); return; }
-      if (cls) { e.stopPropagation(); this.hide(); return; }
-      if (act) {
-        e.stopPropagation();
-        const a = (this._sheetActs || [])[+act.getAttribute('data-pk-act')];
-        if (a) { this._haptic('light'); a.run(); }
-        return;
-      }
-      this._sheetSnap('full'); // tocar la cabecera = subir
-    });
-  }
-
-  // Deja la ficha como estaba antes de usarse como hoja
-  _sheetCleanup() {
-    this._sheetState = null;
-    if (this._sheetObs) { this._sheetObs.disconnect(); this._sheetObs = null; }
-    this._el.classList.remove('wp-pm2-sheet');
-    const card = this._el.querySelector('#wp-pm2-card');
-    if (card) ['transition', 'transform', 'borderRadius', 'opacity', 'pointerEvents'].forEach(k => { card.style[k] = ''; });
-    ['#wp-pm2-topbar', '#wp-pm2-backdrop', '#wp-pm2-peek'].forEach(sel => {
-      const n = this._el.querySelector(sel);
-      if (n) { n.style.transition = ''; n.style.opacity = ''; n.style.pointerEvents = ''; }
-    });
-    const stack = this._el.querySelector('#wp-pm2-activity-stack');
-    if (stack) stack.style.visibility = '';
-    const body = this._el.querySelector('#wp-pm2-body');
-    if (body) body.style.overflowY = '';
-    this._el.style.zIndex = '';
-  }
-
   _hideMiniSnap() {
     const ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
@@ -2676,10 +2269,6 @@ export class PlaceModal2 {
   }
 
   show(place, opts = {}) {
-    this._visTok = (this._visTok || 0) + 1; // invalida el cleanup de un hide() anterior aún pendiente
-    // Apertura normal (búsqueda, slide…) mientras la hoja estaba abierta:
-    // se sale del modo hoja y queda la ficha completa de siempre.
-    if (!opts.sheet && this._sheetState) this._sheetCleanup();
     this._fromSearch = false;
     this._place = place;
     // Se usa más abajo para ignorar clics-fantasma que aterrizan sobre
@@ -2700,7 +2289,7 @@ export class PlaceModal2 {
     // Activa la sombra superior "oficial" con blur real (ion-app::before,
     // variante body.wp-pm-open en app.css) + el blur del mapa de fondo —
     // mismo mecanismo que usaba PlaceModal1, nunca portado hasta ahora
-    if (!opts.sheet) document.body.classList.add('wp-pm-open'); // en la hoja chica el mapa no se desenfoca (se activa al llegar arriba)
+    document.body.classList.add('wp-pm-open');
 
     // Ocultar el footer menu del mapview mientras la ficha está abierta
     // (tiene z-index:9995, más alto que el modal, así que quedaba encima)
@@ -2776,8 +2365,7 @@ export class PlaceModal2 {
     // puede colapsar ambos estados en uno y la entrada no se ve.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       this._el.classList.add('wp-pm2-in');
-      // En la hoja chica el mapa sigue visible y tocable: no se tapa lo de atrás
-      if (!this._sheetState || this._sheetState === 'full') this._coverBehind(true);
+      this._coverBehind(true);
     }));
 
     // El rect destino del hero se puede medir YA — sus dimensiones salen
@@ -2919,18 +2507,6 @@ export class PlaceModal2 {
   // ACTUAL del hero (puede estar colapsado si hubo scroll) y su imagen —
   // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
-    const hideTok = this._visTok = (this._visTok || 0) + 1;
-    const wasSheet = !!this._sheetState;
-    if (wasSheet) {
-      // La hoja baja y sale por abajo (en vez del fade de la ficha)
-      const card = this._el.querySelector('#wp-pm2-card');
-      if (card) {
-        card.style.transition = 'transform 0.3s cubic-bezier(0.4,0,0.9,0.6)';
-        card.style.transform = `translate3d(0,${window.innerHeight}px,0)`;
-      }
-      this._sheetState = 'closing';
-      if (this._sheetObs) { this._sheetObs.disconnect(); this._sheetObs = null; }
-    }
     this._coverBehind(false); // lo de atrás vuelve a verse ANTES del fade de salida
     // Mientras la ficha se desvanece (350ms) ya no debe atrapar toques: el
     // primer toque en lo de atrás (p.ej. "volver" del slide) se perdía.
@@ -2981,8 +2557,6 @@ export class PlaceModal2 {
     if (footerMenu) footerMenu.style.display = '';
 
     setTimeout(() => {
-      if (this._visTok !== hideTok) return; // se volvió a abrir mientras salía
-      if (wasSheet) this._sheetCleanup();
       this._el.classList.remove('visible');
       document.body.style.overflow = '';
       this._place = null;
@@ -3408,11 +2982,7 @@ export class PlaceModal2 {
         // Solo gestos claramente verticales (no el swipe de responder)
         if (Math.abs(y - y0) < 4 || Math.abs(y - y0) < Math.abs(e.touches[0].clientX - x0)) { lastY = y; return; }
         const max = body.scrollHeight - body.clientHeight;
-        if (body.scrollTop <= 0 && y > lastY && this._sheetState === 'full') {
-          // Hoja completa jalada hacia abajo desde arriba: baja la hoja
-          dir = 2; anchor = lastY; this._sheetVel = [[y, performance.now()]];
-          this._sheetDragStart();
-        } else if (body.scrollTop <= 0 && y > lastY) {
+        if (body.scrollTop <= 0 && y > lastY) {
           dir = 1; anchor = lastY;
           if (photo) {
             photoH = photo.offsetHeight || 1;
@@ -3423,13 +2993,6 @@ export class PlaceModal2 {
           dir = -1; anchor = lastY;
         }
       }
-      if (dir === 2) {
-        this._sheetApply(Math.max(0, y - anchor), false);
-        (this._sheetVel ||= []).push([y, performance.now()]);
-        if (this._sheetVel.length > 6) this._sheetVel.shift();
-        lastY = y;
-        return;
-      }
       if (dir) {
         const d = y - anchor;
         if ((dir === 1 && d < 0) || (dir === -1 && d > 0)) { apply(0); finish(); }
@@ -3437,11 +3000,7 @@ export class PlaceModal2 {
       }
       lastY = y;
     }, { passive: true });
-    const end = () => {
-      if (!active) return; active = false;
-      if (dir === 2) { dir = 0; this._sheetRelease(0); return; }
-      if (dir) springBack();
-    };
+    const end = () => { if (!active) return; active = false; if (dir) springBack(); };
     body.addEventListener('touchend', end, { passive: true });
     body.addEventListener('touchcancel', end, { passive: true });
     // Si con la ficha estirada el dedo cambia de sentido, el scroll normal
@@ -5784,7 +5343,6 @@ export class PlaceModal2 {
   }
 
   _renderFavUI(animate) {
-    this._sheetPaintFav?.(animate);
     const btn = this._el.querySelector('#wp-pm2-add-review');
     const pill = this._el.querySelector('#wp-pm2-fav-badge');
     const HEART = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
