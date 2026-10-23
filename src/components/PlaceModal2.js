@@ -552,8 +552,7 @@ export class PlaceModal2 {
         overflow:hidden; white-space:nowrap;
         transition:max-width 0.22s cubic-bezier(0.4,0,0.2,1), margin-left 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.16s ease-out;
       }
-      #wp-pm2-back.wp-pm2-back-collapsed { padding:0 10px; }
-      #wp-pm2-back.wp-pm2-back-collapsed .wp-pm2-back-label { max-width:0; margin-left:0; opacity:0; }
+      /* El retraído (al tocar y con el scroll) lo maneja _setBackQ() en JS */
       #wp-pm2-topbar-title {
         position:relative; z-index:1; margin-left:12px;
         flex:1 1 auto; min-width:0; max-width:85%;
@@ -1830,6 +1829,7 @@ export class PlaceModal2 {
       const b = e.currentTarget;
       if (b.classList.contains('wp-pm2-back-collapsed')) return; // doble toque
       b.classList.add('wp-pm2-back-collapsed');
+      this._setBackQ(1, true, false); // retrae "Volver" (sin agrandar el ícono)
       clearTimeout(this._backTimer);
       this._backTimer = setTimeout(() => this.hide(), 110);
     });
@@ -2276,6 +2276,141 @@ export class PlaceModal2 {
 
   }
 
+  // ── "Volver" que se retrae ─────────────────────────────────────────
+  // q = 0 → pill completo (ícono + "Volver"); q = 1 → solo el ícono.
+  // Con el scroll se llama cuadro a cuadro (sin transición) y el ícono
+  // crece un poco; al tocar se llama con animación y sin crecer.
+  _setBackQ(q, animate = false, growIcon = true) {
+    const b = this._el?.querySelector('#wp-pm2-back');
+    if (!b) return;
+    const lab = b.querySelector('.wp-pm2-back-label');
+    const ic  = b.querySelector('svg');
+    if (lab && !this._backLabW && lab.scrollWidth) this._backLabW = lab.scrollWidth; // ancho natural de "Volver"
+    const W = this._backLabW || 52;
+    const EASE = 'cubic-bezier(0.4,0,0.2,1)';
+    const T = animate ? `0.22s ${EASE}` : '0s';
+    b.style.transition = `transform 0.15s, padding ${T}`;
+    b.style.paddingRight = (16 - 6 * q).toFixed(2) + 'px'; // 16 → 10 (queda redondo)
+    if (lab) {
+      lab.style.transition = `max-width ${T}, margin-left ${T}, opacity ${animate ? '0.16s ease-out' : '0s'}`;
+      lab.style.maxWidth = (W * (1 - q)).toFixed(2) + 'px';
+      lab.style.marginLeft = (6 * (1 - q)).toFixed(2) + 'px';
+      lab.style.opacity = String(Math.max(0, 1 - q * 1.25));
+    }
+    if (ic && (growIcon || q === 0)) {
+      const sc = 1 + 0.2 * (growIcon ? q : 0);
+      ic.style.transition = `transform ${T}`;
+      ic.style.transform = `scale(${-sc},${sc})`; // espejo (apunta a la izquierda) + crecimiento
+    }
+  }
+
+  // ── Burbuja del elastic de abajo ───────────────────────────────────
+  // Al jalar la ficha hacia arriba estando al final, aparece una burbuja
+  // que crece con el jalón; al pasar el umbral se "llena" (azul, con
+  // texto y vibración) y al soltar abre "Lugares similares".
+  _pullMore(px) {
+    const card = this._el?.querySelector('#wp-pm2-card');
+    if (!card) return;
+    let b = this._moreBubble;
+    if (!b) {
+      if (!px) return;
+      if (!document.getElementById('wp-pm2-more-css')) {
+        const st = document.createElement('style');
+        st.id = 'wp-pm2-more-css';
+        st.textContent = `
+          #wp-pm2-more-bubble {
+            position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom,0px)); z-index:7;
+            height:42px; min-width:42px; padding:0 11px; box-sizing:border-box;
+            border-radius:999px; background:#f1f2f4; color:#374151;
+            display:flex; align-items:center; justify-content:center;
+            font-family:var(--wp-font); font-size:13.5px; font-weight:600; white-space:nowrap;
+            box-shadow:0 6px 18px rgba(0,0,0,0.12);
+            opacity:0; transform:translateX(-50%) scale(0.4); transform-origin:50% 100%;
+            pointer-events:none;
+            transition:background 0.22s ease, color 0.22s ease, padding 0.25s cubic-bezier(0.34,1.4,0.64,1);
+          }
+          #wp-pm2-more-bubble .wp-mb-txt {
+            max-width:0; margin-left:0; overflow:hidden; opacity:0;
+            transition:max-width 0.28s cubic-bezier(0.34,1.3,0.64,1), margin-left 0.28s, opacity 0.2s;
+          }
+          #wp-pm2-more-bubble.ready { background:#1a5cf5; color:#fff; padding:0 16px 0 12px; }
+          #wp-pm2-more-bubble.ready .wp-mb-txt { max-width:220px; margin-left:7px; opacity:1; }
+        `;
+        document.head.appendChild(st);
+      }
+      b = document.createElement('div');
+      b.id = 'wp-pm2-more-bubble';
+      b.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 5-5 5 5"/><path d="m7 17 5-5 5 5"/></svg><span class="wp-mb-txt">Ver lugares similares</span>`;
+      card.appendChild(b);
+      this._moreBubble = b;
+    }
+    const TH = 78; // px de estirado (ya con el rebote aplicado) para "llenarse"
+    const t = Math.max(0, Math.min(1, px / TH));
+    b.style.opacity = px > 2 ? String(Math.min(1, t * 1.6)) : '0';
+    // crece con el jalón y al llenarse hace un pequeño "pop"
+    const ready = px >= TH;
+    b.style.transform = `translateX(-50%) scale(${ready ? 1.06 : (0.4 + 0.6 * t).toFixed(3)})`;
+    if (ready !== !!this._moreReady) {
+      this._moreReady = ready;
+      b.classList.toggle('ready', ready);
+      if (ready) this._haptic('light');
+    }
+  }
+
+  // Hoja con lugares parecidos: misma categoría, primero los que comparten
+  // subcategoría/etiquetas y luego los más cercanos.
+  _openSimilar() {
+    const cur = this._place;
+    if (!cur) return;
+    const all = (window.wpApp && window.wpApp.mapView && window.wpApp.mapView.allPlaces) || [];
+    const pid = (p) => p.place_id || p.id;
+    const ll  = (p) => ({ lat: p.location?.lat ?? p.lat, lng: p.location?.lng ?? p.lng });
+    const tags = (p) => new Set([...(p.subcategoryTags || []), p.subcategory, p.subcategory_name].filter(Boolean).map(t => String(t).toLowerCase()));
+    const c = ll(cur), cTags = tags(cur);
+    const dist = (p) => {
+      const q = ll(p);
+      if (!c.lat || !q.lat) return Infinity;
+      const R = 6371000, toR = Math.PI / 180;
+      const dLa = (q.lat - c.lat) * toR, dLo = (q.lng - c.lng) * toR;
+      const a = Math.sin(dLa / 2) ** 2 + Math.cos(c.lat * toR) * Math.cos(q.lat * toR) * Math.sin(dLo / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    };
+    const list = all
+      .filter(p => p && pid(p) !== pid(cur) && (!cur.category || !p.category || p.category === cur.category))
+      .map(p => {
+        let share = 0; tags(p).forEach(t => { if (cTags.has(t)) share++; });
+        return { p, share, d: dist(p) };
+      })
+      .sort((a, b) => (b.share - a.share) || (a.d - b.d))
+      .slice(0, 12);
+    if (!list.length) { this._showToast('No hay lugares similares cerca'); return; }
+
+    this._haptic('success');
+    const { body, close } = this._openSheet('Lugares similares', `Parecidos a ${cur.name || 'este lugar'}`);
+    const fmtD = (d) => !isFinite(d) ? '' : d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(d < 10000 ? 1 : 0)} km`;
+    body.innerHTML = list.map(({ p, d }, i) => {
+      const photo = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
+      const r = parseFloat(p.rating) || 0;
+      const open = this._isOpenNow(p);
+      const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
+      const bits = [st, r > 0 ? `★ ${r.toFixed(1)}` : '', fmtD(d)].filter(Boolean).join(' · ');
+      return `<button type="button" data-sim="${i}" style="display:flex;align-items:center;gap:12px;width:100%;padding:9px 4px;border:none;background:none;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+        <div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;overflow:hidden;background:#f1f2f4;">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : ''}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(p.name || '')}</div>
+          <div style="margin-top:2px;font-size:12.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${bits}</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;color:#9ca3af"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>`;
+    }).join('');
+    body.querySelectorAll('[data-sim]').forEach(btn => btn.addEventListener('click', () => {
+      const it = list[+btn.getAttribute('data-sim')];
+      if (!it) return;
+      close();
+      setTimeout(() => this.show(it.p), 220); // abre la ficha del elegido
+    }));
+  }
+
   _hideMiniSnap() {
     const ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
@@ -2366,6 +2501,8 @@ export class PlaceModal2 {
 
     clearTimeout(this._backTimer);
     this._el.querySelector('#wp-pm2-back')?.classList.remove('wp-pm2-back-collapsed'); // "Volver" vuelve a verse completo
+    this._setBackQ(0, false);
+    this._pullMore(0);
     this._el.classList.add('visible');
     this._el.style.pointerEvents = ''; // (hide() lo apaga durante su salida)
     this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
@@ -2475,6 +2612,11 @@ export class PlaceModal2 {
           const actOpacity = Math.max(0, Math.min(1, (prog - 0.5) / 0.4));
           topbarActions.style.opacity = actOpacity;
           topbarActions.style.pointerEvents = actOpacity > 0.5 ? 'auto' : 'none';
+        }
+        // "Volver" acompaña a los botones de la derecha: mientras aparecen,
+        // la palabra se retrae y el ícono crece; al volver arriba, regresa
+        if (!this._el.querySelector('#wp-pm2-back')?.classList.contains('wp-pm2-back-collapsed')) {
+          this._setBackQ(Math.max(0, Math.min(1, (prog - 0.5) / 0.4)), false);
         }
 
         if (prog >= 1) topbar.classList.add('scrolled');
@@ -2953,6 +3095,7 @@ export class PlaceModal2 {
     const apply = (o) => {
       off = o;
       body.style.transform = o ? `translate3d(0,${o.toFixed(1)}px,0)` : '';
+      if (dir === -1 || !o) this._pullMore(o < 0 ? -o : 0); // burbuja de abajo
       if (photo && dir === 1) {
         this._heroStretch = o > 0 ? 1 + o / photoH : 1;
         photo.style.transform = this._heroPhotoTransform();
@@ -3021,7 +3164,12 @@ export class PlaceModal2 {
       }
       lastY = y;
     }, { passive: true });
-    const end = () => { if (!active) return; active = false; if (dir) springBack(); };
+    const end = () => {
+      if (!active) return; active = false;
+      // Jalado de abajo más allá del umbral → "absorbe" y abre similares
+      if (dir === -1 && this._moreReady) this._openSimilar();
+      if (dir) springBack();
+    };
     body.addEventListener('touchend', end, { passive: true });
     body.addEventListener('touchcancel', end, { passive: true });
     // Si con la ficha estirada el dedo cambia de sentido, el scroll normal
