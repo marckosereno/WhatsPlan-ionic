@@ -1823,14 +1823,13 @@ export class PlaceModal2 {
       btn.addEventListener('pointerdown', () => triggerTapFlash(btn));
     });
 
-    // "Volver": primero se retrae la palabra (se ve cómo el pill se encoge
-    // hasta el ícono) y al terminar se cierra la ficha
+    // "Volver": la palabra se retrae (el pill se encoge hasta el ícono) AL
+    // MISMO TIEMPO que la ficha se cierra — sin esperar a la animación
     el.querySelector('#wp-pm2-back').addEventListener('click', (e) => {
       const b = e.currentTarget;
       if (b.classList.contains('wp-pm2-back-collapsed')) return; // doble toque
       b.classList.add('wp-pm2-back-collapsed');
-      clearTimeout(this._backTimer);
-      this._backTimer = setTimeout(() => this.hide(), 260);
+      this.hide();
     });
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
