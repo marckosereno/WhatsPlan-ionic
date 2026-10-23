@@ -32,8 +32,9 @@ export class PlaceModal2 {
 <!-- TOPBAR -->
         <div id="wp-pm2-topbar">
           <button id="wp-pm2-back" aria-label="Volver">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Volver</span>
+            <!-- mismo ícono que "Planear visita", invertido (apunta a la izquierda) -->
+            <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1);flex-shrink:0;"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>
+            <span class="wp-pm2-back-label">Volver</span>
           </button>
           <span id="wp-pm2-topbar-title"></span>
           <div id="wp-pm2-topbar-actions">
@@ -533,7 +534,7 @@ export class PlaceModal2 {
       #wp-pm2-back {
         position:relative; z-index:1;
         /* Pill: flecha + "Volver" */
-        height:40px; padding:0 16px 0 12px; gap:6px; border-radius:9999px; border:none; flex-shrink:0;
+        height:40px; padding:0 16px 0 10px; border-radius:9999px; border:none; flex-shrink:0;
         font-family:inherit; font-size:14px; font-weight:600; letter-spacing:-0.1px;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
@@ -541,9 +542,18 @@ export class PlaceModal2 {
         box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
         color:#111; display:flex; align-items:center; justify-content:center;
         cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s; flex-shrink:0;
+        transition:transform 0.15s, padding 0.26s cubic-bezier(0.4,0,0.2,1); flex-shrink:0;
       }
       #wp-pm2-back:active { transform:scale(0.92); }
+      /* Al tocar: "Volver" se retrae hacia el ícono y el pill se encoge
+         a la izquierda hasta quedar redondo (solo el ícono) */
+      #wp-pm2-back .wp-pm2-back-label {
+        display:inline-block; max-width:80px; margin-left:6px;
+        overflow:hidden; white-space:nowrap;
+        transition:max-width 0.26s cubic-bezier(0.4,0,0.2,1), margin-left 0.26s cubic-bezier(0.4,0,0.2,1), opacity 0.18s ease-out;
+      }
+      #wp-pm2-back.wp-pm2-back-collapsed { padding:0 10px; }
+      #wp-pm2-back.wp-pm2-back-collapsed .wp-pm2-back-label { max-width:0; margin-left:0; opacity:0; }
       #wp-pm2-topbar-title {
         position:relative; z-index:1; margin-left:12px;
         flex:1 1 auto; min-width:0; max-width:85%;
@@ -1813,7 +1823,15 @@ export class PlaceModal2 {
       btn.addEventListener('pointerdown', () => triggerTapFlash(btn));
     });
 
-    el.querySelector('#wp-pm2-back').addEventListener('click', () => this.hide());
+    // "Volver": primero se retrae la palabra (se ve cómo el pill se encoge
+    // hasta el ícono) y al terminar se cierra la ficha
+    el.querySelector('#wp-pm2-back').addEventListener('click', (e) => {
+      const b = e.currentTarget;
+      if (b.classList.contains('wp-pm2-back-collapsed')) return; // doble toque
+      b.classList.add('wp-pm2-back-collapsed');
+      clearTimeout(this._backTimer);
+      this._backTimer = setTimeout(() => this.hide(), 260);
+    });
     el.querySelector('#wp-pm2-backdrop').addEventListener('click', () => this.hide());
 
     this._wireTagToggle(el);
@@ -2345,6 +2363,8 @@ export class PlaceModal2 {
     if (heroBg) heroBg.classList.toggle('wp-pm2-hero-pending', !!opts.flipFromRect);
     this._pendingHeroReveal = !!opts.flipFromRect;
 
+    clearTimeout(this._backTimer);
+    this._el.querySelector('#wp-pm2-back')?.classList.remove('wp-pm2-back-collapsed'); // "Volver" vuelve a verse completo
     this._el.classList.add('visible');
     this._el.style.pointerEvents = ''; // (hide() lo apaga durante su salida)
     this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
