@@ -2304,68 +2304,86 @@ export class PlaceModal2 {
     }
   }
 
-  // ── Burbuja del elastic de abajo ───────────────────────────────────
-  // Al jalar la ficha hacia arriba estando al final, aparece una burbuja
-  // que crece con el jalón; al pasar el umbral se "llena" (azul, con
-  // texto y vibración) y al soltar abre "Lugares similares".
-  _pullMore(px) {
-    const card = this._el?.querySelector('#wp-pm2-card');
-    if (!card) return;
-    let b = this._moreBubble;
-    if (!b) {
-      if (!px) return;
-      if (!document.getElementById('wp-pm2-more-css')) {
-        const st = document.createElement('style');
-        st.id = 'wp-pm2-more-css';
-        st.textContent = `
-          #wp-pm2-more-bubble {
-            position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom,0px)); z-index:7;
-            height:42px; min-width:42px; padding:0 11px; box-sizing:border-box;
-            border-radius:999px; background:#f1f2f4; color:#374151;
-            display:flex; align-items:center; justify-content:center;
-            font-family:var(--wp-font); font-size:13.5px; font-weight:600; white-space:nowrap;
-            box-shadow:0 6px 18px rgba(0,0,0,0.12);
-            opacity:0; transform:translateX(-50%) scale(0.4); transform-origin:50% 100%;
-            pointer-events:none;
-            transition:background 0.22s ease, color 0.22s ease, padding 0.25s cubic-bezier(0.34,1.4,0.64,1);
-          }
-          #wp-pm2-more-bubble .wp-mb-txt {
-            max-width:0; margin-left:0; overflow:hidden; opacity:0;
-            transition:max-width 0.28s cubic-bezier(0.34,1.3,0.64,1), margin-left 0.28s, opacity 0.2s;
-          }
-          #wp-pm2-more-bubble.ready { background:#1a5cf5; color:#fff; padding:0 16px 0 12px; }
-          #wp-pm2-more-bubble.ready .wp-mb-txt { max-width:220px; margin-left:7px; opacity:1; }
-        `;
-        document.head.appendChild(st);
+  // ── Pull-up de abajo ("ver lugares similares") ─────────────────────
+  // Al llegar al final de la ficha y seguir jalando aparece un indicador
+  // que crece con el jalón; al pasar el umbral queda "armado" (vibra) y
+  // al soltar abre la hoja de similares. Dos estilos, para comparar:
+  //   'ring' → burbuja con un anillo que se va dibujando; al soltar el
+  //            anillo se vuelve spinner un instante y abre la hoja.
+  //   'peek' → asoman en abanico las fotos de los 3 primeros similares;
+  //            al soltar salen volando hacia arriba y abre la hoja.
+  // Se cambia con window.__wpPullStyle = 'ring' | 'peek'.
+  _pullStyle() { return window.__wpPullStyle === 'peek' ? 'peek' : 'ring'; }
+
+  _pullCSS() {
+    if (document.getElementById('wp-pm2-more-css')) return;
+    const st = document.createElement('style');
+    st.id = 'wp-pm2-more-css';
+    st.textContent = `
+      /* ── 'ring' ── */
+      #wp-pm2-more-bubble {
+        position:absolute; left:50%; bottom:calc(88px + env(safe-area-inset-bottom,0px)); z-index:7;
+        height:46px; min-width:46px; padding:0; box-sizing:border-box;
+        border-radius:999px; background:#fff; color:#1f2937;
+        display:flex; align-items:center; justify-content:center;
+        font-family:var(--wp-font); font-size:13.5px; font-weight:600; white-space:nowrap;
+        box-shadow:0 6px 18px rgba(0,0,0,0.14);
+        opacity:0; transform:translateX(-50%) scale(0.4); transform-origin:50% 100%;
+        pointer-events:none;
+        transition:background 0.22s ease, color 0.22s ease, padding 0.28s cubic-bezier(0.34,1.4,0.64,1);
       }
-      b = document.createElement('div');
-      b.id = 'wp-pm2-more-bubble';
-      b.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 5-5 5 5"/><path d="m7 17 5-5 5 5"/></svg><span class="wp-mb-txt">Ver lugares similares</span>`;
-      card.appendChild(b);
-      this._moreBubble = b;
-    }
-    const TH = 78; // px de estirado (ya con el rebote aplicado) para "llenarse"
-    const t = Math.max(0, Math.min(1, px / TH));
-    b.style.opacity = px > 2 ? String(Math.min(1, t * 1.6)) : '0';
-    // crece con el jalón y al llenarse hace un pequeño "pop"
-    const ready = px >= TH;
-    b.style.transform = `translateX(-50%) scale(${ready ? 1.06 : (0.4 + 0.6 * t).toFixed(3)})`;
-    if (ready !== !!this._moreReady) {
-      this._moreReady = ready;
-      b.classList.toggle('ready', ready);
-      if (ready) this._haptic('light');
-    }
+      #wp-pm2-more-bubble .wp-mb-ic { position:relative; width:46px; height:46px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+      #wp-pm2-more-bubble .wp-mb-ring { position:absolute; inset:5px; transform:rotate(-90deg); }
+      #wp-pm2-more-bubble .wp-mb-ring circle { fill:none; stroke-width:3; }
+      #wp-pm2-more-bubble .wp-mb-trk { stroke:rgba(0,0,0,0.08); }
+      #wp-pm2-more-bubble .wp-mb-arc { stroke:#1a5cf5; stroke-linecap:round; }
+      #wp-pm2-more-bubble .wp-mb-arrow { transition:transform 0.25s cubic-bezier(0.34,1.5,0.64,1), opacity 0.15s; }
+      #wp-pm2-more-bubble .wp-mb-txt {
+        max-width:0; margin-right:0; overflow:hidden; opacity:0;
+        transition:max-width 0.3s cubic-bezier(0.34,1.3,0.64,1), margin-right 0.3s, opacity 0.2s;
+      }
+      #wp-pm2-more-bubble.ready { background:#1a5cf5; color:#fff; }
+      #wp-pm2-more-bubble.ready .wp-mb-trk { stroke:rgba(255,255,255,0.25); }
+      #wp-pm2-more-bubble.ready .wp-mb-arc { stroke:#fff; }
+      #wp-pm2-more-bubble.ready .wp-mb-arrow { transform:translateY(-2px); }
+      #wp-pm2-more-bubble.ready .wp-mb-txt { max-width:220px; margin-right:18px; opacity:1; }
+      #wp-pm2-more-bubble.loading .wp-mb-txt { max-width:0; margin-right:0; opacity:0; }
+      #wp-pm2-more-bubble.loading .wp-mb-arrow { opacity:0; }
+      #wp-pm2-more-bubble.loading .wp-mb-ring { animation:wpMbSpin 0.7s linear infinite; }
+      @keyframes wpMbSpin { from { transform:rotate(-90deg); } to { transform:rotate(270deg); } }
+
+      /* ── 'peek' ── */
+      #wp-pm2-more-peek {
+        position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); z-index:7;
+        width:200px; height:120px; margin-left:-100px; pointer-events:none;
+        opacity:0;
+      }
+      #wp-pm2-more-peek .wp-mp-card {
+        position:absolute; left:50%; bottom:34px; width:64px; height:64px; margin-left:-32px;
+        border-radius:16px; border:3px solid #fff; overflow:hidden; background:#eef0f3;
+        box-shadow:0 8px 20px rgba(0,0,0,0.20); box-sizing:border-box;
+        display:flex; align-items:center; justify-content:center; font-size:26px;
+        transform-origin:50% 100%;
+      }
+      #wp-pm2-more-peek .wp-mp-card img { width:100%; height:100%; object-fit:cover; }
+      #wp-pm2-more-peek .wp-mp-lbl {
+        position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+        height:28px; padding:0 12px; border-radius:999px; background:#fff; color:#374151;
+        display:flex; align-items:center; gap:5px; white-space:nowrap;
+        font-family:var(--wp-font); font-size:12.5px; font-weight:600;
+        box-shadow:0 4px 12px rgba(0,0,0,0.12);
+        transition:background 0.2s, color 0.2s;
+      }
+      #wp-pm2-more-peek.ready .wp-mp-lbl { background:#1a5cf5; color:#fff; }
+      #wp-pm2-more-peek.fly .wp-mp-card { transition:transform 0.42s cubic-bezier(0.5,0,0.2,1), opacity 0.42s ease-in; opacity:0; }
+      #wp-pm2-more-peek.fly .wp-mp-lbl { transition:opacity 0.2s; opacity:0; }
+    `;
+    document.head.appendChild(st);
   }
 
-  // ── Hoja "Lugares similares" ───────────────────────────────────────
-  // Se abre al soltar el pull-up de abajo. Sube hasta debajo del status
-  // bar (como la hoja del perfil) con un "swoosh": una onda del color de
-  // la categoría sale desde la burbuja y la hoja entra con un pequeño
-  // rebote. Adentro: buscador, chips de subcategoría y tarjetas.
-  // Orden: misma categoría → comparten subcategoría → más cercanos.
-  _openSimilar() {
-    const cur = this._place;
-    if (!cur) return;
+  // Similares del lugar actual (se calcula una vez por lugar)
+  _similarList(cur) {
+    if (this._simCache && this._simCache.place === cur) return this._simCache;
     const all = (window.wpApp && window.wpApp.mapView && window.wpApp.mapView.allPlaces) || [];
     const pid = (p) => p.place_id || p.id;
     const ll  = (p) => ({ lat: p.location?.lat ?? p.lat, lng: p.location?.lng ?? p.lng });
@@ -2388,6 +2406,134 @@ export class PlaceModal2 {
       })
       .sort((a, b) => (b.share - a.share) || (a.d - b.d))
       .slice(0, 40);
+    this._simCache = { place: cur, list, cTags };
+    return this._simCache;
+  }
+
+  _pullMore(px) {
+    if (this._moreLoading) return; // mientras "carga" el indicador no sigue al dedo
+    const card = this._el?.querySelector('#wp-pm2-card');
+    if (!card) return;
+    const style = this._pullStyle();
+    const TH = 78; // px de estirado (ya con el rebote aplicado) para quedar armado
+    const t = Math.max(0, Math.min(1, px / TH));
+    const ready = px >= TH;
+
+    // limpia el indicador del otro estilo si se cambió en caliente
+    const other = style === 'ring' ? this._morePeek : this._moreBubble;
+    if (other) { other.remove(); if (style === 'ring') this._morePeek = null; else this._moreBubble = null; }
+
+    if (style === 'ring') {
+      let b = this._moreBubble;
+      if (!b) {
+        if (!px) return;
+        this._pullCSS();
+        b = document.createElement('div');
+        b.id = 'wp-pm2-more-bubble';
+        b.innerHTML = `<span class="wp-mb-ic">
+            <svg class="wp-mb-ring" viewBox="0 0 36 36"><circle class="wp-mb-trk" cx="18" cy="18" r="16"/><circle class="wp-mb-arc" cx="18" cy="18" r="16" stroke-dasharray="100.5" stroke-dashoffset="100.5"/></svg>
+            <svg class="wp-mb-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </span><span class="wp-mb-txt">Ver lugares similares</span>`;
+        card.appendChild(b);
+        this._moreBubble = b;
+      }
+      b.style.opacity = px > 2 ? String(Math.min(1, t * 1.6)) : '0';
+      b.style.transform = `translateX(-50%) scale(${ready ? 1.05 : (0.45 + 0.55 * t).toFixed(3)})`;
+      const arc = b.querySelector('.wp-mb-arc');
+      if (arc) arc.setAttribute('stroke-dashoffset', (100.5 * (1 - t)).toFixed(1)); // el anillo se dibuja con el jalón
+      this._moreOriginEl = b;
+      if (ready !== !!this._moreReady) {
+        this._moreReady = ready;
+        b.classList.toggle('ready', ready);
+        if (ready) this._haptic('light');
+      }
+      return;
+    }
+
+    // 'peek'
+    let w = this._morePeek;
+    if (!w) {
+      if (!px || !this._place) return;
+      const { list } = this._similarList(this._place);
+      if (!list.length) return;
+      this._pullCSS();
+      w = document.createElement('div');
+      w.id = 'wp-pm2-more-peek';
+      const top3 = list.slice(0, 3);
+      const order = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i); // el primero al centro y al frente
+      w.innerHTML = order.map(i => {
+        const p = top3[i].p;
+        const ph = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
+        return `<div class="wp-mp-card" data-i="${i}">${ph ? `<img src="${this._esc(ph)}" alt="">` : '⭐'}</div>`;
+      }).join('') + `<div class="wp-mp-lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>Ver lugares similares</div>`;
+      card.appendChild(w);
+      this._morePeek = w;
+    }
+    w.style.opacity = px > 2 ? String(Math.min(1, t * 2)) : '0';
+    // Abanico: suben desde abajo y se abren con el jalón; armado → se separan más
+    const spread = ready ? 1.15 : t;
+    const n = w.querySelectorAll('.wp-mp-card').length;
+    w.querySelectorAll('.wp-mp-card').forEach(c => {
+      const i = +c.getAttribute('data-i');
+      const side = n === 1 ? 0 : (i === 0 ? 0 : i === 1 ? -1 : 1);
+      const rise = 46 * (1 - t);
+      const sc = 0.55 + 0.45 * t + (ready && side === 0 ? 0.06 : 0);
+      c.style.zIndex = side === 0 ? 3 : 2;
+      c.style.transition = 'none';
+      c.style.transform = `translate(${(side * 44 * spread).toFixed(1)}px, ${rise.toFixed(1)}px) rotate(${(side * 12 * spread).toFixed(1)}deg) scale(${sc.toFixed(3)})`;
+    });
+    this._moreOriginEl = w;
+    if (ready !== !!this._moreReady) {
+      this._moreReady = ready;
+      w.classList.toggle('ready', ready);
+      if (ready) this._haptic('light');
+    }
+  }
+
+  // Soltó el dedo con el indicador armado
+  _pullRelease() {
+    this._moreReady = false;
+    if (this._pullStyle() === 'ring' && this._moreBubble) {
+      // el anillo se vuelve spinner un instante y luego abre
+      const b = this._moreBubble;
+      this._moreLoading = true;
+      b.classList.add('loading');
+      b.querySelector('.wp-mb-arc')?.setAttribute('stroke-dashoffset', '68'); // arco parcial que gira
+      b.style.transform = 'translateX(-50%) scale(1)';
+      setTimeout(() => {
+        this._openSimilar();
+        b.style.transition = 'opacity 0.2s';
+        b.style.opacity = '0';
+        setTimeout(() => { this._moreLoading = false; b.classList.remove('loading', 'ready'); b.style.transition = ''; }, 220);
+      }, 420);
+      return;
+    }
+    if (this._morePeek) {
+      // las fotos salen volando hacia arriba mientras sube la hoja
+      const w = this._morePeek;
+      this._moreLoading = true;
+      w.classList.add('fly');
+      w.querySelectorAll('.wp-mp-card').forEach((c, k) => {
+        c.style.transition = '';
+        c.style.transform = `translate(${(k - 1) * 70}px, -${innerHeight * 0.55}px) rotate(${(k - 1) * 18}deg) scale(1.6)`;
+      });
+      this._openSimilar();
+      setTimeout(() => { this._moreLoading = false; w.remove(); this._morePeek = null; }, 450);
+      return;
+    }
+    this._openSimilar();
+  }
+
+  // ── Hoja "Lugares similares" ───────────────────────────────────────
+  // Se abre al soltar el pull-up de abajo. Sube hasta debajo del status
+  // bar (como la hoja del perfil) con un "swoosh": una onda del color de
+  // la categoría sale desde la burbuja y la hoja entra con un pequeño
+  // rebote. Adentro: buscador, chips de subcategoría y tarjetas.
+  // Orden: misma categoría → comparten subcategoría → más cercanos.
+  _openSimilar() {
+    const cur = this._place;
+    if (!cur) return;
+    const { list, cTags } = this._similarList(cur);
     if (!list.length) { this._showToast('No hay lugares similares cerca'); return; }
 
     // Chips: "Todos" + las subcategorías más frecuentes (las del lugar actual primero)
@@ -2506,7 +2652,7 @@ export class PlaceModal2 {
 
     // La onda sale desde la burbuja (o del centro de abajo)
     const wave = root.querySelector('.wp-sim-wave');
-    const br = this._moreBubble?.getBoundingClientRect();
+    const br = this._moreOriginEl?.getBoundingClientRect(); // desde el indicador del pull-up
     wave.style.left = (br && br.width ? br.left + br.width / 2 : innerWidth / 2) + 'px';
     wave.style.top  = (br && br.height ? br.top + br.height / 2 : innerHeight - 120) + 'px';
 
@@ -3354,7 +3500,7 @@ export class PlaceModal2 {
     const end = () => {
       if (!active) return; active = false;
       // Jalado de abajo más allá del umbral → "absorbe" y abre similares
-      if (dir === -1 && this._moreReady) this._openSimilar();
+      if (dir === -1 && this._moreReady) this._pullRelease();
       if (dir) springBack();
     };
     body.addEventListener('touchend', end, { passive: true });
