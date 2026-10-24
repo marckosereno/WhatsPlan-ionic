@@ -675,7 +675,7 @@ ion-app {
   background: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
   overflow: visible; /* que no se corte la sombra */
-  color: #01a2fd;
+  color: #1a5cf5; /* azul de la UI */
 }
 .wp-side-icon.wp-sticker::before { display: none; }
 .wp-side-icon.wp-sticker svg {
@@ -688,7 +688,7 @@ ion-app {
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.22)) drop-shadow(0 1px 1px rgba(0,0,0,0.10));
 }
 #wp-side-slot-3.wp-gps-sticker.loading svg { opacity: 0.55; }
-#wp-side-slot-3.wp-gps-sticker.active { color: #0a84ff; }
+#wp-side-slot-3.wp-gps-sticker.active { color: #1540cc; }
 #wp-side-slot-3.wp-gps-sticker.active svg { transform: perspective(90px) rotateX(38deg) rotateZ(-6deg) scale(1.08); }
 
 /* Cápsula vertical negra detrás de los dos */
