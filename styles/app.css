@@ -666,9 +666,23 @@ ion-app {
   background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0) 60%);
 }
 
-/* GPS dot state */
-#wp-side-slot-3.loading svg,
-#wp-side-slot-3.active svg { animation: gpsPulse 1.2s infinite; }
-#wp-side-slot-3.active { color: #15803d; }
-#wp-side-slot-3 svg { transform-origin: center; }
+/* GPS — flecha de navegación inclinada. Apagado: flecha azul en la
+   burbuja blanca. Buscando: la flecha parpadea. Siguiéndote: la burbuja
+   se pone azul (mismo degradado que el botón +) y la flecha blanca. */
+#wp-side-slot-3 { color: #1a5cf5; }
+#wp-side-slot-3 svg { transform-origin: center; transform: rotate(45deg); }
+#wp-side-slot-3.loading svg { animation: gpsPulse 1.2s infinite; }
+#wp-side-slot-3.active {
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  box-shadow:
+    0 1px 2px rgba(29,78,216,0.3),
+    0 8px 20px rgba(37,99,235,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.35);
+}
+#wp-side-slot-3.active::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0) 60%);
+}
+/* Estoy aquí — bandera */
+#wp-side-slot-2 { color: #111827; }
 @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
