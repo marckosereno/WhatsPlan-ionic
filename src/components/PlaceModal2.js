@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
-import { ActivityService }             from '/src/services/SupabaseService.js';
+import { ActivityService, ProfileService } from '/src/services/SupabaseService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
@@ -2947,6 +2947,48 @@ export class PlaceModal2 {
     setTimeout(() => listEl.classList.add('scroll'), 560); // scroll recién al terminar de subir
   }
 
+  // ── Mi avatar: el que configuré en mi perfil ───────────────────────
+  // Prioridad: foto subida en el perfil (profiles.avatar_url, la misma
+  // que usa el botón del topbar vía wpApp._cachedAvatarUrl) → foto de la
+  // cuenta (Google) → memoji con mi nombre.
+  _myName() {
+    const u = this.getCurrentUser?.();
+    return u?.user_metadata?.display_name || u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'Usuario';
+  }
+  _myAvatarSync() {
+    const u = this.getCurrentUser?.();
+    if (!u) return '';
+    const prof = window.wpApp?._cachedAvatarUrl || (this._myAvUid === u.id && this._myAv) || ''; // la del topbar manda (se actualiza al subir una foto nueva)
+    return prof || u.user_metadata?.avatar_url || getAvatarUrl(this._myName());
+  }
+  async _myAvatarUrl() {
+    const u = this.getCurrentUser?.();
+    if (!u) return '';
+    const cached = window.wpApp?._cachedAvatarUrl;
+    if (cached) { this._myAv = cached; this._myAvUid = u.id; return cached; }
+    if (this._myAvUid === u.id && this._myAv) return this._myAv;
+    try {
+      const prof = await ProfileService.getProfile(u.id);
+      if (prof?.avatar_url) {
+        this._myAv = prof.avatar_url; this._myAvUid = u.id;
+        if (window.wpApp) window.wpApp._cachedAvatarUrl = prof.avatar_url;
+      }
+    } catch (_) {}
+    return this._myAvatarSync();
+  }
+  // Pinta mi avatar donde aparezca en la ficha (campo de reseña y la
+  // fila de "Tú y N más lo guardaron")
+  _paintMyAvatar() {
+    const el = this._el?.querySelector('#wp-pm2-user-avatar');
+    const url = this._myAvatarSync();
+    if (el && url && el.getAttribute('src') !== url) {
+      this._skelOn(el);
+      el.onload = el.onerror = () => this._skelOff(el);
+      el.src = url;
+    }
+    if (this._place) this._renderReviewsSummary(this._place);
+  }
+
   _hideMiniSnap() {
     const ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
@@ -3488,7 +3530,9 @@ export class PlaceModal2 {
       this._skelOn(avatarEl);
       avatarEl.onload  = () => this._skelOff(avatarEl);
       avatarEl.onerror = () => this._skelOff(avatarEl);
-      avatarEl.src = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+      avatarEl.src = this._myAvatarSync() || getAvatarUrl(displayName);
+      // Si todavía no se sabe la foto del perfil, se trae y se repinta
+      this._myAvatarUrl().then(() => { if (this._place === place) this._paintMyAvatar(); });
     } else {
       this._skelOff(avatarEl);
       avatarEl.src = '';
@@ -4248,8 +4292,28 @@ export class PlaceModal2 {
     const saves = this._saveCount || 0;
     if (saves > 0) {
       summaryEl.style.display = '';
-      avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
-      if (savesIco) savesIco.style.display = '';
+      const myAv = this._isFav ? this._myAvatarSync() : '';
+      if (myAv) {
+        // Lo guardé yo: va mi foto del perfil (en vez del corazón)
+        avatarsEl.style.display = '';
+        let img = avatarsEl.querySelector('img.wp-pm2-fp-me');
+        if (!img || avatarsEl.children.length !== 1) {
+          avatarsEl.innerHTML = '';
+          img = document.createElement('img');
+          img.className = 'wp-pm2-fp-avatar wp-pm2-fp-me';
+          avatarsEl.appendChild(img);
+        }
+        if (img.getAttribute('src') !== myAv) {
+          this._skelOn(img);
+          img.onload = () => this._skelOff(img);
+          img.onerror = () => { this._skelOff(img); img.style.background = '#e2e8f0'; };
+          img.src = myAv;
+        }
+        if (savesIco) savesIco.style.display = 'none';
+      } else {
+        avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
+        if (savesIco) savesIco.style.display = '';
+      }
       countEl.style.display = '';
       countEl.classList.add('wp-pm2-saves');
       const others = saves - (this._isFav ? 1 : 0);
@@ -4567,7 +4631,7 @@ export class PlaceModal2 {
       || user.user_metadata?.full_name
       || user.email?.split('@')[0]
       || 'Usuario';
-    const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+    const avatarUrl = this._myAvatarSync() || getAvatarUrl(displayName);
 
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-review-modal';
@@ -4658,7 +4722,7 @@ export class PlaceModal2 {
       submit.textContent = 'Publicando...';
       try {
         if (!placeId) throw new Error('ID del lugar no encontrado');
-        await ReviewService.upsert(String(placeId), user.id, rating, textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null);
+        await ReviewService.upsert(String(placeId), user.id, rating, textarea.value.trim(), displayName, (window.wpApp?._cachedAvatarUrl || this._myAv || user.user_metadata?.avatar_url) || null);
         closeModal();
         this._showToast('✓ Reseña publicada');
         // Refresca el tab WhatsPlan y lo deja activo para ver la reseña
@@ -5248,7 +5312,7 @@ export class PlaceModal2 {
       || user.user_metadata?.full_name
       || user.email?.split('@')[0]
       || 'Usuario';
-    const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
+    const avatarUrl = this._myAvatarSync() || getAvatarUrl(displayName);
     const toName = replyTo ? replyTo.name : card.ctx.author;
     const quote  = editing ? '' : (replyTo ? replyTo.text : card.ctx.text);
     const prefix = (!editing && replyTo) ? '@' + replyTo.name + ' ' : '';
@@ -5333,7 +5397,7 @@ export class PlaceModal2 {
       try {
         const row = await ReviewService.addReply(
           key, this._place.place_id || this._place.id, user.id,
-          textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null,
+          textarea.value.trim(), displayName, (window.wpApp?._cachedAvatarUrl || this._myAv || user.user_metadata?.avatar_url) || null,
           keepsMention ? { id: replyTo.id, name: replyTo.name } : null
         );
         if (!this._social.replies.has(key)) this._social.replies.set(key, []);
