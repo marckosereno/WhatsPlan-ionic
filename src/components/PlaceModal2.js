@@ -2313,7 +2313,7 @@ export class PlaceModal2 {
   //   'peek' → asoman en abanico las fotos de los 3 primeros similares;
   //            al soltar salen volando hacia arriba y abre la hoja.
   // Se cambia con window.__wpPullStyle = 'ring' | 'peek'.
-  _pullStyle() { return window.__wpPullStyle === 'peek' ? 'peek' : 'ring'; }
+  _pullStyle() { return 'ring'; } // 'peek' (asomo de tarjetas) quedó descartado
 
   _pullCSS() {
     if (document.getElementById('wp-pm2-more-css')) return;
@@ -2323,18 +2323,18 @@ export class PlaceModal2 {
       /* ── 'ring' ── */
       #wp-pm2-more-bubble {
         position:absolute; left:50%; bottom:calc(88px + env(safe-area-inset-bottom,0px)); z-index:7;
-        height:46px; min-width:46px; padding:0; box-sizing:border-box;
+        height:32px; min-width:32px; padding:0; box-sizing:border-box;
         border-radius:999px; background:#fff; color:#1f2937;
         display:flex; align-items:center; justify-content:center;
-        font-family:var(--wp-font); font-size:13.5px; font-weight:600; white-space:nowrap;
-        box-shadow:0 6px 18px rgba(0,0,0,0.14);
+        font-family:var(--wp-font); font-size:12px; font-weight:600; white-space:nowrap;
+        box-shadow:0 4px 12px rgba(0,0,0,0.14);
         opacity:0; transform:translateX(-50%) scale(0.4); transform-origin:50% 100%;
         pointer-events:none;
         transition:background 0.22s ease, color 0.22s ease, padding 0.28s cubic-bezier(0.34,1.4,0.64,1);
       }
-      #wp-pm2-more-bubble .wp-mb-ic { position:relative; width:46px; height:46px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-      #wp-pm2-more-bubble .wp-mb-ring { position:absolute; inset:5px; transform:rotate(-90deg); }
-      #wp-pm2-more-bubble .wp-mb-ring circle { fill:none; stroke-width:3; }
+      #wp-pm2-more-bubble .wp-mb-ic { position:relative; width:32px; height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+      #wp-pm2-more-bubble .wp-mb-ring { position:absolute; inset:3px; transform:rotate(-90deg); }
+      #wp-pm2-more-bubble .wp-mb-ring circle { fill:none; stroke-width:3.4; }
       #wp-pm2-more-bubble .wp-mb-trk { stroke:rgba(0,0,0,0.08); }
       #wp-pm2-more-bubble .wp-mb-arc { stroke:#1a5cf5; stroke-linecap:round; }
       #wp-pm2-more-bubble .wp-mb-arrow { transition:transform 0.25s cubic-bezier(0.34,1.5,0.64,1), opacity 0.15s; }
@@ -2346,7 +2346,7 @@ export class PlaceModal2 {
       #wp-pm2-more-bubble.ready .wp-mb-trk { stroke:rgba(255,255,255,0.25); }
       #wp-pm2-more-bubble.ready .wp-mb-arc { stroke:#fff; }
       #wp-pm2-more-bubble.ready .wp-mb-arrow { transform:translateY(-2px); }
-      #wp-pm2-more-bubble.ready .wp-mb-txt { max-width:220px; margin-right:18px; opacity:1; }
+      #wp-pm2-more-bubble.ready .wp-mb-txt { max-width:160px; margin-right:12px; opacity:1; }
       #wp-pm2-more-bubble.loading .wp-mb-txt { max-width:0; margin-right:0; opacity:0; }
       #wp-pm2-more-bubble.loading .wp-mb-arrow { opacity:0; }
       #wp-pm2-more-bubble.loading .wp-mb-ring { animation:wpMbSpin 0.7s linear infinite; }
@@ -2432,8 +2432,8 @@ export class PlaceModal2 {
         b.id = 'wp-pm2-more-bubble';
         b.innerHTML = `<span class="wp-mb-ic">
             <svg class="wp-mb-ring" viewBox="0 0 36 36"><circle class="wp-mb-trk" cx="18" cy="18" r="16"/><circle class="wp-mb-arc" cx="18" cy="18" r="16" stroke-dasharray="100.5" stroke-dashoffset="100.5"/></svg>
-            <svg class="wp-mb-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
-          </span><span class="wp-mb-txt">Ver lugares similares</span>`;
+            <svg class="wp-mb-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </span><span class="wp-mb-txt">Sigue explorando</span>`;
         card.appendChild(b);
         this._moreBubble = b;
       }
@@ -2505,7 +2505,7 @@ export class PlaceModal2 {
         b.style.transition = 'opacity 0.2s';
         b.style.opacity = '0';
         setTimeout(() => { this._moreLoading = false; b.classList.remove('loading', 'ready'); b.style.transition = ''; }, 220);
-      }, 420);
+      }, 160); // spinner breve: solo un giro rápido antes de abrir
       return;
     }
     if (this._morePeek) {
@@ -2549,75 +2549,74 @@ export class PlaceModal2 {
     }[String(cur.category || '').toUpperCase()] || '#e3e7ff';
     const ACCENT = '#1a5cf5';
 
-    if (!document.getElementById('wp-pm2-sim-css')) {
+    // Estilo de la hoja "Añadir a una colección" (tarjeta flotante con
+    // márgenes, esquinas de 24px, alto según contenido) + entrada swoosh.
+    if (!document.getElementById('wp-pm2-sim-css2')) {
+      document.getElementById('wp-pm2-sim-css')?.remove();
       const st = document.createElement('style');
-      st.id = 'wp-pm2-sim-css';
+      st.id = 'wp-pm2-sim-css2';
       st.textContent = `
         #wp-pm2-sim { position:fixed; inset:0; z-index:1500100; font-family:var(--wp-font); }
-        #wp-pm2-sim .wp-sim-dim { position:absolute; inset:0; background:rgba(15,23,42,0.32); opacity:0; transition:opacity 0.3s ease; }
+        #wp-pm2-sim .wp-sim-dim { position:absolute; inset:0; background:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s ease; }
         #wp-pm2-sim.in .wp-sim-dim { opacity:1; }
         #wp-pm2-sim .wp-sim-wave {
           position:absolute; width:60px; height:60px; margin:-30px 0 0 -30px; border-radius:50%;
           pointer-events:none; opacity:0.9; transform:scale(0);
         }
-        #wp-pm2-sim.in .wp-sim-wave { animation:wpSimWave 0.55s cubic-bezier(0.2,0.8,0.3,1) forwards; }
-        @keyframes wpSimWave { 0% { transform:scale(0); opacity:0.95; } 70% { opacity:0.55; } 100% { transform:scale(30); opacity:0; } }
+        #wp-pm2-sim.in .wp-sim-wave { animation:wpSimWave 0.5s cubic-bezier(0.2,0.8,0.3,1) forwards; }
+        @keyframes wpSimWave { 0% { transform:scale(0); opacity:0.95; } 70% { opacity:0.5; } 100% { transform:scale(26); opacity:0; } }
         #wp-pm2-sim .wp-sim-sheet {
-          position:absolute; left:0; right:0; bottom:0; top:calc(env(safe-area-inset-top,0px) + 6px);
-          border-radius:28px 28px 0 0; overflow:hidden; display:flex; flex-direction:column;
-          box-shadow:0 -10px 40px rgba(0,0,0,0.18);
-          transform:translateY(105%);
+          position:absolute; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom,0px));
+          max-height:calc(100dvh - 120px - env(safe-area-inset-top,0px));
+          background:#fff; border-radius:24px; padding:8px 0 0;
+          box-shadow:0 8px 40px rgba(0,0,0,0.18);
+          display:flex; flex-direction:column;
+          transform:translateY(115%);
         }
-        #wp-pm2-sim.in .wp-sim-sheet { animation:wpSimIn 0.56s cubic-bezier(0.22,1.12,0.36,1) 0.06s forwards; }
-        @keyframes wpSimIn {
-          0%   { transform:translateY(105%) scale(0.94); filter:blur(6px); }
-          55%  { filter:blur(0); }
-          100% { transform:translateY(0) scale(1); filter:none; }
-        }
-        #wp-pm2-sim .wp-sim-head { flex-shrink:0; padding:8px 16px 10px; touch-action:none; }
-        #wp-pm2-sim .wp-sim-handle { width:38px; height:5px; border-radius:3px; background:rgba(0,0,0,0.16); margin:0 auto 8px; }
-        #wp-pm2-sim .wp-sim-bar { display:flex; align-items:center; height:44px; position:relative; }
-        #wp-pm2-sim .wp-sim-back {
-          width:44px; height:40px; border:none; border-radius:999px; background:rgba(255,255,255,0.7);
-          display:flex; align-items:center; justify-content:center; color:#111827; cursor:pointer;
-          -webkit-tap-highlight-color:transparent; transition:transform 0.15s;
-        }
-        #wp-pm2-sim .wp-sim-back:active { transform:scale(0.9); }
-        #wp-pm2-sim .wp-sim-title { position:absolute; left:60px; right:60px; text-align:center; font-size:17px; font-weight:700; color:#111827; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        #wp-pm2-sim .wp-sim-sub { text-align:center; font-size:12.5px; color:#6b7280; margin-top:-4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        /* swoosh: sube rápido, se pasa un poquito y se asienta */
+        #wp-pm2-sim.in .wp-sim-sheet { animation:wpSimIn 0.46s cubic-bezier(0.22,1.25,0.36,1) 0.04s forwards; }
+        @keyframes wpSimIn { 0% { transform:translateY(115%) scale(0.92); } 100% { transform:translateY(0) scale(1); } }
+        #wp-pm2-sim .wp-sim-head { flex-shrink:0; padding:0 0 4px; touch-action:none; }
+        #wp-pm2-sim .wp-sim-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
+        #wp-pm2-sim .wp-sim-title { display:block; padding:4px 20px 0; font-size:16px; font-weight:700; color:#0a0a0a; }
+        #wp-pm2-sim .wp-sim-sub { display:block; padding:2px 20px 0; font-size:12px; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         #wp-pm2-sim .wp-sim-search {
-          margin-top:12px; height:48px; border-radius:999px; background:#fff; display:flex; align-items:center; gap:10px; padding:0 16px;
-          box-shadow:0 2px 10px rgba(0,0,0,0.05);
+          margin:10px 16px 0; height:42px; border-radius:999px; background:#f3f4f6;
+          display:flex; align-items:center; gap:9px; padding:0 14px;
         }
-        #wp-pm2-sim .wp-sim-search input { flex:1; min-width:0; border:none; outline:none; background:none; font-family:inherit; font-size:15px; color:#111827; }
+        #wp-pm2-sim .wp-sim-search input { flex:1; min-width:0; border:none; outline:none; background:none; font-family:inherit; font-size:14.5px; color:#111827; }
         #wp-pm2-sim .wp-sim-search input::placeholder { color:#9ca3af; }
-        #wp-pm2-sim .wp-sim-chips { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; margin:12px -16px 0; padding:0 16px 2px; }
+        #wp-pm2-sim .wp-sim-chips { display:flex; gap:7px; overflow-x:auto; scrollbar-width:none; padding:10px 16px 2px; }
         #wp-pm2-sim .wp-sim-chips::-webkit-scrollbar { display:none; }
         #wp-pm2-sim .wp-sim-chip {
-          flex-shrink:0; height:36px; padding:0 16px; border:none; border-radius:999px; background:#fff; color:#111827;
-          font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent;
+          flex-shrink:0; height:32px; padding:0 14px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
+          font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent;
           transition:background 0.18s, color 0.18s, transform 0.15s;
         }
         #wp-pm2-sim .wp-sim-chip:active { transform:scale(0.94); }
         #wp-pm2-sim .wp-sim-chip.on { background:#111827; color:#fff; }
-        #wp-pm2-sim .wp-sim-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:6px 16px calc(20px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:10px; }
+        /* Sin scroll mientras sube la hoja (el WebView de Android dibuja con
+           glitch un área con scroll dentro de algo que se anima); se activa
+           al terminar la entrada (.scroll) */
+        #wp-pm2-sim .wp-sim-list { flex:1 1 auto; min-height:0; overflow:hidden; padding:8px 12px 12px; display:flex; flex-direction:column; gap:6px; }
+        #wp-pm2-sim .wp-sim-list.scroll { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
         #wp-pm2-sim .wp-sim-card {
-          display:flex; align-items:center; gap:12px; padding:10px; border:none; border-radius:20px; background:#fff; width:100%;
-          text-align:left; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
-          box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:transform 0.15s;
-          opacity:0; transform:translateY(14px);
+          display:flex; align-items:center; gap:12px; padding:8px; border:none; border-radius:18px; background:#f7f7f8; width:100%;
+          text-align:left; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; flex-shrink:0;
+          transition:transform 0.15s, background 0.15s;
+          opacity:0; transform:translateY(12px);
         }
-        #wp-pm2-sim.in .wp-sim-card { animation:wpSimCard 0.42s cubic-bezier(0.22,1,0.36,1) forwards; }
+        #wp-pm2-sim.in .wp-sim-card { animation:wpSimCard 0.38s cubic-bezier(0.22,1,0.36,1) forwards; }
         @keyframes wpSimCard { to { opacity:1; transform:none; } }
-        #wp-pm2-sim .wp-sim-card:active { transform:scale(0.97); }
-        #wp-pm2-sim .wp-sim-ph { flex-shrink:0; width:72px; height:72px; border-radius:14px; overflow:hidden; background:#eef0f3; display:flex; align-items:center; justify-content:center; font-size:28px; }
+        #wp-pm2-sim .wp-sim-card:active { transform:scale(0.97); background:#f0f1f3; }
+        #wp-pm2-sim .wp-sim-ph { flex-shrink:0; width:58px; height:58px; border-radius:13px; overflow:hidden; background:#e9ebee; display:flex; align-items:center; justify-content:center; font-size:24px; }
         #wp-pm2-sim .wp-sim-ph img { width:100%; height:100%; object-fit:cover; }
-        #wp-pm2-sim .wp-sim-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
-        #wp-pm2-sim .wp-sim-name { font-size:15.5px; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        #wp-pm2-sim .wp-sim-row { display:flex; align-items:center; gap:5px; font-size:12.5px; color:#6b7280; white-space:nowrap; overflow:hidden; }
+        #wp-pm2-sim .wp-sim-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+        #wp-pm2-sim .wp-sim-name { font-size:15px; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-row { display:flex; align-items:center; gap:5px; font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; }
         #wp-pm2-sim .wp-sim-row span { overflow:hidden; text-overflow:ellipsis; }
         #wp-pm2-sim .wp-sim-row b { color:#111827; font-weight:700; }
-        #wp-pm2-sim .wp-sim-empty { text-align:center; color:#9ca3af; font-size:14px; padding:40px 0; }
+        #wp-pm2-sim .wp-sim-empty { text-align:center; color:#9ca3af; font-size:14px; padding:28px 0; }
       `;
       document.head.appendChild(st);
     }
@@ -2629,16 +2628,13 @@ export class PlaceModal2 {
     root.innerHTML = `
       <div class="wp-sim-dim"></div>
       <div class="wp-sim-wave" style="background:${TINT}"></div>
-      <div class="wp-sim-sheet" style="background:linear-gradient(180deg,${TINT} 0px,#f4f5f7 230px)">
+      <div class="wp-sim-sheet">
         <div class="wp-sim-head">
           <div class="wp-sim-handle"></div>
-          <div class="wp-sim-bar">
-            <button class="wp-sim-back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            <div class="wp-sim-title">Lugares similares</div>
-          </div>
-          <div class="wp-sim-sub">Parecidos a ${this._esc(cur.name || 'este lugar')}</div>
+          <span class="wp-sim-title">Lugares similares</span>
+          <span class="wp-sim-sub">Parecidos a ${this._esc(cur.name || 'este lugar')}</span>
           <label class="wp-sim-search">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input type="search" placeholder="Buscar entre similares…" autocomplete="off" enterkeyhint="search">
           </label>
           ${chips.length ? `<div class="wp-sim-chips">
@@ -2675,7 +2671,7 @@ export class PlaceModal2 {
         const open = this._isOpenNow(p);
         const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
         const meta = [r > 0 ? `Rating <b>${r.toFixed(1)}/5</b>` : 'Sin reseñas', fmtD(d), st].filter(Boolean).join(' · ');
-        return `<button type="button" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${0.16 + Math.min(i, 8) * 0.045}s` : 'opacity:1;transform:none;animation:none'}">
+        return `<button type="button" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${0.12 + Math.min(i, 8) * 0.04}s` : 'opacity:1;transform:none;animation:none'}">
           <div class="wp-sim-ph">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy">` : '⭐'}</div>
           <div class="wp-sim-info">
             <div class="wp-sim-name">${this._esc(p.name || '')}</div>
@@ -2697,12 +2693,11 @@ export class PlaceModal2 {
       sh.style.transform = cur === 'none' ? 'translateY(0)' : cur;
       void sh.offsetHeight;
       sh.style.transition = 'transform 0.28s cubic-bezier(0.4,0,1,1)';
-      sh.style.transform = 'translateY(105%)';
+      sh.style.transform = 'translateY(115%)';
       root.querySelector('.wp-sim-dim').style.opacity = '0';
       setTimeout(() => { root.remove(); if (after) after(); }, 280);
     };
     root.querySelector('.wp-sim-dim').addEventListener('click', () => close());
-    root.querySelector('.wp-sim-back').addEventListener('click', () => close());
     input.addEventListener('input', () => { q = input.value; render(false); });
     root.querySelectorAll('.wp-sim-chip').forEach(b => b.addEventListener('click', () => {
       chip = b.getAttribute('data-chip') || '';
@@ -2742,6 +2737,7 @@ export class PlaceModal2 {
 
     this._haptic('success');
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+    setTimeout(() => listEl.classList.add('scroll'), 560); // scroll recién al terminar de subir
   }
 
   _hideMiniSnap() {
