@@ -1205,6 +1205,11 @@ export class PlaceModal2 {
       .wp-pm2-pop-item:disabled { color:#c4c7cc; }
       .wp-pm2-pop-item.wp-pm2-danger { color:#e11d48; }
       .wp-pm2-pop-sep { height:6px; background:#f3f4f6; }
+      /* Ítem con interruptor (no cierra el menú al tocarlo) */
+      .wp-pm2-pop-sw { position:relative; flex-shrink:0; width:42px; height:26px; border-radius:999px; background:#e5e7eb; transition:background 0.2s; }
+      .wp-pm2-pop-sw::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:transform 0.22s cubic-bezier(0.34,1.4,0.64,1); }
+      .wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#22c55e; }
+      .wp-pm2-pop-item.on .wp-pm2-pop-sw::after { transform:translateX(16px); }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
 
@@ -2582,13 +2587,15 @@ export class PlaceModal2 {
         #wp-pm2-sim .wp-sim-head { flex-shrink:0; padding:0 0 4px; touch-action:none; }
         #wp-pm2-sim .wp-sim-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
         #wp-pm2-sim .wp-sim-head { position:relative; }
+        #wp-pm2-sim .wp-sim-srow { display:flex; align-items:center; gap:8px; margin:10px 16px 0; }
+        #wp-pm2-sim .wp-sim-srow .wp-sim-search { flex:1; min-width:0; margin:0; }
         #wp-pm2-sim .wp-sim-more {
-          position:absolute; right:12px; top:12px; width:44px; height:32px; padding:0; border:none; border-radius:999px;
+          position:relative; flex-shrink:0; width:42px; height:42px; padding:0; border:none; border-radius:50%;
           background:#f3f4f6; color:#111827; display:flex; align-items:center; justify-content:center;
           cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s;
         }
         #wp-pm2-sim .wp-sim-more:active { transform:scale(0.9); }
-        #wp-pm2-sim .wp-sim-more.on::after { content:''; position:absolute; top:5px; right:9px; width:7px; height:7px; border-radius:50%; background:#1a5cf5; border:1.5px solid #f3f4f6; }
+        #wp-pm2-sim .wp-sim-more.on::after { content:''; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#1a5cf5; border:1.5px solid #f3f4f6; }
         #wp-pm2-sim .wp-sim-fav {
           flex-shrink:0; align-self:center; width:36px; height:36px; padding:0; border:none; border-radius:50%;
           background:#fff; color:#6b7280; display:flex; align-items:center; justify-content:center;
@@ -2596,7 +2603,7 @@ export class PlaceModal2 {
         }
         #wp-pm2-sim .wp-sim-fav:active { transform:scale(0.85); }
         #wp-pm2-sim .wp-sim-fav.on { background:#ec4899; color:#fff; }
-        #wp-pm2-sim .wp-sim-title { display:block; padding:2px 64px 0; font-size:16px; font-weight:700; color:#0a0a0a; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-title { display:block; padding:2px 24px 0; font-size:16px; font-weight:700; color:#0a0a0a; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         #wp-pm2-sim .wp-sim-search {
           margin:10px 16px 0; height:42px; border-radius:999px; background:#f3f4f6;
           display:flex; align-items:center; padding:0 18px;
@@ -2655,11 +2662,13 @@ export class PlaceModal2 {
       <div class="wp-sim-sheet">
         <div class="wp-sim-head">
           <div class="wp-sim-handle"></div>
-          <button type="button" class="wp-sim-more" aria-label="Opciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
           <span class="wp-sim-title">Parecido a “${this._esc(cur.name || 'este lugar')}”</span>
-          <label class="wp-sim-search">
-            <input type="search" placeholder="Buscar entre similares…" autocomplete="off" enterkeyhint="search">
-          </label>
+          <div class="wp-sim-srow">
+            <label class="wp-sim-search">
+              <input type="search" placeholder="Buscar entre similares…" autocomplete="off" enterkeyhint="search">
+            </label>
+            <button type="button" class="wp-sim-more" aria-label="Opciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+          </div>
           ${chips.length ? `<div class="wp-sim-chips">
             <button class="wp-sim-chip on" data-chip="">Todos</button>
             ${chips.map(ch => `<button class="wp-sim-chip" data-chip="${this._esc(ch.k)}">${this._esc(ch.label)}</button>`).join('')}
@@ -2808,29 +2817,7 @@ export class PlaceModal2 {
         { label: 'Más cerca', icon: sortBy === 'near' ? 'check' : 'near', onClick: () => { sortBy = 'near'; paintMore(); render(false); listEl.scrollTop = 0; } },
         { label: 'Mejor calificados', icon: sortBy === 'rating' ? 'check' : 'star', onClick: () => { sortBy = 'rating'; paintMore(); render(false); listEl.scrollTop = 0; } },
         { sep: true },
-        { label: 'Solo abiertos ahora', icon: openOnly ? 'check' : 'clock', onClick: () => { openOnly = !openOnly; paintMore(); render(false); listEl.scrollTop = 0; } },
-        { sep: true },
-        { label: 'Ver todos en el mapa', icon: 'map', onClick: () => {
-          const places = [cur, ...lastShown.map(x => x.p)];
-          const label = `Parecidos a ${cur.name || 'este lugar'}`;
-          close(() => {
-            this.hide();
-            const mv = window.wpApp && window.wpApp.mapView;
-            if (window.wpApp && typeof window.wpApp.showPlacesOnMap === 'function') window.wpApp.showPlacesOnMap(places, label);
-            // Encuadrar todos en el mapa
-            const map = mv?.getMap?.();
-            const pts = places.map(pl => ({ lat: pl.location?.lat ?? pl.lat, lng: pl.location?.lng ?? pl.lng })).filter(x => x.lat && x.lng);
-            if (map && pts.length) {
-              const lats = pts.map(x => x.lat), lngs = pts.map(x => x.lng);
-              setTimeout(() => {
-                try {
-                  map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-                    { padding: { top: 140, bottom: 200, left: 50, right: 50 }, maxZoom: 16, duration: 700 });
-                } catch (_) {}
-              }, 380);
-            }
-          });
-        } },
+        { label: 'Abiertos ahora', toggle: openOnly, onToggle: (v) => { openOnly = v; paintMore(); render(false); listEl.scrollTop = 0; } },
       ]);
     });
     // ♥ ya guardados (si hay sesión)
@@ -6111,6 +6098,15 @@ export class PlaceModal2 {
       b.type = 'button';
       b.className = 'wp-pm2-pop-item' + (it.danger ? ' wp-pm2-danger' : '');
       b.disabled = !!it.disabled;
+      if (it.toggle !== undefined) {
+        // Interruptor: cambia en el lugar y el menú se queda abierto
+        b.innerHTML = '<span></span><span class="wp-pm2-pop-sw"></span>';
+        b.firstChild.textContent = it.label;
+        b.classList.toggle('on', !!it.toggle);
+        b.onclick = (e) => { e.stopPropagation(); const v = !b.classList.contains('on'); b.classList.toggle('on', v); this._haptic('light'); it.onToggle?.(v); };
+        menu.appendChild(b);
+        return;
+      }
       b.innerHTML = `<span></span>${it.icon ? `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.icon] || ''}</svg>` : ''}`;
       b.firstChild.textContent = it.label;
       b.onclick = (e) => { e.stopPropagation(); close(); it.onClick?.(); };
