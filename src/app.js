@@ -162,6 +162,14 @@ function setupTopBar(authModal) {
 }
 
 // ── Perfil (hoja sobre el mapa) ───────────────────────────────────────
+// Abrir el perfil de alguien desde la ficha ("Lo guardaron"): por encima
+// de la ficha (que vive en z-index 1500000)
+window.wpApp.openProfile = (uid) => {
+  const ps = _getProfileSheet();
+  ps.open(uid);
+  const el = document.getElementById('wp-pf');
+  if (el && document.getElementById('wp-pm2')?.classList.contains('visible')) el.style.zIndex = '1500300';
+};
 function _getProfileSheet() {
   if (window.wpApp.profileSheet) return window.wpApp.profileSheet;
   const mv = () => window.wpApp.mapView;
