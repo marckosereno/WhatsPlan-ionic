@@ -196,6 +196,8 @@ function _getProfileSheet() {
 // "Ver en el mapa" desde el perfil (todos tus guardados o una colección):
 // el mapa muestra SOLO esos lugares y arriba aparece un chip para salir y
 // volver a la categoría en la que estabas.
+// También disponible para la ficha ("Ver todos en el mapa" de Lugares similares)
+window.wpApp.showPlacesOnMap = (places, label) => showPlacesOnMap(window.wpApp.mapView, places, label);
 function showPlacesOnMap(mv, places, label) {
   if (!mv || !places?.length) return;
   if (!('_savedPrevCat' in window.wpApp)) window.wpApp._savedPrevCat = mv.currentCatId || null;
