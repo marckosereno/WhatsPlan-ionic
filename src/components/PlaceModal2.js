@@ -2597,7 +2597,7 @@ export class PlaceModal2 {
         #wp-pm2-sim .wp-sim-more:active { transform:scale(0.9); }
         #wp-pm2-sim .wp-sim-more.on::after { content:''; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#1a5cf5; border:1.5px solid #f3f4f6; }
         #wp-pm2-sim .wp-sim-fav {
-          flex-shrink:0; align-self:center; width:36px; height:36px; padding:0; border:none; border-radius:50%;
+          flex-shrink:0; align-self:center; width:42px; height:26px; padding:0; border:none; border-radius:999px;
           background:#fff; color:#6b7280; display:flex; align-items:center; justify-content:center;
           cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1), background 0.15s, color 0.15s;
         }
@@ -2632,16 +2632,27 @@ export class PlaceModal2 {
         #wp-pm2-sim .wp-sim-list.scroll { overflow-y:auto; overscroll-behavior:none; -webkit-overflow-scrolling:touch; }
         #wp-pm2-sim .wp-sim-inner { display:flex; flex-direction:column; gap:6px; will-change:transform; }
         #wp-pm2-sim .wp-sim-card {
-          display:flex; align-items:center; gap:12px; padding:8px; border:none; border-radius:18px; background:#f7f7f8; width:100%;
+          display:flex; align-items:center; gap:12px; padding:8px; border:none; border-radius:18px; background:#f7f7f8; width:100%; box-sizing:border-box;
           text-align:left; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; flex-shrink:0;
           transition:transform 0.15s, background 0.15s;
-          opacity:0; transform:translateY(12px);
         }
-        #wp-pm2-sim.in .wp-sim-card { animation:wpSimCard 0.38s cubic-bezier(0.22,1,0.36,1) forwards; }
-        @keyframes wpSimCard { to { opacity:1; transform:none; } }
+        /* entrada escalonada (both: las que esperan su turno quedan ocultas) */
+        #wp-pm2-sim.in.cards .wp-sim-card { animation:wpSimCard 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+        @keyframes wpSimCard { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
         #wp-pm2-sim .wp-sim-card:active { transform:scale(0.97); background:#f0f1f3; }
         #wp-pm2-sim .wp-sim-ph { flex-shrink:0; width:58px; height:58px; border-radius:13px; overflow:hidden; background:#e9ebee; display:flex; align-items:center; justify-content:center; font-size:24px; }
-        #wp-pm2-sim .wp-sim-ph img { width:100%; height:100%; object-fit:cover; }
+        #wp-pm2-sim .wp-sim-ph img { width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 0.25s; }
+        #wp-pm2-sim .wp-sim-ph img.ok { opacity:1; }
+        /* Skeleton: la foto brilla mientras carga, y al abrir la hoja se
+           ven tarjetas "fantasma" hasta que entran las reales */
+        @keyframes wpSimShimmer { 0% { background-position:100% 0; } 100% { background-position:-100% 0; } }
+        #wp-pm2-sim .wp-sim-sk {
+          background-image:linear-gradient(90deg,#e7e9ec 25%,#f3f4f6 50%,#e7e9ec 75%);
+          background-size:200% 100%; animation:wpSimShimmer 1.3s linear infinite;
+        }
+        #wp-pm2-sim .wp-sim-skcard { display:flex; align-items:center; gap:12px; padding:8px; border-radius:18px; background:#f7f7f8; flex-shrink:0; }
+        #wp-pm2-sim .wp-sim-skcard .wp-sim-ph { background-color:transparent; }
+        #wp-pm2-sim .wp-sim-skline { height:11px; border-radius:6px; }
         #wp-pm2-sim .wp-sim-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
         #wp-pm2-sim .wp-sim-name { font-size:15px; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         #wp-pm2-sim .wp-sim-row { display:flex; align-items:center; gap:5px; font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; }
@@ -2713,18 +2724,28 @@ export class PlaceModal2 {
         const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
         const meta = [r > 0 ? `Rating <b>${r.toFixed(1)}/5</b>` : 'Sin reseñas', fmtD(d), st].filter(Boolean).join(' · ');
         const isFav = favIds.has(String(p.place_id || p.id));
-        return `<div role="button" tabindex="0" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${0.12 + Math.min(i, 8) * 0.04}s` : 'opacity:1;transform:none;animation:none'}">
-          <div class="wp-sim-ph">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy">` : '⭐'}</div>
+        return `<div role="button" tabindex="0" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${Math.min(i, 8) * 0.045}s` : 'opacity:1;transform:none;animation:none'}">
+          <div class="wp-sim-ph${photo ? ' wp-sim-sk' : ''}">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy" onload="this.classList.add('ok');this.parentNode.classList.remove('wp-sim-sk')" onerror="this.parentNode.classList.remove('wp-sim-sk')">` : '⭐'}</div>
           <div class="wp-sim-info">
             <div class="wp-sim-name">${this._esc(p.name || '')}</div>
             ${addr ? `<div class="wp-sim-row">${PIN}<span>${this._esc(addr)}</span></div>` : ''}
             <div class="wp-sim-row"><span>${meta}</span></div>
           </div>
-          <button type="button" class="wp-sim-fav${isFav ? ' on' : ''}" data-fav="${list.indexOf(it)}" aria-label="Favorito">${HEART.replace('fill="none"><path', `fill="none"><path fill="${isFav ? 'currentColor' : 'none'}"`)}</button>
+          <button type="button" class="wp-sim-fav${isFav ? ' on' : ''}" data-fav="${list.indexOf(it)}" aria-label="Favorito">${HEART.replace('width="16" height="16"', 'width="14" height="14"').replace('fill="none"><path', `fill="none"><path fill="${isFav ? 'currentColor' : 'none'}"`)}</button>
         </div>`;
       }).join('');
     };
-    render(true);
+    // Mientras la hoja sube: 3 tarjetas skeleton; al aterrizar entran las reales
+    innerEl.innerHTML = Array.from({ length: 3 }, () => `
+      <div class="wp-sim-skcard">
+        <div class="wp-sim-ph wp-sim-sk"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+          <div class="wp-sim-skline wp-sim-sk" style="width:62%"></div>
+          <div class="wp-sim-skline wp-sim-sk" style="width:84%"></div>
+          <div class="wp-sim-skline wp-sim-sk" style="width:46%"></div>
+        </div>
+      </div>`).join('');
+    setTimeout(() => { if (root.isConnected) { root.classList.add('cards'); render(true); } }, 380);
 
     let closing = false;
     const close = (after) => {
@@ -2781,8 +2802,13 @@ export class PlaceModal2 {
       if (!card) return;
       const it = list[+card.getAttribute('data-sim')];
       if (!it) return;
+      // Pulse (hunde y rebota) y al terminar el hundido abre la ficha.
+      // Se suelta la animación de entrada para que el transform del pulse
+      // no quede pisado por ella.
+      card.style.animation = 'none';
       this._haptic('select');
-      close(() => this.show(it.p)); // abre la ficha del elegido
+      this._scaleKeys(card, [1, 0.95, 1.02, 1], 320);
+      setTimeout(() => close(() => this.show(it.p)), 150); // abre la ficha del elegido
     });
 
     // Arrastrar la cabecera hacia abajo para cerrar
