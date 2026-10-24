@@ -3,7 +3,8 @@
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
-import { ActivityService, ProfileService } from '/src/services/SupabaseService.js';
+import { ActivityService, ProfileService, getSupabase } from '/src/services/SupabaseService.js';
+import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
@@ -2989,6 +2990,163 @@ export class PlaceModal2 {
     if (this._place) this._renderReviewsSummary(this._place);
   }
 
+  // ══ Avatares reales de los autores (reseñas y respuestas) ══════════
+  // La reseña guarda el avatar que había al escribirla (a veces vacío o
+  // un memoji viejo). Se toma la foto ACTUAL de cada perfil por user_id;
+  // la mía sale de _myAvatarSync(). Las imágenes llevan data-av-uid para
+  // poder actualizarlas cuando llega la respuesta.
+  _authorAvatar(uid, stored, name) {
+    const me = this.getCurrentUser?.()?.id;
+    if (uid && me && uid === me) return this._myAvatarSync();
+    return (uid && this._avById?.get(uid)) || stored || getAvatarUrl(name || 'user');
+  }
+  async _loadAuthorAvatars(ids) {
+    if (!this._avById) this._avById = new Map();
+    const need = [...new Set((ids || []).filter(Boolean))].filter(id => !this._avById.has(id));
+    let sb = null;
+    try { sb = getSupabase(); } catch (_) {}
+    if (sb && need.length) {
+      try {
+        const { data } = await sb.from('profiles').select('id, avatar_url').in('id', need);
+        need.forEach(id => this._avById.set(id, ''));
+        (data || []).forEach(p => { if (p.avatar_url) this._avById.set(p.id, p.avatar_url); });
+      } catch (_) {}
+    }
+    this._el?.querySelectorAll('img[data-av-uid]').forEach(img => {
+      const u = this._authorAvatar(img.dataset.avUid, img.dataset.avStored || '', img.dataset.avName || '');
+      if (u && img.getAttribute('src') !== u) img.src = u;
+    });
+  }
+
+  // ══ "Lo guardaron" ═════════════════════════════════════════════════
+  // Quiénes guardaron el lugar: solo los que activaron "Mostrar lo que
+  // guardo" en su perfil (show_saved). Viene de la función place_savers
+  // (place_savers.sql), que ya excluye al usuario actual y a bloqueados.
+  async _loadSavers(place) {
+    this._savers = [];
+    let sb = null;
+    try { sb = getSupabase(); } catch (_) {}
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.rpc('place_savers', { p_place_id: String(place.place_id || place.id), p_limit: 40 });
+      if (error) throw error;
+      if (this._place !== place) return;
+      this._savers = data || [];
+      this._renderReviewsSummary(place);
+    } catch (e) {
+      console.warn('[PM2] Lo guardaron no disponible:', e.message || e);
+    }
+  }
+
+  _openSaversSheet() {
+    const place = this._place;
+    if (!place) return;
+    const list = (this._savers || []).slice();
+    const others = Math.max(0, (this._saveCount || 0) - (this._isFav ? 1 : 0));
+    const hidden = Math.max(0, others - list.length);
+    if (!document.getElementById('wp-pm2-sv-css')) {
+      const st = document.createElement('style');
+      st.id = 'wp-pm2-sv-css';
+      st.textContent = `
+        .wp-pm2-sv { padding:0 16px 2px; }
+        .wp-pm2-sv-search { height:42px; border-radius:999px; background:#f3f4f6; display:flex; align-items:center; padding:0 18px; }
+        .wp-pm2-sv-search input { flex:1; min-width:0; border:none; outline:none; background:none; font-family:inherit; font-size:14.5px; color:#111827; }
+        .wp-pm2-sv-search input::placeholder { color:#9ca3af; }
+        .wp-pm2-sv-lbl { margin:14px 2px 4px; font-size:12px; color:#8e8e93; }
+        .wp-pm2-sv-list { max-height:min(48vh, 420px); overflow:hidden; margin:0 -16px; padding:0 16px;
+          -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
+          mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%); }
+        .wp-pm2-sv-list.scroll { overflow-y:auto; overscroll-behavior:contain; }
+        .wp-pm2-sv-row { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #f1f2f4; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .wp-pm2-sv-row:last-child { border-bottom:none; }
+        .wp-pm2-sv-av { flex-shrink:0; width:46px; height:46px; border-radius:50%; background:#eef0f3 center/cover no-repeat; }
+        .wp-pm2-sv-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+        .wp-pm2-sv-txt b { font-size:15px; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .wp-pm2-sv-txt span { font-size:12.5px; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .wp-pm2-sv-pill { flex-shrink:0; height:34px; padding:0 16px; border:none; border-radius:999px; background:#111827; color:#fff;
+          font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background 0.18s, color 0.18s, transform 0.15s; }
+        .wp-pm2-sv-pill:active { transform:scale(0.92); }
+        .wp-pm2-sv-pill.on { background:#f1f2f4; color:#6b7280; }
+        .wp-pm2-sv-note { margin:10px 2px 0; font-size:12px; color:#9ca3af; text-align:center; }
+        .wp-pm2-sv-empty { padding:22px 0; text-align:center; font-size:13.5px; color:#9ca3af; }
+        .wp-pm2-sv-done { width:100%; height:48px; margin-top:12px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
+          font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s; }
+        .wp-pm2-sv-done:active { transform:scale(0.97); }
+      `;
+      document.head.appendChild(st);
+    }
+    const { body, close } = this._openSheet('Lo guardaron', place.name || '');
+    body.innerHTML = `
+      <div class="wp-pm2-sv">
+        ${list.length > 5 ? '<label class="wp-pm2-sv-search"><input type="search" placeholder="Buscar" autocomplete="off"></label>' : ''}
+        <div class="wp-pm2-sv-lbl">${list.length ? 'Personas que también lo guardaron' : ''}</div>
+        <div class="wp-pm2-sv-list"></div>
+        ${hidden ? `<div class="wp-pm2-sv-note">+${hidden} ${hidden === 1 ? 'persona más lo guardó' : 'personas más lo guardaron'} en privado</div>` : ''}
+        <button type="button" class="wp-pm2-sv-done">Listo</button>
+      </div>`;
+    const listEl = body.querySelector('.wp-pm2-sv-list');
+    const me = this.getCurrentUser?.() || null;
+    let following = new Set();
+    const subTxt = (s) => {
+      const first = (s.name || 'Alguien').split(' ')[0];
+      const more = Math.max(0, (s.saved_count || 1) - 1);
+      return more ? `${first} guardó este y ${more} ${more === 1 ? 'lugar más' : 'lugares más'}` : `${first} guardó este lugar`;
+    };
+    const render = (q = '') => {
+      const n = q.trim().toLowerCase();
+      const shown = list.filter(s => !n || (s.name || '').toLowerCase().includes(n) || (s.username || '').toLowerCase().includes(n));
+      if (!shown.length) { listEl.innerHTML = `<div class="wp-pm2-sv-empty">${list.length ? 'Sin resultados' : 'Las personas que lo guardaron prefieren mantenerlo en privado'}</div>`; return; }
+      listEl.innerHTML = shown.map(s => {
+        const av = s.avatar_url || getAvatarUrl(s.name || 'user');
+        const on = following.has(s.user_id);
+        return `<div class="wp-pm2-sv-row" data-uid="${this._esc(s.user_id)}">
+          <span class="wp-pm2-sv-av" style="background-image:url('${this._esc(av)}')"></span>
+          <span class="wp-pm2-sv-txt"><b>${this._esc(s.name || 'Usuario')}</b><span>${this._esc(subTxt(s))}</span></span>
+          ${me && me.id !== s.user_id ? `<button type="button" class="wp-pm2-sv-pill${on ? ' on' : ''}" data-follow="${this._esc(s.user_id)}">${on ? 'Siguiendo' : 'Seguir'}</button>` : ''}
+        </div>`;
+      }).join('');
+    };
+    render();
+    setTimeout(() => listEl.classList.add('scroll'), 400); // scroll recién al terminar de subir
+    if (me && list.length) {
+      SocialService.followingSet(me.id, list.map(s => s.user_id))
+        .then(set => { following = set || new Set(); render(body.querySelector('input')?.value || ''); })
+        .catch(() => {});
+    }
+    body.querySelector('input')?.addEventListener('input', (e) => render(e.target.value));
+    body.querySelector('.wp-pm2-sv-done').onclick = () => close();
+    listEl.addEventListener('click', async (e) => {
+      const pill = e.target.closest('[data-follow]');
+      if (pill) {
+        e.stopPropagation();
+        const user = this._requireUser('Inicia sesión para seguir a otras personas');
+        if (!user) return;
+        const uid = pill.getAttribute('data-follow');
+        const on = !following.has(uid);
+        on ? following.add(uid) : following.delete(uid);
+        pill.classList.toggle('on', on); pill.textContent = on ? 'Siguiendo' : 'Seguir';
+        this._haptic(on ? 'success' : 'light');
+        try {
+          const myName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || '';
+          if (on) await SocialService.follow(user.id, uid, myName);
+          else    await SocialService.unfollow(user.id, uid);
+        } catch (err) {
+          console.error('[PM2] Seguir:', err);
+          on ? following.delete(uid) : following.add(uid);
+          pill.classList.toggle('on', !on); pill.textContent = !on ? 'Siguiendo' : 'Seguir';
+          this._showToast('No se pudo actualizar');
+        }
+        return;
+      }
+      const row = e.target.closest('[data-uid]');
+      if (!row) return;
+      this._haptic('light');
+      this._scaleKeys(row, [1, 0.97, 1.01, 1], 260);
+      const uid = row.getAttribute('data-uid');
+      setTimeout(() => { close(); window.wpApp?.openProfile?.(uid); }, 140); // abre su perfil
+    });
+  }
+
   _hideMiniSnap() {
     const ms = document.getElementById('wp-minisnap-panel');
     if (!ms) return;
@@ -4250,6 +4408,7 @@ export class PlaceModal2 {
     this._loadMyClaim(place);          // async, "¿Es tu negocio?"
     this._loadFavorite(place);         // async, favoritos (botón + pill del hero)
     this._loadSaveCount(place);        // async, "N personas lo guardaron"
+    this._loadSavers(place);           // async, quiénes (los que lo muestran públicamente)
   }
 
   // ── Calificación combinada (Google + comunidad) ──────────────────
@@ -4292,23 +4451,22 @@ export class PlaceModal2 {
     const saves = this._saveCount || 0;
     if (saves > 0) {
       summaryEl.style.display = '';
-      const myAv = this._isFav ? this._myAvatarSync() : '';
-      if (myAv) {
-        // Lo guardé yo: va mi foto del perfil (en vez del corazón)
+      // Avatares de OTRAS personas que lo guardaron (las que lo muestran
+      // públicamente); si no hay ninguna visible, queda el corazón
+      const savers = (this._savers || []).slice(0, 3);
+      if (savers.length) {
         avatarsEl.style.display = '';
-        let img = avatarsEl.querySelector('img.wp-pm2-fp-me');
-        if (!img || avatarsEl.children.length !== 1) {
-          avatarsEl.innerHTML = '';
-          img = document.createElement('img');
-          img.className = 'wp-pm2-fp-avatar wp-pm2-fp-me';
-          avatarsEl.appendChild(img);
-        }
-        if (img.getAttribute('src') !== myAv) {
+        avatarsEl.innerHTML = '';
+        savers.forEach((sv, i) => {
+          const img = document.createElement('img');
+          img.className = 'wp-pm2-fp-avatar';
+          img.style.zIndex = savers.length - i;
           this._skelOn(img);
           img.onload = () => this._skelOff(img);
           img.onerror = () => { this._skelOff(img); img.style.background = '#e2e8f0'; };
-          img.src = myAv;
-        }
+          img.src = sv.avatar_url || getAvatarUrl(sv.name || 'user');
+          avatarsEl.appendChild(img);
+        });
         if (savesIco) savesIco.style.display = 'none';
       } else {
         avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
@@ -4317,12 +4475,21 @@ export class PlaceModal2 {
       countEl.style.display = '';
       countEl.classList.add('wp-pm2-saves');
       const others = saves - (this._isFav ? 1 : 0);
+      const first = (this._savers || [])[0];
+      const fName = first ? this._esc((first.name || 'Alguien').split(' ')[0]) : '';
       if (this._isFav && others <= 0) countEl.innerHTML = '<b>Tú</b> lo guardaste';
+      else if (this._isFav && first) countEl.innerHTML = others > 1 ? `<b>Tú</b>, <b>${fName}</b> y ${others - 1} más lo guardaron` : `<b>Tú</b> y <b>${fName}</b> lo guardaron`;
       else if (this._isFav) countEl.innerHTML = `<b>Tú</b> y ${others} ${others === 1 ? 'persona más' : 'más'} lo guardaron`;
+      else if (first) countEl.innerHTML = saves > 1 ? `<b>${fName}</b> y ${saves - 1} más lo guardaron` : `<b>${fName}</b> lo guardó`;
       else countEl.innerHTML = `<b>${saves}</b> ${saves === 1 ? 'persona lo guardó' : 'personas lo guardaron'}`;
+      // Tocar avatares o texto → hoja "Lo guardaron" (para seguirse)
+      const openSv = (e) => { e.stopPropagation(); this._pulseTap(e.currentTarget, () => this._openSaversSheet()); };
+      avatarsEl.onclick = openSv; countEl.onclick = openSv;
+      if (savesIco) savesIco.onclick = openSv;
       return;
     }
-    if (savesIco) savesIco.style.display = 'none';
+    if (savesIco) { savesIco.style.display = 'none'; savesIco.onclick = null; }
+    avatarsEl.onclick = null; countEl.onclick = null;
     countEl.classList.remove('wp-pm2-saves');
     const { total } = this._ratingSummary(place);
     const names = [
@@ -4445,6 +4612,7 @@ export class PlaceModal2 {
     avImg.onload  = () => this._skelOff(avImg);
     avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
     avImg.src = photoSeed;
+    if (ctx && ctx.ownerId) { avImg.dataset.avUid = ctx.ownerId; avImg.dataset.avName = name || ''; }
 
     const textEl = row.querySelector('.wp-pm2-review-text');
     const moreBtn = row.querySelector('.wp-pm2-review-more');
@@ -4846,6 +5014,7 @@ export class PlaceModal2 {
     });
     this._social = social;
     (this._reviewCards || new Map()).forEach((_, key) => this._renderReviewSocial(key));
+    this._loadAuthorAvatars((data.replies || []).map(r => r.user_id)); // fotos actuales de quienes respondieron
   }
 
   // Chips de emoji (😍 4  😂 1) para una reseña o una respuesta.
@@ -4962,7 +5131,9 @@ export class PlaceModal2 {
           <button class="wp-pm2-rv-reply-act">Responder</button>
         </div>
       </div>`;
-    item.querySelector('img').src = r.avatar_url || getAvatarUrl(name);
+    const rImg = item.querySelector('img');
+    rImg.src = this._authorAvatar(r.user_id, r.avatar_url, name);
+    if (r.user_id) { rImg.dataset.avUid = r.user_id; rImg.dataset.avStored = r.avatar_url || ''; rImg.dataset.avName = name || ''; }
     this._renderEmojiChips(item.querySelector('.wp-pm2-rv-chips'), rKey, parentKey, pop);
 
     item.querySelector('.wp-pm2-rv-reply-act').onclick = (e) => {
@@ -5455,6 +5626,7 @@ export class PlaceModal2 {
     try { await this._modPromise; } catch (_) {}
     if (this._place !== place) return; // llegó tarde: ya hay otra ficha abierta
     this._communityRaw = reviews;
+    this._loadAuthorAvatars(reviews.map(r => r.user_id)); // fotos actuales de los autores
     // Calificación y total del hero: enseguida (es solo texto, barato)
     this._communityReviews = reviews.filter(r => this._isVisible('wp:' + r.id, r.user_id));
     this._renderReviewsSummary(place);
@@ -5596,7 +5768,7 @@ export class PlaceModal2 {
         panel.appendChild(this._buildReviewCard(
           r.display_name || 'Usuario',
           r.rating, r.text, this._timeAgo(r.created_at),
-          getAvatarUrl(r.display_name || 'user'),
+          this._authorAvatar(r.user_id, r.avatar_url, r.display_name),
           r.id != null ? {
             key: 'wp:' + r.id,
             source: 'wp',
