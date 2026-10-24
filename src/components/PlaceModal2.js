@@ -534,7 +534,7 @@ export class PlaceModal2 {
       #wp-pm2-back {
         position:relative; z-index:1;
         /* Pill: flecha + "Volver" */
-        height:40px; padding:0 16px 0 10px; border-radius:9999px; border:none; flex-shrink:0;
+        height:48px; padding:0 18px 0 14px; border-radius:9999px; border:none; flex-shrink:0;
         font-family:inherit; font-size:14px; font-weight:600; letter-spacing:-0.1px;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
@@ -566,9 +566,9 @@ export class PlaceModal2 {
         position:relative; z-index:1;
       }
       .wp-pm2-tb-btn {
-        /* Pill (más ancho que alto), igual de alto que "Volver" */
+        /* Redondo de 48px, igual que los botones del footer de la ficha */
         position:relative;
-        width:54px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
+        width:48px; height:48px; border-radius:9999px; border:none; flex-shrink:0;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
@@ -1208,7 +1208,11 @@ export class PlaceModal2 {
       /* Ítem con interruptor (no cierra el menú al tocarlo) */
       .wp-pm2-pop-sw { position:relative; flex-shrink:0; width:42px; height:26px; border-radius:999px; background:#e5e7eb; transition:background 0.2s; }
       .wp-pm2-pop-sw::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:transform 0.22s cubic-bezier(0.34,1.4,0.64,1); }
-      .wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#22c55e; }
+      .wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#1a5cf5; }
+      /* Opción activa: su ícono dentro de un pill gris suave */
+      .wp-pm2-pop-ic { display:flex; align-items:center; justify-content:center; flex-shrink:0; height:28px; min-width:28px; border-radius:999px; transition:background 0.15s; }
+      .wp-pm2-pop-item.act { font-weight:600; }
+      .wp-pm2-pop-item.act .wp-pm2-pop-ic { background:#eef0f3; padding:0 10px; }
       .wp-pm2-pop-item.on .wp-pm2-pop-sw::after { transform:translateX(16px); }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
@@ -2295,7 +2299,7 @@ export class PlaceModal2 {
     const EASE = 'cubic-bezier(0.4,0,0.2,1)';
     const T = animate ? `0.22s ${EASE}` : '0s';
     b.style.transition = `transform 0.15s, padding ${T}`;
-    b.style.paddingRight = (16 - 6 * q).toFixed(2) + 'px'; // 16 → 10 (queda redondo)
+    b.style.paddingRight = (18 - 4 * q).toFixed(2) + 'px'; // 18 → 14 (queda redondo de 48, igual que los de la derecha)
     if (lab) {
       lab.style.transition = `max-width ${T}, margin-left ${T}, opacity ${animate ? '0.16s ease-out' : '0s'}`;
       lab.style.maxWidth = (W * (1 - q)).toFixed(2) + 'px';
@@ -2595,7 +2599,12 @@ export class PlaceModal2 {
           cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s;
         }
         #wp-pm2-sim .wp-sim-more:active { transform:scale(0.9); }
-        #wp-pm2-sim .wp-sim-more.on::after { content:''; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#1a5cf5; border:1.5px solid #f3f4f6; }
+        /* Badge con cuántos filtros hay activos, en la esquina de arriba */
+        #wp-pm2-sim .wp-sim-more[data-n]::after {
+          content:attr(data-n); position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; box-sizing:border-box;
+          border-radius:999px; background:#111827; color:#fff; border:2px solid #fff;
+          font-size:10.5px; font-weight:700; line-height:14px; text-align:center; font-family:var(--wp-font);
+        }
         #wp-pm2-sim .wp-sim-fav {
           flex-shrink:0; align-self:center; width:42px; height:26px; padding:0; border:none; border-radius:999px;
           background:#fff; color:#6b7280; display:flex; align-items:center; justify-content:center;
@@ -2834,14 +2843,17 @@ export class PlaceModal2 {
 
     // ── ⋯ : ordenar, solo abiertos, ver en el mapa ──
     const moreBtn = root.querySelector('.wp-sim-more');
-    const paintMore = () => moreBtn.classList.toggle('on', sortBy !== 'match' || openOnly); // puntito si hay algo aplicado
+    const paintMore = () => { // badge con el número de filtros activos (nada si está todo normal)
+      const n = (sortBy !== 'match' ? 1 : 0) + (openOnly ? 1 : 0);
+      if (n) moreBtn.setAttribute('data-n', String(n)); else moreBtn.removeAttribute('data-n');
+    };
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this._haptic('light');
       this._openPopMenu(moreBtn, [
-        { label: 'Más parecidos', icon: sortBy === 'match' ? 'check' : 'order', onClick: () => { sortBy = 'match'; paintMore(); render(false); listEl.scrollTop = 0; } },
-        { label: 'Más cerca', icon: sortBy === 'near' ? 'check' : 'near', onClick: () => { sortBy = 'near'; paintMore(); render(false); listEl.scrollTop = 0; } },
-        { label: 'Mejor calificados', icon: sortBy === 'rating' ? 'check' : 'star', onClick: () => { sortBy = 'rating'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Más parecidos', icon: 'order', active: sortBy === 'match', onClick: () => { sortBy = 'match'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Más cerca', icon: 'near', active: sortBy === 'near', onClick: () => { sortBy = 'near'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Mejor calificados', icon: 'star', active: sortBy === 'rating', onClick: () => { sortBy = 'rating'; paintMore(); render(false); listEl.scrollTop = 0; } },
         { sep: true },
         { label: 'Abiertos ahora', toggle: openOnly, onToggle: (v) => { openOnly = v; paintMore(); render(false); listEl.scrollTop = 0; } },
       ]);
@@ -6133,8 +6145,9 @@ export class PlaceModal2 {
         menu.appendChild(b);
         return;
       }
-      b.innerHTML = `<span></span>${it.icon ? `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.icon] || ''}</svg>` : ''}`;
+      b.innerHTML = `<span></span>${it.icon ? `<span class="wp-pm2-pop-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.icon] || ''}</svg></span>` : ''}`;
       b.firstChild.textContent = it.label;
+      if (it.active) b.classList.add('act');
       b.onclick = (e) => { e.stopPropagation(); close(); it.onClick?.(); };
       menu.appendChild(b);
     });
