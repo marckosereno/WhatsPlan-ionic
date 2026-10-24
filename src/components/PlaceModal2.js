@@ -2581,7 +2581,22 @@ export class PlaceModal2 {
         @keyframes wpSimIn { 0% { transform:translateY(115%) scale(0.92); } 100% { transform:translateY(0) scale(1); } }
         #wp-pm2-sim .wp-sim-head { flex-shrink:0; padding:0 0 4px; touch-action:none; }
         #wp-pm2-sim .wp-sim-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
-        #wp-pm2-sim .wp-sim-title { display:block; padding:2px 24px 0; font-size:16px; font-weight:700; color:#0a0a0a; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-head { position:relative; }
+        #wp-pm2-sim .wp-sim-more {
+          position:absolute; right:12px; top:12px; width:44px; height:32px; padding:0; border:none; border-radius:999px;
+          background:#f3f4f6; color:#111827; display:flex; align-items:center; justify-content:center;
+          cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s;
+        }
+        #wp-pm2-sim .wp-sim-more:active { transform:scale(0.9); }
+        #wp-pm2-sim .wp-sim-more.on::after { content:''; position:absolute; top:5px; right:9px; width:7px; height:7px; border-radius:50%; background:#1a5cf5; border:1.5px solid #f3f4f6; }
+        #wp-pm2-sim .wp-sim-fav {
+          flex-shrink:0; align-self:center; width:36px; height:36px; padding:0; border:none; border-radius:50%;
+          background:#fff; color:#6b7280; display:flex; align-items:center; justify-content:center;
+          cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1), background 0.15s, color 0.15s;
+        }
+        #wp-pm2-sim .wp-sim-fav:active { transform:scale(0.85); }
+        #wp-pm2-sim .wp-sim-fav.on { background:#ec4899; color:#fff; }
+        #wp-pm2-sim .wp-sim-title { display:block; padding:2px 64px 0; font-size:16px; font-weight:700; color:#0a0a0a; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         #wp-pm2-sim .wp-sim-search {
           margin:10px 16px 0; height:42px; border-radius:999px; background:#f3f4f6;
           display:flex; align-items:center; padding:0 18px;
@@ -2602,11 +2617,13 @@ export class PlaceModal2 {
            al terminar la entrada (.scroll) */
         /* Desvanecido arriba y abajo: las fichas no se cortan de golpe */
         #wp-pm2-sim .wp-sim-list {
-          flex:1 1 auto; min-height:0; overflow:hidden; padding:12px 12px 22px; display:flex; flex-direction:column; gap:6px;
+          flex:1 1 auto; min-height:0; overflow:hidden; padding:12px 12px 22px;
           -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 26px), transparent 100%);
           mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 26px), transparent 100%);
         }
-        #wp-pm2-sim .wp-sim-list.scroll { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+        /* none: sin el brillo de Android; el rebote lo hace el elastic propio */
+        #wp-pm2-sim .wp-sim-list.scroll { overflow-y:auto; overscroll-behavior:none; -webkit-overflow-scrolling:touch; }
+        #wp-pm2-sim .wp-sim-inner { display:flex; flex-direction:column; gap:6px; will-change:transform; }
         #wp-pm2-sim .wp-sim-card {
           display:flex; align-items:center; gap:12px; padding:8px; border:none; border-radius:18px; background:#f7f7f8; width:100%;
           text-align:left; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; flex-shrink:0;
@@ -2638,6 +2655,7 @@ export class PlaceModal2 {
       <div class="wp-sim-sheet">
         <div class="wp-sim-head">
           <div class="wp-sim-handle"></div>
+          <button type="button" class="wp-sim-more" aria-label="Opciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
           <span class="wp-sim-title">Parecido a “${this._esc(cur.name || 'este lugar')}”</span>
           <label class="wp-sim-search">
             <input type="search" placeholder="Buscar entre similares…" autocomplete="off" enterkeyhint="search">
@@ -2647,7 +2665,7 @@ export class PlaceModal2 {
             ${chips.map(ch => `<button class="wp-sim-chip" data-chip="${this._esc(ch.k)}">${this._esc(ch.label)}</button>`).join('')}
           </div>` : ''}
         </div>
-        <div class="wp-sim-list"></div>
+        <div class="wp-sim-list"><div class="wp-sim-inner"></div></div>
       </div>`;
     document.body.appendChild(root);
 
@@ -2659,16 +2677,25 @@ export class PlaceModal2 {
 
     const fmtD = (d) => !isFinite(d) ? '' : d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(d < 10000 ? 1 : 0)} km`;
     const listEl = root.querySelector('.wp-sim-list');
+    const innerEl = root.querySelector('.wp-sim-inner'); // lo que se estira con el elastic
     const input  = root.querySelector('input');
     let chip = '', q = '';
     const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let sortBy = 'match', openOnly = false;  // opciones del ⋯ ('match' = más parecidos: misma subcategoría y luego cercanía)
+    let favIds = new Set();                  // ♥ de las tarjetas
+    let lastShown = [];
+    const HEART = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
     const render = (animate) => {
       const nq = norm(q);
-      const shown = list.filter(({ p, tags }) =>
+      let shown = list.filter(({ p, tags }) =>
         (!chip || tags.some(t => t.toLowerCase() === chip)) &&
+        (!openOnly || this._isOpenNow(p) === true) &&
         (!nq || norm(p.name).includes(nq) || norm(p.vicinity || p.formattedAddress || p.address).includes(nq)));
-      if (!shown.length) { listEl.innerHTML = '<div class="wp-sim-empty">Sin resultados</div>'; return; }
-      listEl.innerHTML = shown.map((it, i) => {
+      if (sortBy === 'rating') shown = shown.slice().sort((a, b) => ((parseFloat(b.p.rating) || 0) - (parseFloat(a.p.rating) || 0)) || (a.d - b.d));
+      else if (sortBy === 'near') shown = shown.slice().sort((a, b) => a.d - b.d);
+      lastShown = shown;
+      if (!shown.length) { innerEl.innerHTML = `<div class="wp-sim-empty">${openOnly ? 'Ninguno abierto ahora' : 'Sin resultados'}</div>`; return; }
+      innerEl.innerHTML = shown.map((it, i) => {
         const { p, d } = it;
         const photo = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
         const r = parseFloat(p.rating) || 0;
@@ -2676,14 +2703,16 @@ export class PlaceModal2 {
         const open = this._isOpenNow(p);
         const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
         const meta = [r > 0 ? `Rating <b>${r.toFixed(1)}/5</b>` : 'Sin reseñas', fmtD(d), st].filter(Boolean).join(' · ');
-        return `<button type="button" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${0.12 + Math.min(i, 8) * 0.04}s` : 'opacity:1;transform:none;animation:none'}">
+        const isFav = favIds.has(String(p.place_id || p.id));
+        return `<div role="button" tabindex="0" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${0.12 + Math.min(i, 8) * 0.04}s` : 'opacity:1;transform:none;animation:none'}">
           <div class="wp-sim-ph">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy">` : '⭐'}</div>
           <div class="wp-sim-info">
             <div class="wp-sim-name">${this._esc(p.name || '')}</div>
             ${addr ? `<div class="wp-sim-row">${PIN}<span>${this._esc(addr)}</span></div>` : ''}
             <div class="wp-sim-row"><span>${meta}</span></div>
           </div>
-        </button>`;
+          <button type="button" class="wp-sim-fav${isFav ? ' on' : ''}" data-fav="${list.indexOf(it)}" aria-label="Favorito">${HEART.replace('fill="none"><path', `fill="none"><path fill="${isFav ? 'currentColor' : 'none'}"`)}</button>
+        </div>`;
       }).join('');
     };
     render(true);
@@ -2710,7 +2739,35 @@ export class PlaceModal2 {
       this._haptic('light');
       render(false);
     }));
-    listEl.addEventListener('click', (e) => {
+    const paintFav = (btn, on) => {
+      btn.classList.toggle('on', on);
+      btn.querySelector('path')?.setAttribute('fill', on ? 'currentColor' : 'none');
+    };
+    listEl.addEventListener('click', async (e) => {
+      const favBtn = e.target.closest('[data-fav]');
+      if (favBtn) {
+        e.stopPropagation();
+        const user = this._requireUser('Inicia sesión para guardar en favoritos');
+        const it = list[+favBtn.getAttribute('data-fav')];
+        if (!user || !it) return;
+        const fid = String(it.p.place_id || it.p.id);
+        const on = !favIds.has(fid);
+        on ? favIds.add(fid) : favIds.delete(fid);
+        paintFav(favBtn, on);
+        this._scaleKeys(favBtn, [0.8, 1.15, 1], 300);
+        this._haptic(on ? 'success' : 'light');
+        try {
+          if (on) await FavoriteService.add(fid, user.id);
+          else    await FavoriteService.remove(fid, user.id);
+          this._showToast(on ? '♥ Guardado en favoritos' : 'Quitado de favoritos');
+        } catch (err) {
+          console.error('[PM2] Favoritos (similares):', err);
+          on ? favIds.delete(fid) : favIds.add(fid);
+          paintFav(favBtn, !on);
+          this._showToast('No se pudo guardar');
+        }
+        return;
+      }
       const card = e.target.closest('[data-sim]');
       if (!card) return;
       const it = list[+card.getAttribute('data-sim')];
@@ -2739,6 +2796,87 @@ export class PlaceModal2 {
       if (dy > 90) close();
       else sheet.style.transform = 'translateY(0)';
     });
+
+    // ── ⋯ : ordenar, solo abiertos, ver en el mapa ──
+    const moreBtn = root.querySelector('.wp-sim-more');
+    const paintMore = () => moreBtn.classList.toggle('on', sortBy !== 'match' || openOnly); // puntito si hay algo aplicado
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._haptic('light');
+      this._openPopMenu(moreBtn, [
+        { label: 'Más parecidos', icon: sortBy === 'match' ? 'check' : 'order', onClick: () => { sortBy = 'match'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Más cerca', icon: sortBy === 'near' ? 'check' : 'near', onClick: () => { sortBy = 'near'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Mejor calificados', icon: sortBy === 'rating' ? 'check' : 'star', onClick: () => { sortBy = 'rating'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { sep: true },
+        { label: 'Solo abiertos ahora', icon: openOnly ? 'check' : 'clock', onClick: () => { openOnly = !openOnly; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { sep: true },
+        { label: 'Ver todos en el mapa', icon: 'map', onClick: () => {
+          const places = [cur, ...lastShown.map(x => x.p)];
+          const label = `Parecidos a ${cur.name || 'este lugar'}`;
+          close(() => {
+            this.hide();
+            const mv = window.wpApp && window.wpApp.mapView;
+            if (window.wpApp && typeof window.wpApp.showPlacesOnMap === 'function') window.wpApp.showPlacesOnMap(places, label);
+            // Encuadrar todos en el mapa
+            const map = mv?.getMap?.();
+            const pts = places.map(pl => ({ lat: pl.location?.lat ?? pl.lat, lng: pl.location?.lng ?? pl.lng })).filter(x => x.lat && x.lng);
+            if (map && pts.length) {
+              const lats = pts.map(x => x.lat), lngs = pts.map(x => x.lng);
+              setTimeout(() => {
+                try {
+                  map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                    { padding: { top: 140, bottom: 200, left: 50, right: 50 }, maxZoom: 16, duration: 700 });
+                } catch (_) {}
+              }, 380);
+            }
+          });
+        } },
+      ]);
+    });
+    // ♥ ya guardados (si hay sesión)
+    {
+      const uid = this.getCurrentUser?.()?.id || null;
+      if (uid) FavoriteService.getFavoriteIds(uid).then(ids => {
+        favIds = new Set((ids || []).map(String));
+        root.querySelectorAll('[data-fav]').forEach(b => {
+          const it = list[+b.getAttribute('data-fav')];
+          if (it) paintFav(b, favIds.has(String(it.p.place_id || it.p.id)));
+        });
+      }).catch(() => {});
+    }
+
+    // ── Elastic arriba y abajo de la lista (mismo rebote tipo iOS que la
+    // ficha): al llegar al inicio o al final y seguir jalando, las fichas
+    // se estiran con resistencia y al soltar regresan.
+    {
+      const rubber = (d) => { const D = window.innerHeight, a = Math.abs(d); return Math.sign(d) * (1 - 1 / ((a * 0.55 / D) + 1)) * D; };
+      let y0 = 0, x0 = 0, anchor = 0, dir = 0, on = false;
+      const set = (o, anim) => {
+        innerEl.style.transition = anim ? 'transform 0.45s cubic-bezier(0.2,0.9,0.3,1)' : 'none';
+        innerEl.style.transform = o ? `translate3d(0,${o.toFixed(1)}px,0)` : '';
+      };
+      listEl.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dir = 0; on = true;
+      }, { passive: true });
+      listEl.addEventListener('touchmove', (e) => {
+        if (!on) return;
+        const y = e.touches[0].clientY;
+        if (!dir) {
+          if (Math.abs(y - y0) < 4 || Math.abs(y - y0) < Math.abs(e.touches[0].clientX - x0)) return;
+          const max = listEl.scrollHeight - listEl.clientHeight;
+          if (listEl.scrollTop <= 0 && y > y0) { dir = 1; anchor = y; }
+          else if (listEl.scrollTop >= max - 1 && y < y0) { dir = -1; anchor = y; }
+          else return;
+        }
+        const d = y - anchor;
+        if ((dir === 1 && d < 0) || (dir === -1 && d > 0)) { set(0, false); dir = 0; return; } // vuelve al scroll normal
+        set(rubber(d), false);
+      }, { passive: true });
+      const end = () => { if (!on) return; on = false; if (dir) set(0, true); dir = 0; };
+      listEl.addEventListener('touchend', end, { passive: true });
+      listEl.addEventListener('touchcancel', end, { passive: true });
+    }
 
     // ── Con el buscador enfocado, la hoja se acomoda entre el teclado y
     // la barra de estado (6px debajo de ella, como la hoja del perfil). El
@@ -5957,6 +6095,11 @@ export class PlaceModal2 {
       down:  '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
       order: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
       trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      near:  '<path d="m3 11 19-9-9 19-2-8-8-2z"/>',
+      star:  '<path d="M12 2.5l2.9 6.2 6.6.7-4.9 4.5 1.4 6.6L12 17.2l-6 3.3 1.4-6.6-4.9-4.5 6.6-.7z"/>',
+      clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      map:   '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
     };
     const wrap = document.createElement('div');
     wrap.className = 'wp-pm2-pop';
