@@ -1210,9 +1210,11 @@ export class PlaceModal2 {
       .wp-pm2-pop-sw::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:transform 0.22s cubic-bezier(0.34,1.4,0.64,1); }
       .wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#1a5cf5; }
       /* Opción activa: su ícono dentro de un pill gris suave */
-      .wp-pm2-pop-ic { display:flex; align-items:center; justify-content:center; flex-shrink:0; height:28px; min-width:28px; border-radius:999px; transition:background 0.15s; }
+      /* Ancho fijo para todos: los íconos quedan en la misma columna,
+         centrados, con o sin el pill de la opción activa */
+      .wp-pm2-pop-ic { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:42px; height:28px; border-radius:999px; transition:background 0.15s; }
       .wp-pm2-pop-item.act { font-weight:600; }
-      .wp-pm2-pop-item.act .wp-pm2-pop-ic { background:#eef0f3; padding:0 10px; }
+      .wp-pm2-pop-item.act .wp-pm2-pop-ic { background:#eef0f3; }
       .wp-pm2-pop-item.on .wp-pm2-pop-sw::after { transform:translateX(16px); }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
