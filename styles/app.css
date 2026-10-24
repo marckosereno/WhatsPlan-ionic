@@ -666,33 +666,38 @@ ion-app {
   background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0) 60%);
 }
 
-/* GPS — sticker: la flecha sola (sin burbuja), azul con borde blanco
-   grueso y sombra suave. Buscando: parpadea. Siguiéndote: azul más
-   intenso con un halo que late detrás. */
-#wp-side-slot-3.wp-gps-sticker {
-  width: 42px; height: 42px;
+/* Botones laterales tipo sticker (pin "Estoy aquí" y flecha GPS): el
+   ícono solo, azul con borde blanco grueso y sombra suave, dentro de la
+   cápsula gris suave. GPS activo: la flecha se inclina en 3D (como si se
+   acostara sobre el mapa), sin animaciones de pulso. */
+.wp-side-icon.wp-sticker {
+  width: 34px; height: 34px;
   background: none; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
-  overflow: visible; /* que no se corten la sombra ni el halo */
+  overflow: visible; /* que no se corte la sombra */
   color: #01a2fd;
 }
-#wp-side-slot-3.wp-gps-sticker::before { display: none; }
-#wp-side-slot-3.wp-gps-sticker svg {
-  transform-origin: center;
-  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.22)) drop-shadow(0 1px 1px rgba(0,0,0,0.12));
+.wp-side-icon.wp-sticker::before { display: none; }
+.wp-side-icon.wp-sticker svg {
+  transform-origin: 50% 60%;
+  transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1), opacity 0.2s;
 }
-#wp-side-slot-3.wp-gps-sticker.loading svg { animation: gpsPulse 1.2s infinite; }
+/* La sombra va en los trazos (vector), no en el <svg> entero: así la
+   inclinación 3D no la convierte en imagen pixeleada */
+.wp-side-icon.wp-sticker svg > path:first-child {
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.22)) drop-shadow(0 1px 1px rgba(0,0,0,0.10));
+}
+#wp-side-slot-3.wp-gps-sticker.loading svg { opacity: 0.55; }
 #wp-side-slot-3.wp-gps-sticker.active { color: #0a84ff; }
-#wp-side-slot-3.wp-gps-sticker::after {
-  content: ''; position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px;
-  border-radius: 50%; background: rgba(1,162,253,0.28); opacity: 0; transform: scale(0.6); pointer-events: none; z-index: 0;
-}
-#wp-side-slot-3.wp-gps-sticker.active::after { animation: wpGpsHalo 1.8s ease-out infinite; }
-@keyframes wpGpsHalo { 0% { opacity: 0.9; transform: scale(0.6); } 100% { opacity: 0; transform: scale(1.5); } }
+#wp-side-slot-3.wp-gps-sticker.active svg { transform: perspective(90px) rotateX(38deg) rotateZ(-6deg) scale(1.08); }
 
-/* Los dos botones van sueltos (sin la cápsula blanca de fondo) */
-#wp-side-panel-bg-bottom { display: none; }
-#wp-side-panel-bottom { gap: 12px; }
-/* Estoy aquí — bandera */
-#wp-side-slot-2 { color: #111827; }
+/* Cápsula vertical gris suave detrás de los dos */
+#wp-side-panel-bg-bottom {
+  display: block;
+  background: rgba(229,231,235,0.88);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+#wp-side-panel-bottom { gap: 4px; padding: 6px 4px; }
 @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
