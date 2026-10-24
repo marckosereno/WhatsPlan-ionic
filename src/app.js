@@ -187,6 +187,7 @@ function _getProfileSheet() {
     onAvatarChanged: (url) => {
       window.wpApp._cachedAvatarUrl = url;
       renderAuthButton(window.wpApp.currentUser);
+      window.wpApp.placeModal?._paintMyAvatar?.(); // la ficha también hereda la foto nueva
     },
   });
   window.wpApp.profileSheet = ps;
