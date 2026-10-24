@@ -2567,8 +2567,11 @@ export class PlaceModal2 {
         @keyframes wpSimWave { 0% { transform:scale(0); opacity:0.95; } 70% { opacity:0.5; } 100% { transform:scale(26); opacity:0; } }
         #wp-pm2-sim .wp-sim-sheet {
           position:absolute; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom,0px));
-          max-height:calc(100dvh - 120px - env(safe-area-inset-top,0px));
-          background:#fff; border-radius:24px; padding:8px 0 0;
+          /* alto fijo (~media pantalla); con el teclado lo recalcula fit() */
+          height:min(53vh, calc(100vh - 120px - env(safe-area-inset-top,0px)));
+          height:min(53dvh, calc(100dvh - 120px - env(safe-area-inset-top,0px)));
+          background:#fff; border-radius:24px; padding:8px 0 0; box-sizing:border-box;
+          transition:bottom 0.28s cubic-bezier(0.22,1,0.36,1), height 0.28s cubic-bezier(0.22,1,0.36,1);
           box-shadow:0 8px 40px rgba(0,0,0,0.18);
           display:flex; flex-direction:column;
           transform:translateY(115%);
@@ -2578,11 +2581,10 @@ export class PlaceModal2 {
         @keyframes wpSimIn { 0% { transform:translateY(115%) scale(0.92); } 100% { transform:translateY(0) scale(1); } }
         #wp-pm2-sim .wp-sim-head { flex-shrink:0; padding:0 0 4px; touch-action:none; }
         #wp-pm2-sim .wp-sim-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
-        #wp-pm2-sim .wp-sim-title { display:block; padding:4px 20px 0; font-size:16px; font-weight:700; color:#0a0a0a; }
-        #wp-pm2-sim .wp-sim-sub { display:block; padding:2px 20px 0; font-size:12px; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #wp-pm2-sim .wp-sim-title { display:block; padding:2px 24px 0; font-size:16px; font-weight:700; color:#0a0a0a; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         #wp-pm2-sim .wp-sim-search {
           margin:10px 16px 0; height:42px; border-radius:999px; background:#f3f4f6;
-          display:flex; align-items:center; gap:9px; padding:0 14px;
+          display:flex; align-items:center; padding:0 18px;
         }
         #wp-pm2-sim .wp-sim-search input { flex:1; min-width:0; border:none; outline:none; background:none; font-family:inherit; font-size:14.5px; color:#111827; }
         #wp-pm2-sim .wp-sim-search input::placeholder { color:#9ca3af; }
@@ -2598,7 +2600,12 @@ export class PlaceModal2 {
         /* Sin scroll mientras sube la hoja (el WebView de Android dibuja con
            glitch un área con scroll dentro de algo que se anima); se activa
            al terminar la entrada (.scroll) */
-        #wp-pm2-sim .wp-sim-list { flex:1 1 auto; min-height:0; overflow:hidden; padding:8px 12px 12px; display:flex; flex-direction:column; gap:6px; }
+        /* Desvanecido arriba y abajo: las fichas no se cortan de golpe */
+        #wp-pm2-sim .wp-sim-list {
+          flex:1 1 auto; min-height:0; overflow:hidden; padding:12px 12px 22px; display:flex; flex-direction:column; gap:6px;
+          -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 26px), transparent 100%);
+          mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 26px), transparent 100%);
+        }
         #wp-pm2-sim .wp-sim-list.scroll { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
         #wp-pm2-sim .wp-sim-card {
           display:flex; align-items:center; gap:12px; padding:8px; border:none; border-radius:18px; background:#f7f7f8; width:100%;
@@ -2631,10 +2638,8 @@ export class PlaceModal2 {
       <div class="wp-sim-sheet">
         <div class="wp-sim-head">
           <div class="wp-sim-handle"></div>
-          <span class="wp-sim-title">Lugares similares</span>
-          <span class="wp-sim-sub">Parecidos a ${this._esc(cur.name || 'este lugar')}</span>
+          <span class="wp-sim-title">Parecido a “${this._esc(cur.name || 'este lugar')}”</span>
           <label class="wp-sim-search">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input type="search" placeholder="Buscar entre similares…" autocomplete="off" enterkeyhint="search">
           </label>
           ${chips.length ? `<div class="wp-sim-chips">
@@ -2730,10 +2735,47 @@ export class PlaceModal2 {
     }, { passive: true });
     head.addEventListener('touchend', () => {
       if (!drag) return; drag = false;
-      sheet.style.transition = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1)';
+      sheet.style.transition = 'transform 0.3s cubic-bezier(0.34,1.2,0.64,1), bottom 0.28s cubic-bezier(0.22,1,0.36,1), height 0.28s cubic-bezier(0.22,1,0.36,1)';
       if (dy > 90) close();
       else sheet.style.transform = 'translateY(0)';
     });
+
+    // ── Con el buscador enfocado, la hoja se acomoda entre el teclado y
+    // la barra de estado (6px debajo de ella, como la hoja del perfil). El
+    // espacio sale de visualViewport; si el WebView no se encoge con el
+    // teclado, la hoja además se sube lo que tape el teclado.
+    const safeTop = (() => {
+      const pr = document.createElement('div');
+      pr.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)';
+      document.body.appendChild(pr);
+      const v = parseFloat(getComputedStyle(pr).paddingTop) || 0;
+      pr.remove();
+      return v;
+    })();
+    let focused = false;
+    const fit = () => {
+      if (!root.isConnected) {
+        window.visualViewport?.removeEventListener('resize', fit);
+        window.removeEventListener('resize', fit);
+        return;
+      }
+      const vv = window.visualViewport;
+      const visH = vv ? vv.height : window.innerHeight;
+      const vTop = vv ? vv.offsetTop : 0;
+      const kb = vv ? Math.max(0, Math.round(window.innerHeight - visH - vTop)) : 0;
+      if (focused || kb > 80) {
+        const bottomGap = 8;
+        sheet.style.bottom = `${kb + bottomGap}px`;
+        sheet.style.height = `${Math.round(visH - safeTop - 6 - bottomGap)}px`; // de abajo del status bar al teclado
+      } else {
+        sheet.style.bottom = '';
+        sheet.style.height = '';
+      }
+    };
+    input.addEventListener('focus', () => { focused = true; fit(); setTimeout(fit, 120); setTimeout(fit, 350); });
+    input.addEventListener('blur',  () => { focused = false; setTimeout(fit, 60); });
+    window.visualViewport?.addEventListener('resize', fit);
+    window.addEventListener('resize', fit);
 
     this._haptic('success');
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
