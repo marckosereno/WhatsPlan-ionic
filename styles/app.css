@@ -41,15 +41,16 @@ ion-app::before, ion-app::after {
   --wp-tint: #ffffff;
   transition: --wp-tint 0.55s ease;
 }
-/* Tintes más saturados: los pastel fríos se agrisaban sobre el beige del mapa */
-body[data-wp-tint="RESTAURANTS"]   ion-app::before, body[data-wp-tint="RESTAURANTS"]   ion-app::after { --wp-tint: #ffc98a; }
-body[data-wp-tint="HEALTH"]        ion-app::before, body[data-wp-tint="HEALTH"]        ion-app::after { --wp-tint: #8fdcd2; }
-body[data-wp-tint="SHOPPING"]      ion-app::before, body[data-wp-tint="SHOPPING"]      ion-app::after { --wp-tint: #c6adff; }
-body[data-wp-tint="ENTERTAINMENT"] ion-app::before, body[data-wp-tint="ENTERTAINMENT"] ion-app::after { --wp-tint: #ffa3cb; }
-body[data-wp-tint="PARKS"]         ion-app::before, body[data-wp-tint="PARKS"]         ion-app::after { --wp-tint: #ade38f; }
-body[data-wp-tint="WORKSHOPS"]     ion-app::before, body[data-wp-tint="WORKSHOPS"]     ion-app::after { --wp-tint: #ffd76a; }
-body[data-wp-tint="gps"]           ion-app::before, body[data-wp-tint="gps"]           ion-app::after { --wp-tint: #8fe3ae; }
-body[data-wp-tint="search"]        ion-app::before, body[data-wp-tint="search"]        ion-app::after { --wp-tint: #9ec2ff; }
+/* Todos los tintes en el naranja suave: los demás colores se perdían
+   sobre el beige del mapa (solo el naranja se veía bien) */
+body[data-wp-tint="RESTAURANTS"]   ion-app::before, body[data-wp-tint="RESTAURANTS"]   ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="HEALTH"]        ion-app::before, body[data-wp-tint="HEALTH"]        ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="SHOPPING"]      ion-app::before, body[data-wp-tint="SHOPPING"]      ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="ENTERTAINMENT"] ion-app::before, body[data-wp-tint="ENTERTAINMENT"] ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="PARKS"]         ion-app::before, body[data-wp-tint="PARKS"]         ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="WORKSHOPS"]     ion-app::before, body[data-wp-tint="WORKSHOPS"]     ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="gps"]           ion-app::before, body[data-wp-tint="gps"]           ion-app::after { --wp-tint: #ffd9ad; }
+body[data-wp-tint="search"]        ion-app::before, body[data-wp-tint="search"]        ion-app::after { --wp-tint: #ffd9ad; }
 /* "Respiro" al cambiar de color: la sombra se estira un poco y regresa */
 @keyframes wpTintBreathTop { 0%,100% { transform: scaleY(1); } 40% { transform: scaleY(1.25); } }
 @keyframes wpTintBreathBot { 0%,100% { transform: scaleY(1); } 40% { transform: scaleY(1.18); } }
