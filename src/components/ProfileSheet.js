@@ -283,6 +283,7 @@ export class ProfileSheet {
           <span class="wp-pf-banner-dot"></span>
           <div class="wp-pf-stickers"></div>
         </button>` : ''}
+      <div class="wp-pf-mem"></div>
       <div class="wp-pf-sec"><span>Colecciones</span><span class="wp-pf-sec-n"></span></div>
       <div class="wp-pf-cols"><div class="wp-pf-col wp-pf-col-skel"></div><div class="wp-pf-col wp-pf-col-skel"></div><div class="wp-pf-col wp-pf-col-skel"></div></div>
       <div class="wp-pf-sec"><span>Actividades</span><span class="wp-pf-sec-n wp-pf-acts-all"></span></div>
@@ -294,6 +295,9 @@ export class ProfileSheet {
         ? { icon: ICON.gear, onClick: () => this._push(v => this._viewSettings(v)) }
         : (me ? { icon: ICON.dots, onClick: (btn) => this._otherMenu(btn, uid) } : null),
     });
+
+    // Memories (momentos activos + guardados) — los pinta MomentsUI
+    window.wpApp?.momentsUI?.renderProfile(view.querySelector('.wp-pf-mem'), uid, isMe);
 
     const avEl = view.querySelector('.wp-pf-avatar');
     const nameEl = view.querySelector('.wp-pf-name');
