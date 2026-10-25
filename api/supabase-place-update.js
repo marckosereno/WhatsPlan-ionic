@@ -67,6 +67,12 @@ export default async function handler(req, res) {
     if ('pin_photo_stack_size'  in body) fields.pin_photo_stack_size   = body.pin_photo_stack_size || null;
     if ('pin_label_position'    in body) fields.pin_label_position     = body.pin_label_position || null;
     if ('pin_show_meta_text'    in body) fields.pin_show_meta_text     = Boolean(body.pin_show_meta_text);
+    if ('pin_label_color'        in body) fields.pin_label_color        = body.pin_label_color || null;
+    if ('pin_label_stroke_color' in body) fields.pin_label_stroke_color = body.pin_label_stroke_color || null;
+    if ('pin_label_stroke_width' in body) {
+      const w = Number(body.pin_label_stroke_width);
+      fields.pin_label_stroke_width = Number.isFinite(w) && body.pin_label_stroke_width !== '' && body.pin_label_stroke_width !== null ? w : null;
+    }
 
     if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
