@@ -113,6 +113,9 @@ try {
         pinBadgeShape:             r.pin_badge_shape || 'circle',
         pinPhotoStackSize:         r.pin_photo_stack_size || 'med',
         pinLabelPosition:          r.pin_label_position || 'below',
+        pinLabelColor:             r.pin_label_color || null,
+        pinLabelStrokeColor:       r.pin_label_stroke_color || null,
+        pinLabelStrokeWidth:       r.pin_label_stroke_width ?? null,
         pinShowMetaText:           r.pin_show_meta_text !== false,
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
