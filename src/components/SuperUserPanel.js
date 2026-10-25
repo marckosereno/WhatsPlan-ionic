@@ -2502,6 +2502,9 @@ export class SuperUserPanel {
       pin_photo_stack_size: place.pinPhotoStackSize || 'med',
       pin_label_position: place.pinLabelPosition || 'below',
       pin_show_meta_text: place.pinShowMetaText !== false,
+      pin_label_color:        place.pinLabelColor || '',
+      pin_label_stroke_color: place.pinLabelStrokeColor || '',
+      pin_label_stroke_width: place.pinLabelStrokeWidth ?? '',
     };
   }
 
@@ -2885,6 +2888,23 @@ export class SuperUserPanel {
                 '<button type="button" class="su-pin-label-pos-btn" data-val="right" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">➡️ Derecha</button>' +
               '</div>' +
               '<input id="su-pin-label-pos-hidden" type="hidden" value="' + (prefill?.pin_label_position || 'below') + '">' +
+              // Estilo del texto del nombre: color, color del contorno y grosor
+              '<div style="font-size:10px;color:#6b7280;margin-top:4px;">Texto del nombre</div>' +
+              '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+                '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+                  '<div style="font-size:10px;color:#6b7280;">Color</div>' +
+                  '<input id="su-pin-label-color" type="color" value="' + (prefill?.pin_label_color || '#111827') + '" style="width:100%;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;cursor:pointer;padding:2px;">' +
+                '</div>' +
+                '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+                  '<div style="font-size:10px;color:#6b7280;">Contorno</div>' +
+                  '<input id="su-pin-label-stroke-color" type="color" value="' + (prefill?.pin_label_stroke_color || '#ffffff') + '" style="width:100%;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;cursor:pointer;padding:2px;">' +
+                '</div>' +
+                '<div style="flex:1.2;display:flex;flex-direction:column;gap:4px;">' +
+                  '<div style="font-size:10px;color:#6b7280;">Grosor <span id="su-pin-label-stroke-val">' + ((prefill?.pin_label_stroke_width ?? '') === '' ? 1 : prefill.pin_label_stroke_width) + '</span> px</div>' +
+                  '<input id="su-pin-label-stroke-width" type="range" min="0" max="4" step="0.5" value="' + ((prefill?.pin_label_stroke_width ?? '') === '' ? 1 : prefill.pin_label_stroke_width) + '" style="width:100%;accent-color:#1a5cf5;height:32px;">' +
+                '</div>' +
+              '</div>' +
+              '<div id="su-pin-label-preview" style="display:flex;align-items:center;justify-content:center;height:40px;border-radius:8px;background:#f1ede6;"></div>' +
               '<div style="display:flex;align-items:center;gap:8px;margin-top:2px;">' +
                 '<label class="su-toggle-wrap">' +
                   '<input type="checkbox" id="su-pin-show-meta"' + (prefill?.pin_show_meta_text !== false ? ' checked' : '') + '>' +
@@ -3159,6 +3179,23 @@ export class SuperUserPanel {
 
     // Mostrar/ocultar el texto de metadata debajo del nombre — no necesita
     // wiring extra más allá de leer el checkbox al guardar
+
+    // Vista previa del texto del nombre (color + contorno + grosor) —
+    // misma fórmula que MapView (_pinLabelShadow)
+    const _updateLabelPreview = () => {
+      const pv = document.getElementById('su-pin-label-preview');
+      if (!pv) return;
+      const c  = document.getElementById('su-pin-label-color').value || '#111827';
+      const sc = document.getElementById('su-pin-label-stroke-color').value || '#ffffff';
+      const w  = parseFloat(document.getElementById('su-pin-label-stroke-width').value) || 0;
+      document.getElementById('su-pin-label-stroke-val').textContent = w;
+      const N = 12;
+      const sh = w > 0 ? Array.from({ length: N }, (_, i) => { const a = i / N * 2 * Math.PI; return (Math.cos(a) * w).toFixed(2) + 'px ' + (Math.sin(a) * w).toFixed(2) + 'px 0 ' + sc; }).join(',') : 'none';
+      pv.innerHTML = '<span style="font-size:13px;font-weight:800;color:' + c + ';text-shadow:' + sh + ';font-family:var(--wp-font);">' + _esc(document.getElementById('su-field-name')?.value || 'Nombre del lugar') + '</span>';
+    };
+    ['su-pin-label-color', 'su-pin-label-stroke-color', 'su-pin-label-stroke-width'].forEach(id =>
+      document.getElementById(id)?.addEventListener('input', _updateLabelPreview));
+    _updateLabelPreview();
 
     // Posición del label: abajo / izquierda / derecha
     const labelPosBtns = document.querySelectorAll('.su-pin-label-pos-btn');
@@ -3548,6 +3585,9 @@ export class SuperUserPanel {
         pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
         pin_label_position: document.getElementById('su-pin-label-pos-hidden')?.value || 'below',
         pin_show_meta_text: document.getElementById('su-pin-show-meta')?.checked ?? true,
+        pin_label_color:        document.getElementById('su-pin-label-color')?.value || '',
+        pin_label_stroke_color: document.getElementById('su-pin-label-stroke-color')?.value || '',
+        pin_label_stroke_width: document.getElementById('su-pin-label-stroke-width')?.value ?? '',
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -3615,6 +3655,9 @@ export class SuperUserPanel {
           pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
           pin_label_position: document.getElementById('su-pin-label-pos-hidden')?.value || 'below',
           pin_show_meta_text: document.getElementById('su-pin-show-meta')?.checked ?? true,
+          pin_label_color:        document.getElementById('su-pin-label-color')?.value || null,
+          pin_label_stroke_color: document.getElementById('su-pin-label-stroke-color')?.value || null,
+          pin_label_stroke_width: parseFloat(document.getElementById('su-pin-label-stroke-width')?.value ?? '1'),
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
