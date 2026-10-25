@@ -16,6 +16,7 @@ import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { ProfileSheet }     from '/src/components/ProfileSheet.js';
+import { MomentsUI }        from '/src/components/MomentsUI.js';
 import { setMapTint }       from '/src/utils/map-tint.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
@@ -467,7 +468,7 @@ try {
 
     // Botones del panel lateral
     document.getElementById('wp-side-plan-btn')?.addEventListener('click', e => { e.stopPropagation(); openActivityModal(); });
-    document.getElementById('wp-side-slot-2')?.addEventListener('click',  e => { e.stopPropagation(); console.log('Estoy aquí — próximamente'); });
+    document.getElementById('wp-side-slot-2')?.addEventListener('click',  e => { e.stopPropagation(); window.wpApp.momentsUI?.openCamera(); }); // Memories
     document.getElementById('wp-side-slot-3')?.addEventListener('click',  e => { e.stopPropagation(); /* GPS — wired by SubcategoryRow */ });
 
     // Tap en un pin de actividad (custom point) en el mapa
@@ -545,10 +546,37 @@ try {
     // onPlaceSelect se asigna en Promise.all cuando PlaceModal está listo
     console.log('✅ MapView creado');
 
+    // ── Momentos / Memories (botón de cámara del panel lateral) ──
+    const momentsUI = new MomentsUI({
+      getCurrentUser: () => window.wpApp.currentUser,
+      getMap:    () => mv.getMap?.(),
+      getPlaces: () => mv.allPlaces || [],
+      getGpsPos: () => window.wpApp.subcatRow?._lastGpsPos || null,
+      onNeedLogin: () => window.wpApp.authModal?.show?.(),
+      onOpenPlace: (placeId) => {
+        const p = (mv.allPlaces || []).find(x => String(x.place_id || x.id) === String(placeId));
+        const pm = window.wpApp.placeModal;
+        if (p && pm) { pm._fromSearch = false; pm.show(p); }
+      },
+    });
+    window.wpApp.momentsUI = momentsUI;
+    // Cuando el mapa termina de cargar: stickers de momentos + limpieza
+    {
+      let tries = 0;
+      const waitMap = setInterval(() => {
+        const m = mv.getMap?.();
+        if ((m && m.loaded && m.loaded()) || ++tries > 60) {
+          clearInterval(waitMap);
+          if (m) momentsUI.startMap();
+        }
+      }, 500);
+    }
+
     const authModal = new AuthModal({
       onAuthSuccess: async (user) => {
         window.wpApp.currentUser = user;
         await renderAuthButton(user);
+        window.wpApp.momentsUI?.startMap(); // ya con sesión: mis momentos y memories
         if (isSuperUser(user?.id)) mountSuperPanel(mv);
       },
     });
