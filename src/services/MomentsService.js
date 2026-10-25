@@ -14,6 +14,8 @@ function niceError(e) {
   if (m.includes('LIMIT_DAY'))   return new Error('Ya compartiste 4 momentos hoy');
   if (m.includes('LIMIT_MONTH')) return new Error('Ya guardaste tus 14 memories de este mes');
   if (m.includes('EXPIRED'))     return new Error('Este momento ya venció');
+  if (/bucket not found/i.test(m)) return new Error('Falta crear el bucket "moments" en Supabase (moments_storage.sql)');
+  if (/row-level security|unauthorized|403/i.test(m)) return new Error('Supabase no dejó subir la foto: revisa las políticas del bucket "moments"');
   return e instanceof Error ? e : new Error(m);
 }
 
@@ -47,9 +49,9 @@ export const MomentsService = {
     // Archivos con nombre único que nunca cambia → caché de 1 año en el teléfono
     const opts = { contentType: photo.type, cacheControl: '31536000', upsert: false };
     const up1 = await sb.storage.from(BUCKET).upload(photoPath, photo, opts);
-    if (up1.error) throw up1.error;
+    if (up1.error) throw niceError(up1.error);
     const up2 = await sb.storage.from(BUCKET).upload(thumbPath, thumb, { ...opts, contentType: thumb.type });
-    if (up2.error) { await sb.storage.from(BUCKET).remove([photoPath]); throw up2.error; }
+    if (up2.error) { await sb.storage.from(BUCKET).remove([photoPath]); throw niceError(up2.error); }
 
     const row = {
       id,
