@@ -5768,8 +5768,17 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     const labelPos = place.pinLabelPosition === 'left' || place.pinLabelPosition === 'right'
       ? place.pinLabelPosition : 'below';
     const textAlign = labelPos === 'below' ? 'center' : (labelPos === 'left' ? 'right' : 'left');
+    // Nombre: color, contorno y grosor configurables desde el SuperUser.
+    // Contorno = 12 sombras alrededor (como el del emoji): -webkit-text-stroke
+    // se come la letra hacia adentro y se ve delgada. Grosor 0 = sin contorno.
+    const labelStrokeC = place.pinLabelStrokeColor || '#fff';
+    const labelStrokeW = Number.isFinite(Number(place.pinLabelStrokeWidth)) && place.pinLabelStrokeWidth !== null && place.pinLabelStrokeWidth !== ''
+      ? Math.max(0, Math.min(4, Number(place.pinLabelStrokeWidth))) : 1;
+    const labelShadow = labelStrokeW > 0
+      ? Array.from({ length: 12 }, (_, i) => { const a = i / 12 * 2 * Math.PI; return `${(Math.cos(a) * labelStrokeW).toFixed(2)}px ${(Math.sin(a) * labelStrokeW).toFixed(2)}px 0 ${labelStrokeC}`; }).join(',')
+      : 'none';
     const textBlockHtml = `<div style="text-align:${textAlign};max-width:120px;">
-      <div style="font-size:11px;font-weight:800;line-height:1.15;color:#111827;font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;">${name}</div>
+      <div style="font-size:11px;font-weight:800;line-height:1.15;color:${place.pinLabelColor || '#111827'};font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 ${Math.ceil(labelStrokeW)}px;text-shadow:${labelShadow};">${name}</div>
       ${metaHtml}
     </div>`;
 
