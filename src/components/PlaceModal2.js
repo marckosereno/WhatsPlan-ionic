@@ -3,8 +3,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
-import { ActivityService, ProfileService, getSupabase } from '/src/services/SupabaseService.js';
-import { SocialService }               from '/src/services/SocialService.js';
+import { ActivityService }             from '/src/services/SupabaseService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
@@ -535,7 +534,7 @@ export class PlaceModal2 {
       #wp-pm2-back {
         position:relative; z-index:1;
         /* Pill: flecha + "Volver" */
-        height:48px; padding:0 18px 0 14px; border-radius:9999px; border:none; flex-shrink:0;
+        height:40px; padding:0 16px 0 10px; border-radius:9999px; border:none; flex-shrink:0;
         font-family:inherit; font-size:14px; font-weight:600; letter-spacing:-0.1px;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
@@ -567,9 +566,9 @@ export class PlaceModal2 {
         position:relative; z-index:1;
       }
       .wp-pm2-tb-btn {
-        /* Redondo de 48px, igual que los botones del footer de la ficha */
+        /* Pill (más ancho que alto), igual de alto que "Volver" */
         position:relative;
-        width:48px; height:48px; border-radius:9999px; border:none; flex-shrink:0;
+        width:54px; height:40px; border-radius:9999px; border:none; flex-shrink:0;
         background:rgba(255,255,255,0.88);
         backdrop-filter:blur(16px) saturate(1.8);
         -webkit-backdrop-filter:blur(16px) saturate(1.8);
@@ -1209,13 +1208,7 @@ export class PlaceModal2 {
       /* Ítem con interruptor (no cierra el menú al tocarlo) */
       .wp-pm2-pop-sw { position:relative; flex-shrink:0; width:42px; height:26px; border-radius:999px; background:#e5e7eb; transition:background 0.2s; }
       .wp-pm2-pop-sw::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:transform 0.22s cubic-bezier(0.34,1.4,0.64,1); }
-      .wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#1a5cf5; }
-      /* Opción activa: su ícono dentro de un pill gris suave */
-      /* Ancho fijo para todos: los íconos quedan en la misma columna,
-         centrados, con o sin el pill de la opción activa */
-      .wp-pm2-pop-ic { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:42px; height:28px; border-radius:999px; transition:background 0.15s; }
-      .wp-pm2-pop-item.act { font-weight:600; }
-      .wp-pm2-pop-item.act .wp-pm2-pop-ic { background:#eef0f3; }
+      .wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#22c55e; }
       .wp-pm2-pop-item.on .wp-pm2-pop-sw::after { transform:translateX(16px); }
       .wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
       .wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
@@ -2302,7 +2295,7 @@ export class PlaceModal2 {
     const EASE = 'cubic-bezier(0.4,0,0.2,1)';
     const T = animate ? `0.22s ${EASE}` : '0s';
     b.style.transition = `transform 0.15s, padding ${T}`;
-    b.style.paddingRight = (18 - 4 * q).toFixed(2) + 'px'; // 18 → 14 (queda redondo de 48, igual que los de la derecha)
+    b.style.paddingRight = (16 - 6 * q).toFixed(2) + 'px'; // 16 → 10 (queda redondo)
     if (lab) {
       lab.style.transition = `max-width ${T}, margin-left ${T}, opacity ${animate ? '0.16s ease-out' : '0s'}`;
       lab.style.maxWidth = (W * (1 - q)).toFixed(2) + 'px';
@@ -2556,8 +2549,9 @@ export class PlaceModal2 {
       .slice(0, 8).map(([k, v]) => ({ k, label: v.label }));
 
     const TINT = {
-      beige: '#ffd9ad',
-    }[document.body.dataset.wpMap === 'beige' ? 'beige' : ''] || '#e6e7ec'; // naranja en beige; gris suave en neutro (el blanco no se vería)
+      RESTAURANTS: '#ffe3c2', HEALTH: '#d6e6ff', SHOPPING: '#e4dcff',
+      ENTERTAINMENT: '#ffdcea', PARKS: '#dcf1cf', WORKSHOPS: '#e6e8ec',
+    }[String(cur.category || '').toUpperCase()] || '#e3e7ff';
     const ACCENT = '#1a5cf5';
 
     // Estilo de la hoja "Añadir a una colección" (tarjeta flotante con
@@ -2601,12 +2595,7 @@ export class PlaceModal2 {
           cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s;
         }
         #wp-pm2-sim .wp-sim-more:active { transform:scale(0.9); }
-        /* Badge con cuántos filtros hay activos, en la esquina de arriba */
-        #wp-pm2-sim .wp-sim-more[data-n]::after {
-          content:attr(data-n); position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; box-sizing:border-box;
-          border-radius:999px; background:#111827; color:#fff; border:2px solid #fff;
-          font-size:10.5px; font-weight:700; line-height:14px; text-align:center; font-family:var(--wp-font);
-        }
+        #wp-pm2-sim .wp-sim-more.on::after { content:''; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#1a5cf5; border:1.5px solid #f3f4f6; }
         #wp-pm2-sim .wp-sim-fav {
           flex-shrink:0; align-self:center; width:42px; height:26px; padding:0; border:none; border-radius:999px;
           background:#fff; color:#6b7280; display:flex; align-items:center; justify-content:center;
@@ -2845,17 +2834,14 @@ export class PlaceModal2 {
 
     // ── ⋯ : ordenar, solo abiertos, ver en el mapa ──
     const moreBtn = root.querySelector('.wp-sim-more');
-    const paintMore = () => { // badge con el número de filtros activos (nada si está todo normal)
-      const n = (sortBy !== 'match' ? 1 : 0) + (openOnly ? 1 : 0);
-      if (n) moreBtn.setAttribute('data-n', String(n)); else moreBtn.removeAttribute('data-n');
-    };
+    const paintMore = () => moreBtn.classList.toggle('on', sortBy !== 'match' || openOnly); // puntito si hay algo aplicado
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this._haptic('light');
       this._openPopMenu(moreBtn, [
-        { label: 'Más parecidos', icon: 'order', active: sortBy === 'match', onClick: () => { sortBy = 'match'; paintMore(); render(false); listEl.scrollTop = 0; } },
-        { label: 'Más cerca', icon: 'near', active: sortBy === 'near', onClick: () => { sortBy = 'near'; paintMore(); render(false); listEl.scrollTop = 0; } },
-        { label: 'Mejor calificados', icon: 'star', active: sortBy === 'rating', onClick: () => { sortBy = 'rating'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Más parecidos', icon: sortBy === 'match' ? 'check' : 'order', onClick: () => { sortBy = 'match'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Más cerca', icon: sortBy === 'near' ? 'check' : 'near', onClick: () => { sortBy = 'near'; paintMore(); render(false); listEl.scrollTop = 0; } },
+        { label: 'Mejor calificados', icon: sortBy === 'rating' ? 'check' : 'star', onClick: () => { sortBy = 'rating'; paintMore(); render(false); listEl.scrollTop = 0; } },
         { sep: true },
         { label: 'Abiertos ahora', toggle: openOnly, onToggle: (v) => { openOnly = v; paintMore(); render(false); listEl.scrollTop = 0; } },
       ]);
@@ -2945,205 +2931,6 @@ export class PlaceModal2 {
     this._haptic('success');
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
     setTimeout(() => listEl.classList.add('scroll'), 560); // scroll recién al terminar de subir
-  }
-
-  // ── Mi avatar: el que configuré en mi perfil ───────────────────────
-  // Prioridad: foto subida en el perfil (profiles.avatar_url, la misma
-  // que usa el botón del topbar vía wpApp._cachedAvatarUrl) → foto de la
-  // cuenta (Google) → memoji con mi nombre.
-  _myName() {
-    const u = this.getCurrentUser?.();
-    return u?.user_metadata?.display_name || u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'Usuario';
-  }
-  _myAvatarSync() {
-    const u = this.getCurrentUser?.();
-    if (!u) return '';
-    const prof = window.wpApp?._cachedAvatarUrl || (this._myAvUid === u.id && this._myAv) || ''; // la del topbar manda (se actualiza al subir una foto nueva)
-    return prof || u.user_metadata?.avatar_url || getAvatarUrl(this._myName());
-  }
-  async _myAvatarUrl() {
-    const u = this.getCurrentUser?.();
-    if (!u) return '';
-    const cached = window.wpApp?._cachedAvatarUrl;
-    if (cached) { this._myAv = cached; this._myAvUid = u.id; return cached; }
-    if (this._myAvUid === u.id && this._myAv) return this._myAv;
-    try {
-      const prof = await ProfileService.getProfile(u.id);
-      if (prof?.avatar_url) {
-        this._myAv = prof.avatar_url; this._myAvUid = u.id;
-        if (window.wpApp) window.wpApp._cachedAvatarUrl = prof.avatar_url;
-      }
-    } catch (_) {}
-    return this._myAvatarSync();
-  }
-  // Pinta mi avatar donde aparezca en la ficha (campo de reseña y la
-  // fila de "Tú y N más lo guardaron")
-  _paintMyAvatar() {
-    const el = this._el?.querySelector('#wp-pm2-user-avatar');
-    const url = this._myAvatarSync();
-    if (el && url && el.getAttribute('src') !== url) {
-      this._skelOn(el);
-      el.onload = el.onerror = () => this._skelOff(el);
-      el.src = url;
-    }
-    if (this._place) this._renderReviewsSummary(this._place);
-  }
-
-  // ══ Avatares reales de los autores (reseñas y respuestas) ══════════
-  // La reseña guarda el avatar que había al escribirla (a veces vacío o
-  // un memoji viejo). Se toma la foto ACTUAL de cada perfil por user_id;
-  // la mía sale de _myAvatarSync(). Las imágenes llevan data-av-uid para
-  // poder actualizarlas cuando llega la respuesta.
-  _authorAvatar(uid, stored, name) {
-    const me = this.getCurrentUser?.()?.id;
-    if (uid && me && uid === me) return this._myAvatarSync();
-    return (uid && this._avById?.get(uid)) || stored || getAvatarUrl(name || 'user');
-  }
-  async _loadAuthorAvatars(ids) {
-    if (!this._avById) this._avById = new Map();
-    const need = [...new Set((ids || []).filter(Boolean))].filter(id => !this._avById.has(id));
-    let sb = null;
-    try { sb = getSupabase(); } catch (_) {}
-    if (sb && need.length) {
-      try {
-        const { data } = await sb.from('profiles').select('id, avatar_url').in('id', need);
-        need.forEach(id => this._avById.set(id, ''));
-        (data || []).forEach(p => { if (p.avatar_url) this._avById.set(p.id, p.avatar_url); });
-      } catch (_) {}
-    }
-    this._el?.querySelectorAll('img[data-av-uid]').forEach(img => {
-      const u = this._authorAvatar(img.dataset.avUid, img.dataset.avStored || '', img.dataset.avName || '');
-      if (u && img.getAttribute('src') !== u) img.src = u;
-    });
-  }
-
-  // ══ "Lo guardaron" ═════════════════════════════════════════════════
-  // Quiénes guardaron el lugar: solo los que activaron "Mostrar lo que
-  // guardo" en su perfil (show_saved). Viene de la función place_savers
-  // (place_savers.sql), que ya excluye al usuario actual y a bloqueados.
-  async _loadSavers(place) {
-    this._savers = [];
-    let sb = null;
-    try { sb = getSupabase(); } catch (_) {}
-    if (!sb) return;
-    try {
-      const { data, error } = await sb.rpc('place_savers', { p_place_id: String(place.place_id || place.id), p_limit: 40 });
-      if (error) throw error;
-      if (this._place !== place) return;
-      this._savers = data || [];
-      this._renderReviewsSummary(place);
-    } catch (e) {
-      console.warn('[PM2] Lo guardaron no disponible:', e.message || e);
-    }
-  }
-
-  _openSaversSheet() {
-    const place = this._place;
-    if (!place) return;
-    const list = (this._savers || []).slice();
-    const others = Math.max(0, (this._saveCount || 0) - (this._isFav ? 1 : 0));
-    const hidden = Math.max(0, others - list.length);
-    if (!document.getElementById('wp-pm2-sv-css')) {
-      const st = document.createElement('style');
-      st.id = 'wp-pm2-sv-css';
-      st.textContent = `
-        .wp-pm2-sv { padding:0 16px 2px; }
-        .wp-pm2-sv-search { height:42px; border-radius:999px; background:#f3f4f6; display:flex; align-items:center; padding:0 18px; }
-        .wp-pm2-sv-search input { flex:1; min-width:0; border:none; outline:none; background:none; font-family:inherit; font-size:14.5px; color:#111827; }
-        .wp-pm2-sv-search input::placeholder { color:#9ca3af; }
-        .wp-pm2-sv-lbl { margin:14px 2px 4px; font-size:12px; color:#8e8e93; }
-        .wp-pm2-sv-list { max-height:min(48vh, 420px); overflow:hidden; margin:0 -16px; padding:0 16px;
-          -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
-          mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%); }
-        .wp-pm2-sv-list.scroll { overflow-y:auto; overscroll-behavior:contain; }
-        .wp-pm2-sv-row { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #f1f2f4; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-        .wp-pm2-sv-row:last-child { border-bottom:none; }
-        .wp-pm2-sv-av { flex-shrink:0; width:46px; height:46px; border-radius:50%; background:#eef0f3 center/cover no-repeat; }
-        .wp-pm2-sv-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-        .wp-pm2-sv-txt b { font-size:15px; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .wp-pm2-sv-txt span { font-size:12.5px; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .wp-pm2-sv-pill { flex-shrink:0; height:34px; padding:0 16px; border:none; border-radius:999px; background:#111827; color:#fff;
-          font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background 0.18s, color 0.18s, transform 0.15s; }
-        .wp-pm2-sv-pill:active { transform:scale(0.92); }
-        .wp-pm2-sv-pill.on { background:#f1f2f4; color:#6b7280; }
-        .wp-pm2-sv-note { margin:10px 2px 0; font-size:12px; color:#9ca3af; text-align:center; }
-        .wp-pm2-sv-empty { padding:22px 0; text-align:center; font-size:13.5px; color:#9ca3af; }
-        .wp-pm2-sv-done { width:100%; height:48px; margin-top:12px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
-          font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.15s; }
-        .wp-pm2-sv-done:active { transform:scale(0.97); }
-      `;
-      document.head.appendChild(st);
-    }
-    const { body, close } = this._openSheet('Lo guardaron', place.name || '');
-    body.innerHTML = `
-      <div class="wp-pm2-sv">
-        ${list.length > 5 ? '<label class="wp-pm2-sv-search"><input type="search" placeholder="Buscar" autocomplete="off"></label>' : ''}
-        <div class="wp-pm2-sv-lbl">${list.length ? 'Personas que también lo guardaron' : ''}</div>
-        <div class="wp-pm2-sv-list"></div>
-        ${hidden ? `<div class="wp-pm2-sv-note">+${hidden} ${hidden === 1 ? 'persona más lo guardó' : 'personas más lo guardaron'} en privado</div>` : ''}
-        <button type="button" class="wp-pm2-sv-done">Listo</button>
-      </div>`;
-    const listEl = body.querySelector('.wp-pm2-sv-list');
-    const me = this.getCurrentUser?.() || null;
-    let following = new Set();
-    const subTxt = (s) => {
-      const first = (s.name || 'Alguien').split(' ')[0];
-      const more = Math.max(0, (s.saved_count || 1) - 1);
-      return more ? `${first} guardó este y ${more} ${more === 1 ? 'lugar más' : 'lugares más'}` : `${first} guardó este lugar`;
-    };
-    const render = (q = '') => {
-      const n = q.trim().toLowerCase();
-      const shown = list.filter(s => !n || (s.name || '').toLowerCase().includes(n) || (s.username || '').toLowerCase().includes(n));
-      if (!shown.length) { listEl.innerHTML = `<div class="wp-pm2-sv-empty">${list.length ? 'Sin resultados' : 'Las personas que lo guardaron prefieren mantenerlo en privado'}</div>`; return; }
-      listEl.innerHTML = shown.map(s => {
-        const av = s.avatar_url || getAvatarUrl(s.name || 'user');
-        const on = following.has(s.user_id);
-        return `<div class="wp-pm2-sv-row" data-uid="${this._esc(s.user_id)}">
-          <span class="wp-pm2-sv-av" style="background-image:url('${this._esc(av)}')"></span>
-          <span class="wp-pm2-sv-txt"><b>${this._esc(s.name || 'Usuario')}</b><span>${this._esc(subTxt(s))}</span></span>
-          ${me && me.id !== s.user_id ? `<button type="button" class="wp-pm2-sv-pill${on ? ' on' : ''}" data-follow="${this._esc(s.user_id)}">${on ? 'Siguiendo' : 'Seguir'}</button>` : ''}
-        </div>`;
-      }).join('');
-    };
-    render();
-    setTimeout(() => listEl.classList.add('scroll'), 400); // scroll recién al terminar de subir
-    if (me && list.length) {
-      SocialService.followingSet(me.id, list.map(s => s.user_id))
-        .then(set => { following = set || new Set(); render(body.querySelector('input')?.value || ''); })
-        .catch(() => {});
-    }
-    body.querySelector('input')?.addEventListener('input', (e) => render(e.target.value));
-    body.querySelector('.wp-pm2-sv-done').onclick = () => close();
-    listEl.addEventListener('click', async (e) => {
-      const pill = e.target.closest('[data-follow]');
-      if (pill) {
-        e.stopPropagation();
-        const user = this._requireUser('Inicia sesión para seguir a otras personas');
-        if (!user) return;
-        const uid = pill.getAttribute('data-follow');
-        const on = !following.has(uid);
-        on ? following.add(uid) : following.delete(uid);
-        pill.classList.toggle('on', on); pill.textContent = on ? 'Siguiendo' : 'Seguir';
-        this._haptic(on ? 'success' : 'light');
-        try {
-          const myName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || '';
-          if (on) await SocialService.follow(user.id, uid, myName);
-          else    await SocialService.unfollow(user.id, uid);
-        } catch (err) {
-          console.error('[PM2] Seguir:', err);
-          on ? following.delete(uid) : following.add(uid);
-          pill.classList.toggle('on', !on); pill.textContent = !on ? 'Siguiendo' : 'Seguir';
-          this._showToast('No se pudo actualizar');
-        }
-        return;
-      }
-      const row = e.target.closest('[data-uid]');
-      if (!row) return;
-      this._haptic('light');
-      this._scaleKeys(row, [1, 0.97, 1.01, 1], 260);
-      const uid = row.getAttribute('data-uid');
-      setTimeout(() => { close(); window.wpApp?.openProfile?.(uid); }, 140); // abre su perfil
-    });
   }
 
   _hideMiniSnap() {
@@ -3687,9 +3474,7 @@ export class PlaceModal2 {
       this._skelOn(avatarEl);
       avatarEl.onload  = () => this._skelOff(avatarEl);
       avatarEl.onerror = () => this._skelOff(avatarEl);
-      avatarEl.src = this._myAvatarSync() || getAvatarUrl(displayName);
-      // Si todavía no se sabe la foto del perfil, se trae y se repinta
-      this._myAvatarUrl().then(() => { if (this._place === place) this._paintMyAvatar(); });
+      avatarEl.src = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
     } else {
       this._skelOff(avatarEl);
       avatarEl.src = '';
@@ -4407,7 +4192,6 @@ export class PlaceModal2 {
     this._loadMyClaim(place);          // async, "¿Es tu negocio?"
     this._loadFavorite(place);         // async, favoritos (botón + pill del hero)
     this._loadSaveCount(place);        // async, "N personas lo guardaron"
-    this._loadSavers(place);           // async, quiénes (los que lo muestran públicamente)
   }
 
   // ── Calificación combinada (Google + comunidad) ──────────────────
@@ -4450,45 +4234,17 @@ export class PlaceModal2 {
     const saves = this._saveCount || 0;
     if (saves > 0) {
       summaryEl.style.display = '';
-      // Avatares de OTRAS personas que lo guardaron (las que lo muestran
-      // públicamente); si no hay ninguna visible, queda el corazón
-      const savers = (this._savers || []).slice(0, 3);
-      if (savers.length) {
-        avatarsEl.style.display = '';
-        avatarsEl.innerHTML = '';
-        savers.forEach((sv, i) => {
-          const img = document.createElement('img');
-          img.className = 'wp-pm2-fp-avatar';
-          img.style.zIndex = savers.length - i;
-          this._skelOn(img);
-          img.onload = () => this._skelOff(img);
-          img.onerror = () => { this._skelOff(img); img.style.background = '#e2e8f0'; };
-          img.src = sv.avatar_url || getAvatarUrl(sv.name || 'user');
-          avatarsEl.appendChild(img);
-        });
-        if (savesIco) savesIco.style.display = 'none';
-      } else {
-        avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
-        if (savesIco) savesIco.style.display = '';
-      }
+      avatarsEl.innerHTML = ''; avatarsEl.style.display = 'none';
+      if (savesIco) savesIco.style.display = '';
       countEl.style.display = '';
       countEl.classList.add('wp-pm2-saves');
       const others = saves - (this._isFav ? 1 : 0);
-      const first = (this._savers || [])[0];
-      const fName = first ? this._esc((first.name || 'Alguien').split(' ')[0]) : '';
       if (this._isFav && others <= 0) countEl.innerHTML = '<b>Tú</b> lo guardaste';
-      else if (this._isFav && first) countEl.innerHTML = others > 1 ? `<b>Tú</b>, <b>${fName}</b> y ${others - 1} más lo guardaron` : `<b>Tú</b> y <b>${fName}</b> lo guardaron`;
       else if (this._isFav) countEl.innerHTML = `<b>Tú</b> y ${others} ${others === 1 ? 'persona más' : 'más'} lo guardaron`;
-      else if (first) countEl.innerHTML = saves > 1 ? `<b>${fName}</b> y ${saves - 1} más lo guardaron` : `<b>${fName}</b> lo guardó`;
       else countEl.innerHTML = `<b>${saves}</b> ${saves === 1 ? 'persona lo guardó' : 'personas lo guardaron'}`;
-      // Tocar avatares o texto → hoja "Lo guardaron" (para seguirse)
-      const openSv = (e) => { e.stopPropagation(); this._pulseTap(e.currentTarget, () => this._openSaversSheet()); };
-      avatarsEl.onclick = openSv; countEl.onclick = openSv;
-      if (savesIco) savesIco.onclick = openSv;
       return;
     }
-    if (savesIco) { savesIco.style.display = 'none'; savesIco.onclick = null; }
-    avatarsEl.onclick = null; countEl.onclick = null;
+    if (savesIco) savesIco.style.display = 'none';
     countEl.classList.remove('wp-pm2-saves');
     const { total } = this._ratingSummary(place);
     const names = [
@@ -4611,7 +4367,6 @@ export class PlaceModal2 {
     avImg.onload  = () => this._skelOff(avImg);
     avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
     avImg.src = photoSeed;
-    if (ctx && ctx.ownerId) { avImg.dataset.avUid = ctx.ownerId; avImg.dataset.avName = name || ''; }
 
     const textEl = row.querySelector('.wp-pm2-review-text');
     const moreBtn = row.querySelector('.wp-pm2-review-more');
@@ -4798,7 +4553,7 @@ export class PlaceModal2 {
       || user.user_metadata?.full_name
       || user.email?.split('@')[0]
       || 'Usuario';
-    const avatarUrl = this._myAvatarSync() || getAvatarUrl(displayName);
+    const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
 
     const frag = document.createElement('div');
     frag.id = 'wp-pm2-review-modal';
@@ -4889,7 +4644,7 @@ export class PlaceModal2 {
       submit.textContent = 'Publicando...';
       try {
         if (!placeId) throw new Error('ID del lugar no encontrado');
-        await ReviewService.upsert(String(placeId), user.id, rating, textarea.value.trim(), displayName, (window.wpApp?._cachedAvatarUrl || this._myAv || user.user_metadata?.avatar_url) || null);
+        await ReviewService.upsert(String(placeId), user.id, rating, textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null);
         closeModal();
         this._showToast('✓ Reseña publicada');
         // Refresca el tab WhatsPlan y lo deja activo para ver la reseña
@@ -5013,7 +4768,6 @@ export class PlaceModal2 {
     });
     this._social = social;
     (this._reviewCards || new Map()).forEach((_, key) => this._renderReviewSocial(key));
-    this._loadAuthorAvatars((data.replies || []).map(r => r.user_id)); // fotos actuales de quienes respondieron
   }
 
   // Chips de emoji (😍 4  😂 1) para una reseña o una respuesta.
@@ -5130,9 +4884,7 @@ export class PlaceModal2 {
           <button class="wp-pm2-rv-reply-act">Responder</button>
         </div>
       </div>`;
-    const rImg = item.querySelector('img');
-    rImg.src = this._authorAvatar(r.user_id, r.avatar_url, name);
-    if (r.user_id) { rImg.dataset.avUid = r.user_id; rImg.dataset.avStored = r.avatar_url || ''; rImg.dataset.avName = name || ''; }
+    item.querySelector('img').src = r.avatar_url || getAvatarUrl(name);
     this._renderEmojiChips(item.querySelector('.wp-pm2-rv-chips'), rKey, parentKey, pop);
 
     item.querySelector('.wp-pm2-rv-reply-act').onclick = (e) => {
@@ -5482,7 +5234,7 @@ export class PlaceModal2 {
       || user.user_metadata?.full_name
       || user.email?.split('@')[0]
       || 'Usuario';
-    const avatarUrl = this._myAvatarSync() || getAvatarUrl(displayName);
+    const avatarUrl = user.user_metadata?.avatar_url || getAvatarUrl(displayName);
     const toName = replyTo ? replyTo.name : card.ctx.author;
     const quote  = editing ? '' : (replyTo ? replyTo.text : card.ctx.text);
     const prefix = (!editing && replyTo) ? '@' + replyTo.name + ' ' : '';
@@ -5567,7 +5319,7 @@ export class PlaceModal2 {
       try {
         const row = await ReviewService.addReply(
           key, this._place.place_id || this._place.id, user.id,
-          textarea.value.trim(), displayName, (window.wpApp?._cachedAvatarUrl || this._myAv || user.user_metadata?.avatar_url) || null,
+          textarea.value.trim(), displayName, user.user_metadata?.avatar_url || null,
           keepsMention ? { id: replyTo.id, name: replyTo.name } : null
         );
         if (!this._social.replies.has(key)) this._social.replies.set(key, []);
@@ -5625,7 +5377,6 @@ export class PlaceModal2 {
     try { await this._modPromise; } catch (_) {}
     if (this._place !== place) return; // llegó tarde: ya hay otra ficha abierta
     this._communityRaw = reviews;
-    this._loadAuthorAvatars(reviews.map(r => r.user_id)); // fotos actuales de los autores
     // Calificación y total del hero: enseguida (es solo texto, barato)
     this._communityReviews = reviews.filter(r => this._isVisible('wp:' + r.id, r.user_id));
     this._renderReviewsSummary(place);
@@ -5767,7 +5518,7 @@ export class PlaceModal2 {
         panel.appendChild(this._buildReviewCard(
           r.display_name || 'Usuario',
           r.rating, r.text, this._timeAgo(r.created_at),
-          this._authorAvatar(r.user_id, r.avatar_url, r.display_name),
+          getAvatarUrl(r.display_name || 'user'),
           r.id != null ? {
             key: 'wp:' + r.id,
             source: 'wp',
@@ -6382,9 +6133,8 @@ export class PlaceModal2 {
         menu.appendChild(b);
         return;
       }
-      b.innerHTML = `<span></span>${it.icon ? `<span class="wp-pm2-pop-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.icon] || ''}</svg></span>` : ''}`;
+      b.innerHTML = `<span></span>${it.icon ? `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[it.icon] || ''}</svg>` : ''}`;
       b.firstChild.textContent = it.label;
-      if (it.active) b.classList.add('act');
       b.onclick = (e) => { e.stopPropagation(); close(); it.onClick?.(); };
       menu.appendChild(b);
     });
