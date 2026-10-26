@@ -2556,9 +2556,8 @@ export class PlaceModal2 {
       .slice(0, 8).map(([k, v]) => ({ k, label: v.label }));
 
     const TINT = {
-      RESTAURANTS: '#ffc98a', HEALTH: '#8fdcd2', SHOPPING: '#c6adff',
-      ENTERTAINMENT: '#ffa3cb', PARKS: '#ade38f', WORKSHOPS: '#ffd76a',
-    }[document.body.dataset.wpMap === 'beige' ? 'RESTAURANTS' : String(cur.category || '').toUpperCase()] || '#9ec2ff'; // mismos tintes que el mapa
+      beige: '#ffd9ad',
+    }[document.body.dataset.wpMap === 'beige' ? 'beige' : ''] || '#e6e7ec'; // naranja en beige; gris suave en neutro (el blanco no se vería)
     const ACCENT = '#1a5cf5';
 
     // Estilo de la hoja "Añadir a una colección" (tarjeta flotante con
