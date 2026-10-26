@@ -496,10 +496,11 @@ export class SubcategoryRow {
       .subcategory-footer-chip {
         display: inline-flex; align-items: center;
         height: 32px; padding: 0 14px;
+        /* Gris suave, mismo estilo (pill + vidrio) */
         background: linear-gradient(170deg,
-          rgba(255,255,255,0.95) 0%,
-          rgba(240,244,255,0.88) 100%);
-        border: 1px solid rgba(255,255,255,0.7);
+          rgba(243,244,246,0.96) 0%,
+          rgba(229,231,235,0.92) 100%);
+        border: 1px solid rgba(255,255,255,0.6);
         border-radius: 999px;
         font-size: 12.5px; font-weight: 600;
         color: #374151; white-space: nowrap; cursor: pointer;
