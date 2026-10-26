@@ -1065,9 +1065,12 @@ export class MapView {
         casing: null, dashLight: 'rgba(180,172,156,0.7)',
         roadText: '#9a9080', waterText: '#2a6db5', hood: null,
       } : {
-        bg: '#f4f4f6', water: '#a9dcf2', waterLine: '#8fd3ee', park: '#d4eed6', parkOp: 1,
-        land: '#eeeef1', landOp: 0.6, bld: '#e8e8ed', bldOp: 0.75, bldLine: '#e8e8ed', bldLineOp: 0,
-        moto: '#ffd36b', prim: '#ffe28f', sec: '#ffffff', minor: '#ffffff',
+        // Gris un poco más marcado + contraste: edificios un tono más
+        // oscuro que el suelo, parques verdes más presentes, y la avenida
+        // principal en el azul suave de la UI
+        bg: '#e9eaee', water: '#9ed6f0', waterLine: '#86cdec', park: '#bde3c3', parkOp: 1,
+        land: '#e4e5ea', landOp: 0.7, bld: '#d3d6de', bldOp: 0.95, bldLine: '#d3d6de', bldLineOp: 0,
+        moto: '#a9c1f7', prim: '#c3d4fb', sec: '#ffffff', minor: '#ffffff',
         casing: null, dashLight: 'rgba(170,172,182,0.7)', wScale: 1.4, // sin bordes; calles 40% más gruesas
         roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
       };
