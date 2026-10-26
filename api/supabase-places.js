@@ -116,6 +116,8 @@ try {
         pinLabelColor:             r.pin_label_color || null,
         pinLabelStrokeColor:       r.pin_label_stroke_color || null,
         pinLabelStrokeWidth:       r.pin_label_stroke_width ?? null,
+        pinLabelFontSize:          r.pin_label_font_size ?? null,
+        pinLabelWrap:              !!r.pin_label_wrap,
         pinShowMetaText:           r.pin_show_meta_text !== false,
       };
     }).filter(function(p) { return p.lat && p.lng && p.name; });
