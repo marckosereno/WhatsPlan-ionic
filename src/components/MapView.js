@@ -5777,8 +5777,10 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     const labelShadow = labelStrokeW > 0
       ? Array.from({ length: 12 }, (_, i) => { const a = i / 12 * 2 * Math.PI; return `${(Math.cos(a) * labelStrokeW).toFixed(2)}px ${(Math.sin(a) * labelStrokeW).toFixed(2)}px 0 ${labelStrokeC}`; }).join(',')
       : 'none';
-    const textBlockHtml = `<div style="text-align:${textAlign};max-width:120px;">
-      <div style="font-size:11px;font-weight:800;line-height:1.15;color:${place.pinLabelColor || '#111827'};font-family:var(--wp-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 ${Math.ceil(labelStrokeW)}px;text-shadow:${labelShadow};">${name}</div>
+    // Tamaño de letra del nombre (8–18 px; por defecto 11)
+    const labelFont = Number(place.pinLabelFontSize) >= 8 ? Math.min(18, Number(place.pinLabelFontSize)) : 11;
+    const textBlockHtml = `<div style="text-align:${textAlign};max-width:${Math.round(120 * Math.max(1, labelFont / 11))}px;">
+      <div style="font-size:${labelFont}px;font-weight:800;line-height:1.15;color:${place.pinLabelColor || '#111827'};font-family:var(--wp-font);${place.pinLabelWrap ? 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}padding:${Math.ceil(labelStrokeW)}px;margin:-${Math.ceil(labelStrokeW)}px;text-shadow:${labelShadow};">${name}</div>
       ${metaHtml}
     </div>`;
 
