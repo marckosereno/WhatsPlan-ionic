@@ -107,6 +107,9 @@ export class SuperUserPanel {
         <button class="su-btn su-btn-orange" id="su-btn-reposition" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
           🎯 Reposicionar lugares
         </button>
+        <button class="su-btn su-btn-gray" id="su-btn-map-theme">
+          🗺️ Estilo del mapa: <b id="su-map-theme-name"></b>
+        </button>
         <div class="su-divider"></div>
         <div class="su-hint">Toca el botón, luego toca el mapa para colocar el elemento.</div>
       </div>
@@ -119,6 +122,19 @@ export class SuperUserPanel {
     document.getElementById('su-btn-view-list').addEventListener('click', () => { this.mapView?.haptic('light'); this._openList(); });
     document.getElementById('su-btn-categories').addEventListener('click', () => { this.mapView?.haptic('light'); this._openCategories(); });
     document.getElementById('su-btn-places').addEventListener('click', () => { this.mapView?.haptic('light'); this._openPlaces(); });
+    // Alternar entre el mapa neutro (nuevo) y el beige (anterior) para comparar
+    const _paintThemeBtn = () => {
+      const t = this.mapView?._mapTheme?.() || 'neutral';
+      const el = document.getElementById('su-map-theme-name');
+      if (el) el.textContent = t === 'beige' ? 'Beige' : 'Neutro';
+    };
+    _paintThemeBtn();
+    document.getElementById('su-btn-map-theme')?.addEventListener('click', () => {
+      const t = this.mapView?._mapTheme?.() === 'beige' ? 'neutral' : 'beige';
+      this.mapView?.setMapTheme?.(t);
+      _paintThemeBtn();
+    });
+
     document.getElementById('su-btn-reposition').addEventListener('click', () => {
       this.mapView?.haptic('tap');
       this._togglePanel(false);
