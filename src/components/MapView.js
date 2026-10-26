@@ -1035,16 +1035,50 @@ export class MapView {
     });
   }
 
-  // Tema del mapa: 'neutral' (gris claro, calles blancas con contorno —
-  // el de ahora) o 'beige' (el anterior). Se guarda en el teléfono y se
-  // cambia desde el SuperUserPanel o con wpApp.mapView.setMapTheme('beige').
+  // Tema del mapa: 'tierra' (tierrita suave con relieve, sombras de
+  // edificios y arbolitos — el de ahora), 'neutral' (gris) o 'beige' (el
+  // primero). Se guarda en el teléfono y se cambia desde el SuperUserPanel
+  // o con wpApp.mapView.setMapTheme('neutral').
   _mapTheme() {
-    try { return localStorage.getItem('wpMapTheme') === 'beige' ? 'beige' : 'neutral'; } catch (_) { return 'neutral'; }
+    let t = null;
+    try { t = localStorage.getItem('wpMapTheme'); } catch (_) {}
+    return ['tierra', 'neutral', 'beige'].includes(t) ? t : 'tierra';
   }
   setMapTheme(t) {
-    try { localStorage.setItem('wpMapTheme', t === 'beige' ? 'beige' : 'neutral'); } catch (_) {}
+    try { localStorage.setItem('wpMapTheme', ['tierra', 'neutral', 'beige'].includes(t) ? t : 'tierra'); } catch (_) {}
     document.body.dataset.wpMap = this._mapTheme();
     this._applyBlinkLight();
+  }
+
+  // Patrón de arbolitos: copas redondas con luz arriba-izquierda y
+  // sombra suave abajo-derecha (se lee como árbol 3D visto desde arriba).
+  // Se dibuja una vez en un canvas y se registra como imagen del mapa.
+  _ensureTreePattern() {
+    const map = this.map;
+    if (!map || map.hasImage('wp-tree')) return;
+    try {
+      const S = 44, PR = 2;
+      const c = document.createElement('canvas');
+      c.width = c.height = S * PR;
+      const g = c.getContext('2d');
+      g.scale(PR, PR);
+      // x, y, radio (dentro del cuadro para que el patrón no se corte)
+      const T = [[10, 11, 6.2], [29, 8, 5], [23, 25, 7], [8, 33, 5.2], [35, 34, 5.6], [38, 19, 3.8]];
+      T.forEach(([x, y, r]) => { // sombras primero
+        g.fillStyle = 'rgba(64,76,40,0.26)';
+        g.beginPath(); g.ellipse(x + r * 0.32, y + r * 0.42, r * 1.02, r * 0.9, 0, 0, Math.PI * 2); g.fill();
+      });
+      T.forEach(([x, y, r]) => {
+        const gr = g.createRadialGradient(x - r * 0.38, y - r * 0.42, r * 0.1, x, y, r);
+        gr.addColorStop(0, '#cfe0ae');
+        gr.addColorStop(0.55, '#9dba7f');
+        gr.addColorStop(1, '#7a9c60');
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      });
+      const img = g.getImageData(0, 0, S * PR, S * PR);
+      map.addImage('wp-tree', { width: img.width, height: img.height, data: new Uint8Array(img.data.buffer) }, { pixelRatio: PR });
+    } catch (e) { console.warn('⚠️ patrón árboles:', e.message); }
   }
 
   _applyBlinkLight() {
@@ -1058,13 +1092,27 @@ export class MapView {
       // contorno gris fino (le da estructura a las manzanas), parques y
       // agua tenues, edificios casi invisibles, avenidas amarillo suave
       // (identidad de WhatsPlan). 'beige': el estilo anterior tal cual.
-      const P = theme === 'beige' ? {
+      const PAL = {};
+      // 'tierra': suelo arena suave, manzanas un poco más claras que el
+      // suelo con sombra corta (se ven "levantadas", como maqueta), parques
+      // salvia con arbolitos, agua verde-azulada apagada, avenidas color
+      // arena tostada y relieve del terreno muy suave.
+      PAL.tierra = {
+        bg: '#eee7da', water: '#a6cbd1', waterLine: '#93bfc6', park: '#cddbb1', parkOp: 1,
+        land: '#e8dfcf', landOp: 0.85, bld: '#f6f1e7', bldOp: 1, bldLine: '#dccfb9', bldLineOp: 0.9,
+        bldShadow: 'rgba(116,92,60,0.24)', trees: true, relief: true,
+        moto: '#cbb592', prim: '#dccaa9', sec: '#fbf8f2', minor: '#fbf8f2',
+        casing: null, dashLight: 'rgba(176,160,134,0.7)', wScale: 1.4,
+        roadText: '#8c7f6b', waterText: '#4f8590', hood: '#aa9c84',
+      };
+      PAL.beige = {
         bg: '#f2efe8', water: '#5bb8f5', waterLine: '#5bb8f5', park: '#a8d5a2', parkOp: 0.65,
         land: '#e6e1d6', landOp: 0.5, bld: '#d8d2c4', bldOp: 0.85, bldLine: '#c4bdaf', bldLineOp: 0.6,
         moto: '#f9a825', prim: '#fcd858', sec: '#ffffff', minor: '#ffffff',
         casing: null, dashLight: 'rgba(180,172,156,0.7)',
         roadText: '#9a9080', waterText: '#2a6db5', hood: null,
-      } : {
+      };
+      PAL.neutral = {
         // Gris un poco más marcado + contraste: edificios un tono más
         // oscuro que el suelo, parques verdes más presentes, y la avenida
         // principal en un gris más oscuro que el suelo y los edificios
@@ -1073,6 +1121,62 @@ export class MapView {
         moto: '#b3b7c1', prim: '#c4c7cf', sec: '#ffffff', minor: '#ffffff',
         casing: null, dashLight: 'rgba(170,172,182,0.7)', wScale: 1.4, // sin bordes; calles 40% más gruesas
         roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
+      };
+      const P = PAL[theme] || PAL.tierra;
+
+      // Orden original de capas (para meter las nuestras justo encima de
+      // una capa: "antes de la siguiente")
+      const order = style.layers.map(l => l.id);
+      const nextOf = lid => order[order.indexOf(lid) + 1];
+      if (P.trees) this._ensureTreePattern();
+
+      // Sombra corta debajo de cada edificio: misma forma, corrida un poco
+      // abajo-derecha, crece con el zoom. Da el efecto de relieve sin
+      // inclinar el mapa (pitch 0 se queda igual).
+      const addShadow = (layer) => {
+        const sid = layer.id + '-wp-shadow';
+        const col = P.bldShadow || 'rgba(0,0,0,0)';
+        const op  = P.bldShadow ? 1 : 0;
+        if (!map.getLayer(sid)) {
+          try {
+            const def = {
+              id: sid, type: 'fill',
+              source: layer.source, 'source-layer': layer['source-layer'],
+              minzoom: Math.max(layer.minzoom || 0, 14),
+              paint: {
+                'fill-color': col, 'fill-opacity': op,
+                'fill-translate': ['interpolate', ['linear'], ['zoom'], 14, ['literal', [0.6, 0.9]], 16, ['literal', [1.4, 2]], 18, ['literal', [2.6, 3.6]], 19, ['literal', [3.4, 4.6]]],
+                'fill-translate-anchor': 'viewport',
+              },
+            };
+            if (layer.filter) def.filter = layer.filter;
+            if (layer.maxzoom) def.maxzoom = layer.maxzoom;
+            map.addLayer(def, layer.id);
+          } catch (_) {}
+        } else {
+          try { map.setPaintProperty(sid, 'fill-color', col); map.setPaintProperty(sid, 'fill-opacity', op); } catch (_) {}
+        }
+      };
+      // Arbolitos (patrón con copas redondas y sombra) encima de parques y
+      // bosques, desde zoom 14
+      const addTrees = (layer) => {
+        const tid = layer.id + '-wp-trees';
+        const op = P.trees ? ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 0.95] : 0;
+        if (!map.getLayer(tid)) {
+          if (!P.trees) return; // no crear capas si el tema no las usa
+          try {
+            const def = {
+              id: tid, type: 'fill',
+              source: layer.source, 'source-layer': layer['source-layer'],
+              minzoom: Math.max(layer.minzoom || 0, 14),
+              paint: { 'fill-pattern': 'wp-tree', 'fill-opacity': op },
+            };
+            if (layer.filter) def.filter = layer.filter;
+            map.addLayer(def, nextOf(layer.id));
+          } catch (_) {}
+        } else {
+          try { map.setPaintProperty(tid, 'fill-opacity', op); } catch (_) {}
+        }
       };
 
       // Id del primer layer de tipo 'symbol' (nombres de calles, POIs,
@@ -1089,7 +1193,7 @@ export class MapView {
       style.layers.forEach(layer => {
         const id  = layer.id;
         const idL = id.toLowerCase();
-        if (idL.endsWith('-wp-dash') || idL.endsWith('-wp-case') || idL.endsWith('-wp-outline')) return; // capas nuestras
+        if (idL.startsWith('wp-') || /-wp-(dash|case|outline|shadow|trees)$/.test(idL)) return; // capas nuestras
 
         // ── Edificios 3D (building-3d, fill-extrusion) → aplanar, NO eliminar ──
         if (layer.type === 'fill-extrusion') {
@@ -1100,6 +1204,7 @@ export class MapView {
               map.setPaintProperty(id,'fill-extrusion-color',P.bld);
               map.setPaintProperty(id,'fill-extrusion-opacity',P.bldOp);
             } catch(_){}
+            addShadow(layer);
             // Outline manual — fill-extrusion no soporta line-color nativo
             const outlineId = id + '-wp-outline';
             if (!map.getLayer(outlineId)) {
@@ -1134,7 +1239,9 @@ export class MapView {
 
         // ── Parques / vegetación — tono suave ──────────────────
         if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
-          { try { map.setPaintProperty(id,'fill-color',P.park); map.setPaintProperty(id,'fill-opacity',P.parkOp); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color',P.park); map.setPaintProperty(id,'fill-opacity',P.parkOp); } catch(_){}
+            if (/park|wood|forest|garden/.test(idL)) addTrees(layer);
+            return; }
 
         // ── Landuse / manzanas — relleno sutil ──
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
@@ -1153,7 +1260,9 @@ export class MapView {
               map.setPaintProperty(id,'fill-color',P.bld);
               map.setPaintProperty(id,'fill-opacity',P.bldOp);
               map.setPaintProperty(id,'fill-outline-color',P.bldLine);
-            } catch(_){} return; }
+            } catch(_){}
+            addShadow(layer);
+            return; }
 
         // ── Calles: casing original — oculto (el contorno lo hace -wp-case) ──
         if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
@@ -1262,6 +1371,33 @@ export class MapView {
           } catch(_){}
         }
       });
+
+      // ── Relieve del terreno (hillshade) ───────────────────────────
+      // Elevación gratis de AWS Open Data (Terrarium, sin API key). Solo se
+      // descarga en el tema que lo usa. La zona es bastante plana, así que
+      // se nota sobre todo en el río, bordos y canales.
+      try {
+        if (P.relief && !map.getSource('wp-dem')) {
+          map.addSource('wp-dem', {
+            type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 14,
+            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+          });
+        }
+        if (P.relief && !map.getLayer('wp-hillshade')) {
+          const firstRoad = style.layers.find(l => l.type === 'line' && /road|highway|street|transport|tunnel|bridge/.test(l.id.toLowerCase()))?.id;
+          map.addLayer({
+            id: 'wp-hillshade', type: 'hillshade', source: 'wp-dem',
+            paint: {
+              'hillshade-exaggeration': 0.75,
+              'hillshade-illumination-direction': 315,
+              'hillshade-shadow-color': '#8a7354',
+              'hillshade-highlight-color': '#fffaf0',
+              'hillshade-accent-color': '#a38b69',
+            },
+          }, firstRoad);
+        }
+        if (map.getLayer('wp-hillshade')) map.setLayoutProperty('wp-hillshade', 'visibility', P.relief ? 'visible' : 'none');
+      } catch (e) { console.warn('⚠️ relieve:', e.message); }
 
       console.log('✅ WhatsPlan map style aplicado:', theme);
     } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
