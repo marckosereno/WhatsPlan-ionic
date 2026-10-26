@@ -27,6 +27,7 @@ export default async function handler(req, res) {
       pin_badge_shape, pin_photo_stack_size,
       pin_label_position, pin_show_meta_text,
       pin_label_color, pin_label_stroke_color, pin_label_stroke_width,
+      pin_label_font_size, pin_label_wrap,
     } = req.body;
 
     if (!place_name || !category || !lat || !lng) {
@@ -77,6 +78,8 @@ export default async function handler(req, res) {
       pin_label_color:            pin_label_color || null,
       pin_label_stroke_color:     pin_label_stroke_color || null,
       pin_label_stroke_width:     Number.isFinite(Number(pin_label_stroke_width)) && pin_label_stroke_width !== '' && pin_label_stroke_width !== null ? Number(pin_label_stroke_width) : null,
+      pin_label_font_size:        Number(pin_label_font_size) >= 8 ? Number(pin_label_font_size) : null,
+      pin_label_wrap:             Boolean(pin_label_wrap),
     };
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/places`, {
