@@ -1035,17 +1035,17 @@ export class MapView {
     });
   }
 
-  // Tema del mapa: 'tierra' (tierrita suave con relieve, sombras de
-  // edificios y arbolitos — el de ahora), 'neutral' (gris) o 'beige' (el
-  // primero). Se guarda en el teléfono y se cambia desde el SuperUserPanel
+  // Tema del mapa: 'greige' (beige+gris, plano — el de ahora), 'tierra'
+  // (arena con sombras de edificios y arbolitos), 'neutral' (gris) o
+  // 'beige' (el primero). Se guarda en el teléfono y se cambia desde el SuperUserPanel
   // o con wpApp.mapView.setMapTheme('neutral').
   _mapTheme() {
     let t = null;
     try { t = localStorage.getItem('wpMapTheme'); } catch (_) {}
-    return ['tierra', 'neutral', 'beige'].includes(t) ? t : 'tierra';
+    return ['greige', 'tierra', 'neutral', 'beige'].includes(t) ? t : 'greige';
   }
   setMapTheme(t) {
-    try { localStorage.setItem('wpMapTheme', ['tierra', 'neutral', 'beige'].includes(t) ? t : 'tierra'); } catch (_) {}
+    try { localStorage.setItem('wpMapTheme', ['greige', 'tierra', 'neutral', 'beige'].includes(t) ? t : 'greige'); } catch (_) {}
     document.body.dataset.wpMap = this._mapTheme();
     this._applyBlinkLight();
   }
@@ -1096,11 +1096,22 @@ export class MapView {
       // 'tierra': suelo arena suave, manzanas un poco más claras que el
       // suelo con sombra corta (se ven "levantadas", como maqueta), parques
       // salvia con arbolitos, agua verde-azulada apagada, avenidas color
-      // arena tostada y relieve del terreno muy suave.
+      // arena tostada.
+      // 'greige' (el de ahora): mezcla de beige y gris, plano y limpio.
+      // Suelo gris cálido, manzanas apenas más oscuras, todas las calles
+      // blancas y las avenidas blancas más anchas (se distinguen por el
+      // grosor, no por el color), parques verde muy suave.
+      PAL.greige = {
+        bg: '#eeede9', water: '#b7d4e2', waterLine: '#a5c9da', park: '#d6e4cd', parkOp: 1,
+        land: '#e8e6e1', landOp: 0.85, bld: '#e0ded8', bldOp: 1, bldLine: '#d8d5ce', bldLineOp: 0.6,
+        moto: '#ffffff', prim: '#ffffff', sec: '#fbfbf9', minor: '#fbfbf9',
+        casing: null, dashLight: 'rgba(200,197,190,0.7)', wScale: 1.4, primScale: 1.25,
+        roadText: '#99968e', waterText: '#5a8ea6', hood: '#aaa69c',
+      };
       PAL.tierra = {
         bg: '#eee7da', water: '#a6cbd1', waterLine: '#93bfc6', park: '#cddbb1', parkOp: 1,
         land: '#e8dfcf', landOp: 0.85, bld: '#f6f1e7', bldOp: 1, bldLine: '#dccfb9', bldLineOp: 0.9,
-        bldShadow: 'rgba(116,92,60,0.24)', trees: true, relief: true,
+        bldShadow: 'rgba(116,92,60,0.24)', trees: true,
         moto: '#cbb592', prim: '#dccaa9', sec: '#fbf8f2', minor: '#fbf8f2',
         casing: null, dashLight: 'rgba(176,160,134,0.7)', wScale: 1.4,
         roadText: '#8c7f6b', waterText: '#4f8590', hood: '#aa9c84',
@@ -1122,7 +1133,7 @@ export class MapView {
         casing: null, dashLight: 'rgba(170,172,182,0.7)', wScale: 1.4, // sin bordes; calles 40% más gruesas
         roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
       };
-      const P = PAL[theme] || PAL.tierra;
+      const P = PAL[theme] || PAL.greige;
 
       // Orden original de capas (para meter las nuestras justo encima de
       // una capa: "antes de la siguiente")
@@ -1282,7 +1293,9 @@ export class MapView {
             else if (isSec)  { map.setPaintProperty(id,'line-color',P.sec);   fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = P.dashLight; }
             else             { map.setPaintProperty(id,'line-color',P.minor); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = P.dashLight; }
             // Grosor según el tema (neutro: más gruesas)
-            if (P.wScale) fillWidth = fillWidth.map((v, i) => (i >= 4 && i % 2 === 0 && typeof v === 'number') ? +(v * P.wScale).toFixed(1) : v);
+            // Avenidas: extra de grosor cuando el tema las pinta del mismo color que las calles
+            const k = (P.wScale || 1) * ((isMoto || isPrim) && P.primScale ? P.primScale : 1);
+            if (k !== 1) fillWidth = fillWidth.map((v, i) => (i >= 4 && i % 2 === 0 && typeof v === 'number') ? +(v * k).toFixed(1) : v);
             map.setPaintProperty(id,'line-width',fillWidth);
 
             // ── Contorno gris fino debajo de cada calle (tema neutro) ──
@@ -1371,33 +1384,6 @@ export class MapView {
           } catch(_){}
         }
       });
-
-      // ── Relieve del terreno (hillshade) ───────────────────────────
-      // Elevación gratis de AWS Open Data (Terrarium, sin API key). Solo se
-      // descarga en el tema que lo usa. La zona es bastante plana, así que
-      // se nota sobre todo en el río, bordos y canales.
-      try {
-        if (P.relief && !map.getSource('wp-dem')) {
-          map.addSource('wp-dem', {
-            type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 14,
-            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-          });
-        }
-        if (P.relief && !map.getLayer('wp-hillshade')) {
-          const firstRoad = style.layers.find(l => l.type === 'line' && /road|highway|street|transport|tunnel|bridge/.test(l.id.toLowerCase()))?.id;
-          map.addLayer({
-            id: 'wp-hillshade', type: 'hillshade', source: 'wp-dem',
-            paint: {
-              'hillshade-exaggeration': 0.75,
-              'hillshade-illumination-direction': 315,
-              'hillshade-shadow-color': '#8a7354',
-              'hillshade-highlight-color': '#fffaf0',
-              'hillshade-accent-color': '#a38b69',
-            },
-          }, firstRoad);
-        }
-        if (map.getLayer('wp-hillshade')) map.setLayoutProperty('wp-hillshade', 'visibility', P.relief ? 'visible' : 'none');
-      } catch (e) { console.warn('⚠️ relieve:', e.message); }
 
       console.log('✅ WhatsPlan map style aplicado:', theme);
     } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
