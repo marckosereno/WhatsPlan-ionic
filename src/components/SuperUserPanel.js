@@ -122,15 +122,18 @@ export class SuperUserPanel {
     document.getElementById('su-btn-view-list').addEventListener('click', () => { this.mapView?.haptic('light'); this._openList(); });
     document.getElementById('su-btn-categories').addEventListener('click', () => { this.mapView?.haptic('light'); this._openCategories(); });
     document.getElementById('su-btn-places').addEventListener('click', () => { this.mapView?.haptic('light'); this._openPlaces(); });
-    // Alternar entre el mapa neutro (nuevo) y el beige (anterior) para comparar
+    // Rotar entre los estilos del mapa: Tierra → Neutro → Beige
+    const THEMES = ['tierra', 'neutral', 'beige'];
+    const NAMES = { tierra: 'Tierra', neutral: 'Neutro', beige: 'Beige' };
     const _paintThemeBtn = () => {
-      const t = this.mapView?._mapTheme?.() || 'neutral';
+      const t = this.mapView?._mapTheme?.() || 'tierra';
       const el = document.getElementById('su-map-theme-name');
-      if (el) el.textContent = t === 'beige' ? 'Beige' : 'Neutro';
+      if (el) el.textContent = NAMES[t] || 'Tierra';
     };
     _paintThemeBtn();
     document.getElementById('su-btn-map-theme')?.addEventListener('click', () => {
-      const t = this.mapView?._mapTheme?.() === 'beige' ? 'neutral' : 'beige';
+      const cur = this.mapView?._mapTheme?.() || 'tierra';
+      const t = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
       this.mapView?.setMapTheme?.(t);
       _paintThemeBtn();
     });
