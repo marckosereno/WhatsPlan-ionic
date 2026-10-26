@@ -1067,10 +1067,10 @@ export class MapView {
       } : {
         // Gris un poco más marcado + contraste: edificios un tono más
         // oscuro que el suelo, parques verdes más presentes, y la avenida
-        // principal en coral suave (nada que se confunda con el agua)
+        // principal en un gris más oscuro que el suelo y los edificios
         bg: '#e9eaee', water: '#9ed6f0', waterLine: '#86cdec', park: '#bde3c3', parkOp: 1,
         land: '#e4e5ea', landOp: 0.7, bld: '#d3d6de', bldOp: 0.95, bldLine: '#d3d6de', bldLineOp: 0,
-        moto: '#ffae8a', prim: '#ffc8ad', sec: '#ffffff', minor: '#ffffff',
+        moto: '#b3b7c1', prim: '#c4c7cf', sec: '#ffffff', minor: '#ffffff',
         casing: null, dashLight: 'rgba(170,172,182,0.7)', wScale: 1.4, // sin bordes; calles 40% más gruesas
         roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
       };
