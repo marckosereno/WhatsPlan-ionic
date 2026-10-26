@@ -73,6 +73,8 @@ export default async function handler(req, res) {
       const w = Number(body.pin_label_stroke_width);
       fields.pin_label_stroke_width = Number.isFinite(w) && body.pin_label_stroke_width !== '' && body.pin_label_stroke_width !== null ? w : null;
     }
+    if ('pin_label_font_size' in body) fields.pin_label_font_size = Number(body.pin_label_font_size) >= 8 ? Number(body.pin_label_font_size) : null;
+    if ('pin_label_wrap'      in body) fields.pin_label_wrap      = Boolean(body.pin_label_wrap);
 
     if ('photos_urls' in body) {
       fields.photos_urls = Array.isArray(body.photos_urls) ? body.photos_urls : null;
