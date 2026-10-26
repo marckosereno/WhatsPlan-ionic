@@ -2505,6 +2505,8 @@ export class SuperUserPanel {
       pin_label_color:        place.pinLabelColor || '',
       pin_label_stroke_color: place.pinLabelStrokeColor || '',
       pin_label_stroke_width: place.pinLabelStrokeWidth ?? '',
+      pin_label_font_size:    place.pinLabelFontSize || '',
+      pin_label_wrap:         !!place.pinLabelWrap,
     };
   }
 
@@ -2888,9 +2890,16 @@ export class SuperUserPanel {
                 '<button type="button" class="su-pin-label-pos-btn" data-val="right" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">➡️ Derecha</button>' +
               '</div>' +
               '<input id="su-pin-label-pos-hidden" type="hidden" value="' + (prefill?.pin_label_position || 'below') + '">' +
-              // Estilo del texto del nombre: color, color del contorno y grosor
+              // Estilo del texto del nombre: Predeterminado (como todos los pines)
+              // o Personalizado (color, contorno y grosor propios) + tamaño y
+              // salto de línea
               '<div style="font-size:10px;color:#6b7280;margin-top:4px;">Texto del nombre</div>' +
-              '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+              '<div style="display:flex;gap:6px;">' +
+                '<button type="button" class="su-pin-label-mode-btn" data-val="default" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">Predeterminado</button>' +
+                '<button type="button" class="su-pin-label-mode-btn" data-val="custom" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">🎨 Personalizado</button>' +
+              '</div>' +
+              '<input id="su-pin-label-mode-hidden" type="hidden" value="' + ((prefill?.pin_label_color || prefill?.pin_label_stroke_color || (prefill?.pin_label_stroke_width ?? '') !== '') ? 'custom' : 'default') + '">' +
+              '<div id="su-pin-label-custom" style="display:flex;gap:8px;align-items:flex-end;">' +
                 '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
                   '<div style="font-size:10px;color:#6b7280;">Color</div>' +
                   '<input id="su-pin-label-color" type="color" value="' + (prefill?.pin_label_color || '#111827') + '" style="width:100%;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;cursor:pointer;padding:2px;">' +
@@ -2904,7 +2913,20 @@ export class SuperUserPanel {
                   '<input id="su-pin-label-stroke-width" type="range" min="0" max="4" step="0.5" value="' + ((prefill?.pin_label_stroke_width ?? '') === '' ? 1 : prefill.pin_label_stroke_width) + '" style="width:100%;accent-color:#1a5cf5;height:32px;">' +
                 '</div>' +
               '</div>' +
-              '<div id="su-pin-label-preview" style="display:flex;align-items:center;justify-content:center;height:40px;border-radius:8px;background:#f1ede6;"></div>' +
+              '<div style="display:flex;gap:8px;align-items:center;">' +
+                '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+                  '<div style="font-size:10px;color:#6b7280;">Tamaño de letra <span id="su-pin-label-size-val">' + (prefill?.pin_label_font_size || 11) + '</span> px</div>' +
+                  '<input id="su-pin-label-size" type="range" min="8" max="18" step="0.5" value="' + (prefill?.pin_label_font_size || 11) + '" style="width:100%;accent-color:#1a5cf5;">' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:6px;">' +
+                  '<label class="su-toggle-wrap">' +
+                    '<input type="checkbox" id="su-pin-label-wrap"' + (prefill?.pin_label_wrap ? ' checked' : '') + '>' +
+                    '<span class="su-toggle-slider"></span>' +
+                  '</label>' +
+                  '<span class="su-label" style="margin:0;font-size:10px;">Salto de línea</span>' +
+                '</div>' +
+              '</div>' +
+              '<div id="su-pin-label-preview" style="display:flex;align-items:center;justify-content:center;min-height:44px;padding:6px;border-radius:8px;background:#f1ede6;"></div>' +
               '<div style="display:flex;align-items:center;gap:8px;margin-top:2px;">' +
                 '<label class="su-toggle-wrap">' +
                   '<input type="checkbox" id="su-pin-show-meta"' + (prefill?.pin_show_meta_text !== false ? ' checked' : '') + '>' +
@@ -3182,19 +3204,36 @@ export class SuperUserPanel {
 
     // Vista previa del texto del nombre (color + contorno + grosor) —
     // misma fórmula que MapView (_pinLabelShadow)
+    const labelModeHidden = document.getElementById('su-pin-label-mode-hidden');
     const _updateLabelPreview = () => {
       const pv = document.getElementById('su-pin-label-preview');
       if (!pv) return;
-      const c  = document.getElementById('su-pin-label-color').value || '#111827';
-      const sc = document.getElementById('su-pin-label-stroke-color').value || '#ffffff';
-      const w  = parseFloat(document.getElementById('su-pin-label-stroke-width').value) || 0;
+      const custom = labelModeHidden.value === 'custom';
+      document.getElementById('su-pin-label-custom').style.display = custom ? 'flex' : 'none';
+      document.querySelectorAll('.su-pin-label-mode-btn').forEach(b => {
+        const on = b.dataset.val === labelModeHidden.value;
+        b.style.background  = on ? 'rgba(0,188,212,0.18)' : 'transparent';
+        b.style.borderColor = on ? 'rgba(0,188,212,0.5)'  : 'rgba(255,255,255,0.12)';
+        b.style.color       = on ? '#67e8f9'              : '#9ca3af';
+      });
+      // Predeterminado = lo que tienen todos los pines (negro, contorno blanco de 1px)
+      const c  = custom ? (document.getElementById('su-pin-label-color').value || '#111827') : '#111827';
+      const sc = custom ? (document.getElementById('su-pin-label-stroke-color').value || '#ffffff') : '#ffffff';
+      const w  = custom ? (parseFloat(document.getElementById('su-pin-label-stroke-width').value) || 0) : 1;
+      const fs = parseFloat(document.getElementById('su-pin-label-size').value) || 11;
+      const wrap = document.getElementById('su-pin-label-wrap').checked;
       document.getElementById('su-pin-label-stroke-val').textContent = w;
+      document.getElementById('su-pin-label-size-val').textContent = fs;
       const N = 12;
       const sh = w > 0 ? Array.from({ length: N }, (_, i) => { const a = i / N * 2 * Math.PI; return (Math.cos(a) * w).toFixed(2) + 'px ' + (Math.sin(a) * w).toFixed(2) + 'px 0 ' + sc; }).join(',') : 'none';
-      pv.innerHTML = '<span style="font-size:13px;font-weight:800;color:' + c + ';text-shadow:' + sh + ';font-family:var(--wp-font);">' + _esc(document.getElementById('su-field-name')?.value || 'Nombre del lugar') + '</span>';
+      const nm = document.getElementById('su-field-name')?.value || 'Taquería El Nombre Largo del Centro';
+      pv.innerHTML = '<span style="display:block;max-width:120px;text-align:center;font-size:' + fs + 'px;font-weight:800;line-height:1.15;color:' + c + ';text-shadow:' + sh + ';font-family:var(--wp-font);' +
+        (wrap ? 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;') + '">' + _esc(nm) + '</span>';
     };
-    ['su-pin-label-color', 'su-pin-label-stroke-color', 'su-pin-label-stroke-width'].forEach(id =>
+    document.querySelectorAll('.su-pin-label-mode-btn').forEach(b => b.addEventListener('click', () => { labelModeHidden.value = b.dataset.val; _updateLabelPreview(); }));
+    ['su-pin-label-color', 'su-pin-label-stroke-color', 'su-pin-label-stroke-width', 'su-pin-label-size'].forEach(id =>
       document.getElementById(id)?.addEventListener('input', _updateLabelPreview));
+    document.getElementById('su-pin-label-wrap')?.addEventListener('change', _updateLabelPreview);
     _updateLabelPreview();
 
     // Posición del label: abajo / izquierda / derecha
@@ -3585,9 +3624,13 @@ export class SuperUserPanel {
         pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
         pin_label_position: document.getElementById('su-pin-label-pos-hidden')?.value || 'below',
         pin_show_meta_text: document.getElementById('su-pin-show-meta')?.checked ?? true,
-        pin_label_color:        document.getElementById('su-pin-label-color')?.value || '',
-        pin_label_stroke_color: document.getElementById('su-pin-label-stroke-color')?.value || '',
-        pin_label_stroke_width: document.getElementById('su-pin-label-stroke-width')?.value ?? '',
+        ...(document.getElementById('su-pin-label-mode-hidden')?.value === 'custom' ? {
+          pin_label_color:        document.getElementById('su-pin-label-color')?.value || '',
+          pin_label_stroke_color: document.getElementById('su-pin-label-stroke-color')?.value || '',
+          pin_label_stroke_width: document.getElementById('su-pin-label-stroke-width')?.value ?? '',
+        } : { pin_label_color: '', pin_label_stroke_color: '', pin_label_stroke_width: '' }),
+        pin_label_font_size: document.getElementById('su-pin-label-size')?.value || '',
+        pin_label_wrap:      !!document.getElementById('su-pin-label-wrap')?.checked,
       };
       modal.remove();
       this._pickCoordsFromMap((lat, lng) => this._openPlaceForm({ ...snap, lat, lng }, editingPlaceId));
@@ -3655,9 +3698,14 @@ export class SuperUserPanel {
           pin_photo_stack_size: document.getElementById('su-pin-photo-size-hidden')?.value || 'med',
           pin_label_position: document.getElementById('su-pin-label-pos-hidden')?.value || 'below',
           pin_show_meta_text: document.getElementById('su-pin-show-meta')?.checked ?? true,
-          pin_label_color:        document.getElementById('su-pin-label-color')?.value || null,
-          pin_label_stroke_color: document.getElementById('su-pin-label-stroke-color')?.value || null,
-          pin_label_stroke_width: parseFloat(document.getElementById('su-pin-label-stroke-width')?.value ?? '1'),
+          // Predeterminado → null (el pin usa los colores de siempre)
+          ...(document.getElementById('su-pin-label-mode-hidden')?.value === 'custom' ? {
+            pin_label_color:        document.getElementById('su-pin-label-color')?.value || null,
+            pin_label_stroke_color: document.getElementById('su-pin-label-stroke-color')?.value || null,
+            pin_label_stroke_width: parseFloat(document.getElementById('su-pin-label-stroke-width')?.value ?? '1'),
+          } : { pin_label_color: null, pin_label_stroke_color: null, pin_label_stroke_width: null }),
+          pin_label_font_size: (() => { const v = parseFloat(document.getElementById('su-pin-label-size')?.value); return v && v !== 11 ? v : null; })(),
+          pin_label_wrap:      !!document.getElementById('su-pin-label-wrap')?.checked,
           ...(isEdit
             ? { place_id: editingPlaceId }
             : { place_id: prefill?.place_id || null }),
