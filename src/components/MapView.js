@@ -1035,26 +1035,58 @@ export class MapView {
     });
   }
 
+  // Tema del mapa: 'neutral' (gris claro, calles blancas con contorno —
+  // el de ahora) o 'beige' (el anterior). Se guarda en el teléfono y se
+  // cambia desde el SuperUserPanel o con wpApp.mapView.setMapTheme('beige').
+  _mapTheme() {
+    try { return localStorage.getItem('wpMapTheme') === 'beige' ? 'beige' : 'neutral'; } catch (_) { return 'neutral'; }
+  }
+  setMapTheme(t) {
+    try { localStorage.setItem('wpMapTheme', t === 'beige' ? 'beige' : 'neutral'); } catch (_) {}
+    document.body.dataset.wpMap = this._mapTheme();
+    this._applyBlinkLight();
+  }
+
   _applyBlinkLight() {
     try {
       const style = this.map.getStyle();
       if (!style?.layers) return;
       const map = this.map;
+      const theme = this._mapTheme();
+      document.body.dataset.wpMap = theme;
+      // Paletas. 'neutral': fondo gris casi blanco, calles blancas con un
+      // contorno gris fino (le da estructura a las manzanas), parques y
+      // agua tenues, edificios casi invisibles, avenidas amarillo suave
+      // (identidad de WhatsPlan). 'beige': el estilo anterior tal cual.
+      const P = theme === 'beige' ? {
+        bg: '#f2efe8', water: '#5bb8f5', waterLine: '#5bb8f5', park: '#a8d5a2', parkOp: 0.65,
+        land: '#e6e1d6', landOp: 0.5, bld: '#d8d2c4', bldOp: 0.85, bldLine: '#c4bdaf', bldLineOp: 0.6,
+        moto: '#f9a825', prim: '#fcd858', sec: '#ffffff', minor: '#ffffff',
+        casing: null, dashLight: 'rgba(180,172,156,0.7)',
+        roadText: '#9a9080', waterText: '#2a6db5', hood: null,
+      } : {
+        bg: '#f4f4f6', water: '#a9dcf2', waterLine: '#8fd3ee', park: '#d4eed6', parkOp: 1,
+        land: '#eeeef1', landOp: 0.6, bld: '#e8e8ed', bldOp: 0.75, bldLine: '#dcdde3', bldLineOp: 0.55,
+        moto: '#ffd36b', prim: '#ffe28f', sec: '#ffffff', minor: '#ffffff',
+        casing: '#d9dae0', dashLight: 'rgba(170,172,182,0.7)',
+        roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
+      };
 
       // Id del primer layer de tipo 'symbol' (nombres de calles, POIs,
       // etc) EN EL ORDEN ORIGINAL del estilo. Se usa como `beforeId` al
-      // agregar las capas de línea punteada más abajo — si no, addLayer()
-      // sin beforeId las agrega arriba de TODO lo que ya existe en el
-      // mapa, texto incluido, y las rayitas tapaban el nombre de las
-      // calles en vez de quedar por debajo.
+      // agregar las capas de línea punteada — así quedan debajo del texto.
       const firstSymbolId = style.layers.find(l => l.type === 'symbol')?.id;
 
       // Quitar terrain 3D si el estilo lo trae configurado
       try { map.setTerrain(null); } catch(_){}
 
+      // Ancho del contorno = ancho de la calle + 2px en cada parada de zoom
+      const widen = (expr, add) => expr.map((v, i) => (i >= 4 && i % 2 === 0 && typeof v === 'number') ? v + add : v); // [interpolate, [linear], [zoom], z1, w1, z2, w2…] → solo los anchos
+
       style.layers.forEach(layer => {
         const id  = layer.id;
         const idL = id.toLowerCase();
+        if (idL.endsWith('-wp-dash') || idL.endsWith('-wp-case') || idL.endsWith('-wp-outline')) return; // capas nuestras
 
         // ── Edificios 3D (building-3d, fill-extrusion) → aplanar, NO eliminar ──
         if (layer.type === 'fill-extrusion') {
@@ -1062,8 +1094,8 @@ export class MapView {
             try {
               map.setPaintProperty(id,'fill-extrusion-height',0);
               map.setPaintProperty(id,'fill-extrusion-base',0);
-              map.setPaintProperty(id,'fill-extrusion-color','#d8d2c4');
-              map.setPaintProperty(id,'fill-extrusion-opacity',0.85);
+              map.setPaintProperty(id,'fill-extrusion-color',P.bld);
+              map.setPaintProperty(id,'fill-extrusion-opacity',P.bldOp);
             } catch(_){}
             // Outline manual — fill-extrusion no soporta line-color nativo
             const outlineId = id + '-wp-outline';
@@ -1073,9 +1105,11 @@ export class MapView {
                   id: outlineId, type: 'line',
                   source: layer.source, 'source-layer': layer['source-layer'],
                   minzoom: layer.minzoom || 0,
-                  paint: { 'line-color':'#c4bdaf', 'line-opacity':0.6, 'line-width':0.5 }
+                  paint: { 'line-color': P.bldLine, 'line-opacity': P.bldLineOp, 'line-width':0.5 }
                 });
               } catch(_){}
+            } else {
+              try { map.setPaintProperty(outlineId,'line-color',P.bldLine); map.setPaintProperty(outlineId,'line-opacity',P.bldLineOp); } catch(_){}
             }
             return;
           }
@@ -1087,23 +1121,23 @@ export class MapView {
 
         // ── Fondo ──────────────────────────────────────────────
         if (layer.type === 'background')
-          { try { map.setPaintProperty(id,'background-color','#f2efe8'); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'background-color',P.bg); } catch(_){} return; }
 
         // ── Agua ────────────────────────────────────────────────
         if (layer.type === 'fill' && (idL.includes('water') || idL.includes('ocean') || idL.includes('lake')))
-          { try { map.setPaintProperty(id,'fill-color','#5bb8f5'); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color',P.water); map.setPaintProperty(id,'fill-opacity',1); } catch(_){} return; }
         if (layer.type === 'line' && (idL.startsWith('water') || idL.includes('waterway') || idL.includes('river')))
-          { try { map.setPaintProperty(id,'line-color','#5bb8f5'); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'line-color',P.waterLine); } catch(_){} return; }
 
         // ── Parques / vegetación — tono suave ──────────────────
         if (layer.type === 'fill' && (idL.includes('park') || idL.includes('grass') || idL.includes('forest') || idL.includes('wood') || idL.includes('green') || idL.includes('scrub') || idL.includes('landcover') || idL.includes('pitch') || idL.includes('garden')))
-          { try { map.setPaintProperty(id,'fill-color','#a8d5a2'); map.setPaintProperty(id,'fill-opacity',0.65); } catch(_){} return; }
+          { try { map.setPaintProperty(id,'fill-color',P.park); map.setPaintProperty(id,'fill-opacity',P.parkOp); } catch(_){} return; }
 
-        // ── Landuse / manzanas — relleno sutil tipo Apple Maps ──
+        // ── Landuse / manzanas — relleno sutil ──
         if (layer.type === 'fill' && (idL.includes('residential') || idL.includes('landuse') || idL.includes('suburb')))
           { try {
-              map.setPaintProperty(id,'fill-color','#e6e1d6');
-              map.setPaintProperty(id,'fill-opacity',0.5);
+              map.setPaintProperty(id,'fill-color',P.land);
+              map.setPaintProperty(id,'fill-opacity',P.landOp);
               map.setLayerZoomRange(id, layer.minzoom || 0, 24); // quitar maxzoom:12 del estilo original
             } catch(_){} return; }
         // Boundaries administrativos — ocultar (no son manzanas)
@@ -1113,16 +1147,16 @@ export class MapView {
         // ── Edificios fill (zoom bajo) — color + outline nativo ──
         if (layer.type === 'fill' && idL.includes('building'))
           { try {
-              map.setPaintProperty(id,'fill-color','#d8d2c4');
-              map.setPaintProperty(id,'fill-opacity',0.85);
-              map.setPaintProperty(id,'fill-outline-color','#c4bdaf');
+              map.setPaintProperty(id,'fill-color',P.bld);
+              map.setPaintProperty(id,'fill-opacity',P.bldOp);
+              map.setPaintProperty(id,'fill-outline-color',P.bldLine);
             } catch(_){} return; }
 
-        // ── Calles: casing — ocultar para look plano (sin doble sombra 3D) ──
+        // ── Calles: casing original — oculto (el contorno lo hace -wp-case) ──
         if (layer.type === 'line' && (idL.includes('casing') || idL.includes('outline') || idL.includes('border')))
           { try { map.setPaintProperty(id,'line-opacity',0); } catch(_){} return; }
 
-        // ── Calles: fill — cartoon gruesas y redondeadas ────────
+        // ── Calles: fill — gruesas y redondeadas ────────────────
         if (layer.type === 'line' && (idL.includes('road') || idL.includes('highway') || idL.includes('street') || idL.includes('transport') || idL.includes('tunnel'))) {
           try {
             const isMoto = idL.includes('motor') || idL.includes('motorway');
@@ -1131,23 +1165,36 @@ export class MapView {
             map.setLayoutProperty(id,'line-cap','round');
             map.setLayoutProperty(id,'line-join','round');
             let fillWidth, dashColor;
-            if (isMoto)      { map.setPaintProperty(id,'line-color','#f9a825'); fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]; dashColor = 'rgba(255,255,255,0.85)'; }
-            else if (isPrim) { map.setPaintProperty(id,'line-color','#fcd858'); fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]; dashColor = 'rgba(255,255,255,0.85)'; }
-            else if (isSec)  { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = 'rgba(180,172,156,0.7)'; }
-            else             { map.setPaintProperty(id,'line-color','#ffffff'); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = 'rgba(180,172,156,0.7)'; }
+            if (isMoto)      { map.setPaintProperty(id,'line-color',P.moto);  fillWidth = ['interpolate',['linear'],['zoom'],10,6,14,16,16,22,18,28]; dashColor = 'rgba(255,255,255,0.85)'; }
+            else if (isPrim) { map.setPaintProperty(id,'line-color',P.prim);  fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]; dashColor = 'rgba(255,255,255,0.85)'; }
+            else if (isSec)  { map.setPaintProperty(id,'line-color',P.sec);   fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = P.dashLight; }
+            else             { map.setPaintProperty(id,'line-color',P.minor); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = P.dashLight; }
             map.setPaintProperty(id,'line-width',fillWidth);
 
-            // ── Línea central punteada (look Petal/Huawei Maps) ──────
-            // No se puede lograr con line-dasharray en la MISMA capa: eso
-            // corta el trazo entero (calle a rayas), no deja un trazo
-            // sólido con una rayita fina en el medio. Hace falta una
-            // segunda capa, más angosta, dibujada ENCIMA de la calle ya
-            // pintada arriba — mismo patrón que ya usa este archivo para
-            // el contorno manual de los edificios 3D (ver 'building-3d',
-            // el companion layer 'id + "-wp-outline"" unas líneas arriba).
-            // Blanca sobre asfalto naranja/amarillo (como una marca vial
-            // real); gris suave sobre las calles blancas (ahí el blanco
-            // sería invisible contra blanco).
+            // ── Contorno gris fino debajo de cada calle (tema neutro) ──
+            // Capa propia justo DEBAJO de la calle, 2px más ancha: queda
+            // un borde de 1px a cada lado. En beige va con opacidad 0.
+            const caseId = id + '-wp-case';
+            const caseColor = P.casing || '#000';
+            const caseOp = P.casing ? 1 : 0;
+            if (!map.getLayer(caseId)) {
+              try {
+                map.addLayer({
+                  id: caseId, type: 'line',
+                  source: layer.source, 'source-layer': layer['source-layer'],
+                  filter: layer.filter,
+                  minzoom: layer.minzoom || 0,
+                  layout: { 'line-cap': 'round', 'line-join': 'round' },
+                  paint: { 'line-color': caseColor, 'line-opacity': caseOp, 'line-width': widen(fillWidth, 2) },
+                }, id);
+              } catch(_){}
+            } else {
+              try { map.setPaintProperty(caseId,'line-color',caseColor); map.setPaintProperty(caseId,'line-opacity',caseOp); } catch(_){}
+            }
+
+            // ── Línea central punteada (zoom 18+) ──────────────
+            // Segunda capa más angosta encima de la calle: blanca sobre
+            // las avenidas de color, gris suave sobre las calles blancas.
             const dashId = id + '-wp-dash';
             if (!map.getLayer(dashId)) {
               try {
@@ -1155,19 +1202,14 @@ export class MapView {
                   id: dashId, type: 'line',
                   source: layer.source, 'source-layer': layer['source-layer'],
                   filter: layer.filter,
-                  // maxZoom del mapa es 19 (ver _initMap) → el penúltimo
-                  // es 18. Antes aparecía desde zoom 14, mucho antes de
-                  // lo pedido.
                   minzoom: Math.max(layer.minzoom || 0, 18),
                   layout: { 'line-cap': 'round', 'line-join': 'round' },
                   paint: {
                     'line-color': dashColor,
-                    // Más angosta que antes (0.8→2.2 pasó a 0.5→1.4)
                     'line-width': ['interpolate',['linear'],['zoom'],18,0.5,19,1.4],
-                    // Rayas más largas (2,3 → 3,3.5)
                     'line-dasharray': [3, 3.5],
                   }
-                }, firstSymbolId); // debajo de los nombres de calle — si no, la rayita tapaba el texto
+                }, firstSymbolId); // debajo de los nombres de calle
               } catch(_){}
             } else {
               map.setPaintProperty(dashId,'line-color',dashColor);
@@ -1178,23 +1220,37 @@ export class MapView {
         // ── Texto ───────────────────────────────────────────────
         if (layer.type === 'symbol') {
           try {
-            const tt = map.getLayoutProperty(id,'text-transform');
-            if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
-
             const isRoad   = idL.includes('road') || idL.includes('street') || idL.includes('transport') || idL.includes('highway');
             const isWaterL = idL.includes('water');
+            // Colonias / barrios: en el tema neutro se muestran discretos,
+            // en mayúsculas espaciadas (sin íconos)
+            const isHood   = idL.includes('suburb') || idL.includes('neighbourhood') || idL.includes('neighborhood') || idL.includes('quarter');
 
             if (isRoad) {
+              const tt = map.getLayoutProperty(id,'text-transform');
+              if (tt === 'uppercase') map.setLayoutProperty(id,'text-transform','none');
               map.setLayoutProperty(id,'text-size',9);
-              map.setPaintProperty(id,'text-color','#9a9080');
-              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
+              map.setPaintProperty(id,'text-color',P.roadText);
+              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.9)');
               map.setPaintProperty(id,'text-halo-width',1.2);
+              map.setPaintProperty(id,'text-opacity',1);
             } else if (isWaterL) {
               map.setLayoutProperty(id,'text-size',10);
-              map.setPaintProperty(id,'text-color','#2a6db5');
+              map.setPaintProperty(id,'text-color',P.waterText);
               map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.85)');
+              map.setPaintProperty(id,'text-opacity',1);
+            } else if (isHood && P.hood) {
+              map.setLayoutProperty(id,'text-transform','uppercase');
+              map.setLayoutProperty(id,'text-size',9);
+              map.setLayoutProperty(id,'text-letter-spacing',0.18);
+              map.setPaintProperty(id,'text-color',P.hood);
+              map.setPaintProperty(id,'text-halo-color','rgba(255,255,255,0.9)');
+              map.setPaintProperty(id,'text-halo-width',1);
+              map.setPaintProperty(id,'text-opacity',['interpolate',['linear'],['zoom'],12,0,13,1]);
+              map.setPaintProperty(id,'icon-opacity',0);
             } else {
-              // Ocultar TODO lo demás: parques, ciudades (Nuevo Progreso), POIs, etc.
+              // Ocultar TODO lo demás: ciudades, POIs del mapa base (sus
+              // íconos se confundían con nuestros pines), etc.
               map.setPaintProperty(id,'text-opacity',0);
               map.setPaintProperty(id,'icon-opacity',0);
             }
@@ -1202,7 +1258,7 @@ export class MapView {
         }
       });
 
-      console.log('✅ WhatsPlan gamified style aplicado');
+      console.log('✅ WhatsPlan map style aplicado:', theme);
     } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
   }
 
