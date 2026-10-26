@@ -1066,9 +1066,9 @@ export class MapView {
         roadText: '#9a9080', waterText: '#2a6db5', hood: null,
       } : {
         bg: '#f4f4f6', water: '#a9dcf2', waterLine: '#8fd3ee', park: '#d4eed6', parkOp: 1,
-        land: '#eeeef1', landOp: 0.6, bld: '#e8e8ed', bldOp: 0.75, bldLine: '#dcdde3', bldLineOp: 0.55,
+        land: '#eeeef1', landOp: 0.6, bld: '#e8e8ed', bldOp: 0.75, bldLine: '#e8e8ed', bldLineOp: 0,
         moto: '#ffd36b', prim: '#ffe28f', sec: '#ffffff', minor: '#ffffff',
-        casing: '#d9dae0', dashLight: 'rgba(170,172,182,0.7)',
+        casing: null, dashLight: 'rgba(170,172,182,0.7)', wScale: 1.4, // sin bordes; calles 40% más gruesas
         roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
       };
 
@@ -1169,6 +1169,8 @@ export class MapView {
             else if (isPrim) { map.setPaintProperty(id,'line-color',P.prim);  fillWidth = ['interpolate',['linear'],['zoom'],11,5,14,12,16,18,18,24]; dashColor = 'rgba(255,255,255,0.85)'; }
             else if (isSec)  { map.setPaintProperty(id,'line-color',P.sec);   fillWidth = ['interpolate',['linear'],['zoom'],12,4,14,8,16,14,18,20]; dashColor = P.dashLight; }
             else             { map.setPaintProperty(id,'line-color',P.minor); fillWidth = ['interpolate',['linear'],['zoom'],13,2.5,14,5,16,10,18,16]; dashColor = P.dashLight; }
+            // Grosor según el tema (neutro: más gruesas)
+            if (P.wScale) fillWidth = fillWidth.map((v, i) => (i >= 4 && i % 2 === 0 && typeof v === 'number') ? +(v * P.wScale).toFixed(1) : v);
             map.setPaintProperty(id,'line-width',fillWidth);
 
             // ── Contorno gris fino debajo de cada calle (tema neutro) ──
