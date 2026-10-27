@@ -113,6 +113,9 @@ export class SuperUserPanel {
         <button class="su-btn su-btn-gray" id="su-btn-optimize-photos">
           🗜️ Optimizar fotos existentes <b id="su-optimize-state"></b>
         </button>
+        <button class="su-btn su-btn-gray" id="su-btn-clean-photos">
+          🧹 Borrar fotos originales <b id="su-clean-state"></b>
+        </button>
         <button class="su-btn su-btn-gray" id="su-btn-debug">
           🐞 Consola de depuración: <b id="su-debug-state"></b>
         </button>
@@ -190,6 +193,52 @@ export class SuperUserPanel {
         this._showToast('❌ ' + e.message);
       } finally {
         _optimizing = false;
+      }
+    });
+
+    // Borrar las fotos originales que ya no usa nadie (después del paso 3).
+    // 1er toque: revisa y muestra cuántos archivos / MB. 2do toque (en
+    // menos de 8 s): borra. El servidor vuelve a revisar antes de borrar.
+    let _cleanPlan = null, _cleanT = null, _cleaning = false;
+    document.getElementById('su-btn-clean-photos')?.addEventListener('click', async () => {
+      if (_cleaning) return;
+      const st = document.getElementById('su-clean-state');
+      const { getSupabase } = await import('/src/services/SupabaseService.js');
+      const { data: { session } } = await getSupabase().auth.getSession();
+      if (!session) { this._showToast('Inicia sesión'); return; }
+      const hdr = { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' };
+      _cleaning = true;
+      try {
+        if (!_cleanPlan) {
+          this.mapView?.haptic('tap');
+          if (st) st.textContent = '· revisando…';
+          const r = await fetch('/api/photo-cleanup', { headers: hdr });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || r.status);
+          console.log('[DIAG-PHOTO] limpieza (vista previa)', j);
+          if (!j.count) { if (st) st.textContent = '· nada que borrar'; return; }
+          _cleanPlan = j;
+          if (st) st.textContent = `· toca otra vez para borrar ${j.count} archivos (${j.mb} MB)`;
+          clearTimeout(_cleanT);
+          _cleanT = setTimeout(() => { _cleanPlan = null; if (st) st.textContent = ''; }, 8000);
+          return;
+        }
+        clearTimeout(_cleanT);
+        this.mapView?.haptic('action');
+        if (st) st.textContent = '· borrando…';
+        const r = await fetch('/api/photo-cleanup', { method: 'POST', headers: hdr, body: JSON.stringify({ confirm: _cleanPlan.count }) });
+        const j = await r.json();
+        _cleanPlan = null;
+        if (!r.ok) throw new Error(j.error || r.status);
+        console.log('[DIAG-PHOTO] limpieza (borrado)', j);
+        if (st) st.textContent = `· ✅ ${j.deleted} borrados (${j.mb} MB)`;
+        this._showToast(`🧹 ${j.deleted} fotos originales borradas · ${j.mb} MB liberados`);
+      } catch (e) {
+        _cleanPlan = null;
+        if (st) st.textContent = '· ❌';
+        this._showToast('❌ ' + e.message);
+      } finally {
+        _cleaning = false;
       }
     });
 
