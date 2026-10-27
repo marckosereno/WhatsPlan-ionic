@@ -1,3 +1,4 @@
+import { photoSmall } from '/src/utils/photo-url.js';
 // ===================================================================
 // WHATSPLAN — src/components/SearchBar.js  (v4)
 // ====================================================================
@@ -481,7 +482,7 @@ export class SearchBar {
     places.slice(0, 20).forEach(function(place) {
       var idx   = allPlaces.indexOf(place);
       var raw   = place.photoUrl || place.photo_url || (place.photosUrls && place.photosUrls[0]) || null;
-      var photo = raw ? ('/api/photo-proxy?url=' + encodeURIComponent(raw)) : null;
+      var photo = raw ? photoSmall(raw) : null; // miniatura si existe; Supabase directo
       var rating = place.rating ? Number(place.rating).toFixed(1) : '';
       var rCount = place.userRatingCount ? '(' + place.userRatingCount + ')' : '';
       var address = (place.vicinity || place.formattedAddress || '').substring(0, 35);
