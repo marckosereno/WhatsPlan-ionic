@@ -216,33 +216,59 @@ export class MiniProfile {
     if (!root) return;
     this._root = null;
     if (instant) { root.remove(); return; }
+    // Si se estaba arrastrando, el transform en línea le ganaba a la
+    // regla .out del CSS: la hoja se quedaba parada a medio camino hasta
+    // que se borraba (el "congelón"). Ahora la salida sale desde donde
+    // está el dedo, en línea.
+    const sheet = root.querySelector('.wp-mp-sheet');
+    const dim = root.querySelector('.wp-mp-dim');
+    if (sheet) {
+      sheet.style.transition = 'transform .24s cubic-bezier(0.4,0,1,1)';
+      sheet.style.transform = 'translate3d(0,110%,0)';
+    }
+    if (dim) { dim.style.transition = 'opacity .24s ease'; dim.style.opacity = '0'; }
     root.classList.remove('in');
-    root.classList.add('out');
-    setTimeout(() => root.remove(), 320);
+    root.style.pointerEvents = 'none';
+    setTimeout(() => root.remove(), 280);
   }
 
-  // Arrastrar hacia abajo para cerrar
+  // Arrastrar hacia abajo para cerrar. Captura el dedo (aunque salga de
+  // la hoja sigue el gesto), mueve con requestAnimationFrame (un cambio
+  // por cuadro) y el fondo se aclara conforme baja.
   _wireDrag(sheet) {
-    let y0 = null, dy = 0, t0 = 0;
+    const dim = sheet.parentElement?.querySelector('.wp-mp-dim');
+    let y0 = null, dy = 0, lastY = 0, lastT = 0, vy = 0, raf = 0, id = null;
+    const paint = () => {
+      raf = 0;
+      sheet.style.transform = `translate3d(0,${dy}px,0)`;
+      if (dim) dim.style.opacity = String(Math.max(0, 1 - dy / 420));
+    };
     sheet.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button')) return;
-      y0 = e.clientY; dy = 0; t0 = Date.now();
+      y0 = e.clientY; dy = 0; lastY = e.clientY; lastT = performance.now(); vy = 0; id = e.pointerId;
+      try { sheet.setPointerCapture(id); } catch (_) {}
       sheet.style.transition = 'none';
+      if (dim) dim.style.transition = 'none';
     });
-    const move = (e) => {
-      if (y0 === null) return;
-      dy = Math.max(0, e.clientY - y0);
-      sheet.style.transform = `translateY(${dy}px)`;
-    };
-    const up = () => {
-      if (y0 === null) return;
+    sheet.addEventListener('pointermove', (e) => {
+      if (y0 === null || e.pointerId !== id) return;
+      const raw = e.clientY - y0;
+      dy = raw > 0 ? raw : raw / 6; // hacia arriba: resistencia elástica
+      const t = performance.now();
+      if (t > lastT) vy = (e.clientY - lastY) / (t - lastT); // px/ms
+      lastY = e.clientY; lastT = t;
+      if (!raf) raf = requestAnimationFrame(paint);
+    });
+    const up = (e) => {
+      if (y0 === null || (e && e.pointerId !== id)) return;
       y0 = null;
-      sheet.style.transition = '';
-      const fast = dy > 40 && (Date.now() - t0) < 250;
-      if (dy > 110 || fast) this.close();
-      else sheet.style.transform = '';
+      try { sheet.releasePointerCapture(id); } catch (_) {}
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (dy > 110 || (dy > 24 && vy > 0.55)) { this.close(); return; }
+      sheet.style.transition = 'transform .34s cubic-bezier(0.32,1.25,0.5,1)';
+      sheet.style.transform = 'translate3d(0,0,0)';
+      if (dim) { dim.style.transition = 'opacity .25s ease'; dim.style.opacity = ''; }
     };
-    sheet.addEventListener('pointermove', move);
     sheet.addEventListener('pointerup', up);
     sheet.addEventListener('pointercancel', up);
   }
@@ -288,7 +314,7 @@ export class MiniProfile {
       #wp-mp.in .wp-mp-dim { opacity:1; }
       #wp-mp .wp-mp-sheet {
         position:absolute; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom,0px));
-        border-radius:30px; background:#fff; overflow:hidden; touch-action:none;
+        border-radius:30px; background:#fff; overflow:hidden; touch-action:none; will-change:transform;
         transform:translateY(110%); transition:transform .38s cubic-bezier(0.32,1.25,0.5,1);
         box-shadow:0 0 0 .5px rgba(17,24,39,.07), 0 1px 2px rgba(17,24,39,.07), 0 8px 16px -4px rgba(17,24,39,.12), 0 26px 48px -12px rgba(17,24,39,.3);
       }
