@@ -179,13 +179,13 @@ export class SuperUserPanel {
             if (lp && r.updated) { lp.photosUrls = p.photosUrls; lp.photoUrl = p.photoUrl; }
           } catch (e) {
             tot.errors++;
-            console.warn('[DIAG-PHOTO] lugar', p.place_id, e.message);
+            console.warn('[FOTOS] lugar', p.place_id, e.message);
           }
         }
         // Que los demás usuarios reciban las direcciones nuevas
         const cats = [...new Set(places.map(p => p.category).filter(Boolean))];
         await Promise.all(cats.map(c => fetch('/api/supabase-places?category=' + encodeURIComponent(c) + '&_clear_cache=1').catch(() => {})));
-        console.log('[DIAG-PHOTO] resultado', tot);
+        console.log('[FOTOS] resultado', tot);
         if (st) st.textContent = `· ✅ ${tot.converted} convertidas`;
         this._showToast(`✅ ${tot.converted} fotos optimizadas · ${tot.skipped} ya estaban · ${tot.failed + tot.errors} con error`);
       } catch (e) {
@@ -215,7 +215,7 @@ export class SuperUserPanel {
           const r = await fetch('/api/photo-cleanup', { headers: hdr });
           const j = await r.json();
           if (!r.ok) throw new Error(j.error || r.status);
-          console.log('[DIAG-PHOTO] limpieza (vista previa)', j);
+          console.log('[FOTOS] limpieza (vista previa)', j);
           if (!j.count) { if (st) st.textContent = '· nada que borrar'; return; }
           _cleanPlan = j;
           if (st) st.textContent = `· toca otra vez para borrar ${j.count} archivos (${j.mb} MB)`;
@@ -230,7 +230,7 @@ export class SuperUserPanel {
         const j = await r.json();
         _cleanPlan = null;
         if (!r.ok) throw new Error(j.error || r.status);
-        console.log('[DIAG-PHOTO] limpieza (borrado)', j);
+        console.log('[FOTOS] limpieza (borrado)', j);
         if (st) st.textContent = `· ✅ ${j.deleted} borrados (${j.mb} MB)`;
         this._showToast(`🧹 ${j.deleted} fotos originales borradas · ${j.mb} MB liberados`);
       } catch (e) {
