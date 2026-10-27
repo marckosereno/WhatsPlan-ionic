@@ -674,10 +674,11 @@ export class PlaceModal2 {
          del recorte, así que el borde siempre cae sobre blanco. */
       #wp-pm2-hero-gradient {
         position:absolute; left:0; right:0; bottom:-6px;
-        height:60%; /* ocupa el 60% inferior del hero */
+        height:42%; /* 42% inferior del hero (antes 60%: tapaba mucha foto) */
         background:linear-gradient(to bottom,
           transparent 0%,
-          rgba(255,255,255,0.6) 50%,
+          rgba(255,255,255,0.35) 45%,
+          rgba(255,255,255,0.85) 80%,
           rgba(255,255,255,1) calc(100% - 8px),
           rgba(255,255,255,1) 100%);
         pointer-events:none;
