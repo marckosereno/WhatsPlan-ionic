@@ -82,7 +82,11 @@ export class MiniProfile {
       </div>`;
     document.body.appendChild(root);
     this._root = root;
-    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+    // Al tocar: el fondo oscuro aparece YA (respuesta inmediata) y la hoja
+    // espera hasta ~200 ms a que lleguen los datos, para subir ya llena.
+    // Antes subía vacía y se rellenaba A MEDIO camino: la hoja cambiaba
+    // de alto y se repintaba mientras se movía (el tirón).
+    requestAnimationFrame(() => root.classList.add('dim-in'));
 
     const sheet = root.querySelector('.wp-mp-sheet');
     root.querySelector('.wp-mp-dim').onclick = () => this.close();
@@ -94,31 +98,69 @@ export class MiniProfile {
       setTimeout(() => window.wpApp?.openProfile?.(uid), 120);
     };
 
-    // Color del avatar → degradado de fondo (como el color promedio de Momentos)
-    this._tintFrom(opts.avatar || getAvatarUrl(opts.name || 'user'), root);
-
-    let d = null;
-    try {
-      const { data, error } = await getSupabase().rpc('mini_profile', { p_user: uid, p_place_id: opts.placeId ? String(opts.placeId) : null });
-      if (error) throw error;
-      d = data;
-    } catch (e) {
-      console.warn('[DIAG-MINIPF] mini_profile:', e.message || e);
-    }
+    const req = getSupabase()
+      .rpc('mini_profile', { p_user: uid, p_place_id: opts.placeId ? String(opts.placeId) : null })
+      .then(({ data, error }) => { if (error) throw error; return data || null; })
+      .catch(e => { console.warn('[DIAG-MINIPF] mini_profile:', e.message || e); return null; });
+    const tint = this._tintColor(opts.avatar || getAvatarUrl(opts.name || 'user'));
+    const quick = await Promise.race([
+      Promise.all([req, tint]).then(([d, c]) => ({ d, c, ok: true })),
+      new Promise(r => setTimeout(() => r({ ok: false }), 200)),
+    ]);
     if (this._root !== root) return; // se cerró mientras cargaba
-    if (!d) {
-      root.querySelector('.wp-mp-in').innerHTML = `<div class="wp-mp-empty">No se pudo cargar este perfil</div>
-        <div class="wp-mp-btns"><button type="button" class="wp-mp-btn wp-mp-sec" data-act="close">Cerrar</button></div>`;
-      root.querySelector('[data-act="close"]').onclick = () => this.close();
+
+    const show = () => {
+      root.classList.add('in');
+      root._openEnd = performance.now() + 400; // duración de la subida
+    };
+    if (quick.ok) {
+      // Datos listos: rellenar ANTES de subir → sube de una pieza
+      if (quick.c) this._applyTint(root, quick.c);
+      if (quick.d) this._fill(root, quick.d, ctx, uid); else this._fail(root);
+      requestAnimationFrame(show);
       return;
     }
-    this._fill(root, d, ctx, uid);
+    // Red lenta: sube con el esqueleto y se rellena al terminar de subir
+    requestAnimationFrame(show);
+    const [d, c] = await Promise.all([req, tint]);
+    await this._afterOpen(root);
+    if (this._root !== root) return;
+    this._flip(sheet, () => {
+      if (c) this._applyTint(root, c);
+      if (d) this._fill(root, d, ctx, uid); else this._fail(root);
+    });
+  }
+
+  _fail(root) {
+    root.querySelector('.wp-mp-in').innerHTML = `<div class="wp-mp-empty">No se pudo cargar este perfil</div>
+      <div class="wp-mp-btns"><button type="button" class="wp-mp-btn wp-mp-sec" data-act="close">Cerrar</button></div>`;
+    root.querySelector('[data-act="close"]').onclick = () => this.close();
+  }
+
+  // Espera a que termine la animación de subida
+  _afterOpen(root) {
+    const left = (root._openEnd || 0) - performance.now();
+    return new Promise(r => left > 0 ? setTimeout(r, left) : r());
+  }
+
+  // Cambio de alto suave (FLIP): la hoja crece desde donde estaba en vez
+  // de saltar
+  _flip(sheet, change) {
+    const before = sheet.getBoundingClientRect().top;
+    change();
+    const after = sheet.getBoundingClientRect().top;
+    const d = before - after;
+    if (Math.abs(d) < 2) return;
+    sheet.style.transition = 'none';
+    sheet.style.transform = `translate3d(0,${d}px,0)`;
+    sheet.getBoundingClientRect(); // aplicar antes de animar
+    sheet.style.transition = 'transform .32s cubic-bezier(0.25,1,0.5,1)';
+    sheet.style.transform = 'translate3d(0,0,0)';
   }
 
   _fill(root, d, ctx, uid) {
     const av = d.avatar_url || getAvatarUrl(d.name || 'user');
     root.querySelector('.wp-mp-av').style.backgroundImage = `url('${av.replace(/'/g, '%27')}')`;
-    if (d.avatar_url) this._tintFrom(d.avatar_url, root);
     root.querySelector('.wp-mp-name').innerHTML =
       `<span>${esc(d.name || 'Usuario')}</span>${d.is_owner ? `<i class="wp-mp-chk" title="Dueño verificado">${ICON.check}</i>` : ''}`;
     const user = root.querySelector('.wp-mp-user');
@@ -211,7 +253,7 @@ export class MiniProfile {
     setTimeout(() => { pm._fromSearch = false; pm.show(place); }, 140);
   }
 
-  close(instant = false) {
+  close(instant = false, { velocity = 0 } = {}) {
     const root = this._root;
     if (!root) return;
     this._root = null;
@@ -222,14 +264,25 @@ export class MiniProfile {
     // está el dedo, en línea.
     const sheet = root.querySelector('.wp-mp-sheet');
     const dim = root.querySelector('.wp-mp-dim');
+    let dur = 260, ease = 'cubic-bezier(0.4,0,0.6,1)'; // cierre con X / tocar afuera
+    if (sheet && velocity > 0) {
+      // Viene de un arrastre: seguir a la MISMA velocidad del dedo.
+      // Antes usaba una curva que arrancaba lenta (ease-in) y eso era la
+      // pausa al soltar: la hoja frenaba en seco y luego aceleraba.
+      const cur = new DOMMatrixReadOnly(getComputedStyle(sheet).transform).m42 || 0;
+      const left = Math.max(40, sheet.offsetHeight * 1.1 - cur);
+      const v = Math.max(velocity, 1.2); // px/ms
+      dur = Math.round(Math.min(300, Math.max(140, left / v)));
+      ease = 'cubic-bezier(0.3,0.3,0.6,1)'; // arranca a la velocidad del dedo
+    }
     if (sheet) {
-      sheet.style.transition = 'transform .24s cubic-bezier(0.4,0,1,1)';
+      sheet.style.transition = `transform ${dur}ms ${ease}`;
       sheet.style.transform = 'translate3d(0,110%,0)';
     }
-    if (dim) { dim.style.transition = 'opacity .24s ease'; dim.style.opacity = '0'; }
+    if (dim) { dim.style.transition = `opacity ${dur}ms linear`; dim.style.opacity = '0'; }
     root.classList.remove('in');
     root.style.pointerEvents = 'none';
-    setTimeout(() => root.remove(), 280);
+    setTimeout(() => root.remove(), dur + 40);
   }
 
   // Arrastrar hacia abajo para cerrar. Captura el dedo (aunque salga de
@@ -255,7 +308,7 @@ export class MiniProfile {
       const raw = e.clientY - y0;
       dy = raw > 0 ? raw : raw / 6; // hacia arriba: resistencia elástica
       const t = performance.now();
-      if (t > lastT) vy = (e.clientY - lastY) / (t - lastT); // px/ms
+      if (t > lastT) vy = vy * 0.4 + 0.6 * ((e.clientY - lastY) / (t - lastT)); // px/ms, suavizada
       lastY = e.clientY; lastT = t;
       if (!raf) raf = requestAnimationFrame(paint);
     });
@@ -264,7 +317,7 @@ export class MiniProfile {
       y0 = null;
       try { sheet.releasePointerCapture(id); } catch (_) {}
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      if (dy > 110 || (dy > 24 && vy > 0.55)) { this.close(); return; }
+      if (dy > 110 || (dy > 24 && vy > 0.55)) { this.close(false, { velocity: Math.max(vy, 0.01) }); return; }
       sheet.style.transition = 'transform .34s cubic-bezier(0.32,1.25,0.5,1)';
       sheet.style.transform = 'translate3d(0,0,0)';
       if (dim) { dim.style.transition = 'opacity .25s ease'; dim.style.opacity = ''; }
@@ -273,26 +326,33 @@ export class MiniProfile {
     sheet.addEventListener('pointercancel', up);
   }
 
-  // Color promedio del avatar (si la imagen lo permite) → fondo suave
-  _tintFrom(url, root) {
-    try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const c = document.createElement('canvas'); c.width = c.height = 12;
-          const g = c.getContext('2d'); g.drawImage(img, 0, 0, 12, 12);
-          const px = g.getImageData(0, 0, 12, 12).data;
-          let r = 0, gg = 0, b = 0, n = 0;
-          for (let i = 0; i < px.length; i += 4) { if (px[i + 3] < 128) continue; r += px[i]; gg += px[i + 1]; b += px[i + 2]; n++; }
-          if (!n || this._root !== root) return;
-          r = Math.round(r / n); gg = Math.round(gg / n); b = Math.round(b / n);
-          root.querySelector('.wp-mp-tint').style.background =
-            `linear-gradient(180deg, rgba(${r},${gg},${b},0.42) 0%, rgba(${r},${gg},${b},0.14) 58%, rgba(255,255,255,0) 100%)`;
-        } catch (_) {}
-      };
-      img.src = url;
-    } catch (_) {}
+  // Color promedio del avatar (si la imagen lo permite). Devuelve
+  // [r,g,b] o null; nunca tarda más de 600 ms.
+  _tintColor(url) {
+    return new Promise((resolve) => {
+      const done = (v) => { clearTimeout(t); resolve(v); };
+      const t = setTimeout(() => resolve(null), 600);
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const c = document.createElement('canvas'); c.width = c.height = 12;
+            const g = c.getContext('2d'); g.drawImage(img, 0, 0, 12, 12);
+            const px = g.getImageData(0, 0, 12, 12).data;
+            let r = 0, gg = 0, b = 0, n = 0;
+            for (let i = 0; i < px.length; i += 4) { if (px[i + 3] < 128) continue; r += px[i]; gg += px[i + 1]; b += px[i + 2]; n++; }
+            done(n ? [Math.round(r / n), Math.round(gg / n), Math.round(b / n)] : null);
+          } catch (_) { done(null); }
+        };
+        img.onerror = () => done(null);
+        img.src = url;
+      } catch (_) { done(null); }
+    });
+  }
+  _applyTint(root, [r, g, b]) {
+    const el = root.querySelector('.wp-mp-tint');
+    if (el) el.style.background = `linear-gradient(180deg, rgba(${r},${g},${b},0.42) 0%, rgba(${r},${g},${b},0.14) 58%, rgba(255,255,255,0) 100%)`;
   }
 
   _toast(msg) {
@@ -311,10 +371,10 @@ export class MiniProfile {
     st.textContent = `
       #wp-mp { position:fixed; inset:0; z-index:1500400; font-family:var(--wp-font, system-ui); }
       #wp-mp .wp-mp-dim { position:absolute; inset:0; background:rgba(17,24,39,0.32); opacity:0; transition:opacity .28s ease; }
-      #wp-mp.in .wp-mp-dim { opacity:1; }
+      #wp-mp.dim-in .wp-mp-dim { opacity:1; }
       #wp-mp .wp-mp-sheet {
         position:absolute; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom,0px));
-        border-radius:30px; background:#fff; overflow:hidden; touch-action:none; will-change:transform;
+        border-radius:30px; background:#fff; overflow:hidden; touch-action:none; will-change:transform; contain:layout paint;
         transform:translateY(110%); transition:transform .38s cubic-bezier(0.32,1.25,0.5,1);
         box-shadow:0 0 0 .5px rgba(17,24,39,.07), 0 1px 2px rgba(17,24,39,.07), 0 8px 16px -4px rgba(17,24,39,.12), 0 26px 48px -12px rgba(17,24,39,.3);
       }
@@ -322,7 +382,7 @@ export class MiniProfile {
       #wp-mp.out .wp-mp-sheet { transform:translateY(110%); transition:transform .26s ease-in; }
       #wp-mp.out .wp-mp-dim { opacity:0; }
       .wp-mp-tint { position:absolute; left:0; right:0; top:0; height:180px; pointer-events:none;
-        background:linear-gradient(180deg, rgba(167,139,250,.42), rgba(236,72,153,.14) 58%, rgba(255,255,255,0)); transition:background .4s; }
+        background:linear-gradient(180deg, rgba(167,139,250,.42), rgba(236,72,153,.14) 58%, rgba(255,255,255,0)); }
       .wp-mp-grab { position:relative; width:38px; height:5px; border-radius:3px; background:rgba(17,24,39,.18); margin:8px auto 0; }
       .wp-mp-x { position:absolute; top:12px; right:12px; z-index:2; width:36px; height:36px; border:none; border-radius:50%;
         background:rgba(255,255,255,.88); color:#111; display:flex; align-items:center; justify-content:center;
@@ -367,9 +427,9 @@ export class MiniProfile {
         box-shadow:0 6px 16px rgba(26,92,245,.35), inset 0 1px 0 rgba(255,255,255,.3); }
       .wp-mp-pri.on { background:#f1f2f5; color:#6b7280; box-shadow:none; }
       .wp-mp-pri:disabled { opacity:.6; }
-      .wp-mp-sk { display:inline-block; border-radius:8px; background:linear-gradient(90deg,#eef0f3 0%,#f6f7f9 50%,#eef0f3 100%);
-        background-size:200% 100%; animation:wpMpSk 1.1s linear infinite; color:transparent; }
-      @keyframes wpMpSk { to { background-position:-200% 0; } }
+      /* Esqueleto: solo cambia la opacidad (se anima sin repintar) */
+      .wp-mp-sk { display:inline-block; border-radius:8px; background:#eef0f3; color:transparent; animation:wpMpSk 1s ease-in-out infinite alternate; }
+      @keyframes wpMpSk { from { opacity:1; } to { opacity:.55; } }
       .wp-mp-empty { padding:40px 0 8px; font-size:14px; color:#8a8f99; }
       #wp-mp-toast { position:fixed; left:50%; bottom:calc(120px + env(safe-area-inset-bottom,0px)); z-index:1500500;
         transform:translateX(-50%) translateY(8px); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
