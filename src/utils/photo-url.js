@@ -102,7 +102,6 @@ export async function uploadPlacePhoto(supabase, file) {
   if (a.error) throw a.error;
   const b = await bucket.upload(pFull, full, opts);
   if (b.error) { await bucket.remove([pThumb]); throw b.error; }
-  console.log(`[DIAG-PHOTO] subida ${Math.round(full.size / 1024)} KB + miniatura ${Math.round(thumb.size / 1024)} KB (${ext})`);
   return bucket.getPublicUrl(pFull).data.publicUrl;
 }
 
@@ -137,7 +136,7 @@ export async function convertPlacePhotos(supabase, place) {
       r.converted++;
     } catch (e) {
       r.failed++;
-      console.warn('[DIAG-PHOTO] no se pudo convertir', pid, u.slice(-60), e.message);
+      console.warn('[FOTOS] no se pudo convertir', pid, u.slice(-60), e.message);
     }
   }
   if (!map.size) return r;
