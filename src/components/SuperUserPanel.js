@@ -110,6 +110,9 @@ export class SuperUserPanel {
         <button class="su-btn su-btn-gray" id="su-btn-map-theme">
           🗺️ Estilo del mapa: <b id="su-map-theme-name"></b>
         </button>
+        <button class="su-btn su-btn-gray" id="su-btn-optimize-photos">
+          🗜️ Optimizar fotos existentes <b id="su-optimize-state"></b>
+        </button>
         <button class="su-btn su-btn-gray" id="su-btn-debug">
           🐞 Consola de depuración: <b id="su-debug-state"></b>
         </button>
@@ -139,6 +142,55 @@ export class SuperUserPanel {
       const t = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
       this.mapView?.setMapTheme?.(t);
       _paintThemeBtn();
+    });
+
+    // Paso 3: convierte las fotos ya subidas a WebP 1280 + miniatura 400
+    // (caché 1 año). No borra las originales. Se puede volver a correr:
+    // las que ya están convertidas se saltan.
+    let _optimizing = false;
+    document.getElementById('su-btn-optimize-photos')?.addEventListener('click', async () => {
+      if (_optimizing) return;
+      const st = document.getElementById('su-optimize-state');
+      _optimizing = true;
+      this.mapView?.haptic('tap');
+      const tot = { places: 0, converted: 0, skipped: 0, failed: 0, errors: 0 };
+      try {
+        const { getSupabase } = await import('/src/services/SupabaseService.js');
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Supabase no inicializado');
+        const { convertPlacePhotos } = await import('/src/utils/photo-url.js');
+        if (st) st.textContent = '· cargando lugares…';
+        const res = await fetch('/api/supabase-places?include_hidden=true&_clear_cache=1');
+        const data = await res.json();
+        const places = (data.places || []).filter(p => p.photoUrl || (p.photosUrls && p.photosUrls.length));
+        // Mismos objetos que tiene el mapa, si ya están cargados (así se
+        // ven las fotos nuevas sin recargar)
+        const live = new Map((this.mapView?.allPlaces || []).map(p => [p.place_id || p.placeId, p]));
+        for (let i = 0; i < places.length; i++) {
+          const p = places[i];
+          if (st) st.textContent = `· ${i + 1}/${places.length}`;
+          try {
+            const r = await convertPlacePhotos(supabase, p);
+            tot.places++; tot.converted += r.converted; tot.skipped += r.skipped; tot.failed += r.failed;
+            const lp = live.get(p.place_id);
+            if (lp && r.updated) { lp.photosUrls = p.photosUrls; lp.photoUrl = p.photoUrl; }
+          } catch (e) {
+            tot.errors++;
+            console.warn('[DIAG-PHOTO] lugar', p.place_id, e.message);
+          }
+        }
+        // Que los demás usuarios reciban las direcciones nuevas
+        const cats = [...new Set(places.map(p => p.category).filter(Boolean))];
+        await Promise.all(cats.map(c => fetch('/api/supabase-places?category=' + encodeURIComponent(c) + '&_clear_cache=1').catch(() => {})));
+        console.log('[DIAG-PHOTO] resultado', tot);
+        if (st) st.textContent = `· ✅ ${tot.converted} convertidas`;
+        this._showToast(`✅ ${tot.converted} fotos optimizadas · ${tot.skipped} ya estaban · ${tot.failed + tot.errors} con error`);
+      } catch (e) {
+        if (st) st.textContent = '· ❌';
+        this._showToast('❌ ' + e.message);
+      } finally {
+        _optimizing = false;
+      }
     });
 
     // Consola (eruda) solo en ESTE teléfono; se aplica al recargar
@@ -2022,6 +2074,22 @@ export class SuperUserPanel {
   }
 
   // ── Toggle panel ───────────────────────────────────────────
+  // Aviso corto abajo de la pantalla (lo usan Reposicionar y Optimizar
+  // fotos; antes se llamaba pero no existía)
+  _showToast(msg) {
+    let t = document.getElementById('su-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'su-toast';
+      t.style.cssText = 'position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);z-index:2000000;max-width:86vw;padding:10px 16px;border-radius:999px;background:rgba(17,24,39,0.94);color:#fff;font:600 13px var(--wp-font, system-ui);box-shadow:0 8px 24px rgba(0,0,0,0.25);opacity:0;transition:opacity .2s, transform .2s;pointer-events:none;text-align:center';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(8px)'; }, 3200);
+  }
+
   _togglePanel(forceState) {
     const panel = document.getElementById('su-panel');
     this.isVisible = forceState !== undefined ? forceState : !this.isVisible;
