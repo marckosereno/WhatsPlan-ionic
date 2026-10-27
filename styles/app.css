@@ -120,18 +120,20 @@ ion-app::after {
   bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
-  background: white;
+  /* Efecto inflado (como almohada): blanco arriba que baja a un gris
+     cálido muy leve, brillo grueso por dentro arriba, sombra interior
+     suave abajo (la "panza") y afuera sombra de contacto + ambiental */
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 35%, #f6f5f2 100%);
   border-radius: 32px;
-  /* Profundidad en capas: filo de 0.5px (define el borde sobre el mapa
-     claro), sombra de contacto corta, sombra ambiental larga y suave, y
-     un brillo interior arriba que lo hace ver "levantado" */
   box-shadow:
     0 0 0 0.5px rgba(17,24,39,0.07),
-    0 1px 2px rgba(17,24,39,0.06),
-    0 6px 14px -4px rgba(17,24,39,0.10),
-    0 22px 44px -12px rgba(17,24,39,0.22),
-    inset 0 1px 0 rgba(255,255,255,1),
-    inset 0 -1px 0 rgba(17,24,39,0.04);
+    0 1px 2px rgba(17,24,39,0.07),
+    0 8px 16px -4px rgba(17,24,39,0.12),
+    0 26px 48px -12px rgba(17,24,39,0.26),
+    inset 0 2px 1px rgba(255,255,255,1),
+    inset 0 14px 22px -10px rgba(255,255,255,0.95),
+    inset 0 -10px 18px -6px rgba(120,112,98,0.13),
+    inset 0 -1.5px 0 rgba(17,24,39,0.05);
   display: flex;
   flex-direction: column;
   z-index: 40;
@@ -152,6 +154,8 @@ ion-app::after {
   content: '';
   position: absolute; top: 0; left: 0; bottom: 0; width: 20px;
   background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   pointer-events: none; z-index: 2;
 }
 /* Fade derecho */
@@ -159,6 +163,8 @@ ion-app::after {
   content: '';
   position: absolute; top: 0; right: 0; bottom: 0; width: 20px;
   background: linear-gradient(to left, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   pointer-events: none; z-index: 2;
 }
 
