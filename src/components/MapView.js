@@ -1099,12 +1099,11 @@ export class MapView {
       // arena tostada.
       // 'greige' (el de ahora): mezcla de beige y gris, plano y limpio.
       // Suelo gris cálido, manzanas apenas más oscuras, todas las calles
-      // blancas y las avenidas blancas más anchas (se distinguen por el
-      // grosor, no por el color), parques verde muy suave.
+      // blancas, avenidas ámbar suave y más anchas, parques verde muy suave.
       PAL.greige = {
         bg: '#eeede9', water: '#b7d4e2', waterLine: '#a5c9da', park: '#d6e4cd', parkOp: 1,
         land: '#e8e6e1', landOp: 0.85, bld: '#e0ded8', bldOp: 1, bldLine: '#d8d5ce', bldLineOp: 0.6,
-        moto: '#ffffff', prim: '#ffffff', sec: '#fbfbf9', minor: '#fbfbf9',
+        moto: '#f2c77e', prim: '#f7dba4', sec: '#fbfbf9', minor: '#fbfbf9', // avenida: ámbar suave
         casing: null, dashLight: 'rgba(200,197,190,0.7)', wScale: 1.4, primScale: 1.25,
         roadText: '#99968e', waterText: '#5a8ea6', hood: '#aaa69c',
       };
