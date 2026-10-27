@@ -110,6 +110,9 @@ export class SuperUserPanel {
         <button class="su-btn su-btn-gray" id="su-btn-map-theme">
           🗺️ Estilo del mapa: <b id="su-map-theme-name"></b>
         </button>
+        <button class="su-btn su-btn-gray" id="su-btn-debug">
+          🐞 Consola de depuración: <b id="su-debug-state"></b>
+        </button>
         <div class="su-divider"></div>
         <div class="su-hint">Toca el botón, luego toca el mapa para colocar el elemento.</div>
       </div>
@@ -136,6 +139,16 @@ export class SuperUserPanel {
       const t = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
       this.mapView?.setMapTheme?.(t);
       _paintThemeBtn();
+    });
+
+    // Consola (eruda) solo en ESTE teléfono; se aplica al recargar
+    const _dbgOn = () => { try { return localStorage.getItem('wpDebug') === '1'; } catch (_) { return false; } };
+    const _paintDbg = () => { const el = document.getElementById('su-debug-state'); if (el) el.textContent = _dbgOn() ? 'Activa' : 'Apagada'; };
+    _paintDbg();
+    document.getElementById('su-btn-debug')?.addEventListener('click', () => {
+      try { localStorage.setItem('wpDebug', _dbgOn() ? '0' : '1'); } catch (_) {}
+      _paintDbg();
+      location.reload();
     });
 
     document.getElementById('su-btn-reposition').addEventListener('click', () => {
@@ -1321,7 +1334,7 @@ export class SuperUserPanel {
             const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.png';
             const { error } = await supabase.storage
               .from('place-photos')
-              .upload(path, compressed, { contentType: 'image/png', upsert: false });
+              .upload(path, compressed, { contentType: 'image/png', cacheControl: '31536000', upsert: false });
             if (error) throw error;
 
             const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
@@ -3497,7 +3510,7 @@ export class SuperUserPanel {
         const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.png';
         const { error } = await supabase.storage
           .from('place-photos')
-          .upload(path, compressed, { contentType: 'image/png', upsert: false });
+          .upload(path, compressed, { contentType: 'image/png', cacheControl: '31536000', upsert: false });
         if (error) throw error;
 
         const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
@@ -3555,42 +3568,14 @@ export class SuperUserPanel {
       const origText = label.childNodes[0]?.textContent || '';
       label.childNodes[0].textContent = '⏳ Comprimiendo...';
 
-      // ── Comprimir antes de subir ──
-      const compressImage = (f) => new Promise((resolve) => {
-        const img = new Image();
-        const url = URL.createObjectURL(f);
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          const MAX = 1280; // máx 1280px en el lado más largo
-          let w = img.width, h = img.height;
-          if (w > MAX || h > MAX) {
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else       { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          canvas.toBlob(resolve, 'image/jpeg', 0.82);
-        };
-        img.src = url;
-      });
-
       try {
-        const compressed = await compressImage(file);
-        label.childNodes[0].textContent = '⏳ Subiendo...';
         const { getSupabase } = await import('/src/services/SupabaseService.js');
         const supabase = getSupabase();
         if (!supabase) throw new Error('Supabase no inicializado');
-
-        const path = 'places/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
-
-        const { error } = await supabase.storage
-          .from('place-photos')
-          .upload(path, compressed, { contentType: 'image/jpeg', upsert: false });
-        if (error) throw error;
-
-        const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
-        photos.push(urlData.publicUrl);
+        // Grande 1280 px + miniatura 400 px, WebP, caché de 1 año
+        const { uploadPlacePhoto } = await import('/src/utils/photo-url.js');
+        const url = await uploadPlacePhoto(supabase, file);
+        photos.push(url);
         document.getElementById('su-gal-add-panel').style.display = 'none';
         _refreshGallery();
       } catch(err) {
