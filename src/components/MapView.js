@@ -1,4 +1,5 @@
 import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
+import { photoThumb, photoFull } from '/src/utils/photo-url.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
@@ -91,6 +92,7 @@ function supabaseResize(url, width = 80, quality = 75, mode = 'contain') {
 
 function proxyPhoto(url) {
   if (!url) return null;
+  const t = photoThumb(url); if (t) return t; // miniatura propia (400 px, en caché 1 año)
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   if (url.includes('supabase.co')) return supabaseResize(url, 80, 75, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
@@ -99,6 +101,7 @@ function proxyPhoto(url) {
 // ── Proxy de mayor resolución para el minicard (44px CSS → necesita más detalle) ──
 function proxyPhotoCard(url) {
   if (!url) return null;
+  const t = photoThumb(url); if (t) return t; // miniatura propia (400 px, en caché 1 año)
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   if (url.includes('supabase.co')) return supabaseResize(url, 120, 85, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
@@ -122,6 +125,7 @@ function proxyPhotoCard(url) {
 // encuadre queda igual que antes, solo con más resolución.
 function proxyPhotoCluster(url) {
   if (!url) return null;
+  const t = photoThumb(url); if (t) return t; // miniatura propia (400 px, en caché 1 año)
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   // supabaseResize(url, width, quality, mode) — el 2do parámetro es el
   // ANCHO en px, el 3ro es la CALIDAD (0-100), no una altura. Esta URL es
@@ -146,6 +150,7 @@ function proxyPhotoCluster(url) {
 // pide la propia, más grande, solo cuando realmente se abre.
 function proxyPhotoSlide(url) {
   if (!url) return null;
+  if (photoThumb(url)) return photoFull(url); // foto nueva: la grande ya viene en 1280 WebP
   if (url.startsWith('/api/photo-proxy') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   if (url.includes('supabase.co')) return supabaseResize(url, 640, 92, 'contain');
   return `/api/photo-proxy?url=${encodeURIComponent(url)}`;
@@ -4029,7 +4034,7 @@ export class MapView {
                 const supabase = getSupabase();
                 if (!supabase) throw new Error('Supabase no inicializado');
                 const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
-                const { error } = await supabase.storage.from('place-photos').upload(path, compressed, { contentType: 'image/jpeg', upsert: false });
+                const { error } = await supabase.storage.from('place-photos').upload(path, compressed, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
                 if (error) throw error;
                 const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
                 sd.imageUrl = urlData.publicUrl;
@@ -4109,7 +4114,7 @@ export class MapView {
                 const supabase = getSupabase();
                 if (!supabase) throw new Error('Supabase no inicializado');
                 const path = 'pins/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.png';
-                const { error } = await supabase.storage.from('place-photos').upload(path, compressed, { contentType: 'image/png', upsert: false });
+                const { error } = await supabase.storage.from('place-photos').upload(path, compressed, { contentType: 'image/png', cacheControl: '31536000', upsert: false });
                 if (error) throw error;
                 const { data: urlData } = supabase.storage.from('place-photos').getPublicUrl(path);
                 sd.imageUrl = urlData.publicUrl;
