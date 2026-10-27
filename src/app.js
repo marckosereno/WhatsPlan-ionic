@@ -4,6 +4,7 @@
 
 import { MapView }          from '/src/components/MapView.js';
 import { photoFull, photoSmall } from '/src/utils/photo-url.js';
+import { MiniProfile }      from '/src/components/MiniProfile.js';
 import { AuthModal }        from '/src/components/AuthModal.js';
 import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
 import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
@@ -561,6 +562,7 @@ try {
       },
     });
     window.wpApp.momentsUI = momentsUI;
+    window.wpApp.miniProfile = new MiniProfile({ getCurrentUser: () => window.wpApp.currentUser });
     // Cuando el mapa termina de cargar: stickers de momentos + limpieza
     {
       let tries = 0;
