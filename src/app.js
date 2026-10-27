@@ -3,6 +3,7 @@
 // ====================================================================
 
 import { MapView }          from '/src/components/MapView.js';
+import { photoFull, photoSmall } from '/src/utils/photo-url.js';
 import { AuthModal }        from '/src/components/AuthModal.js';
 import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
 import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
@@ -177,7 +178,7 @@ function _getProfileSheet() {
   const ps = new ProfileSheet({
     getCurrentUser: () => window.wpApp.currentUser,
     getPlaceModal:  () => window.wpApp.placeModal,
-    proxyPhoto: (url) => url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null,
+    proxyPhoto: (url) => photoSmall(url), // portadas chicas del perfil: miniatura si existe
     onOpenPlace: (place) => {
       const pm = window.wpApp.placeModal;
       if (!pm) return;
@@ -598,7 +599,7 @@ try {
       // PlaceModal — bottom sheet de detalles
       const placeModal = new PlaceModal({
         proxyPhoto: function(url) {
-          return url ? '/api/photo-proxy?url=' + encodeURIComponent(url) : null;
+          return photoFull(url); // Supabase directo (sin pasar por /api/photo-proxy)
         },
         getCurrentUser: function() { return window.wpApp.currentUser; }
       });
