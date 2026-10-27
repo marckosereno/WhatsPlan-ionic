@@ -3146,8 +3146,29 @@ export class PlaceModal2 {
       this._haptic('light');
       this._scaleKeys(row, [1, 0.97, 1.01, 1], 260);
       const uid = row.getAttribute('data-uid');
-      setTimeout(() => { close(); window.wpApp?.openProfile?.(uid); }, 140); // abre su perfil
+      const sv = list.find(x => x.user_id === uid) || {};
+      // Mini perfil encima de esta hoja (con lugares en común y sus
+      // últimos guardados); "Ver perfil" ahí abre el perfil completo
+      setTimeout(() => this._openMiniProfile(uid, 'saved', sv.name, sv.avatar_url), 120);
     });
+    // Si sigo / dejo de seguir desde el mini perfil → actualizar la pill
+    const onFol = (ev) => {
+      if (!body.isConnected) { document.removeEventListener('wp:follow-changed', onFol); return; } // la hoja ya se cerró
+      const { uid, on } = ev.detail || {};
+      if (!uid) return;
+      on ? following.add(uid) : following.delete(uid);
+      render(body.querySelector('input')?.value || '');
+    };
+    document.addEventListener('wp:follow-changed', onFol);
+  }
+
+  // Mini perfil (MiniProfile.js). context: 'review' | 'saved'
+  _openMiniProfile(uid, context, name = '', avatar = '') {
+    if (!uid) return;
+    const mp = window.wpApp?.miniProfile;
+    if (!mp) { window.wpApp?.openProfile?.(uid); return; }
+    const pid = this._place?.place_id || this._place?.placeId || this._place?.id || null;
+    mp.open(uid, { context, placeId: pid, name, avatar });
   }
 
   _hideMiniSnap() {
@@ -4616,6 +4637,13 @@ export class PlaceModal2 {
     avImg.onerror = () => { this._skelOff(avImg); avImg.style.background = '#e2e8f0'; };
     avImg.src = photoSeed;
     if (ctx && ctx.ownerId) { avImg.dataset.avUid = ctx.ownerId; avImg.dataset.avName = name || ''; }
+    // Tocar avatar o nombre → mini perfil (con su calificación de este lugar)
+    if (ctx && ctx.ownerId) {
+      const openMini = (e) => { e.stopPropagation(); this._openMiniProfile(ctx.ownerId, 'review', name, avImg.src); };
+      avImg.style.cursor = 'pointer';
+      avImg.addEventListener('click', openMini);
+      row.querySelector('.wp-pm2-review-name')?.addEventListener('click', openMini);
+    }
 
     const textEl = row.querySelector('.wp-pm2-review-text');
     const moreBtn = row.querySelector('.wp-pm2-review-more');
@@ -5137,6 +5165,12 @@ export class PlaceModal2 {
     const rImg = item.querySelector('img');
     rImg.src = this._authorAvatar(r.user_id, r.avatar_url, name);
     if (r.user_id) { rImg.dataset.avUid = r.user_id; rImg.dataset.avStored = r.avatar_url || ''; rImg.dataset.avName = name || ''; }
+    if (r.user_id) {
+      const openMini = (e) => { e.stopPropagation(); this._openMiniProfile(r.user_id, 'review', name, rImg.src); };
+      rImg.style.cursor = 'pointer';
+      rImg.addEventListener('click', openMini);
+      item.querySelector('.wp-pm2-rv-reply-name')?.addEventListener('click', openMini);
+    }
     this._renderEmojiChips(item.querySelector('.wp-pm2-rv-chips'), rKey, parentKey, pop);
 
     item.querySelector('.wp-pm2-rv-reply-act').onclick = (e) => {
