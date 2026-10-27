@@ -105,3 +105,55 @@ export async function uploadPlacePhoto(supabase, file) {
   console.log(`[DIAG-PHOTO] subida ${Math.round(full.size / 1024)} KB + miniatura ${Math.round(thumb.size / 1024)} KB (${ext})`);
   return bucket.getPublicUrl(pFull).data.publicUrl;
 }
+
+// ── Paso 3: convertir las fotos YA subidas ──────────────────────────
+// Por cada lugar: descarga cada foto vieja de Supabase, crea la pareja
+// v2 (WebP 1280 + miniatura 400, caché 1 año) y actualiza el lugar para
+// que apunte a las nuevas. Las ORIGINALES NO se borran aquí: si algo
+// sale mal, el lugar sigue con su foto de siempre.
+// Devuelve { converted, skipped, failed, updated }
+export async function convertPlacePhotos(supabase, place) {
+  const r = { converted: 0, skipped: 0, failed: 0, updated: false };
+  const pid = place.place_id || place.placeId;
+  if (!pid) return r;
+  const list = (Array.isArray(place.photosUrls) && place.photosUrls.length)
+    ? place.photosUrls.slice()
+    : (place.photoUrl ? [place.photoUrl] : []);
+  const cover = place.photoUrl || list[0] || null;
+  if (!list.length && !cover) return r;
+
+  const map = new Map(); // vieja → nueva
+  const todo = [...new Set([cover, ...list].filter(Boolean))];
+  for (const u of todo) {
+    // Ya convertida, o no está en Supabase (no se toca)
+    if (!isSupabasePhoto(u) || u.includes('/place-photos/places/v2_') || u.includes('/render/image/')) { r.skipped++; continue; }
+    try {
+      const res = await fetch(u, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('no es imagen');
+      const nu = await uploadPlacePhoto(supabase, new File([blob], 'p', { type: blob.type }));
+      map.set(u, nu);
+      r.converted++;
+    } catch (e) {
+      r.failed++;
+      console.warn('[DIAG-PHOTO] no se pudo convertir', pid, u.slice(-60), e.message);
+    }
+  }
+  if (!map.size) return r;
+
+  const body = { place_id: pid };
+  if (list.length) body.photos_urls = list.map(u => map.get(u) || u);
+  if (cover) body.photo_url = map.get(cover) || cover;
+  const res = await fetch('/api/supabase-place-update', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('No se pudo guardar el lugar: ' + (await res.text()).slice(0, 120));
+  // Reflejarlo en memoria para no tener que recargar
+  if (body.photos_urls) place.photosUrls = body.photos_urls;
+  if (body.photo_url) place.photoUrl = body.photo_url;
+  r.updated = true;
+  return r;
+}
