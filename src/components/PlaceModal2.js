@@ -8,6 +8,7 @@ import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
+import { photoSmall }                  from '/src/utils/photo-url.js';
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -2476,7 +2477,7 @@ export class PlaceModal2 {
       const order = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i); // el primero al centro y al frente
       w.innerHTML = order.map(i => {
         const p = top3[i].p;
-        const ph = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
+        const ph = photoSmall((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '') || '';
         return `<div class="wp-mp-card" data-i="${i}">${ph ? `<img src="${this._esc(ph)}" alt="">` : '⭐'}</div>`;
       }).join('') + `<div class="wp-mp-lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>Ver lugares similares</div>`;
       card.appendChild(w);
@@ -2731,7 +2732,7 @@ export class PlaceModal2 {
       if (!shown.length) { innerEl.innerHTML = `<div class="wp-sim-empty">${openOnly ? 'Ninguno abierto ahora' : 'Sin resultados'}</div>`; return; }
       innerEl.innerHTML = shown.map((it, i) => {
         const { p, d } = it;
-        const photo = (p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '';
+        const photo = photoSmall((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '') || '';
         const r = parseFloat(p.rating) || 0;
         const addr = String(p.vicinity || p.formattedAddress || p.address || '').trim();
         const open = this._isOpenNow(p);
