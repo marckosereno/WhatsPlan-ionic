@@ -1615,6 +1615,12 @@ export class MapView {
     this._closeMiniCard();
   }
 
+  // Datos de la categoría de un lugar (para mapas con varias categorías)
+  _catOf(place) {
+    const k = place?.category;
+    return (k && ((this.CATEGORIES && this.CATEGORIES[k]) || CATEGORIES[k])) || this.currentCatData || null;
+  }
+
   _renderPlaceMarkers(places) {
     const cat        = this.currentCatData;
     const catIcon3d  = cat?.icon3d || null;
@@ -1633,8 +1639,11 @@ export class MapView {
 
       // Icono de fallback (subcategoría > categoría > emoji) — se calcula SIEMPRE,
       // así sirve de respaldo si la foto existe pero falla al cargar (ej: Google sin API key)
-      const subIcon3d = getSubcatIcon3d(place, this.currentCatId);
-      const catIcon    = buildIconHtml(subIcon3d || catIcon3d, catEmoji, 20);
+      // En el mapa de una colección (_mixedCats) los lugares son de VARIAS
+      // categorías: cada uno usa la suya, no la que estaba abierta antes.
+      const pCat      = this._mixedCats ? this._catOf(place) : cat;
+      const subIcon3d = getSubcatIcon3d(place, this._mixedCats ? place.category : this.currentCatId);
+      const catIcon    = buildIconHtml(subIcon3d || pCat?.icon3d || null, pCat?.icon || '💎', 20);
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
@@ -4720,7 +4729,7 @@ export class MapView {
     const address   = (place.formattedAddress || place.formatted_address || place.vicinity || '').substring(0, 32);
     const hasAct    = this._activityCount(place) > 0;
     const cardGrad  = hasAct ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : 'linear-gradient(135deg,#c4b5fd,#7dd3fc)';
-    const cat       = this.currentCatData;
+    const cat       = this._mixedCats ? this._catOf(place) : this.currentCatData;
 
     // Guardar HTML del pin — solo si no hay uno ya guardado
     // (evita sobreescribir con minicard si la animación de salida está en curso)
@@ -4744,7 +4753,7 @@ export class MapView {
     wrapper.style.marginTop = '-45px';
 
     // Icono de fallback — se calcula SIEMPRE (sirve si no hay foto o si la foto falla)
-    const mcSubIcon3d = getSubcatIcon3d(place, this.currentCatId);
+    const mcSubIcon3d = getSubcatIcon3d(place, this._mixedCats ? place.category : this.currentCatId);
     const mcIcon3d    = mcSubIcon3d || cat?.icon3d || '';
     const mcEmoji     = cat?.icon || '💎';
     const mcIconInner = mcIcon3d
