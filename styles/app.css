@@ -750,24 +750,41 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 }
 
 #wp-focus-bar {
-  position: fixed; left: 0; right: 0;
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  position: fixed; left: 12px; right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 1200;
-  display: flex; align-items: center; justify-content: center; gap: 14px;
-  padding: 0 16px;
+  display: flex; flex-direction: column; gap: 10px;
   pointer-events: none;
-  transform: translateY(140%);
+  transform: translateY(150%);
   transition: transform 0.42s cubic-bezier(0.32,1.25,0.5,1);
   font-family: var(--wp-font);
 }
 #wp-focus-bar.in { transform: translateY(0); }
-#wp-focus-bar > button { pointer-events: auto; -webkit-tap-highlight-color: transparent; border: none; cursor: pointer; }
+#wp-focus-bar button { pointer-events: auto; -webkit-tap-highlight-color: transparent; border: none; cursor: pointer; font-family: inherit; }
 
-/* Píldora inflada (mismo lenguaje que el panel de categorías) */
-.wp-fb-pill {
-  position: relative; flex: 0 1 300px; min-width: 0; height: 74px;
-  border-radius: 999px; padding: 0 70px;
-  display: flex; align-items: center; justify-content: center;
+/* Fila de arriba: nombre de la colección + X */
+.wp-fb-top { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; } /* espacio para el avatar que sobresale */
+.wp-fb-chip {
+  height: 36px; padding: 0 14px; border-radius: 999px; background: #fff;
+  display: inline-flex; align-items: center; max-width: 70%;
+  font-size: 13.5px; font-weight: 700; color: #0a0a0a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 0 0 0.5px rgba(17,24,39,0.08), 0 4px 12px rgba(17,24,39,0.14);
+  pointer-events: auto;
+}
+.wp-fb-chip[hidden] { display: none; }
+.wp-fb-done { background: #16a34a; color: #fff; animation: wpFbIn .4s cubic-bezier(0.32,1.4,0.5,1); }
+.wp-fb-x {
+  margin-left: auto; width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: #6b7280; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(17,24,39,0.08), 0 4px 12px rgba(17,24,39,0.16);
+  transition: transform 0.15s;
+}
+.wp-fb-x:active { transform: scale(0.88); }
+
+/* Barra principal inflada */
+.wp-fb-bar {
+  position: relative; height: 76px; border-radius: 999px;
+  display: flex; align-items: center; padding: 0 22px 0 12px;
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 35%, #eeeef0 100%);
   box-shadow:
     0 0 0 0.5px rgba(17,24,39,0.08),
@@ -776,40 +793,49 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
     0 22px 40px -12px rgba(17,24,39,0.30),
     inset 0 2px 1px #fff,
     inset 0 -8px 14px -6px rgba(17,24,39,0.10);
-  transition: transform 0.15s;
+  pointer-events: auto;
 }
-.wp-fb-pill:active { transform: scale(0.97); }
-.wp-fb-txt { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.1; }
-.wp-fb-txt small { font-size: 11.5px; font-weight: 600; color: #8a8f99; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wp-fb-txt b { font-size: 24px; font-weight: 800; color: #0a0a0a; letter-spacing: -0.5px; white-space: nowrap; }
-
-/* Fotos tipo sticker en las orillas */
-.wp-fb-ph { position: absolute; top: 0; bottom: 0; width: 66px; pointer-events: none; }
-.wp-fb-l { left: 4px; }
-.wp-fb-r { right: 4px; }
+.wp-fb-ph { position: relative; width: 104px; height: 100%; flex-shrink: 0; }
 .wp-fb-ph i {
-  position: absolute; width: 38px; height: 38px; border-radius: 12px;
-  background: #eef0f3 center/cover no-repeat;
-  border: 2.5px solid #fff;
+  box-sizing: border-box; position: absolute; top: 50%; width: 42px; height: 42px; margin-top: -21px; border-radius: 13px;
+  background: #eef0f3 center/cover no-repeat; border: 2.5px solid #fff;
   box-shadow: 0 3px 8px rgba(17,24,39,0.22);
 }
-.wp-fb-l .p0 { left: 6px;  top: 8px;  transform: rotate(-10deg); }
-.wp-fb-l .p1 { left: 22px; top: 28px; transform: rotate(7deg); }
-.wp-fb-r .p0 { right: 6px;  top: 8px;  transform: rotate(10deg); }
-.wp-fb-r .p1 { right: 22px; top: 28px; transform: rotate(-7deg); }
+.wp-fb-ph .p0 { left: 0;    transform: rotate(-9deg); z-index: 3; }
+.wp-fb-ph .p1 { left: 28px; transform: rotate(5deg) translateY(-3px); z-index: 2; }
+.wp-fb-ph .p2 { left: 56px; transform: rotate(-4deg) translateY(2px); z-index: 1; }
 
-/* X redonda */
-.wp-fb-x {
-  flex-shrink: 0; width: 74px; height: 74px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: #9a9ca3;
-  background: linear-gradient(180deg, #ffffff 0%, #ffffff 35%, #eeeef0 100%);
-  box-shadow:
-    0 0 0 0.5px rgba(17,24,39,0.08),
-    0 8px 16px -4px rgba(17,24,39,0.14),
-    0 22px 40px -12px rgba(17,24,39,0.30),
-    inset 0 2px 1px #fff,
-    inset 0 -8px 14px -6px rgba(17,24,39,0.10);
-  transition: transform 0.15s;
+/* Tu avatar con anillo de progreso, sobresaliendo de la barra */
+.wp-fb-me {
+  position: absolute; left: 50%; top: -26px; transform: translateX(-50%);
+  width: 96px; height: 96px; padding: 0; background: none; border-radius: 50%;
 }
-.wp-fb-x:active { transform: scale(0.9); }
+.wp-fb-me.pop { animation: wpFbPop .55s cubic-bezier(0.32,1.6,0.5,1); }
+.wp-fb-ring {
+  display: block; box-sizing: border-box; width: 100%; height: 100%; border-radius: 50%; padding: 6px;
+  background: conic-gradient(#1a5cf5 calc(var(--p) * 1%), #e5e7eb 0);
+  box-shadow: 0 8px 20px rgba(26,92,245,0.32);
+  transition: background 0.4s;
+}
+#wp-focus-bar.complete .wp-fb-ring { background: conic-gradient(#16a34a 100%, #16a34a 0); box-shadow: 0 8px 22px rgba(22,163,74,0.38); }
+.wp-fb-av {
+  display: block; box-sizing: border-box; width: 100%; height: 100%; border-radius: 50%; border: 4px solid #fff;
+  background: #eef0f3 center/cover no-repeat;
+}
+
+.wp-fb-score { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+.wp-fb-score b { font-size: 30px; font-weight: 800; color: #0a0a0a; letter-spacing: -1px; }
+.wp-fb-score small { font-size: 18px; font-weight: 700; color: #9ca3af; letter-spacing: 0; }
+.wp-fb-score em { font-style: normal; font-size: 12px; font-weight: 600; color: #8a8f99; margin-top: 3px; }
+
+@keyframes wpFbPop { 0% { transform: translateX(-50%) scale(1); } 40% { transform: translateX(-50%) scale(1.14); } 100% { transform: translateX(-50%) scale(1); } }
+@keyframes wpFbIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Palomita verde en los pines que ya visitaste (modo colección) */
+.place-marker-el.wp-visited::after {
+  content: ''; position: absolute; top: -4px; right: -4px; z-index: 5;
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff;
+  background: #16a34a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12l5 5 9-10' stroke='%23fff' stroke-width='3.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  pointer-events: none;
+}
