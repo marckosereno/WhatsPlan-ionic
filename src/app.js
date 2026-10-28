@@ -218,6 +218,17 @@ window.wpApp.showPlacesOnMap = (places, label, opts) => showPlacesOnMap(window.w
 function showPlacesOnMap(mv, places, label, opts = {}) {
   if (!mv || !places?.length) return;
   window.wpApp._focusExit?.(false, true); // si ya había uno abierto, cerrarlo sin regresar
+  // Cerrar TODO lo que esté encima del mapa: la ficha (si el perfil se
+  // abrió desde ella), el mini perfil y hojas sueltas. Así el mapa con
+  // los lugares queda a la vista de inmediato.
+  try {
+    const pm = window.wpApp.placeModal;
+    if (pm?._el?.classList.contains('visible')) pm.hide();
+  } catch (_) {}
+  window.wpApp.miniProfile?.close?.(true);
+  ['wp-pm2-sim', 'wp-pm2-menu-sheet', 'wp-saved-chip'].forEach(id => document.getElementById(id)?.remove());
+  const pf = document.getElementById('wp-pf');
+  if (pf) pf.style.zIndex = ''; // al regresar, el perfil ya no necesita ir encima de la ficha
   if (!('_savedPrevCat' in window.wpApp)) window.wpApp._savedPrevCat = mv.currentCatId || null;
   mv._clearPlaceMarkers();
   mv.allPlaces = places.slice();
