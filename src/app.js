@@ -253,6 +253,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // se va llenando de azul con el progreso, fotos de la colección, tu
   // avatar grande al centro y el % completado.
   const ph = places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean).slice(0, 3);
+  // Fuente del título (Anton, condensada y gruesa) — se carga una sola vez
+  if (!document.getElementById('wp-font-anton')) {
+    const lk = document.createElement('link');
+    lk.id = 'wp-font-anton'; lk.rel = 'stylesheet';
+    lk.href = 'https://fonts.googleapis.com/css2?family=Anton&display=swap';
+    document.head.appendChild(lk);
+  }
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ids = places.map(p => String(p.place_id || p.placeId || p.id)).filter(Boolean);
   const total = ids.length;
@@ -270,7 +277,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   top.id = 'wp-focus-top';
   top.innerHTML = `
     <div class="wp-ft-title">${em ? `<span class="wp-ft-em">${esc(em)}</span>` : ''}<h2>${esc(title)}</h2><span class="wp-ft-sub" hidden></span></div>
-    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>Cerrar</button>`;
+    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   document.body.appendChild(top);
 
   const bar = document.createElement('div');
@@ -282,7 +289,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     </div>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
-      <span class="wp-fb-ph">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}</span>
+      <button type="button" class="wp-fb-cluster" aria-label="Lugares de la colección">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}<span class="wp-fb-count">${total}</span></button>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
         <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${total}</span>
@@ -292,6 +299,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.body.appendChild(bar);
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
   bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
+  // Cluster de fotos: por ahora también encuadra todo (su función propia viene después)
+  bar.querySelector('.wp-fb-cluster').onclick = () => { mv.haptic?.('light'); fit(true); };
 
   // De quién es (si no es tuya): "de @usuario"
   if (opts.ownerId && opts.ownerId !== me?.id) {
