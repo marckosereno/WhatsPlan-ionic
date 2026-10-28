@@ -247,10 +247,11 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   setTimeout(() => fit(true), 60);
 
-  // ── Barra de reto (gamificación fase 1) ────────────────────────────
-  // Izquierda: fotos de la colección · centro: tu avatar con anillo de
-  // progreso (tocarlo vuelve a encuadrar todo) · derecha: "3/7 visitados".
-  // Arriba: nombre de la colección y la X para regresar.
+  // ── Pantalla de reto (gamificación fase 1) ─────────────────────────
+  // Arriba: título grande con contorno (nombre de la colección) + píldora
+  // "Cerrar". Abajo: chips (siguiente lugar / de quién es) y la barra:
+  // se va llenando de azul con el progreso, fotos de la colección, tu
+  // avatar grande al centro y el % completado.
   const ph = places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean).slice(0, 3);
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ids = places.map(p => String(p.place_id || p.placeId || p.id)).filter(Boolean);
@@ -258,37 +259,95 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const me = window.wpApp.currentUser;
   const myAv = window.wpApp._cachedAvatarUrl || me?.user_metadata?.avatar_url ||
     getAvatarUrl(me?.user_metadata?.display_name || me?.email?.split('@')[0] || 'user');
+  // Título: el emoji (si lo hay) va aparte, chiquito, para que el contorno se vea limpio
+  const raw = String(label || 'Colección').trim();
+  const em = (raw.match(/^(\p{Extended_Pictographic}(️|‍\p{Extended_Pictographic})*)\s*/u) || [])[1] || '';
+  const title = raw.slice(em.length).trim() || raw;
 
+  document.getElementById('wp-focus-top')?.remove();
   document.getElementById('wp-focus-bar')?.remove();
+  const top = document.createElement('div');
+  top.id = 'wp-focus-top';
+  top.innerHTML = `
+    <div class="wp-ft-title">${em ? `<span class="wp-ft-em">${esc(em)}</span>` : ''}<h2>${esc(title)}</h2><span class="wp-ft-sub" hidden></span></div>
+    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>Cerrar</button>`;
+  document.body.appendChild(top);
+
   const bar = document.createElement('div');
   bar.id = 'wp-focus-bar';
   bar.innerHTML = `
-    <div class="wp-fb-top">
-      <span class="wp-fb-chip wp-fb-name">${esc(label || 'Colección')}</span>
-      <span class="wp-fb-chip wp-fb-done" hidden>¡Colección completada!</span>
-      <button type="button" class="wp-fb-x" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="wp-fb-chips">
+      <button type="button" class="wp-fb-chip wp-fb-next" hidden></button>
+      <span class="wp-fb-chip wp-fb-left"></span>
     </div>
     <div class="wp-fb-bar">
+      <span class="wp-fb-fill" style="--p:0"></span>
       <span class="wp-fb-ph">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}</span>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
+        <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${total}</span>
       </button>
-      <span class="wp-fb-score"><b><span class="wp-fb-n">0</span><small>/${total}</small></b><em>visitados</em></span>
+      <span class="wp-fb-score"><b><span class="wp-fb-pct">0</span><small>%</small></b><em>completado</em></span>
     </div>`;
   document.body.appendChild(bar);
-  requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add('in')));
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
   bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
+
+  // De quién es (si no es tuya): "de @usuario"
+  if (opts.ownerId && opts.ownerId !== me?.id) {
+    import('/src/services/SocialService.js').then(({ SocialService }) => SocialService.getProfile(opts.ownerId)).then(pr => {
+      if (!pr || !top.isConnected) return;
+      const sub = top.querySelector('.wp-ft-sub');
+      sub.textContent = 'de ' + (pr.username ? '@' + pr.username : (pr.name || 'alguien'));
+      sub.hidden = false;
+    }).catch(() => {});
+  }
+
+  // Lugar pendiente más cercano (si sabemos dónde estás) → chip "Siguiente"
+  const myPos = () => window.wpApp.subcatRow?._lastGpsPos || null;
+  const distM = (a, b) => {
+    const R = 6371000, toR = x => x * Math.PI / 180;
+    const dLa = toR(b.lat - a.lat), dLo = toR(b.lng - a.lng);
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLo / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+  const coordsOf = (p) => ({ lat: Number(p.lat ?? p.location?.lat), lng: Number(p.lng ?? p.location?.lng) });
 
   // Progreso: mis visitas de estos lugares + palomita en los pines visitados
   const visited = new Set();
   const paintProgress = (celebrate = false) => {
     const n = visited.size;
+    const pct = total ? Math.round(n / total * 100) : 0;
     bar.querySelector('.wp-fb-n').textContent = String(n);
-    bar.querySelector('.wp-fb-ring').style.setProperty('--p', String(total ? Math.round(n / total * 100) : 0));
+    bar.querySelector('.wp-fb-pct').textContent = String(pct);
+    bar.querySelector('.wp-fb-ring').style.setProperty('--p', String(pct));
+    bar.querySelector('.wp-fb-fill').style.setProperty('--p', String(pct));
     const done = total > 0 && n >= total;
     bar.classList.toggle('complete', done);
-    bar.querySelector('.wp-fb-done').hidden = !done;
-    bar.querySelector('.wp-fb-name').hidden = done;
+    const left = bar.querySelector('.wp-fb-left');
+    left.textContent = done ? '¡Colección completada!' : `Te ${total - n === 1 ? 'falta 1 lugar' : `faltan ${total - n} lugares`}`;
+    left.classList.toggle('ok', done);
+    // Siguiente: el pendiente más cercano a ti
+    const next = bar.querySelector('.wp-fb-next');
+    const pos = myPos();
+    let best = null;
+    if (pos && !done) {
+      places.forEach(p => {
+        const id = String(p.place_id || p.placeId || p.id);
+        if (visited.has(id)) return;
+        const c = coordsOf(p);
+        if (!isFinite(c.lat) || !isFinite(c.lng)) return;
+        const d = distM(pos, c);
+        if (!best || d < best.d) best = { p, d, c };
+      });
+    }
+    left.hidden = !!best && !done; // un solo chip a la vez
+    if (best) {
+      const dTxt = best.d >= 1000 ? `${(best.d / 1000).toFixed(1)} km` : `${Math.round(best.d / 10) * 10} m`;
+      next.innerHTML = `<i></i><span>${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
+      next.hidden = false;
+      next.onclick = () => { mv.haptic?.('light'); map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: 17.4, essential: true }); };
+    } else next.hidden = true;
     (mv.markerEls || []).forEach(el => {
       const id = String(el._place?.place_id || el._place?.placeId || el._place?.id || '');
       el.classList.toggle('wp-visited', visited.has(id));
@@ -299,6 +358,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       ring.classList.remove('pop'); void ring.offsetWidth; ring.classList.add('pop');
     }
   };
+  paintProgress();
   if (me && total) {
     VisitService.myVisits(ids)
       .then(m => { m.forEach((v, id) => { if (v > 0) visited.add(id); }); paintProgress(); })
@@ -313,7 +373,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   document.addEventListener('wp:visit', onVisit);
   // Los pines se pueden volver a crear (zoom, clusters): repintar palomitas
-  const repaint = () => { if (visited.size) paintProgress(); };
+  const repaint = () => paintProgress();
   map?.on?.('moveend', repaint);
 
   const exit = (goBack = true, instant = false) => {
@@ -325,7 +385,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited'));
     mv.haptic?.('light');
     bar.classList.remove('in');
-    setTimeout(() => bar.remove(), instant ? 0 : 260);
+    top.classList.remove('in');
+    setTimeout(() => { bar.remove(); top.remove(); }, instant ? 0 : 280);
     document.body.classList.remove('wp-focus-map');
     const prev = window.wpApp._savedPrevCat;
     delete window.wpApp._savedPrevCat;
@@ -338,7 +399,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const onExt = () => exit(false);
   document.addEventListener('wp:focus-exit', onExt);
   window.wpApp._focusExit = exit;
-  bar.querySelector('.wp-fb-x').onclick = () => exit(true);
+  top.querySelector('.wp-ft-close').onclick = () => exit(true);
 }
 
 function _showProfileMenu() {
