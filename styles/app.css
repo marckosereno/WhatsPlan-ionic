@@ -729,3 +729,88 @@ ion-app {
 }
 
 @keyframes gpsPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+
+/* ════════════════════════════════════════════════════════════
+   MODO "SOLO ESTA COLECCIÓN" (Ver en el mapa) — app.js showPlacesOnMap
+   Se esconde todo menos los lugares de la colección, tu ubicación y la
+   píldora de abajo.
+   ════════════════════════════════════════════════════════════ */
+body.wp-focus-map #topbar,
+body.wp-focus-map #wp-side-panel-top,
+body.wp-focus-map #wp-side-panel-bottom,
+body.wp-focus-map #map-results-panel,
+body.wp-focus-map #wp-footer-menu,
+body.wp-focus-map #wp-saved-chip,
+body.wp-focus-map .lm-wrap,
+body.wp-focus-map .wp-mo-mk,
+body.wp-focus-map .wp-mo-pol,
+body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#wp-focus-bar {
+  position: fixed; left: 0; right: 0;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 1200;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 0 16px;
+  pointer-events: none;
+  transform: translateY(140%);
+  transition: transform 0.42s cubic-bezier(0.32,1.25,0.5,1);
+  font-family: var(--wp-font);
+}
+#wp-focus-bar.in { transform: translateY(0); }
+#wp-focus-bar > button { pointer-events: auto; -webkit-tap-highlight-color: transparent; border: none; cursor: pointer; }
+
+/* Píldora inflada (mismo lenguaje que el panel de categorías) */
+.wp-fb-pill {
+  position: relative; flex: 0 1 300px; min-width: 0; height: 74px;
+  border-radius: 999px; padding: 0 70px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 35%, #eeeef0 100%);
+  box-shadow:
+    0 0 0 0.5px rgba(17,24,39,0.08),
+    0 1px 2px rgba(17,24,39,0.08),
+    0 8px 16px -4px rgba(17,24,39,0.14),
+    0 22px 40px -12px rgba(17,24,39,0.30),
+    inset 0 2px 1px #fff,
+    inset 0 -8px 14px -6px rgba(17,24,39,0.10);
+  transition: transform 0.15s;
+}
+.wp-fb-pill:active { transform: scale(0.97); }
+.wp-fb-txt { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.1; }
+.wp-fb-txt small { font-size: 11.5px; font-weight: 600; color: #8a8f99; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-fb-txt b { font-size: 24px; font-weight: 800; color: #0a0a0a; letter-spacing: -0.5px; white-space: nowrap; }
+
+/* Fotos tipo sticker en las orillas */
+.wp-fb-ph { position: absolute; top: 0; bottom: 0; width: 66px; pointer-events: none; }
+.wp-fb-l { left: 4px; }
+.wp-fb-r { right: 4px; }
+.wp-fb-ph i {
+  position: absolute; width: 38px; height: 38px; border-radius: 12px;
+  background: #eef0f3 center/cover no-repeat;
+  border: 2.5px solid #fff;
+  box-shadow: 0 3px 8px rgba(17,24,39,0.22);
+}
+.wp-fb-l .p0 { left: 6px;  top: 8px;  transform: rotate(-10deg); }
+.wp-fb-l .p1 { left: 22px; top: 28px; transform: rotate(7deg); }
+.wp-fb-r .p0 { right: 6px;  top: 8px;  transform: rotate(10deg); }
+.wp-fb-r .p1 { right: 22px; top: 28px; transform: rotate(-7deg); }
+
+/* X redonda */
+.wp-fb-x {
+  flex-shrink: 0; width: 74px; height: 74px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #9a9ca3;
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 35%, #eeeef0 100%);
+  box-shadow:
+    0 0 0 0.5px rgba(17,24,39,0.08),
+    0 8px 16px -4px rgba(17,24,39,0.14),
+    0 22px 40px -12px rgba(17,24,39,0.30),
+    inset 0 2px 1px #fff,
+    inset 0 -8px 14px -6px rgba(17,24,39,0.10);
+  transition: transform 0.15s;
+}
+.wp-fb-x:active { transform: scale(0.9); }
