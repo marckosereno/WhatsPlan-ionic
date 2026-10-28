@@ -399,6 +399,16 @@ export class ProfileSheet {
     ]);
     if (!view.isConnected) return;
 
+    // Para el selector de colecciones del modo mapa (flechita junto al título)
+    const savedAll = isMe ? favIds.map(id => places.get(String(id))).filter(Boolean) : [];
+    this._mapChoices = [
+      ...(isMe && savedAll.length ? [{ key: 'saved', label: 'Tus guardados', places: savedAll, ownerId: null }] : []),
+      ...cols.map(c => ({
+        key: 'c' + c.id, label: `${c.emoji || ''} ${c.name}`.trim(), ownerId: isMe ? null : uid,
+        places: c.items.map(id => places.get(String(id))).filter(Boolean),
+      })).filter(x => x.places.length),
+    ];
+
     // Banner de guardados
     if (isMe) {
       const banner = view.querySelector('.wp-pf-banner');
@@ -424,7 +434,7 @@ export class ProfileSheet {
         this._pulse(banner);
         if (!saved.length) { this._toast('Aún no tienes lugares guardados'); return; }
         this.hideForMap();
-        this.onShowOnMap(saved, 'Tus guardados', { onBack: () => this.returnFromMap() });
+        this.onShowOnMap(saved, 'Tus guardados', { onBack: () => this.returnFromMap(), choices: this._mapChoices, choiceKey: 'saved' });
       };
     }
 
@@ -546,7 +556,7 @@ export class ProfileSheet {
       this._pulse(e.currentTarget);
       if (!list.length) { this._toast('Esta colección está vacía'); return; }
       this.hideForMap();
-      this.onShowOnMap(list, `${c.emoji || ''} ${c.name}`.trim(), { onBack: () => this.returnFromMap(), ownerId: isMe ? null : (c._ownerId || c.user_id || null) });
+      this.onShowOnMap(list, `${c.emoji || ''} ${c.name}`.trim(), { onBack: () => this.returnFromMap(), ownerId: isMe ? null : (c._ownerId || c.user_id || null), choices: this._mapChoices, choiceKey: 'c' + c.id });
     };
     view.querySelector('[data-a=share]').onclick = (e) => {
       this._pulse(e.currentTarget);
