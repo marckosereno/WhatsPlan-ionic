@@ -186,7 +186,7 @@ function _getProfileSheet() {
       pm._fromSearch = false;
       pm.show(place);
     },
-    onShowOnMap: (places, label) => showPlacesOnMap(mv(), places, label),
+    onShowOnMap: (places, label, opts) => showPlacesOnMap(mv(), places, label, opts),
     onOpenActivity: (act) => {
       const map = mv()?.getMap?.();
       if (map && act?.lat && act?.lng) map.flyTo({ center: [act.lng, act.lat], zoom: 16, essential: true });
@@ -209,34 +209,72 @@ function _getProfileSheet() {
 // el mapa muestra SOLO esos lugares y arriba aparece un chip para salir y
 // volver a la categoría en la que estabas.
 // También disponible para la ficha ("Ver todos en el mapa" de Lugares similares)
-window.wpApp.showPlacesOnMap = (places, label) => showPlacesOnMap(window.wpApp.mapView, places, label);
-function showPlacesOnMap(mv, places, label) {
+window.wpApp.showPlacesOnMap = (places, label, opts) => showPlacesOnMap(window.wpApp.mapView, places, label, opts);
+// Modo "solo esta colección": el mapa muestra ÚNICAMENTE esos lugares y
+// se esconde todo lo demás (topbar, paneles, categorías, menú, landmarks,
+// actividades, momentos). Abajo queda una píldora con fotos + "N lugares"
+// (tocarla vuelve a encuadrar todos) y una X que regresa a la pantalla
+// anterior (opts.onBack) y deja el mapa como estaba.
+function showPlacesOnMap(mv, places, label, opts = {}) {
   if (!mv || !places?.length) return;
+  window.wpApp._focusExit?.(false, true); // si ya había uno abierto, cerrarlo sin regresar
   if (!('_savedPrevCat' in window.wpApp)) window.wpApp._savedPrevCat = mv.currentCatId || null;
   mv._clearPlaceMarkers();
   mv.allPlaces = places.slice();
   mv._renderPlaceMarkers(mv.allPlaces);
+  document.body.classList.add('wp-focus-map');
 
-  document.getElementById('wp-saved-chip')?.remove();
-  const chip = document.createElement('div');
-  chip.id = 'wp-saved-chip';
-  chip.style.cssText = 'position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:1300;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border-radius:999px;background:#0a0a0a;color:#fff;font:700 13px var(--wp-font);box-shadow:0 6px 20px rgba(0,0,0,0.25);white-space:nowrap;';
-  chip.innerHTML = '<span></span><button type="button" aria-label="Salir" style="width:28px;height:28px;border:none;border-radius:999px;background:rgba(255,255,255,0.18);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
-  chip.querySelector('span').textContent = `${label || 'Tus guardados'} · ${places.length}`;
-  const exit = (reload = true) => {
-    chip.remove();
+  const map = mv.getMap?.() || mv.map;
+  const fit = (animate = true) => {
+    const pts = places.map(p => [Number(p.lng ?? p.location?.lng), Number(p.lat ?? p.location?.lat)]).filter(([x, y]) => isFinite(x) && isFinite(y));
+    if (!map || !pts.length) return;
+    if (pts.length === 1) { map.flyTo({ center: pts[0], zoom: 17, essential: true, animate }); return; }
+    const b = pts.reduce((bb, pt) => bb.extend(pt), new maplibregl.LngLatBounds(pts[0], pts[0]));
+    map.fitBounds(b, { padding: { top: 110, bottom: 190, left: 60, right: 60 }, maxZoom: 17.2, duration: animate ? 700 : 0 });
+  };
+  setTimeout(() => fit(true), 60);
+
+  // Fotos para la píldora (miniaturas), 2 a cada lado
+  const ph = places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean);
+  const L = ph.slice(0, 2), R = ph.slice(2, 4);
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const n = places.length;
+
+  document.getElementById('wp-focus-bar')?.remove();
+  const bar = document.createElement('div');
+  bar.id = 'wp-focus-bar';
+  bar.innerHTML = `
+    <button type="button" class="wp-fb-pill" aria-label="Ver todos">
+      <span class="wp-fb-ph wp-fb-l">${L.map((u, i) => `<i style="background-image:url('${esc(u)}')" class="p${i}"></i>`).join('')}</span>
+      <span class="wp-fb-txt">${label ? `<small>${esc(label)}</small>` : ''}<b>${n} ${n === 1 ? 'lugar' : 'lugares'}</b></span>
+      <span class="wp-fb-ph wp-fb-r">${R.map((u, i) => `<i style="background-image:url('${esc(u)}')" class="p${i}"></i>`).join('')}</span>
+    </button>
+    <button type="button" class="wp-fb-x" aria-label="Cerrar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+  document.body.appendChild(bar);
+  requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add('in')));
+
+  bar.querySelector('.wp-fb-pill').onclick = () => { mv.haptic?.('light'); fit(true); };
+
+  const exit = (goBack = true, instant = false) => {
+    if (window.wpApp._focusExit !== exit) return;
+    window.wpApp._focusExit = null;
+    document.removeEventListener('wp:focus-exit', onExt);
+    mv.haptic?.('light');
+    bar.classList.remove('in');
+    setTimeout(() => bar.remove(), instant ? 0 : 260);
+    document.body.classList.remove('wp-focus-map');
     const prev = window.wpApp._savedPrevCat;
     delete window.wpApp._savedPrevCat;
-    document.getElementById('map-categories-footer')?.removeEventListener('click', onCat, true);
-    if (!reload) return;
-    if (prev) mv.loadCategory(prev);
-    else { mv._clearPlaceMarkers(); mv.allPlaces = []; }
+    if (!instant) {
+      if (prev) mv.loadCategory(prev);
+      else { mv._clearPlaceMarkers(); mv.allPlaces = []; }
+    }
+    if (goBack && typeof opts.onBack === 'function') setTimeout(() => opts.onBack(), 120);
   };
-  // Si elige una categoría mientras tanto, el chip se va solo (la categoría ya recarga el mapa)
-  const onCat = (e) => { if (e.target.closest('.category-footer-chip')) exit(false); };
-  document.getElementById('map-categories-footer')?.addEventListener('click', onCat, true);
-  chip.querySelector('button').onclick = () => exit(true);
-  document.body.appendChild(chip);
+  const onExt = () => exit(false);
+  document.addEventListener('wp:focus-exit', onExt);
+  window.wpApp._focusExit = exit;
+  bar.querySelector('.wp-fb-x').onclick = () => exit(true);
 }
 
 function _showProfileMenu() {
