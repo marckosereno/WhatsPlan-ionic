@@ -276,8 +276,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const top = document.createElement('div');
   top.id = 'wp-focus-top';
   top.innerHTML = `
-    <div class="wp-ft-title">${em ? `<span class="wp-ft-em">${esc(em)}</span>` : ''}<h2>${esc(title)}</h2><span class="wp-ft-sub" hidden></span></div>
-    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+    <div class="wp-ft-title">${em ? `<span class="wp-ft-em">${esc(em)}</span>` : ''}<div class="wp-ft-row"><h2>${esc(title)}</h2>${(opts.choices || []).length > 1 ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div><span class="wp-ft-sub" hidden></span></div>
+    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   document.body.appendChild(top);
 
   const bar = document.createElement('div');
@@ -398,7 +398,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     setTimeout(() => { bar.remove(); top.remove(); }, instant ? 0 : 280);
     document.body.classList.remove('wp-focus-map');
     const prev = window.wpApp._savedPrevCat;
-    delete window.wpApp._savedPrevCat;
+    if (!instant) delete window.wpApp._savedPrevCat; // cambio de colección: se conserva la categoría de antes
+    document.getElementById('wp-focus-pick')?.remove();
     if (!instant) {
       if (prev) mv.loadCategory(prev);
       else { mv._clearPlaceMarkers(); mv.allPlaces = []; }
@@ -408,7 +409,60 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const onExt = () => exit(false);
   document.addEventListener('wp:focus-exit', onExt);
   window.wpApp._focusExit = exit;
-  top.querySelector('.wp-ft-close').onclick = () => exit(true);
+  const closeBtn = top.querySelector('.wp-ft-close');
+  closeBtn.onclick = () => {
+    closeBtn.classList.remove('wp-tapflash'); void closeBtn.offsetWidth; closeBtn.classList.add('wp-tapflash');
+    setTimeout(() => exit(true), 90);
+  };
+  // Flechita junto al título → lista de las demás colecciones
+  top.querySelector('.wp-ft-switch')?.addEventListener('click', () => openFocusPicker(mv, opts));
+}
+
+// Hoja con las colecciones (y "Tus guardados") para cambiar sin salir del mapa
+async function openFocusPicker(mv, opts) {
+  const list = opts.choices || [];
+  if (!list.length) return;
+  mv.haptic?.('light');
+  document.getElementById('wp-focus-pick')?.remove();
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const root = document.createElement('div');
+  root.id = 'wp-focus-pick';
+  root.innerHTML = `<div class="wp-fp-dim"></div>
+    <div class="wp-fp-sheet"><div class="wp-fp-grab"></div><div class="wp-fp-title">Tus colecciones</div>
+      <div class="wp-fp-list">${list.map((c, i) => {
+        const ph = c.places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean).slice(0, 3);
+        return `<button type="button" class="wp-fp-row${c.key === opts.choiceKey ? ' on' : ''}" data-i="${i}">
+          <span class="wp-fp-ph">${ph.map((u, k) => `<i class="p${k}" style="background-image:url('${esc(u)}')"></i>`).join('')}</span>
+          <span class="wp-fp-txt"><b>${esc(c.label)}</b><small data-prog>${c.places.length} ${c.places.length === 1 ? 'lugar' : 'lugares'}</small></span>
+          ${c.key === opts.choiceKey ? '<span class="wp-fp-now">Viendo</span>' : '<span class="wp-fp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>'}
+        </button>`;
+      }).join('')}</div></div>`;
+  document.body.appendChild(root);
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+  const close = () => { root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
+  root.querySelector('.wp-fp-dim').onclick = close;
+  root.querySelectorAll('.wp-fp-row').forEach(b => b.onclick = () => {
+    const c = list[+b.dataset.i];
+    if (!c) return;
+    if (c.key === opts.choiceKey) { close(); return; }
+    mv.haptic?.('light');
+    close();
+    setTimeout(() => showPlacesOnMap(mv, c.places, c.label, { ...opts, ownerId: c.ownerId, choiceKey: c.key }), 160);
+  });
+  // Progreso de cada una ("3/7 visitados")
+  if (window.wpApp.currentUser) {
+    try {
+      const all = [...new Set(list.flatMap(c => c.places.map(p => String(p.place_id || p.placeId || p.id))))];
+      const m = await VisitService.myVisits(all);
+      root.querySelectorAll('.wp-fp-row').forEach(b => {
+        const c = list[+b.dataset.i];
+        const n = c.places.filter(p => (m.get(String(p.place_id || p.placeId || p.id)) || 0) > 0).length;
+        const el = b.querySelector('[data-prog]');
+        el.textContent = `${n}/${c.places.length} visitados`;
+        if (n >= c.places.length) el.classList.add('ok');
+      });
+    } catch (_) {}
+  }
 }
 
 function _showProfileMenu() {
