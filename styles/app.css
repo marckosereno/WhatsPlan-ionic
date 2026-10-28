@@ -749,8 +749,9 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
   pointer-events: none;
 }
 
-/* ── Arriba: "Volver" (el de la ficha) y debajo el título de la colección.
-   A la derecha se queda la campanita de notificaciones del topbar. ── */
+/* ── Arriba: "Volver" (el de la ficha) a la izquierda. A la derecha se
+   queda la campanita de notificaciones del topbar. (El título de la
+   colección está quitado por ahora; sus estilos .wp-ft-* se conservan.) ── */
 #wp-focus-top {
   /* Fila: título (izquierda) · Volver · [campanita del topbar, a la derecha] */
   position: fixed; left: 12px; right: 66px; /* 66 = campanita (46) + espacio */
@@ -763,7 +764,7 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 #wp-focus-top.in { opacity: 1; transform: none; }
 /* Mismo botón "Volver" de la ficha (#wp-pm2-back) */
 .wp-ft-back {
-  pointer-events: auto; position: relative; order: 2; margin-left: auto;
+  pointer-events: auto; position: relative;
   height: 48px; padding: 0 18px 0 14px; border-radius: 9999px; border: none; flex-shrink: 0;
   font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: -0.1px;
   background: rgba(255,255,255,0.88);
@@ -907,7 +908,7 @@ body.wp-focus-map #topbar-notif-btn { visibility: visible; pointer-events: auto;
 .wp-fb-cluster .p1 { transform: rotate(-16deg) translateX(-11px); z-index: 2; }
 .wp-fb-cluster .p2 { transform: rotate(16deg) translateX(11px); z-index: 1; }
 .wp-fb-count {
-  position: absolute; z-index: 4; top: -9px; right: 4px;
+  position: absolute; z-index: 4; top: -9px; right: 4px; line-height: 0;
   min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center;
   background: #0a0a0a; color: #fff; font-size: 12px; font-weight: 800; border: 2px solid #fff;
