@@ -4811,6 +4811,21 @@ export class MapView {
       const inSearch = document.body.classList.contains('wp-search-active') ||
                        !!(document.getElementById('wps-inner'));
 
+      // Modo colección (Ver en el mapa): el minimodal queda centrado entre
+      // la sombra de arriba y la sombra de abajo del mapa (ion-app
+      // ::before / ::after), que es la zona "limpia" que se ve.
+      if (document.body.classList.contains('wp-focus-map')) {
+        const app = document.querySelector('ion-app');
+        const hTop = app ? parseFloat(getComputedStyle(app, '::before').height) || 100 : 100;
+        const hBot = app ? parseFloat(getComputedStyle(app, '::after').height) || 160 : 160;
+        const topEdge = hTop;
+        const botEdge = Math.max(visibleH - hBot, topEdge + 120);
+        const areaCenter = topEdge + (botEdge - topEdge) / 2;
+        const offsetY = Math.round(areaCenter + 35 - canvasH / 2); // +35: el pin queda abajo del minimodal
+        if (!skipMove) this.map.easeTo({ center: [lng, lat], duration: 300, offset: [0, offsetY] });
+        return;
+      }
+
       if (inSearch) {
         // En búsqueda: mismo cálculo que SearchBar.doFlyTo, respeta zoom actual
         const topbar  = document.getElementById('topbar-right-chip');
