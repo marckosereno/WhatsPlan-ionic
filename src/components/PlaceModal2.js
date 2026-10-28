@@ -9,6 +9,7 @@ import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
 import { photoSmall }                  from '/src/utils/photo-url.js';
+import { VisitService }                from '/src/services/VisitService.js';
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -144,6 +145,10 @@ export class PlaceModal2 {
 
           <!-- ACTION PILLS -->
           <div id="wp-pm2-actions">
+            <button class="wp-pm2-action" id="wp-pm2-visit-btn">
+              <span class="wp-pm2-action-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><path d="M9 10l2 2 4-4"/></svg></span>
+              <span class="wp-pm2-visit-lbl">Estuve aquí</span>
+            </button>
             <button class="wp-pm2-action" id="wp-pm2-map-btn">
               <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg></span>
               Ver en el mapa
@@ -1279,6 +1284,11 @@ export class PlaceModal2 {
         display:flex; align-items:center; justify-content:center;
       }
       #wp-pm2-map-btn .wp-pm2-action-icon  { background:#dbeafe; color:#2563eb; }
+      /* "Estuve aquí" (visitas · gamificación fase 1) */
+      #wp-pm2-visit-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
+      #wp-pm2-visit-btn.done { background:#16a34a; color:#fff; box-shadow:0 4px 12px rgba(22,163,74,0.3); }
+      #wp-pm2-visit-btn.done .wp-pm2-action-icon { background:rgba(255,255,255,0.22); color:#fff; }
+      #wp-pm2-visit-btn.busy { opacity:0.6; pointer-events:none; }
       #wp-pm2-call-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
       #wp-pm2-web-btn .wp-pm2-action-icon  { background:#ede9fe; color:#7c3aed; }
       #wp-pm2-more-btn { padding:8px; }
@@ -3162,6 +3172,49 @@ export class PlaceModal2 {
     document.addEventListener('wp:follow-changed', onFol);
   }
 
+  // ── "Estuve aquí": registra la visita si estás a ≤100 m (lo valida la
+  // base de datos). Muestra cuántas veces has venido.
+  _setupVisit(place) {
+    const btn = this._el?.querySelector('#wp-pm2-visit-btn');
+    if (!btn) return;
+    const lbl = btn.querySelector('.wp-pm2-visit-lbl');
+    const pid = place?.place_id || place?.placeId || place?.id;
+    btn.classList.remove('done', 'busy');
+    lbl.textContent = 'Estuve aquí';
+    if (!pid || place?.lat == null && place?.location?.lat == null) { btn.style.display = 'none'; return; }
+    btn.style.display = '';
+    const paint = (n) => {
+      btn.classList.toggle('done', n > 0);
+      lbl.textContent = n > 1 ? `Visitado · ${n} veces` : n === 1 ? 'Visitado' : 'Estuve aquí';
+    };
+    if (this.getCurrentUser?.()) {
+      VisitService.visitsOf(pid).then(n => { if (this._place === place) paint(n); }).catch(() => {});
+    }
+    btn.onclick = async () => {
+      if (btn.classList.contains('busy')) return;
+      const user = this._requireUser('Inicia sesión para registrar tus visitas');
+      if (!user) return;
+      this._haptic('light');
+      btn.classList.add('busy');
+      lbl.textContent = 'Ubicando…';
+      try {
+        const r = await VisitService.checkIn(pid);
+        if (this._place !== place) return;
+        paint(r.visits);
+        this._haptic('success');
+        this._scaleKeys(btn, [1, 1.1, 0.97, 1], 360);
+        this._showToast(r.first ? '¡Primera visita registrada!' : `Visita registrada · ${r.visits} en total`);
+      } catch (e) {
+        paint(VisitService._cache.get(String(pid)) || 0);
+        this._haptic('light');
+        this._showToast(e.message || 'No se pudo registrar la visita');
+        if (!/TOO_FAR|ALREADY_TODAY|NO_PERM|NO_AUTH/.test(e.code || '')) console.warn('[DIAG-VISIT]', e);
+      } finally {
+        btn.classList.remove('busy');
+      }
+    };
+  }
+
   // Mini perfil (MiniProfile.js). context: 'review' | 'saved'
   _openMiniProfile(uid, context, name = '', avatar = '') {
     if (!uid) return;
@@ -3617,6 +3670,9 @@ export class PlaceModal2 {
     const webBtn = $('wp-pm2-web-btn');
     if (web) { webBtn.style.display = ''; webBtn.onclick = () => window.open(web, '_blank'); }
     else webBtn.style.display = 'none';
+
+    // Visitas ("Estuve aquí")
+    this._setupVisit(place);
 
     // Hours — colapsable, igual que PlaceModal1
     const hoursRaw = place.openingHoursText || place.opening_hours || place.hours;
