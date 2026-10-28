@@ -447,7 +447,7 @@ export class ProfileSheet {
         <div class="wp-pf-col-name"></div>
         <div class="wp-pf-col-meta">${n} ${n === 1 ? 'lugar' : 'lugares'}${isMe ? ` · ${c.is_public ? ICON.globe : ICON.lock}` : ''}</div>`;
       card.querySelector('.wp-pf-col-name').textContent = c.name;
-      card.onclick = () => { this._pulse(card); this._push(v => this._viewCollection(v, c, isMe)); };
+      card.onclick = () => { this._pulse(card); c._ownerId = uid; this._push(v => this._viewCollection(v, c, isMe)); };
       grid.appendChild(card);
     });
   }
@@ -546,7 +546,7 @@ export class ProfileSheet {
       this._pulse(e.currentTarget);
       if (!list.length) { this._toast('Esta colección está vacía'); return; }
       this.hideForMap();
-      this.onShowOnMap(list, `${c.emoji || ''} ${c.name}`.trim(), { onBack: () => this.returnFromMap() });
+      this.onShowOnMap(list, `${c.emoji || ''} ${c.name}`.trim(), { onBack: () => this.returnFromMap(), ownerId: isMe ? null : (c._ownerId || c.user_id || null) });
     };
     view.querySelector('[data-a=share]').onclick = (e) => {
       this._pulse(e.currentTarget);
