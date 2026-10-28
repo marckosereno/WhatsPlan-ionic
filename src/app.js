@@ -234,6 +234,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   if (!('_savedPrevCat' in window.wpApp)) window.wpApp._savedPrevCat = mv.currentCatId || null;
   mv._clearPlaceMarkers();
   mv.allPlaces = places.slice();
+  mv._mixedCats = true; // cada pin con el ícono de SU categoría
   mv._renderPlaceMarkers(mv.allPlaces);
   document.body.classList.add('wp-focus-map');
 
@@ -263,6 +264,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ids = places.map(p => String(p.place_id || p.placeId || p.id)).filter(Boolean);
   const total = ids.length;
+  const hasChoices = (opts.choices || []).length > 1;
   const me = window.wpApp.currentUser;
   const myAv = window.wpApp._cachedAvatarUrl || me?.user_metadata?.avatar_url ||
     getAvatarUrl(me?.user_metadata?.display_name || me?.email?.split('@')[0] || 'user');
@@ -279,11 +281,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     <button type="button" class="wp-ft-back" aria-label="Volver">
       <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1);flex-shrink:0;"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>
       <span class="wp-ft-back-label">Volver</span>
-    </button>
-    <div class="wp-ft-title">
-      <div class="wp-ft-row"><h2>${esc(title)}</h2>${(opts.choices || []).length > 1 ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div>
-      <span class="wp-ft-sub" hidden></span>
-    </div>`;
+    </button>`;
   document.body.appendChild(top);
 
   const bar = document.createElement('div');
@@ -295,7 +293,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     </div>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
-      <button type="button" class="wp-fb-cluster" aria-label="Lugares de la colección">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}<span class="wp-fb-count">${total}</span></button>
+      <button type="button" class="wp-fb-cluster" aria-label="Lugares de la colección">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}<span class="wp-fb-count">${hasChoices ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' : total}</span></button>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
         <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${total}</span>
@@ -305,16 +303,16 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.body.appendChild(bar);
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
   bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
-  // Cluster de fotos: por ahora también encuadra todo (su función propia viene después)
-  bar.querySelector('.wp-fb-cluster').onclick = () => { mv.haptic?.('light'); fit(true); };
+  // Cluster de fotos: abre la lista de colecciones (si hay más); si no, encuadra todo
+  bar.querySelector('.wp-fb-cluster').onclick = () => {
+    if (hasChoices) openFocusPicker(mv, opts);
+    else { mv.haptic?.('light'); fit(true); }
+  };
 
-  // De quién es (si no es tuya): "de @usuario"
-  if (opts.ownerId && opts.ownerId !== me?.id) {
+  // De quién es (si no es tuya): se usa en el título de la hoja de colecciones
+  if (opts.ownerId && opts.ownerId !== me?.id && !opts.ownerName) {
     import('/src/services/SocialService.js').then(({ SocialService }) => SocialService.getProfile(opts.ownerId)).then(pr => {
-      if (!pr || !top.isConnected) return;
-      const sub = top.querySelector('.wp-ft-sub');
-      sub.textContent = 'de ' + (pr.username ? '@' + pr.username : (pr.name || 'alguien'));
-      sub.hidden = false;
+      if (pr) opts.ownerName = pr.username ? '@' + pr.username : (pr.name || '');
     }).catch(() => {});
   }
 
@@ -403,6 +401,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     top.classList.remove('in');
     setTimeout(() => { bar.remove(); top.remove(); }, instant ? 0 : 280);
     document.body.classList.remove('wp-focus-map');
+    mv._mixedCats = false;
     const prev = window.wpApp._savedPrevCat;
     if (!instant) delete window.wpApp._savedPrevCat; // cambio de colección: se conserva la categoría de antes
     document.getElementById('wp-focus-pick')?.remove();
@@ -421,8 +420,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     backBtn.classList.add('q');
     setTimeout(() => exit(true), 110);
   };
-  // Flechita junto al título → lista de las demás colecciones
-  top.querySelector('.wp-ft-switch')?.addEventListener('click', () => openFocusPicker(mv, opts));
+
 }
 
 // Hoja con las colecciones (y "Tus guardados") para cambiar sin salir del mapa
@@ -435,7 +433,7 @@ async function openFocusPicker(mv, opts) {
   const root = document.createElement('div');
   root.id = 'wp-focus-pick';
   root.innerHTML = `<div class="wp-fp-dim"></div>
-    <div class="wp-fp-sheet"><div class="wp-fp-grab"></div><div class="wp-fp-title">Tus colecciones</div>
+    <div class="wp-fp-sheet"><div class="wp-fp-grab"></div><div class="wp-fp-title">${opts.ownerId && opts.ownerId !== window.wpApp.currentUser?.id ? `Colecciones de ${esc(opts.ownerName || 'este usuario')}` : 'Tus colecciones'}</div>
       <div class="wp-fp-list">${list.map((c, i) => {
         const ph = c.places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean).slice(0, 3);
         return `<button type="button" class="wp-fp-row${c.key === opts.choiceKey ? ' on' : ''}" data-i="${i}">
