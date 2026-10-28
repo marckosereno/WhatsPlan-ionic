@@ -282,7 +282,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       <div class="wp-ft-row"><h2>${esc(title)}</h2>${hasChoices ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div>
       <span class="wp-ft-sub" hidden></span>
     </div>
-    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg></button>`;
   document.body.appendChild(top);
 
   const bar = document.createElement('div');
