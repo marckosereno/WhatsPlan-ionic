@@ -759,23 +759,26 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
   transition: opacity .3s ease, transform .45s cubic-bezier(0.32,1.25,0.5,1);
 }
 #wp-focus-top.in { opacity: 1; transform: none; }
-.wp-ft-title { flex: 1; min-width: 0; margin-left: -3px; padding-top: 2px; }
+.wp-ft-title { flex: 1; min-width: 0; margin-left: -5px; padding-top: 2px; }
 .wp-ft-row { display: block; }
 /* Título: Anton 30px, negro con contorno blanco, baja de renglón si es largo */
 .wp-ft-row h2 {
   display: inline; margin: 0;
   font-family: 'Anton', 'Open Sans', sans-serif; font-weight: 400;
-  font-size: 30px; line-height: 1.06; letter-spacing: 0.2px; color: #0a0a0a;
+  font-size: 36px; line-height: 1.08; letter-spacing: 0.3px; color: #0a0a0a;
+  /* Contorno blanco de 4.5px (24 direcciones para que quede parejo) */
   text-shadow:
-    3px 0 0 #fff, -3px 0 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff,
-    2.1px 2.1px 0 #fff, -2.1px 2.1px 0 #fff, 2.1px -2.1px 0 #fff, -2.1px -2.1px 0 #fff,
-    2.8px 1.2px 0 #fff, -2.8px 1.2px 0 #fff, 2.8px -1.2px 0 #fff, -2.8px -1.2px 0 #fff,
-    1.2px 2.8px 0 #fff, -1.2px 2.8px 0 #fff, 1.2px -2.8px 0 #fff, -1.2px -2.8px 0 #fff;
-  word-break: break-word; -webkit-box-decoration-break: clone; padding: 0 3px;
+    4.5px 0 0 #fff, -4.5px 0 0 #fff, 0 4.5px 0 #fff, 0 -4.5px 0 #fff,
+    3.2px 3.2px 0 #fff, -3.2px 3.2px 0 #fff, 3.2px -3.2px 0 #fff, -3.2px -3.2px 0 #fff,
+    4.2px 1.7px 0 #fff, -4.2px 1.7px 0 #fff, 4.2px -1.7px 0 #fff, -4.2px -1.7px 0 #fff,
+    1.7px 4.2px 0 #fff, -1.7px 4.2px 0 #fff, 1.7px -4.2px 0 #fff, -1.7px -4.2px 0 #fff,
+    2.3px 0 0 #fff, -2.3px 0 0 #fff, 0 2.3px 0 #fff, 0 -2.3px 0 #fff,
+    1.6px 1.6px 0 #fff, -1.6px 1.6px 0 #fff, 1.6px -1.6px 0 #fff, -1.6px -1.6px 0 #fff;
+  word-break: break-word; -webkit-box-decoration-break: clone; padding: 0 5px;
 }
 /* Pill negra con la flechita, al final del título → otras colecciones */
 .wp-ft-switch {
-  pointer-events: auto; display: inline-flex; vertical-align: 6px; margin-left: 6px;
+  pointer-events: auto; display: inline-flex; vertical-align: 8px; margin-left: 6px;
   height: 24px; padding: 0 10px; border-radius: 999px;
   border: 2px solid #fff; background: #0a0a0a; color: #fff; cursor: pointer;
   align-items: center; justify-content: center;
@@ -791,17 +794,14 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 .wp-ft-sub[hidden] { display: none; }
 /* X inflada (mismo efecto que la barra) — cierra y regresa */
 .wp-ft-close {
-  pointer-events: auto; flex-shrink: 0; width: 52px; height: 52px; padding: 0; border: none; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; color: #9a9ca3; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  background: linear-gradient(180deg, #ffffff 0%, #ffffff 40%, #efeff2 100%);
-  box-shadow:
-    0 0 0 0.5px rgba(17,24,39,0.08),
-    0 1px 2px rgba(17,24,39,0.08),
-    0 8px 16px -4px rgba(17,24,39,0.14),
-    0 22px 40px -12px rgba(17,24,39,0.30),
-    inset 0 2px 1px #fff,
-    inset 0 -6px 12px -6px rgba(17,24,39,0.10);
+  /* Mismo botón que cierra el modal de crear actividad (#am-back) */
+  pointer-events: auto; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border-radius: 9999px;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px) saturate(1.8); -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  border: 2.5px solid rgba(255,255,255,0.95);
+  display: flex; align-items: center; justify-content: center; color: #111; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   transition: transform .15s;
 }
 .wp-ft-close:active, .wp-ft-close.tap { transform: scale(0.88); }
@@ -835,7 +835,7 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 
 /* La barra: delgada, inflada, se llena de azul con el progreso */
 .wp-fb-bar {
-  position: relative; height: 46px; border-radius: 999px; /* misma altura que los chips del menú de abajo */
+  position: relative; height: 52px; border-radius: 999px;
   display: flex; align-items: center; padding: 0 18px 0 10px;
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 40%, #efeff2 100%);
   box-shadow:
@@ -850,7 +850,7 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 .wp-fb-fill {
   position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; z-index: 0; overflow: hidden;
   /* Siempre azul hasta tu avatar (centro); de ahí a la derecha avanza con el progreso */
-  width: calc(50% + 32px + (50% - 32px) * var(--p) / 100);
+  width: calc(50% + 34px + (50% - 34px) * var(--p) / 100);
   background: linear-gradient(180deg, #4d7cff 0%, #1a5cf5 55%, #1540cc 100%);
   box-shadow: inset 0 2px 1px rgba(255,255,255,0.35), inset 0 -5px 8px rgba(0,0,0,0.12), 0 6px 16px rgba(26,92,245,0.35);
   transition: width .7s cubic-bezier(0.32,1.1,0.5,1);
@@ -883,21 +883,21 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 
 /* Cluster de fotos (portrait, abanico) con el total en un badge */
 .wp-fb-cluster {
-  position: relative; z-index: 1; width: 70px; height: 46px; flex-shrink: 0; padding: 0; background: none;
+  position: relative; z-index: 1; width: 78px; height: 52px; flex-shrink: 0; padding: 0; background: none;
   transition: transform .15s;
 }
 .wp-fb-cluster:active { transform: scale(0.94); }
 .wp-fb-cluster i {
-  box-sizing: border-box; position: absolute; left: 50%; bottom: 5px; width: 28px; height: 39px; margin-left: -14px; border-radius: 8px;
+  box-sizing: border-box; position: absolute; left: 50%; bottom: 6px; width: 34px; height: 48px; margin-left: -17px; border-radius: 9px; /* sobresale ~2px arriba de la barra */
   background: #eef0f3 center/cover no-repeat; border: 2.5px solid #fff;
   box-shadow: 0 3px 8px rgba(17,24,39,0.28);
   transform-origin: 50% 100%;
 }
 .wp-fb-cluster .p0 { transform: rotate(0deg) translateY(-2px); z-index: 3; }
-.wp-fb-cluster .p1 { transform: rotate(-16deg) translateX(-11px); z-index: 2; }
-.wp-fb-cluster .p2 { transform: rotate(16deg) translateX(11px); z-index: 1; }
+.wp-fb-cluster .p1 { transform: rotate(-16deg) translateX(-13px); z-index: 2; }
+.wp-fb-cluster .p2 { transform: rotate(16deg) translateX(13px); z-index: 1; }
 .wp-fb-count {
-  position: absolute; z-index: 4; top: -9px; right: 4px; line-height: 0;
+  position: absolute; z-index: 4; top: -12px; right: 0; line-height: 0;
   min-width: 30px; height: 20px; padding: 0 8px; /* pill, igual que la flechita del título */ border-radius: 999px; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center;
   background: #0a0a0a; color: #fff; font-size: 12px; font-weight: 800; border: 2px solid #fff;
@@ -907,7 +907,7 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 /* Tu avatar al centro, apenas más grande que la barra */
 .wp-fb-me {
   position: absolute; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 64px; height: 64px; padding: 0; background: none; border-radius: 50%;
+  width: 68px; height: 68px; padding: 0; background: none; border-radius: 50%;
 }
 .wp-fb-me.pop { animation: wpFbPop .55s cubic-bezier(0.32,1.6,0.5,1); }
 .wp-fb-ring {
