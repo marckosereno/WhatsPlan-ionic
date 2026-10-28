@@ -80,6 +80,12 @@ export class ProfileSheet {
     const me = this.getCurrentUser();
     const uid = userId || me?.id;
     if (!uid) return;
+    if (this._el && this._mapHidden) {
+      document.dispatchEvent(new CustomEvent('wp:focus-exit')); // cerrar el modo colección sin regresar
+      this._mapHidden = false;
+      this._el.style.visibility = ''; this._el.style.pointerEvents = '';
+      this._show();
+    }
     if (this._el) { this._push(v => this._viewProfile(v, uid)); return; }
     this._build();
     this._push(v => this._viewProfile(v, uid), { instant: true });
@@ -93,6 +99,28 @@ export class ProfileSheet {
     el.classList.remove('wp-pf-in');
     this._resumeBehind();
     setTimeout(() => { el.remove(); if (this._el === el) { this._el = null; this._stack = []; } this._closing = false; }, 360);
+  }
+
+  // "Ver en el mapa": la hoja se baja pero NO se destruye (conserva la
+  // vista y su historial), y al cerrar el mapa vuelve tal cual estaba
+  hideForMap() {
+    const el = this._el;
+    if (!el) return;
+    this._mapHidden = true;
+    el.classList.remove('wp-pf-in');
+    el.style.pointerEvents = 'none';
+    this._resumeBehind();
+    clearTimeout(this._hideT);
+    this._hideT = setTimeout(() => { if (this._mapHidden) el.style.visibility = 'hidden'; }, 400);
+  }
+  returnFromMap() {
+    const el = this._el;
+    if (!el || !this._mapHidden) return;
+    this._mapHidden = false;
+    clearTimeout(this._hideT);
+    el.style.visibility = '';
+    el.style.pointerEvents = '';
+    this._show();
   }
 
   _build() {
@@ -275,7 +303,7 @@ export class ProfileSheet {
             <path d="M200 46 l14 -8 14 8 v16 l-14 8 -14 -8z M230 62 l14 -8 14 8 v16 l-14 8 -14 -8z M170 64 l14 -8 14 8 v16 l-14 8 -14 -8z" fill="#fff" opacity="0.14"/>
             <path d="M38 96 c8 -14 16 -26 24 -16 s10 -24 20 -18 s12 -18 22 -10 s14 -16 24 -6 s12 -12 22 -4 s16 -14 24 -2 s14 -10 22 0 s12 -14 22 -4 s16 -10 26 2 s14 -16 26 -6"
               fill="none" stroke="#1e2a78" stroke-width="2.6" stroke-linejoin="round" opacity="0.55"/>
-            <g class="wp-pf-banner-labels" font-family="Arimo, Arial, sans-serif" font-weight="700" font-size="13"
+            <g class="wp-pf-banner-labels" font-family="'Open Sans', sans-serif" font-weight="700" font-size="13"
                fill="#1f2a5a" fill-opacity="0.72" stroke="#fff" stroke-width="3.5" stroke-opacity="0.75" paint-order="stroke"></g>
           </svg>
           <div class="wp-pf-banner-l"><span>Guardados</span><b class="wp-pf-saved-n">–</b>
@@ -395,8 +423,8 @@ export class ProfileSheet {
       banner.onclick = () => {
         this._pulse(banner);
         if (!saved.length) { this._toast('Aún no tienes lugares guardados'); return; }
-        this.close();
-        this.onShowOnMap(saved, 'Tus guardados');
+        this.hideForMap();
+        this.onShowOnMap(saved, 'Tus guardados', { onBack: () => this.returnFromMap() });
       };
     }
 
@@ -517,8 +545,8 @@ export class ProfileSheet {
     view.querySelector('[data-a=map]').onclick = (e) => {
       this._pulse(e.currentTarget);
       if (!list.length) { this._toast('Esta colección está vacía'); return; }
-      this.close();
-      this.onShowOnMap(list, `${c.emoji || ''} ${c.name}`.trim());
+      this.hideForMap();
+      this.onShowOnMap(list, `${c.emoji || ''} ${c.name}`.trim(), { onBack: () => this.returnFromMap() });
     };
     view.querySelector('[data-a=share]').onclick = (e) => {
       this._pulse(e.currentTarget);
@@ -909,7 +937,7 @@ export class ProfileSheet {
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
       .wp-pf-banner-l > span:first-child { font-size:17px; font-weight:700; color:rgba(255,255,255,0.78); }
       .wp-pf-banner-l b {
-        font-family:'Anton','Arimo',Arial,sans-serif; font-weight:400; font-size:68px; line-height:0.95; margin-top:2px;
+        font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:68px; line-height:0.95; margin-top:2px;
         color:#fff; text-shadow:0 2px 10px rgba(20,30,120,0.25);
       }
       .wp-pf-banner-pill { margin-top:4px; display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
