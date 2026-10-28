@@ -281,7 +281,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       <span class="wp-ft-back-label">Volver</span>
     </button>
     <div class="wp-ft-title">
-      <div class="wp-ft-row">${em ? `<span class="wp-ft-em">${esc(em)}</span>` : ''}<h2>${esc(title)}</h2>${(opts.choices || []).length > 1 ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div>
+      <div class="wp-ft-row"><h2>${esc(title)}</h2>${(opts.choices || []).length > 1 ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div>
       <span class="wp-ft-sub" hidden></span>
     </div>`;
   document.body.appendChild(top);
