@@ -733,8 +733,8 @@ ion-app {
 
 /* ════════════════════════════════════════════════════════════
    MODO "SOLO ESTA COLECCIÓN" (Ver en el mapa) — app.js showPlacesOnMap
-   Se esconde todo menos los lugares de la colección, tu ubicación y la
-   píldora de abajo.
+   Se esconde todo menos los lugares de la colección, los landmarks, tu
+   ubicación y la píldora de abajo.
    ════════════════════════════════════════════════════════════ */
 body.wp-focus-map #topbar,
 body.wp-focus-map #wp-side-panel-top,
@@ -742,7 +742,6 @@ body.wp-focus-map #wp-side-panel-bottom,
 body.wp-focus-map #map-results-panel,
 body.wp-focus-map #wp-footer-menu,
 body.wp-focus-map #wp-saved-chip,
-body.wp-focus-map .lm-wrap,
 body.wp-focus-map .wp-mo-mk,
 body.wp-focus-map .wp-mo-pol,
 body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
