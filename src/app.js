@@ -5,6 +5,8 @@
 import { MapView }          from '/src/components/MapView.js';
 import { photoFull, photoSmall } from '/src/utils/photo-url.js';
 import { MiniProfile }      from '/src/components/MiniProfile.js';
+import { VisitService }     from '/src/services/VisitService.js';
+import { getAvatarUrl }     from '/src/services/AvatarService.js';
 import { AuthModal }        from '/src/components/AuthModal.js';
 import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
 import { SubcategoryRow }   from '/src/components/SubcategoryRow.js';
@@ -245,31 +247,82 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   setTimeout(() => fit(true), 60);
 
-  // Fotos para la píldora (miniaturas), 2 a cada lado
-  const ph = places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean);
-  const L = ph.slice(0, 2), R = ph.slice(2, 4);
+  // ── Barra de reto (gamificación fase 1) ────────────────────────────
+  // Izquierda: fotos de la colección · centro: tu avatar con anillo de
+  // progreso (tocarlo vuelve a encuadrar todo) · derecha: "3/7 visitados".
+  // Arriba: nombre de la colección y la X para regresar.
+  const ph = places.map(p => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '')).filter(Boolean).slice(0, 3);
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const n = places.length;
+  const ids = places.map(p => String(p.place_id || p.placeId || p.id)).filter(Boolean);
+  const total = ids.length;
+  const me = window.wpApp.currentUser;
+  const myAv = window.wpApp._cachedAvatarUrl || me?.user_metadata?.avatar_url ||
+    getAvatarUrl(me?.user_metadata?.display_name || me?.email?.split('@')[0] || 'user');
 
   document.getElementById('wp-focus-bar')?.remove();
   const bar = document.createElement('div');
   bar.id = 'wp-focus-bar';
   bar.innerHTML = `
-    <button type="button" class="wp-fb-pill" aria-label="Ver todos">
-      <span class="wp-fb-ph wp-fb-l">${L.map((u, i) => `<i style="background-image:url('${esc(u)}')" class="p${i}"></i>`).join('')}</span>
-      <span class="wp-fb-txt">${label ? `<small>${esc(label)}</small>` : ''}<b>${n} ${n === 1 ? 'lugar' : 'lugares'}</b></span>
-      <span class="wp-fb-ph wp-fb-r">${R.map((u, i) => `<i style="background-image:url('${esc(u)}')" class="p${i}"></i>`).join('')}</span>
-    </button>
-    <button type="button" class="wp-fb-x" aria-label="Cerrar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+    <div class="wp-fb-top">
+      <span class="wp-fb-chip wp-fb-name">${esc(label || 'Colección')}</span>
+      <span class="wp-fb-chip wp-fb-done" hidden>¡Colección completada!</span>
+      <button type="button" class="wp-fb-x" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="wp-fb-bar">
+      <span class="wp-fb-ph">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}</span>
+      <button type="button" class="wp-fb-me" aria-label="Ver todos">
+        <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
+      </button>
+      <span class="wp-fb-score"><b><span class="wp-fb-n">0</span><small>/${total}</small></b><em>visitados</em></span>
+    </div>`;
   document.body.appendChild(bar);
   requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add('in')));
+  bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
 
-  bar.querySelector('.wp-fb-pill').onclick = () => { mv.haptic?.('light'); fit(true); };
+  // Progreso: mis visitas de estos lugares + palomita en los pines visitados
+  const visited = new Set();
+  const paintProgress = (celebrate = false) => {
+    const n = visited.size;
+    bar.querySelector('.wp-fb-n').textContent = String(n);
+    bar.querySelector('.wp-fb-ring').style.setProperty('--p', String(total ? Math.round(n / total * 100) : 0));
+    const done = total > 0 && n >= total;
+    bar.classList.toggle('complete', done);
+    bar.querySelector('.wp-fb-done').hidden = !done;
+    bar.querySelector('.wp-fb-name').hidden = done;
+    (mv.markerEls || []).forEach(el => {
+      const id = String(el._place?.place_id || el._place?.placeId || el._place?.id || '');
+      el.classList.toggle('wp-visited', visited.has(id));
+    });
+    if (celebrate) {
+      mv.haptic?.(done ? 'action' : 'tap');
+      const ring = bar.querySelector('.wp-fb-me');
+      ring.classList.remove('pop'); void ring.offsetWidth; ring.classList.add('pop');
+    }
+  };
+  if (me && total) {
+    VisitService.myVisits(ids)
+      .then(m => { m.forEach((v, id) => { if (v > 0) visited.add(id); }); paintProgress(); })
+      .catch(e => console.warn('[DIAG-VISIT] progreso:', e.message || e));
+  }
+  // Si registra una visita (desde la ficha) mientras está en este modo
+  const onVisit = (ev) => {
+    const id = String(ev.detail?.place_id || '');
+    if (!ids.includes(id) || visited.has(id)) return;
+    visited.add(id);
+    paintProgress(true);
+  };
+  document.addEventListener('wp:visit', onVisit);
+  // Los pines se pueden volver a crear (zoom, clusters): repintar palomitas
+  const repaint = () => { if (visited.size) paintProgress(); };
+  map?.on?.('moveend', repaint);
 
   const exit = (goBack = true, instant = false) => {
     if (window.wpApp._focusExit !== exit) return;
     window.wpApp._focusExit = null;
     document.removeEventListener('wp:focus-exit', onExt);
+    document.removeEventListener('wp:visit', onVisit);
+    map?.off?.('moveend', repaint);
+    (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited'));
     mv.haptic?.('light');
     bar.classList.remove('in');
     setTimeout(() => bar.remove(), instant ? 0 : 260);
@@ -583,6 +636,7 @@ try {
         animateAvatarSwap(document.getElementById('topbar-auth-btn'));
       }
       if (user && isSuperUser(user.id)) mountSuperPanel(window.wpApp.mapView);
+      if (!user) VisitService._cache.clear(); // visitas de la sesión anterior
       if (!user && window.wpApp.superPanel) {
         window.wpApp.superPanel.unmount();
         window.wpApp.superPanel = null;
