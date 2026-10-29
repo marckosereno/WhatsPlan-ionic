@@ -310,6 +310,11 @@ export class ProfileSheet {
             <span class="wp-pf-banner-pill">${ICON.map} Ver mapa</span></div>
           <span class="wp-pf-banner-dot"></span>
           <div class="wp-pf-stickers"></div>
+        </button>
+        <button type="button" class="wp-pf-explore">
+          <span class="wp-pf-ex-hex" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 40 40"><path d="M13 4l9 5v10l-9 5-9-5V9z" fill="#1a5cf5" opacity=".9"/><path d="M27 12l9 5v10l-9 5-9-5V17z" fill="#ffc928"/><path d="M13 20l9 5v10l-9 5-9-5V25z" fill="#1a5cf5" opacity=".45"/></svg></span>
+          <span class="wp-pf-ex-txt"><b>Explora Nuevo Progreso</b><small>Destapa la ciudad visitando lugares</small></span>
+          <span class="wp-pf-ex-pct">–</span>
         </button>` : ''}
       <div class="wp-pf-mem"></div>
       <div class="wp-pf-sec"><span>Colecciones</span><span class="wp-pf-sec-n"></span></div>
@@ -323,6 +328,29 @@ export class ProfileSheet {
         ? { icon: ICON.gear, onClick: () => this._push(v => this._viewSettings(v)) }
         : (me ? { icon: ICON.dots, onClick: (btn) => this._otherMenu(btn, uid) } : null),
     });
+
+    // Explora tu ciudad (fase 2): abre el mapa con la niebla; muestra tu %
+    const exBtn = view.querySelector('.wp-pf-explore');
+    if (exBtn) {
+      exBtn.onclick = () => {
+        this._pulse(exBtn);
+        this.hideForMap();
+        window.wpApp?.openExplore?.({ onBack: () => this.returnFromMap() });
+      };
+      Promise.all([
+        this._placesIndex(),
+        import('/src/utils/explore-fog.js'),
+        import('/src/services/VisitService.js'),
+      ]).then(async ([idx, { buildFog }, { VisitService }]) => {
+        const all = [...idx.values()];
+        const fog = buildFog(all);
+        if (!fog) return;
+        const m = await VisitService.myVisits(all.map(p => String(p.place_id)));
+        const ids = [...m.entries()].filter(([, v]) => v > 0).map(([id]) => id);
+        const el = exBtn.querySelector('.wp-pf-ex-pct');
+        if (el && view.isConnected) el.textContent = fog.stats(ids).pct + '%';
+      }).catch(() => {});
+    }
 
     // Memories (momentos activos + guardados) — los pinta MomentsUI
     window.wpApp?.momentsUI?.renderProfile(view.querySelector('.wp-pf-mem'), uid, isMe);
@@ -944,6 +972,18 @@ export class ProfileSheet {
         box-shadow:0 10px 26px rgba(53,87,255,0.28); font-family:inherit; -webkit-tap-highlight-color:transparent;
       }
       .wp-pf-banner-map { position:absolute; inset:0; width:100%; height:100%; }
+      /* Explora tu ciudad */
+      .wp-pf-explore {
+        width:100%; margin-top:12px; display:flex; align-items:center; gap:12px; padding:12px 16px 12px 12px;
+        border:none; border-radius:22px; background:#f4f6ff; cursor:pointer; text-align:left; font-family:inherit;
+        -webkit-tap-highlight-color:transparent; transition:transform .15s;
+      }
+      .wp-pf-explore:active { transform:scale(0.98); }
+      .wp-pf-ex-hex { flex-shrink:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; }
+      .wp-pf-ex-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+      .wp-pf-ex-txt b { font-size:15px; font-weight:800; color:#111827; }
+      .wp-pf-ex-txt small { font-size:12.5px; color:#6b7280; }
+      .wp-pf-ex-pct { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:26px; color:#1a5cf5; }
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
       .wp-pf-banner-l > span:first-child { font-size:17px; font-weight:700; color:rgba(255,255,255,0.78); }
       .wp-pf-banner-l b {
