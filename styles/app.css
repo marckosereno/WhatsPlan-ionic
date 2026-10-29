@@ -749,20 +749,20 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
   pointer-events: none;
 }
 
-/* ── Arriba: fila 1 "Volver" (izq.) + campanita del topbar (der.);
-   fila 2 el título de la colección ── */
+/* ── Arriba: "Volver" (izq.) + título de la colección (der.) ── */
 #wp-focus-top {
   position: fixed; left: 12px; right: 12px;
   top: calc(12px + env(safe-area-inset-top, 0px));
   /* Fila 1: la X a la derecha (altura del topbar). Fila 2: el título,
      a la izquierda y con todo el ancho */
-  z-index: 1200; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0;
+  z-index: 1200; display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 10px;
   pointer-events: none; font-family: var(--wp-font);
   opacity: 0; transform: translateY(-14px);
   transition: opacity .3s ease, transform .45s cubic-bezier(0.32,1.25,0.5,1);
 }
 #wp-focus-top.in { opacity: 1; transform: none; }
-.wp-ft-title { order: 2; flex: 0 0 100%; min-width: 0; margin-left: -5px; padding-top: 10px; }
+/* Título a la derecha de "Volver" (donde estaba la campanita), alineado a la derecha */
+.wp-ft-title { order: 2; flex: 1 1 0; min-width: 0; margin-right: -5px; padding-top: 2px; text-align: right; }
 .wp-ft-row { display: block; }
 /* Título: Anton 30px, negro con contorno blanco, baja de renglón si es largo */
 .wp-ft-row h2 {
@@ -791,7 +791,7 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 .wp-ft-switch:active { transform: scale(0.88); }
 /* Dueño (@usuario o nombre) */
 .wp-ft-sub {
-  display: block; margin: 4px 0 0 3px; font-size: 14px; line-height: 1.1; font-weight: 800; color: #374151;
+  display: block; margin: 4px 5px 0 0; font-size: 14px; line-height: 1.1; font-weight: 800; color: #374151;
   text-shadow: 2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 1.4px 1.4px 0 #fff, -1.4px 1.4px 0 #fff, 1.4px -1.4px 0 #fff, -1.4px -1.4px 0 #fff;
 }
 .wp-ft-sub[hidden] { display: none; }
@@ -817,8 +817,7 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 .wp-ft-back.q { padding: 0 14px; }
 .wp-ft-back.q .wp-ft-back-label { max-width: 0; margin-left: 0; opacity: 0; }
 
-/* La campanita del topbar sigue visible a la derecha (con su contador y su función) */
-body.wp-focus-map #topbar-notif-btn { visibility: visible; pointer-events: auto; }
+
 
 /* ── Barra de abajo ─────────────────────────────────────────────── */
 #wp-focus-bar {
