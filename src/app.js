@@ -282,7 +282,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       <div class="wp-ft-row"><h2>${esc(title)}</h2>${hasChoices ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div>
       <span class="wp-ft-sub" hidden></span>
     </div>
-    <button type="button" class="wp-ft-close" aria-label="Cerrar"><svg width="16" height="16" fill="currentColor"><use href="#icon-close"/></svg></button>`;
+    <button type="button" class="wp-ft-back" aria-label="Volver">
+      <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1);flex-shrink:0;"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>
+      <span class="wp-ft-back-label">Volver</span>
+    </button>`;
   document.body.appendChild(top);
 
   const bar = document.createElement('div');
@@ -420,11 +423,11 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const onExt = () => exit(false);
   document.addEventListener('wp:focus-exit', onExt);
   window.wpApp._focusExit = exit;
-  // X: cierra el mapa de la colección y regresa a la pantalla anterior
-  const closeBtn = top.querySelector('.wp-ft-close');
-  closeBtn.onclick = () => {
-    closeBtn.classList.add('tap');
-    setTimeout(() => exit(true), 90);
+  // "Volver" (el mismo de la ficha): se retrae al ícono y regresa a la pantalla anterior
+  const backBtn = top.querySelector('.wp-ft-back');
+  backBtn.onclick = () => {
+    backBtn.classList.add('q');
+    setTimeout(() => exit(true), 110);
   };
 
 }
