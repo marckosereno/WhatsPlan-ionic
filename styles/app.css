@@ -1033,13 +1033,4 @@ body.wp-focus-map .place-marker-el.wp-fogged > * { opacity: .55; }
 @keyframes wpFogOut { from { opacity: 1; transform: translate(-50%, 0) scale(1); } to { opacity: 0; transform: translate(-50%, -12px) scale(.9); } }
 @keyframes wpFogIn { to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 
-/* ── Salida de la ficha (PlaceModal2.hide agrega wp-pm-closing ~320ms):
-   los vidrios del mapa van sin backdrop-filter mientras dura el fade.
-   Es lo que hacía pesada la salida y el glitch en las subcategorías. ── */
-body.wp-pm-closing ion-app::before,
-body.wp-pm-closing ion-app::after,
-body.wp-pm-closing :is(#topbar, #wp-side-panel-top, #wp-side-panel-bottom, #map-results-panel, #wp-footer-menu),
-body.wp-pm-closing :is(#topbar, #wp-side-panel-top, #wp-side-panel-bottom, #map-results-panel, #wp-footer-menu) * {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
+
