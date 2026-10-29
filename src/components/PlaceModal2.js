@@ -390,6 +390,27 @@ export class PlaceModal2 {
         transition:opacity 0.18s ease-in, transform 0.2s cubic-bezier(0.4,0,1,1);
         will-change:transform, opacity;
       }
+      /* ── Otras salidas (se eligen en SuperUserPanel → "Salida de la
+         ficha"; se guarda en el teléfono: localStorage wpPmExit) ── */
+      /* "Deslizar": baja completa como hoja, sin desvanecerse hasta el final
+         (el mapa se va descubriendo de arriba hacia abajo) */
+      #wp-pm2.wp-pm2-flip-exit.wp-pm2-exit-slide #wp-pm2-card {
+        transform:translateY(100%);
+        border-radius:28px 28px 0 0;
+        opacity:1;
+        transition:transform 0.3s cubic-bezier(0.32,0,0.67,0);
+      }
+      /* "Encoger": se hace chiquita hacia el centro y se desvanece */
+      #wp-pm2.wp-pm2-flip-exit.wp-pm2-exit-shrink #wp-pm2-card {
+        transform:scale(0.86);
+        border-radius:34px;
+        transition:opacity 0.2s ease-in, transform 0.22s cubic-bezier(0.4,0,0.6,1);
+      }
+      /* "Fundido": solo se desvanece, rapidísimo */
+      #wp-pm2.wp-pm2-flip-exit.wp-pm2-exit-fade #wp-pm2-card {
+        transform:none;
+        transition:opacity 0.14s linear;
+      }
       #wp-pm2.wp-pm2-flip-exit #wp-pm2-backdrop { transition:opacity 0.16s ease-out; }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
@@ -3531,6 +3552,11 @@ export class PlaceModal2 {
     // #wp-pm2.wp-pm2-flip-exit) — se agrega SIEMPRE, sin importar si la
     // ficha se abrió desde el flip del slide, desde el minicard o desde
     // la búsqueda global, así la salida es la misma en los tres casos.
+    // Estilo de salida elegido (por defecto "slide")
+    let ex = 'slide';
+    try { ex = localStorage.getItem('wpPmExit') || 'slide'; } catch (_) {}
+    this._el.classList.remove('wp-pm2-exit-slide', 'wp-pm2-exit-shrink', 'wp-pm2-exit-fade');
+    if (ex !== 'drop') this._el.classList.add('wp-pm2-exit-' + ex);
     this._el.classList.add('wp-pm2-flip-exit');
     this._el.classList.remove('wp-pm2-in');
     document.body.classList.remove('wp-pm-open');
@@ -3547,7 +3573,8 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = null;
       this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
-    }, 220);
+      this._el.classList.remove('wp-pm2-exit-slide', 'wp-pm2-exit-shrink', 'wp-pm2-exit-fade');
+    }, 320);
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
