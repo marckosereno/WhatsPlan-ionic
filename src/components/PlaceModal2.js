@@ -378,10 +378,16 @@ export class PlaceModal2 {
          (ver el JS), sin importar si la ficha se abrió desde el flip
          del slide, desde el minicard o desde la búsqueda global. Así
          esta salida es la misma en los tres casos. */
+      /* Salida más ágil (220ms): la tarjeta se encoge un poquito con
+         las esquinas redondeadas mientras se desvanece, como al cerrar
+         una app en el teléfono. Solo opacity/transform → GPU. */
       #wp-pm2.wp-pm2-flip-exit #wp-pm2-card {
-        transform:none;
-        transition:opacity 0.24s ease-in;
+        transform:scale(0.94) translateY(8px);
+        border-radius:30px;
+        transition:opacity 0.2s cubic-bezier(0.4,0,1,1), transform 0.22s cubic-bezier(0.2,0.7,0.3,1), border-radius 0.12s ease-out;
+        will-change:transform, opacity;
       }
+      #wp-pm2.wp-pm2-flip-exit #wp-pm2-backdrop { transition:opacity 0.18s ease-out; }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
       }
@@ -3538,7 +3544,7 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = null;
       this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
-    }, 350);
+    }, 240);
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
@@ -5965,9 +5971,14 @@ export class PlaceModal2 {
   _coverBehind(on) {
     clearTimeout(this._coverTimer);
     if (!on) {
+      document.body.classList.remove('wp-pm-covered');
       document.querySelectorAll('.wp-pm2-under').forEach(n => n.classList.remove('wp-pm2-under'));
-      (this._pausedAnims || []).forEach(a => { try { a.play(); } catch (_) {} });
+      // Las animaciones de los pines (pulsos, flotado…) se reanudan
+      // DESPUÉS de que la ficha terminó de irse: si arrancan todas en el
+      // mismo cuadro que el fade, la salida se traba.
+      const paused = this._pausedAnims || [];
       this._pausedAnims = [];
+      if (paused.length) setTimeout(() => paused.forEach(a => { try { a.play(); } catch (_) {} }), 260);
       return;
     }
     this._coverTimer = setTimeout(() => {
@@ -5979,6 +5990,7 @@ export class PlaceModal2 {
         if (n.id && n.id.startsWith('wp-pm2-')) return; // hojas/toast de la ficha
         n.classList.add('wp-pm2-under');
       });
+      document.body.classList.add('wp-pm-covered'); // el mapa ya no necesita el blur (no se ve)
       // Congelar sus animaciones (con la API: también las que están en
       // style="" inline, que una regla CSS no alcanza sin !important)
       try {
