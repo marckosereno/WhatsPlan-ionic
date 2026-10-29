@@ -90,6 +90,11 @@ body.wp-pm-open .map-container {
   filter: blur(6px) brightness(0.92);
   transition: filter 0.18s ease;
 }
+/* Con la ficha ya abierta y tapando todo, el mapa no se ve: se le quita
+   el blur. Así, al cerrar la ficha, el mapa aparece nítido de inmediato
+   sin la transición de blur → nítido (muy pesada en Android sobre WebGL). */
+body.wp-pm-open.wp-pm-covered .map-container { filter: none; transition: none; }
+body.wp-pm-covered .map-container { transition: none; }
 .map-container {
   transition: filter 0.12s ease;
 }
