@@ -758,10 +758,14 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
      a la izquierda y con todo el ancho */
   z-index: 1200; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0;
   pointer-events: none; font-family: var(--wp-font);
-  opacity: 0; transform: translateY(-14px);
-  transition: opacity .3s ease, transform .45s cubic-bezier(0.32,1.25,0.5,1);
+  /* Al salir SOLO se desvanece, sin moverse: así "Volver" (ya retraído
+     en círculo) queda exactamente donde aparece el avatar del topbar.
+     Antes subía 14px al salir y se veía más arriba que el avatar. */
+  opacity: 0;
+  transition: opacity .22s ease;
 }
-#wp-focus-top.in { opacity: 1; transform: none; }
+#wp-focus-top.in { opacity: 1; animation: wpFtIn .45s cubic-bezier(0.32,1.25,0.5,1); }
+@keyframes wpFtIn { from { transform: translateY(-14px); } to { transform: none; } }
 .wp-ft-title { order: 2; flex: 0 0 100%; min-width: 0; margin-left: -5px; padding-top: 10px; }
 .wp-ft-row { display: block; }
 /* Título: Anton 30px, negro con contorno blanco, baja de renglón si es largo */
