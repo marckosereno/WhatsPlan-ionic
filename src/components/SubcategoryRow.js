@@ -504,7 +504,9 @@ export class SubcategoryRow {
         border-radius: 999px;
         font-size: 12.5px; font-weight: 600;
         color: #374151; white-space: nowrap; cursor: pointer;
-        transition: all 0.18s cubic-bezier(0.34,1.2,0.64,1); flex-shrink: 0;
+        /* Solo lo que cambia al tocar/activar (antes "all": también animaba
+           visibility al ocultarse/mostrarse detrás de la ficha → destello) */
+        transition: transform 0.18s cubic-bezier(0.34,1.2,0.64,1), background 0.18s, color 0.18s, box-shadow 0.18s, border-color 0.18s; flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
         /* Sin backdrop-filter: los chips van sobre el panel blanco, así que
            el desenfoque no se veía pero el teléfono lo recalculaba en cada
