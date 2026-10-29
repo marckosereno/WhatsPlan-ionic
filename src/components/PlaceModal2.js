@@ -3531,6 +3531,7 @@ export class PlaceModal2 {
     // #wp-pm2.wp-pm2-flip-exit) — se agrega SIEMPRE, sin importar si la
     // ficha se abrió desde el flip del slide, desde el minicard o desde
     // la búsqueda global, así la salida es la misma en los tres casos.
+    this._diagFlash(); // [DIAG] temporal: qué les pasa a los chips al cerrar
     this._el.classList.add('wp-pm2-flip-exit');
     this._el.classList.remove('wp-pm2-in');
     document.body.classList.remove('wp-pm-open');
@@ -5960,6 +5961,45 @@ export class PlaceModal2 {
     this._sheetIn(menu, overlay, { dimmed: chained, instant });
     frag.classList.add('wp-pm2-in');
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
+  }
+
+  // [DIAG] temporal — destello en los chips de subcategorías al cerrar la
+  // ficha. Durante 900 ms, cuadro por cuadro, anota SOLO lo que cambia en:
+  // el panel, la fila de subcategorías, el primer chip, sus animaciones,
+  // las clases del body y el tinte. Quitar cuando se encuentre la causa.
+  _diagFlash() {
+    try {
+      const t0 = performance.now();
+      const panel = document.getElementById('map-results-panel');
+      const row = document.getElementById('map-subcategories-footer');
+      const snap = () => {
+        const chip = row?.querySelector('.subcategory-footer-chip');
+        const cs = (el) => el ? getComputedStyle(el) : null;
+        const p = cs(panel), r = cs(row), c = cs(chip);
+        const anims = (() => { try { return document.getAnimations().filter(a => { const tg = a.effect?.target; return tg && (tg === panel || panel?.contains(tg)); }).map(a => (a.animationName || a.transitionProperty || a.constructor.name) + ':' + a.playState).join(','); } catch (_) { return '?'; } })();
+        return [
+          'panel ' + (p ? `vis=${p.visibility} op=${p.opacity} tf=${p.transform}` : '–'),
+          'fila ' + (r ? `vis=${r.visibility} op=${r.opacity}` : '–'),
+          'chip ' + (c ? `op=${c.opacity} tf=${c.transform} bg=${c.backgroundImage.slice(0, 30)} cls=${chip.className}` : '–'),
+          'n=' + (row?.querySelectorAll('.subcategory-footer-chip').length || 0),
+          'anims=' + anims,
+          'body=' + document.body.className + ' tint=' + (document.body.dataset.wpTint || ''),
+        ].join(' | ');
+      };
+      let last = '';
+      const tick = () => {
+        const now = snap();
+        if (now !== last) { console.log(`[DIAG-FLASH] +${Math.round(performance.now() - t0)}ms ${now}`); last = now; }
+        if (performance.now() - t0 < 900) requestAnimationFrame(tick);
+      };
+      tick();
+      // ¿Se vuelven a crear los chips?
+      if (row) {
+        const mo = new MutationObserver(ms => ms.forEach(m => console.log(`[DIAG-FLASH] +${Math.round(performance.now() - t0)}ms mutación ${m.type} ${m.attributeName || ''} +${m.addedNodes.length}/-${m.removedNodes.length}`)));
+        mo.observe(row, { childList: true, attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
+        setTimeout(() => mo.disconnect(), 900);
+      }
+    } catch (e) { console.log('[DIAG-FLASH] error', e.message); }
   }
 
   // ── Lo de atrás de la ficha ────────────────────────────────────────
