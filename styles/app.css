@@ -749,7 +749,8 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
   pointer-events: none;
 }
 
-/* ── Arriba: título de la colección (izquierda) + X inflada (derecha) ── */
+/* ── Arriba: fila 1 "Volver" (izq.) + campanita del topbar (der.);
+   fila 2 el título de la colección ── */
 #wp-focus-top {
   position: fixed; left: 12px; right: 12px;
   top: calc(12px + env(safe-area-inset-top, 0px));
@@ -795,19 +796,29 @@ body.wp-focus-map .maplibregl-marker:has(.wp-act-pin) {
 }
 .wp-ft-sub[hidden] { display: none; }
 /* X inflada (mismo efecto que la barra) — cierra y regresa */
-.wp-ft-close {
-  /* Mismo botón que cierra el modal de crear actividad (#am-back) */
-  order: 1; margin-left: auto;
-  pointer-events: auto; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border-radius: 9999px;
+.wp-ft-back {
+  /* Mismo botón "Volver" de la ficha (#wp-pm2-back), fila 1 a la izquierda */
+  order: 1; pointer-events: auto; position: relative;
+  height: 48px; padding: 0 18px 0 14px; border-radius: 9999px; border: none; flex-shrink: 0;
+  font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: -0.1px;
   background: rgba(255,255,255,0.88);
   backdrop-filter: blur(16px) saturate(1.8); -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
-  border: 2.5px solid rgba(255,255,255,0.95);
-  display: flex; align-items: center; justify-content: center; color: #111; cursor: pointer;
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  transition: transform .15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+  color: #111; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, padding 0.22s cubic-bezier(0.4,0,0.2,1);
 }
-.wp-ft-close:active, .wp-ft-close.tap { transform: scale(0.88); }
+.wp-ft-back:active { transform: scale(0.92); }
+.wp-ft-back-label {
+  display: inline-block; max-width: 80px; margin-left: 6px; overflow: hidden; white-space: nowrap;
+  transition: max-width 0.22s cubic-bezier(0.4,0,0.2,1), margin-left 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.16s ease-out;
+}
+/* Al tocar: "Volver" se retrae hacia el ícono, como en la ficha */
+.wp-ft-back.q { padding: 0 14px; }
+.wp-ft-back.q .wp-ft-back-label { max-width: 0; margin-left: 0; opacity: 0; }
+
+/* La campanita del topbar sigue visible a la derecha (con su contador y su función) */
+body.wp-focus-map #topbar-notif-btn { visibility: visible; pointer-events: auto; }
 
 /* ── Barra de abajo ─────────────────────────────────────────────── */
 #wp-focus-bar {
