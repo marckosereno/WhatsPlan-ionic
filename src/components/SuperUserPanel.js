@@ -116,6 +116,9 @@ export class SuperUserPanel {
         <button class="su-btn su-btn-gray" id="su-btn-clean-photos">
           🧹 Borrar fotos originales <b id="su-clean-state"></b>
         </button>
+        <button class="su-btn su-btn-gray" id="su-btn-pm-exit">
+          🎬 Salida de la ficha: <b id="su-pm-exit-name"></b>
+        </button>
         <button class="su-btn su-btn-gray" id="su-btn-debug">
           🐞 Consola de depuración: <b id="su-debug-state"></b>
         </button>
@@ -240,6 +243,19 @@ export class SuperUserPanel {
       } finally {
         _cleaning = false;
       }
+    });
+
+    // Probar estilos de salida de la ficha (se guarda en este teléfono)
+    const EXITS = ['slide', 'drop', 'shrink', 'fade'];
+    const EXIT_NAMES = { slide: 'Deslizar', drop: 'Bajar y desvanecer', shrink: 'Encoger', fade: 'Fundido' };
+    const _exCur = () => { try { return localStorage.getItem('wpPmExit') || 'slide'; } catch (_) { return 'slide'; } };
+    const _paintEx = () => { const el = document.getElementById('su-pm-exit-name'); if (el) el.textContent = EXIT_NAMES[_exCur()] || 'Deslizar'; };
+    _paintEx();
+    document.getElementById('su-btn-pm-exit')?.addEventListener('click', () => {
+      const nx = EXITS[(EXITS.indexOf(_exCur()) + 1) % EXITS.length];
+      try { localStorage.setItem('wpPmExit', nx); } catch (_) {}
+      _paintEx();
+      this.mapView?.haptic('light');
     });
 
     // Consola (eruda) solo en ESTE teléfono; se aplica al recargar
