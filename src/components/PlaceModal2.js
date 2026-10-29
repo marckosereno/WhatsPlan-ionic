@@ -3531,13 +3531,6 @@ export class PlaceModal2 {
     // #wp-pm2.wp-pm2-flip-exit) — se agrega SIEMPRE, sin importar si la
     // ficha se abrió desde el flip del slide, desde el minicard o desde
     // la búsqueda global, así la salida es la misma en los tres casos.
-    // Mientras sale: sin desenfoques de fondo (backdrop-filter) en lo de
-    // atrás. Esos vidrios (chips de subcategorías, topbar, menú) se
-    // re-dibujaban en cada cuadro del fade → la salida pesada y el glitch
-    // en las subcategorías. Vuelven solos al terminar.
-    document.body.classList.add('wp-pm-closing');
-    clearTimeout(this._closingT);
-    this._closingT = setTimeout(() => document.body.classList.remove('wp-pm-closing'), 320);
     this._el.classList.add('wp-pm2-flip-exit');
     this._el.classList.remove('wp-pm2-in');
     document.body.classList.remove('wp-pm-open');
