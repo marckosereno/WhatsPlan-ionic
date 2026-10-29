@@ -506,8 +506,9 @@ export class SubcategoryRow {
         color: #374151; white-space: nowrap; cursor: pointer;
         transition: all 0.18s cubic-bezier(0.34,1.2,0.64,1); flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
-        backdrop-filter: blur(12px) saturate(1.6);
-        -webkit-backdrop-filter: blur(12px) saturate(1.6);
+        /* Sin backdrop-filter: los chips van sobre el panel blanco, así que
+           el desenfoque no se veía pero el teléfono lo recalculaba en cada
+           cuadro (parpadeaban al cerrar la ficha encima). */
       }
       .subcategory-footer-chip:active {
         transform: scale(0.94);
