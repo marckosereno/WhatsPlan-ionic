@@ -381,13 +381,16 @@ export class PlaceModal2 {
       /* Salida más ágil (220ms): la tarjeta se encoge un poquito con
          las esquinas redondeadas mientras se desvanece, como al cerrar
          una app en el teléfono. Solo opacity/transform → GPU. */
+      /* Salida = la entrada al revés, más corta (180ms): baja un poco,
+         se achica a 0.97 y se desvanece. Solo opacity/transform (GPU), sin
+         animar esquinas (repintaba toda la tarjeta en cada cuadro). */
       #wp-pm2.wp-pm2-flip-exit #wp-pm2-card {
-        transform:scale(0.94) translateY(8px);
-        border-radius:30px;
-        transition:opacity 0.2s cubic-bezier(0.4,0,1,1), transform 0.22s cubic-bezier(0.2,0.7,0.3,1), border-radius 0.12s ease-out;
+        transform:translateY(18px) scale(0.97);
+        border-radius:28px;
+        transition:opacity 0.18s ease-in, transform 0.2s cubic-bezier(0.4,0,1,1);
         will-change:transform, opacity;
       }
-      #wp-pm2.wp-pm2-flip-exit #wp-pm2-backdrop { transition:opacity 0.18s ease-out; }
+      #wp-pm2.wp-pm2-flip-exit #wp-pm2-backdrop { transition:opacity 0.16s ease-out; }
       #wp-pm2-backdrop {
         position:absolute; inset:0; background:rgba(0,0,0,0.45);
       }
@@ -3528,6 +3531,13 @@ export class PlaceModal2 {
     // #wp-pm2.wp-pm2-flip-exit) — se agrega SIEMPRE, sin importar si la
     // ficha se abrió desde el flip del slide, desde el minicard o desde
     // la búsqueda global, así la salida es la misma en los tres casos.
+    // Mientras sale: sin desenfoques de fondo (backdrop-filter) en lo de
+    // atrás. Esos vidrios (chips de subcategorías, topbar, menú) se
+    // re-dibujaban en cada cuadro del fade → la salida pesada y el glitch
+    // en las subcategorías. Vuelven solos al terminar.
+    document.body.classList.add('wp-pm-closing');
+    clearTimeout(this._closingT);
+    this._closingT = setTimeout(() => document.body.classList.remove('wp-pm-closing'), 320);
     this._el.classList.add('wp-pm2-flip-exit');
     this._el.classList.remove('wp-pm2-in');
     document.body.classList.remove('wp-pm-open');
@@ -3544,7 +3554,7 @@ export class PlaceModal2 {
       if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
       this._scrollHandler = null;
       this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
-    }, 240);
+    }, 220);
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
