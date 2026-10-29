@@ -6,6 +6,7 @@ import { MapView }          from '/src/components/MapView.js';
 import { photoFull, photoSmall } from '/src/utils/photo-url.js';
 import { MiniProfile }      from '/src/components/MiniProfile.js';
 import { VisitService }     from '/src/services/VisitService.js';
+import { buildFog, drawFog, removeFog } from '/src/utils/explore-fog.js';
 import { getAvatarUrl }     from '/src/services/AvatarService.js';
 import { AuthModal }        from '/src/components/AuthModal.js';
 import { SuperUserPanel }   from '/src/components/SuperUserPanel.js';
@@ -239,7 +240,14 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.body.classList.add('wp-focus-map');
 
   const map = mv.getMap?.() || mv.map;
+  // Fase 2: "Explora tu ciudad" — niebla de hexágonos sobre la ciudad
+  const explore = opts.mode === 'explore';
+  const fog = explore ? buildFog(places) : null;
   const fit = (animate = true) => {
+    if (fog) {
+      map?.fitBounds?.(fog.bounds(), { padding: { top: 150, bottom: 170, left: 24, right: 24 }, maxZoom: 16.5, duration: animate ? 700 : 0 });
+      return;
+    }
     const pts = places.map(p => [Number(p.lng ?? p.location?.lng), Number(p.lat ?? p.location?.lat)]).filter(([x, y]) => isFinite(x) && isFinite(y));
     if (!map || !pts.length) return;
     if (pts.length === 1) { map.flyTo({ center: pts[0], zoom: 17, essential: true, animate }); return; }
@@ -262,7 +270,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     document.head.appendChild(lk);
   }
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const hasChoices = (opts.choices || []).length > 1;
+  const hasChoices = opts.mode !== 'explore' && (opts.choices || []).length > 1;
   const ids = places.map(p => String(p.place_id || p.placeId || p.id)).filter(Boolean);
   const total = ids.length;
   const me = window.wpApp.currentUser;
@@ -300,9 +308,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       <button type="button" class="wp-fb-cluster" aria-label="Lugares de la colección">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}<span class="wp-fb-count"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
-        <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${total}</span>
+        <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${explore ? (fog?.total || 0) : total}</span>
       </button>
-      <span class="wp-fb-score"><b><span class="wp-fb-pct">0</span><small>%</small></b><em>completado</em></span>
+      <span class="wp-fb-score"><b><span class="wp-fb-pct">0</span><small>%</small></b><em>${explore ? 'explorado' : 'completado'}</em></span>
     </div>`;
   document.body.appendChild(bar);
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
@@ -314,7 +322,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
 
   // De quién es: @usuario (o nombre) debajo del título; también se usa
   // en el título de la hoja de colecciones
-  const ownerUid = opts.ownerId || me?.id || null;
+  const ownerUid = explore ? null : (opts.ownerId || me?.id || null);
+  if (explore) { const sub = top.querySelector('.wp-ft-sub'); sub.textContent = 'Explora tu ciudad'; sub.hidden = false; }
   if (ownerUid) {
     import('/src/services/SocialService.js').then(({ SocialService }) => SocialService.getProfile(ownerUid)).then(pr => {
       if (!pr) return;
@@ -337,17 +346,29 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
 
   // Progreso: mis visitas de estos lugares + palomita en los pines visitados
   const visited = new Set();
+  let lastPct = -1;
   const paintProgress = (celebrate = false) => {
-    const n = visited.size;
-    const pct = total ? Math.round(n / total * 100) : 0;
+    let n, pct, done;
+    if (fog) {
+      // Zonas destapadas de la ciudad
+      const st = fog.stats(visited);
+      n = st.open; pct = st.pct; done = st.total > 0 && st.open >= st.total;
+      if (pct !== lastPct) { try { drawFog(map, fog.geojson(visited)); } catch (e) { console.warn('[DIAG-FOG]', e.message); } }
+      lastPct = pct;
+    } else {
+      n = visited.size;
+      pct = total ? Math.round(n / total * 100) : 0;
+      done = total > 0 && n >= total;
+    }
     bar.querySelector('.wp-fb-n').textContent = String(n);
     bar.querySelector('.wp-fb-pct').textContent = String(pct);
     bar.querySelector('.wp-fb-ring').style.setProperty('--p', String(pct));
     bar.querySelector('.wp-fb-fill').style.setProperty('--p', String(pct));
-    const done = total > 0 && n >= total;
     bar.classList.toggle('complete', done);
     const left = bar.querySelector('.wp-fb-left');
-    left.textContent = done ? '¡Colección completada!' : `Te ${total - n === 1 ? 'falta 1 lugar' : `faltan ${total - n} lugares`}`;
+    left.textContent = fog
+      ? (done ? '¡Exploraste toda la ciudad!' : (visited.size ? `${visited.size} ${visited.size === 1 ? 'lugar visitado' : 'lugares visitados'}` : 'Visita un lugar para destapar la niebla'))
+      : (done ? '¡Colección completada!' : `Te ${total - n === 1 ? 'falta 1 lugar' : `faltan ${total - n} lugares`}`);
     left.classList.toggle('ok', done);
     // Siguiente: el pendiente más cercano a ti
     const next = bar.querySelector('.wp-fb-next');
@@ -357,6 +378,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       places.forEach(p => {
         const id = String(p.place_id || p.placeId || p.id);
         if (visited.has(id)) return;
+        if (fog && !fog.inFog(p, visited)) return; // en explorar: solo lugares que siguen en la niebla
         const c = coordsOf(p);
         if (!isFinite(c.lat) || !isFinite(c.lng)) return;
         const d = distM(pos, c);
@@ -366,13 +388,14 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     left.hidden = !!best && !done; // un solo chip a la vez
     if (best) {
       const dTxt = best.d >= 1000 ? `${(best.d / 1000).toFixed(1)} km` : `${Math.round(best.d / 10) * 10} m`;
-      next.innerHTML = `<i></i><span>${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
+      next.innerHTML = `<i></i><span>${fog ? 'Descubre: ' : ''}${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
       next.hidden = false;
       next.onclick = () => { mv.haptic?.('light'); map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: 17.4, essential: true }); };
     } else next.hidden = true;
     (mv.markerEls || []).forEach(el => {
       const id = String(el._place?.place_id || el._place?.placeId || el._place?.id || '');
       el.classList.toggle('wp-visited', visited.has(id));
+      if (fog) el.classList.toggle('wp-fogged', !visited.has(id)); // en explorar: lo no visitado, apagado
     });
     if (celebrate) {
       mv.haptic?.(done ? 'action' : 'tap');
@@ -392,6 +415,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!ids.includes(id) || visited.has(id)) return;
     visited.add(id);
     paintProgress(true);
+    if (fog) showFogBurst(bar, fog.stats(visited).pct);
   };
   document.addEventListener('wp:visit', onVisit);
   // Los pines se pueden volver a crear (zoom, clusters): repintar palomitas
@@ -404,7 +428,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     document.removeEventListener('wp:focus-exit', onExt);
     document.removeEventListener('wp:visit', onVisit);
     map?.off?.('moveend', repaint);
-    (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited'));
+    (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited', 'wp-fogged'));
+    if (fog) removeFog(map);
     mv.haptic?.('light');
     bar.classList.remove('in');
     top.classList.remove('in');
@@ -430,6 +455,32 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     setTimeout(() => exit(true), 110);
   };
 
+}
+
+// ── "Explora Nuevo Progreso" (fase 2) ─────────────────────────────────
+// Todos los lugares de la app con la niebla encima; tu % de la ciudad.
+window.wpApp.openExplore = (opts = {}) => openExplore(window.wpApp.mapView, opts);
+async function openExplore(mv, opts = {}) {
+  if (!mv) return;
+  if (!window.wpApp.currentUser) { window.wpApp.authModal?.show?.(); return; }
+  let places = window.wpApp._allPlacesCache;
+  if (!places) {
+    try {
+      const j = await (await fetch('/api/supabase-places?category=ALL')).json();
+      places = window.wpApp._allPlacesCache = j.places || [];
+    } catch (e) { console.warn('[DIAG-FOG] lugares:', e.message); return; }
+  }
+  showPlacesOnMap(mv, places, 'Nuevo Progreso', { ...opts, mode: 'explore' });
+}
+
+// Burbuja "+% de Nuevo Progreso" al destapar zona nueva
+function showFogBurst(bar, pct) {
+  const b = document.createElement('div');
+  b.className = 'wp-fog-burst';
+  b.innerHTML = `<b>${pct}<small>%</small></b><span>de Nuevo Progreso</span>`;
+  bar.appendChild(b);
+  setTimeout(() => b.classList.add('out'), 2200);
+  setTimeout(() => b.remove(), 2700);
 }
 
 // Hoja con los lugares de la colección: visitados con palomita verde.
