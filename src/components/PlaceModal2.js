@@ -3347,6 +3347,7 @@ export class PlaceModal2 {
     this._pullMore(0);
     this._el.classList.add('visible');
     this._el.style.pointerEvents = ''; // (hide() lo apaga durante su salida)
+    document.body.classList.remove('wp-pins-hold');
     this._el.classList.remove('wp-pm2-in'); // por si quedó de una apertura anterior sin cerrar bien
     this._el.classList.remove('wp-pm2-flip-exit'); // por si quedó de un cierre anterior — la próxima entrada usa el pulse normal, no la salida deslizada
     // Cuando viene del flip, el card NO hace su propio pop de
@@ -3513,6 +3514,11 @@ export class PlaceModal2 {
   // ACTUAL del hero (puede estar colapsado si hubo scroll) y su imagen —
   // para que arme el vuelo de vuelta hacia la tarjeta original.
   hide() {
+    // Regreso al MAPA (no al slide de clusters): los pines se quedan
+    // invisibles mientras la ficha sale y luego entran con el mismo
+    // "pulse" del slide. Así la salida es igual de ligera.
+    const toMap = !this._flipContext;
+    if (toMap) document.body.classList.add('wp-pins-hold');
     this._coverBehind(false); // lo de atrás vuelve a verse ANTES del fade de salida
     // Mientras la ficha se desvanece (350ms) ya no debe atrapar toques: el
     // primer toque en lo de atrás (p.ej. "volver" del slide) se perdía.
@@ -3569,6 +3575,7 @@ export class PlaceModal2 {
       this._el.classList.add('wp-pm2-flip-exit');
       this._el.classList.remove('wp-pm2-in');
       document.body.classList.remove('wp-pm-open', 'wp-pm-covered');
+      if (toMap) setTimeout(() => this._pulsePinsIn(), 200); // cuando la ficha ya casi se fue
 
       setTimeout(() => {
         if (this._el.classList.contains('wp-pm2-in')) return;
@@ -5999,6 +6006,32 @@ export class PlaceModal2 {
     this._sheetIn(menu, overlay, { dimmed: chained, instant });
     frag.classList.add('wp-pm2-in');
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
+  }
+
+  // Pines de vuelta en el mapa: aparecen desde chiquitos con rebote,
+  // escalonados del centro de la pantalla hacia afuera (como el slide).
+  _pulsePinsIn() {
+    const body = document.body;
+    if (!body.classList.contains('wp-pins-hold')) return;
+    const W = window.innerWidth, H = window.innerHeight, cx = W / 2, cy = H / 2;
+    const els = [];
+    document.querySelectorAll('.maplibregl-marker.place-marker-el').forEach(el => {
+      if (el.querySelector('.minicard-marker-content')) return; // el minicard ya está a la vista
+      const r = el.getBoundingClientRect();
+      if (r.right < 0 || r.bottom < 0 || r.left > W || r.top > H || !r.width) return;
+      els.push([Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy), el]);
+    });
+    els.sort((a, b) => a[0] - b[0]);
+    els.forEach(([, el], i) => {
+      el.style.animationDelay = '';
+      el.querySelectorAll(':scope > *').forEach(ch => { ch.style.animationDelay = Math.min(i, 16) * 18 + 'ms'; });
+      el.classList.add('wp-pin-enter');
+    });
+    body.classList.remove('wp-pins-hold');
+    setTimeout(() => els.forEach(([, el]) => {
+      el.classList.remove('wp-pin-enter');
+      el.querySelectorAll(':scope > *').forEach(ch => { ch.style.animationDelay = ''; });
+    }), 700);
   }
 
   // [DIAG] temporal — ¿qué hace pesada la entrada/salida de la ficha?
