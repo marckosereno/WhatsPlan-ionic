@@ -6,7 +6,7 @@
 // La distancia la mide la base de datos (máx. 100 m): aquí solo se
 // obtiene la ubicación del teléfono y se manda.
 // Al registrar una visita se avisa con el evento 'wp:visit'
-//   detail: { place_id, visits, first }
+//   detail: { place_id, visits, first, points, total, level, awards }
 // ====================================================================
 import { getSupabase } from '/src/services/SupabaseService.js';
 
@@ -57,8 +57,13 @@ export const VisitService = {
     const { data, error } = await getSupabase().rpc('check_in', { p_place_id: String(placeId), p_lat: pos.lat, p_lng: pos.lng });
     if (error) throw niceError(error);
     this._cache.set(String(placeId), data.visits);
-    document.dispatchEvent(new CustomEvent('wp:visit', { detail: { place_id: String(placeId), visits: data.visits, first: !!data.first } }));
-    return data; // { ok, first, visits, dist_m }
+    // points/total/level/awards llegan con gamification_points.sql (fase 3);
+    // sin ese SQL vienen vacíos y todo sigue funcionando como antes
+    document.dispatchEvent(new CustomEvent('wp:visit', { detail: {
+      place_id: String(placeId), visits: data.visits, first: !!data.first,
+      points: data.points || 0, total: data.total ?? null, level: data.level ?? null, awards: data.awards || [],
+    } }));
+    return data; // { ok, first, visits, dist_m, points, total, level, awards }
   },
 
   // Map place_id → visitas, solo de los que he visitado
