@@ -304,12 +304,12 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   bar.id = 'wp-focus-bar';
   bar.innerHTML = `
     <div class="wp-fb-chips">
+      <button type="button" class="wp-fb-chip wp-fb-col${hasChoices ? '' : ' solo'}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}"><span class="wp-fb-ct">${esc(explore ? 'Explora tu ciudad' : title)}</span>${hasChoices ? chev : ''}</button>
       <button type="button" class="wp-fb-chip wp-fb-next" hidden></button>
-      <button type="button" class="wp-fb-chip wp-fb-left" aria-label="Ver los lugares"><span class="wp-fb-left-t"></span><span class="wp-fb-more">${chev}</span></button>
     </div>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
-      <button type="button" class="wp-fb-cluster${clusterEm ? ' is-emoji' : ''}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}">${clusterInner}<span class="wp-fb-count${hasChoices ? '' : ' solo'}"><span class="wp-fb-ct">${esc(explore ? 'Explora tu ciudad' : title)}</span>${hasChoices ? chev : ''}</span></button>
+      <button type="button" class="wp-fb-cluster${clusterEm ? ' is-emoji' : ''}" aria-label="Ver los lugares">${clusterInner}<span class="wp-fb-count">${chev}</span></button>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
         <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${explore ? (fog?.total || 0) : total}</span>
@@ -319,11 +319,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.body.appendChild(bar);
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
   bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
-  // Cluster (emoji de la colección): las demás colecciones
-  const pickCol = () => { if (hasChoices) openFocusPicker(mv, opts); else mv.haptic?.('light'); };
-  bar.querySelector('.wp-fb-cluster').onclick = pickCol;
-  // Chip "Te faltan X lugares": lista de los lugares (con visitados)
-  bar.querySelector('.wp-fb-left').onclick = () => openFocusPlaces(mv, places, visited, label);
+  // Pill del título (arriba del avatar): las demás colecciones
+  bar.querySelector('.wp-fb-col').onclick = () => { if (hasChoices) openFocusPicker(mv, opts); else mv.haptic?.('light'); };
+  // Cluster (fotos + emoji, con flechita): lista de los lugares (con visitados)
+  bar.querySelector('.wp-fb-cluster').onclick = () => openFocusPlaces(mv, places, visited, label);
 
   // De quién es: @usuario, para el título de la hoja de colecciones
   // ("Colecciones de @x")
@@ -367,12 +366,6 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     bar.querySelector('.wp-fb-ring').style.setProperty('--p', String(pct));
     bar.querySelector('.wp-fb-fill').style.setProperty('--p', String(pct));
     bar.classList.toggle('complete', done);
-    const left = bar.querySelector('.wp-fb-left');
-    // (el "Siguiente" se calcula abajo; aquí solo el texto)
-    left.querySelector('.wp-fb-left-t').textContent = fog
-      ? (done ? '¡Exploraste toda la ciudad!' : (visited.size ? `${visited.size} ${visited.size === 1 ? 'lugar visitado' : 'lugares visitados'}` : 'Visita un lugar para destapar la niebla'))
-      : (done ? '¡Colección completada!' : `Te ${total - n === 1 ? 'falta 1 lugar' : `faltan ${total - n} lugares`}`);
-    left.classList.toggle('ok', done);
     // Siguiente: el pendiente más cercano a ti
     const next = bar.querySelector('.wp-fb-next');
     const pos = myPos();
@@ -388,9 +381,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         if (!best || d < best.d) best = { p, d, c };
       });
     }
-    // Los dos chips juntos: "Siguiente" se recorta si no cabe; el de
-    // "Te faltan" siempre se ve (abre la lista de lugares)
-    if (fog && best && !visited.size) left.querySelector('.wp-fb-left-t').textContent = 'Destapa la niebla';
+    // "Siguiente" va junto a la pill del título y se recorta si no cabe
     if (best) {
       const dTxt = best.d >= 1000 ? `${(best.d / 1000).toFixed(1)} km` : `${Math.round(best.d / 10) * 10} m`;
       next.innerHTML = `<i></i><span>${fog ? 'Descubre: ' : ''}${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
