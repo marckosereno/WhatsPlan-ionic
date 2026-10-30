@@ -21,9 +21,11 @@ const ll   = (p) => ({ lat: Number(p.lat ?? p.location?.lat), lng: Number(p.lng 
 export function buildFog(places) {
   const pts = places.map(p => ({ p, ...ll(p) })).filter(x => isFinite(x.lat) && isFinite(x.lng) && x.lat && x.lng);
   if (!pts.length) return null;
-  // Proyección local en metros alrededor del centro de los lugares
-  const lat0 = pts.reduce((a, x) => a + x.lat, 0) / pts.length;
-  const lng0 = pts.reduce((a, x) => a + x.lng, 0) / pts.length;
+  // Proyección local en metros con origen FIJO (Nuevo Progreso): la
+  // misma que usa la base de datos (wp_hex en gamification_points.sql)
+  // para saber si una visita destapa zona nueva. Si se cambia aquí, se
+  // cambia allá.
+  const lat0 = 26.05, lng0 = -97.95;
   const mLat = 110574, mLng = 111320 * Math.cos(lat0 * Math.PI / 180);
   const toXY = (lng, lat) => [(lng - lng0) * mLng, (lat - lat0) * mLat];
   const toLL = (x, y) => [lng0 + x / mLng, lat0 + y / mLat];
