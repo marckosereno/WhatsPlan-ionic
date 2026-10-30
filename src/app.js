@@ -484,6 +484,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       showFocusBubble(bar, fog
         ? `<b>🎉</b><strong>¡Exploraste toda la ciudad!</strong>`
         : `<b>🎉</b><strong>¡Colección completada!</strong><span>${total} de ${total} lugares visitados</span>`, 'done', 3200);
+      // (los puntos de la colección se ven en el aviso de la ficha)
     }
     wasDone = done;
     // El pendiente más cercano a ti → termómetro
@@ -535,7 +536,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!ids.includes(id) || visited.has(id)) return;
     visited.add(id);
     paintProgress(true);
-    if (fog) showFogBurst(bar, fog.stats(visited).pct);
+    const pts = ev.detail?.points || 0; // fase 3 (puntos)
+    if (fog) showFogBurst(bar, fog.stats(visited).pct, pts);
+    else if (pts && !bar.classList.contains('complete')) showFocusBubble(bar, `<b>+${pts}</b><span>puntos</span>`, 'pts', 1900);
   };
   document.addEventListener('wp:visit', onVisit);
   // Los pines se pueden volver a crear (zoom, clusters): repintar palomitas
@@ -609,10 +612,10 @@ function showFocusBubble(bar, html, kind, ms) {
 }
 
 // Burbuja "+% de Nuevo Progreso" al destapar zona nueva
-function showFogBurst(bar, pct) {
+function showFogBurst(bar, pct, pts = 0) {
   const b = document.createElement('div');
   b.className = 'wp-fog-burst';
-  b.innerHTML = `<b>${pct}<small>%</small></b><span>de Nuevo Progreso</span>`;
+  b.innerHTML = `<b>${pct}<small>%</small></b><span>de Nuevo Progreso${pts ? ` · +${pts} pts` : ''}</span>`;
   bar.appendChild(b);
   setTimeout(() => b.classList.add('out'), 2200);
   setTimeout(() => b.remove(), 2700);
