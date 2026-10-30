@@ -3554,29 +3554,39 @@ export class PlaceModal2 {
     // ficha se abrió desde el flip del slide, desde el minicard o desde
     // la búsqueda global, así la salida es la misma en los tres casos.
     this._diagPerf('salida'); // [DIAG] temporal
-    // Estilo de salida elegido (por defecto "slide")
-    let ex = 'slide';
-    try { ex = localStorage.getItem('wpPmExit') || 'slide'; } catch (_) {}
-    this._el.classList.remove('wp-pm2-exit-slide', 'wp-pm2-exit-shrink', 'wp-pm2-exit-fade');
-    if (ex !== 'drop') this._el.classList.add('wp-pm2-exit-' + ex);
-    this._el.classList.add('wp-pm2-flip-exit');
-    this._el.classList.remove('wp-pm2-in');
-    document.body.classList.remove('wp-pm-open');
-    // Restaurar el footer menu del mapview YA (no depende de la
-    // transición, y si se tarda se nota más que si aparece de una)
+    // Lo de atrás (mapa, pines, panel) ya se hizo visible arriba con
+    // _coverBehind(false). Volver a dibujarlo cuesta ~50-80 ms en el
+    // teléfono (lo midió [DIAG-PERF]: un solo cuadro largo al empezar la
+    // salida). Se deja pasar ESE cuadro con la ficha todavía tapando todo
+    // (no se ve) y la animación arranca después, ya sin tirones.
+    const go = () => {
+      if (this._el.style.pointerEvents !== 'none') return; // se volvió a abrir mientras tanto
+      // Estilo de salida elegido (por defecto "slide")
+      let ex = 'slide';
+      try { ex = localStorage.getItem('wpPmExit') || 'slide'; } catch (_) {}
+      this._el.classList.remove('wp-pm2-exit-slide', 'wp-pm2-exit-shrink', 'wp-pm2-exit-fade');
+      if (ex !== 'drop') this._el.classList.add('wp-pm2-exit-' + ex);
+      this._el.classList.add('wp-pm2-flip-exit');
+      this._el.classList.remove('wp-pm2-in');
+      document.body.classList.remove('wp-pm-open', 'wp-pm-covered');
+
+      setTimeout(() => {
+        if (this._el.classList.contains('wp-pm2-in')) return;
+        this._el.classList.remove('visible');
+        document.body.style.overflow = '';
+        this._place = null;
+        const body = this._el.querySelector('#wp-pm2-body');
+        if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
+        this._scrollHandler = null;
+        this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
+        this._el.classList.remove('wp-pm2-exit-slide', 'wp-pm2-exit-shrink', 'wp-pm2-exit-fade');
+      }, 320);
+    };
+    // Restaurar el footer menu del mapview YA (se dibuja en el mismo
+    // cuadro "escondido" que el resto)
     const footerMenu = document.getElementById('wp-footer-menu');
     if (footerMenu) footerMenu.style.display = '';
-
-    setTimeout(() => {
-      this._el.classList.remove('visible');
-      document.body.style.overflow = '';
-      this._place = null;
-      const body = this._el.querySelector('#wp-pm2-body');
-      if (this._scrollHandler) body.removeEventListener('scroll', this._scrollHandler);
-      this._scrollHandler = null;
-      this._el.querySelector('#wp-pm2-topbar')?.classList.remove('scrolled');
-      this._el.classList.remove('wp-pm2-exit-slide', 'wp-pm2-exit-shrink', 'wp-pm2-exit-fade');
-    }, 320);
+    requestAnimationFrame(() => requestAnimationFrame(go));
   }
 
   // ── POPULATE ──────────────────────────────────────────────────────
@@ -6046,14 +6056,15 @@ export class PlaceModal2 {
   _coverBehind(on) {
     clearTimeout(this._coverTimer);
     if (!on) {
-      document.body.classList.remove('wp-pm-covered');
+      // (wp-pm-covered se quita en hide() junto con wp-pm-open, para que
+      // el mapa no vuelva a ponerse borroso en los cuadros de espera)
       document.querySelectorAll('.wp-pm2-under').forEach(n => n.classList.remove('wp-pm2-under'));
       // Las animaciones de los pines (pulsos, flotado…) se reanudan
       // DESPUÉS de que la ficha terminó de irse: si arrancan todas en el
       // mismo cuadro que el fade, la salida se traba.
       const paused = this._pausedAnims || [];
       this._pausedAnims = [];
-      if (paused.length) setTimeout(() => paused.forEach(a => { try { a.play(); } catch (_) {} }), 260);
+      if (paused.length) setTimeout(() => paused.forEach(a => { try { a.play(); } catch (_) {} }), 420); // después de la salida completa
       // Transiciones que hubieran quedado a medias de antes: terminarlas
       // de golpe (sin animar visibility al reaparecer)
       try {
