@@ -345,11 +345,19 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   thermo.id = 'wp-focus-thermo';
   thermo.hidden = true;
   thermo.innerHTML = `
-    <button type="button" class="wp-th-name"></button>
     <div class="wp-th-track"><span class="wp-th-fill"></span>
-      <span class="wp-th-d"></span>
       <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
-      <div class="wp-th-me"><span class="wp-th-av" style="background-image:url('${esc(myAv)}')"></span><em class="wp-th-user"></em></div>
+      <div class="wp-th-me">
+        <span class="wp-th-av" style="background-image:url('${esc(myAv)}')"></span>
+        <svg class="wp-th-ring" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <path id="wp-th-arc-top" d="M 11 32 A 21 21 0 0 1 53 32"/>
+            <path id="wp-th-arc-bot" d="M 4 32 A 28 28 0 0 0 60 32"/>
+          </defs>
+          <text><textPath href="#wp-th-arc-top" startOffset="50%" text-anchor="middle" class="wp-th-user"></textPath></text>
+          <text><textPath href="#wp-th-arc-bot" startOffset="50%" text-anchor="middle" class="wp-th-d"></textPath></text>
+        </svg>
+      </div>
     </div>`;
   document.body.appendChild(thermo);
   // Tu @usuario para la pill
@@ -386,13 +394,12 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       thermo.classList.toggle('fogged', !!fog);
       thBand = null;
     }
-    thermo.querySelector('.wp-th-name').textContent = arrived ? '¡Llegaste! Registra tu visita' : (fog ? 'Por descubrir' : (best.p.name || 'Siguiente'));
     thermo.querySelector('.wp-th-d').textContent = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
     // Vibración suave al cruzar 1 km, 500 m, 200 m y 100 m (acercándote)
     const band = d <= 100 ? 4 : d <= 200 ? 3 : d <= 500 ? 2 : d <= 1000 ? 1 : 0;
     if (thBand !== null && band > thBand) mv.haptic?.(band === 4 ? 'action' : 'light');
     thBand = band;
-    thermo.querySelector('.wp-th-name').onclick = thermo.querySelector('.wp-th-goal').onclick = () => {
+    thermo.querySelector('.wp-th-goal').onclick = () => {
       mv.haptic?.('light');
       if (arrived) { mv.onPlaceSelect?.(best.p, { direct: true }); return; }
       map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
