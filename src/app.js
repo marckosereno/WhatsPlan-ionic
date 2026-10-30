@@ -295,12 +295,11 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.body.appendChild(top);
 
   const chev = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-  // Emoji del cluster: el de la colección; si no trae, uno según el modo;
-  // si tampoco, las fotos en abanico como antes
+  // Cluster: las fotos salen "explotando" desde el emoji de la colección,
+  // que queda al frente. Sin emoji: solo las fotos en abanico
   const clusterEm = em || (explore ? '🧭' : opts.choiceKey === 'saved' ? '🔖' : '');
-  const clusterInner = clusterEm
-    ? `<span class="wp-fb-emoji">${esc(clusterEm)}</span>`
-    : ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('');
+  const clusterInner = ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')
+    + (clusterEm ? `<span class="wp-fb-emoji">${esc(clusterEm)}</span>` : '');
   const bar = document.createElement('div');
   bar.id = 'wp-focus-bar';
   bar.innerHTML = `
@@ -308,6 +307,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       <button type="button" class="wp-fb-chip wp-fb-next" hidden></button>
       <button type="button" class="wp-fb-chip wp-fb-left" aria-label="Ver los lugares"><span class="wp-fb-left-t"></span><span class="wp-fb-more">${chev}</span></button>
     </div>
+    <button type="button" class="wp-fb-title"><span>${esc(explore ? 'Explora tu ciudad' : title)}</span></button>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
       <button type="button" class="wp-fb-cluster${clusterEm ? ' is-emoji' : ''}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}">${clusterInner}${hasChoices ? `<span class="wp-fb-count">${chev}</span>` : ''}</button>
@@ -321,10 +321,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
   bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
   // Cluster (emoji de la colección): las demás colecciones
-  bar.querySelector('.wp-fb-cluster').onclick = () => {
-    if (hasChoices) openFocusPicker(mv, opts);
-    else mv.haptic?.('light');
-  };
+  const pickCol = () => { if (hasChoices) openFocusPicker(mv, opts); else mv.haptic?.('light'); };
+  bar.querySelector('.wp-fb-cluster').onclick = pickCol;
+  bar.querySelector('.wp-fb-title').onclick = pickCol; // el título, encima del cluster, hace lo mismo
   // Chip "Te faltan X lugares": lista de los lugares (con visitados)
   bar.querySelector('.wp-fb-left').onclick = () => openFocusPlaces(mv, places, visited, label);
 
