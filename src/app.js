@@ -347,28 +347,19 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   thermo.innerHTML = `
     <div class="wp-th-track"><span class="wp-th-fill"></span>
       <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
+      <button type="button" class="wp-th-dist" aria-label="Elegir lugar"><span>A <b class="wp-th-d"></b></span><i><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></i></button>
       <div class="wp-th-me">
-        <span class="wp-th-av" style="background-image:url('${esc(myAv)}')"></span>
-        <svg class="wp-th-ring" viewBox="0 0 64 64" aria-hidden="true">
-          <defs>
-            <path id="wp-th-arc-top" d="M 11 32 A 21 21 0 0 1 53 32"/>
-            <path id="wp-th-arc-bot" d="M 4 32 A 28 28 0 0 0 60 32"/>
-          </defs>
-          <text><textPath href="#wp-th-arc-top" startOffset="50%" text-anchor="middle" class="wp-th-user"></textPath></text>
-          <text><textPath href="#wp-th-arc-bot" startOffset="50%" text-anchor="middle" class="wp-th-d"></textPath></text>
+        <svg class="wp-th-arrow" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#fff" stroke="#fff" stroke-width="4.6" stroke-linejoin="round"/>
+          <path class="wp-th-arrow-fill" d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" stroke-width="1.2" stroke-linejoin="round"/>
         </svg>
       </div>
     </div>`;
   document.body.appendChild(thermo);
-  // Tu @usuario para la pill
-  if (me?.id) {
-    const setUser = (t) => { const u = thermo.querySelector('.wp-th-user'); if (u && t) u.textContent = t; };
-    setUser(me.user_metadata?.username ? '@' + me.user_metadata.username : (me.user_metadata?.display_name || 'Tú'));
-    import('/src/services/SocialService.js').then(({ SocialService }) => SocialService.getProfile(me.id))
-      .then(pr => { if (pr?.username) setUser('@' + pr.username); }).catch(() => {});
-  }
   const LOG_FAR = Math.log(2000), LOG_NEAR = Math.log(100);
   let thBand = null, thTarget = null;
+  let thPick = null;   // lugar elegido a mano en la lista (null = el más cercano)
+  let thCands = [];    // pendientes con su distancia, del más cercano al más lejano
   const paintThermo = (best) => {
     if (!best) { thermo.hidden = true; thTarget = null; return; }
     thermo.hidden = false;
@@ -399,6 +390,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     const band = d <= 100 ? 4 : d <= 200 ? 3 : d <= 500 ? 2 : d <= 1000 ? 1 : 0;
     if (thBand !== null && band > thBand) mv.haptic?.(band === 4 ? 'action' : 'light');
     thBand = band;
+    thermo.querySelector('.wp-th-dist').onclick = () => openThermoPicker();
     thermo.querySelector('.wp-th-goal').onclick = () => {
       mv.haptic?.('light');
       if (arrived) { mv.onPlaceSelect?.(best.p, { direct: true }); return; }
@@ -407,6 +399,42 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       setTimeout(() => { try { if (idx >= 0) mv._showMiniCard(best.p, idx, best.p.photosUrls?.[0] || best.p.photoUrl || best.p.photo_url || null); } catch (_) {} }, 650);
     };
   };
+  // Lista de lugares pendientes por distancia; el que elijas va al termómetro
+  const openThermoPicker = () => {
+    if (!thCands.length) return;
+    mv.haptic?.('light');
+    document.getElementById('wp-focus-pick')?.remove();
+    const fmt = (d) => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
+    const list = thCands.slice(0, 40);
+    const cur = (thPick && list.find(x => x.id === thPick)) ? thPick : list[0].id;
+    const root = document.createElement('div');
+    root.id = 'wp-focus-pick';
+    root.innerHTML = `<div class="wp-fp-dim"></div>
+      <div class="wp-fp-sheet"><div class="wp-fp-grab"></div>
+        <div class="wp-fp-title">Cerca de ti<small>Elige a cuál ir</small></div>
+        <div class="wp-fp-list">${list.map((x, i) => {
+          const ph = photoSmall(x.p.photosUrls?.[0] || x.p.photoUrl || x.p.photo_url || '');
+          const addr = String(x.p.formattedAddress || x.p.vicinity || x.p.address || '').split(',')[0];
+          return `<button type="button" class="wp-fp-row${x.id === cur ? ' on' : ''}" data-i="${i}">
+            <span class="wp-fp-pic${fog ? ' fog' : ''}" style="${ph ? `background-image:url('${esc(ph)}')` : ''}"></span>
+            <span class="wp-fp-txt"><b>${esc(fog ? 'Por descubrir' : (x.p.name || 'Lugar'))}</b><small>${esc(i === 0 ? 'El más cercano' : addr)}</small></span>
+            <span class="wp-fp-dist">${fmt(x.d)}</span>
+          </button>`;
+        }).join('')}</div></div>`;
+    document.body.appendChild(root);
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+    const close = () => { root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
+    root.querySelector('.wp-fp-dim').onclick = close;
+    root.querySelectorAll('.wp-fp-row').forEach(b => b.onclick = () => {
+      const x = list[+b.dataset.i];
+      if (!x) return;
+      mv.haptic?.('light');
+      thPick = x.id === list[0].id ? null : x.id; // el más cercano = vuelve a automático
+      close();
+      paintProgress();
+    });
+  };
+
   // Ubicación en vivo: se actualiza cuando te mueves ≥10 m; se pausa con
   // la app en segundo plano y se apaga al salir de este mapa
   let watchId = null, watchOn = false;
@@ -490,7 +518,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     wasDone = done;
     // El pendiente más cercano a ti → termómetro
     const pos = myPos();
-    let best = null;
+    thCands = [];
     if (pos && !done) {
       places.forEach(p => {
         const id = String(p.place_id || p.placeId || p.id);
@@ -498,10 +526,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         if (fog && !fog.inFog(p, visited)) return; // en explorar: solo lugares que siguen en la niebla
         const c = coordsOf(p);
         if (!isFinite(c.lat) || !isFinite(c.lng)) return;
-        const d = distM(pos, c);
-        if (!best || d < best.d) best = { p, d, c };
+        thCands.push({ p, d: distM(pos, c), c, id });
       });
+      thCands.sort((a, b) => a.d - b.d);
     }
+    // El elegido a mano (si sigue pendiente); si no, el más cercano
+    if (thPick && !thCands.some(x => x.id === thPick)) thPick = null;
+    const best = (thPick && thCands.find(x => x.id === thPick)) || thCands[0] || null;
     paintThermo(best);
     (mv.markerEls || []).forEach(el => {
       const id = String(el._place?.place_id || el._place?.placeId || el._place?.id || '');
