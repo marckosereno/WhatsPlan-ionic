@@ -1034,3 +1034,10 @@ body.wp-focus-map .place-marker-el.wp-fogged > * { opacity: .55; }
 @keyframes wpFogIn { to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 
 
+
+/* Al cerrar la ficha hacia el mapa: pines (y clusters) invisibles mientras
+   la ficha sale; luego entran con pulse (PlaceModal2._pulsePinsIn). Con
+   opacity (no visibility) se dibujan "escondidos" antes, sin tirón. */
+body.wp-pins-hold .maplibregl-marker.place-marker-el:not(:has(.minicard-marker-content)),
+body.wp-pins-hold .maplibregl-marker.place-cluster-el { opacity: 0; }
+.maplibregl-marker.place-cluster-el { transition: opacity .28s ease-out; }
