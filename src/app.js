@@ -336,7 +336,34 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   }
 
   // Lugar pendiente más cercano (si sabemos dónde estás) → chip "Siguiente"
-  const myPos = () => window.wpApp.subcatRow?._lastGpsPos || null;
+  // Tu ubicación: la del GPS del mapa si ya la hay; si no, se pide al
+  // entrar (una sola vez, rápida y aproximada) y se guarda 2 min
+  const myPos = () => window.wpApp.subcatRow?._lastGpsPos || window.wpApp._focusPos?.pos || null;
+  const askPos = async () => {
+    const fp = window.wpApp._focusPos;
+    if (window.wpApp.subcatRow?._lastGpsPos || (fp && Date.now() - fp.t < 120000)) { console.log('[DIAG-NEXT] ubicación: ya la teníamos'); return; }
+    try {
+      let pos;
+      const G = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.Geolocation;
+      if (G) {
+        const perm = await G.checkPermissions().catch(() => null);
+        if (perm && perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
+          const r = await G.requestPermissions().catch(() => null);
+          if (r && r.location !== 'granted' && r.coarseLocation !== 'granted') { console.log('[DIAG-NEXT] sin permiso de ubicación'); return; }
+        }
+        const p = await G.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+        pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+      } else if (navigator.geolocation) {
+        pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
+          p => res({ lat: p.coords.latitude, lng: p.coords.longitude }), rej,
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }));
+      }
+      if (!pos) return;
+      window.wpApp._focusPos = { pos, t: Date.now() };
+      console.log('[DIAG-NEXT] ubicación lista', pos.lat.toFixed(4), pos.lng.toFixed(4));
+      if (bar.isConnected) paintProgress();
+    } catch (e) { console.log('[DIAG-NEXT] no se pudo obtener la ubicación:', e?.message || e); }
+  };
   const distM = (a, b) => {
     const R = 6371000, toR = x => x * Math.PI / 180;
     const dLa = toR(b.lat - a.lat), dLo = toR(b.lng - a.lng);
@@ -348,6 +375,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // Progreso: mis visitas de estos lugares + palomita en los pines visitados
   const visited = new Set();
   let lastPct = -1;
+  let wasDone = null; // para celebrar solo cuando se completa en este momento
   const paintProgress = (celebrate = false) => {
     let n, pct, done;
     if (fog) {
@@ -366,6 +394,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     bar.querySelector('.wp-fb-ring').style.setProperty('--p', String(pct));
     bar.querySelector('.wp-fb-fill').style.setProperty('--p', String(pct));
     bar.classList.toggle('complete', done);
+    // ¡Completada! — solo si pasó ahora (no al entrar a una ya completa)
+    if (done && wasDone === false && celebrate) {
+      showFocusBubble(bar, fog
+        ? `<b>🎉</b><strong>¡Exploraste toda la ciudad!</strong>`
+        : `<b>🎉</b><strong>¡Colección completada!</strong><span>${total} de ${total} lugares visitados</span>`, 'done', 3200);
+    }
+    wasDone = done;
     // Siguiente: el pendiente más cercano a ti
     const next = bar.querySelector('.wp-fb-next');
     const pos = myPos();
@@ -384,7 +419,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     // "Siguiente" va junto a la pill del título y se recorta si no cabe
     if (best) {
       const dTxt = best.d >= 1000 ? `${(best.d / 1000).toFixed(1)} km` : `${Math.round(best.d / 10) * 10} m`;
-      next.innerHTML = `<i></i><span>${fog ? 'Descubre: ' : ''}${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
+      next.innerHTML = `<i></i><span>${fog ? 'Descubre: ' : 'Cerca: '}${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
       next.hidden = false;
       next.onclick = () => { mv.haptic?.('light'); map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: 17.4, essential: true }); };
     } else next.hidden = true;
@@ -400,11 +435,18 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     }
   };
   paintProgress();
+  askPos();
+  // Explorar: ayuda solo mientras no tengas visitas (después de saberlo)
+  const exploreHint = () => {
+    if (fog && !visited.size && bar.isConnected) setTimeout(() => {
+      if (!visited.size && bar.isConnected) showFocusBubble(bar, '<strong>Visita un lugar para destapar la niebla</strong><span>Cada lugar que visitas aclara su zona</span>', 'hint', 4200);
+    }, 900);
+  };
   if (me && total) {
     VisitService.myVisits(ids)
-      .then(m => { m.forEach((v, id) => { if (v > 0) visited.add(id); }); paintProgress(); })
+      .then(m => { m.forEach((v, id) => { if (v > 0) visited.add(id); }); paintProgress(); exploreHint(); })
       .catch(e => console.warn('[DIAG-VISIT] progreso:', e.message || e));
-  }
+  } else exploreHint();
   // Si registra una visita (desde la ficha) mientras está en este modo
   const onVisit = (ev) => {
     const id = String(ev.detail?.place_id || '');
@@ -467,6 +509,17 @@ async function openExplore(mv, opts = {}) {
     } catch (e) { console.warn('[DIAG-FOG] lugares:', e.message); return; }
   }
   showPlacesOnMap(mv, places, 'Nuevo Progreso', { ...opts, mode: 'explore' });
+}
+
+// Burbuja de un momento (completada / ayuda) arriba de la barra
+function showFocusBubble(bar, html, kind, ms) {
+  bar.querySelector('.wp-fb-bubble')?.remove();
+  const b = document.createElement('div');
+  b.className = 'wp-fog-burst wp-fb-bubble ' + kind;
+  b.innerHTML = html;
+  bar.appendChild(b);
+  setTimeout(() => b.classList.add('out'), ms);
+  setTimeout(() => b.remove(), ms + 500);
 }
 
 // Burbuja "+% de Nuevo Progreso" al destapar zona nueva
