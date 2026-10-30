@@ -815,7 +815,7 @@ body.wp-focus-map #topbar-notif-btn { visibility: visible; pointer-events: auto;
 #wp-focus-bar button { pointer-events: auto; -webkit-tap-highlight-color: transparent; border: none; cursor: pointer; font-family: inherit; }
 
 /* Un chip arriba de la barra, a la derecha */
-.wp-fb-chips { display: flex; justify-content: center; gap: 8px; margin: 0 12px 52px; /* deja espacio a la pill del título */ min-height: 34px; } /* centrado arriba de la barra */
+.wp-fb-chips { display: flex; justify-content: center; gap: 8px; margin: 0 12px 16px; min-height: 34px; } /* centrado arriba de la barra */
 .wp-fb-chip {
   pointer-events: auto; height: 34px; max-width: 100%; min-width: 0; padding: 0 13px; border-radius: 999px;
   display: inline-flex; align-items: center; gap: 6px;
@@ -827,16 +827,20 @@ body.wp-focus-map #topbar-notif-btn { visibility: visible; pointer-events: auto;
 .wp-fb-next span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .wp-fb-next b { color: #1a5cf5; font-weight: 800; flex-shrink: 0; }
 .wp-fb-next i { width: 8px; height: 8px; border-radius: 50%; background: #1a5cf5; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(26,92,245,0.18); }
-/* "Te faltan X lugares": botón con pill negra de flechita → lista de lugares */
-.wp-fb-left { flex: 0 0 auto; color: #374151; font-weight: 700; padding: 0 5px 0 13px; transition: transform .15s; }
-.wp-fb-left:active { transform: scale(0.94); }
-.wp-fb-more {
-  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-  height: 24px; min-width: 30px; padding: 0 8px; box-sizing: border-box; border-radius: 999px;
-  background: #0a0a0a; color: #fff; line-height: 0;
+/* Pill del título de la colección (arriba del avatar): negra, título en
+   Anton + flechita → las demás colecciones */
+.wp-fb-col {
+  flex: 0 1 auto; gap: 7px; height: 34px; padding: 0 12px 0 15px;
+  background: #0a0a0a; color: #fff; border: 2px solid #fff; box-sizing: border-box; line-height: 0;
+  box-shadow: 0 4px 12px rgba(17,24,39,0.28); transition: transform .15s;
 }
-.wp-fb-left.ok .wp-fb-more { background: rgba(255,255,255,0.25); }
-.wp-fb-left.ok { background: #16a34a; color: #fff; font-weight: 700; animation: wpFbIn .45s cubic-bezier(0.32,1.4,0.5,1); }
+.wp-fb-col.solo { padding-right: 15px; }
+.wp-fb-col:active { transform: scale(0.94); }
+.wp-fb-col svg { flex-shrink: 0; }
+.wp-fb-ct {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: 'Anton', 'Open Sans', sans-serif; font-weight: 400; font-size: 16px; line-height: 1.25; letter-spacing: 0.3px;
+}
 
 /* La barra: delgada, inflada, se llena de azul con el progreso */
 .wp-fb-bar {
@@ -930,20 +934,13 @@ body.wp-focus-map #topbar-notif-btn { visibility: visible; pointer-events: auto;
 }
 #wp-focus-bar.in .wp-fb-emoji { animation: wpFbEmIn .5s cubic-bezier(0.32,1.6,0.5,1) .12s both; }
 @keyframes wpFbEmIn { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
-/* Pill negra con el título de la colección + flechita (abre las demás
-   colecciones). Va arriba del cluster, montada sobre las fotos */
+/* Pill negra con flechita en el cluster: abre la lista de lugares */
 .wp-fb-count {
-  position: absolute; z-index: 6; left: 2px; bottom: calc(100% + 10px);
-  display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box;
-  height: 30px; max-width: calc(100vw - 64px); padding: 0 10px 0 13px; border-radius: 999px;
-  background: #0a0a0a; color: #fff; border: 2px solid #fff; line-height: 0;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-}
-.wp-fb-count.solo { padding-right: 13px; }
-.wp-fb-count svg { flex-shrink: 0; }
-.wp-fb-ct {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: 'Anton', 'Open Sans', sans-serif; font-weight: 400; font-size: 16px; line-height: 1.2; letter-spacing: 0.3px;
+  position: absolute; z-index: 6; top: -16px; right: -4px; line-height: 0;
+  min-width: 30px; height: 22px; padding: 0 8px; border-radius: 999px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #0a0a0a; color: #fff; border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
 /* Tu avatar al centro, apenas más grande que la barra */
