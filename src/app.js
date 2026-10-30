@@ -345,9 +345,11 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   thermo.id = 'wp-focus-thermo';
   thermo.hidden = true;
   thermo.innerHTML = `
-    <button type="button" class="wp-th-goal"><span class="wp-th-pic"></span><span class="wp-th-name"></span></button>
+    <button type="button" class="wp-th-name"></button>
     <div class="wp-th-track"><span class="wp-th-fill"></span>
-      <div class="wp-th-me"><span class="wp-th-av" style="background-image:url('${esc(myAv)}')"></span><span class="wp-th-txt"><em class="wp-th-user"></em><b class="wp-th-d"></b></span></div>
+      <span class="wp-th-d"></span>
+      <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
+      <div class="wp-th-me"><span class="wp-th-av" style="background-image:url('${esc(myAv)}')"></span><em class="wp-th-user"></em></div>
     </div>`;
   document.body.appendChild(thermo);
   // Tu @usuario para la pill
@@ -370,11 +372,17 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     thermo.style.setProperty('--h', (t * 100).toFixed(1));
     thermo.style.setProperty('--c', `hsl(${hue < 0 ? 360 + hue : hue} 92% 52%)`);
     thermo.classList.toggle('arrived', arrived);
+    thermo.classList.toggle('full', t > 0.72); // la distancia (vertical) ya no cabe arriba del relleno
     const id = String(best.p.place_id || best.p.placeId || best.p.id);
     if (id !== thTarget) {
       thTarget = id;
-      const ph = photoSmall(best.p.photosUrls?.[0] || best.p.photoUrl || best.p.photo_url || '');
-      thermo.querySelector('.wp-th-pic').style.backgroundImage = ph ? `url('${ph.replace(/'/g, '%27')}')` : '';
+      // Mini cluster: 2 fotos del lugar (si solo tiene una, va sola)
+      const urls = [...new Set([...(best.p.photosUrls || []), best.p.photoUrl || best.p.photo_url].filter(Boolean))].slice(0, 2).map(photoSmall);
+      ['g0', 'g1'].forEach((g, i) => {
+        const el = thermo.querySelector('.wp-th-goal .' + g);
+        el.style.backgroundImage = urls[i] ? `url('${urls[i].replace(/'/g, '%27')}')` : '';
+        el.hidden = !urls[i] && i > 0;
+      });
       thermo.classList.toggle('fogged', !!fog);
       thBand = null;
     }
@@ -384,7 +392,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     const band = d <= 100 ? 4 : d <= 200 ? 3 : d <= 500 ? 2 : d <= 1000 ? 1 : 0;
     if (thBand !== null && band > thBand) mv.haptic?.(band === 4 ? 'action' : 'light');
     thBand = band;
-    thermo.querySelector('.wp-th-goal').onclick = () => {
+    thermo.querySelector('.wp-th-name').onclick = thermo.querySelector('.wp-th-goal').onclick = () => {
       mv.haptic?.('light');
       if (arrived) { mv.onPlaceSelect?.(best.p, { direct: true }); return; }
       map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
