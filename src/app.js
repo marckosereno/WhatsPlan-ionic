@@ -305,7 +305,6 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   bar.innerHTML = `
     <div class="wp-fb-chips">
       <button type="button" class="wp-fb-chip wp-fb-col${hasChoices ? '' : ' solo'}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}"><span class="wp-fb-ct">${esc(explore ? 'Explora tu ciudad' : title)}</span>${hasChoices ? chev : ''}</button>
-      <button type="button" class="wp-fb-chip wp-fb-next" hidden></button>
     </div>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
@@ -335,35 +334,108 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     }).catch(() => {});
   }
 
-  // Lugar pendiente más cercano (si sabemos dónde estás) → chip "Siguiente"
-  // Tu ubicación: la del GPS del mapa si ya la hay; si no, se pide al
-  // entrar (una sola vez, rápida y aproximada) y se guarda 2 min
-  const myPos = () => window.wpApp.subcatRow?._lastGpsPos || window.wpApp._focusPos?.pos || null;
-  const askPos = async () => {
-    const fp = window.wpApp._focusPos;
-    if (window.wpApp.subcatRow?._lastGpsPos || (fp && Date.now() - fp.t < 120000)) { console.log('[DIAG-NEXT] ubicación: ya la teníamos'); return; }
+  // ── Termómetro "frío o caliente" (izquierda) ──────────────────────
+  // Meta arriba: el lugar pendiente más cercano. Tu avatar en pill sube
+  // por la barra conforme te acercas (escala logarítmica 2 km → 100 m).
+  // A menos de 100 m: "¡Llegaste!" → abre la ficha para registrar visita.
+  // Tu ubicación se sigue EN VIVO solo mientras estás en este mapa.
+  const myPos = () => window.wpApp._focusPos?.pos || window.wpApp.subcatRow?._lastGpsPos || null;
+  document.getElementById('wp-focus-thermo')?.remove();
+  const thermo = document.createElement('div');
+  thermo.id = 'wp-focus-thermo';
+  thermo.hidden = true;
+  thermo.innerHTML = `
+    <button type="button" class="wp-th-goal"><span class="wp-th-pic"></span><span class="wp-th-name"></span></button>
+    <div class="wp-th-track"><span class="wp-th-fill"></span>
+      <div class="wp-th-me"><span class="wp-th-av" style="background-image:url('${esc(myAv)}')"></span><span class="wp-th-txt"><em class="wp-th-user"></em><b class="wp-th-d"></b></span></div>
+    </div>`;
+  document.body.appendChild(thermo);
+  // Tu @usuario para la pill
+  if (me?.id) {
+    const setUser = (t) => { const u = thermo.querySelector('.wp-th-user'); if (u && t) u.textContent = t; };
+    setUser(me.user_metadata?.username ? '@' + me.user_metadata.username : (me.user_metadata?.display_name || 'Tú'));
+    import('/src/services/SocialService.js').then(({ SocialService }) => SocialService.getProfile(me.id))
+      .then(pr => { if (pr?.username) setUser('@' + pr.username); }).catch(() => {});
+  }
+  const LOG_FAR = Math.log(2000), LOG_NEAR = Math.log(100);
+  let thBand = null, thTarget = null;
+  const paintThermo = (best) => {
+    if (!best) { thermo.hidden = true; thTarget = null; return; }
+    thermo.hidden = false;
+    const d = best.d;
+    const t = Math.max(0, Math.min(1, (LOG_FAR - Math.log(Math.max(d, 100))) / (LOG_FAR - LOG_NEAR)));
+    const arrived = d <= 100;
+    // azul (lejos) → amarillo → rojo (cerca); verde al llegar
+    const hue = arrived ? 140 : Math.round(220 - t * 215);
+    thermo.style.setProperty('--h', (t * 100).toFixed(1));
+    thermo.style.setProperty('--c', `hsl(${hue < 0 ? 360 + hue : hue} 92% 52%)`);
+    thermo.classList.toggle('arrived', arrived);
+    const id = String(best.p.place_id || best.p.placeId || best.p.id);
+    if (id !== thTarget) {
+      thTarget = id;
+      const ph = photoSmall(best.p.photosUrls?.[0] || best.p.photoUrl || best.p.photo_url || '');
+      thermo.querySelector('.wp-th-pic').style.backgroundImage = ph ? `url('${ph.replace(/'/g, '%27')}')` : '';
+      thermo.classList.toggle('fogged', !!fog);
+      thBand = null;
+    }
+    thermo.querySelector('.wp-th-name').textContent = arrived ? '¡Llegaste! Registra tu visita' : (fog ? 'Por descubrir' : (best.p.name || 'Siguiente'));
+    thermo.querySelector('.wp-th-d').textContent = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
+    // Vibración suave al cruzar 1 km, 500 m, 200 m y 100 m (acercándote)
+    const band = d <= 100 ? 4 : d <= 200 ? 3 : d <= 500 ? 2 : d <= 1000 ? 1 : 0;
+    if (thBand !== null && band > thBand) mv.haptic?.(band === 4 ? 'action' : 'light');
+    thBand = band;
+    thermo.querySelector('.wp-th-goal').onclick = () => {
+      mv.haptic?.('light');
+      if (arrived) { mv.onPlaceSelect?.(best.p, { direct: true }); return; }
+      map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
+      const idx = (mv.allPlaces || []).indexOf(best.p);
+      setTimeout(() => { try { if (idx >= 0) mv._showMiniCard(best.p, idx, best.p.photosUrls?.[0] || best.p.photoUrl || best.p.photo_url || null); } catch (_) {} }, 650);
+    };
+  };
+  // Ubicación en vivo: se actualiza cuando te mueves ≥10 m; se pausa con
+  // la app en segundo plano y se apaga al salir de este mapa
+  let watchId = null, watchOn = false;
+  const onPos = (lat, lng) => {
+    const prev = window.wpApp._focusPos?.pos;
+    if (prev && distM(prev, { lat, lng }) < 10) return;
+    window.wpApp._focusPos = { pos: { lat, lng }, t: Date.now() };
+    if (bar.isConnected) paintProgress();
+  };
+  const startWatch = async () => {
+    if (watchOn) return;
+    watchOn = true;
     try {
-      let pos;
       const G = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.Geolocation;
       if (G) {
         const perm = await G.checkPermissions().catch(() => null);
         if (perm && perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
           const r = await G.requestPermissions().catch(() => null);
-          if (r && r.location !== 'granted' && r.coarseLocation !== 'granted') { console.log('[DIAG-NEXT] sin permiso de ubicación'); return; }
+          if (r && r.location !== 'granted' && r.coarseLocation !== 'granted') { console.log('[DIAG-NEXT] sin permiso de ubicación'); watchOn = false; return; }
         }
-        const p = await G.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-        pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+        if (!watchOn) return;
+        const id = await G.watchPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }, (p, err) => {
+          if (err || !p) { if (err) console.log('[DIAG-NEXT] ubicación:', err.message || err); return; }
+          onPos(p.coords.latitude, p.coords.longitude);
+        });
+        if (!watchOn) { G.clearWatch({ id }).catch(() => {}); return; }
+        watchId = { G, id };
       } else if (navigator.geolocation) {
-        pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
-          p => res({ lat: p.coords.latitude, lng: p.coords.longitude }), rej,
-          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }));
+        const id = navigator.geolocation.watchPosition(p => onPos(p.coords.latitude, p.coords.longitude),
+          e => console.log('[DIAG-NEXT] ubicación:', e.message), { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+        watchId = { id };
       }
-      if (!pos) return;
-      window.wpApp._focusPos = { pos, t: Date.now() };
-      console.log('[DIAG-NEXT] ubicación lista', pos.lat.toFixed(4), pos.lng.toFixed(4));
-      if (bar.isConnected) paintProgress();
-    } catch (e) { console.log('[DIAG-NEXT] no se pudo obtener la ubicación:', e?.message || e); }
+      console.log('[DIAG-NEXT] siguiendo ubicación en vivo');
+    } catch (e) { watchOn = false; console.log('[DIAG-NEXT] no se pudo seguir la ubicación:', e?.message || e); }
   };
+  const stopWatch = () => {
+    watchOn = false;
+    if (!watchId) return;
+    try { if (watchId.G) watchId.G.clearWatch({ id: watchId.id }).catch(() => {}); else navigator.geolocation.clearWatch(watchId.id); } catch (_) {}
+    watchId = null;
+    console.log('[DIAG-NEXT] ubicación en vivo apagada');
+  };
+  const onVis = () => { if (document.hidden) stopWatch(); else startWatch(); };
+  document.addEventListener('visibilitychange', onVis);
   const distM = (a, b) => {
     const R = 6371000, toR = x => x * Math.PI / 180;
     const dLa = toR(b.lat - a.lat), dLo = toR(b.lng - a.lng);
@@ -401,8 +473,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         : `<b>🎉</b><strong>¡Colección completada!</strong><span>${total} de ${total} lugares visitados</span>`, 'done', 3200);
     }
     wasDone = done;
-    // Siguiente: el pendiente más cercano a ti
-    const next = bar.querySelector('.wp-fb-next');
+    // El pendiente más cercano a ti → termómetro
     const pos = myPos();
     let best = null;
     if (pos && !done) {
@@ -416,13 +487,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         if (!best || d < best.d) best = { p, d, c };
       });
     }
-    // "Siguiente" va junto a la pill del título y se recorta si no cabe
-    if (best) {
-      const dTxt = best.d >= 1000 ? `${(best.d / 1000).toFixed(1)} km` : `${Math.round(best.d / 10) * 10} m`;
-      next.innerHTML = `<i></i><span>${fog ? 'Descubre: ' : 'Cerca: '}${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
-      next.hidden = false;
-      next.onclick = () => { mv.haptic?.('light'); map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: 17.4, essential: true }); };
-    } else next.hidden = true;
+    paintThermo(best);
     (mv.markerEls || []).forEach(el => {
       const id = String(el._place?.place_id || el._place?.placeId || el._place?.id || '');
       el.classList.toggle('wp-visited', visited.has(id));
@@ -435,7 +500,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     }
   };
   paintProgress();
-  askPos();
+  startWatch();
+  requestAnimationFrame(() => requestAnimationFrame(() => thermo.classList.add('in')));
   // Explorar: ayuda solo mientras no tengas visitas (después de saberlo)
   const exploreHint = () => {
     if (fog && !visited.size && bar.isConnected) setTimeout(() => {
@@ -466,6 +532,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     document.removeEventListener('wp:focus-exit', onExt);
     document.removeEventListener('wp:visit', onVisit);
     map?.off?.('moveend', repaint);
+    document.removeEventListener('visibilitychange', onVis);
+    stopWatch();
+    thermo.classList.remove('in');
+    setTimeout(() => thermo.remove(), instant ? 0 : 280);
     (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited', 'wp-fogged'));
     if (fog) removeFog(map);
     mv.haptic?.('light');
