@@ -1047,6 +1047,15 @@ body.wp-focus-map .place-marker-el.wp-fogged > * { opacity: .55; }
 .wp-fog-burst.out { animation: wpFogOut .4s ease-in forwards; }
 @keyframes wpFogOut { from { opacity: 1; transform: translate(-50%, 0) scale(1); } to { opacity: 0; transform: translate(-50%, -12px) scale(.9); } }
 @keyframes wpFogIn { to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+/* Burbujas de un momento: ¡completada! (verde) y ayuda de Explorar */
+.wp-fb-bubble { width: max-content; max-width: calc(100vw - 64px); }
+.wp-fb-bubble strong { display: block; font-size: 15px; font-weight: 800; line-height: 1.25; }
+.wp-fb-bubble span { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; opacity: .88; }
+.wp-fb-bubble.done { background: linear-gradient(160deg, #34d36f, #16a34a 60%, #11843c); box-shadow: 0 12px 28px rgba(22,163,74,.4), inset 0 2px 1px rgba(255,255,255,.35); }
+.wp-fb-bubble.done::after { background: #11843c; }
+.wp-fb-bubble.done b { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; font-size: 34px; margin-bottom: 4px; }
+.wp-fb-bubble.hint { background: #0a0a0a; box-shadow: 0 10px 24px rgba(0,0,0,.3); }
+.wp-fb-bubble.hint::after { background: #0a0a0a; }
 
 
 
