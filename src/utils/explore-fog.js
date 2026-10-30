@@ -61,15 +61,23 @@ export function buildFog(places) {
     }
   });
 
+  // Hexágono con esquinas redondeadas: cada esquina es un arco de 60°
+  // (radio RC) cuyo centro está sobre la línea centro→vértice
+  const RC = 22, RSTEP = 4;               // radio de la esquina (m) y puntos por arco
+  const RIN = R - RC / Math.sin(Math.PI / 3);
   const ring = (q, r) => {
     const [cx, cy] = center(q, r);
-    const pts6 = [];
+    const pts = [];
     for (let i = 0; i < 6; i++) {
       const a = Math.PI / 180 * (60 * i - 30);
-      pts6.push(toLL(cx + R * Math.cos(a), cy + R * Math.sin(a)));
+      const ax = cx + RIN * Math.cos(a), ay = cy + RIN * Math.sin(a);
+      for (let k = 0; k <= RSTEP; k++) {
+        const t = a - Math.PI / 6 + (Math.PI / 3) * (k / RSTEP);
+        pts.push(toLL(ax + RC * Math.cos(t), ay + RC * Math.sin(t)));
+      }
     }
-    pts6.push(pts6[0]);
-    return pts6;
+    pts.push(pts[0]);
+    return pts;
   };
 
   // Hexágonos destapados por los lugares visitados (el suyo + 6 vecinos)
@@ -138,8 +146,9 @@ export function drawFog(map, data) {
     map.addSource(SRC_FOG, { type: 'geojson', data: data.fog });
     map.addLayer({ id: 'wp-fog-fill', type: 'fill', source: SRC_FOG,
       paint: { 'fill-color': '#1a5cf5', 'fill-opacity': 0.26 } }, firstSymbol);
+    // Borde: el mismo azul de la niebla, un poco más oscuro
     map.addLayer({ id: 'wp-fog-line', type: 'line', source: SRC_FOG,
-      paint: { 'line-color': '#ffffff', 'line-opacity': 0.45, 'line-width': 1 } }, firstSymbol);
+      paint: { 'line-color': '#1442b8', 'line-opacity': 0.5, 'line-width': 1.2 } }, firstSymbol);
   }
   if (map.getSource(SRC_EDGE)) map.getSource(SRC_EDGE).setData(data.edge);
   else {
@@ -147,8 +156,9 @@ export function drawFog(map, data) {
     // Lo destapado: hexágonos claros con orilla dorada
     map.addLayer({ id: 'wp-fog-open', type: 'fill', source: SRC_EDGE,
       paint: { 'fill-color': '#fff7d6', 'fill-opacity': 0.22 } }, firstSymbol);
+    // Borde: el crema de lo destapado, un poco más oscuro (dorado tostado)
     map.addLayer({ id: 'wp-fog-edge', type: 'line', source: SRC_EDGE,
-      paint: { 'line-color': '#ffc928', 'line-opacity': 0.9, 'line-width': 1.6 } }, firstSymbol);
+      paint: { 'line-color': '#d9a62e', 'line-opacity': 0.75, 'line-width': 1.4 } }, firstSymbol);
   }
 }
 export function removeFog(map) {
