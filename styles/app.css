@@ -67,8 +67,8 @@ ion-app::before {
     color-mix(in srgb, var(--wp-tint) 35%, transparent) 55%,
     color-mix(in srgb, var(--wp-tint) 0%, transparent) 100%
   );
-  backdrop-filter: blur(0.5px);
-  -webkit-backdrop-filter: blur(0.5px);
+  /* (sin backdrop-filter: el blur de 0.5px no se notaba y era una capa de
+     vidrio del ancho de la pantalla que el teléfono recalculaba siempre) */
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 9998;
@@ -107,8 +107,8 @@ ion-app::after {
     color-mix(in srgb, var(--wp-tint) 28%, transparent) 55%,
     color-mix(in srgb, var(--wp-tint) 0%, transparent) 100%
   );
-  backdrop-filter: blur(0.5px);
-  -webkit-backdrop-filter: blur(0.5px);
+  /* (sin backdrop-filter: el blur de 0.5px no se notaba y era una capa de
+     vidrio del ancho de la pantalla que el teléfono recalculaba siempre) */
   -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
   pointer-events: none; z-index: 1;
