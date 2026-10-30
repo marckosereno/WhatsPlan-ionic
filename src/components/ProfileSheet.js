@@ -315,6 +315,13 @@ export class ProfileSheet {
           <span class="wp-pf-ex-hex" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 40 40"><path d="M13 4l9 5v10l-9 5-9-5V9z" fill="#1a5cf5" opacity=".9"/><path d="M27 12l9 5v10l-9 5-9-5V17z" fill="#ffc928"/><path d="M13 20l9 5v10l-9 5-9-5V25z" fill="#1a5cf5" opacity=".45"/></svg></span>
           <span class="wp-pf-ex-txt"><b>Explora Nuevo Progreso</b><small>Destapa la ciudad visitando lugares</small></span>
           <span class="wp-pf-ex-pct">–</span>
+        </button>
+        <button type="button" class="wp-pf-points">
+          <span class="wp-pf-pt-lv"><svg width="46" height="50" viewBox="0 0 46 50" aria-hidden="true"><path d="M23 2.5l19 11v22.5l-19 11-19-11V13.5z" fill="#ffc928" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg><b>–</b></span>
+          <span class="wp-pf-pt-txt"><b><span class="wp-pf-pt-n">–</span> pts</b>
+            <span class="wp-pf-pt-bar"><i style="width:0%"></i></span>
+            <small class="wp-pf-pt-sub">Nivel –</small></span>
+          <span class="wp-pf-pt-rank"><b>–</b><small>entre amigos</small></span>
         </button>` : ''}
       <div class="wp-pf-mem"></div>
       <div class="wp-pf-sec"><span>Colecciones</span><span class="wp-pf-sec-n"></span></div>
@@ -350,6 +357,16 @@ export class ProfileSheet {
         const el = exBtn.querySelector('.wp-pf-ex-pct');
         if (el && view.isConnected) el.textContent = fog.stats(ids).pct + '%';
       }).catch(() => {});
+    }
+
+    // Puntos y nivel (fase 3) → ranking con la gente que sigues
+    const ptBtn = view.querySelector('.wp-pf-points');
+    if (ptBtn) {
+      ptBtn.onclick = () => { this._pulse(ptBtn); this._push(v => this._viewRanking(v)); };
+      import('/src/services/PointsService.js').then(({ PointsService }) => PointsService.mine(true)).then(d => {
+        if (!d || !view.isConnected) return;
+        this._paintPoints(ptBtn, d);
+      }).catch(e => { console.warn('[DIAG-POINTS] mis puntos:', e.message || e); ptBtn.style.display = 'none'; });
     }
 
     // Memories (momentos activos + guardados) — los pinta MomentsUI
@@ -796,6 +813,85 @@ export class ProfileSheet {
   }
 
   // ── Vista: ajustes ─────────────────────────────────────────────────
+  // Tarjeta de puntos (perfil y arriba del ranking)
+  _paintPoints(el, d) {
+    const span = Math.max(1, d.level_to - d.level_from);
+    const pct = Math.max(0, Math.min(100, (d.total - d.level_from) / span * 100));
+    el.querySelector('.wp-pf-pt-lv b').textContent = String(d.level);
+    el.querySelector('.wp-pf-pt-n').textContent = Number(d.total).toLocaleString('es-MX');
+    el.querySelector('.wp-pf-pt-bar i').style.width = pct.toFixed(1) + '%';
+    el.querySelector('.wp-pf-pt-sub').textContent = `Nivel ${d.level} · faltan ${Math.max(0, d.level_to - d.total)} para el ${d.level + 1}`;
+    const rk = el.querySelector('.wp-pf-pt-rank');
+    if (rk) {
+      if (d.of > 1) { rk.querySelector('b').textContent = '#' + d.rank; rk.querySelector('small').textContent = `de ${d.of} amigos`; }
+      else { rk.querySelector('b').textContent = '🏆'; rk.querySelector('small').textContent = 'Ranking'; }
+    }
+  }
+
+  // ── Ranking: tú + la gente que sigues (fase 3) ─────────────────────
+  async _viewRanking(view) {
+    this._setHeader({ title: 'Ranking', right: null });
+    const { PointsService, POINTS_RULES } = await import('/src/services/PointsService.js');
+    view.innerHTML = `
+      <div class="wp-pf-points wp-pf-points-big">
+        <span class="wp-pf-pt-lv"><svg width="46" height="50" viewBox="0 0 46 50" aria-hidden="true"><path d="M23 2.5l19 11v22.5l-19 11-19-11V13.5z" fill="#ffc928" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg><b>–</b></span>
+        <span class="wp-pf-pt-txt"><b><span class="wp-pf-pt-n">–</span> pts</b>
+          <span class="wp-pf-pt-bar"><i style="width:0%"></i></span>
+          <small class="wp-pf-pt-sub">Nivel –</small></span>
+      </div>
+      <div class="wp-fp-tabs wp-pf-rk-tabs"><button type="button" data-t="week" class="on">Esta semana</button><button type="button" data-t="all">Siempre</button><span class="wp-fp-tabs-knob"></span></div>
+      <div class="wp-pf-rk-list"><p class="wp-pf-empty">Cargando…</p></div>
+      <div class="wp-pf-sec"><span>Cómo ganar puntos</span></div>
+      <div class="wp-pf-group wp-pf-rules">${POINTS_RULES.map(r => `<div class="wp-pf-set"><span class="wp-pf-set-txt"><b>${this._esc(r.label)}</b></span><span class="wp-pf-rule-pts">+${r.points}</span></div>`).join('')}</div>
+      <button type="button" class="wp-pf-rk-priv">Privacidad del ranking</button>
+      <div style="height:28px"></div>`;
+    PointsService.mine().then(d => { if (d && this._isCurrent(view)) this._paintPoints(view.querySelector('.wp-pf-points-big'), d); }).catch(() => {});
+    view.querySelector('.wp-pf-rk-priv').onclick = (e) => { this._pulse(e.currentTarget); this._push(v => this._viewSettings(v)); };
+
+    const list = view.querySelector('.wp-pf-rk-list');
+    const tabs = view.querySelector('.wp-pf-rk-tabs');
+    let period = 'week', seq = 0;
+    const load = async () => {
+      const my = ++seq;
+      list.innerHTML = '<p class="wp-pf-empty">Cargando…</p>';
+      let rows = [];
+      try { rows = await PointsService.ranking(period); }
+      catch (e) { console.warn('[DIAG-POINTS] ranking:', e.message || e); if (my === seq) list.innerHTML = '<p class="wp-pf-empty">No se pudo cargar el ranking.</p>'; return; }
+      if (my !== seq || !this._isCurrent(view)) return;
+      list.innerHTML = '';
+      const medal = ['🥇', '🥈', '🥉'];
+      rows.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = 'wp-pf-row wp-pf-rk-row' + (p.is_me ? ' me' : '');
+        row.setAttribute('role', 'button');
+        const sub = [p.username ? '@' + p.username : '', p.places != null ? `${p.places} ${p.places === 1 ? 'lugar' : 'lugares'}` : '', `Nivel ${p.level}`].filter(Boolean).join(' · ');
+        row.innerHTML = `<span class="wp-pf-rk-pos">${i < 3 && p.points > 0 ? medal[i] : i + 1}</span>
+          <span class="wp-pf-row-av" style="background-image:url('${this._esc(this._avatar(p, p.is_me))}')"></span>
+          <span class="wp-pf-row-txt"><b></b><span></span></span>
+          <span class="wp-pf-rk-pts">${Number(p.points).toLocaleString('es-MX')}<small>pts</small></span>`;
+        row.querySelector('b').textContent = p.is_me ? 'Tú' : (p.name || 'Usuario');
+        row.querySelector('.wp-pf-row-txt span').textContent = sub;
+        row.onclick = () => { this._pulse(row); this._push(v => this._viewProfile(v, p.user_id)); };
+        list.appendChild(row);
+      });
+      if (rows.length <= 1) {
+        const p = document.createElement('p');
+        p.className = 'wp-pf-empty';
+        p.textContent = 'Sigue a tus amigos para competir con ellos. Aquí aparecerán los que sigues.';
+        list.appendChild(p);
+      }
+    };
+    tabs.querySelectorAll('button').forEach(b => b.onclick = () => {
+      if (b.dataset.t === period) return;
+      this._haptic('light');
+      period = b.dataset.t;
+      tabs.classList.toggle('near', period === 'all'); // (mueve la perilla a la derecha)
+      tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      load();
+    });
+    load();
+  }
+
   async _viewSettings(view) {
     const me = this.getCurrentUser();
     if (!me) return;
@@ -805,7 +901,15 @@ export class ProfileSheet {
       <div class="wp-pf-group">
         <div class="wp-pf-set">
           <span class="wp-pf-set-txt"><b>Mostrar mis lugares guardados</b><span>Otros podrán ver que guardaste un lugar</span></span>
-          <button type="button" class="wp-pf-switch" role="switch"></button>
+          <button type="button" class="wp-pf-switch" role="switch" data-k="show_saved"></button>
+        </div>
+        <div class="wp-pf-set">
+          <span class="wp-pf-set-txt"><b>Aparecer en el ranking</b><span>Quienes te siguen ven tus puntos y tu nivel</span></span>
+          <button type="button" class="wp-pf-switch" role="switch" data-k="show_points"></button>
+        </div>
+        <div class="wp-pf-set">
+          <span class="wp-pf-set-txt"><b>Mostrar lugares visitados</b><span>Quienes te siguen ven cuántos lugares has visitado</span></span>
+          <button type="button" class="wp-pf-switch" role="switch" data-k="show_visits"></button>
         </div>
         <button type="button" class="wp-pf-set" data-a="blocked"><span class="wp-pf-set-txt"><b>Usuarios bloqueados</b></span>${ICON.chev}</button>
       </div>
@@ -814,17 +918,21 @@ export class ProfileSheet {
         <button type="button" class="wp-pf-set wp-pf-danger" data-a="logout"><span class="wp-pf-set-txt"><b>Cerrar sesión</b></span></button>
       </div>`;
     view.querySelector('.wp-pf-group:nth-child(2) .wp-pf-set-txt span').textContent = me.email || '';
-    const sw = view.querySelector('.wp-pf-switch');
-    let on = !!prof?.show_saved;
-    const paint = () => { sw.classList.toggle('wp-pf-on', on); sw.setAttribute('aria-checked', String(on)); };
-    paint();
-    sw.onclick = async () => {
-      const was = on; on = !on; paint(); this._haptic('light');
-      try {
-        const u = await ProfileService.updateProfile(me.id, { show_saved: on });
-        this._lastProfile = u;
-      } catch (e) { console.error('[PF] show_saved:', e); on = was; paint(); this._toast('No se pudo cambiar'); }
-    };
+    // show_saved: apagado por defecto · show_points / show_visits: encendidos
+    const DEF = { show_saved: false, show_points: true, show_visits: true };
+    view.querySelectorAll('.wp-pf-switch[data-k]').forEach(sw => {
+      const k = sw.dataset.k;
+      let on = prof && prof[k] != null ? !!prof[k] : DEF[k];
+      const paint = () => { sw.classList.toggle('wp-pf-on', on); sw.setAttribute('aria-checked', String(on)); };
+      paint();
+      sw.onclick = async () => {
+        const was = on; on = !on; paint(); this._haptic('light');
+        try {
+          const u = await ProfileService.updateProfile(me.id, { [k]: on });
+          if (u) this._lastProfile = u;
+        } catch (e) { console.error('[PF] ' + k + ':', e); on = was; paint(); this._toast('No se pudo cambiar'); }
+      };
+    });
     view.querySelector('[data-a=blocked]').onclick = () => this._push(v => this._viewBlocked(v));
     view.querySelector('[data-a=logout]').onclick = async (e) => {
       this._pulse(e.currentTarget);
@@ -983,6 +1091,34 @@ export class ProfileSheet {
       .wp-pf-ex-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
       .wp-pf-ex-txt b { font-size:15px; font-weight:800; color:#111827; }
       .wp-pf-ex-txt small { font-size:12.5px; color:#6b7280; }
+      /* Puntos y nivel (fase 3) */
+      .wp-pf-points {
+        width:100%; margin-top:10px; display:flex; align-items:center; gap:12px; padding:12px 16px 12px 12px;
+        border:none; border-radius:22px; background:#fff8e1; cursor:pointer; text-align:left; font-family:inherit;
+        -webkit-tap-highlight-color:transparent; transition:transform .15s; box-sizing:border-box;
+      }
+      button.wp-pf-points:active { transform:scale(0.98); }
+      .wp-pf-points-big { margin:6px 0 14px; cursor:default; }
+      .wp-pf-pt-lv { position:relative; flex-shrink:0; width:46px; height:50px; display:flex; align-items:center; justify-content:center; }
+      .wp-pf-pt-lv svg { position:absolute; inset:0; filter:drop-shadow(0 3px 6px rgba(245,158,11,0.35)); }
+      .wp-pf-pt-lv b { position:relative; font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:21px; color:#3b2500; }
+      .wp-pf-pt-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+      .wp-pf-pt-txt > b { font-size:16px; font-weight:800; color:#111827; }
+      .wp-pf-pt-n { font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:22px; letter-spacing:0.3px; }
+      .wp-pf-pt-bar { display:block; height:8px; border-radius:999px; background:rgba(245,158,11,0.18); overflow:hidden; }
+      .wp-pf-pt-bar i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#ffd23f,#f59e0b); transition:width .7s cubic-bezier(0.32,1.1,0.5,1); }
+      .wp-pf-pt-sub { font-size:12px; color:#8a6d1f; font-weight:600; }
+      .wp-pf-pt-rank { flex-shrink:0; display:flex; flex-direction:column; align-items:center; min-width:56px; }
+      .wp-pf-pt-rank b { font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:24px; color:#f59e0b; line-height:1.1; }
+      .wp-pf-pt-rank small { font-size:11px; color:#8a6d1f; font-weight:600; white-space:nowrap; }
+      .wp-fp-tabs.wp-pf-rk-tabs { margin:0 0 8px; }
+      .wp-pf-rk-row { gap:10px; }
+      .wp-pf-rk-row.me { background:#eef3ff; border-radius:16px; }
+      .wp-pf-rk-pos { flex-shrink:0; width:26px; text-align:center; font-size:15px; font-weight:800; color:#6b7280; }
+      .wp-pf-rk-pts { flex-shrink:0; margin-left:auto; font-family:'Anton','Open Sans',sans-serif; font-size:19px; color:#111827; }
+      .wp-pf-rk-pts small { margin-left:3px; font-family:'Open Sans',sans-serif; font-size:11px; font-weight:700; color:#8a8f99; }
+      .wp-pf-rule-pts { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:18px; color:#f59e0b; }
+      .wp-pf-rk-priv { display:block; margin:14px auto 0; padding:8px 14px; border:none; background:none; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
       .wp-pf-ex-pct { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:26px; color:#1a5cf5; }
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
       .wp-pf-banner-l > span:first-child { font-size:17px; font-weight:700; color:rgba(255,255,255,0.78); }
