@@ -61,24 +61,84 @@ export function buildFog(places) {
     }
   });
 
-  // Hexágono con esquinas redondeadas: cada esquina es un arco de 60°
-  // (radio RC) cuyo centro está sobre la línea centro→vértice
-  const RC = 22, RSTEP = 4;               // radio de la esquina (m) y puntos por arco
-  const RIN = R - RC / Math.sin(Math.PI / 3);
-  const ring = (q, r) => {
+  // Vértices de un hexágono (metros, antihorario con y hacia arriba)
+  const verts = (q, r) => {
     const [cx, cy] = center(q, r);
-    const pts = [];
+    const v = [];
     for (let i = 0; i < 6; i++) {
       const a = Math.PI / 180 * (60 * i - 30);
-      const ax = cx + RIN * Math.cos(a), ay = cy + RIN * Math.sin(a);
+      v.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+    }
+    return v;
+  };
+  const vkey = ([x, y]) => Math.round(x * 2) + ':' + Math.round(y * 2);
+
+  // Contorno de la zona destapada: las orillas de hexágono que NO comparten
+  // dos hexágonos destapados. Cada orilla va en el sentido de su hexágono
+  // (antihorario), así lo destapado queda siempre a la izquierda y los
+  // anillos salen orientados: zona destapada = antihorario, isla de niebla
+  // adentro = horario.
+  const outline = (rev) => {
+    const count = new Map(), dir = [];
+    rev.forEach(k => {
+      const [q, r] = k.split(',').map(Number);
+      const v = verts(q, r);
+      for (let i = 0; i < 6; i++) {
+        const a = v[i], b = v[(i + 1) % 6];
+        const ka = vkey(a), kb = vkey(b);
+        const u = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+        count.set(u, (count.get(u) || 0) + 1);
+        dir.push({ a, b, ka, kb, u });
+      }
+    });
+    const next = new Map();
+    dir.forEach(e => { if (count.get(e.u) === 1) next.set(e.ka, e); });
+    const rings = [];
+    while (next.size) {
+      const [startKey, first] = next.entries().next().value;
+      const ring = [];
+      let e = first;
+      while (e) {
+        next.delete(e.ka);
+        ring.push(e.a);
+        if (e.kb === startKey) break;
+        e = next.get(e.kb);
+      }
+      if (ring.length >= 3) rings.push(ring);
+    }
+    return rings;
+  };
+
+  // Esquinas redondeadas (salientes y entrantes) en un anillo de metros
+  const RC = 75, RSTEP = 6;
+  const roundRing = (ring) => {
+    const n = ring.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const p = ring[i], a = ring[(i - 1 + n) % n], b = ring[(i + 1) % n];
+      const la = Math.hypot(a[0] - p[0], a[1] - p[1]), lb = Math.hypot(b[0] - p[0], b[1] - p[1]);
+      const ua = [(a[0] - p[0]) / la, (a[1] - p[1]) / la], ub = [(b[0] - p[0]) / lb, (b[1] - p[1]) / lb];
+      const cos = Math.max(-1, Math.min(1, ua[0] * ub[0] + ua[1] * ub[1]));
+      const th = Math.acos(cos);                       // ángulo entre las dos orillas
+      if (th > Math.PI - 0.01) { out.push(p); continue; } // casi recto: sin esquina
+      const t = Math.min(RC / Math.tan(th / 2), la / 2, lb / 2);
+      const rc = t * Math.tan(th / 2);
+      const bis = [ua[0] + ub[0], ua[1] + ub[1]], bl = Math.hypot(bis[0], bis[1]);
+      const d = rc / Math.sin(th / 2);
+      const c = [p[0] + bis[0] / bl * d, p[1] + bis[1] / bl * d];
+      const p1 = [p[0] + ua[0] * t, p[1] + ua[1] * t], p2 = [p[0] + ub[0] * t, p[1] + ub[1] * t];
+      let a1 = Math.atan2(p1[1] - c[1], p1[0] - c[0]), a2 = Math.atan2(p2[1] - c[1], p2[0] - c[0]);
+      let da = a2 - a1;
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
       for (let k = 0; k <= RSTEP; k++) {
-        const t = a - Math.PI / 6 + (Math.PI / 3) * (k / RSTEP);
-        pts.push(toLL(ax + RC * Math.cos(t), ay + RC * Math.sin(t)));
+        const ang = a1 + da * (k / RSTEP);
+        out.push([c[0] + rc * Math.cos(ang), c[1] + rc * Math.sin(ang)]);
       }
     }
-    pts.push(pts[0]);
-    return pts;
+    return out;
   };
+  const area = (ring) => { let s = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; };
+  const toLLRing = (ring) => { const r = ring.map(([x, y]) => toLL(x, y)); r.push(r[0]); return r; };
 
   // Hexágonos destapados por los lugares visitados (el suyo + 6 vecinos)
   const placeById = new Map(pts.map(x => [idOf(x.p), x]));
@@ -111,17 +171,19 @@ export function buildFog(places) {
       const [q, r] = hexAt(lng, lat);
       return !rev.has(key(q, r));
     },
-    // GeoJSON: niebla (hexágonos sin destapar) y orilla de lo destapado
+    // GeoJSON de la niebla, estilo Bump: UNA sola capa que cubre todo
+    // (también fuera de la ciudad) con agujeros donde ya destapaste. La
+    // orilla de los agujeros sigue la forma de los hexágonos, redondeada.
     geojson(visitedIds) {
       const rev = revealedFrom(visitedIds);
-      const fog = [], edge = [];
-      city.forEach(({ q, r }, k) => {
-        const f = { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring(q, r)] } };
-        if (rev.has(k)) edge.push(f); else fog.push(f);
-      });
+      const rings = outline(rev).map(roundRing);
+      const holes = rings.filter(r => area(r) > 0);    // zonas destapadas
+      const islands = rings.filter(r => area(r) <= 0); // niebla rodeada de zona destapada
+      const W = 60000;                                  // 60 km alrededor (horario)
+      const world = [[-W, -W], [-W, W], [W, W], [W, -W]];
+      const polys = [[toLLRing(world), ...holes.map(toLLRing)], ...islands.map(r => [toLLRing(r)])];
       return {
-        fog:  { type: 'FeatureCollection', features: fog },
-        edge: { type: 'FeatureCollection', features: edge },
+        fog: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: polys } }] },
       };
     },
     bounds() {
@@ -138,28 +200,20 @@ export function buildFog(places) {
 
 // ── Capas del mapa ───────────────────────────────────────────────────
 const SRC_FOG = 'wp-fog', SRC_EDGE = 'wp-fog-edge';
+const OLD_LAYERS = ['wp-fog-edge', 'wp-fog-open']; // de la versión por hexágono
 export function drawFog(map, data) {
   if (!map) return;
+  OLD_LAYERS.forEach(id => { try { if (map.getLayer(id)) map.removeLayer(id); } catch (_) {} });
+  try { if (map.getSource(SRC_EDGE)) map.removeSource(SRC_EDGE); } catch (_) {}
   const firstSymbol = map.getStyle()?.layers?.find(l => l.type === 'symbol')?.id;
-  if (map.getSource(SRC_FOG)) map.getSource(SRC_FOG).setData(data.fog);
-  else {
-    map.addSource(SRC_FOG, { type: 'geojson', data: data.fog });
-    map.addLayer({ id: 'wp-fog-fill', type: 'fill', source: SRC_FOG,
-      paint: { 'fill-color': '#1a5cf5', 'fill-opacity': 0.26 } }, firstSymbol);
-    // Borde: el mismo azul de la niebla, un poco más oscuro
-    map.addLayer({ id: 'wp-fog-line', type: 'line', source: SRC_FOG,
-      paint: { 'line-color': '#1442b8', 'line-opacity': 0.5, 'line-width': 1.2 } }, firstSymbol);
-  }
-  if (map.getSource(SRC_EDGE)) map.getSource(SRC_EDGE).setData(data.edge);
-  else {
-    map.addSource(SRC_EDGE, { type: 'geojson', data: data.edge });
-    // Lo destapado: hexágonos claros con orilla dorada
-    map.addLayer({ id: 'wp-fog-open', type: 'fill', source: SRC_EDGE,
-      paint: { 'fill-color': '#fff7d6', 'fill-opacity': 0.22 } }, firstSymbol);
-    // Borde: el crema de lo destapado, un poco más oscuro (dorado tostado)
-    map.addLayer({ id: 'wp-fog-edge', type: 'line', source: SRC_EDGE,
-      paint: { 'line-color': '#d9a62e', 'line-opacity': 0.75, 'line-width': 1.4 } }, firstSymbol);
-  }
+  if (map.getSource(SRC_FOG)) { map.getSource(SRC_FOG).setData(data.fog); return; }
+  map.addSource(SRC_FOG, { type: 'geojson', data: data.fog });
+  // Niebla lavanda, pareja, sin líneas por dentro
+  map.addLayer({ id: 'wp-fog-fill', type: 'fill', source: SRC_FOG,
+    paint: { 'fill-color': '#6d7ff0', 'fill-opacity': 0.34, 'fill-antialias': true } }, firstSymbol);
+  // Orilla de lo destapado: el mismo lavanda, un poco más oscuro y suave
+  map.addLayer({ id: 'wp-fog-line', type: 'line', source: SRC_FOG,
+    paint: { 'line-color': '#4a5fd6', 'line-opacity': 0.35, 'line-width': 1.4, 'line-blur': 0.6 } }, firstSymbol);
 }
 export function removeFog(map) {
   if (!map) return;
