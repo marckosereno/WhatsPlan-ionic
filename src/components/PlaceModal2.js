@@ -3239,6 +3239,16 @@ export class PlaceModal2 {
         this._showToast(col
           ? `🎉 Completaste ${col.name || 'una colección'}${pts}`
           : (r.first ? `¡Primera visita!${pts}` : `Visita registrada · ${r.visits} en total${pts}`));
+        // Insignias nuevas (fase 3): un aviso por cada una, después del primero
+        if ((r.badges || []).length) {
+          import('/src/services/PointsService.js').then(({ badgeInfo }) => {
+            r.badges.forEach((id, i) => setTimeout(() => {
+              const b = badgeInfo(id);
+              this._haptic('success');
+              this._showToast(`${b.emoji} Nueva insignia: ${b.name}`);
+            }, 2600 * (i + 1)));
+          }).catch(() => {});
+        }
       } catch (e) {
         paint(VisitService._cache.get(String(pid)) || 0);
         this._haptic('light');
