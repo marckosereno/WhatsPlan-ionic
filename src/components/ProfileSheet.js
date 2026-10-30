@@ -292,6 +292,7 @@ export class ProfileSheet {
           <div><b>–</b><span>reseñas</span></div>
         </div>
         <div class="wp-pf-actions"></div>
+        <div class="wp-pf-badges" hidden></div>
       </div>
       ${isMe ? `<button type="button" class="wp-pf-banner">
           <svg class="wp-pf-banner-map" viewBox="0 0 360 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -357,6 +358,22 @@ export class ProfileSheet {
         const el = exBtn.querySelector('.wp-pf-ex-pct');
         if (el && view.isConnected) el.textContent = fog.stats(ids).pct + '%';
       }).catch(() => {});
+    }
+
+    // Insignias (fase 3): fila debajo de los botones; tocar una dice qué es
+    const bdEl = view.querySelector('.wp-pf-badges');
+    if (bdEl) {
+      import('/src/services/PointsService.js').then(async ({ PointsService, badgeInfo }) => {
+        const got = await PointsService.badgesOf(uid);
+        if (!got.length || !view.isConnected) return;
+        bdEl.innerHTML = got.map(g => { const b = badgeInfo(g.badge); return `<button type="button" class="wp-pf-badge" data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}">${b.emoji}</button>`; }).join('');
+        bdEl.hidden = false;
+        bdEl.querySelectorAll('.wp-pf-badge').forEach(el => el.onclick = () => {
+          const b = badgeInfo(el.dataset.b);
+          this._pulse(el); this._haptic('light');
+          this._toast(`${b.emoji} ${b.name} · ${b.desc}`);
+        });
+      }).catch(e => console.warn('[DIAG-POINTS] insignias:', e.message || e));
     }
 
     // Puntos y nivel (fase 3) → ranking con la gente que sigues
@@ -568,6 +585,7 @@ export class ProfileSheet {
       <div class="wp-pf-col-head">
         <div class="wp-pf-stack wp-pf-stack-big"></div>
         <div class="wp-pf-col-hmeta"></div>
+        <div class="wp-pf-col-done" hidden></div>
         <div class="wp-pf-actions">
           ${isMe ? '<button type="button" class="wp-pf-pill" data-a="priv"></button>' : ''}
           <button type="button" class="wp-pf-pill" data-a="map">${ICON.map} Ver en el mapa</button>
@@ -581,6 +599,20 @@ export class ProfileSheet {
     const photos = list.map(p => this._photo(p)).filter(Boolean).slice(0, 3);
     view.querySelector('.wp-pf-stack').innerHTML = this._stackHtml(photos, 1) + `<span class="wp-pf-stack-emoji">${this._esc(c.emoji || '❤️')}</span>`;
     view.querySelector('.wp-pf-col-hmeta').textContent = `${c.items.length} ${c.items.length === 1 ? 'lugar' : 'lugares'}`;
+
+    // ¿Quién la completó? (fase 3) — "N la completaron" con caritas
+    if (c.id) import('/src/services/PointsService.js').then(({ PointsService }) => PointsService.finishers(c.id)).then(f => {
+      const el = view.querySelector('.wp-pf-col-done');
+      if (!f || !el || !view.isConnected) return;
+      const n = f.count || 0;
+      if (!n) { if (!isMe && c.is_public) { el.innerHTML = '<span>🏁 Nadie la ha completado. ¡Sé el primero!</span>'; el.hidden = false; } return; }
+      const faces = (f.people || []).slice(0, 4).map(p => `<i style="background-image:url('${this._esc(this._avatar(p, false))}')"></i>`).join('');
+      const txt = f.me_done
+        ? (n === 1 ? 'Ya la completaste' : `Ya la completaste · ${n} en total`)
+        : `${n} ${n === 1 ? 'persona la completó' : 'la completaron'}`;
+      el.innerHTML = `<span class="wp-pf-col-faces">${faces}</span><span>🏁 ${this._esc(txt)}</span>`;
+      el.hidden = false;
+    }).catch(e => console.warn('[DIAG-POINTS] completaron:', e.message || e));
 
     const priv = view.querySelector('[data-a=priv]');
     const paintPriv = () => { if (priv) priv.innerHTML = c.is_public ? `${ICON.globe} Pública` : `${ICON.lock} Privada`; };
@@ -841,11 +873,23 @@ export class ProfileSheet {
       </div>
       <div class="wp-fp-tabs wp-pf-rk-tabs"><button type="button" data-t="week" class="on">Esta semana</button><button type="button" data-t="all">Siempre</button><span class="wp-fp-tabs-knob"></span></div>
       <div class="wp-pf-rk-list"><p class="wp-pf-empty">Cargando…</p></div>
+      <div class="wp-pf-sec"><span>Tus insignias</span><span class="wp-pf-sec-n wp-pf-bd-n"></span></div>
+      <div class="wp-pf-bd-grid"></div>
       <div class="wp-pf-sec"><span>Cómo ganar puntos</span></div>
       <div class="wp-pf-group wp-pf-rules">${POINTS_RULES.map(r => `<div class="wp-pf-set"><span class="wp-pf-set-txt"><b>${this._esc(r.label)}</b></span><span class="wp-pf-rule-pts">+${r.points}</span></div>`).join('')}</div>
       <button type="button" class="wp-pf-rk-priv">Privacidad del ranking</button>
       <div style="height:28px"></div>`;
     PointsService.mine().then(d => { if (d && this._isCurrent(view)) this._paintPoints(view.querySelector('.wp-pf-points-big'), d); }).catch(() => {});
+    // Todas las insignias: ganadas a color, las demás apagadas con su meta
+    const me = this.getCurrentUser();
+    const { BADGES } = await import('/src/services/PointsService.js');
+    const grid = view.querySelector('.wp-pf-bd-grid');
+    const paintBadges = (have) => {
+      grid.innerHTML = BADGES.map(b => `<div class="wp-pf-bd${have.has(b.id) ? ' on' : ''}"><span>${b.emoji}</span><b>${this._esc(b.name)}</b><small>${this._esc(b.desc)}</small></div>`).join('');
+      view.querySelector('.wp-pf-bd-n').textContent = `${have.size}/${BADGES.length}`;
+    };
+    paintBadges(new Set());
+    if (me) PointsService.badgesOf(me.id).then(g => { if (this._isCurrent(view)) paintBadges(new Set(g.map(x => x.badge))); }).catch(() => {});
     view.querySelector('.wp-pf-rk-priv').onclick = (e) => { this._pulse(e.currentTarget); this._push(v => this._viewSettings(v)); };
 
     const list = view.querySelector('.wp-pf-rk-list');
@@ -1118,6 +1162,27 @@ export class ProfileSheet {
       .wp-pf-rk-pts { flex-shrink:0; margin-left:auto; font-family:'Anton','Open Sans',sans-serif; font-size:19px; color:#111827; }
       .wp-pf-rk-pts small { margin-left:3px; font-family:'Open Sans',sans-serif; font-size:11px; font-weight:700; color:#8a8f99; }
       .wp-pf-rule-pts { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:18px; color:#f59e0b; }
+      .wp-pf-badges { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:12px; }
+      .wp-pf-badges[hidden] { display:none; }
+      .wp-pf-badge {
+        width:38px; height:38px; padding:0; border:none; border-radius:50%; cursor:pointer;
+        background:linear-gradient(180deg,#fff7d6,#ffe9a3); font-size:20px; line-height:38px;
+        box-shadow:0 0 0 2px #fff, 0 3px 8px rgba(245,158,11,0.3); -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pf-bd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
+      .wp-pf-bd { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px 10px; border-radius:18px; background:#f4f5f7; text-align:center; }
+      .wp-pf-bd span { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; background:#e5e7eb; filter:grayscale(1); opacity:.55; }
+      .wp-pf-bd b { font-size:12px; font-weight:800; color:#9ca3af; line-height:1.2; }
+      .wp-pf-bd small { font-size:10.5px; color:#9ca3af; line-height:1.25; }
+      .wp-pf-bd.on { background:#fff8e1; }
+      .wp-pf-bd.on span { filter:none; opacity:1; background:linear-gradient(180deg,#fff7d6,#ffd23f); box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(245,158,11,0.35); }
+      .wp-pf-bd.on b { color:#111827; }
+      .wp-pf-bd.on small { color:#8a6d1f; }
+      .wp-pf-col-done { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; font-size:13px; font-weight:700; color:#16a34a; }
+      .wp-pf-col-done[hidden] { display:none; }
+      .wp-pf-col-faces { display:flex; }
+      .wp-pf-col-faces i { width:24px; height:24px; margin-left:-7px; border-radius:50%; background:#e5e7eb center/cover no-repeat; box-shadow:0 0 0 2px #fff; }
+      .wp-pf-col-faces i:first-child { margin-left:0; }
       .wp-pf-rk-priv { display:block; margin:14px auto 0; padding:8px 14px; border:none; background:none; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
       .wp-pf-ex-pct { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:26px; color:#1a5cf5; }
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
