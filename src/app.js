@@ -307,10 +307,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       <button type="button" class="wp-fb-chip wp-fb-next" hidden></button>
       <button type="button" class="wp-fb-chip wp-fb-left" aria-label="Ver los lugares"><span class="wp-fb-left-t"></span><span class="wp-fb-more">${chev}</span></button>
     </div>
-    <button type="button" class="wp-fb-title"><span>${esc(explore ? 'Explora tu ciudad' : title)}</span></button>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
-      <button type="button" class="wp-fb-cluster${clusterEm ? ' is-emoji' : ''}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}">${clusterInner}${hasChoices ? `<span class="wp-fb-count">${chev}</span>` : ''}</button>
+      <button type="button" class="wp-fb-cluster${clusterEm ? ' is-emoji' : ''}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}">${clusterInner}<span class="wp-fb-count${hasChoices ? '' : ' solo'}"><span class="wp-fb-ct">${esc(explore ? 'Explora tu ciudad' : title)}</span>${hasChoices ? chev : ''}</span></button>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
         <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${explore ? (fog?.total || 0) : total}</span>
@@ -323,7 +322,6 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // Cluster (emoji de la colección): las demás colecciones
   const pickCol = () => { if (hasChoices) openFocusPicker(mv, opts); else mv.haptic?.('light'); };
   bar.querySelector('.wp-fb-cluster').onclick = pickCol;
-  bar.querySelector('.wp-fb-title').onclick = pickCol; // el título, encima del cluster, hace lo mismo
   // Chip "Te faltan X lugares": lista de los lugares (con visitados)
   bar.querySelector('.wp-fb-left').onclick = () => openFocusPlaces(mv, places, visited, label);
 
