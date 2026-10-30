@@ -1129,27 +1129,39 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 #wp-focus-thermo.arrived .wp-th-goal .g0 { border-color: #16a34a; animation: wpThGlow 1.4s ease-in-out infinite; }
 @keyframes wpThGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(22,163,74,0.6), 0 2px 6px rgba(17,24,39,0.3); } 50% { box-shadow: 0 0 0 8px rgba(22,163,74,0), 0 2px 6px rgba(17,24,39,0.3); } }
 
-/* Tu foto: dentro de la barra, sobresale un poco, leve inclinación.
-   Alrededor, como anillo de texto (sin fondo): @usuario arriba y la
-   distancia abajo */
+/* Tú: la flecha del GPS (la misma del mapa), derecha apuntando hacia
+   arriba, del color de la cercanía, dentro de la barra */
 .wp-th-me {
-  position: absolute; left: 50%; width: 32px; height: 32px; margin-left: -16px;
-  bottom: calc(10px + (100% - 40px - 46px) * var(--h) / 100);
-  transform: rotate(-8deg);
+  position: absolute; left: 50%; width: 30px; height: 30px; margin-left: -15px;
+  bottom: calc(6px + (100% - 40px - 40px) * var(--h) / 100);
   transition: bottom .8s cubic-bezier(0.32,1.1,0.5,1);
 }
-.wp-th-av {
-  display: block; box-sizing: border-box; width: 32px; height: 32px; border-radius: 50%;
-  background: #e5e7eb center/cover no-repeat; border: 2.5px solid #fff;
-  box-shadow: 0 0 0 2px var(--c), 0 3px 8px rgba(17,24,39,0.3);
+.wp-th-arrow {
+  display: block; width: 30px; height: 30px; overflow: visible;
+  transform: rotate(-45deg); /* la flecha original apunta en diagonal (arriba-derecha) */
+  filter: drop-shadow(0 2px 3px rgba(17,24,39,0.35));
 }
-.wp-th-ring {
-  position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px;
-  overflow: visible; pointer-events: none;
+.wp-th-arrow-fill { fill: var(--c); stroke: var(--c); transition: fill .6s, stroke .6s; }
+
+/* "A 350 m" + flechita: junto al cluster; abre la lista de lugares cercanos */
+.wp-th-dist {
+  pointer-events: auto; position: absolute; left: calc(100% + 12px); top: 6px;
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 3px 0 8px; box-sizing: border-box;
+  border: none; border-radius: 999px; background: #fff; color: #0a0a0a; white-space: nowrap;
+  font-family: inherit; font-size: 11px; font-weight: 700; line-height: 1;
+  box-shadow: 0 0 0 0.5px rgba(17,24,39,0.10), 0 3px 10px rgba(17,24,39,0.22);
+  cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .15s;
 }
-.wp-th-ring text {
-  font-family: var(--wp-font); font-size: 8.5px; font-weight: 800; letter-spacing: 0.3px;
-  fill: #0a0a0a; stroke: #fff; stroke-width: 2.6px; stroke-linejoin: round; paint-order: stroke;
+.wp-th-dist b { font-weight: 800; }
+.wp-th-dist i {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 16px; border-radius: 999px;
+  background: #0a0a0a; color: #fff;
 }
-.wp-th-ring .wp-th-d { font-size: 9px; }
+.wp-th-dist:active { transform: scale(0.94); }
+#wp-focus-thermo.arrived .wp-th-dist { background: #16a34a; color: #fff; }
+#wp-focus-thermo.arrived .wp-th-dist i { background: rgba(255,255,255,0.25); }
+
+/* Lista "Cerca de ti": distancia a la derecha de cada lugar */
+.wp-fp-dist { flex-shrink: 0; font-size: 13px; font-weight: 800; color: #1a5cf5; }
+.wp-fp-pic.fog { filter: blur(2px) saturate(0.6); }
 
