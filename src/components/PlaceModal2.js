@@ -3366,6 +3366,7 @@ export class PlaceModal2 {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       this._el.classList.add('wp-pm2-in');
       this._coverBehind(true);
+      this._diagPerf('entrada'); // [DIAG] temporal
     }));
 
     // El rect destino del hero se puede medir YA — sus dimensiones salen
@@ -3552,6 +3553,7 @@ export class PlaceModal2 {
     // #wp-pm2.wp-pm2-flip-exit) — se agrega SIEMPRE, sin importar si la
     // ficha se abrió desde el flip del slide, desde el minicard o desde
     // la búsqueda global, así la salida es la misma en los tres casos.
+    this._diagPerf('salida'); // [DIAG] temporal
     // Estilo de salida elegido (por defecto "slide")
     let ex = 'slide';
     try { ex = localStorage.getItem('wpPmExit') || 'slide'; } catch (_) {}
@@ -5987,6 +5989,49 @@ export class PlaceModal2 {
     this._sheetIn(menu, overlay, { dimmed: chained, instant });
     frag.classList.add('wp-pm2-in');
     return { body: frag.querySelector('.wp-pm2-ms-body'), close };
+  }
+
+  // [DIAG] temporal — ¿qué hace pesada la entrada/salida de la ficha?
+  // Mide 700 ms: cuadros (fps, el peor cuadro, cuántos >32ms), tareas
+  // largas del hilo principal, cuántas veces se redibujó el mapa, y al
+  // final cuenta lo que hay vivo detrás (pines, animaciones, vidrios).
+  _diagPerf(label) {
+    try {
+      const t0 = performance.now();
+      const frames = [];
+      let last = t0, longT = [], renders = 0;
+      const map = window.wpApp?.mapView?.map;
+      const onRender = () => { renders++; };
+      map?.on?.('render', onRender);
+      let po = null;
+      try {
+        po = new PerformanceObserver(l => l.getEntries().forEach(e => longT.push(Math.round(e.duration))));
+        po.observe({ entryTypes: ['longtask'] });
+      } catch (_) {}
+      const tick = (now) => {
+        frames.push(now - last); last = now;
+        if (now - t0 < 700) { requestAnimationFrame(tick); return; }
+        map?.off?.('render', onRender);
+        try { po?.disconnect(); } catch (_) {}
+        const n = frames.length, worst = Math.round(Math.max(...frames));
+        const slow = frames.filter(f => f > 32).length;
+        const fps = Math.round(n / ((now - t0) / 1000));
+        const markers = document.querySelectorAll('.maplibregl-marker').length;
+        let anims = 0, animsRun = 0;
+        try { const all = document.getAnimations(); anims = all.length; animsRun = all.filter(a => a.playState === 'running').length; } catch (_) {}
+        let glass = 0;
+        try {
+          document.querySelectorAll('body *').forEach(el => {
+            if (el.closest('#wp-pm2')) return;
+            const cs = getComputedStyle(el);
+            if ((cs.backdropFilter && cs.backdropFilter !== 'none') || (cs.webkitBackdropFilter && cs.webkitBackdropFilter !== 'none')) glass++;
+          });
+        } catch (_) {}
+        const cv = map?.getCanvas?.();
+        console.log(`[DIAG-PERF] ${label}: ${fps} fps · peor cuadro ${worst}ms · cuadros lentos ${slow}/${n} · tareas largas [${longT.join(',')}] · mapa redibujado ${renders}x · pines ${markers} · animaciones ${animsRun}/${anims} · vidrios ${glass} · canvas ${cv ? cv.width + 'x' + cv.height : '?'} dpr ${window.devicePixelRatio}`);
+      };
+      requestAnimationFrame(tick);
+    } catch (e) { console.log('[DIAG-PERF] error', e.message); }
   }
 
   // ── Lo de atrás de la ficha ────────────────────────────────────────
