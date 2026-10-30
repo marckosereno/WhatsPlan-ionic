@@ -61,7 +61,7 @@ export const VisitService = {
     // sin ese SQL vienen vacíos y todo sigue funcionando como antes
     document.dispatchEvent(new CustomEvent('wp:visit', { detail: {
       place_id: String(placeId), visits: data.visits, first: !!data.first,
-      points: data.points || 0, total: data.total ?? null, level: data.level ?? null, awards: data.awards || [],
+      points: data.points || 0, total: data.total ?? null, level: data.level ?? null, awards: data.awards || [], badges: data.badges || [],
     } }));
     return data; // { ok, first, visits, dist_m, points, total, level, awards }
   },
