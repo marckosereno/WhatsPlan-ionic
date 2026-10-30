@@ -285,27 +285,32 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.getElementById('wp-focus-bar')?.remove();
   const top = document.createElement('div');
   top.id = 'wp-focus-top';
+  // Ya no hay título arriba: la colección se identifica por su emoji en el
+  // cluster de la barra (y ahí mismo se cambia de colección)
   top.innerHTML = `
-    <div class="wp-ft-title">
-      <div class="wp-ft-row"><h2>${esc(title)}</h2>${hasChoices ? `<button type="button" class="wp-ft-switch" aria-label="Otras colecciones"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}</div>
-      <span class="wp-ft-sub" hidden></span>
-    </div>
     <button type="button" class="wp-ft-back" aria-label="Volver">
       <svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1);flex-shrink:0;"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>
       <span class="wp-ft-back-label">Volver</span>
     </button>`;
   document.body.appendChild(top);
 
+  const chev = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  // Emoji del cluster: el de la colección; si no trae, uno según el modo;
+  // si tampoco, las fotos en abanico como antes
+  const clusterEm = em || (explore ? '🧭' : opts.choiceKey === 'saved' ? '🔖' : '');
+  const clusterInner = clusterEm
+    ? `<span class="wp-fb-emoji">${esc(clusterEm)}</span>`
+    : ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('');
   const bar = document.createElement('div');
   bar.id = 'wp-focus-bar';
   bar.innerHTML = `
     <div class="wp-fb-chips">
       <button type="button" class="wp-fb-chip wp-fb-next" hidden></button>
-      <span class="wp-fb-chip wp-fb-left"></span>
+      <button type="button" class="wp-fb-chip wp-fb-left" aria-label="Ver los lugares"><span class="wp-fb-left-t"></span><span class="wp-fb-more">${chev}</span></button>
     </div>
     <div class="wp-fb-bar">
       <span class="wp-fb-fill" style="--p:0"></span>
-      <button type="button" class="wp-fb-cluster" aria-label="Lugares de la colección">${ph.map((u, i) => `<i class="p${i}" style="background-image:url('${esc(u)}')"></i>`).join('')}<span class="wp-fb-count"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
+      <button type="button" class="wp-fb-cluster${clusterEm ? ' is-emoji' : ''}" aria-label="${esc(title)}${hasChoices ? ' · otras colecciones' : ''}">${clusterInner}${hasChoices ? `<span class="wp-fb-count">${chev}</span>` : ''}</button>
       <button type="button" class="wp-fb-me" aria-label="Ver todos">
         <span class="wp-fb-ring" style="--p:0"><span class="wp-fb-av" style="background-image:url('${esc(myAv)}')"></span></span>
         <span class="wp-fb-badge"><span class="wp-fb-n">0</span>/${explore ? (fog?.total || 0) : total}</span>
@@ -315,22 +320,22 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   document.body.appendChild(bar);
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.classList.add('in'); top.classList.add('in'); }));
   bar.querySelector('.wp-fb-me').onclick = () => { mv.haptic?.('light'); fit(true); };
-  // Cluster de fotos: lista de los lugares de la colección (con visitados)
-  bar.querySelector('.wp-fb-cluster').onclick = () => openFocusPlaces(mv, places, visited, label);
-  // Flechita junto al título: las demás colecciones
-  top.querySelector('.wp-ft-switch')?.addEventListener('click', () => openFocusPicker(mv, opts));
+  // Cluster (emoji de la colección): las demás colecciones
+  bar.querySelector('.wp-fb-cluster').onclick = () => {
+    if (hasChoices) openFocusPicker(mv, opts);
+    else mv.haptic?.('light');
+  };
+  // Chip "Te faltan X lugares": lista de los lugares (con visitados)
+  bar.querySelector('.wp-fb-left').onclick = () => openFocusPlaces(mv, places, visited, label);
 
-  // De quién es: @usuario (o nombre) debajo del título; también se usa
-  // en el título de la hoja de colecciones
-  const ownerUid = explore ? null : (opts.ownerId || me?.id || null);
-  if (explore) { const sub = top.querySelector('.wp-ft-sub'); sub.textContent = 'Explora tu ciudad'; sub.hidden = false; }
+  // De quién es: @usuario, para el título de la hoja de colecciones
+  // ("Colecciones de @x")
+  const ownerUid = explore ? null : (opts.ownerId && opts.ownerId !== me?.id ? opts.ownerId : null);
   if (ownerUid) {
     import('/src/services/SocialService.js').then(({ SocialService }) => SocialService.getProfile(ownerUid)).then(pr => {
       if (!pr) return;
       const who = pr.username ? '@' + pr.username : (pr.name || '');
-      if (opts.ownerId && opts.ownerId !== me?.id) opts.ownerName = who;
-      const sub = top.querySelector('.wp-ft-sub');
-      if (who && sub && top.isConnected) { sub.textContent = who; sub.hidden = false; }
+      opts.ownerName = who;
     }).catch(() => {});
   }
 
@@ -366,7 +371,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     bar.querySelector('.wp-fb-fill').style.setProperty('--p', String(pct));
     bar.classList.toggle('complete', done);
     const left = bar.querySelector('.wp-fb-left');
-    left.textContent = fog
+    // (el "Siguiente" se calcula abajo; aquí solo el texto)
+    left.querySelector('.wp-fb-left-t').textContent = fog
       ? (done ? '¡Exploraste toda la ciudad!' : (visited.size ? `${visited.size} ${visited.size === 1 ? 'lugar visitado' : 'lugares visitados'}` : 'Visita un lugar para destapar la niebla'))
       : (done ? '¡Colección completada!' : `Te ${total - n === 1 ? 'falta 1 lugar' : `faltan ${total - n} lugares`}`);
     left.classList.toggle('ok', done);
@@ -385,7 +391,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         if (!best || d < best.d) best = { p, d, c };
       });
     }
-    left.hidden = !!best && !done; // un solo chip a la vez
+    // Los dos chips juntos: "Siguiente" se recorta si no cabe; el de
+    // "Te faltan" siempre se ve (abre la lista de lugares)
+    if (fog && best && !visited.size) left.querySelector('.wp-fb-left-t').textContent = 'Destapa la niebla';
     if (best) {
       const dTxt = best.d >= 1000 ? `${(best.d / 1000).toFixed(1)} km` : `${Math.round(best.d / 10) * 10} m`;
       next.innerHTML = `<i></i><span>${fog ? 'Descubre: ' : ''}${esc(best.p.name || 'Siguiente')}</span><b>${dTxt}</b>`;
