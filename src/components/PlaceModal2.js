@@ -3233,7 +3233,12 @@ export class PlaceModal2 {
         paint(r.visits);
         this._haptic('success');
         this._scaleKeys(btn, [1, 1.1, 0.97, 1], 360);
-        this._showToast(r.first ? '¡Primera visita registrada!' : `Visita registrada · ${r.visits} en total`);
+        // Con puntos (fase 3): "¡Primera visita! +15 pts" · colección completada aparte
+        const pts = r.points ? ` · +${r.points} pts` : '';
+        const col = (r.awards || []).find(a => a.kind === 'collection');
+        this._showToast(col
+          ? `🎉 Completaste ${col.name || 'una colección'}${pts}`
+          : (r.first ? `¡Primera visita!${pts}` : `Visita registrada · ${r.visits} en total${pts}`));
       } catch (e) {
         paint(VisitService._cache.get(String(pid)) || 0);
         this._haptic('light');
