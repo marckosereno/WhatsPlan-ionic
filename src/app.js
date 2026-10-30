@@ -321,7 +321,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // Pill del título (arriba del avatar): las demás colecciones
   bar.querySelector('.wp-fb-col').onclick = () => { if (hasChoices) openFocusPicker(mv, opts); else mv.haptic?.('light'); };
   // Cluster (fotos + emoji, con flechita): lista de los lugares (con visitados)
-  bar.querySelector('.wp-fb-cluster').onclick = () => openFocusPlaces(mv, places, visited, label);
+  bar.querySelector('.wp-fb-cluster').onclick = () => openFocusPlaces(mv, places, visited, label, near, fog);
 
   // De quién es: @usuario, para el título de la hoja de colecciones
   // ("Colecciones de @x")
@@ -347,7 +347,6 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   thermo.innerHTML = `
     <div class="wp-th-track"><span class="wp-th-fill"></span>
       <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
-      <button type="button" class="wp-th-dist" aria-label="Elegir lugar"><span>A <b class="wp-th-d"></b></span><i><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></i></button>
       <div class="wp-th-me">
         <svg class="wp-th-arrow" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#fff" stroke="#fff" stroke-width="4.6" stroke-linejoin="round"/>
@@ -385,12 +384,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       thermo.classList.toggle('fogged', !!fog);
       thBand = null;
     }
-    thermo.querySelector('.wp-th-d').textContent = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
     // Vibración suave al cruzar 1 km, 500 m, 200 m y 100 m (acercándote)
     const band = d <= 100 ? 4 : d <= 200 ? 3 : d <= 500 ? 2 : d <= 1000 ? 1 : 0;
     if (thBand !== null && band > thBand) mv.haptic?.(band === 4 ? 'action' : 'light');
     thBand = band;
-    thermo.querySelector('.wp-th-dist').onclick = () => openThermoPicker();
     thermo.querySelector('.wp-th-goal').onclick = () => {
       mv.haptic?.('light');
       if (arrived) { mv.onPlaceSelect?.(best.p, { direct: true }); return; }
@@ -399,40 +396,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       setTimeout(() => { try { if (idx >= 0) mv._showMiniCard(best.p, idx, best.p.photosUrls?.[0] || best.p.photoUrl || best.p.photo_url || null); } catch (_) {} }, 650);
     };
   };
-  // Lista de lugares pendientes por distancia; el que elijas va al termómetro
-  const openThermoPicker = () => {
-    if (!thCands.length) return;
-    mv.haptic?.('light');
-    document.getElementById('wp-focus-pick')?.remove();
-    const fmt = (d) => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
-    const list = thCands.slice(0, 40);
-    const cur = (thPick && list.find(x => x.id === thPick)) ? thPick : list[0].id;
-    const root = document.createElement('div');
-    root.id = 'wp-focus-pick';
-    root.innerHTML = `<div class="wp-fp-dim"></div>
-      <div class="wp-fp-sheet"><div class="wp-fp-grab"></div>
-        <div class="wp-fp-title">Cerca de ti<small>Elige a cuál ir</small></div>
-        <div class="wp-fp-list">${list.map((x, i) => {
-          const ph = photoSmall(x.p.photosUrls?.[0] || x.p.photoUrl || x.p.photo_url || '');
-          const addr = String(x.p.formattedAddress || x.p.vicinity || x.p.address || '').split(',')[0];
-          return `<button type="button" class="wp-fp-row${x.id === cur ? ' on' : ''}" data-i="${i}">
-            <span class="wp-fp-pic${fog ? ' fog' : ''}" style="${ph ? `background-image:url('${esc(ph)}')` : ''}"></span>
-            <span class="wp-fp-txt"><b>${esc(fog ? 'Por descubrir' : (x.p.name || 'Lugar'))}</b><small>${esc(i === 0 ? 'El más cercano' : addr)}</small></span>
-            <span class="wp-fp-dist">${fmt(x.d)}</span>
-          </button>`;
-        }).join('')}</div></div>`;
-    document.body.appendChild(root);
-    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
-    const close = () => { root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
-    root.querySelector('.wp-fp-dim').onclick = close;
-    root.querySelectorAll('.wp-fp-row').forEach(b => b.onclick = () => {
-      const x = list[+b.dataset.i];
-      if (!x) return;
-      mv.haptic?.('light');
-      thPick = x.id === list[0].id ? null : x.id; // el más cercano = vuelve a automático
-      close();
-      paintProgress();
-    });
+  // Para la pestaña "Cerca de ti" de la hoja de lugares: pendientes por
+  // distancia; el que elijas pasa al termómetro
+  const near = {
+    list: () => thCands,
+    current: () => thTarget,
+    hasPos: () => !!myPos(),
+    pick: (id) => { thPick = thCands[0]?.id === id ? null : id; paintProgress(); }, // el más cercano = automático
   };
 
   // Ubicación en vivo: se actualiza cuando te mueves ≥10 m; se pausa con
@@ -650,46 +620,95 @@ function showFogBurst(bar, pct) {
 
 // Hoja con los lugares de la colección: visitados con palomita verde.
 // Tocar uno lleva el mapa a ese lugar y abre su minimodal.
-function openFocusPlaces(mv, places, visited, label) {
+// Pestañas: "Todos" (visitados con palomita; tocar uno lleva el mapa ahí)
+// y "Cerca de ti" (pendientes por distancia; tocar uno lo pone en el
+// termómetro).
+function openFocusPlaces(mv, places, visited, label, near, fog) {
   mv.haptic?.('light');
   document.getElementById('wp-focus-pick')?.remove();
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const idOf = (p) => String(p.place_id || p.placeId || p.id);
+  const picOf = (p) => photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '');
+  const fmt = (d) => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
   // Pendientes primero, visitados al final
-  const list = places.slice().sort((a, b) => (visited.has(idOf(a)) ? 1 : 0) - (visited.has(idOf(b)) ? 1 : 0));
+  const all = places.slice().sort((a, b) => (visited.has(idOf(a)) ? 1 : 0) - (visited.has(idOf(b)) ? 1 : 0));
   const n = places.filter(p => visited.has(idOf(p))).length;
+  let tab = (near && window.wpApp._fpTab === 'near') ? 'near' : 'all';
+  let nearList = [];
+
+  const rowsAll = () => all.map((p, i) => {
+    const v = visited.has(idOf(p));
+    const ph = picOf(p);
+    const addr = String(p.formattedAddress || p.vicinity || p.address || '').split(',')[0];
+    return `<button type="button" class="wp-fp-row${v ? ' visited' : ''}" data-i="${i}">
+      <span class="wp-fp-pic" style="${ph ? `background-image:url('${esc(ph)}')` : ''}"></span>
+      <span class="wp-fp-txt"><b>${esc(p.name || 'Lugar')}</b><small>${esc(addr)}</small></span>
+      ${v ? '<span class="wp-fp-ok"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Visitado</span>' : '<span class="wp-fp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>'}
+    </button>`;
+  }).join('');
+  const rowsNear = () => {
+    nearList = (near.list() || []).slice(0, 40);
+    if (!nearList.length) {
+      return `<p class="wp-fp-empty">${near.hasPos() ? '¡Ya visitaste todos!' : 'Buscando tu ubicación… Activa la ubicación del teléfono para ver qué tienes cerca.'}</p>`;
+    }
+    const cur = near.current();
+    return nearList.map((x, i) => {
+      const ph = picOf(x.p);
+      const addr = String(x.p.formattedAddress || x.p.vicinity || x.p.address || '').split(',')[0];
+      return `<button type="button" class="wp-fp-row${x.id === cur ? ' on' : ''}" data-i="${i}">
+        <span class="wp-fp-pic${fog ? ' fog' : ''}" style="${ph ? `background-image:url('${esc(ph)}')` : ''}"></span>
+        <span class="wp-fp-txt"><b>${esc(fog ? 'Por descubrir' : (x.p.name || 'Lugar'))}</b><small>${x.id === cur ? 'En tu termómetro' : esc(i === 0 ? 'El más cercano' : addr)}</small></span>
+        <span class="wp-fp-dist">${fmt(x.d)}</span>
+      </button>`;
+    }).join('');
+  };
+
   const root = document.createElement('div');
   root.id = 'wp-focus-pick';
   root.innerHTML = `<div class="wp-fp-dim"></div>
     <div class="wp-fp-sheet"><div class="wp-fp-grab"></div>
       <div class="wp-fp-title">${esc(label || 'Lugares')}<small>${n}/${places.length} visitados</small></div>
-      <div class="wp-fp-list">${list.map((p, i) => {
-        const ph = photoSmall(p.photosUrls?.[0] || p.photoUrl || p.photo_url || '');
-        const v = visited.has(idOf(p));
-        const addr = String(p.formattedAddress || p.vicinity || p.address || '').split(',')[0];
-        return `<button type="button" class="wp-fp-row${v ? ' visited' : ''}" data-i="${i}">
-          <span class="wp-fp-pic" style="${ph ? `background-image:url('${esc(ph)}')` : ''}"></span>
-          <span class="wp-fp-txt"><b>${esc(p.name || 'Lugar')}</b><small>${esc(addr)}</small></span>
-          ${v ? '<span class="wp-fp-ok"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Visitado</span>' : '<span class="wp-fp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>'}
-        </button>`;
-      }).join('')}</div></div>`;
+      ${near ? `<div class="wp-fp-tabs"><button type="button" data-t="all">Todos</button><button type="button" data-t="near">Cerca de ti</button><span class="wp-fp-tabs-knob"></span></div>` : ''}
+      <div class="wp-fp-list"></div></div>`;
   document.body.appendChild(root);
-  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+  const listEl = root.querySelector('.wp-fp-list');
   const close = () => { root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
-  root.querySelector('.wp-fp-dim').onclick = close;
-  root.querySelectorAll('.wp-fp-row').forEach(b => b.onclick = () => {
-    const p = list[+b.dataset.i];
-    if (!p) return;
+
+  const render = () => {
+    listEl.innerHTML = tab === 'near' ? rowsNear() : rowsAll();
+    listEl.scrollTop = 0;
+    root.querySelector('.wp-fp-tabs')?.classList.toggle('near', tab === 'near');
+    root.querySelectorAll('.wp-fp-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+    listEl.querySelectorAll('.wp-fp-row').forEach(b => b.onclick = () => {
+      mv.haptic?.('light');
+      if (tab === 'near') {
+        const x = nearList[+b.dataset.i];
+        if (!x) return;
+        near.pick(x.id);
+        close();
+        return;
+      }
+      const p = all[+b.dataset.i];
+      if (!p) return;
+      close();
+      const idx = (mv.allPlaces || []).indexOf(p);
+      const lat = Number(p.lat ?? p.location?.lat), lng = Number(p.lng ?? p.location?.lng);
+      const map = mv.getMap?.() || mv.map;
+      if (isFinite(lat) && isFinite(lng)) map?.flyTo?.({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
+      setTimeout(() => {
+        try { if (idx >= 0) mv._showMiniCard(p, idx, p.photosUrls?.[0] || p.photoUrl || p.photo_url || null); } catch (_) {}
+      }, 650);
+    });
+  };
+  root.querySelectorAll('.wp-fp-tabs button').forEach(b => b.onclick = () => {
+    if (b.dataset.t === tab) return;
     mv.haptic?.('light');
-    close();
-    const idx = (mv.allPlaces || []).indexOf(p);
-    const lat = Number(p.lat ?? p.location?.lat), lng = Number(p.lng ?? p.location?.lng);
-    const map = mv.getMap?.() || mv.map;
-    if (isFinite(lat) && isFinite(lng)) map?.flyTo?.({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
-    setTimeout(() => {
-      try { if (idx >= 0) mv._showMiniCard(p, idx, p.photosUrls?.[0] || p.photoUrl || p.photo_url || null); } catch (_) {}
-    }, 650);
+    tab = window.wpApp._fpTab = b.dataset.t;
+    render();
   });
+  render();
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+  root.querySelector('.wp-fp-dim').onclick = close;
 }
 
 // Hoja con las colecciones (y "Tus guardados") para cambiar sin salir del mapa
