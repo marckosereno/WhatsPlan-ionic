@@ -636,7 +636,7 @@ export class ProfileSheet {
     if (com.count > 0) {
       const photos = comPlaces.map(p => this._photo(p)).filter(Boolean).slice(0, 3);
       html += `<button type="button" class="wp-pf-ins-common">
-        <span class="wp-pf-stack wp-pf-ins-stack">${this._stackHtml(photos, 3)}</span>
+        <span class="wp-pf-ins-stack">${photos.slice(0, 3).map((u, i) => `<i class="p${i}" style="background-image:url('${String(u).replace(/'/g, '%27')}')"></i>`).join('') || '<i class="p0"></i>'}</span>
         <span class="wp-pf-ins-txt"><b>🤝 ${com.count} ${com.count === 1 ? 'lugar' : 'lugares'} en común</b>
           ${com.top_category ? `<small>Los dos van a ${this._esc(catLabel(com.top_category))}</small>` : '<small>Lugares que los dos conocen</small>'}</span>
         <span class="wp-pf-ins-chev">${ICON.chev}</span>
@@ -1653,7 +1653,16 @@ export class ProfileSheet {
         width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px 12px 10px; border:none; border-radius:22px;
         background:#f0f5ff; cursor:pointer; text-align:left; font-family:inherit; -webkit-tap-highlight-color:transparent;
       }
-      .wp-pf-ins-stack { position:relative; width:64px; height:56px; flex-shrink:0; }
+      /* Abanico de 3 fotos chiquitas (propio, no el de las colecciones) */
+      .wp-pf-ins-stack { position:relative; display:block; width:62px; height:54px; flex-shrink:0; }
+      .wp-pf-ins-stack i {
+        position:absolute; left:50%; bottom:2px; width:34px; height:44px; margin-left:-17px; box-sizing:border-box;
+        border-radius:9px; border:2px solid #fff; background:#dfe6f7 center/cover no-repeat;
+        box-shadow:0 2px 6px rgba(17,24,39,.2); transform-origin:50% 100%;
+      }
+      .wp-pf-ins-stack .p0 { z-index:3; }
+      .wp-pf-ins-stack .p1 { transform:rotate(-14deg) translateX(-10px); z-index:2; }
+      .wp-pf-ins-stack .p2 { transform:rotate(14deg) translateX(10px); z-index:1; }
       .wp-pf-ins-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
       .wp-pf-ins-txt b { font-size:15px; font-weight:800; color:#111827; }
       .wp-pf-ins-txt small { font-size:12.5px; color:#4b5b8a; font-weight:600; }
