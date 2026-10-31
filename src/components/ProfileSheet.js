@@ -372,18 +372,20 @@ export class ProfileSheet {
         // abajo a la derecha, donde va la cámara). Ángulo 0 = derecha.
         const list = got.slice().reverse();
         // [ángulo, inclinación, tamaño del emoji]: cada una de distinto tamaño
-        const SLOTS = [[-150, -10, 34], [-30, 10, 26], [180, 6, 28], [0, -8, 22], [-118, 12, 24], [-62, -12, 20]];
+        // Pegadas al avatar, a los lados; ninguna muy arriba (se cortaría)
+        // ni abajo a la derecha (la cámara)
+        const SLOTS = [[-145, -14, 32], [-35, 12, 26], [178, -6, 27], [2, 18, 22], [140, 8, 22], [34, -18, 19]];
         const shown = list.slice(0, list.length > 6 ? 5 : 6);
         const extra = list.length - shown.length;
-        const RX = 84, RY = 60; // elipse: más ancho que alto para no chocar arriba
+        const RX = 68, RY = 54; // elipse justo afuera del avatar (92px)
         const item = (html, i, cls, attrs) => {
           const [ang, rot, size] = SLOTS[i];
           const x = Math.cos(ang * Math.PI / 180) * RX, y = Math.sin(ang * Math.PI / 180) * RY;
-          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${i * 70}ms;--s:${size}px">${html}</button>`;
+          // --d: espera a que termine de entrar la hoja (~320 ms) y luego una tras otra
+          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${320 + i * 65}ms;--s:${size}px">${html}</button>`;
         };
         orbit.innerHTML = shown.map((g, i) => { const b = badgeInfo(g.badge); return item(b.emoji, i, '', `data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}"`); }).join('')
           + (extra > 0 ? item(`+${extra}`, 5, 'more', 'aria-label="Más insignias"') : '');
-        view.querySelector('.wp-pf-top')?.classList.add('orb'); // un poco de aire arriba
         requestAnimationFrame(() => requestAnimationFrame(() => orbit.classList.add('in')));
         orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.onclick = () => {
           this._haptic('light'); // (sin _pulse: movería el transform de la insignia)
@@ -1187,8 +1189,6 @@ export class ProfileSheet {
       /* Insignias alrededor del avatar ("explosión" al abrir el perfil) */
       .wp-pf-avatar-wrap .wp-pf-avatar { position:relative; z-index:2; }
       .wp-pf-avatar-wrap .wp-pf-cam { z-index:3; }
-      .wp-pf-top { transition:padding-top .35s cubic-bezier(0.32,1.2,0.5,1); }
-      .wp-pf-top.orb { padding-top:22px; }
       .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:1; }
       /* Solo el emoji con contorno blanco (16 direcciones), sin círculo */
       .wp-pf-orb {
@@ -1203,6 +1203,7 @@ export class ProfileSheet {
           0.9px 2.2px 0 #fff, -0.9px 2.2px 0 #fff, 0.9px -2.2px 0 #fff, -0.9px -2.2px 0 #fff,
           0 3px 6px rgba(17,24,39,0.28);
         opacity:0; transform:translate(0,0) scale(0.2);
+        will-change:transform, opacity; /* capa propia: la explosión no repinta el perfil */
       }
       .wp-pf-orb.more {
         --s:12px; left:-16px; top:-11px; width:32px; height:22px; border-radius:999px;
