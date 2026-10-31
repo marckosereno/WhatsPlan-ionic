@@ -73,10 +73,15 @@ export const VisitService = {
     const G = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.Geolocation;
     const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
     if (G) {
-      G.watchPosition(opts, (p, err) => { if (!stopped && p && !err) cb({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }); })
-        .then(w => { id = w; if (stopped) G.clearWatch({ id }).catch(() => {}); })
+      // Según la versión de Capacitor, watchPosition devuelve el id directo
+      // o una promesa con el id: Promise.resolve cubre los dos casos
+      let r;
+      try { r = G.watchPosition(opts, (p, err) => { if (!stopped && p && !err) cb({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }); }); }
+      catch (e) { console.log('[DIAG-VISIT] ubicación:', e?.message || e); return () => {}; }
+      Promise.resolve(r)
+        .then(w => { id = w; if (stopped) Promise.resolve(G.clearWatch({ id })).catch(() => {}); })
         .catch(e => console.log('[DIAG-VISIT] ubicación:', e?.message || e));
-      return () => { stopped = true; if (id != null) G.clearWatch({ id }).catch(() => {}); };
+      return () => { stopped = true; if (id != null) Promise.resolve(G.clearWatch({ id })).catch(() => {}); };
     }
     if (!navigator.geolocation) return () => {};
     id = navigator.geolocation.watchPosition(p => cb({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }), () => {}, opts);
