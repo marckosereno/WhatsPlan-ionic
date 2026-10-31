@@ -21,7 +21,16 @@ const hash = (s) => [...String(s)].reduce((a, c) => Math.imul(a ^ c.charCodeAt(0
 export function preloadHumation() {
   if (lib) return Promise.resolve(lib);
   if (!loading) {
+    // 1º el archivo local; si falla (p. ej. quedó cortado al copiarlo),
+    // la misma versión desde esm.sh (necesita internet esa vez)
     loading = import('/src/vendor/humation.js')
+      .catch(e => {
+        console.warn('[DIAG-AVATAR] no cargó src/vendor/humation.js:', e.message || e, '→ probando esm.sh');
+        return Promise.all([
+          import('https://esm.sh/@humation/core@1.0.3'),
+          import('https://esm.sh/@humation/assets-humation-1@1.0.3'),
+        ]).then(([core, assets]) => ({ createAvatar: core.createAvatar, humation1: assets.humation1 }));
+      })
       .then(m => { lib = m; document.dispatchEvent(new CustomEvent('wp:humation-ready')); return m; })
       .catch(e => { console.warn('[DIAG-AVATAR] no cargó Humation:', e.message || e); loading = null; return null; });
   }
