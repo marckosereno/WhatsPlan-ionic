@@ -166,6 +166,15 @@ export function buildFog(places) {
       const pct = city.size ? Math.round(open / city.size * 1000) / 10 : 0;
       return { pct, open, total: city.size };
     },
+    // % con los hexágonos destapados que da la base de datos (user_hexes,
+    // mismas claves "q,r"); para el perfil de otra persona
+    statsFromHexes(keys) {
+      const set = new Set(keys || []);
+      let open = 0;
+      city.forEach((_, k) => { if (set.has(k)) open++; });
+      const pct = city.size ? Math.round(open / city.size * 1000) / 10 : 0;
+      return { pct, open, total: city.size };
+    },
     // ¿Este lugar sigue en la niebla?
     inFog(place, visitedIds) {
       const rev = revealedFrom(visitedIds);
