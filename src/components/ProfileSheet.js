@@ -361,45 +361,49 @@ export class ProfileSheet {
 
     // Insignias (fase 3): salen "explotando" desde atrás del avatar y se
     // quedan a su alrededor como stickers. Hasta 6; si hay más, "+N".
-    // Tocar una dice qué es.
+    // Tocar una dice qué es. En TU perfil se pueden acomodar con los dedos
+    // (mover, girar, agrandar) y se guarda solo (profiles.badge_layout).
     const orbit = view.querySelector('.wp-pf-orbit');
     if (orbit) {
-      import('/src/services/PointsService.js').then(async ({ PointsService, badgeInfo }) => {
+      Promise.all([
+        import('/src/services/PointsService.js'),
+        SocialService.getProfile(uid).catch(() => null),
+      ]).then(async ([{ PointsService, badgeInfo }, prof]) => {
         const got = await PointsService.badgesOf(uid);
+        console.log('[DIAG-BADGES] perfil', String(uid).slice(0, 8), '→', got.map(g => g.badge).join(',') || '(ninguna)');
         if (!got.length || !view.isConnected) return;
-        // La más reciente primero; posiciones a los lados del avatar (no
-        // abajo a la derecha, donde va la cámara). Ángulo 0 = derecha.
-        const list = got.slice().reverse();
-        // Acomodo "a mano", como stickers pegados alrededor: cada una a
-        // distinta distancia, tamaño e inclinación; algunas montadas sobre
-        // la orilla del avatar. [x, y, inclinación, tamaño] desde el centro
-        // del avatar (radio 46). Abajo a la derecha queda libre (cámara).
+        const list = got.slice().reverse(); // la más reciente primero
+        // Acomodo de inicio "a mano": [x, y, inclinación, tamaño] desde el
+        // centro del avatar (radio 46). Abajo a la derecha libre (cámara).
         const SLOTS = [
-          [-54, -34, -16, 34],  // arriba izq., montada en la orilla (la más reciente)
-          [ 56, -36,  14, 24],  // arriba der.
-          [ 70,   8, -22, 30],  // derecha, un poco más afuera
-          [-76,   6,  10, 20],  // izquierda, lejos y chica
-          [-58,  34,  24, 25],  // abajo izq.
-          [ 84, -20,   4, 16],  // derecha arriba, la más chiquita
+          [-54, -34, -16, 34], [56, -36, 14, 24], [70, 8, -22, 30],
+          [-76, 6, 10, 20], [-58, 34, 24, 25], [84, -20, 4, 16],
         ];
-        // Variación propia de cada persona (siempre la misma para ese
-        // perfil): ±5 px, ±7° y ±3 px de tamaño
         let seed = [...String(uid)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
         const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return (seed / 4294967296) * 2 - 1; };
+        const saved = (prof && typeof prof.badge_layout === 'object' && prof.badge_layout) || {};
         const shown = list.slice(0, list.length > 6 ? 5 : 6);
         const extra = list.length - shown.length;
-        const item = (html, i, cls, attrs) => {
+        const LIM = { x: 128, yTop: -64, yBot: 66, sMin: 14, sMax: 48, rMax: 80 };
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const posOf = (id, i) => {
           const [bx, by, br, bs] = SLOTS[i];
-          const x = bx + rnd() * 5, y = by + rnd() * 5;
-          const rot = Math.round(br + rnd() * 7), size = Math.round(bs + rnd() * 3);
-          // --d: espera a que termine de entrar la hoja (~320 ms) y luego una tras otra
-          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${320 + i * 65}ms;--s:${size}px">${html}</button>`;
+          const d = { x: bx + rnd() * 5, y: by + rnd() * 5, r: Math.round(br + rnd() * 7), s: Math.round(bs + rnd() * 3) };
+          const m = id && saved[id];
+          return m ? { x: clamp(+m.x || 0, -LIM.x, LIM.x), y: clamp(+m.y || 0, LIM.yTop, LIM.yBot), r: clamp(+m.r || 0, -LIM.rMax, LIM.rMax), s: clamp(+m.s || 24, LIM.sMin, LIM.sMax) } : d;
         };
-        orbit.innerHTML = shown.map((g, i) => { const b = badgeInfo(g.badge); return item(b.emoji, i, '', `data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}"`); }).join('')
-          + (extra > 0 ? item(`+${extra}`, 5, 'more', 'aria-label="Más insignias"') : '');
+        const item = (html, i, cls, attrs, id) => {
+          const p = posOf(id, i);
+          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${p.x.toFixed(1)}px;--y:${p.y.toFixed(1)}px;--r:${p.r}deg;--d:${320 + i * 65}ms;--s:${p.s}px">${html}</button>`;
+        };
+        orbit.innerHTML = shown.map((g, i) => { const b = badgeInfo(g.badge); return item(b.emoji, i, '', `data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}"`, b.id); }).join('')
+          + (extra > 0 ? item(`+${extra}`, 5, 'more', 'aria-label="Más insignias"', null) : '');
         requestAnimationFrame(() => requestAnimationFrame(() => orbit.classList.add('in')));
-        orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.onclick = () => {
-          this._haptic('light'); // (sin _pulse: movería el transform de la insignia)
+        // Al terminar la explosión quedan "fijas" (sin animación) para poder moverlas
+        orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.addEventListener('animationend', () => el.classList.add('placed'), { once: true }));
+
+        const tapBadge = (el) => {
+          this._haptic('light');
           if (el.classList.contains('more')) {
             if (isMe) this._push(v => this._viewRanking(v));
             else this._toast(`${list.length} insignias`);
@@ -407,6 +411,92 @@ export class ProfileSheet {
           }
           const b = badgeInfo(el.dataset.b);
           this._toast(`${b.emoji} ${b.name} · ${b.desc}`);
+        };
+        if (!isMe) { orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.onclick = () => tapBadge(el)); return; }
+
+        // ── Acomodar con los dedos (solo tu perfil) ─────────────────────
+        // 1 dedo: mover. 2 dedos (el segundo puede estar fuera de la
+        // insignia): girar y agrandar. Con topes. Se guarda solo 700 ms
+        // después de soltar.
+        const layout = { ...saved };
+        let saveT = null;
+        const save = () => {
+          clearTimeout(saveT);
+          saveT = setTimeout(() => {
+            ProfileService.updateProfile(uid, { badge_layout: layout })
+              .then(u => { if (u) this._lastProfile = u; console.log('[DIAG-BADGES] acomodo guardado'); })
+              .catch(e => console.warn('[DIAG-BADGES] no se guardó el acomodo:', e.message || e));
+          }, 700);
+        };
+        const read = (el) => ({
+          x: parseFloat(el.style.getPropertyValue('--x')) || 0, y: parseFloat(el.style.getPropertyValue('--y')) || 0,
+          r: parseFloat(el.style.getPropertyValue('--r')) || 0, s: parseFloat(el.style.getPropertyValue('--s')) || 24,
+        });
+        const write = (el, p) => {
+          el.style.setProperty('--x', p.x.toFixed(1) + 'px'); el.style.setProperty('--y', p.y.toFixed(1) + 'px');
+          el.style.setProperty('--r', p.r.toFixed(1) + 'deg'); el.style.setProperty('--s', p.s.toFixed(1) + 'px');
+        };
+        let act = null; // { el, start, t0, p0, moved, two }
+        const ang = (a, b) => Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+        const dist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        const onMove = (e) => {
+          if (!act) return;
+          e.preventDefault(); // que no se mueva la hoja
+          const t = e.touches;
+          const p = { ...act.p0 };
+          if (t.length >= 2) {
+            if (!act.two) { act.two = { a: ang(t[0], t[1]), d: dist(t[0], t[1]), p0: read(act.el), c0: { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 } }; }
+            const tw = act.two;
+            const da = ang(t[0], t[1]) - tw.a, k = dist(t[0], t[1]) / Math.max(1, tw.d);
+            p.r = clamp(tw.p0.r + da, -LIM.rMax, LIM.rMax);
+            p.s = clamp(tw.p0.s * k, LIM.sMin, LIM.sMax);
+            p.x = clamp(tw.p0.x + ((t[0].clientX + t[1].clientX) / 2 - tw.c0.x), -LIM.x, LIM.x);
+            p.y = clamp(tw.p0.y + ((t[0].clientY + t[1].clientY) / 2 - tw.c0.y), LIM.yTop, LIM.yBot);
+            act.moved = true;
+          } else {
+            if (act.two) return; // se levantó un dedo: espera a soltar todo
+            const dx = t[0].clientX - act.start.x, dy = t[0].clientY - act.start.y;
+            if (!act.moved && Math.hypot(dx, dy) < 6) return;
+            act.moved = true;
+            p.x = clamp(act.p0.x + dx, -LIM.x, LIM.x);
+            p.y = clamp(act.p0.y + dy, LIM.yTop, LIM.yBot);
+          }
+          // al tocar un tope, vibra una vez
+          const atEdge = p.x === -LIM.x || p.x === LIM.x || p.y === LIM.yTop || p.y === LIM.yBot || p.s === LIM.sMin || p.s === LIM.sMax;
+          if (atEdge && !act.edge) this._haptic('light');
+          act.edge = atEdge;
+          write(act.el, p);
+          if (!act.two) act.p = p;
+        };
+        const onEnd = (e) => {
+          if (!act) return;
+          if (e.touches.length) return; // aún hay dedos
+          const el = act.el;
+          el.classList.remove('grab');
+          document.removeEventListener('touchmove', onMove, { passive: false });
+          document.removeEventListener('touchend', onEnd);
+          document.removeEventListener('touchcancel', onEnd);
+          if (!act.moved && performance.now() - act.t0 < 350) tapBadge(el);
+          else if (act.moved && el.dataset.b) {
+            const q = read(el);
+            layout[el.dataset.b] = { x: Math.round(q.x), y: Math.round(q.y), r: Math.round(q.r), s: Math.round(q.s) };
+            save();
+          }
+          act = null;
+        };
+        orbit.querySelectorAll('.wp-pf-orb').forEach(el => {
+          if (el.classList.contains('more')) { el.onclick = () => tapBadge(el); return; }
+          el.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            if (act) return;
+            el.classList.add('placed', 'grab');
+            orbit.appendChild(el); // al frente
+            act = { el, start: { x: e.touches[0].clientX, y: e.touches[0].clientY }, t0: performance.now(), p0: read(el), moved: false, two: null };
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd);
+            document.addEventListener('touchcancel', onEnd);
+          }, { passive: true });
+          el.onclick = (e) => e.preventDefault(); // el toque lo maneja onEnd
         });
       }).catch(e => console.warn('[DIAG-POINTS] insignias:', e.message || e));
     }
@@ -1194,9 +1284,12 @@ export class ProfileSheet {
       .wp-pf-rk-pts small { margin-left:3px; font-family:'Open Sans',sans-serif; font-size:11px; font-weight:700; color:#8a8f99; }
       .wp-pf-rule-pts { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:18px; color:#f59e0b; }
       /* Insignias alrededor del avatar ("explosión" al abrir el perfil) */
-      .wp-pf-avatar-wrap .wp-pf-avatar { position:relative; z-index:2; }
-      .wp-pf-avatar-wrap .wp-pf-cam { z-index:3; }
-      .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:1; }
+      /* isolation: todo (avatar, insignias, cámara) se apila solo dentro del avatar */
+      .wp-pf-avatar-wrap { isolation:isolate; }
+      .wp-pf-avatar-wrap .wp-pf-avatar { position:relative; z-index:1; }
+      .wp-pf-avatar-wrap .wp-pf-cam { z-index:4; }
+      /* Las insignias van ENCIMA del avatar (se pueden poner sobre la foto) */
+      .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:3; }
       /* Solo el emoji con contorno blanco (16 direcciones), sin círculo */
       .wp-pf-orb {
         position:absolute; left:calc(var(--s) * -0.7); top:calc(var(--s) * -0.7); width:calc(var(--s) * 1.4); height:calc(var(--s) * 1.4);
@@ -1223,7 +1316,9 @@ export class ProfileSheet {
         25%  { opacity:1; }
         100% { opacity:1; transform:translate(var(--x),var(--y)) scale(1) rotate(var(--r)); }
       }
-      .wp-pf-orb:active { filter:brightness(0.95); }
+      /* Ya colocada: sin animación, el transform sale directo de --x/--y/--r */
+      .wp-pf-orbit .wp-pf-orb.placed { animation:none; opacity:1; transform:translate(var(--x),var(--y)) rotate(var(--r)); touch-action:none; }
+      .wp-pf-orb.grab { filter:drop-shadow(0 8px 10px rgba(17,24,39,0.25)); transition:filter .15s; }
       .wp-pf-bd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
       .wp-pf-bd { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px 10px; border-radius:18px; background:#f4f5f7; text-align:center; }
       .wp-pf-bd span {
