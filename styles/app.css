@@ -1047,6 +1047,32 @@ body.wp-focus-map .place-marker-el.wp-fogged > * { opacity: .55; }
 .wp-fog-burst.out { animation: wpFogOut .4s ease-in forwards; }
 @keyframes wpFogOut { from { opacity: 1; transform: translate(-50%, 0) scale(1); } to { opacity: 0; transform: translate(-50%, -12px) scale(.9); } }
 @keyframes wpFogIn { to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+/* Amigos en la barra: caritas sobre la orilla de arriba, en SU avance
+   (mismo eje que el relleno azul: del avatar central hacia la derecha) */
+.wp-fb-friends { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.wp-fb-fr {
+  position: absolute; top: -12px; pointer-events: auto;
+  left: calc(50% + 34px + (50% - 34px - 30px) * var(--p) / 100);
+  display: flex; align-items: center; padding: 0; background: none; border: none; cursor: pointer;
+  transform: translateX(-11px); -webkit-tap-highlight-color: transparent;
+}
+.wp-fb-fr i {
+  width: 22px; height: 22px; margin-left: -8px; border-radius: 50%; background: #e5e7eb center/cover no-repeat;
+  box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(17,24,39,0.25);
+}
+.wp-fb-fr i:first-child { margin-left: 0; }
+.wp-fb-fr b {
+  margin-left: -6px; height: 18px; min-width: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 999px;
+  background: #0a0a0a; color: #fff; border: 2px solid #fff; font-size: 10px; font-weight: 800; line-height: 14px; text-align: center;
+}
+.wp-fb-fr:active { transform: translateX(-11px) scale(0.92); }
+/* Hoja de amigos */
+.wp-fr-pos { width: 18px; flex-shrink: 0; text-align: center; font-size: 13px; font-weight: 800; color: #9ca3af; }
+.wp-fr-av { border-radius: 50%; width: 42px; height: 42px; }
+.wp-fr-bar { display: block; height: 7px; margin-top: 5px; border-radius: 999px; background: #eef0f3; overflow: hidden; }
+.wp-fr-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #4d7cff, #1a5cf5); }
+.wp-fr-n { flex-shrink: 0; min-width: 36px; text-align: right; font-family: 'Anton', 'Open Sans', sans-serif; font-size: 17px; color: #111827; }
+
 /* Burbujas de un momento: ¡completada! (verde) y ayuda de Explorar */
 .wp-fb-bubble { width: max-content; max-width: calc(100vw - 64px); }
 .wp-fb-bubble strong { display: block; font-size: 15px; font-weight: 800; line-height: 1.25; }
