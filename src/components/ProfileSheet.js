@@ -1088,21 +1088,24 @@ export class ProfileSheet {
     // Manifiesto con las piezas propias (sombrero, huipil, paliacate…)
     const M = (await H.creatorManifest()) || lib.humation1;
     if (!this._isCurrent(view)) return;
-    const hasNeck = M.selectionSlots.some(x => x.id === 'neck');
+    // Capas propias (humation-extra.js): Pecho y Cara, si existen
+    const has = (id) => M.selectionSlots.some(x => x.id === id);
+    const EXTRA_SLOTS = ['chest', 'face'].filter(has);
     const prof = this._lastProfile;
     const saved = prof?.avatar_config && prof.avatar_config.selections ? prof.avatar_config : null;
     const st = saved
       ? { selections: { ...saved.selections }, colors: { ...saved.colors }, background: saved.background || 'FFF1C9' }
       : await H.defaultAvatarState(this._name(prof, true));
     if (!st || !this._isCurrent(view)) return;
-    if (hasNeck && !st.selections.neck) st.selections.neck = 'wp-n-none';
-    if (!hasNeck) delete st.selections.neck;
+    EXTRA_SLOTS.forEach(id => { if (!st.selections[id]) st.selections[id] = M.defaults.selections[id]; });
+    ['neck', 'chest', 'face'].forEach(id => { if (!has(id)) delete st.selections[id]; });
     // Si una pieza guardada ya no existe, se vuelve a la de por defecto
     Object.keys(st.selections).forEach(k => { if (!M.parts.some(p => p.id === st.selections[k])) st.selections[k] = M.defaults.selections[k]; });
 
     const TABS = [
       { id: 'head', label: 'Cabeza' }, { id: 'body', label: 'Ropa' },
-      { id: 'item', label: 'Accesorio' }, ...(hasNeck ? [{ id: 'neck', label: 'Cuello' }] : []), { id: 'glasses', label: 'Lentes' },
+      ...(has('face') ? [{ id: 'face', label: 'Cara' }] : []),
+      { id: 'item', label: 'Accesorio' }, ...(has('chest') ? [{ id: 'chest', label: 'Pecho' }] : []), { id: 'glasses', label: 'Lentes' },
     ];
     const PAL = {
       background: { label: 'Fondo',   list: ['FFF1C9', 'EDE7FF', 'DDF5E8', 'FFE3D3', 'E3EEFF', 'FDE2EC', 'F6F5F4', 'FFFFFF'] },
@@ -1137,13 +1140,14 @@ export class ProfileSheet {
     };
     const paintGrid = () => {
       view.querySelectorAll('.wp-av-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
-      const parts = lib.getPartsForSlot(M, tab);
+      // "Nada" siempre primero
+      const parts = lib.getPartsForSlot(M, tab).sort((a, b) => (a.name === 'none' ? -1 : 0) - (b.name === 'none' ? -1 : 0));
       grid.innerHTML = parts.map(p => {
         const on = st.selections[tab] === p.id;
         let inner;
         if (p.name === 'none') inner = '<span class="wp-av-none">Nada</span>';
         // Lentes, accesorios y cuello se ven mejor puestos (avatar completo); cabeza y ropa, solas
-        else if (tab === 'glasses' || tab === 'item' || tab === 'neck') inner = `<img alt="" src="${lib.createAvatar(M, { selections: { ...st.selections, [tab]: p.id }, colors: st.colors, background: 'transparent' }).toDataUri()}">`;
+        else if (tab === 'glasses' || tab === 'item' || tab === 'chest' || tab === 'face') inner = `<img alt="" src="${lib.createAvatar(M, { selections: { ...st.selections, [tab]: p.id }, colors: st.colors, background: 'transparent' }).toDataUri()}">`;
         else inner = `<img alt="" src="${lib.createPartPreview(M, p, { colors: st.colors }).toDataUri()}">`;
         return `<button type="button" class="wp-av-opt${on ? ' on' : ''}" data-p="${this._esc(p.id)}">${inner}</button>`;
       }).join('');
