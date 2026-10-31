@@ -371,16 +371,28 @@ export class ProfileSheet {
         // La más reciente primero; posiciones a los lados del avatar (no
         // abajo a la derecha, donde va la cámara). Ángulo 0 = derecha.
         const list = got.slice().reverse();
-        // [ángulo, inclinación, tamaño del emoji]: cada una de distinto tamaño
-        // Pegadas al avatar, a los lados; ninguna muy arriba (se cortaría)
-        // ni abajo a la derecha (la cámara)
-        const SLOTS = [[-145, -14, 32], [-35, 12, 26], [178, -6, 27], [2, 18, 22], [140, 8, 22], [34, -18, 19]];
+        // Acomodo "a mano", como stickers pegados alrededor: cada una a
+        // distinta distancia, tamaño e inclinación; algunas montadas sobre
+        // la orilla del avatar. [x, y, inclinación, tamaño] desde el centro
+        // del avatar (radio 46). Abajo a la derecha queda libre (cámara).
+        const SLOTS = [
+          [-54, -34, -16, 34],  // arriba izq., montada en la orilla (la más reciente)
+          [ 56, -36,  14, 24],  // arriba der.
+          [ 70,   8, -22, 30],  // derecha, un poco más afuera
+          [-76,   6,  10, 20],  // izquierda, lejos y chica
+          [-58,  34,  24, 25],  // abajo izq.
+          [ 84, -20,   4, 16],  // derecha arriba, la más chiquita
+        ];
+        // Variación propia de cada persona (siempre la misma para ese
+        // perfil): ±5 px, ±7° y ±3 px de tamaño
+        let seed = [...String(uid)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+        const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return (seed / 4294967296) * 2 - 1; };
         const shown = list.slice(0, list.length > 6 ? 5 : 6);
         const extra = list.length - shown.length;
-        const RX = 68, RY = 54; // elipse justo afuera del avatar (92px)
         const item = (html, i, cls, attrs) => {
-          const [ang, rot, size] = SLOTS[i];
-          const x = Math.cos(ang * Math.PI / 180) * RX, y = Math.sin(ang * Math.PI / 180) * RY;
+          const [bx, by, br, bs] = SLOTS[i];
+          const x = bx + rnd() * 5, y = by + rnd() * 5;
+          const rot = Math.round(br + rnd() * 7), size = Math.round(bs + rnd() * 3);
           // --d: espera a que termine de entrar la hoja (~320 ms) y luego una tras otra
           return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${320 + i * 65}ms;--s:${size}px">${html}</button>`;
         };
