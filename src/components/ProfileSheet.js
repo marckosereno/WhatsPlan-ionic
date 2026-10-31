@@ -280,6 +280,7 @@ export class ProfileSheet {
     view.innerHTML = `
       <div class="wp-pf-top">
         <div class="wp-pf-avatar-wrap">
+          <div class="wp-pf-orbit"></div>
           <div class="wp-pf-avatar wp-pf-skel"></div>
           ${isMe ? `<button type="button" class="wp-pf-cam" aria-label="Cambiar foto">${ICON.cam}</button>` : ''}
         </div>
@@ -292,7 +293,6 @@ export class ProfileSheet {
           <div><b>–</b><span>reseñas</span></div>
         </div>
         <div class="wp-pf-actions"></div>
-        <div class="wp-pf-badges" hidden></div>
       </div>
       ${isMe ? `<button type="button" class="wp-pf-banner">
           <svg class="wp-pf-banner-map" viewBox="0 0 360 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -360,17 +360,38 @@ export class ProfileSheet {
       }).catch(() => {});
     }
 
-    // Insignias (fase 3): fila debajo de los botones; tocar una dice qué es
-    const bdEl = view.querySelector('.wp-pf-badges');
-    if (bdEl) {
+    // Insignias (fase 3): salen "explotando" desde atrás del avatar y se
+    // quedan a su alrededor como stickers. Hasta 6; si hay más, "+N".
+    // Tocar una dice qué es.
+    const orbit = view.querySelector('.wp-pf-orbit');
+    if (orbit) {
       import('/src/services/PointsService.js').then(async ({ PointsService, badgeInfo }) => {
         const got = await PointsService.badgesOf(uid);
         if (!got.length || !view.isConnected) return;
-        bdEl.innerHTML = got.map(g => { const b = badgeInfo(g.badge); return `<button type="button" class="wp-pf-badge" data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}">${b.emoji}</button>`; }).join('');
-        bdEl.hidden = false;
-        bdEl.querySelectorAll('.wp-pf-badge').forEach(el => el.onclick = () => {
+        // La más reciente primero; posiciones a los lados del avatar (no
+        // abajo a la derecha, donde va la cámara). Ángulo 0 = derecha.
+        const list = got.slice().reverse();
+        const SLOTS = [[-150, -10], [-30, 10], [180, 6], [0, -8], [-118, 12], [-62, -12]];
+        const shown = list.slice(0, list.length > 6 ? 5 : 6);
+        const extra = list.length - shown.length;
+        const RX = 84, RY = 60; // elipse: más ancho que alto para no chocar arriba
+        const item = (html, i, cls, attrs) => {
+          const [ang, rot] = SLOTS[i];
+          const x = Math.cos(ang * Math.PI / 180) * RX, y = Math.sin(ang * Math.PI / 180) * RY;
+          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${i * 70}ms">${html}</button>`;
+        };
+        orbit.innerHTML = shown.map((g, i) => { const b = badgeInfo(g.badge); return item(b.emoji, i, '', `data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}"`); }).join('')
+          + (extra > 0 ? item(`+${extra}`, 5, 'more', 'aria-label="Más insignias"') : '');
+        view.querySelector('.wp-pf-top')?.classList.add('orb'); // un poco de aire arriba
+        requestAnimationFrame(() => requestAnimationFrame(() => orbit.classList.add('in')));
+        orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.onclick = () => {
+          this._haptic('light'); // (sin _pulse: movería el transform de la insignia)
+          if (el.classList.contains('more')) {
+            if (isMe) this._push(v => this._viewRanking(v));
+            else this._toast(`${list.length} insignias`);
+            return;
+          }
           const b = badgeInfo(el.dataset.b);
-          this._pulse(el); this._haptic('light');
           this._toast(`${b.emoji} ${b.name} · ${b.desc}`);
         });
       }).catch(e => console.warn('[DIAG-POINTS] insignias:', e.message || e));
@@ -1162,13 +1183,28 @@ export class ProfileSheet {
       .wp-pf-rk-pts { flex-shrink:0; margin-left:auto; font-family:'Anton','Open Sans',sans-serif; font-size:19px; color:#111827; }
       .wp-pf-rk-pts small { margin-left:3px; font-family:'Open Sans',sans-serif; font-size:11px; font-weight:700; color:#8a8f99; }
       .wp-pf-rule-pts { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:18px; color:#f59e0b; }
-      .wp-pf-badges { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:12px; }
-      .wp-pf-badges[hidden] { display:none; }
-      .wp-pf-badge {
-        width:38px; height:38px; padding:0; border:none; border-radius:50%; cursor:pointer;
-        background:linear-gradient(180deg,#fff7d6,#ffe9a3); font-size:20px; line-height:38px;
-        box-shadow:0 0 0 2px #fff, 0 3px 8px rgba(245,158,11,0.3); -webkit-tap-highlight-color:transparent;
+      /* Insignias alrededor del avatar ("explosión" al abrir el perfil) */
+      .wp-pf-avatar-wrap .wp-pf-avatar { position:relative; z-index:2; }
+      .wp-pf-avatar-wrap .wp-pf-cam { z-index:3; }
+      .wp-pf-top { transition:padding-top .35s cubic-bezier(0.32,1.2,0.5,1); }
+      .wp-pf-top.orb { padding-top:22px; }
+      .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:1; }
+      .wp-pf-orb {
+        position:absolute; left:-18px; top:-18px; width:36px; height:36px; padding:0; border:none; border-radius:50%;
+        display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        background:radial-gradient(circle at 35% 30%, #fffbea 0%, #ffe48a 55%, #ffc928 100%);
+        box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(245,158,11,0.35);
+        font-size:19px; line-height:1; color:#3b2500;
+        opacity:0; transform:translate(0,0) scale(0.2);
       }
+      .wp-pf-orb.more { background:#0a0a0a; color:#fff; font-size:12.5px; font-weight:800; box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(0,0,0,0.25); }
+      .wp-pf-orbit.in .wp-pf-orb { animation:wpPfOrb .62s cubic-bezier(0.3,1.55,0.5,1) var(--d) both; }
+      @keyframes wpPfOrb {
+        0%   { opacity:0; transform:translate(0,0) scale(0.2) rotate(0deg); }
+        25%  { opacity:1; }
+        100% { opacity:1; transform:translate(var(--x),var(--y)) scale(1) rotate(var(--r)); }
+      }
+      .wp-pf-orb:active { filter:brightness(0.95); }
       .wp-pf-bd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
       .wp-pf-bd { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px 10px; border-radius:18px; background:#f4f5f7; text-align:center; }
       .wp-pf-bd span { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; background:#e5e7eb; filter:grayscale(1); opacity:.55; }
