@@ -527,9 +527,57 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   if (me && total) {
     VisitService.myVisits(ids)
-      .then(m => { m.forEach((v, id) => { if (v > 0) visited.add(id); }); paintProgress(); exploreHint(); })
-      .catch(e => console.warn('[DIAG-VISIT] progreso:', e.message || e));
+      .then(m => { m.forEach((v, id) => { if (v > 0) visited.add(id); }); paintProgress(); exploreHint(); loadFriends(); })
+      .catch(e => { console.warn('[DIAG-VISIT] progreso:', e.message || e); loadFriends(); });
   } else exploreHint();
+
+  // ── Amigos en la barra (fase 3) ────────────────────────────────────
+  // Caritas de la gente que sigues sobre la barra, en el punto de SU
+  // avance en esta colección (como carrera). Tocar → lista. Solo quien
+  // muestra sus visitas (friends_progress en collection_friends.sql).
+  let friends = [];
+  const friendsBox = document.createElement('div');
+  friendsBox.className = 'wp-fb-friends';
+  bar.querySelector('.wp-fb-bar').appendChild(friendsBox);
+  const paintFriends = () => {
+    if (!friends.length) { friendsBox.innerHTML = ''; return; }
+    // Agrupa a quienes van casi igual (cada 10%) para que no se encimen de más
+    const groups = new Map();
+    friends.forEach(f => {
+      const pct = Math.min(100, Math.round(f.visited / Math.max(1, total) * 100));
+      const k = Math.round(pct / 10);
+      if (!groups.has(k)) groups.set(k, { pct, list: [] });
+      groups.get(k).list.push(f);
+    });
+    friendsBox.innerHTML = [...groups.values()].map(g => {
+      const faces = g.list.slice(0, 3).map(f => `<i style="background-image:url('${esc(f.avatar_url || getAvatarUrl(f.name || 'user'))}')"></i>`).join('');
+      const more = g.list.length > 3 ? `<b>+${g.list.length - 3}</b>` : '';
+      return `<button type="button" class="wp-fb-fr" style="--p:${g.pct}" aria-label="Amigos">${faces}${more}</button>`;
+    }).join('');
+    friendsBox.querySelectorAll('.wp-fb-fr').forEach(b => b.onclick = (e) => { e.stopPropagation(); openFriendsSheet(mv, friends, visited.size, total, title); });
+  };
+  async function loadFriends() {
+    if (!me || !total) return;
+    try {
+      const { getSupabase } = await import('/src/services/SupabaseService.js');
+      const { data, error } = await getSupabase().rpc('friends_progress', { p_place_ids: ids });
+      if (error) throw error;
+      if (!bar.isConnected) return;
+      friends = (data || []).filter(f => f.user_id !== me.id);
+      paintFriends();
+      // "@ana te rebasó": solo la primera vez que alguien te pasa en esta colección
+      const key = 'wpAhead:' + (opts.choiceKey || label);
+      let before = [];
+      try { before = JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) {}
+      const ahead = friends.filter(f => f.visited > visited.size);
+      const fresh = ahead.find(f => !before.includes(f.user_id));
+      try { localStorage.setItem(key, JSON.stringify(ahead.map(f => f.user_id))); } catch (_) {}
+      if (fresh && !bar.classList.contains('complete')) {
+        const who = fresh.username ? '@' + fresh.username : (fresh.name || 'Un amigo');
+        setTimeout(() => { if (bar.isConnected) showFocusBubble(bar, `<strong>${esc(who)} te rebasó</strong><span>${fresh.visited} de ${total} lugares</span>`, 'hint', 3400); }, 1400);
+      }
+    } catch (e) { console.warn('[DIAG-FRIENDS] avance de amigos:', e.message || e); }
+  }
   // Si registra una visita (desde la ficha) mientras está en este modo
   const onVisit = (ev) => {
     const id = String(ev.detail?.place_id || '');
@@ -623,6 +671,46 @@ function showFogBurst(bar, pct, pts = 0) {
 
 // Hoja con los lugares de la colección: visitados con palomita verde.
 // Tocar uno lleva el mapa a ese lugar y abre su minimodal.
+// Hoja "Amigos en esta colección": tú + la gente que sigues, por avance.
+// Tocar a alguien abre su mini perfil.
+function openFriendsSheet(mv, friends, myN, total, label) {
+  mv.haptic?.('light');
+  document.getElementById('wp-focus-pick')?.remove();
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const me = window.wpApp.currentUser;
+  const myAv = window.wpApp._cachedAvatarUrl || me?.user_metadata?.avatar_url || getAvatarUrl(me?.user_metadata?.display_name || me?.email?.split('@')[0] || 'user');
+  const rows = [...friends.map(f => ({ ...f, me: false })), { user_id: me?.id, name: 'Tú', avatar_url: myAv, visited: myN, me: true }]
+    .sort((a, b) => b.visited - a.visited || (a.me ? -1 : 1));
+  const root = document.createElement('div');
+  root.id = 'wp-focus-pick';
+  root.innerHTML = `<div class="wp-fp-dim"></div>
+    <div class="wp-fp-sheet"><div class="wp-fp-grab"></div>
+      <div class="wp-fp-title">Amigos en esta colección<small>${esc(label || '')}</small></div>
+      <div class="wp-fp-list">${rows.map((r, i) => {
+        const pct = Math.min(100, Math.round(r.visited / Math.max(1, total) * 100));
+        const done = r.visited >= total && total > 0;
+        return `<button type="button" class="wp-fp-row wp-fr-row${r.me ? ' on' : ''}" data-i="${i}">
+          <span class="wp-fr-pos">${i + 1}</span>
+          <span class="wp-fp-pic wp-fr-av" style="background-image:url('${esc(r.avatar_url || getAvatarUrl(r.name || 'user'))}')"></span>
+          <span class="wp-fp-txt"><b>${esc(r.me ? 'Tú' : (r.name || (r.username ? '@' + r.username : 'Usuario')))}</b>
+            <span class="wp-fr-bar"><i style="width:${pct}%"></i></span></span>
+          <span class="wp-fr-n">${done ? '🏁' : `${r.visited}/${total}`}</span>
+        </button>`;
+      }).join('')}</div></div>`;
+  document.body.appendChild(root);
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('in')));
+  const close = () => { root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
+  root.querySelector('.wp-fp-dim').onclick = close;
+  root.querySelectorAll('.wp-fr-row').forEach(b => b.onclick = () => {
+    const r = rows[+b.dataset.i];
+    if (!r || r.me || !r.user_id) return;
+    mv.haptic?.('light');
+    const mp = window.wpApp.miniProfile;
+    if (mp) mp.open(r.user_id, { name: r.name, avatar: r.avatar_url || '' });
+    else window.wpApp.openProfile?.(r.user_id);
+  });
+}
+
 // Pestañas: "Todos" (visitados con palomita; tocar uno lleva el mapa ahí)
 // y "Cerca de ti" (pendientes por distancia; tocar uno lo pone en el
 // termómetro).
