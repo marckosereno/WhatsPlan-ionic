@@ -1085,17 +1085,24 @@ export class ProfileSheet {
     const lib = await H.preloadHumation();
     if (!this._isCurrent(view)) return;
     if (!lib) { view.innerHTML = '<p class="wp-pf-empty" style="text-align:center;margin-top:40px">No se pudo cargar el creador de avatares.</p>'; return; }
-    const M = lib.humation1;
+    // Manifiesto con las piezas propias (sombrero, huipil, paliacate…)
+    const M = (await H.creatorManifest()) || lib.humation1;
+    if (!this._isCurrent(view)) return;
+    const hasNeck = M.selectionSlots.some(x => x.id === 'neck');
     const prof = this._lastProfile;
     const saved = prof?.avatar_config && prof.avatar_config.selections ? prof.avatar_config : null;
     const st = saved
       ? { selections: { ...saved.selections }, colors: { ...saved.colors }, background: saved.background || 'FFF1C9' }
       : await H.defaultAvatarState(this._name(prof, true));
     if (!st || !this._isCurrent(view)) return;
+    if (hasNeck && !st.selections.neck) st.selections.neck = 'wp-n-none';
+    if (!hasNeck) delete st.selections.neck;
+    // Si una pieza guardada ya no existe, se vuelve a la de por defecto
+    Object.keys(st.selections).forEach(k => { if (!M.parts.some(p => p.id === st.selections[k])) st.selections[k] = M.defaults.selections[k]; });
 
     const TABS = [
       { id: 'head', label: 'Cabeza' }, { id: 'body', label: 'Ropa' },
-      { id: 'item', label: 'Accesorio' }, { id: 'glasses', label: 'Lentes' },
+      { id: 'item', label: 'Accesorio' }, ...(hasNeck ? [{ id: 'neck', label: 'Cuello' }] : []), { id: 'glasses', label: 'Lentes' },
     ];
     const PAL = {
       background: { label: 'Fondo',   list: ['FFF1C9', 'EDE7FF', 'DDF5E8', 'FFE3D3', 'E3EEFF', 'FDE2EC', 'F6F5F4', 'FFFFFF'] },
@@ -1135,8 +1142,8 @@ export class ProfileSheet {
         const on = st.selections[tab] === p.id;
         let inner;
         if (p.name === 'none') inner = '<span class="wp-av-none">Nada</span>';
-        // Lentes y accesorios se ven mejor puestos (avatar completo); cabeza y ropa, solas
-        else if (tab === 'glasses' || tab === 'item') inner = `<img alt="" src="${lib.createAvatar(M, { selections: { ...st.selections, [tab]: p.id }, colors: st.colors, background: 'transparent' }).toDataUri()}">`;
+        // Lentes, accesorios y cuello se ven mejor puestos (avatar completo); cabeza y ropa, solas
+        else if (tab === 'glasses' || tab === 'item' || tab === 'neck') inner = `<img alt="" src="${lib.createAvatar(M, { selections: { ...st.selections, [tab]: p.id }, colors: st.colors, background: 'transparent' }).toDataUri()}">`;
         else inner = `<img alt="" src="${lib.createPartPreview(M, p, { colors: st.colors }).toDataUri()}">`;
         return `<button type="button" class="wp-av-opt${on ? ' on' : ''}" data-p="${this._esc(p.id)}">${inner}</button>`;
       }).join('');
@@ -1627,8 +1634,9 @@ export class ProfileSheet {
       .wp-av-crow > div { display:flex; gap:7px; flex-wrap:wrap; }
       .wp-av-sw { width:26px; height:26px; border-radius:50%; border:none; padding:0; cursor:pointer; box-shadow:inset 0 0 0 1px rgba(17,24,39,0.15); }
       .wp-av-sw.on { box-shadow:0 0 0 2px #fff, 0 0 0 4px #0a0a0a; }
-      .wp-av-tabs { display:flex; justify-content:space-around; margin:14px 0 10px; }
-      .wp-av-tabs button { border:none; background:none; padding:6px 4px; font-family:inherit; font-size:15px; font-weight:700; color:#9ca3af; cursor:pointer; }
+      .wp-av-tabs { display:flex; justify-content:space-between; gap:4px; margin:14px 0 10px; overflow-x:auto; scrollbar-width:none; }
+      .wp-av-tabs::-webkit-scrollbar { display:none; }
+      .wp-av-tabs button { flex-shrink:0; border:none; background:none; padding:6px 4px; font-family:inherit; font-size:14.5px; font-weight:700; color:#9ca3af; cursor:pointer; }
       .wp-av-tabs button.on { color:#0a0a0a; }
       .wp-av-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
       .wp-av-opt {
