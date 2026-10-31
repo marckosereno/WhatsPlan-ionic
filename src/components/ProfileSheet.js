@@ -306,6 +306,7 @@ export class ProfileSheet {
         </div>
         <div class="wp-pf-name"><span class="wp-pf-skel wp-pf-skel-line" style="width:150px"></span></div>
         <div class="wp-pf-handle-line"></div>
+        ${isMe ? '' : '<div class="wp-pf-lvline"></div>'}
         <div class="wp-pf-bio"></div>
         <div class="wp-pf-stats">
           <button type="button" data-k="followers"><b>–</b><span>seguidores</span></button>
@@ -314,6 +315,7 @@ export class ProfileSheet {
         </div>
         <div class="wp-pf-actions"></div>
       </div>
+      ${isMe ? '' : '<div class="wp-pf-ins"></div>'}
       ${isMe ? `<button type="button" class="wp-pf-banner">
           <svg class="wp-pf-banner-map" viewBox="0 0 360 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <g fill="none" stroke="#fff" stroke-linecap="round">
@@ -557,6 +559,8 @@ export class ProfileSheet {
       this._wireFollow(actionsEl.querySelector('[data-a=follow]'), uid, (delta) => {
         const b = statEls[0]; const n = (parseInt(b.textContent, 10) || 0) + delta; b.textContent = String(Math.max(0, n));
       });
+      // Perfil enriquecido: en común, progreso y estilo (profile_insights.sql)
+      this._fillInsights(view, uid, name, prof);
     }
     actionsEl.querySelector('[data-a=share]').onclick = (e) => {
       this._pulse(e.currentTarget);
@@ -577,6 +581,104 @@ export class ProfileSheet {
     // Guardados + colecciones + actividades
     this._fillCollections(view, uid, isMe);
     this._fillActivities(view, uid, isMe);
+  }
+
+  // ── Perfil de otra persona: lo que ayuda a decidir si seguirla ─────
+  async _fillInsights(view, uid, name, prof) {
+    const box = view.querySelector('.wp-pf-ins');
+    if (!box) return;
+    const CAT = {
+      RESTAURANTS: '🍽️ Restaurantes', ENTERTAINMENT: '🎉 Entretenimiento', PARKS: '🌳 Parques',
+      SHOPPING: '🛍️ Compras', HEALTH: '🩺 Salud', WORKSHOPS: '🔧 Talleres',
+    };
+    const catLabel = (c) => CAT[c] || (c ? String(c).charAt(0) + String(c).slice(1).toLowerCase() : '');
+    let d = null;
+    try {
+      const { getSupabase } = await import('/src/services/SupabaseService.js');
+      const r = await getSupabase().rpc('profile_insights', { p_user: uid });
+      if (r.error) throw r.error;
+      d = r.data;
+    } catch (e) { console.warn('[DIAG-INSIGHTS]', e.message || e); return; }
+    if (!d || !view.isConnected) return;
+    const places = await this._placesIndex();
+    if (!view.isConnected) return;
+    const first = (name || '').split(' ')[0] || 'Esta persona';
+
+    // "Te sigue" junto al @usuario
+    if (d.follows_me) {
+      const h = view.querySelector('.wp-pf-handle-line');
+      h?.insertAdjacentHTML('beforeend', ' <span class="wp-pf-follows-me">Te sigue</span>');
+    }
+
+    // % de la ciudad (con los hexágonos que dio la base de datos)
+    let pct = null;
+    if (d.show_visits && Array.isArray(d.hexes)) {
+      try {
+        const { buildFog } = await import('/src/utils/explore-fog.js');
+        const fog = buildFog([...places.values()]);
+        if (fog) pct = fog.statsFromHexes(d.hexes).pct;
+      } catch (_) {}
+    }
+    // Línea de nivel bajo el nombre
+    const lv = view.querySelector('.wp-pf-lvline');
+    if (lv) {
+      const bits = [];
+      if (d.level) bits.push(`<b>Nivel ${d.level}</b>`);
+      if (pct != null) bits.push(`exploró ${String(pct).replace('.', ',')}% de la ciudad`);
+      lv.innerHTML = bits.join(' · ');
+      lv.style.display = bits.length ? '' : 'none';
+    }
+
+    let html = '';
+    // ── En común contigo
+    const com = d.common || { count: 0, place_ids: [] };
+    const comPlaces = (com.place_ids || []).map(id => places.get(String(id))).filter(Boolean);
+    if (com.count > 0) {
+      const photos = comPlaces.map(p => this._photo(p)).filter(Boolean).slice(0, 3);
+      html += `<button type="button" class="wp-pf-ins-common">
+        <span class="wp-pf-stack wp-pf-ins-stack">${this._stackHtml(photos, 3)}</span>
+        <span class="wp-pf-ins-txt"><b>🤝 ${com.count} ${com.count === 1 ? 'lugar' : 'lugares'} en común</b>
+          ${com.top_category ? `<small>Los dos van a ${this._esc(catLabel(com.top_category))}</small>` : '<small>Lugares que los dos conocen</small>'}</span>
+        <span class="wp-pf-ins-chev">${ICON.chev}</span>
+      </button>`;
+    }
+    // ── Gente que sigues y lo sigue
+    const mu = d.mutual || { count: 0, people: [] };
+    if (mu.count > 0) {
+      const faces = (mu.people || []).map(p => `<i style="background-image:url('${this._esc(this._avatar(p, false))}')"></i>`).join('');
+      const firstName = (p) => p.username ? '@' + p.username : (p.name || 'alguien');
+      const who = mu.people?.[0] ? firstName(mu.people[0]) : '';
+      const rest = mu.count - (who ? 1 : 0);
+      html += `<div class="wp-pf-ins-mutual"><span class="wp-pf-ins-faces">${faces}</span>
+        <span>Lo sigue${mu.count > 1 ? 'n' : ''} <b>${this._esc(who)}</b>${rest > 0 ? ` y ${rest} más que sigues` : ''}</span></div>`;
+    }
+    // ── Su progreso (tarjetas que se deslizan)
+    const cards = [];
+    if (pct != null) cards.push(['🗺️', `${String(pct).replace('.', ',')}%`, 'de la ciudad explorada']);
+    if (d.show_points && d.points != null) cards.push(['⭐', `Nivel ${d.level}`, `${Number(d.points).toLocaleString('es-MX')} pts${d.rank && d.rank_of > 1 ? ` · #${d.rank} de ${d.rank_of} amigos` : ''}`]);
+    if (d.show_points && d.collections != null) cards.push(['🏁', String(d.collections), d.collections === 1 ? 'colección completada' : 'colecciones completadas']);
+    if (d.show_visits && d.places != null) cards.push(['📌', String(d.places), d.places === 1 ? 'lugar visitado' : 'lugares visitados']);
+    if (cards.length) {
+      html += `<div class="wp-pf-sec"><span>Su progreso</span></div>
+        <div class="wp-pf-ins-cards">${cards.map(([e, n, t]) => `<div class="wp-pf-ins-card"><span>${e}</span><b>${this._esc(n)}</b><small>${this._esc(t)}</small></div>`).join('')}</div>`;
+    }
+    // ── Su estilo de plan
+    const style = [];
+    if ((d.top_categories || []).length) style.push(`<div class="wp-pf-ins-chips">${d.top_categories.map(c => `<span>${this._esc(catLabel(c))}</span>`).join('')}</div>`);
+    if (d.top_place) style.push(`<div class="wp-pf-ins-row"><span>⭐</span><span>Su lugar: <b>${this._esc(d.top_place.name || 'Lugar')}</b> · ${d.top_place.visits} visitas</span></div>`);
+    const TIME = { night: ['🌙', 'Sale más en las noches'], morning: ['🌅', 'Madrugador: sale más en las mañanas'], afternoon: ['☀️', 'Sale más por las tardes'] };
+    if (d.time_style && TIME[d.time_style]) style.push(`<div class="wp-pf-ins-row"><span>${TIME[d.time_style][0]}</span><span>${TIME[d.time_style][1]}</span></div>`);
+    if (style.length) html += `<div class="wp-pf-sec"><span>Su estilo de plan</span></div><div class="wp-pf-ins-style">${style.join('')}</div>`;
+    if (!d.show_visits) html += `<p class="wp-pf-empty wp-pf-ins-priv">🔒 ${this._esc(first)} prefiere no mostrar sus visitas.</p>`;
+
+    box.innerHTML = html;
+    const comBtn = box.querySelector('.wp-pf-ins-common');
+    if (comBtn) comBtn.onclick = () => {
+      this._pulse(comBtn);
+      if (!comPlaces.length) return;
+      this.hideForMap();
+      this.onShowOnMap(comPlaces, `En común con ${first}`, { onBack: () => this.returnFromMap() });
+    };
   }
 
   async _fillCollections(view, uid, isMe) {
@@ -1542,6 +1644,37 @@ export class ProfileSheet {
       .wp-av-save { width:100%; height:50px; border:none; border-radius:999px; background:#0a0a0a; color:#fff; font-family:inherit; font-size:16px; font-weight:800; cursor:pointer; }
       .wp-av-save:disabled { opacity:.6; }
       .wp-av-photo { border:none; background:none; padding:6px 10px; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
+      /* Perfil de otra persona: en común, progreso, estilo */
+      .wp-pf-lvline { margin-top:4px; font-size:13px; color:#8a6d1f; font-weight:600; }
+      .wp-pf-lvline b { color:#b45309; font-weight:800; }
+      .wp-pf-follows-me { display:inline-block; margin-left:4px; padding:1px 8px; border-radius:999px; background:#eef0f3; color:#374151; font-size:11.5px; font-weight:700; vertical-align:1px; }
+      .wp-pf-ins { margin-top:16px; }
+      .wp-pf-ins-common {
+        width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px 12px 10px; border:none; border-radius:22px;
+        background:#f0f5ff; cursor:pointer; text-align:left; font-family:inherit; -webkit-tap-highlight-color:transparent;
+      }
+      .wp-pf-ins-stack { position:relative; width:64px; height:56px; flex-shrink:0; }
+      .wp-pf-ins-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+      .wp-pf-ins-txt b { font-size:15px; font-weight:800; color:#111827; }
+      .wp-pf-ins-txt small { font-size:12.5px; color:#4b5b8a; font-weight:600; }
+      .wp-pf-ins-chev { color:#9ca3af; display:flex; flex-shrink:0; }
+      .wp-pf-ins-mutual { display:flex; align-items:center; gap:10px; margin:12px 4px 0; font-size:13px; color:#4b5563; }
+      .wp-pf-ins-mutual b { color:#111827; }
+      .wp-pf-ins-faces { display:flex; flex-shrink:0; }
+      .wp-pf-ins-faces i { width:26px; height:26px; margin-left:-8px; border-radius:50%; background:#e5e7eb center/cover no-repeat; box-shadow:0 0 0 2px #fff; }
+      .wp-pf-ins-faces i:first-child { margin-left:0; }
+      .wp-pf-ins-cards { display:flex; gap:10px; overflow-x:auto; margin:0 -16px; padding:2px 16px 6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+      .wp-pf-ins-cards::-webkit-scrollbar { display:none; }
+      .wp-pf-ins-card { flex:0 0 auto; min-width:118px; padding:12px 14px; border-radius:20px; background:#f4f5f7; display:flex; flex-direction:column; gap:2px; }
+      .wp-pf-ins-card span { font-size:20px; line-height:1; margin-bottom:4px; }
+      .wp-pf-ins-card b { font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:24px; color:#111827; line-height:1.1; }
+      .wp-pf-ins-card small { font-size:12px; color:#6b7280; font-weight:600; max-width:150px; }
+      .wp-pf-ins-style { display:flex; flex-direction:column; gap:10px; }
+      .wp-pf-ins-chips { display:flex; flex-wrap:wrap; gap:8px; }
+      .wp-pf-ins-chips span { padding:7px 12px; border-radius:999px; background:#fff8e1; color:#3b2500; font-size:13px; font-weight:700; }
+      .wp-pf-ins-row { display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; }
+      .wp-pf-ins-row > span:first-child { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:#f4f5f7; display:flex; align-items:center; justify-content:center; font-size:16px; }
+      .wp-pf-ins-priv { margin-top:14px; text-align:center; }
       .wp-pf-rk-priv { display:block; margin:14px auto 0; padding:8px 14px; border:none; background:none; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
       .wp-pf-ex-pct { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:26px; color:#1a5cf5; }
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
