@@ -430,7 +430,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
           if (err || !p) { if (err) console.log('[DIAG-NEXT] ubicación:', err.message || err); return; }
           onPos(p.coords.latitude, p.coords.longitude);
         });
-        if (!watchOn) { G.clearWatch({ id }).catch(() => {}); return; }
+        if (!watchOn) { Promise.resolve(G.clearWatch({ id })).catch(() => {}); return; }
         watchId = { G, id };
       } else if (navigator.geolocation) {
         const id = navigator.geolocation.watchPosition(p => onPos(p.coords.latitude, p.coords.longitude),
@@ -443,7 +443,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const stopWatch = () => {
     watchOn = false;
     if (!watchId) return;
-    try { if (watchId.G) watchId.G.clearWatch({ id: watchId.id }).catch(() => {}); else navigator.geolocation.clearWatch(watchId.id); } catch (_) {}
+    try { if (watchId.G) Promise.resolve(watchId.G.clearWatch({ id: watchId.id })).catch(() => {}); else navigator.geolocation.clearWatch(watchId.id); } catch (_) {}
     watchId = null;
     console.log('[DIAG-NEXT] ubicación en vivo apagada');
   };
