@@ -51,12 +51,44 @@ async function getPosition() {
 
 export const VisitService = {
   _cache: new Map(), // place_id → visitas (para no preguntar cada vez)
+  _today: new Set(), // place_id registrados HOY en esta sesión
+
+  // ¿Ya hay permiso de ubicación? (sin pedirlo) → 'granted' | 'prompt' | 'denied'
+  async permission() {
+    try {
+      const G = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.Geolocation;
+      if (G) { const p = await G.checkPermissions(); return (p.location === 'granted' || p.coarseLocation === 'granted') ? 'granted' : (p.location === 'denied' ? 'denied' : 'prompt'); }
+      const q = await navigator.permissions?.query?.({ name: 'geolocation' });
+      return q?.state || 'prompt';
+    } catch (_) { return 'prompt'; }
+  },
+  async requestPermission() {
+    const G = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.Geolocation;
+    if (G) { const r = await G.requestPermissions().catch(() => null); return !!r && (r.location === 'granted' || r.coarseLocation === 'granted'); }
+    try { await getPosition(); return true; } catch (_) { return false; }
+  },
+  // Sigue tu ubicación (cb({lat,lng,acc})); devuelve una función para parar
+  watch(cb) {
+    let stopped = false, id = null;
+    const G = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.Geolocation;
+    const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+    if (G) {
+      G.watchPosition(opts, (p, err) => { if (!stopped && p && !err) cb({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }); })
+        .then(w => { id = w; if (stopped) G.clearWatch({ id }).catch(() => {}); })
+        .catch(e => console.log('[DIAG-VISIT] ubicación:', e?.message || e));
+      return () => { stopped = true; if (id != null) G.clearWatch({ id }).catch(() => {}); };
+    }
+    if (!navigator.geolocation) return () => {};
+    id = navigator.geolocation.watchPosition(p => cb({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }), () => {}, opts);
+    return () => { stopped = true; navigator.geolocation.clearWatch(id); };
+  },
 
   async checkIn(placeId) {
     const pos = await getPosition();
     const { data, error } = await getSupabase().rpc('check_in', { p_place_id: String(placeId), p_lat: pos.lat, p_lng: pos.lng });
-    if (error) throw niceError(error);
+    if (error) { const e = niceError(error); if (e.code === 'ALREADY_TODAY') this._today.add(String(placeId)); throw e; }
     this._cache.set(String(placeId), data.visits);
+    this._today.add(String(placeId));
     // points/total/level/awards llegan con gamification_points.sql (fase 3);
     // sin ese SQL vienen vacíos y todo sigue funcionando como antes
     document.dispatchEvent(new CustomEvent('wp:visit', { detail: {
