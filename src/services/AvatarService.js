@@ -1,72 +1,46 @@
 // ====================================================================
 // WHATSPLAN — AvatarService.js
-// Genera avatares estilo Memoji via Tapback API
-// MIT license — https://github.com/wimell/tapback-memojis
+// Avatar por defecto (quien no ha subido foto): ilustración de Humation
+// (línea negra, fondo pastel; MIT — https://github.com/humation-labs/humation).
+// Se genera EN EL TELÉFONO desde el nombre: el mismo nombre siempre da el
+// mismo avatar. Ya no depende de Tapback (internet externo).
+//
+// La librería se precarga al iniciar la app (app.js → preloadHumation).
+// Si alguien pide un avatar antes de que cargue, recibe una silueta
+// sencilla del mismo estilo (no se ve un hueco).
 // ====================================================================
+import { defaultAvatarSync, preloadHumation } from '/src/utils/humation-avatar.js';
 
-// Nombres femeninos comunes (español + inglés)
-const FEMALE_NAMES = new Set([
-  'maria','ana','luisa','laura','sofia','isabella','valentina','camila','lucia',
-  'gabriela','daniela','andrea','alejandra','fernanda','paola','karla','diana',
-  'patricia','rosa','carmen','elena','beatriz','martha','claudia','veronica',
-  'jessica','jennifer','ashley','amanda','stephanie','melissa','sarah','emily',
-  'emma','olivia','hannah','elizabeth','mia','ava','grace','victoria','julia',
-  'andrea','natalia','mariana','catalina','michelle','vanessa','lorena','silvia',
-  'alma','brenda','leticia','norma','alicia','yolanda','esperanza','dolores',
-  'angeles','rocio','pilar','concepcion','francisca','josefa','isabel','cristina',
-  'marta','nuria','raquel','sandra','sara','susana','teresa','virginia','wendy',
-  'xiomara','yanet','zulema','fatima','gisela','hilda','irene','jimena','karina',
-  // Nombres de la imagen/reseñas que vimos
-  'viloria','nimia','luz','marisol','lupe','chayo','paty','nena','tere','lupita',
-]);
+// Silueta de respaldo (mientras carga la librería): cabeza de línea negra
+// sobre crema. Pequeña y del mismo estilo que Humation.
+const FALLBACK = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88"><rect width="88" height="88" fill="#FFF1C9"/>' +
+  '<circle cx="44" cy="38" r="15" fill="#fff" stroke="#000" stroke-width="3.5"/>' +
+  '<path d="M18 88c2-17 12-27 26-27s24 10 26 27" fill="#fff" stroke="#000" stroke-width="3.5" stroke-linecap="round"/></svg>'
+).replace(/'/g, '%27');
+
+preloadHumation();
 
 /**
- * Detecta si un nombre es femenino
- */
-function isFemale(fullName) {
-  if (!fullName) return false;
-  const first = fullName.trim().split(/\s+/)[0].toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quitar acentos
-  return FEMALE_NAMES.has(first);
-}
-
-/**
- * Genera un seed consistente para el avatar basado en el nombre
- * Femenino: usa el nombre directo (Tapback asigna avatar femenino a nombres femeninos)
- * Masculino: agrega sufijo para garantizar avatar masculino
- */
-function avatarSeed(fullName) {
-  const name   = (fullName || 'user').toLowerCase().replace(/\s+/g, '_');
-  const female = isFemale(fullName);
-  // Tapback genera avatares únicos y consistentes por string
-  // Los nombres femeninos tienden a generar avatares femeninos naturalmente
-  // Para asegurar género, usamos prefijo gender-specific
-  return female ? `f_${name}` : `m_${name}`;
-}
-
-/**
- * Retorna la URL del avatar para un nombre dado
- * Siempre el mismo nombre → mismo avatar (determinístico)
+ * Avatar por defecto para un nombre (siempre el mismo para el mismo nombre).
+ * Devuelve un data URI (SVG); sirve en <img src> y en background-image.
  */
 export function getAvatarUrl(fullName) {
-  const seed = avatarSeed(fullName || 'user');
-  return `https://www.tapback.co/api/avatar/${encodeURIComponent(seed)}.webp`;
+  return defaultAvatarSync(fullName || 'user') || FALLBACK;
 }
 
+// ¿Es un avatar viejo de Tapback guardado en el perfil? (ya no se usa)
+export const isLegacyAvatar = (url) => typeof url === 'string' && url.includes('tapback.co');
+
 /**
- * Retorna la URL del avatar para un usuario autenticado
- * Si ya tiene avatar_url guardado → lo usa
- * Si no → genera uno desde su display_name y lo retorna para guardar
+ * Avatar de un usuario autenticado:
+ * - Si tiene foto real (subida / Google) → esa.
+ * - Si no (o tenía un Memoji de Tapback) → el de Humation, que NO se
+ *   guarda en la base de datos (se genera cada vez, es instantáneo).
  */
 export function getOrGenerateAvatar(displayName, existingAvatarUrl) {
-  if (existingAvatarUrl && !existingAvatarUrl.includes('tapback.co')) {
-    // Tiene foto de perfil real (Google, etc.) — respetarla
+  if (existingAvatarUrl && !isLegacyAvatar(existingAvatarUrl)) {
     return { url: existingAvatarUrl, isNew: false };
   }
-  if (existingAvatarUrl && existingAvatarUrl.includes('tapback.co')) {
-    // Ya tiene memoji asignado — mantenerlo
-    return { url: existingAvatarUrl, isNew: false };
-  }
-  // Generar nuevo memoji basado en el nombre
-  return { url: getAvatarUrl(displayName), isNew: true };
+  return { url: getAvatarUrl(displayName), isNew: false };
 }
