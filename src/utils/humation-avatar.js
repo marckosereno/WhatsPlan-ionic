@@ -72,7 +72,7 @@ export async function defaultAvatarState(seed) {
 }
 
 // Manifiesto del CREADOR: el original + piezas propias (humation-extra.js:
-// sombrero, gorra, huipil, guayabera)
+// sombrero, gorra, huipil, guayabera, capas Pecho y Cara)
 export async function creatorManifest() {
   const m = await preloadHumation();
   if (!m) return null;
