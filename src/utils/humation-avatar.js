@@ -12,11 +12,11 @@
 // Archivo de la librería: src/vendor/humation.js
 // ====================================================================
 
-const BG = ['FFF1C9', 'EDE7FF', 'DDF5E8', 'FFE3D3', 'E3EEFF', 'FDE2EC']; // crema, lila, menta, durazno, cielo, rosa
+export const BG = ['FFF1C9', 'EDE7FF', 'DDF5E8', 'FFE3D3', 'E3EEFF', 'FDE2EC']; // crema, lila, menta, durazno, cielo, rosa
 const cache = new Map(); // semilla → data URI
 let lib = null, loading = null;
 
-const hash = (s) => [...String(s)].reduce((a, c) => Math.imul(a ^ c.charCodeAt(0), 16777619) >>>0, 2166136261);
+export const hash = (s) => [...String(s)].reduce((a, c) => Math.imul(a ^ c.charCodeAt(0), 16777619) >>>0, 2166136261);
 
 export function preloadHumation() {
   if (lib) return Promise.resolve(lib);
@@ -29,7 +29,7 @@ export function preloadHumation() {
         return Promise.all([
           import('https://esm.sh/@humation/core@1.0.3'),
           import('https://esm.sh/@humation/assets-humation-1@1.0.3'),
-        ]).then(([core, assets]) => ({ createAvatar: core.createAvatar, humation1: assets.humation1 }));
+        ]).then(([core, assets]) => ({ createAvatar: core.createAvatar, createPartPreview: core.createPartPreview, getPartsForSlot: core.getPartsForSlot, humation1: assets.humation1 }));
       })
       .then(m => { lib = m; document.dispatchEvent(new CustomEvent('wp:humation-ready')); return m; })
       .catch(e => { console.warn('[DIAG-AVATAR] no cargó Humation:', e.message || e); loading = null; return null; });
@@ -60,3 +60,13 @@ export async function defaultAvatar(seed) {
 
 // ¿Es uno de estos avatares generados? (no es foto subida)
 export const isDefaultAvatar = (url) => typeof url === 'string' && url.startsWith('data:image/svg+xml');
+
+// Estado inicial del creador: el avatar por defecto de esa semilla
+// ({ selections, colors, background }), para empezar desde el que ya tienes
+export async function defaultAvatarState(seed) {
+  const m = await preloadHumation();
+  if (!m) return null;
+  const key = String(seed || 'user').trim().toLowerCase();
+  const j = m.createAvatar(m.humation1, { seed: key, background: BG[hash(key) % BG.length] }).toJSON();
+  return { selections: j.selections, colors: j.colors, background: j.background };
+}
