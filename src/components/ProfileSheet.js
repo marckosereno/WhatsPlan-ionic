@@ -15,6 +15,25 @@ import { FavoriteService }  from '/src/services/FavoriteService.js';
 import { ReviewService }    from '/src/services/ReviewService.js';
 import { getAvatarUrl }     from '/src/services/AvatarService.js';
 
+// Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
+// n veces. Devuelve un path SVG/CSS centrado en (c, c).
+function sealPath(c, peak, n = 14, a = 0.045, steps = 168) {
+  const R = peak / (1 + a);
+  let d = '';
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const r = R * (1 + a * Math.cos(n * t));
+    d += (i ? 'L' : 'M') + (c + r * Math.cos(t)).toFixed(2) + ' ' + (c + r * Math.sin(t)).toFixed(2);
+  }
+  return d + 'Z';
+}
+// Avatar 92px: anillo amarillo (110px) + orilla blanca + foto, los 3 con la misma onda
+const SEAL_SVG = `<svg class="wp-pf-seal" viewBox="0 0 110 110" aria-hidden="true">
+  <defs><linearGradient id="wpSealG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#f5b400"/></linearGradient></defs>
+  <path d="${sealPath(55, 55)}" fill="url(#wpSealG)"/>
+  <path d="${sealPath(55, 51)}" fill="#fff"/></svg>`;
+const SEAL_CLIP = `path('${sealPath(46, 46)}')`;
+
 const ICON = {
   x:     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   back:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
@@ -280,9 +299,10 @@ export class ProfileSheet {
     view.innerHTML = `
       <div class="wp-pf-top">
         <div class="wp-pf-avatar-wrap">
+          ${SEAL_SVG}
+          <div class="wp-pf-avatar wp-pf-skel" style="clip-path:${SEAL_CLIP}"></div>
           <div class="wp-pf-orbit"></div>
-          <div class="wp-pf-avatar wp-pf-skel"></div>
-          ${isMe ? `<button type="button" class="wp-pf-cam" aria-label="Cambiar foto">${ICON.cam}</button>` : ''}
+          ${isMe ? '<button type="button" class="wp-pf-cam" aria-label="Cambiar foto">Cambiar</button>' : ''}
         </div>
         <div class="wp-pf-name"><span class="wp-pf-skel wp-pf-skel-line" style="width:150px"></span></div>
         <div class="wp-pf-handle-line"></div>
@@ -359,10 +379,11 @@ export class ProfileSheet {
       }).catch(() => {});
     }
 
-    // Insignias (fase 3): salen "explotando" desde atrás del avatar y se
-    // quedan a su alrededor como stickers. Hasta 6; si hay más, "+N".
-    // Tocar una dice qué es. En TU perfil se pueden acomodar con los dedos
-    // (mover, girar, agrandar) y se guarda solo (profiles.badge_layout).
+    // Insignias (fase 3): en una burbuja tipo chat que sale del avatar
+    // (con colita de "pensamiento"). Hasta 5 emojis; si hay más, "+N".
+    // Tocar un emoji dice qué insignia es. En TU perfil la burbuja se
+    // acomoda con los dedos (mover, girar, agrandar) y se guarda sola en
+    // profiles.badge_layout._bubble.
     const orbit = view.querySelector('.wp-pf-orbit');
     if (orbit) {
       Promise.all([
@@ -373,37 +394,35 @@ export class ProfileSheet {
         console.log('[DIAG-BADGES] perfil', String(uid).slice(0, 8), '→', got.map(g => g.badge).join(',') || '(ninguna)');
         if (!got.length || !view.isConnected) return;
         const list = got.slice().reverse(); // la más reciente primero
-        // Acomodo de inicio "a mano": [x, y, inclinación, tamaño] desde el
-        // centro del avatar (radio 46). Abajo a la derecha libre (cámara).
-        const SLOTS = [
-          [-54, -34, -16, 34], [56, -36, 14, 24], [70, 8, -22, 30],
-          [-76, 6, 10, 20], [-58, 34, 24, 25], [84, -20, 4, 16],
-        ];
-        let seed = [...String(uid)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
-        const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return (seed / 4294967296) * 2 - 1; };
-        const saved = (prof && typeof prof.badge_layout === 'object' && prof.badge_layout) || {};
-        const shown = list.slice(0, list.length > 6 ? 5 : 6);
+        const MAX = 5;
+        const shown = list.slice(0, list.length > MAX ? MAX - 1 : MAX);
         const extra = list.length - shown.length;
-        const LIM = { x: 128, yTop: -64, yBot: 66, sMin: 14, sMax: 48, rMax: 80 };
-        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-        const posOf = (id, i) => {
-          const [bx, by, br, bs] = SLOTS[i];
-          const d = { x: bx + rnd() * 5, y: by + rnd() * 5, r: Math.round(br + rnd() * 7), s: Math.round(bs + rnd() * 3) };
-          const m = id && saved[id];
-          return m ? { x: clamp(+m.x || 0, -LIM.x, LIM.x), y: clamp(+m.y || 0, LIM.yTop, LIM.yBot), r: clamp(+m.r || 0, -LIM.rMax, LIM.rMax), s: clamp(+m.s || 24, LIM.sMin, LIM.sMax) } : d;
-        };
-        const item = (html, i, cls, attrs, id) => {
-          const p = posOf(id, i);
-          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${p.x.toFixed(1)}px;--y:${p.y.toFixed(1)}px;--r:${p.r}deg;--d:${320 + i * 65}ms;--s:${p.s}px">${html}</button>`;
-        };
-        orbit.innerHTML = shown.map((g, i) => { const b = badgeInfo(g.badge); return item(b.emoji, i, '', `data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}"`, b.id); }).join('')
-          + (extra > 0 ? item(`+${extra}`, 5, 'more', 'aria-label="Más insignias"', null) : '');
+        const ROT = [-8, 6, -4, 9, -6];
+        const LIM = { x: 120, yTop: -70, yBot: 62, kMin: 0.7, kMax: 1.45, rMax: 30 };
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+        const saved = (prof?.badge_layout && prof.badge_layout._bubble) || null;
+        // Inicio: arriba a la izquierda del avatar, montada en la orilla
+        const pos = saved
+          ? { x: clamp(+saved.x || 0, -LIM.x, LIM.x), y: clamp(+saved.y || 0, LIM.yTop, LIM.yBot), r: clamp(+saved.r || 0, -LIM.rMax, LIM.rMax), k: clamp(+saved.k || 1, LIM.kMin, LIM.kMax) }
+          : { x: -68, y: -52, r: -6, k: 1 };
+        orbit.innerHTML = `<div class="wp-pf-bub" style="--x:${pos.x}px;--y:${pos.y}px;--r:${pos.r}deg;--k:${pos.k}">
+          <div class="wp-pf-bub-in">${shown.map((g, i) => {
+            const b = badgeInfo(g.badge);
+            return `<button type="button" class="wp-pf-bub-e" data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}" style="--er:${ROT[i]}deg;--d:${420 + i * 70}ms">${b.emoji}</button>`;
+          }).join('')}${extra > 0 ? `<button type="button" class="wp-pf-bub-e more" style="--er:0deg;--d:${420 + shown.length * 70}ms">+${extra}</button>` : ''}</div>
+          <i class="wp-pf-bub-t1"></i><i class="wp-pf-bub-t2"></i>
+        </div>`;
+        const bub = orbit.querySelector('.wp-pf-bub');
+        // La colita apunta hacia el avatar: a la derecha si la burbuja está a
+        // la izquierda, y arriba si está debajo
+        const paintTail = (p) => { bub.classList.toggle('tail-l', p.x > 0); bub.classList.toggle('tail-up', p.y > 10); };
+        paintTail(pos);
         requestAnimationFrame(() => requestAnimationFrame(() => orbit.classList.add('in')));
-        // Al terminar la explosión quedan "fijas" (sin animación) para poder moverlas
-        orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.addEventListener('animationend', () => el.classList.add('placed'), { once: true }));
+        bub.addEventListener('animationend', (e) => { if (e.target === bub) bub.classList.add('placed'); });
 
-        const tapBadge = (el) => {
+        const tapEmoji = (el) => {
           this._haptic('light');
+          if (!el) return;
           if (el.classList.contains('more')) {
             if (isMe) this._push(v => this._viewRanking(v));
             else this._toast(`${list.length} insignias`);
@@ -412,46 +431,40 @@ export class ProfileSheet {
           const b = badgeInfo(el.dataset.b);
           this._toast(`${b.emoji} ${b.name} · ${b.desc}`);
         };
-        if (!isMe) { orbit.querySelectorAll('.wp-pf-orb').forEach(el => el.onclick = () => tapBadge(el)); return; }
+        if (!isMe) { bub.querySelectorAll('.wp-pf-bub-e').forEach(el => el.onclick = () => tapEmoji(el)); return; }
 
-        // ── Acomodar con los dedos (solo tu perfil) ─────────────────────
-        // 1 dedo: mover. 2 dedos (el segundo puede estar fuera de la
-        // insignia): girar y agrandar. Con topes. Se guarda solo 700 ms
-        // después de soltar.
-        const layout = { ...saved };
+        // ── Acomodar la burbuja con los dedos (solo tu perfil) ──────────
         let saveT = null;
-        const save = () => {
+        const save = (p) => {
           clearTimeout(saveT);
           saveT = setTimeout(() => {
+            const layout = { ...(this._lastProfile?.badge_layout || prof?.badge_layout || {}), _bubble: { x: Math.round(p.x), y: Math.round(p.y), r: Math.round(p.r), k: Math.round(p.k * 100) / 100 } };
             ProfileService.updateProfile(uid, { badge_layout: layout })
-              .then(u => { if (u) this._lastProfile = u; console.log('[DIAG-BADGES] acomodo guardado'); })
-              .catch(e => console.warn('[DIAG-BADGES] no se guardó el acomodo:', e.message || e));
+              .then(u => { if (u) this._lastProfile = u; console.log('[DIAG-BADGES] burbuja guardada'); })
+              .catch(e => console.warn('[DIAG-BADGES] no se guardó la burbuja:', e.message || e));
           }, 700);
         };
-        const read = (el) => ({
-          x: parseFloat(el.style.getPropertyValue('--x')) || 0, y: parseFloat(el.style.getPropertyValue('--y')) || 0,
-          r: parseFloat(el.style.getPropertyValue('--r')) || 0, s: parseFloat(el.style.getPropertyValue('--s')) || 24,
-        });
-        const write = (el, p) => {
-          el.style.setProperty('--x', p.x.toFixed(1) + 'px'); el.style.setProperty('--y', p.y.toFixed(1) + 'px');
-          el.style.setProperty('--r', p.r.toFixed(1) + 'deg'); el.style.setProperty('--s', p.s.toFixed(1) + 'px');
+        let cur = { ...pos };
+        const write = (p) => {
+          bub.style.setProperty('--x', p.x.toFixed(1) + 'px'); bub.style.setProperty('--y', p.y.toFixed(1) + 'px');
+          bub.style.setProperty('--r', p.r.toFixed(1) + 'deg'); bub.style.setProperty('--k', p.k.toFixed(3));
+          paintTail(p);
         };
-        let act = null; // { el, start, t0, p0, moved, two }
         const ang = (a, b) => Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
         const dist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        let act = null;
         const onMove = (e) => {
           if (!act) return;
           e.preventDefault(); // que no se mueva la hoja
           const t = e.touches;
           const p = { ...act.p0 };
           if (t.length >= 2) {
-            if (!act.two) { act.two = { a: ang(t[0], t[1]), d: dist(t[0], t[1]), p0: read(act.el), c0: { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 } }; }
+            if (!act.two) act.two = { a: ang(t[0], t[1]), d: dist(t[0], t[1]), p0: { ...cur }, c: { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 } };
             const tw = act.two;
-            const da = ang(t[0], t[1]) - tw.a, k = dist(t[0], t[1]) / Math.max(1, tw.d);
-            p.r = clamp(tw.p0.r + da, -LIM.rMax, LIM.rMax);
-            p.s = clamp(tw.p0.s * k, LIM.sMin, LIM.sMax);
-            p.x = clamp(tw.p0.x + ((t[0].clientX + t[1].clientX) / 2 - tw.c0.x), -LIM.x, LIM.x);
-            p.y = clamp(tw.p0.y + ((t[0].clientY + t[1].clientY) / 2 - tw.c0.y), LIM.yTop, LIM.yBot);
+            p.r = clamp(tw.p0.r + (ang(t[0], t[1]) - tw.a), -LIM.rMax, LIM.rMax);
+            p.k = clamp(tw.p0.k * dist(t[0], t[1]) / Math.max(1, tw.d), LIM.kMin, LIM.kMax);
+            p.x = clamp(tw.p0.x + ((t[0].clientX + t[1].clientX) / 2 - tw.c.x), -LIM.x, LIM.x);
+            p.y = clamp(tw.p0.y + ((t[0].clientY + t[1].clientY) / 2 - tw.c.y), LIM.yTop, LIM.yBot);
             act.moved = true;
           } else {
             if (act.two) return; // se levantó un dedo: espera a soltar todo
@@ -461,43 +474,33 @@ export class ProfileSheet {
             p.x = clamp(act.p0.x + dx, -LIM.x, LIM.x);
             p.y = clamp(act.p0.y + dy, LIM.yTop, LIM.yBot);
           }
-          // al tocar un tope, vibra una vez
-          const atEdge = p.x === -LIM.x || p.x === LIM.x || p.y === LIM.yTop || p.y === LIM.yBot || p.s === LIM.sMin || p.s === LIM.sMax;
-          if (atEdge && !act.edge) this._haptic('light');
-          act.edge = atEdge;
-          write(act.el, p);
-          if (!act.two) act.p = p;
+          const edge = p.x === -LIM.x || p.x === LIM.x || p.y === LIM.yTop || p.y === LIM.yBot || p.k === LIM.kMin || p.k === LIM.kMax || Math.abs(p.r) === LIM.rMax;
+          if (edge && !act.edge) this._haptic('light'); // tope: vibra una vez
+          act.edge = edge;
+          cur = p;
+          write(p);
         };
         const onEnd = (e) => {
-          if (!act) return;
-          if (e.touches.length) return; // aún hay dedos
-          const el = act.el;
-          el.classList.remove('grab');
+          if (!act || e.touches.length) return;
+          bub.classList.remove('grab');
           document.removeEventListener('touchmove', onMove, { passive: false });
           document.removeEventListener('touchend', onEnd);
           document.removeEventListener('touchcancel', onEnd);
-          if (!act.moved && performance.now() - act.t0 < 350) tapBadge(el);
-          else if (act.moved && el.dataset.b) {
-            const q = read(el);
-            layout[el.dataset.b] = { x: Math.round(q.x), y: Math.round(q.y), r: Math.round(q.r), s: Math.round(q.s) };
-            save();
-          }
+          if (!act.moved && performance.now() - act.t0 < 350) tapEmoji(act.target);
+          else if (act.moved) save(cur);
           act = null;
         };
-        orbit.querySelectorAll('.wp-pf-orb').forEach(el => {
-          if (el.classList.contains('more')) { el.onclick = () => tapBadge(el); return; }
-          el.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-            if (act) return;
-            el.classList.add('placed', 'grab');
-            orbit.appendChild(el); // al frente
-            act = { el, start: { x: e.touches[0].clientX, y: e.touches[0].clientY }, t0: performance.now(), p0: read(el), moved: false, two: null };
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', onEnd);
-            document.addEventListener('touchcancel', onEnd);
-          }, { passive: true });
-          el.onclick = (e) => e.preventDefault(); // el toque lo maneja onEnd
-        });
+        bub.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+          if (act) return;
+          bub.classList.add('placed', 'grab');
+          act = { start: { x: e.touches[0].clientX, y: e.touches[0].clientY }, t0: performance.now(), p0: { ...cur }, moved: false, two: null,
+                  target: e.target.closest?.('.wp-pf-bub-e') || null };
+          document.addEventListener('touchmove', onMove, { passive: false });
+          document.addEventListener('touchend', onEnd);
+          document.addEventListener('touchcancel', onEnd);
+        }, { passive: true });
+        bub.querySelectorAll('.wp-pf-bub-e').forEach(el => el.onclick = (e) => e.preventDefault()); // el toque lo maneja onEnd
       }).catch(e => console.warn('[DIAG-POINTS] insignias:', e.message || e));
     }
 
@@ -889,9 +892,10 @@ export class ProfileSheet {
     if (!this._isCurrent(view)) return;
     view.innerHTML = `
       <div class="wp-pf-edit">
-        <div class="wp-pf-avatar-wrap" style="margin:4px auto 14px">
-          <div class="wp-pf-avatar"></div>
-          <button type="button" class="wp-pf-cam" aria-label="Cambiar foto">${ICON.cam}</button>
+        <div class="wp-pf-avatar-wrap" style="margin:12px auto 24px">
+          ${SEAL_SVG}
+          <div class="wp-pf-avatar" style="clip-path:${SEAL_CLIP}"></div>
+          <button type="button" class="wp-pf-cam" aria-label="Cambiar foto">Cambiar</button>
         </div>
         <label class="wp-pf-field"><span>Nombre</span><input data-f="name" maxlength="40" autocapitalize="words" autocomplete="name"></label>
         <label class="wp-pf-field"><span>Usuario</span><div class="wp-pf-at"><i>@</i><input data-f="username" maxlength="20" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="tu.usuario"></div><em class="wp-pf-err"></em></label>
@@ -1208,15 +1212,25 @@ export class ProfileSheet {
          degradado blanco del encabezado */
       .wp-pf-top { display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:34px; }
       .wp-pf-avatar-wrap { position:relative; width:92px; height:92px; }
+      /* Foto con contorno "sello": la foto recortada en onda (clip-path en
+         línea) + anillo amarillo y orilla blanca con la misma onda (SVG) */
       .wp-pf-avatar {
         width:92px; height:92px; border-radius:999px; background:#e5e7eb center/cover no-repeat;
-        box-shadow:0 0 0 4px #fff, 0 6px 18px rgba(0,0,0,0.14);
       }
+      .wp-pf-seal {
+        position:absolute; left:-9px; top:-9px; width:110px; height:110px; pointer-events:none;
+        filter:drop-shadow(0 6px 12px rgba(245,158,11,0.28));
+      }
+      /* "Cambiar" (antes la cámara): pill negra abajo al centro, montada en la orilla */
       .wp-pf-cam {
-        position:absolute; right:-2px; bottom:2px; width:30px; height:30px; padding:0; border-radius:999px;
-        border:3px solid #fff; background:#0a0a0a; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;
+        position:absolute; left:50%; bottom:-13px; transform:translateX(-50%);
+        height:24px; padding:0 11px; border-radius:999px; border:2.5px solid #fff; box-sizing:border-box;
+        background:#0a0a0a; color:#fff; font-family:inherit; font-size:11.5px; font-weight:800; letter-spacing:0.2px;
+        display:flex; align-items:center; justify-content:center; cursor:pointer; white-space:nowrap;
+        box-shadow:0 3px 8px rgba(0,0,0,0.22); -webkit-tap-highlight-color:transparent;
       }
-      .wp-pf-name { margin-top:10px; font-size:22px; font-weight:800; color:#0a0a0a; letter-spacing:-0.01em; }
+      .wp-pf-cam:active { transform:translateX(-50%) scale(0.94); }
+      .wp-pf-name { margin-top:22px; font-size:22px; font-weight:800; color:#0a0a0a; letter-spacing:-0.01em; }
       .wp-pf-handle-line { margin-top:2px; font-size:13.5px; color:#6b7280; font-weight:500; min-height:18px; }
       .wp-pf-bio { margin-top:8px; font-size:14px; color:#374151; line-height:1.4; max-width:300px; }
       .wp-pf-link { border:none; background:none; padding:0; color:#2563eb; font:inherit; font-weight:700; cursor:pointer; }
@@ -1288,37 +1302,45 @@ export class ProfileSheet {
       .wp-pf-avatar-wrap { isolation:isolate; }
       .wp-pf-avatar-wrap .wp-pf-avatar { position:relative; z-index:1; }
       .wp-pf-avatar-wrap .wp-pf-cam { z-index:4; }
-      /* Las insignias van ENCIMA del avatar (se pueden poner sobre la foto) */
+      /* Burbuja de insignias (tipo chat / pensamiento) encima del avatar */
       .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:3; }
-      /* Solo el emoji con contorno blanco (16 direcciones), sin círculo */
-      .wp-pf-orb {
-        position:absolute; left:calc(var(--s) * -0.7); top:calc(var(--s) * -0.7); width:calc(var(--s) * 1.4); height:calc(var(--s) * 1.4);
-        padding:0; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent;
-        display:flex; align-items:center; justify-content:center;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; font-size:var(--s); line-height:1;
-        text-shadow:
-          2.4px 0 0 #fff, -2.4px 0 0 #fff, 0 2.4px 0 #fff, 0 -2.4px 0 #fff,
-          1.7px 1.7px 0 #fff, -1.7px 1.7px 0 #fff, 1.7px -1.7px 0 #fff, -1.7px -1.7px 0 #fff,
-          2.2px 0.9px 0 #fff, -2.2px 0.9px 0 #fff, 2.2px -0.9px 0 #fff, -2.2px -0.9px 0 #fff,
-          0.9px 2.2px 0 #fff, -0.9px 2.2px 0 #fff, 0.9px -2.2px 0 #fff, -0.9px -2.2px 0 #fff,
-          0 3px 6px rgba(17,24,39,0.28);
-        opacity:0; transform:translate(0,0) scale(0.2);
-        will-change:transform, opacity; /* capa propia: la explosión no repinta el perfil */
+      .wp-pf-bub {
+        position:absolute; left:0; top:0; touch-action:none;
+        transform:translate(-50%,-50%) translate(var(--x),var(--y)) rotate(var(--r)) scale(var(--k));
+        opacity:0;
       }
-      .wp-pf-orb.more {
-        --s:12px; left:-16px; top:-11px; width:32px; height:22px; border-radius:999px;
-        background:#0a0a0a; color:#fff; font-family:inherit; font-size:12px; font-weight:800; text-shadow:none;
-        box-shadow:0 0 0 2px #fff, 0 3px 8px rgba(0,0,0,0.25);
+      .wp-pf-orbit.in .wp-pf-bub { animation:wpPfBub .55s cubic-bezier(0.3,1.5,0.5,1) .3s both; }
+      @keyframes wpPfBub {
+        0%   { opacity:0; transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(0.2); }
+        30%  { opacity:1; }
+        100% { opacity:1; transform:translate(-50%,-50%) translate(var(--x),var(--y)) rotate(var(--r)) scale(var(--k)); }
       }
-      .wp-pf-orbit.in .wp-pf-orb { animation:wpPfOrb .62s cubic-bezier(0.3,1.55,0.5,1) var(--d) both; }
-      @keyframes wpPfOrb {
-        0%   { opacity:0; transform:translate(0,0) scale(0.2) rotate(0deg); }
-        25%  { opacity:1; }
-        100% { opacity:1; transform:translate(var(--x),var(--y)) scale(1) rotate(var(--r)); }
+      .wp-pf-orbit .wp-pf-bub.placed { animation:none; opacity:1; }
+      .wp-pf-bub.grab .wp-pf-bub-in { box-shadow:0 14px 28px rgba(17,24,39,0.22), 0 0 0 0.5px rgba(17,24,39,0.06); }
+      .wp-pf-bub-in {
+        position:relative; display:flex; align-items:center; gap:1px; padding:6px 10px; border-radius:22px;
+        background:#fff; box-shadow:0 8px 20px rgba(17,24,39,0.16), 0 0 0 0.5px rgba(17,24,39,0.06);
+        transition:box-shadow .15s;
       }
-      /* Ya colocada: sin animación, el transform sale directo de --x/--y/--r */
-      .wp-pf-orbit .wp-pf-orb.placed { animation:none; opacity:1; transform:translate(var(--x),var(--y)) rotate(var(--r)); touch-action:none; }
-      .wp-pf-orb.grab { filter:drop-shadow(0 8px 10px rgba(17,24,39,0.25)); transition:filter .15s; }
+      .wp-pf-bub-e {
+        width:30px; height:32px; padding:0; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; font-size:23px; line-height:32px;
+        transform:rotate(var(--er)); opacity:0;
+      }
+      .wp-pf-orbit.in .wp-pf-bub-e { animation:wpPfBubE .45s cubic-bezier(0.3,1.7,0.5,1) var(--d) both; }
+      @keyframes wpPfBubE { from { opacity:0; transform:rotate(var(--er)) scale(0.3); } to { opacity:1; transform:rotate(var(--er)) scale(1); } }
+      .wp-pf-bub-e.more {
+        width:auto; height:22px; margin-left:4px; padding:0 7px; border-radius:999px; background:#0a0a0a; color:#fff;
+        font-family:inherit; font-size:11.5px; font-weight:800; line-height:22px;
+      }
+      /* Colita: dos circulitos hacia el avatar (abajo a la derecha por defecto) */
+      .wp-pf-bub-t1, .wp-pf-bub-t2 { position:absolute; border-radius:50%; background:#fff; box-shadow:0 4px 10px rgba(17,24,39,0.14); }
+      .wp-pf-bub-t1 { width:12px; height:12px; right:16px; bottom:-9px; }
+      .wp-pf-bub-t2 { width:6px; height:6px; right:8px; bottom:-17px; }
+      .wp-pf-bub.tail-l .wp-pf-bub-t1 { right:auto; left:16px; }
+      .wp-pf-bub.tail-l .wp-pf-bub-t2 { right:auto; left:8px; }
+      .wp-pf-bub.tail-up .wp-pf-bub-t1 { bottom:auto; top:-9px; }
+      .wp-pf-bub.tail-up .wp-pf-bub-t2 { bottom:auto; top:-17px; }
       .wp-pf-bd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
       .wp-pf-bd { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px 10px; border-radius:18px; background:#f4f5f7; text-align:center; }
       .wp-pf-bd span {
