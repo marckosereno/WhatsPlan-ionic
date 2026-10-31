@@ -547,7 +547,7 @@ export class ProfileSheet {
     bioEl.style.display = prof?.bio ? '' : 'none';
 
     if (isMe) {
-      view.querySelector('.wp-pf-cam').onclick = () => this._pickAvatar(avEl);
+      view.querySelector('.wp-pf-cam').onclick = () => this._push(v => this._viewAvatarMaker(v, avEl));
       actionsEl.innerHTML = `<button type="button" class="wp-pf-pill" data-a="edit">Editar perfil</button>
         <button type="button" class="wp-pf-pill" data-a="share">${ICON.share} Compartir</button>`;
       actionsEl.querySelector('[data-a=edit]').onclick = (e) => { this._pulse(e.currentTarget); this._push(v => this._viewEdit(v)); };
@@ -905,7 +905,7 @@ export class ProfileSheet {
       </div>`;
     const av = view.querySelector('.wp-pf-avatar');
     av.style.backgroundImage = `url("${this._avatar(prof, true)}")`;
-    view.querySelector('.wp-pf-cam').onclick = () => this._pickAvatar(av);
+    view.querySelector('.wp-pf-cam').onclick = () => this._push(v => this._viewAvatarMaker(v, av));
     const f = (k) => view.querySelector(`[data-f=${k}]`);
     f('name').value = this._name(prof, true);
     f('username').value = prof?.username || '';
@@ -944,7 +944,7 @@ export class ProfileSheet {
     };
   }
 
-  _pickAvatar(avEl) {
+  _pickAvatar(avEl, onDone) {
     const me = this.getCurrentUser();
     if (!me) return;
     const input = document.createElement('input');
@@ -952,19 +952,159 @@ export class ProfileSheet {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      avEl.classList.add('wp-pf-skel');
+      avEl?.classList.add('wp-pf-skel');
       try {
         const url = await ProfileService.uploadAvatar(me.id, file);
-        avEl.style.backgroundImage = `url("${url}")`;
+        if (avEl) avEl.style.backgroundImage = `url("${url}")`;
         if (this._lastProfile) this._lastProfile.avatar_url = url;
         this.onAvatarChanged(url);
         this._toast('✓ Foto actualizada');
+        onDone?.(url);
       } catch (e) {
         console.error('[PF] Avatar:', e);
         this._toast('No se pudo subir la foto');
-      } finally { avEl.classList.remove('wp-pf-skel'); }
+      } finally { avEl?.classList.remove('wp-pf-skel'); }
     };
     input.click();
+  }
+
+  // ── Vista: crea tu avatar (Humation) ───────────────────────────────
+  // Vista previa grande + pestañas Cabeza / Ropa / Accesorio / Lentes con
+  // la cuadrícula de opciones, colores y "Al azar". Al guardar se dibuja
+  // como imagen y se sube igual que una foto (así se ve en TODA la app,
+  // para todos); la combinación se guarda en profiles.avatar_config para
+  // poder editarla después. También desde aquí se puede subir una foto.
+  async _viewAvatarMaker(view, profileAvEl) {
+    const me = this.getCurrentUser();
+    if (!me) return;
+    this._setHeader({ title: 'Tu avatar', right: null });
+    view.innerHTML = '<p class="wp-pf-empty" style="text-align:center;margin-top:40px">Cargando…</p>';
+    const H = await import('/src/utils/humation-avatar.js');
+    const lib = await H.preloadHumation();
+    if (!this._isCurrent(view)) return;
+    if (!lib) { view.innerHTML = '<p class="wp-pf-empty" style="text-align:center;margin-top:40px">No se pudo cargar el creador de avatares.</p>'; return; }
+    const M = lib.humation1;
+    const prof = this._lastProfile;
+    const saved = prof?.avatar_config && prof.avatar_config.selections ? prof.avatar_config : null;
+    const st = saved
+      ? { selections: { ...saved.selections }, colors: { ...saved.colors }, background: saved.background || 'FFF1C9' }
+      : await H.defaultAvatarState(this._name(prof, true));
+    if (!st || !this._isCurrent(view)) return;
+
+    const TABS = [
+      { id: 'head', label: 'Cabeza' }, { id: 'body', label: 'Ropa' },
+      { id: 'item', label: 'Accesorio' }, { id: 'glasses', label: 'Lentes' },
+    ];
+    const PAL = {
+      background: { label: 'Fondo',   list: ['FFF1C9', 'EDE7FF', 'DDF5E8', 'FFE3D3', 'E3EEFF', 'FDE2EC', 'F6F5F4', 'FFFFFF'] },
+      hair:       { label: 'Cabello', list: ['000000', '4A3426', '8B5A2B', 'D9A066', 'B03A2E', '7F8C8D', '3B5BDB', 'E599F7'] },
+      skin:       { label: 'Piel',    list: ['FFFFFF', 'FDE7D3', 'F5CBA7', 'E0AC69', 'C68642', '8D5524'] },
+      clothes:    { label: 'Ropa',    list: ['FFFFFF', '000000', 'FFC928', '1A5CF5', '16A34A', 'F87171', 'A78BFA', 'F5B4C8'] },
+    };
+    let tab = 'head', showColors = false, dirty = false;
+    const svgOf = () => lib.createAvatar(M, { selections: st.selections, colors: st.colors, background: st.background });
+
+    view.innerHTML = `
+      <div class="wp-av-mk">
+        <div class="wp-av-prev"><img alt="Tu avatar">
+          <button type="button" class="wp-av-fab l" data-a="rand" aria-label="Al azar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/></svg></button>
+          <button type="button" class="wp-av-fab r" data-a="colors" aria-label="Colores"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3Z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor"/><circle cx="10.5" cy="7" r="1.1" fill="currentColor"/><circle cx="15.5" cy="7.5" r="1.1" fill="currentColor"/></svg></button>
+        </div>
+        <div class="wp-av-colors" hidden></div>
+        <div class="wp-av-tabs">${TABS.map(t => `<button type="button" data-t="${t.id}">${t.label}</button>`).join('')}</div>
+        <div class="wp-av-grid"></div>
+        <div class="wp-av-foot">
+          <button type="button" class="wp-av-save">Guardar avatar</button>
+          <button type="button" class="wp-av-photo">Mejor subir una foto</button>
+        </div>
+      </div>`;
+    const img = view.querySelector('.wp-av-prev img');
+    const prevBox = view.querySelector('.wp-av-prev');
+    const grid = view.querySelector('.wp-av-grid');
+    const colorsEl = view.querySelector('.wp-av-colors');
+    const paintPrev = () => {
+      img.src = svgOf().toDataUri();
+      prevBox.style.background = '#' + st.background;
+    };
+    const paintGrid = () => {
+      view.querySelectorAll('.wp-av-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+      const parts = lib.getPartsForSlot(M, tab);
+      grid.innerHTML = parts.map(p => {
+        const on = st.selections[tab] === p.id;
+        let inner;
+        if (p.name === 'none') inner = '<span class="wp-av-none">Nada</span>';
+        // Lentes y accesorios se ven mejor puestos (avatar completo); cabeza y ropa, solas
+        else if (tab === 'glasses' || tab === 'item') inner = `<img alt="" src="${lib.createAvatar(M, { selections: { ...st.selections, [tab]: p.id }, colors: st.colors, background: 'transparent' }).toDataUri()}">`;
+        else inner = `<img alt="" src="${lib.createPartPreview(M, p, { colors: st.colors }).toDataUri()}">`;
+        return `<button type="button" class="wp-av-opt${on ? ' on' : ''}" data-p="${this._esc(p.id)}">${inner}</button>`;
+      }).join('');
+      grid.querySelectorAll('.wp-av-opt').forEach(b => b.onclick = () => {
+        if (st.selections[tab] === b.dataset.p) return;
+        this._haptic('light');
+        st.selections[tab] = b.dataset.p; dirty = true;
+        grid.querySelectorAll('.wp-av-opt').forEach(x => x.classList.toggle('on', x === b));
+        paintPrev();
+      });
+    };
+    const paintColors = () => {
+      colorsEl.hidden = !showColors;
+      view.querySelector('[data-a=colors]').classList.toggle('on', showColors);
+      if (!showColors) return;
+      colorsEl.innerHTML = Object.entries(PAL).map(([k, g]) => {
+        const cur = (k === 'background' ? st.background : st.colors[k] || '').toUpperCase();
+        return `<div class="wp-av-crow"><span>${g.label}</span><div>${g.list.map(c => `<button type="button" class="wp-av-sw${c === cur ? ' on' : ''}" data-k="${k}" data-c="${c}" style="background:#${c}" aria-label="#${c}"></button>`).join('')}</div></div>`;
+      }).join('');
+      colorsEl.querySelectorAll('.wp-av-sw').forEach(b => b.onclick = () => {
+        this._haptic('light');
+        const { k, c } = b.dataset;
+        if (k === 'background') st.background = c; else st.colors[k] = c;
+        dirty = true;
+        paintColors(); paintPrev();
+        if (k !== 'background') paintGrid(); // las miniaturas usan los colores
+      });
+    };
+    view.querySelectorAll('.wp-av-tabs button').forEach(b => b.onclick = () => { if (b.dataset.t !== tab) { this._haptic('light'); tab = b.dataset.t; paintGrid(); } });
+    view.querySelector('[data-a=colors]').onclick = () => { this._haptic('light'); showColors = !showColors; paintColors(); };
+    view.querySelector('[data-a=rand]').onclick = (e) => {
+      this._haptic('light');
+      const r = lib.createAvatar(M, { seed: Math.random().toString(36).slice(2) }).toJSON();
+      st.selections = r.selections; dirty = true;
+      e.currentTarget.classList.remove('spin'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('spin');
+      paintPrev(); paintGrid();
+    };
+    view.querySelector('.wp-av-photo').onclick = () => this._pickAvatar(profileAvEl, () => { if (this._isCurrent(view)) this._pop(); });
+
+    // Guardar: dibuja el SVG en un lienzo de 600 px → JPG → se sube como foto
+    const saveBtn = view.querySelector('.wp-av-save');
+    saveBtn.onclick = async () => {
+      if (saveBtn.disabled) return;
+      saveBtn.disabled = true; saveBtn.textContent = 'Guardando…';
+      this._haptic('light');
+      try {
+        const pic = new Image();
+        await new Promise((ok, bad) => { pic.onload = ok; pic.onerror = () => bad(new Error('no se pudo dibujar')); pic.src = svgOf().toDataUri(); });
+        const c = document.createElement('canvas'); c.width = c.height = 600;
+        const g = c.getContext('2d');
+        g.fillStyle = '#' + st.background; g.fillRect(0, 0, 600, 600);
+        g.drawImage(pic, 0, 0, 600, 600);
+        const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.92));
+        const url = await ProfileService.uploadAvatar(me.id, new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
+        const config = { selections: st.selections, colors: st.colors, background: st.background };
+        try { const u = await ProfileService.updateProfile(me.id, { avatar_config: config }); if (u) this._lastProfile = u; }
+        catch (e) { console.warn('[DIAG-AVATAR] no se guardó avatar_config (¿corriste avatar_config.sql?):', e.message || e); if (this._lastProfile) this._lastProfile.avatar_url = url; }
+        if (profileAvEl) profileAvEl.style.backgroundImage = `url("${url}")`;
+        this.onAvatarChanged(url);
+        this._haptic('success');
+        this._toast('✓ Avatar guardado');
+        dirty = false;
+        if (this._isCurrent(view)) this._pop();
+      } catch (e) {
+        console.error('[DIAG-AVATAR] guardar:', e);
+        this._toast('No se pudo guardar el avatar');
+        saveBtn.disabled = false; saveBtn.textContent = 'Guardar avatar';
+      }
+    };
+    paintPrev(); paintGrid(); paintColors();
   }
 
   // ── Vista: ajustes ─────────────────────────────────────────────────
@@ -1364,6 +1504,44 @@ export class ProfileSheet {
       .wp-pf-col-faces { display:flex; }
       .wp-pf-col-faces i { width:24px; height:24px; margin-left:-7px; border-radius:50%; background:#e5e7eb center/cover no-repeat; box-shadow:0 0 0 2px #fff; }
       .wp-pf-col-faces i:first-child { margin-left:0; }
+      /* Creador de avatar */
+      .wp-av-mk { padding-top:4px; }
+      .wp-av-prev { position:relative; height:250px; border-radius:28px; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; transition:background-color .25s; }
+      .wp-av-prev img { width:250px; height:250px; display:block; }
+      .wp-av-fab {
+        position:absolute; bottom:12px; width:44px; height:44px; border-radius:50%; border:none; padding:0; cursor:pointer;
+        background:#fff; color:#111827; display:flex; align-items:center; justify-content:center;
+        box-shadow:0 4px 12px rgba(17,24,39,0.16); -webkit-tap-highlight-color:transparent; transition:transform .15s;
+      }
+      .wp-av-fab.l { left:12px; } .wp-av-fab.r { right:12px; }
+      .wp-av-fab:active { transform:scale(0.92); }
+      .wp-av-fab.on { background:#0a0a0a; color:#fff; }
+      .wp-av-fab.spin svg { animation:wpAvSpin .45s cubic-bezier(0.3,1.4,0.5,1); }
+      @keyframes wpAvSpin { from { transform:rotate(-180deg) scale(.7); } to { transform:none; } }
+      .wp-av-colors { margin-top:12px; padding:12px 14px; border-radius:20px; background:#f4f5f7; display:flex; flex-direction:column; gap:10px; }
+      .wp-av-colors[hidden] { display:none; }
+      .wp-av-crow { display:flex; align-items:center; gap:10px; }
+      .wp-av-crow > span { width:58px; flex-shrink:0; font-size:12.5px; font-weight:700; color:#6b7280; }
+      .wp-av-crow > div { display:flex; gap:7px; flex-wrap:wrap; }
+      .wp-av-sw { width:26px; height:26px; border-radius:50%; border:none; padding:0; cursor:pointer; box-shadow:inset 0 0 0 1px rgba(17,24,39,0.15); }
+      .wp-av-sw.on { box-shadow:0 0 0 2px #fff, 0 0 0 4px #0a0a0a; }
+      .wp-av-tabs { display:flex; justify-content:space-around; margin:14px 0 10px; }
+      .wp-av-tabs button { border:none; background:none; padding:6px 4px; font-family:inherit; font-size:15px; font-weight:700; color:#9ca3af; cursor:pointer; }
+      .wp-av-tabs button.on { color:#0a0a0a; }
+      .wp-av-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+      .wp-av-opt {
+        aspect-ratio:1; border-radius:20px; border:2px solid #eef0f3; background:#fafafa; padding:6px; cursor:pointer;
+        display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; transition:transform .12s;
+      }
+      .wp-av-opt img { width:100%; height:100%; object-fit:contain; }
+      .wp-av-opt.on { border-color:#0a0a0a; background:#f4f5f7; }
+      .wp-av-opt:active { transform:scale(0.95); }
+      .wp-av-none { font-size:13px; font-weight:700; color:#9ca3af; }
+      .wp-av-foot { position:sticky; bottom:0; margin:14px -16px 0; padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+        background:linear-gradient(to bottom, rgba(255,255,255,0), #fff 30%); display:flex; flex-direction:column; align-items:center; gap:6px; }
+      .wp-av-save { width:100%; height:50px; border:none; border-radius:999px; background:#0a0a0a; color:#fff; font-family:inherit; font-size:16px; font-weight:800; cursor:pointer; }
+      .wp-av-save:disabled { opacity:.6; }
+      .wp-av-photo { border:none; background:none; padding:6px 10px; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
       .wp-pf-rk-priv { display:block; margin:14px auto 0; padding:8px 14px; border:none; background:none; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
       .wp-pf-ex-pct { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:26px; color:#1a5cf5; }
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
