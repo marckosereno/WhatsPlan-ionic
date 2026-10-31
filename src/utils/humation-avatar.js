@@ -70,3 +70,17 @@ export async function defaultAvatarState(seed) {
   const j = m.createAvatar(m.humation1, { seed: key, background: BG[hash(key) % BG.length] }).toJSON();
   return { selections: j.selections, colors: j.colors, background: j.background };
 }
+
+// Manifiesto del CREADOR: el original + piezas propias (humation-extra.js:
+// sombrero, taco, piñata, gorra, huipil, guayabera, sarape, capa Cuello)
+export async function creatorManifest() {
+  const m = await preloadHumation();
+  if (!m) return null;
+  try {
+    const { extendManifest } = await import('/src/utils/humation-extra.js');
+    return extendManifest(m.humation1);
+  } catch (e) {
+    console.warn('[DIAG-AVATAR] sin piezas extra:', e.message || e);
+    return m.humation1;
+  }
+}
