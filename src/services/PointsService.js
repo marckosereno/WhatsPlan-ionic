@@ -17,7 +17,7 @@ export const POINTS_RULES = [
 
 // Insignias (gamification_badges.sql las otorga; aquí su nombre y emoji)
 export const BADGES = [
-  { id: 'primeros_pasos', emoji: '👣', name: 'Primeros pasos',      desc: 'Visitaste tu primer lugar' },
+  { id: 'primeros_pasos', emoji: '🚀', name: 'Primeros pasos',      desc: 'Visitaste tu primer lugar' },
   { id: 'explorador',     emoji: '🧭', name: 'Explorador',          desc: '10 lugares visitados' },
   { id: 'conocedor',      emoji: '🗺️', name: 'Conocedor',           desc: '25 lugares visitados' },
   { id: 'leyenda',        emoji: '🏙️', name: 'Leyenda local',       desc: '50 lugares visitados' },
