@@ -51,10 +51,10 @@ const STICKER3D = {
 const STICKER_FILL = ['☕', '🍦', '🥐', '🍿'];
 // Posición de cada sticker (desde la esquina inferior derecha del banner)
 const STICKER_SLOTS = [
-  { r: -4,  b: -12, s: 80, rot: 8 },    // derecha, saliéndose del borde
-  { r: 58,  b: 24,  s: 62, rot: -12 },  // arriba
-  { r: 104, b: -16, s: 74, rot: 6 },    // centro abajo
-  { r: 160, b: 4,   s: 60, rot: -8 },   // izquierda
+  { r: 2,   b: -6,  s: 76, rot: 10 },   // derecha, apenas saliéndose
+  { r: 62,  b: 20,  s: 60, rot: -12 },  // arriba
+  { r: 110, b: -4,  s: 68, rot: 6 },    // centro
+  { r: 166, b: 10,  s: 54, rot: -9 },   // izquierda, la más chica
 ];
 const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
@@ -302,13 +302,12 @@ export class ProfileSheet {
             </g>
             <path d="M-10 128 C40 112 70 130 120 118 C170 106 210 128 260 114 C300 104 330 120 380 110 V160 H-10Z" fill="#fff" opacity="0.12"/>
             <path d="M200 46 l14 -8 14 8 v16 l-14 8 -14 -8z M230 62 l14 -8 14 8 v16 l-14 8 -14 -8z M170 64 l14 -8 14 8 v16 l-14 8 -14 -8z" fill="#fff" opacity="0.14"/>
-            <path d="M38 96 c8 -14 16 -26 24 -16 s10 -24 20 -18 s12 -18 22 -10 s14 -16 24 -6 s12 -12 22 -4 s16 -14 24 -2 s14 -10 22 0 s12 -14 22 -4 s16 -10 26 2 s14 -16 26 -6"
-              fill="none" stroke="#1e2a78" stroke-width="2.6" stroke-linejoin="round" opacity="0.55"/>
-            <g class="wp-pf-banner-labels" font-family="'Open Sans', sans-serif" font-weight="700" font-size="13"
-               fill="#1f2a5a" fill-opacity="0.72" stroke="#fff" stroke-width="3.5" stroke-opacity="0.75" paint-order="stroke"></g>
+            <!-- Ruta punteada que llega a tu punto azul (sin cruzar el número) -->
+            <path d="M150 150 C170 120 196 112 224 98 S266 72 280 54" fill="none" stroke="#fff" stroke-width="3.2"
+              stroke-linecap="round" stroke-dasharray="0.1 9" opacity="0.75"/>
           </svg>
           <div class="wp-pf-banner-l"><span>Guardados</span><b class="wp-pf-saved-n">–</b>
-            <span class="wp-pf-banner-pill">${ICON.map} Ver mapa</span></div>
+            <span class="wp-pf-banner-pill">${ICON.map} Ver en el mapa</span></div>
           <span class="wp-pf-banner-dot"></span>
           <div class="wp-pf-stickers"></div>
         </button>
@@ -521,12 +520,6 @@ export class ProfileSheet {
         return `<img class="wp-pf-sticker" alt="" draggable="false" src="${FLUENT + STICKER3D[e]}"
           style="right:${sl.r}px;bottom:${sl.b}px;width:${sl.s}px;height:${sl.s}px;--r:${sl.rot}deg;z-index:${10 - i}"
           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wp-pf-sticker wp-pf-sticker-txt',textContent:'${e}',style:this.getAttribute('style')}))">`;
-      }).join('');
-      // Etiquetas tipo mapa: nombres de tus lugares guardados
-      const LBL = [[176, 26], [204, 56]];
-      view.querySelector('.wp-pf-banner-labels').innerHTML = saved.slice(0, LBL.length).map((p, i) => {
-        const n = String(p.name || '').slice(0, 14);
-        return `<text x="${LBL[i][0]}" y="${LBL[i][1]}">${this._esc(n)}</text>`;
       }).join('');
       banner.onclick = () => {
         this._pulse(banner);
@@ -1121,7 +1114,9 @@ export class ProfileSheet {
       .wp-pf-body.wp-pf-noscroll { overflow:hidden; }
       .wp-pf-view { padding:0 16px calc(16px + env(safe-area-inset-bottom,0px)); }
 
-      .wp-pf-top { display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:2px; }
+      /* 34px arriba: las insignias de arriba del avatar quedan fuera del
+         degradado blanco del encabezado */
+      .wp-pf-top { display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:34px; }
       .wp-pf-avatar-wrap { position:relative; width:92px; height:92px; }
       .wp-pf-avatar {
         width:92px; height:92px; border-radius:999px; background:#e5e7eb center/cover no-repeat;
@@ -1260,14 +1255,20 @@ export class ProfileSheet {
         font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:68px; line-height:0.95; margin-top:2px;
         color:#fff; text-shadow:0 2px 10px rgba(20,30,120,0.25);
       }
-      .wp-pf-banner-pill { margin-top:4px; display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
-        background:rgba(255,255,255,0.22); font-size:12px; font-weight:700; color:#fff; }
+      .wp-pf-banner-pill { margin-top:6px; display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
+        background:#fff; font-size:12px; font-weight:800; color:#1f4bff; box-shadow:0 4px 12px rgba(20,30,120,0.22); }
       /* Punto azul de ubicación con brillo */
       .wp-pf-banner-dot {
         position:absolute; right:40px; top:22px; z-index:3; width:32px; height:32px; border-radius:999px;
         background:radial-gradient(circle at 38% 35%, #6aa8ff 0%, #1f5cff 55%, #1440d6 100%);
-        box-shadow:0 0 0 4px rgba(255,255,255,0.85), 0 0 0 11px rgba(120,160,255,0.35), 0 6px 14px rgba(20,40,160,0.35);
+        box-shadow:0 0 0 4px rgba(255,255,255,0.85), 0 6px 14px rgba(20,40,160,0.35);
       }
+      /* Onda que sale del punto (solo transform/opacity) */
+      .wp-pf-banner-dot::after {
+        content:''; position:absolute; inset:-4px; border-radius:999px; border:3px solid rgba(255,255,255,0.7);
+        animation:wpPfDotWave 2.4s ease-out infinite;
+      }
+      @keyframes wpPfDotWave { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
       .wp-pf-stickers { position:absolute; inset:0; z-index:4; pointer-events:none; }
       /* Borde blanco tipo sticker: 4 sombras sólidas + una suave */
       .wp-pf-sticker {
