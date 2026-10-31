@@ -145,10 +145,6 @@ export class PlaceModal2 {
 
           <!-- ACTION PILLS -->
           <div id="wp-pm2-actions">
-            <button class="wp-pm2-action" id="wp-pm2-visit-btn">
-              <span class="wp-pm2-action-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><path d="M9 10l2 2 4-4"/></svg></span>
-              <span class="wp-pm2-visit-lbl">Estuve aquí</span>
-            </button>
             <button class="wp-pm2-action" id="wp-pm2-map-btn">
               <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 12.5 7.35 12.8a.9.9 0 0 0 1.3 0C12.95 22.5 20 15.4 20 10a8 8 0 0 0-8-8z"/></svg></span>
               Ver en el mapa
@@ -230,8 +226,16 @@ export class PlaceModal2 {
 
         <!-- BOTTOM CTA -->
         <div id="wp-pm2-footer">
-          <button id="wp-pm2-here-btn" title="Estoy aquí">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.574 21.819a.9.9 0 0 1-1.148 0C11.071 21.567 4 14.907 4 10.364a8 8 0 1 1 16 0c0 4.543-7.071 11.203-7.426 11.455ZM9 10a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z"/></svg>
+          <button id="wp-pm2-here-btn" class="nopos" title="Estuve aquí" aria-label="Estuve aquí">
+            <!-- Anillo de cercanía: se llena conforme te acercas (lleno = ≤100 m) -->
+            <svg class="wp-pm2-ring" viewBox="0 0 64 64" aria-hidden="true">
+              <circle class="bg" cx="32" cy="32" r="29"/>
+              <circle class="fg" cx="32" cy="32" r="29"/>
+            </svg>
+            <svg class="wp-pm2-here-pin" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.574 21.819a.9.9 0 0 1-1.148 0C11.071 21.567 4 14.907 4 10.364a8 8 0 1 1 16 0c0 4.543-7.071 11.203-7.426 11.455ZM9 10a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z"/></svg>
+            <svg class="wp-pm2-here-ok" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            <b class="wp-pm2-here-n" hidden></b>
+            <span class="wp-pm2-here-d"></span>
           </button>
           <button id="wp-pm2-plan-btn">
             <svg width="18" height="18" viewBox="0 0 512 512" fill="currentColor"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>
@@ -1315,10 +1319,6 @@ export class PlaceModal2 {
       }
       #wp-pm2-map-btn .wp-pm2-action-icon  { background:#dbeafe; color:#2563eb; }
       /* "Estuve aquí" (visitas · gamificación fase 1) */
-      #wp-pm2-visit-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
-      #wp-pm2-visit-btn.done { background:#16a34a; color:#fff; box-shadow:0 4px 12px rgba(22,163,74,0.3); }
-      #wp-pm2-visit-btn.done .wp-pm2-action-icon { background:rgba(255,255,255,0.22); color:#fff; }
-      #wp-pm2-visit-btn.busy { opacity:0.6; pointer-events:none; }
       #wp-pm2-call-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
       #wp-pm2-web-btn .wp-pm2-action-icon  { background:#ede9fe; color:#7c3aed; }
       #wp-pm2-more-btn { padding:8px; }
@@ -1836,12 +1836,54 @@ export class PlaceModal2 {
       }
       #wp-pm2-footer > * { pointer-events:auto; }
       #wp-pm2-here-btn {
-        width:48px; height:48px; border-radius:50%; border:none;
+        position:relative; width:48px; height:48px; margin:0 4px; border-radius:50%; border:none; padding:0;
         background:#0a0a0a; color:#fff; display:flex; align-items:center;
-        justify-content:center; cursor:pointer; flex-shrink:0;
+        justify-content:center; cursor:pointer; flex-shrink:0; overflow:visible;
         -webkit-tap-highlight-color:transparent;
-        box-shadow:none;
+        box-shadow:none; transition:background-color .3s;
       }
+      /* Anillo de cercanía (64px alrededor del botón de 48) */
+      .wp-pm2-ring { position:absolute; left:-8px; top:-8px; width:64px; height:64px; transform:rotate(-90deg); pointer-events:none; overflow:visible; }
+      .wp-pm2-ring circle { fill:none; stroke-width:4.5; }
+      .wp-pm2-ring .bg { stroke:rgba(17,24,39,0.10); }
+      .wp-pm2-ring .fg { stroke-linecap:round; transition:stroke-dashoffset .8s cubic-bezier(0.32,1.1,0.5,1), stroke .5s; }
+      #wp-pm2-here-btn.nopos .wp-pm2-ring .bg { stroke:rgba(17,24,39,0.22); stroke-dasharray:3 6; }
+      .wp-pm2-here-ok { display:none; }
+      /* Ya cerca: el botón late suavemente (onda verde, solo transform/opacity) */
+      #wp-pm2-here-btn.near { background:#16a34a; }
+      #wp-pm2-here-btn.near::after {
+        content:''; position:absolute; inset:-8px; border-radius:50%; border:3px solid #22c55e; pointer-events:none;
+        animation:wpPmHereWave 1.6s ease-out infinite;
+      }
+      @keyframes wpPmHereWave { 0% { transform:scale(0.95); opacity:.8; } 100% { transform:scale(1.45); opacity:0; } }
+      /* Registrado hoy: verde sólido con palomita */
+      #wp-pm2-here-btn.done { background:#16a34a; }
+      #wp-pm2-here-btn.done .wp-pm2-here-pin { display:none; }
+      #wp-pm2-here-btn.done .wp-pm2-here-ok { display:block; }
+      #wp-pm2-here-btn.busy { opacity:.6; pointer-events:none; }
+      /* Visitas anteriores: badge verde en la esquina */
+      .wp-pm2-here-n {
+        position:absolute; right:-6px; top:-6px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:999px;
+        background:#16a34a; color:#fff; border:2px solid #fff; font-size:10.5px; font-weight:800; line-height:16px; text-align:center;
+      }
+      .wp-pm2-here-n[hidden] { display:none; }
+      /* Distancia arriba del botón: solo texto con contorno blanco */
+      .wp-pm2-here-d {
+        position:absolute; left:50%; bottom:calc(100% + 11px); transform:translateX(-50%); white-space:nowrap; pointer-events:none;
+        font-size:11.5px; font-weight:800; color:#0a0a0a; letter-spacing:0.1px;
+        text-shadow:1.6px 0 0 #fff, -1.6px 0 0 #fff, 0 1.6px 0 #fff, 0 -1.6px 0 #fff, 1.1px 1.1px 0 #fff, -1.1px 1.1px 0 #fff, 1.1px -1.1px 0 #fff, -1.1px -1.1px 0 #fff;
+      }
+      #wp-pm2-here-btn.near .wp-pm2-here-d, #wp-pm2-here-btn.done .wp-pm2-here-d { color:#16a34a; }
+      /* Al registrar: el anillo "explota" y sube "+N pts" */
+      #wp-pm2-here-btn.burst .wp-pm2-ring { animation:wpPmRingBurst .6s cubic-bezier(0.3,1.6,0.5,1); }
+      @keyframes wpPmRingBurst { 0% { transform:rotate(-90deg) scale(1); } 40% { transform:rotate(-90deg) scale(1.3); opacity:.6; } 100% { transform:rotate(-90deg) scale(1); opacity:1; } }
+      .wp-pm2-here-pts {
+        position:absolute; left:50%; bottom:100%; pointer-events:none; white-space:nowrap;
+        font-family:'Anton','Open Sans',sans-serif; font-size:20px; color:#f59e0b;
+        text-shadow:2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 1.4px 1.4px 0 #fff, -1.4px 1.4px 0 #fff, 1.4px -1.4px 0 #fff, -1.4px -1.4px 0 #fff;
+        animation:wpPmPtsUp 1.25s cubic-bezier(0.2,0.8,0.3,1) forwards;
+      }
+      @keyframes wpPmPtsUp { 0% { transform:translate(-50%, 6px) scale(.6); opacity:0; } 20% { opacity:1; transform:translate(-50%, -14px) scale(1.1); } 100% { transform:translate(-50%, -54px) scale(1); opacity:0; } }
       #wp-pm2-plan-btn {
         flex:1; height:48px; border-radius:999px; border:none;
         background:#0a0a0a; color:#fff; font-size:16px; font-weight:700;
@@ -1902,9 +1944,7 @@ export class PlaceModal2 {
     el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => {
       console.log('[PM2] Planear visita:', this._place);
     });
-    el.querySelector('#wp-pm2-here-btn').addEventListener('click', () => {
-      console.log('[PM2] Estoy aquí:', this._place);
-    });
+    // (#wp-pm2-here-btn: "Estuve aquí" con anillo de cercanía → _setupVisit)
     el.querySelector('#wp-pm2-fuiste').addEventListener('click', () => {
       console.log('[PM2] ¿Fuiste?:', this._place);
     });
@@ -3204,42 +3244,114 @@ export class PlaceModal2 {
 
   // ── "Estuve aquí": registra la visita si estás a ≤100 m (lo valida la
   // base de datos). Muestra cuántas veces has venido.
+  // ── "Estuve aquí" (botón redondo izquierdo del footer) ─────────────
+  // Un anillo alrededor del pin se llena conforme te acercas (escala
+  // logarítmica 2 km → 100 m) y cambia de color: azul → amarillo →
+  // naranja → verde al estar a ≤100 m. Arriba, la distancia. Al tocarlo
+  // ya cerca, registra la visita (la base de datos vuelve a medir).
+  // Tu ubicación se sigue SOLO mientras la ficha está abierta.
   _setupVisit(place) {
-    const btn = this._el?.querySelector('#wp-pm2-visit-btn');
+    const btn = this._el?.querySelector('#wp-pm2-here-btn');
     if (!btn) return;
-    const lbl = btn.querySelector('.wp-pm2-visit-lbl');
-    const pid = place?.place_id || place?.placeId || place?.id;
-    btn.classList.remove('done', 'busy');
-    lbl.textContent = 'Estuve aquí';
-    if (!pid || place?.lat == null && place?.location?.lat == null) { btn.style.display = 'none'; return; }
-    btn.style.display = '';
-    const paint = (n) => {
-      btn.classList.toggle('done', n > 0);
-      lbl.textContent = n > 1 ? `Visitado · ${n} veces` : n === 1 ? 'Visitado' : 'Estuve aquí';
+    this._stopVisitWatch();
+    const pid = String(place?.place_id || place?.placeId || place?.id || '');
+    const plat = Number(place?.lat ?? place?.location?.lat), plng = Number(place?.lng ?? place?.location?.lng);
+    const hasCoords = isFinite(plat) && isFinite(plng) && (plat || plng);
+    const fg = btn.querySelector('.wp-pm2-ring .fg');
+    const dEl = btn.querySelector('.wp-pm2-here-d');
+    const nEl = btn.querySelector('.wp-pm2-here-n');
+    const C = 2 * Math.PI * 29;
+    fg.style.strokeDasharray = C.toFixed(2);
+    const st = { d: null, n: VisitService._cache.get(pid) || 0, near: false, busy: false, buzzed: false };
+    const LOG_FAR = Math.log(2000), LOG_NEAR = Math.log(100);
+    const fmt = (d) => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
+    const paint = () => {
+      const today = VisitService._today.has(pid);
+      btn.classList.toggle('done', today);
+      btn.classList.toggle('nopos', st.d == null && !today);
+      st.near = st.d != null && st.d <= 100;
+      btn.classList.toggle('near', st.near && !today);
+      nEl.hidden = !(st.n > 0) || today;
+      nEl.textContent = st.n > 9 ? '9+' : String(st.n);
+      let t = 0, color = '#9ca3af';
+      if (today) { t = 1; color = '#16a34a'; }
+      else if (st.d != null) {
+        t = Math.max(0.04, Math.min(1, (LOG_FAR - Math.log(Math.max(st.d, 100))) / (LOG_FAR - LOG_NEAR)));
+        color = st.near ? '#22c55e' : `hsl(${Math.round(220 - t * 190)} 92% 52%)`; // azul → amarillo → naranja
+      }
+      fg.style.strokeDashoffset = (C * (1 - t)).toFixed(2);
+      fg.style.stroke = color;
+      dEl.textContent = today ? '¡Hoy!' : st.d == null ? '' : st.near ? '¡Aquí!' : fmt(st.d);
+      // Al entrar al rango: vibra una vez
+      if (st.near && !today && !st.buzzed) { st.buzzed = true; this._haptic('success'); }
     };
+    paint();
+    if (!pid || !hasCoords) { btn.style.opacity = '0.45'; btn.onclick = () => this._showToast('Este lugar no tiene ubicación registrada'); return; }
+    btn.style.opacity = '';
     if (this.getCurrentUser?.()) {
-      VisitService.visitsOf(pid).then(n => { if (this._place === place) paint(n); }).catch(() => {});
+      VisitService.visitsOf(pid).then(n => { if (this._place === place) { st.n = n; paint(); } }).catch(() => {});
     }
+    // Distancia en vivo (solo si ya hay permiso; si no, se pide al tocar)
+    const distTo = (p) => {
+      const R = 6371000, toR = x => x * Math.PI / 180;
+      const dLa = toR(plat - p.lat), dLo = toR(plng - p.lng);
+      const h = Math.sin(dLa / 2) ** 2 + Math.cos(toR(p.lat)) * Math.cos(toR(plat)) * Math.sin(dLo / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(h));
+    };
+    let last = null;
+    const startWatch = () => {
+      this._stopVisitWatch();
+      this._visitStop = VisitService.watch((p) => {
+        if (this._place !== place) return;
+        if (last && Math.abs(distTo(p) - distTo(last)) < 8) return; // cada ~10 m
+        last = p;
+        st.d = distTo(p);
+        paint();
+      });
+    };
+    VisitService.permission().then(s2 => { if (s2 === 'granted' && this._place === place) startWatch(); });
+    // Pausa con la app en segundo plano
+    this._visitVis = () => { if (document.hidden) this._stopVisitWatch(true); else if (this._place === place && !this._visitStop) startWatch(); };
+    document.addEventListener('visibilitychange', this._visitVis);
+
     btn.onclick = async () => {
-      if (btn.classList.contains('busy')) return;
+      if (st.busy) return;
       const user = this._requireUser('Inicia sesión para registrar tus visitas');
       if (!user) return;
-      this._haptic('light');
+      if (VisitService._today.has(pid)) {
+        this._haptic('light');
+        this._showToast(`Ya registraste tu visita de hoy · ${st.n} ${st.n === 1 ? 'visita' : 'visitas'} en total`);
+        return;
+      }
+      if (st.d == null) {
+        this._haptic('light');
+        const ok = await VisitService.requestPermission();
+        if (!ok) { this._showToast('Activa tu ubicación para registrar tu visita'); return; }
+        startWatch();
+        this._showToast('Buscando tu ubicación…');
+        return;
+      }
+      if (!st.near) {
+        this._haptic('light');
+        this._scaleKeys(btn, [1, 0.94, 1.03, 1], 260);
+        this._showToast(`Estás a ${fmt(st.d)} · acércate a menos de 100 m para registrar tu visita`);
+        return;
+      }
+      st.busy = true;
       btn.classList.add('busy');
-      lbl.textContent = 'Ubicando…';
+      this._haptic('light');
       try {
         const r = await VisitService.checkIn(pid);
         if (this._place !== place) return;
-        paint(r.visits);
+        st.n = r.visits;
+        paint();
         this._haptic('success');
-        this._scaleKeys(btn, [1, 1.1, 0.97, 1], 360);
-        // Con puntos (fase 3): "¡Primera visita! +15 pts" · colección completada aparte
+        this._visitBurst(btn, r.points);
         const pts = r.points ? ` · +${r.points} pts` : '';
         const col = (r.awards || []).find(a => a.kind === 'collection');
         this._showToast(col
           ? `🎉 Completaste ${col.name || 'una colección'}${pts}`
           : (r.first ? `¡Primera visita!${pts}` : `Visita registrada · ${r.visits} en total${pts}`));
-        // Insignias nuevas (fase 3): un aviso por cada una, después del primero
         if ((r.badges || []).length) {
           import('/src/services/PointsService.js').then(({ badgeInfo }) => {
             r.badges.forEach((id, i) => setTimeout(() => {
@@ -3250,14 +3362,30 @@ export class PlaceModal2 {
           }).catch(() => {});
         }
       } catch (e) {
-        paint(VisitService._cache.get(String(pid)) || 0);
+        paint();
         this._haptic('light');
         this._showToast(e.message || 'No se pudo registrar la visita');
         if (!/TOO_FAR|ALREADY_TODAY|NO_PERM|NO_AUTH/.test(e.code || '')) console.warn('[DIAG-VISIT]', e);
       } finally {
+        st.busy = false;
         btn.classList.remove('busy');
       }
     };
+  }
+  _stopVisitWatch(keepVis = false) {
+    if (this._visitStop) { this._visitStop(); this._visitStop = null; }
+    if (!keepVis && this._visitVis) { document.removeEventListener('visibilitychange', this._visitVis); this._visitVis = null; }
+  }
+  // Explosión del anillo + "+N pts" que sube desde el botón
+  _visitBurst(btn, pts) {
+    btn.classList.remove('burst'); void btn.offsetWidth; btn.classList.add('burst');
+    setTimeout(() => btn.classList.remove('burst'), 700);
+    if (!pts) return;
+    const f = document.createElement('span');
+    f.className = 'wp-pm2-here-pts';
+    f.textContent = `+${pts} pts`;
+    btn.appendChild(f);
+    setTimeout(() => f.remove(), 1300);
   }
 
   // Mini perfil (MiniProfile.js). context: 'review' | 'saved'
@@ -3533,6 +3661,7 @@ export class PlaceModal2 {
     // invisibles mientras la ficha sale y luego entran con el mismo
     // "pulse" del slide. Así la salida es igual de ligera.
     const toMap = !this._flipContext;
+    this._stopVisitWatch(); // "Estuve aquí": deja de seguir la ubicación
     if (toMap) document.body.classList.add('wp-pins-hold');
     this._coverBehind(false); // lo de atrás vuelve a verse ANTES del fade de salida
     // Mientras la ficha se desvanece (350ms) ya no debe atrapar toques: el
