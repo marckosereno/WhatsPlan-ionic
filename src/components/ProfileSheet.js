@@ -371,14 +371,15 @@ export class ProfileSheet {
         // La más reciente primero; posiciones a los lados del avatar (no
         // abajo a la derecha, donde va la cámara). Ángulo 0 = derecha.
         const list = got.slice().reverse();
-        const SLOTS = [[-150, -10], [-30, 10], [180, 6], [0, -8], [-118, 12], [-62, -12]];
+        // [ángulo, inclinación, tamaño del emoji]: cada una de distinto tamaño
+        const SLOTS = [[-150, -10, 34], [-30, 10, 26], [180, 6, 28], [0, -8, 22], [-118, 12, 24], [-62, -12, 20]];
         const shown = list.slice(0, list.length > 6 ? 5 : 6);
         const extra = list.length - shown.length;
         const RX = 84, RY = 60; // elipse: más ancho que alto para no chocar arriba
         const item = (html, i, cls, attrs) => {
-          const [ang, rot] = SLOTS[i];
+          const [ang, rot, size] = SLOTS[i];
           const x = Math.cos(ang * Math.PI / 180) * RX, y = Math.sin(ang * Math.PI / 180) * RY;
-          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${i * 70}ms">${html}</button>`;
+          return `<button type="button" class="wp-pf-orb ${cls}" ${attrs} style="--x:${x.toFixed(1)}px;--y:${y.toFixed(1)}px;--r:${rot}deg;--d:${i * 70}ms;--s:${size}px">${html}</button>`;
         };
         orbit.innerHTML = shown.map((g, i) => { const b = badgeInfo(g.badge); return item(b.emoji, i, '', `data-b="${this._esc(b.id)}" aria-label="${this._esc(b.name)}"`); }).join('')
           + (extra > 0 ? item(`+${extra}`, 5, 'more', 'aria-label="Más insignias"') : '');
@@ -1189,15 +1190,25 @@ export class ProfileSheet {
       .wp-pf-top { transition:padding-top .35s cubic-bezier(0.32,1.2,0.5,1); }
       .wp-pf-top.orb { padding-top:22px; }
       .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:1; }
+      /* Solo el emoji con contorno blanco (16 direcciones), sin círculo */
       .wp-pf-orb {
-        position:absolute; left:-18px; top:-18px; width:36px; height:36px; padding:0; border:none; border-radius:50%;
-        display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent;
-        background:radial-gradient(circle at 35% 30%, #fffbea 0%, #ffe48a 55%, #ffc928 100%);
-        box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(245,158,11,0.35);
-        font-size:19px; line-height:1; color:#3b2500;
+        position:absolute; left:calc(var(--s) * -0.7); top:calc(var(--s) * -0.7); width:calc(var(--s) * 1.4); height:calc(var(--s) * 1.4);
+        padding:0; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        display:flex; align-items:center; justify-content:center;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; font-size:var(--s); line-height:1;
+        text-shadow:
+          2.4px 0 0 #fff, -2.4px 0 0 #fff, 0 2.4px 0 #fff, 0 -2.4px 0 #fff,
+          1.7px 1.7px 0 #fff, -1.7px 1.7px 0 #fff, 1.7px -1.7px 0 #fff, -1.7px -1.7px 0 #fff,
+          2.2px 0.9px 0 #fff, -2.2px 0.9px 0 #fff, 2.2px -0.9px 0 #fff, -2.2px -0.9px 0 #fff,
+          0.9px 2.2px 0 #fff, -0.9px 2.2px 0 #fff, 0.9px -2.2px 0 #fff, -0.9px -2.2px 0 #fff,
+          0 3px 6px rgba(17,24,39,0.28);
         opacity:0; transform:translate(0,0) scale(0.2);
       }
-      .wp-pf-orb.more { background:#0a0a0a; color:#fff; font-size:12.5px; font-weight:800; box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(0,0,0,0.25); }
+      .wp-pf-orb.more {
+        --s:12px; left:-16px; top:-11px; width:32px; height:22px; border-radius:999px;
+        background:#0a0a0a; color:#fff; font-family:inherit; font-size:12px; font-weight:800; text-shadow:none;
+        box-shadow:0 0 0 2px #fff, 0 3px 8px rgba(0,0,0,0.25);
+      }
       .wp-pf-orbit.in .wp-pf-orb { animation:wpPfOrb .62s cubic-bezier(0.3,1.55,0.5,1) var(--d) both; }
       @keyframes wpPfOrb {
         0%   { opacity:0; transform:translate(0,0) scale(0.2) rotate(0deg); }
@@ -1207,11 +1218,20 @@ export class ProfileSheet {
       .wp-pf-orb:active { filter:brightness(0.95); }
       .wp-pf-bd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
       .wp-pf-bd { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px 10px; border-radius:18px; background:#f4f5f7; text-align:center; }
-      .wp-pf-bd span { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; background:#e5e7eb; filter:grayscale(1); opacity:.55; }
-      .wp-pf-bd b { font-size:12px; font-weight:800; color:#9ca3af; line-height:1.2; }
-      .wp-pf-bd small { font-size:10.5px; color:#9ca3af; line-height:1.25; }
+      .wp-pf-bd span {
+        height:46px; display:flex; align-items:center; justify-content:center; font-size:32px; line-height:1;
+        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; filter:grayscale(1); opacity:.4;
+      }
       .wp-pf-bd.on { background:#fff8e1; }
-      .wp-pf-bd.on span { filter:none; opacity:1; background:linear-gradient(180deg,#fff7d6,#ffd23f); box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(245,158,11,0.35); }
+      .wp-pf-bd.on span {
+        filter:none; opacity:1;
+        text-shadow:
+          2.4px 0 0 #fff, -2.4px 0 0 #fff, 0 2.4px 0 #fff, 0 -2.4px 0 #fff,
+          1.7px 1.7px 0 #fff, -1.7px 1.7px 0 #fff, 1.7px -1.7px 0 #fff, -1.7px -1.7px 0 #fff,
+          2.2px 0.9px 0 #fff, -2.2px 0.9px 0 #fff, 2.2px -0.9px 0 #fff, -2.2px -0.9px 0 #fff,
+          0.9px 2.2px 0 #fff, -0.9px 2.2px 0 #fff, 0.9px -2.2px 0 #fff, -0.9px -2.2px 0 #fff,
+          0 3px 6px rgba(17,24,39,0.25);
+      }
       .wp-pf-bd.on b { color:#111827; }
       .wp-pf-bd.on small { color:#8a6d1f; }
       .wp-pf-col-done { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; font-size:13px; font-weight:700; color:#16a34a; }
