@@ -539,9 +539,9 @@ export class PlaceModal2 {
       .wp-pm2-activity-people {
         display:flex; align-items:center; gap:4px;
       }
+      .wp-pm2-activity-av-w { display:block; flex:none; width:22px; height:22px; border-radius:50%; }
       .wp-pm2-activity-avatar {
-        width:20px; height:20px; border-radius:50%;
-        border:1.5px solid rgba(255,255,255,0.85); object-fit:cover;
+        display:block; width:100%; height:100%; border-radius:50%; object-fit:cover;
       }
       .wp-pm2-activity-people span {
         font-size:10px; font-weight:700; color:rgba(255,255,255,0.9);
@@ -4586,7 +4586,7 @@ export class PlaceModal2 {
         <div class="wp-pm2-activity-date"><span class="d">${day}</span><span class="m">${month}</span></div>
         <div class="wp-pm2-activity-title">${act.title || act.type || 'Actividad'}</div>
         <div class="wp-pm2-activity-people">
-          <img class="wp-pm2-activity-avatar">
+          <span class="wp-seal wp-pm2-activity-av-w"><img class="wp-pm2-activity-avatar"></span>
           <span>${participantCount ? '+' + participantCount : ''}</span>
         </div>
       `;
