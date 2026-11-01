@@ -1172,12 +1172,12 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 .wp-th-go:active .wp-th-veh { transform: scale(0.88); }
 .wp-th-veh { position: relative; display: block; width: 100%; height: 100%; transition: transform .15s; }
 .wp-th-veh.swap .wp-th-ic svg { animation: wpVehSwap .38s cubic-bezier(0.3,1.6,0.5,1); }
-/* Ícono del modo: negro con contorno blanco, sin círculo (estilo apps de mapas) */
+/* Ícono del modo: negro, engrosado con contorno negro, sin círculo */
 .wp-th-ic {
   position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px;
   display: flex; align-items: center; justify-content: center;
 }
-.wp-th-ic svg { width: 26px; height: 26px; overflow: visible; fill: #0a0a0a; filter: drop-shadow(0 2px 3px rgba(17,24,39,0.35)); }
+.wp-th-ic svg { width: 26px; height: 26px; overflow: visible; fill: #0a0a0a; filter: drop-shadow(0 0 2px rgba(255,255,255,0.9)) drop-shadow(0 1px 3px rgba(17,24,39,0.25)); }
 @keyframes wpVehSwap { from { transform: scale(0.4) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* Pestañas de la hoja de lugares: "Todos" / "Cerca de ti" (la perilla
@@ -1253,7 +1253,7 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
    La carátula gira con el mapa (--brg); las letras quedan derechas.
    La letra hacia donde ves (.on) sobresale: más grande y más afuera. */
 #wp-focus-compass {
-  --brg: 0deg; --r: 17px;
+  --brg: 0deg;
   position: fixed; z-index: 1150; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 12px + 46px + 12px);
   width: 46px; height: 46px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
   background: rgba(255,255,255,0.86);
@@ -1266,26 +1266,14 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 #wp-focus-compass.show { opacity: 1; transform: none; pointer-events: auto; }
 #wp-focus-compass:active { transform: scale(0.93); }
 body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
-.wp-cp-dial { position: absolute; inset: 0; pointer-events: none; }
-.wp-cp-l, .wp-cp-t { position: absolute; left: 50%; top: 50%; }
-.wp-cp-l {
-  font-size: 9.5px; font-weight: 800; line-height: 1; color: #a3a9b4; letter-spacing: 0;
-  transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r))) rotate(calc(-1 * (var(--a) + var(--brg))));
-  transition: font-size .25s cubic-bezier(0.34,1.56,0.64,1), color .2s;
+.wp-cp-dial { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: rotate(var(--brg)); }
+/* Dirección hacia donde ves, al centro (no gira) */
+.wp-cp-dir {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; line-height: 1; color: #0a0a0a; letter-spacing: -0.3px; pointer-events: none;
 }
-.wp-cp-l[data-l=N] { color: #ef4444; }
-/* La letra a la que estás girando: sobresale de la carátula */
-.wp-cp-l.on {
-  font-size: 12px; font-weight: 900; color: #0a0a0a;
-  transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r) - 4px)) rotate(calc(-1 * (var(--a) + var(--brg))));
-}
-.wp-cp-l.on[data-l=N] { color: #ef4444; }
-.wp-cp-t {
-  width: 1.6px; height: 6px; margin: -3px 0 0 -0.8px; border-radius: 2px; background: #c3c8d0;
-  transform: rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r))) rotate(90deg);
-}
-.wp-cp-star { position: absolute; left: 50%; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; fill: #0a0a0a; }
-#wp-focus-compass.turned .wp-cp-star { fill: #1a5cf5; }
+.wp-cp-dir.two { font-size: 12.5px; }
+.wp-cp-dir.n { color: #ef4444; }
 /* Con ruta: etiqueta azul y una × para quitarla (área de toque amplia) */
 .wp-me-chip.route { background: #1a5cf5; height: 26px; padding: 0 3px 0 10px; }
 .wp-me-x {
