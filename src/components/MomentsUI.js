@@ -563,12 +563,12 @@ export class MomentsUI {
       .wp-mo-save em { font-style:normal; color:#8e8e93; font-weight:500; }
       .wp-mo-save.done { background:rgba(255,255,255,0.85); color:#16a34a; }
       /* mapa */
-      .wp-mo-mk { position:relative; width:62px; height:62px; cursor:pointer; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.22)); }
+      .wp-mo-mk { position:absolute; width:62px; height:62px; cursor:pointer; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.22)); }
       .wp-mo-ring { display:block; width:100%; height:100%; border-radius:50%; padding:3px; box-sizing:border-box; }
       .wp-mo-in { display:block; width:100%; height:100%; border-radius:50%; border:3px solid #fff; box-sizing:border-box; background-size:cover; background-position:center; }
       .wp-mo-mk-av { position:absolute; right:-4px; bottom:-4px; width:26px; height:26px; border-radius:50%; background:#556 center/cover; }
       .wp-mo-mk-n { position:absolute; right:-4px; top:-4px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:999px; background:#111827; color:#fff; border:2px solid #fff; font:700 10.5px/16px var(--wp-font); text-align:center; }
-      .wp-mo-pol { position:relative; width:52px; padding:4px 4px 11px; background:#fff; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,0.2); transform:rotate(5deg); cursor:pointer; }
+      .wp-mo-pol { position:absolute; width:52px; padding:4px 4px 11px; background:#fff; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,0.2); transform:rotate(5deg); cursor:pointer; }
       .wp-mo-pol-ph { height:44px; border-radius:5px; background-size:cover; background-position:center; }
       .wp-mo-pol > span { position:absolute; right:-6px; top:-6px; width:20px; height:20px; border-radius:50%; background:#ec4899; border:2px solid #fff; display:flex; align-items:center; justify-content:center; }
       /* perfil */
