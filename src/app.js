@@ -426,12 +426,12 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   let routeOn = false;
 
   // ── Cómo vas: auto → mototaxi → moto → bici → a pie ──────────────────────────────────
-  // El ícono (con contorno blanco) va en el TERMÓMETRO; tocarlo
+  // El ícono va en el TERMÓMETRO; tocarlo
   // cambia de modo y recalcula ruta y minutos. En el MAPA tú siempre eres
   // la flecha de navegación, que apunta hacia donde te mueves (o hacia el
   // lugar mientras estás quieto). Se recuerda el último modo.
   // Íconos tipo apps de mapas (un solo color, de frente o de lado), dentro
-  // con contorno blanco. Trazos de Material Design Icons (Apache 2.0).
+  // engrosados con contorno negro. Trazos de Material Design Icons (Apache 2.0).
   // Versión con emojis: app.before-glyphs.js · dibujados desde arriba: app.before-emoji.js
   // mpm = metros por minuto para el tiempo aproximado (sin ruta).
   // Mototaxi y moto: el servidor no tiene perfil propio → calles de auto.
@@ -445,7 +445,11 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const ORDER = ['car', 'moto', 'mbk', 'bike', 'walk'];
   let mode = 'car';
   try { const m = localStorage.getItem('wpGoMode'); if (MODES[m]) mode = m; } catch (_) {}
-  let myHd = null; // rumbo al moverte (grados, 0 = norte)
+  // Rumbo de la flecha del mapa:
+  //  1) en movimiento (últimos 20 s): hacia donde vas (rumbo del GPS si da
+  //     velocidad, si no el de tus últimos pasos ≥15 m)
+  //  2) quieto: hacia el lugar (con ruta: hacia el siguiente tramo de la ruta)
+  let myHd = null, myHdT = 0, hdPrev = null, hdShown = null;
   const brgTo = (a, b) => {
     const toR = x => x * Math.PI / 180, y = Math.sin(toR(b.lng - a.lng)) * Math.cos(toR(b.lat));
     const x = Math.cos(toR(a.lat)) * Math.sin(toR(b.lat)) - Math.sin(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.cos(toR(b.lng - a.lng));
@@ -455,13 +459,32 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const paintHeading = () => {
     const v = meEl?.querySelector('.wp-me-nav');
     if (!v) return;
-    let hd = myHd;
-    if (hd == null) { const p = myPos(), b = thCands.find(x => x.id === thTarget); hd = p && b ? brgTo(p, b.c) : 0; }
-    v.style.setProperty('--hd', `${hd - (map?.getBearing?.() || 0)}deg`);
+    let hd = myHd != null && Date.now() - myHdT < 20000 ? myHd : null;
+    if (hd == null) {
+      const p = myPos(), b = thCands.find(x => x.id === thTarget);
+      if (p && b) {
+        let to = b.c;
+        if (routeOn && route?.coords?.length > 1) { // el punto de la ruta ~25 m adelante
+          const n = nearestOnRoute(p, route.coords);
+          let acc = 0, q = { lng: n.p[0], lat: n.p[1] };
+          for (let i = n.i + 1; i < route.coords.length; i++) {
+            const r = { lng: route.coords[i][0], lat: route.coords[i][1] };
+            acc += distM(q, r); q = r;
+            if (acc >= 25) break;
+          }
+          if (distM(p, q) > 3) to = q;
+        }
+        hd = brgTo(p, to);
+      } else hd = myHd ?? 0;
+    }
+    // Ángulo en pantalla, por el camino más corto (sin dar la vuelta completa al pasar por el norte)
+    const target = hd - (map?.getBearing?.() || 0);
+    hdShown = hdShown == null ? target : hdShown + ((((target - hdShown) % 360) + 540) % 360 - 180);
+    v.style.setProperty('--hd', `${hdShown}deg`);
   };
   const thVeh = thermo.querySelector('.wp-th-veh');
   const paintMode = () => {
-    thVeh.innerHTML = `<span class="wp-th-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MODES[mode].ic}" stroke="#fff" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke"/></svg></span>`;
+    thVeh.innerHTML = `<span class="wp-th-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MODES[mode].ic}" stroke="#0a0a0a" stroke-width="1.3" stroke-linejoin="round"/></svg></span>`;
     thermo.dataset.mode = mode;
     thermo.querySelector('.wp-th-go').setAttribute('aria-label', `${MODES[mode].label} · tocar para cambiar`);
   };
@@ -488,25 +511,33 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   compass.type = 'button';
   compass.id = 'wp-focus-compass';
   compass.setAttribute('aria-label', 'Brújula: tocar para poner el norte arriba');
-  const CARD = [['N', 0], ['E', 90], ['S', 180], ['O', 270]];
-  compass.innerHTML = `<span class="wp-cp-dial">
-      ${CARD.map(([l, a]) => `<b class="wp-cp-l" data-l="${l}" style="--a:${a}deg">${l}</b>`).join('')}
-      ${[45, 135, 225, 315].map(a => `<i class="wp-cp-t" style="--a:${a}deg"></i>`).join('')}
-    </span>
-    <svg class="wp-cp-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.5 6.2 4.3 10 10.5 10.5-6.2.5-10 4.3-10.5 10.5-.5-6.2-4.3-10-10.5-10.5C7.7 11.5 11.5 7.7 12 1.5z"/></svg>`;
+  // Carátula: rayitas finas (las de N·E·S·O más largas) y un triángulo rojo
+  // en el norte; gira con el mapa. Al centro, derecha y sin girar, la
+  // dirección hacia donde ves (N, NE, E, SE, S, SO, O, NO).
+  const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+  const ticks = Array.from({ length: 24 }, (_, i) => {
+    const a = i * 15, card = a % 90 === 0, mid = a % 45 === 0;
+    if (a === 0) return '';
+    const r1 = card ? 15.2 : mid ? 16.6 : 17.6, r2 = 19.6;
+    const x = (r) => (23 + r * Math.sin(a * Math.PI / 180)).toFixed(2), y = (r) => (23 - r * Math.cos(a * Math.PI / 180)).toFixed(2);
+    return `<line x1="${x(r1)}" y1="${y(r1)}" x2="${x(r2)}" y2="${y(r2)}" stroke="${card ? '#6b7280' : '#c3c8d0'}" stroke-width="${card ? 1.6 : 1}" stroke-linecap="round"/>`;
+  }).join('');
+  compass.innerHTML = `<svg class="wp-cp-dial" viewBox="0 0 46 46" aria-hidden="true">${ticks}<path d="M23 2.6 26.2 8.4H19.8z" fill="#ef4444"/></svg><b class="wp-cp-dir">N</b>`;
   document.body.appendChild(compass);
-  const cpLetters = [...compass.querySelectorAll('.wp-cp-l')];
+  const cpDir = compass.querySelector('.wp-cp-dir');
   let cpFacing = '', cpHideT = null;
   const paintNorth = () => {
     const b = map?.getBearing?.() || 0;            // hacia dónde ve la parte de arriba de la pantalla (0 = norte)
     compass.style.setProperty('--brg', `${-b}deg`);
     paintHeading();
     const h = ((b % 360) + 360) % 360;
-    const facing = CARD[Math.round(h / 90) % 4][0];
+    const facing = DIRS[Math.round(h / 45) % 8];
     if (facing !== cpFacing) {
-      if (cpFacing) mv.haptic?.('tap');
+      if (cpFacing && facing.length === 1) mv.haptic?.('tap'); // vibra al pasar por N, E, S u O
       cpFacing = facing;
-      cpLetters.forEach(el => el.classList.toggle('on', el.dataset.l === facing));
+      cpDir.textContent = facing;
+      cpDir.classList.toggle('n', facing === 'N');
+      cpDir.classList.toggle('two', facing.length > 1);
     }
     compass.classList.toggle('turned', Math.abs(b) > 1);
     // Mostrar al girar; esconder un momento después de volver al norte
@@ -633,10 +664,14 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // Ubicación en vivo: se actualiza cuando te mueves ≥10 m; se pausa con
   // la app en segundo plano y se apaga al salir de este mapa
   let watchId = null, watchOn = false;
-  const onPos = (lat, lng) => {
+  const onPos = (lat, lng, c = {}) => {
     const prev = window.wpApp._focusPos?.pos;
-    if (prev && distM(prev, { lat, lng }) < 10) return;
-    if (prev) myHd = brgTo(prev, { lat, lng }); // rumbo: de dónde venías a dónde estás
+    // Rumbo: el del GPS si vas a más de ~3 km/h; si no, el de tus últimos ≥15 m
+    if (c.speed > 0.8 && isFinite(c.heading) && c.heading != null) { myHd = c.heading; myHdT = Date.now(); }
+    else if (hdPrev && distM(hdPrev, { lat, lng }) >= 15) { myHd = brgTo(hdPrev, { lat, lng }); myHdT = Date.now(); hdPrev = { lat, lng }; }
+    if (!hdPrev) hdPrev = { lat, lng };
+    if (hdPrev && distM(hdPrev, { lat, lng }) >= 15) hdPrev = { lat, lng };
+    if (prev && distM(prev, { lat, lng }) < 10) { paintHeading(); return; }
     window.wpApp._focusPos = { pos: { lat, lng }, t: Date.now() };
     if (bar.isConnected) paintProgress();
   };
@@ -654,12 +689,12 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         if (!watchOn) return;
         const id = await G.watchPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }, (p, err) => {
           if (err || !p) { if (err) console.log('[DIAG-NEXT] ubicación:', err.message || err); return; }
-          onPos(p.coords.latitude, p.coords.longitude);
+          onPos(p.coords.latitude, p.coords.longitude, p.coords);
         });
         if (!watchOn) { Promise.resolve(G.clearWatch({ id })).catch(() => {}); return; }
         watchId = { G, id };
       } else if (navigator.geolocation) {
-        const id = navigator.geolocation.watchPosition(p => onPos(p.coords.latitude, p.coords.longitude),
+        const id = navigator.geolocation.watchPosition(p => onPos(p.coords.latitude, p.coords.longitude, p.coords),
           e => console.log('[DIAG-NEXT] ubicación:', e.message), { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
         watchId = { id };
       }
