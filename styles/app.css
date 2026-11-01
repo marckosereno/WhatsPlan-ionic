@@ -1164,17 +1164,13 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
   transition: bottom .8s cubic-bezier(0.32,1.1,0.5,1);
 }
 /* Tú en el termómetro: cómo vas (auto / bici / a pie, vistos desde
-   arriba, avanzando hacia el lugar), con pulso. Tocar → cambia de modo */
+   arriba, avanzando hacia el lugar). Tocar → cambia de modo */
 .wp-th-go {
   pointer-events: auto; position: relative; display: block; width: 34px; height: 34px; margin-left: -2px;
   padding: 0; border: none; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .wp-th-go::before { content: ''; position: absolute; inset: -8px; } /* área de toque */
 .wp-th-go:active .wp-th-veh { transform: scale(0.88); }
-.wp-th-pulse {
-  position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
-  background: var(--c); opacity: 0.35; animation: wpMePulse 2.2s ease-out infinite; pointer-events: none;
-}
 .wp-th-veh { position: relative; display: block; width: 100%; height: 100%; transition: transform .15s; }
 .wp-th-veh.swap .wp-th-ic svg { animation: wpVehSwap .38s cubic-bezier(0.3,1.6,0.5,1); }
 /* Ícono del modo: negro con contorno blanco, sin círculo (estilo apps de mapas) */
