@@ -1097,9 +1097,8 @@ body.wp-pins-hold .maplibregl-marker.place-cluster-el { opacity: 0; }
    conforme te acercas. --h = 0..100 (altura), --c = color de la cercanía */
 #wp-focus-thermo {
   --h: 0; --c: #1a5cf5;
-  /* left 29px: centrado bajo la brújula (que va arriba) */
-  position: fixed; z-index: 1150; left: 29px;
-  top: calc(env(safe-area-inset-top, 0px) + 140px + 68px);
+  position: fixed; z-index: 1150; left: 14px;
+  top: calc(env(safe-area-inset-top, 0px) + 140px);
   bottom: calc(env(safe-area-inset-bottom, 0px) + 210px);
   display: flex; flex-direction: column; align-items: flex-start;
   pointer-events: none; font-family: var(--wp-font);
@@ -1248,23 +1247,25 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 
 
 
-/* ── Brújula del mapa de colecciones (arriba del termómetro) ──────────
+/* ── Brújula del mapa de colecciones ──────────────────────────────────
+   Escondida; aparece (.show) solo con el mapa girado, arriba a la
+   derecha bajo la campanita (mismo ancho: 46px).
    La carátula gira con el mapa (--brg); las letras quedan derechas.
    La letra hacia donde ves (.on) sobresale: más grande y más afuera. */
 #wp-focus-compass {
-  --brg: 0deg; --r: 21px;
-  position: fixed; z-index: 1150; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 140px);
-  width: 54px; height: 54px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
+  --brg: 0deg; --r: 17px;
+  position: fixed; z-index: 1150; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 12px + 46px + 12px);
+  width: 46px; height: 46px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
   background: rgba(255,255,255,0.86);
   backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6);
   box-shadow: 0 6px 16px -4px rgba(17,24,39,0.28), 0 0 0 0.5px rgba(17,24,39,0.08);
   font-family: var(--wp-font, inherit); -webkit-tap-highlight-color: transparent;
-  opacity: 0; transform: translateX(-24px);
-  transition: opacity .3s ease, transform .45s cubic-bezier(0.32,1.25,0.5,1);
+  opacity: 0; transform: scale(0.5); pointer-events: none;
+  transition: opacity .2s ease, transform .35s cubic-bezier(0.32,1.4,0.5,1);
 }
-#wp-focus-compass.in { opacity: 1; transform: none; }
+#wp-focus-compass.show { opacity: 1; transform: none; pointer-events: auto; }
 #wp-focus-compass:active { transform: scale(0.93); }
-body.wp-pm-open #wp-focus-compass { opacity: 0; pointer-events: none; }
+body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
 .wp-cp-dial { position: absolute; inset: 0; pointer-events: none; }
 .wp-cp-l, .wp-cp-t { position: absolute; left: 50%; top: 50%; }
 .wp-cp-l {
@@ -1275,7 +1276,7 @@ body.wp-pm-open #wp-focus-compass { opacity: 0; pointer-events: none; }
 .wp-cp-l[data-l=N] { color: #ef4444; }
 /* La letra a la que estás girando: sobresale de la carátula */
 .wp-cp-l.on {
-  font-size: 13px; font-weight: 900; color: #0a0a0a;
+  font-size: 12px; font-weight: 900; color: #0a0a0a;
   transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r) - 4px)) rotate(calc(-1 * (var(--a) + var(--brg))));
 }
 .wp-cp-l.on[data-l=N] { color: #ef4444; }
@@ -1283,7 +1284,7 @@ body.wp-pm-open #wp-focus-compass { opacity: 0; pointer-events: none; }
   width: 1.6px; height: 6px; margin: -3px 0 0 -0.8px; border-radius: 2px; background: #c3c8d0;
   transform: rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r))) rotate(90deg);
 }
-.wp-cp-star { position: absolute; left: 50%; top: 50%; width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; fill: #0a0a0a; }
+.wp-cp-star { position: absolute; left: 50%; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; fill: #0a0a0a; }
 #wp-focus-compass.turned .wp-cp-star { fill: #1a5cf5; }
 /* Con ruta: etiqueta azul y una × para quitarla (área de toque amplia) */
 .wp-me-chip.route { background: #1a5cf5; height: 26px; padding: 0 3px 0 10px; }
