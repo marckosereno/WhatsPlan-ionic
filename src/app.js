@@ -421,58 +421,48 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   let routeOn = true;
   try { routeOn = localStorage.getItem('wpRouteOn') !== '0'; } catch (_) {}
 
-  // Norte: una "N" chiquita montada en la orilla de tu avatar que gira
-  // con el mapa (siempre apunta al norte). Al tocar tu avatar salen
-  // pills en arco (explosión): Ruta sí/no, Norte arriba y Centrar.
-  const NEEDLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 16 12H8z" fill="#ef4444"/><path d="M12 21.5 8 12h8z" fill="#c4c9d2"/></svg>';
-  const ROUTE_IC = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="5.5" r="2.2"/><path d="M8.2 18.5H15a3.2 3.2 0 0 0 0-6.4H9a3.2 3.2 0 0 1 0-6.4h6.8"/></svg>';
-  const CENTER_IC = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></svg>';
-  let menuOpen = false;
+  // Brújula (arriba del termómetro): carátula con N · E · S · O y rayitas
+  // en las diagonales. Gira con el mapa para que la N apunte siempre al
+  // norte real; la letra hacia donde estás viendo (arriba de la pantalla)
+  // sobresale. Al centro, la estrella fija = tu frente. Tocar → norte arriba.
+  document.getElementById('wp-focus-compass')?.remove();
+  const compass = document.createElement('button');
+  compass.type = 'button';
+  compass.id = 'wp-focus-compass';
+  compass.setAttribute('aria-label', 'Brújula: tocar para poner el norte arriba');
+  const CARD = [['N', 0], ['E', 90], ['S', 180], ['O', 270]];
+  compass.innerHTML = `<span class="wp-cp-dial">
+      ${CARD.map(([l, a]) => `<b class="wp-cp-l" data-l="${l}" style="--a:${a}deg">${l}</b>`).join('')}
+      ${[45, 135, 225, 315].map(a => `<i class="wp-cp-t" style="--a:${a}deg"></i>`).join('')}
+    </span>
+    <svg class="wp-cp-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.5 6.2 4.3 10 10.5 10.5-6.2.5-10 4.3-10.5 10.5-.5-6.2-4.3-10-10.5-10.5C7.7 11.5 11.5 7.7 12 1.5z"/></svg>`;
+  document.body.appendChild(compass);
+  const cpLetters = [...compass.querySelectorAll('.wp-cp-l')];
+  let cpFacing = '';
   const paintNorth = () => {
-    const b = map?.getBearing?.() || 0;
-    meEl?.style.setProperty('--brg', `${-b}deg`);
-  };
-  map?.on?.('rotate', paintNorth);
-  const paintRoutePill = () => {
-    const p = meEl?.querySelector('[data-a=route]');
-    if (!p) return;
-    p.classList.toggle('on', routeOn);
-    p.querySelector('span').textContent = routeOn ? 'Ocultar ruta' : 'Ver ruta';
-  };
-  const closeMenu = () => {
-    if (!menuOpen) return;
-    menuOpen = false;
-    meEl?.classList.remove('open');
-    meMk?.getElement()?.style.removeProperty('z-index');
-    document.removeEventListener('pointerdown', outside, true);
-  };
-  const outside = (e) => { if (!meEl?.contains(e.target)) closeMenu(); };
-  const openMenu = () => {
-    menuOpen = true;
-    paintRoutePill();
-    const best = thCands.find(x => x.id === thTarget);
-    meEl.querySelector('[data-a=route]').hidden = !best || best.d <= 100;
-    meMk?.getElement()?.style.setProperty('z-index', '5');
-    meEl.classList.remove('open'); void meEl.offsetWidth; meEl.classList.add('open');
-    document.addEventListener('pointerdown', outside, true);
-  };
-  const onMenu = (a) => {
-    mv.haptic?.('light');
-    const pos = myPos();
-    const best = thCands.find(x => x.id === thTarget);
-    if (a === 'route') {
-      routeOn = !routeOn;
-      try { localStorage.setItem('wpRouteOn', routeOn ? '1' : '0'); } catch (_) {}
-      routeFit = routeOn;
-      paintRoutePill();
-      paintProgress();
-    } else if (a === 'north') {
-      map?.easeTo?.({ bearing: 0, pitch: 0, duration: 450 });
-    } else if (a === 'center') {
-      if (pos && best) fitBoth(pos, best.c);
-      else if (pos) map?.flyTo?.({ center: [pos.lng, pos.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
+    const b = map?.getBearing?.() || 0;            // hacia dónde ve la parte de arriba de la pantalla (0 = norte)
+    compass.style.setProperty('--brg', `${-b}deg`);
+    const h = ((b % 360) + 360) % 360;
+    const facing = CARD[Math.round(h / 90) % 4][0];
+    if (facing !== cpFacing) {
+      if (cpFacing) mv.haptic?.('tap');
+      cpFacing = facing;
+      cpLetters.forEach(el => el.classList.toggle('on', el.dataset.l === facing));
     }
-    setTimeout(closeMenu, 160);
+    compass.classList.toggle('turned', Math.abs(b) > 1);
+  };
+  paintNorth();
+  map?.on?.('rotate', paintNorth);
+  compass.onclick = () => { mv.haptic?.('light'); map?.easeTo?.({ bearing: 0, pitch: 0, duration: 500 }); };
+  requestAnimationFrame(() => requestAnimationFrame(() => compass.classList.add('in')));
+  // Ruta sí/no: tocando tu avatar en el mapa
+  const toggleRoute = () => {
+    routeOn = !routeOn;
+    try { localStorage.setItem('wpRouteOn', routeOn ? '1' : '0'); } catch (_) {}
+    mv.haptic?.('light');
+    routeFit = routeOn;
+    showFocusBubble(bar, `<strong>${routeOn ? 'Ruta activada' : 'Ruta oculta'}</strong><span>Toca tu avatar para ${routeOn ? 'ocultarla' : 'verla'}</span>`, 'hint', 1600);
+    paintProgress();
   };
   // Punto más cercano de la ruta: { off (m a la línea), i (tramo), p ([lng,lat]) }
   const nearestOnRoute = (pos, coords) => {
@@ -520,19 +510,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!meMk) {
       meEl = document.createElement('div');
       meEl.className = 'wp-me-mk';
-      meEl.innerHTML = `<span class="wp-me-pulse"></span>
-        <span class="wp-me-av"><i style="background-image:url('${esc(myAv)}')"></i></span>
-        <span class="wp-me-n" aria-hidden="true"><b>N</b></span>
-        <b class="wp-me-chip" hidden></b>
-        <div class="wp-me-menu">
-          <button type="button" class="wp-me-pill" data-a="route" style="--a:-150deg;--i:0">${ROUTE_IC}<span>Ver ruta</span></button>
-          <button type="button" class="wp-me-pill" data-a="north" style="--a:-90deg;--i:1"><em class="wp-me-needle">${NEEDLE}</em><span>Norte arriba</span></button>
-          <button type="button" class="wp-me-pill" data-a="center" style="--a:-30deg;--i:2">${CENTER_IC}<span>Centrar</span></button>
-        </div>`;
-      meEl.querySelector('.wp-me-av').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); menuOpen ? closeMenu() : openMenu(); };
-      meEl.querySelectorAll('.wp-me-pill').forEach(p => p.onclick = (e) => { e.stopPropagation(); onMenu(p.dataset.a); });
+      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-av"><i style="background-image:url('${esc(myAv)}')"></i></span><b class="wp-me-chip" hidden></b>`;
+      meEl.onclick = (e) => { e.stopPropagation(); if (thCands.some(x => x.id === thTarget)) toggleRoute(); };
       meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
-      paintNorth();
     } else meMk.setLngLat([pos.lng, pos.lat]);
     // Sin lugar pendiente o ya llegaste: sin ruta
     if (!best || best.d <= 100) { setRoute(null); setChip(best ? '¡Llegaste!' : ''); routeFor = ''; route = null; return; }
@@ -779,10 +759,11 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     map?.off?.('moveend', repaint);
     document.removeEventListener('visibilitychange', onVis);
     stopWatch();
-    closeMenu();
     meMk?.remove(); meMk = null;
     removeRoute();
     map?.off?.('rotate', paintNorth);
+    compass.classList.remove('in');
+    setTimeout(() => compass.remove(), instant ? 0 : 280);
     thermo.classList.remove('in');
     setTimeout(() => thermo.remove(), instant ? 0 : 280);
     (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited', 'wp-fogged'));
