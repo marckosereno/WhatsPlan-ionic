@@ -114,7 +114,7 @@ async function renderAuthButton(user) {
   if (!btn) return;
   // Si el botón está oculto por la búsqueda, no tocar nada
   if (btn.dataset.wpHidden === '1') return;
-  btn.classList.remove('avatar-skeleton', 'wp-seal');
+  btn.classList.remove('avatar-skeleton');
 
   if (!user) {
     btn.style.border = '2px solid rgba(255,255,255,0.6)';
@@ -139,12 +139,11 @@ async function renderAuthButton(user) {
     const img = new Image();
     img.onload = function() {
       btn.classList.remove('avatar-skeleton');
-      btn.classList.add('wp-seal');
-      btn.style.border = '';
+      btn.style.border = '2px solid rgba(255,255,255,0.7)';
       btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;"><img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
     };
     img.onerror = function() {
-      btn.classList.remove('avatar-skeleton', 'wp-seal');
+      btn.classList.remove('avatar-skeleton');
       btn.style.border = '2.5px dashed var(--wp-blue,#2563eb)';
       btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'"><span style="position:absolute;bottom:-6px;right:-4px;background:var(--wp-blue,#2563eb);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;">+</span>`;
     };
@@ -403,7 +402,77 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     list: () => thCands,
     current: () => thTarget,
     hasPos: () => !!myPos(),
-    pick: (id) => { thPick = thCands[0]?.id === id ? null : id; paintProgress(); }, // el más cercano = automático
+    pick: (id) => { thPick = thCands[0]?.id === id ? null : id; routeFit = true; paintProgress(); }, // el más cercano = automático
+  };
+
+  // ── Tú en el mapa (solo con GPS) ───────────────────────────────────
+  // Tu avatar (en sello) donde estás + la ruta a pie al lugar del
+  // termómetro, con distancia y minutos. La ruta la da OSRM (OpenStreetMap,
+  // gratis): se pide de nuevo solo si cambia el lugar o te mueves ≥40 m.
+  // Mientras llega (o si falla) va una línea punteada directa.
+  const ROUTE = 'wp-focus-route';
+  let meMk = null, meEl = null, routeFor = '', routeFrom = null, routeAbort = null, routeFit = true;
+  const fmtD = (m) => m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
+  const fmtT = (s) => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
+  const routeData = (coords, kind) => ({ type: 'FeatureCollection', features: coords ? [{ type: 'Feature', properties: { k: kind }, geometry: { type: 'LineString', coordinates: coords } }] : [] });
+  const ensureRoute = () => {
+    if (!map?.getSource || map.getSource(ROUTE)) return !!map?.getSource;
+    try {
+      map.addSource(ROUTE, { type: 'geojson', data: routeData(null) });
+      const lay = { 'line-cap': 'round', 'line-join': 'round' };
+      map.addLayer({ id: ROUTE + '-case', type: 'line', source: ROUTE, filter: ['==', ['get', 'k'], 'walk'], layout: lay, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
+      map.addLayer({ id: ROUTE + '-walk', type: 'line', source: ROUTE, filter: ['==', ['get', 'k'], 'walk'], layout: lay, paint: { 'line-color': '#1a5cf5', 'line-width': 5 } });
+      map.addLayer({ id: ROUTE + '-air', type: 'line', source: ROUTE, filter: ['==', ['get', 'k'], 'air'], layout: lay, paint: { 'line-color': '#1a5cf5', 'line-width': 4, 'line-opacity': 0.8, 'line-dasharray': [0.01, 2] } });
+      return true;
+    } catch (e) { console.warn('[DIAG-ROUTE] capa:', e.message || e); return false; }
+  };
+  const setRoute = (coords, kind) => { try { if (ensureRoute()) map.getSource(ROUTE).setData(routeData(coords, kind)); } catch (_) {} };
+  const removeRoute = () => {
+    routeAbort?.abort(); routeAbort = null;
+    try { [ROUTE + '-air', ROUTE + '-walk', ROUTE + '-case'].forEach(l => map?.getLayer?.(l) && map.removeLayer(l)); if (map?.getSource?.(ROUTE)) map.removeSource(ROUTE); } catch (_) {}
+  };
+  const setChip = (txt) => { const c = meEl?.querySelector('.wp-me-chip'); if (c) { c.textContent = txt || ''; c.hidden = !txt; } };
+  const fitBoth = (a, b) => {
+    try {
+      map.fitBounds([[Math.min(a.lng, b.lng), Math.min(a.lat, b.lat)], [Math.max(a.lng, b.lng), Math.max(a.lat, b.lat)]],
+        { padding: { top: 150, bottom: 190, left: 70, right: 90 }, maxZoom: 17, duration: 700 });
+    } catch (_) {}
+  };
+  const paintMe = (pos, best) => {
+    if (!pos || !map || !window.maplibregl) return;
+    if (!meMk) {
+      meEl = document.createElement('div');
+      meEl.className = 'wp-me-mk';
+      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-av" style="background-image:url('${esc(myAv)}')"></span><b class="wp-me-chip" hidden></b>`;
+      meEl.onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); const b = thCands.find(x => x.id === thTarget); if (b) fitBoth(myPos(), b.c); else map.flyTo({ center: [pos.lng, pos.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 }); };
+      meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
+    } else meMk.setLngLat([pos.lng, pos.lat]);
+    // Sin lugar pendiente o ya llegaste: sin ruta
+    if (!best || best.d <= 100) { setRoute(null); setChip(best ? '¡Llegaste!' : ''); routeFor = ''; return; }
+    const moved = !routeFrom || distM(routeFrom, pos) >= 40;
+    if (best.id === routeFor && !moved) return;
+    const first = best.id !== routeFor;
+    routeFor = best.id; routeFrom = { ...pos };
+    if (first) { // mientras llega la ruta: línea directa y tiempo aproximado (~80 m/min)
+      setRoute([[pos.lng, pos.lat], [best.c.lng, best.c.lat]], 'air');
+      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / 1.33)}`);
+    }
+    if (routeFit) { routeFit = false; fitBoth(pos, best.c); }
+    routeAbort?.abort();
+    const ac = routeAbort = new AbortController();
+    const to = setTimeout(() => ac.abort(), 7000);
+    const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${pos.lng.toFixed(6)},${pos.lat.toFixed(6)};${best.c.lng.toFixed(6)},${best.c.lat.toFixed(6)}?overview=full&geometries=geojson`;
+    fetch(url, { signal: ac.signal }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(j => {
+      const r = j?.routes?.[0];
+      if (!r || ac !== routeAbort || routeFor !== best.id || !bar.isConnected) return;
+      setRoute(r.geometry.coordinates, 'walk');
+      setChip(`${fmtD(r.distance)} · ${fmtT(r.duration)}`);
+    }).catch(e => {
+      if (ac !== routeAbort) return;
+      console.log('[DIAG-ROUTE] sin ruta a pie, queda la línea directa:', e.message || e);
+      setRoute([[pos.lng, pos.lat], [best.c.lng, best.c.lat]], 'air');
+      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / 1.33)}`);
+    }).finally(() => clearTimeout(to));
   };
 
   // Ubicación en vivo: se actualiza cuando te mueves ≥10 m; se pausa con
@@ -506,6 +575,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (thPick && !thCands.some(x => x.id === thPick)) thPick = null;
     const best = (thPick && thCands.find(x => x.id === thPick)) || thCands[0] || null;
     paintThermo(best);
+    paintMe(pos, best);
     (mv.markerEls || []).forEach(el => {
       const id = String(el._place?.place_id || el._place?.placeId || el._place?.id || '');
       el.classList.toggle('wp-visited', visited.has(id));
@@ -602,6 +672,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     map?.off?.('moveend', repaint);
     document.removeEventListener('visibilitychange', onVis);
     stopWatch();
+    meMk?.remove(); meMk = null;
+    removeRoute();
     thermo.classList.remove('in');
     setTimeout(() => thermo.remove(), instant ? 0 : 280);
     (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited', 'wp-fogged'));
