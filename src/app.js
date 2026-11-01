@@ -348,7 +348,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     <div class="wp-th-track"><span class="wp-th-fill"></span>
       <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
       <div class="wp-th-me">
-        <button type="button" class="wp-th-go" aria-label="Cambiar cómo vas"><span class="wp-th-pulse"></span><span class="wp-th-veh"></span></button>
+        <button type="button" class="wp-th-go" aria-label="Cambiar cómo vas"><span class="wp-th-veh"></span></button>
       </div>
     </div>`;
   document.body.appendChild(thermo);
@@ -426,7 +426,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   let routeOn = false;
 
   // ── Cómo vas: auto → mototaxi → moto → bici → a pie ──────────────────────────────────
-  // El ícono (con contorno blanco y pulso) va en el TERMÓMETRO; tocarlo
+  // El ícono (con contorno blanco) va en el TERMÓMETRO; tocarlo
   // cambia de modo y recalcula ruta y minutos. En el MAPA tú siempre eres
   // la flecha de navegación, que apunta hacia donde te mueves (o hacia el
   // lugar mientras estás quieto). Se recuerda el último modo.
