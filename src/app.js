@@ -391,7 +391,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     thermo.querySelector('.wp-th-goal').onclick = () => {
       mv.haptic?.('light');
       if (arrived) { mv.onPlaceSelect?.(best.p, { direct: true }); return; }
-      map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
+      // Llévame: ruta a este lugar (el mapa se acomoda a ti + el lugar);
+      // sin GPS, como antes: solo acercarse al lugar
+      if (myPos()) { thPick = best.id; startRoute(); }
+      else map?.flyTo?.({ center: [best.c.lng, best.c.lat], zoom: Math.max(map.getZoom(), 16.5), essential: true, duration: 600 });
       const idx = (mv.allPlaces || []).indexOf(best.p);
       setTimeout(() => { try { if (idx >= 0) mv._showMiniCard(best.p, idx, best.p.photosUrls?.[0] || best.p.photoUrl || best.p.photo_url || null); } catch (_) {} }, 650);
     };
@@ -402,7 +405,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     list: () => thCands,
     current: () => thTarget,
     hasPos: () => !!myPos(),
-    pick: (id) => { thPick = thCands[0]?.id === id ? null : id; routeFit = true; paintProgress(); }, // el más cercano = automático
+    // Elegido en "Cerca de ti": ese lugar (fijo) + ruta encendida
+    pick: (id) => { thPick = id; startRoute(); },
   };
 
   // ── Tú en el mapa (solo con GPS) ───────────────────────────────────
@@ -417,9 +421,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   let route = null;      // { coords, dist, dur } la última ruta a pie
   let routeAsk = 0;      // cuándo se pidió la última (máx. 1 cada 8 s)
   const OFF_ROUTE = 35;  // m fuera de la línea = tomaste otro rumbo
-  // Mostrar la ruta es opcional (botón a la derecha); se recuerda la elección
-  let routeOn = true;
-  try { routeOn = localStorage.getItem('wpRouteOn') !== '0'; } catch (_) {}
+  // La ruta arranca APAGADA. Se enciende por intención: elegir un lugar
+  // en "Cerca de ti" o tocar las fotitos del termómetro. Se apaga con la
+  // × de la etiqueta o sola al llegar (<100 m). Tocar en "Todos" no la toca.
+  let routeOn = false;
 
   // Brújula (arriba del termómetro): carátula con N · E · S · O y rayitas
   // en las diagonales. Gira con el mapa para que la N apunte siempre al
@@ -455,15 +460,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   map?.on?.('rotate', paintNorth);
   compass.onclick = () => { mv.haptic?.('light'); map?.easeTo?.({ bearing: 0, pitch: 0, duration: 500 }); };
   requestAnimationFrame(() => requestAnimationFrame(() => compass.classList.add('in')));
-  // Ruta sí/no: tocando tu avatar en el mapa
-  const toggleRoute = () => {
-    routeOn = !routeOn;
-    try { localStorage.setItem('wpRouteOn', routeOn ? '1' : '0'); } catch (_) {}
-    mv.haptic?.('light');
-    routeFit = routeOn;
-    showFocusBubble(bar, `<strong>${routeOn ? 'Ruta activada' : 'Ruta oculta'}</strong><span>Toca tu avatar para ${routeOn ? 'ocultarla' : 'verla'}</span>`, 'hint', 1600);
-    paintProgress();
-  };
+  const startRoute = () => { routeOn = true; routeFit = true; routeFor = ''; paintProgress(); };
+  const stopRoute = () => { routeOn = false; thPick = null; paintProgress(); }; // vuelve al más cercano
   // Punto más cercano de la ruta: { off (m a la línea), i (tramo), p ([lng,lat]) }
   const nearestOnRoute = (pos, coords) => {
     const kx = 111320 * Math.cos(pos.lat * Math.PI / 180), ky = 110540;
@@ -498,7 +496,14 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     routeAbort?.abort(); routeAbort = null;
     try { [ROUTE + '-air', ROUTE + '-walk', ROUTE + '-case'].forEach(l => map?.getLayer?.(l) && map.removeLayer(l)); if (map?.getSource?.(ROUTE)) map.removeSource(ROUTE); } catch (_) {}
   };
-  const setChip = (txt) => { const c = meEl?.querySelector('.wp-me-chip'); if (c) { c.textContent = txt || ''; c.hidden = !txt; } };
+  const setChip = (txt) => {
+    const c = meEl?.querySelector('.wp-me-chip');
+    if (!c) return;
+    c.querySelector('.wp-me-chip-t').textContent = txt || '';
+    c.hidden = !txt;
+    c.querySelector('.wp-me-x').hidden = !routeOn; // la × solo con ruta
+    c.classList.toggle('route', routeOn);
+  };
   const fitBoth = (a, b) => {
     try {
       map.fitBounds([[Math.min(a.lng, b.lng), Math.min(a.lat, b.lat)], [Math.max(a.lng, b.lng), Math.max(a.lat, b.lat)]],
@@ -510,12 +515,22 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!meMk) {
       meEl = document.createElement('div');
       meEl.className = 'wp-me-mk';
-      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-av"><i style="background-image:url('${esc(myAv)}')"></i></span><b class="wp-me-chip" hidden></b>`;
-      meEl.onclick = (e) => { e.stopPropagation(); if (thCands.some(x => x.id === thTarget)) toggleRoute(); };
+      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-av"><i style="background-image:url('${esc(myAv)}')"></i></span>
+        <span class="wp-me-chip" hidden><span class="wp-me-chip-t"></span><button type="button" class="wp-me-x" aria-label="Quitar ruta" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></span>`;
+      // Tocar tu avatar: centrar (tú + el lugar)
+      meEl.onclick = (e) => {
+        e.stopPropagation(); mv.haptic?.('light');
+        const p = myPos(), b = thCands.find(x => x.id === thTarget);
+        if (p && b) fitBoth(p, b.c); else if (p) map.flyTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
+      };
+      meEl.querySelector('.wp-me-x').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); stopRoute(); };
       meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
     } else meMk.setLngLat([pos.lng, pos.lat]);
     // Sin lugar pendiente o ya llegaste: sin ruta
-    if (!best || best.d <= 100) { setRoute(null); setChip(best ? '¡Llegaste!' : ''); routeFor = ''; route = null; return; }
+    if (!best || best.d <= 100) {
+      if (best && routeOn) { routeOn = false; thPick = null; } // llegaste: la ruta se quita sola
+      setRoute(null); setChip(best ? '¡Llegaste!' : ''); routeFor = ''; route = null; return;
+    }
     if (!routeOn) { // ruta apagada: sin línea ni peticiones, solo la distancia
       routeAbort?.abort(); routeAbort = null;
       setRoute(null); route = null; routeFor = '';
