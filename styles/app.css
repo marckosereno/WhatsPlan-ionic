@@ -1097,8 +1097,9 @@ body.wp-pins-hold .maplibregl-marker.place-cluster-el { opacity: 0; }
    conforme te acercas. --h = 0..100 (altura), --c = color de la cercanía */
 #wp-focus-thermo {
   --h: 0; --c: #1a5cf5;
-  position: fixed; z-index: 1150; left: 14px;
-  top: calc(env(safe-area-inset-top, 0px) + 140px);
+  /* left 29px: centrado bajo la brújula (que va arriba) */
+  position: fixed; z-index: 1150; left: 29px;
+  top: calc(env(safe-area-inset-top, 0px) + 140px + 68px);
   bottom: calc(env(safe-area-inset-bottom, 0px) + 210px);
   display: flex; flex-direction: column; align-items: flex-start;
   pointer-events: none; font-family: var(--wp-font);
@@ -1232,42 +1233,41 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 .wp-me-chip[hidden] { display: none; }
 
 
-/* Norte: "N" montada en la orilla del avatar; gira con el mapa (--brg) */
-.wp-me-n {
-  position: absolute; inset: -9px; pointer-events: none;
-  transform: rotate(var(--brg, 0deg)); transition: transform .12s linear;
+
+/* ── Brújula del mapa de colecciones (arriba del termómetro) ──────────
+   La carátula gira con el mapa (--brg); las letras quedan derechas.
+   La letra hacia donde ves (.on) sobresale: más grande y más afuera. */
+#wp-focus-compass {
+  --brg: 0deg; --r: 21px;
+  position: fixed; z-index: 1150; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 140px);
+  width: 54px; height: 54px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(255,255,255,0.86);
+  backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: 0 6px 16px -4px rgba(17,24,39,0.28), 0 0 0 0.5px rgba(17,24,39,0.08);
+  font-family: var(--wp-font, inherit); -webkit-tap-highlight-color: transparent;
+  opacity: 0; transform: translateX(-24px);
+  transition: opacity .3s ease, transform .45s cubic-bezier(0.32,1.25,0.5,1);
 }
-.wp-me-n b {
-  position: absolute; left: 50%; top: 0; transform: translate(-50%, -2px) rotate(calc(-1 * var(--brg, 0deg))); /* la letra queda derecha */
-  width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  background: #ef4444; color: #fff; font-size: 9px; font-weight: 900; line-height: 1; border: 1.5px solid #fff;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+#wp-focus-compass.in { opacity: 1; transform: none; }
+#wp-focus-compass:active { transform: scale(0.93); }
+body.wp-pm-open #wp-focus-compass { opacity: 0; pointer-events: none; }
+.wp-cp-dial { position: absolute; inset: 0; pointer-events: none; }
+.wp-cp-l, .wp-cp-t { position: absolute; left: 50%; top: 50%; }
+.wp-cp-l {
+  font-size: 9.5px; font-weight: 800; line-height: 1; color: #a3a9b4; letter-spacing: 0;
+  transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r))) rotate(calc(-1 * (var(--a) + var(--brg))));
+  transition: font-size .25s cubic-bezier(0.34,1.56,0.64,1), color .2s;
 }
-/* Pills en arco: salen del avatar como explosión (--a = ángulo, --i = orden) */
-.wp-me-menu { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
-.wp-me-pill {
-  --r: 92px;
-  position: absolute; left: 0; top: 0; pointer-events: none;
-  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-  height: 34px; padding: 0 13px 0 10px; border-radius: 999px; border: 2px solid #fff; box-sizing: border-box;
-  background: #0a0a0a; color: #fff; font-family: var(--wp-font, inherit); font-size: 12.5px; font-weight: 800;
-  box-shadow: 0 6px 16px rgba(17,24,39,0.30);
-  transform: translate(-50%, -50%) scale(0.2); opacity: 0;
-  transition: transform .18s ease-in, opacity .15s ease-in;
-  -webkit-tap-highlight-color: transparent;
+.wp-cp-l[data-l=N] { color: #ef4444; }
+/* La letra a la que estás girando: sobresale de la carátula */
+.wp-cp-l.on {
+  font-size: 13px; font-weight: 900; color: #0a0a0a;
+  transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r) - 4px)) rotate(calc(-1 * (var(--a) + var(--brg))));
 }
-.wp-me-pill[hidden] { display: none; }
-.wp-me-pill svg { width: 17px; height: 17px; flex: none; }
-.wp-me-pill.on { background: #1a5cf5; }
-.wp-me-mk.open .wp-me-pill {
-  pointer-events: auto; opacity: 1;
-  transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--r)) rotate(calc(-1 * var(--a))) scale(1);
-  transition: transform .42s cubic-bezier(0.3,1.6,0.5,1) calc(var(--i) * 45ms), opacity .2s ease-out calc(var(--i) * 45ms);
+.wp-cp-l.on[data-l=N] { color: #ef4444; }
+.wp-cp-t {
+  width: 1.6px; height: 6px; margin: -3px 0 0 -0.8px; border-radius: 2px; background: #c3c8d0;
+  transform: rotate(calc(var(--a) + var(--brg))) translateY(calc(-1 * var(--r))) rotate(90deg);
 }
-.wp-me-mk.open .wp-me-pill:active { transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--r)) rotate(calc(-1 * var(--a))) scale(0.92); }
-.wp-me-mk.open .wp-me-pill[data-a=north] { --r: 84px; }
-/* Aguja del pill "Norte arriba": también gira con el mapa */
-.wp-me-needle { display: block; width: 17px; height: 17px; transform: rotate(var(--brg, 0deg)); transition: transform .12s linear; }
-.wp-me-needle svg { width: 17px; height: 17px; }
-.wp-me-needle path:last-child { fill: #6b7280; }
-.wp-me-mk.open .wp-me-pulse { animation-play-state: paused; opacity: 0; }
+.wp-cp-star { position: absolute; left: 50%; top: 50%; width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; fill: #0a0a0a; }
+#wp-focus-compass.turned .wp-cp-star { fill: #1a5cf5; }
