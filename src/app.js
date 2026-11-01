@@ -780,6 +780,15 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   paintProgress();
   startWatch();
+  // [DIAG-MARKERS] Todo marker debe ser position:absolute; si alguno no,
+  // se corre del mapa (y corre a los demás). Se revisa al entrar y al zoom.
+  const diagMarkers = () => {
+    const bad = [...document.querySelectorAll('.maplibregl-marker')].filter(el => getComputedStyle(el).position !== 'absolute');
+    if (bad.length) console.warn('[DIAG-MARKERS] markers fuera de lugar (no absolute):', bad.length, bad.slice(0, 5).map(el => el.className));
+    else console.log('[DIAG-MARKERS] ok, todos absolute');
+  };
+  setTimeout(diagMarkers, 1500);
+  map?.once?.('zoomend', diagMarkers);
   requestAnimationFrame(() => requestAnimationFrame(() => thermo.classList.add('in')));
   // Explorar: ayuda solo mientras no tengas visitas (después de saberlo)
   const exploreHint = () => {
