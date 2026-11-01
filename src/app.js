@@ -114,7 +114,7 @@ async function renderAuthButton(user) {
   if (!btn) return;
   // Si el botón está oculto por la búsqueda, no tocar nada
   if (btn.dataset.wpHidden === '1') return;
-  btn.classList.remove('avatar-skeleton');
+  btn.classList.remove('avatar-skeleton', 'wp-seal');
 
   if (!user) {
     btn.style.border = '2px solid rgba(255,255,255,0.6)';
@@ -139,11 +139,12 @@ async function renderAuthButton(user) {
     const img = new Image();
     img.onload = function() {
       btn.classList.remove('avatar-skeleton');
-      btn.style.border = '2px solid rgba(255,255,255,0.7)';
+      btn.classList.add('wp-seal');
+      btn.style.border = '';
       btn.innerHTML = `<div style="width:100%;height:100%;border-radius:50%;overflow:hidden;"><img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
     };
     img.onerror = function() {
-      btn.classList.remove('avatar-skeleton');
+      btn.classList.remove('avatar-skeleton', 'wp-seal');
       btn.style.border = '2.5px dashed var(--wp-blue,#2563eb)';
       btn.innerHTML = `<img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ghost/3D/ghost_3d.png" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='👻'"><span style="position:absolute;bottom:-6px;right:-4px;background:var(--wp-blue,#2563eb);color:white;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:800;line-height:16px;text-align:center;border:1.5px solid white;">+</span>`;
     };
