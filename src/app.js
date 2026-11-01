@@ -348,10 +348,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     <div class="wp-th-track"><span class="wp-th-fill"></span>
       <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
       <div class="wp-th-me">
-        <svg class="wp-th-arrow" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#fff" stroke="#fff" stroke-width="4.6" stroke-linejoin="round"/>
-          <path class="wp-th-arrow-fill" d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" stroke-width="1.2" stroke-linejoin="round"/>
-        </svg>
+        <button type="button" class="wp-th-go" aria-label="Cambiar cómo vas"><span class="wp-th-pulse"></span><span class="wp-th-veh"></span></button>
       </div>
     </div>`;
   document.body.appendChild(thermo);
@@ -426,6 +423,72 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // × de la etiqueta o sola al llegar (<100 m). Tocar en "Todos" no la toca.
   let routeOn = false;
 
+  // ── Cómo vas: auto → bici → a pie ──────────────────────────────────
+  // El ícono (visto desde arriba, con pulso) va en el TERMÓMETRO; tocarlo
+  // cambia de modo y recalcula ruta y minutos. En el MAPA tú siempre eres
+  // la flecha de navegación, que apunta hacia donde te mueves (o hacia el
+  // lugar mientras estás quieto). Se recuerda el último modo.
+  const MODES = {
+    car:  { label: 'En auto', osrm: 'routed-car',  mpm: 450, svg: `<svg viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="10.2" y="15" width="3" height="2.4" rx="1.2" fill="#1a5cf5" stroke="#fff" stroke-width="1"/><rect x="26.8" y="15" width="3" height="2.4" rx="1.2" fill="#1a5cf5" stroke="#fff" stroke-width="1"/>
+      <rect x="12" y="4" width="16" height="32" rx="6.5" fill="#1a5cf5" stroke="#fff" stroke-width="2"/>
+      <path d="M14.6 14.6c1.8-2.2 9-2.2 10.8 0l-1 4.2h-8.8z" fill="#cfe0ff"/>
+      <rect x="15.4" y="19.4" width="9.2" height="8.4" rx="2" fill="#3a76ff"/>
+      <path d="M15.4 29h9.2l-.9 3.2h-7.4z" fill="#cfe0ff"/>
+      <rect x="14" y="5.6" width="3.2" height="1.7" rx=".85" fill="#fff6c2"/><rect x="22.8" y="5.6" width="3.2" height="1.7" rx=".85" fill="#fff6c2"/>
+      <rect x="14.2" y="33.4" width="2.8" height="1.3" rx=".65" fill="#ff6b6b"/><rect x="23" y="33.4" width="2.8" height="1.3" rx=".65" fill="#ff6b6b"/></svg>` },
+    bike: { label: 'En bici', osrm: 'routed-bike', mpm: 250, svg: `<svg viewBox="3 0 34 40" aria-hidden="true">
+      <rect x="18.4" y="1.5" width="3.2" height="11.5" rx="1.6" fill="#1f2937" stroke="#fff" stroke-width="1"/>
+      <rect x="18.4" y="27" width="3.2" height="11.5" rx="1.6" fill="#1f2937" stroke="#fff" stroke-width="1"/>
+      <rect x="19.2" y="11" width="1.6" height="18" fill="#6b7280"/>
+      <rect x="10.5" y="10.6" width="19" height="2.4" rx="1.2" fill="#374151" stroke="#fff" stroke-width=".8"/>
+      <path d="M13.6 19.5 12 12.4M26.4 19.5 28 12.4" stroke="#1a5cf5" stroke-width="2.8" stroke-linecap="round"/>
+      <ellipse cx="20" cy="21" rx="8.4" ry="4.8" fill="#1a5cf5" stroke="#fff" stroke-width="1.5"/>
+      <ellipse cx="20" cy="18.6" rx="3.8" ry="4.3" fill="#ffd23f" stroke="#fff" stroke-width="1.2"/>
+      <path d="M20 14.6v8" stroke="#e8b800" stroke-width="1.1"/></svg>` },
+    walk: { label: 'A pie',   osrm: 'routed-foot', mpm: 80,  svg: `<svg viewBox="6 4 28 32" aria-hidden="true">
+      <ellipse class="wp-ft-l" cx="16.3" cy="14" rx="2.7" ry="4.2" fill="#1f2937" stroke="#fff" stroke-width="1"/>
+      <ellipse class="wp-ft-r" cx="23.7" cy="26" rx="2.7" ry="4.2" fill="#1f2937" stroke="#fff" stroke-width="1"/>
+      <ellipse cx="10.6" cy="21.6" rx="2.2" ry="3.4" fill="#1a5cf5" stroke="#fff" stroke-width="1"/><ellipse cx="29.4" cy="18.4" rx="2.2" ry="3.4" fill="#1a5cf5" stroke="#fff" stroke-width="1"/>
+      <ellipse cx="20" cy="20" rx="9" ry="5.2" fill="#1a5cf5" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="4.4" fill="#3b2a20" stroke="#fff" stroke-width="1.2"/></svg>` },
+  };
+  const ORDER = ['car', 'bike', 'walk'];
+  let mode = 'car';
+  try { const m = localStorage.getItem('wpGoMode'); if (MODES[m]) mode = m; } catch (_) {}
+  let myHd = null; // rumbo al moverte (grados, 0 = norte)
+  const brgTo = (a, b) => {
+    const toR = x => x * Math.PI / 180, y = Math.sin(toR(b.lng - a.lng)) * Math.cos(toR(b.lat));
+    const x = Math.cos(toR(a.lat)) * Math.sin(toR(b.lat)) - Math.sin(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.cos(toR(b.lng - a.lng));
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  };
+  // Gira la flecha del mapa: tu rumbo menos lo que esté girado el mapa
+  const paintHeading = () => {
+    const v = meEl?.querySelector('.wp-me-nav');
+    if (!v) return;
+    let hd = myHd;
+    if (hd == null) { const p = myPos(), b = thCands.find(x => x.id === thTarget); hd = p && b ? brgTo(p, b.c) : 0; }
+    v.style.setProperty('--hd', `${hd - (map?.getBearing?.() || 0)}deg`);
+  };
+  const thVeh = thermo.querySelector('.wp-th-veh');
+  const paintMode = () => {
+    thVeh.innerHTML = MODES[mode].svg;
+    thermo.dataset.mode = mode;
+    thermo.querySelector('.wp-th-go').setAttribute('aria-label', `${MODES[mode].label} · tocar para cambiar`);
+  };
+  paintMode();
+  const nextMode = () => {
+    mode = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
+    try { localStorage.setItem('wpGoMode', mode); } catch (_) {}
+    mv.haptic?.('light');
+    paintMode();
+    thVeh.classList.remove('swap'); void thVeh.offsetWidth; thVeh.classList.add('swap');
+    route = null; routeFor = ''; // ruta y minutos de nuevo, para este modo
+    paintProgress();
+  };
+
+  thermo.querySelector('.wp-th-go').onclick = (e) => { e.stopPropagation(); nextMode(); };
+
   // Brújula (arriba del termómetro): carátula con N · E · S · O y rayitas
   // en las diagonales. Gira con el mapa para que la N apunte siempre al
   // norte real; la letra hacia donde estás viendo (arriba de la pantalla)
@@ -447,6 +510,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const paintNorth = () => {
     const b = map?.getBearing?.() || 0;            // hacia dónde ve la parte de arriba de la pantalla (0 = norte)
     compass.style.setProperty('--brg', `${-b}deg`);
+    paintHeading();
     const h = ((b % 360) + 360) % 360;
     const facing = CARD[Math.round(h / 90) % 4][0];
     if (facing !== cpFacing) {
@@ -515,17 +579,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!meMk) {
       meEl = document.createElement('div');
       meEl.className = 'wp-me-mk';
-      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-av"><i style="background-image:url('${esc(myAv)}')"></i></span>
+      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-nav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#fff" stroke="#fff" stroke-width="4.6" stroke-linejoin="round"/><path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#1a5cf5" stroke="#1a5cf5" stroke-width="1.2" stroke-linejoin="round"/></svg></span>
         <span class="wp-me-chip" hidden><span class="wp-me-chip-t"></span><button type="button" class="wp-me-x" aria-label="Quitar ruta" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></span>`;
-      // Tocar tu avatar: centrar (tú + el lugar)
-      meEl.onclick = (e) => {
-        e.stopPropagation(); mv.haptic?.('light');
-        const p = myPos(), b = thCands.find(x => x.id === thTarget);
-        if (p && b) fitBoth(p, b.c); else if (p) map.flyTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
-      };
+      meEl.onclick = (e) => e.stopPropagation();
       meEl.querySelector('.wp-me-x').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); stopRoute(); };
       meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
     } else meMk.setLngLat([pos.lng, pos.lat]);
+    paintHeading();
     // Sin lugar pendiente o ya llegaste: sin ruta
     if (!best || best.d <= 100) {
       if (best && routeOn) { routeOn = false; thPick = null; } // llegaste: la ruta se quita sola
@@ -534,7 +594,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!routeOn) { // ruta apagada: sin línea ni peticiones, solo la distancia
       routeAbort?.abort(); routeAbort = null;
       setRoute(null); route = null; routeFor = '';
-      setChip(fmtD(best.d));
+      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / MODES[mode].mpm * 60)}`);
       return;
     }
     const first = best.id !== routeFor;
@@ -555,25 +615,25 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (first) { // mientras llega la ruta: línea directa y tiempo aproximado (~80 m/min)
       route = null;
       setRoute([[pos.lng, pos.lat], [best.c.lng, best.c.lat]], 'air');
-      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / 1.33)}`);
+      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / MODES[mode].mpm * 60)}`);
     }
     if (routeFit) { routeFit = false; fitBoth(pos, best.c); }
     routeAbort?.abort();
     const ac = routeAbort = new AbortController();
     const to = setTimeout(() => ac.abort(), 7000);
-    const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${pos.lng.toFixed(6)},${pos.lat.toFixed(6)};${best.c.lng.toFixed(6)},${best.c.lat.toFixed(6)}?overview=full&geometries=geojson`;
+    const url = `https://routing.openstreetmap.de/${MODES[mode].osrm}/route/v1/driving/${pos.lng.toFixed(6)},${pos.lat.toFixed(6)};${best.c.lng.toFixed(6)},${best.c.lat.toFixed(6)}?overview=full&geometries=geojson`;
     fetch(url, { signal: ac.signal }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(j => {
       const r = j?.routes?.[0];
-      if (!r || ac !== routeAbort || routeFor !== best.id || !bar.isConnected) return;
+      if (!r || ac !== routeAbort || routeFor !== best.id || !bar.isConnected || !routeOn) return;
       route = { coords: r.geometry.coordinates, dist: r.distance, dur: r.duration };
       setRoute(route.coords, 'walk');
       setChip(`${fmtD(r.distance)} · ${fmtT(r.duration)}`);
     }).catch(e => {
       if (ac !== routeAbort) return;
-      console.log('[DIAG-ROUTE] sin ruta a pie, queda la línea directa:', e.message || e);
+      console.log(`[DIAG-ROUTE] sin ruta (${mode}), queda la línea directa:`, e.message || e);
       if (route) return; // se queda la ruta anterior; se reintenta en el próximo movimiento
       setRoute([[pos.lng, pos.lat], [best.c.lng, best.c.lat]], 'air');
-      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / 1.33)}`);
+      setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / MODES[mode].mpm * 60)}`);
     }).finally(() => clearTimeout(to));
   };
 
@@ -583,6 +643,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const onPos = (lat, lng) => {
     const prev = window.wpApp._focusPos?.pos;
     if (prev && distM(prev, { lat, lng }) < 10) return;
+    if (prev) myHd = brgTo(prev, { lat, lng }); // rumbo: de dónde venías a dónde estás
     window.wpApp._focusPos = { pos: { lat, lng }, t: Date.now() };
     if (bar.isConnected) paintProgress();
   };
