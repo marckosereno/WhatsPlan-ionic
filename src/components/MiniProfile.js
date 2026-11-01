@@ -389,9 +389,9 @@ export class MiniProfile {
         box-shadow:0 2px 8px rgba(0,0,0,.12); cursor:pointer; -webkit-tap-highlight-color:transparent; }
       .wp-mp-x:active { transform:scale(.9); }
       .wp-mp-in { position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:12px 20px 18px; }
-      .wp-mp-ring { padding:3px; border-radius:50%; background:#fff; }
+      .wp-mp-ring { padding:3px; border-radius:50%; background:none; }
       .wp-mp-ring.live { background:conic-gradient(#1a5cf5,#8b5cf6,#ec4899,#f59e0b,#1a5cf5); cursor:pointer; }
-      .wp-mp-av { display:block; width:84px; height:84px; border-radius:50%; border:3px solid #fff; background:#eef0f3 center/cover no-repeat;
+      .wp-mp-av { display:block; width:90px; height:90px; border-radius:50%; background:#eef0f3 center/cover no-repeat;
         box-shadow:0 6px 16px rgba(17,24,39,.18); }
       .wp-mp-name { margin-top:4px; display:flex; align-items:center; justify-content:center; gap:6px; max-width:100%;
         font-size:20px; font-weight:800; color:#0a0a0a; min-height:27px; }
