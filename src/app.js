@@ -423,37 +423,23 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // × de la etiqueta o sola al llegar (<100 m). Tocar en "Todos" no la toca.
   let routeOn = false;
 
-  // ── Cómo vas: auto → bici → a pie ──────────────────────────────────
-  // El ícono (visto desde arriba, con pulso) va en el TERMÓMETRO; tocarlo
+  // ── Cómo vas: auto → mototaxi → moto → bici → a pie ──────────────────────────────────
+  // El emoji (con contorno blanco y pulso) va en el TERMÓMETRO; tocarlo
   // cambia de modo y recalcula ruta y minutos. En el MAPA tú siempre eres
   // la flecha de navegación, que apunta hacia donde te mueves (o hacia el
   // lugar mientras estás quieto). Se recuerda el último modo.
+  // Emojis del sistema con contorno blanco (CSS). Las versiones dibujadas
+  // desde arriba (SVG) quedaron en app.before-emoji.js por si se regresa.
+  // mpm = metros por minuto para el tiempo aproximado (sin ruta).
+  // Mototaxi y moto: el servidor no tiene perfil propio → calles de auto.
   const MODES = {
-    car:  { label: 'En auto', osrm: 'routed-car',  mpm: 450, svg: `<svg viewBox="0 0 40 40" aria-hidden="true">
-      <rect x="10.2" y="15" width="3" height="2.4" rx="1.2" fill="#1a5cf5" stroke="#fff" stroke-width="1"/><rect x="26.8" y="15" width="3" height="2.4" rx="1.2" fill="#1a5cf5" stroke="#fff" stroke-width="1"/>
-      <rect x="12" y="4" width="16" height="32" rx="6.5" fill="#1a5cf5" stroke="#fff" stroke-width="2"/>
-      <path d="M14.6 14.6c1.8-2.2 9-2.2 10.8 0l-1 4.2h-8.8z" fill="#cfe0ff"/>
-      <rect x="15.4" y="19.4" width="9.2" height="8.4" rx="2" fill="#3a76ff"/>
-      <path d="M15.4 29h9.2l-.9 3.2h-7.4z" fill="#cfe0ff"/>
-      <rect x="14" y="5.6" width="3.2" height="1.7" rx=".85" fill="#fff6c2"/><rect x="22.8" y="5.6" width="3.2" height="1.7" rx=".85" fill="#fff6c2"/>
-      <rect x="14.2" y="33.4" width="2.8" height="1.3" rx=".65" fill="#ff6b6b"/><rect x="23" y="33.4" width="2.8" height="1.3" rx=".65" fill="#ff6b6b"/></svg>` },
-    bike: { label: 'En bici', osrm: 'routed-bike', mpm: 250, svg: `<svg viewBox="3 0 34 40" aria-hidden="true">
-      <rect x="18.4" y="1.5" width="3.2" height="11.5" rx="1.6" fill="#1f2937" stroke="#fff" stroke-width="1"/>
-      <rect x="18.4" y="27" width="3.2" height="11.5" rx="1.6" fill="#1f2937" stroke="#fff" stroke-width="1"/>
-      <rect x="19.2" y="11" width="1.6" height="18" fill="#6b7280"/>
-      <rect x="10.5" y="10.6" width="19" height="2.4" rx="1.2" fill="#374151" stroke="#fff" stroke-width=".8"/>
-      <path d="M13.6 19.5 12 12.4M26.4 19.5 28 12.4" stroke="#1a5cf5" stroke-width="2.8" stroke-linecap="round"/>
-      <ellipse cx="20" cy="21" rx="8.4" ry="4.8" fill="#1a5cf5" stroke="#fff" stroke-width="1.5"/>
-      <ellipse cx="20" cy="18.6" rx="3.8" ry="4.3" fill="#ffd23f" stroke="#fff" stroke-width="1.2"/>
-      <path d="M20 14.6v8" stroke="#e8b800" stroke-width="1.1"/></svg>` },
-    walk: { label: 'A pie',   osrm: 'routed-foot', mpm: 80,  svg: `<svg viewBox="6 4 28 32" aria-hidden="true">
-      <ellipse class="wp-ft-l" cx="16.3" cy="14" rx="2.7" ry="4.2" fill="#1f2937" stroke="#fff" stroke-width="1"/>
-      <ellipse class="wp-ft-r" cx="23.7" cy="26" rx="2.7" ry="4.2" fill="#1f2937" stroke="#fff" stroke-width="1"/>
-      <ellipse cx="10.6" cy="21.6" rx="2.2" ry="3.4" fill="#1a5cf5" stroke="#fff" stroke-width="1"/><ellipse cx="29.4" cy="18.4" rx="2.2" ry="3.4" fill="#1a5cf5" stroke="#fff" stroke-width="1"/>
-      <ellipse cx="20" cy="20" rx="9" ry="5.2" fill="#1a5cf5" stroke="#fff" stroke-width="1.5"/>
-      <circle cx="20" cy="20" r="4.4" fill="#3b2a20" stroke="#fff" stroke-width="1.2"/></svg>` },
+    car:  { label: 'En auto',     osrm: 'routed-car',  mpm: 450, emo: '🚗' },
+    moto: { label: 'En mototaxi', osrm: 'routed-car',  mpm: 330, emo: '🛺' },
+    mbk:  { label: 'En moto',     osrm: 'routed-car',  mpm: 500, emo: '🏍️' },
+    bike: { label: 'En bici',     osrm: 'routed-bike', mpm: 250, emo: '🚲' },
+    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  emo: '🏃‍♂️' },
   };
-  const ORDER = ['car', 'bike', 'walk'];
+  const ORDER = ['car', 'moto', 'mbk', 'bike', 'walk'];
   let mode = 'car';
   try { const m = localStorage.getItem('wpGoMode'); if (MODES[m]) mode = m; } catch (_) {}
   let myHd = null; // rumbo al moverte (grados, 0 = norte)
@@ -472,7 +458,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   const thVeh = thermo.querySelector('.wp-th-veh');
   const paintMode = () => {
-    thVeh.innerHTML = MODES[mode].svg;
+    thVeh.innerHTML = `<span class="wp-th-emo">${MODES[mode].emo}</span>`;
     thermo.dataset.mode = mode;
     thermo.querySelector('.wp-th-go').setAttribute('aria-label', `${MODES[mode].label} · tocar para cambiar`);
   };
