@@ -408,10 +408,87 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // ── Tú en el mapa (solo con GPS) ───────────────────────────────────
   // Tu avatar (en sello) donde estás + la ruta a pie al lugar del
   // termómetro, con distancia y minutos. La ruta la da OSRM (OpenStreetMap,
-  // gratis): se pide de nuevo solo si cambia el lugar o te mueves ≥40 m.
+  // gratis). Al moverte: si vas sobre la ruta, se recorta lo ya caminado
+  // y se recalculan metros/minutos (sin pedir nada); si te sales de ella
+  // (otro rumbo, >35 m), se pide una ruta nueva desde donde estás.
   // Mientras llega (o si falla) va una línea punteada directa.
   const ROUTE = 'wp-focus-route';
-  let meMk = null, meEl = null, routeFor = '', routeFrom = null, routeAbort = null, routeFit = true;
+  let meMk = null, meEl = null, routeFor = '', routeAbort = null, routeFit = true;
+  let route = null;      // { coords, dist, dur } la última ruta a pie
+  let routeAsk = 0;      // cuándo se pidió la última (máx. 1 cada 8 s)
+  const OFF_ROUTE = 35;  // m fuera de la línea = tomaste otro rumbo
+  // Mostrar la ruta es opcional (botón a la derecha); se recuerda la elección
+  let routeOn = true;
+  try { routeOn = localStorage.getItem('wpRouteOn') !== '0'; } catch (_) {}
+
+  // Norte: una "N" chiquita montada en la orilla de tu avatar que gira
+  // con el mapa (siempre apunta al norte). Al tocar tu avatar salen
+  // pills en arco (explosión): Ruta sí/no, Norte arriba y Centrar.
+  const NEEDLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 16 12H8z" fill="#ef4444"/><path d="M12 21.5 8 12h8z" fill="#c4c9d2"/></svg>';
+  const ROUTE_IC = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="5.5" r="2.2"/><path d="M8.2 18.5H15a3.2 3.2 0 0 0 0-6.4H9a3.2 3.2 0 0 1 0-6.4h6.8"/></svg>';
+  const CENTER_IC = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></svg>';
+  let menuOpen = false;
+  const paintNorth = () => {
+    const b = map?.getBearing?.() || 0;
+    meEl?.style.setProperty('--brg', `${-b}deg`);
+  };
+  map?.on?.('rotate', paintNorth);
+  const paintRoutePill = () => {
+    const p = meEl?.querySelector('[data-a=route]');
+    if (!p) return;
+    p.classList.toggle('on', routeOn);
+    p.querySelector('span').textContent = routeOn ? 'Ocultar ruta' : 'Ver ruta';
+  };
+  const closeMenu = () => {
+    if (!menuOpen) return;
+    menuOpen = false;
+    meEl?.classList.remove('open');
+    meMk?.getElement()?.style.removeProperty('z-index');
+    document.removeEventListener('pointerdown', outside, true);
+  };
+  const outside = (e) => { if (!meEl?.contains(e.target)) closeMenu(); };
+  const openMenu = () => {
+    menuOpen = true;
+    paintRoutePill();
+    const best = thCands.find(x => x.id === thTarget);
+    meEl.querySelector('[data-a=route]').hidden = !best || best.d <= 100;
+    meMk?.getElement()?.style.setProperty('z-index', '5');
+    meEl.classList.remove('open'); void meEl.offsetWidth; meEl.classList.add('open');
+    document.addEventListener('pointerdown', outside, true);
+  };
+  const onMenu = (a) => {
+    mv.haptic?.('light');
+    const pos = myPos();
+    const best = thCands.find(x => x.id === thTarget);
+    if (a === 'route') {
+      routeOn = !routeOn;
+      try { localStorage.setItem('wpRouteOn', routeOn ? '1' : '0'); } catch (_) {}
+      routeFit = routeOn;
+      paintRoutePill();
+      paintProgress();
+    } else if (a === 'north') {
+      map?.easeTo?.({ bearing: 0, pitch: 0, duration: 450 });
+    } else if (a === 'center') {
+      if (pos && best) fitBoth(pos, best.c);
+      else if (pos) map?.flyTo?.({ center: [pos.lng, pos.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
+    }
+    setTimeout(closeMenu, 160);
+  };
+  // Punto más cercano de la ruta: { off (m a la línea), i (tramo), p ([lng,lat]) }
+  const nearestOnRoute = (pos, coords) => {
+    const kx = 111320 * Math.cos(pos.lat * Math.PI / 180), ky = 110540;
+    let best = { off: Infinity, i: 0, p: coords[0] };
+    for (let i = 0; i < coords.length - 1; i++) {
+      const ax = (coords[i][0] - pos.lng) * kx, ay = (coords[i][1] - pos.lat) * ky;
+      const bx = (coords[i + 1][0] - pos.lng) * kx, by = (coords[i + 1][1] - pos.lat) * ky;
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+      const d = Math.hypot(ax + t * dx, ay + t * dy);
+      if (d < best.off) best = { off: d, i, p: [coords[i][0] + t * (coords[i + 1][0] - coords[i][0]), coords[i][1] + t * (coords[i + 1][1] - coords[i][1])] };
+    }
+    return best;
+  };
+  const lineLen = (cs) => { let m = 0; for (let i = 1; i < cs.length; i++) m += distM({ lng: cs[i - 1][0], lat: cs[i - 1][1] }, { lng: cs[i][0], lat: cs[i][1] }); return m; };
   const fmtD = (m) => m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
   const fmtT = (s) => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
   const routeData = (coords, kind) => ({ type: 'FeatureCollection', features: coords ? [{ type: 'Feature', properties: { k: kind }, geometry: { type: 'LineString', coordinates: coords } }] : [] });
@@ -443,17 +520,45 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!meMk) {
       meEl = document.createElement('div');
       meEl.className = 'wp-me-mk';
-      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-av" style="background-image:url('${esc(myAv)}')"></span><b class="wp-me-chip" hidden></b>`;
-      meEl.onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); const b = thCands.find(x => x.id === thTarget); if (b) fitBoth(myPos(), b.c); else map.flyTo({ center: [pos.lng, pos.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 }); };
+      meEl.innerHTML = `<span class="wp-me-pulse"></span>
+        <span class="wp-me-av"><i style="background-image:url('${esc(myAv)}')"></i></span>
+        <span class="wp-me-n" aria-hidden="true"><b>N</b></span>
+        <b class="wp-me-chip" hidden></b>
+        <div class="wp-me-menu">
+          <button type="button" class="wp-me-pill" data-a="route" style="--a:-150deg;--i:0">${ROUTE_IC}<span>Ver ruta</span></button>
+          <button type="button" class="wp-me-pill" data-a="north" style="--a:-90deg;--i:1"><em class="wp-me-needle">${NEEDLE}</em><span>Norte arriba</span></button>
+          <button type="button" class="wp-me-pill" data-a="center" style="--a:-30deg;--i:2">${CENTER_IC}<span>Centrar</span></button>
+        </div>`;
+      meEl.querySelector('.wp-me-av').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); menuOpen ? closeMenu() : openMenu(); };
+      meEl.querySelectorAll('.wp-me-pill').forEach(p => p.onclick = (e) => { e.stopPropagation(); onMenu(p.dataset.a); });
       meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
+      paintNorth();
     } else meMk.setLngLat([pos.lng, pos.lat]);
     // Sin lugar pendiente o ya llegaste: sin ruta
-    if (!best || best.d <= 100) { setRoute(null); setChip(best ? '¡Llegaste!' : ''); routeFor = ''; return; }
-    const moved = !routeFrom || distM(routeFrom, pos) >= 40;
-    if (best.id === routeFor && !moved) return;
+    if (!best || best.d <= 100) { setRoute(null); setChip(best ? '¡Llegaste!' : ''); routeFor = ''; route = null; return; }
+    if (!routeOn) { // ruta apagada: sin línea ni peticiones, solo la distancia
+      routeAbort?.abort(); routeAbort = null;
+      setRoute(null); route = null; routeFor = '';
+      setChip(fmtD(best.d));
+      return;
+    }
     const first = best.id !== routeFor;
-    routeFor = best.id; routeFrom = { ...pos };
+    if (!first && route) {
+      const n = nearestOnRoute(pos, route.coords);
+      if (n.off <= OFF_ROUTE) {
+        // Sobre la ruta: quitar lo ya caminado y actualizar lo que falta
+        const rest = [[pos.lng, pos.lat], n.p, ...route.coords.slice(n.i + 1)];
+        const left = lineLen(rest.slice(1)) + n.off;
+        setRoute(rest, 'walk');
+        setChip(`${fmtD(left)} · ${fmtT(route.dur * Math.min(1, left / Math.max(1, route.dist)))}`);
+        return;
+      }
+      if (Date.now() - routeAsk < 8000) return; // otro rumbo: se recalcula (sin saturar)
+      console.log(`[DIAG-ROUTE] fuera de la ruta (${Math.round(n.off)} m) → recalculando`);
+    } else if (!first && Date.now() - routeAsk < 8000) return; // aún esperando la primera
+    routeFor = best.id; routeAsk = Date.now();
     if (first) { // mientras llega la ruta: línea directa y tiempo aproximado (~80 m/min)
+      route = null;
       setRoute([[pos.lng, pos.lat], [best.c.lng, best.c.lat]], 'air');
       setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / 1.33)}`);
     }
@@ -465,11 +570,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     fetch(url, { signal: ac.signal }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(j => {
       const r = j?.routes?.[0];
       if (!r || ac !== routeAbort || routeFor !== best.id || !bar.isConnected) return;
-      setRoute(r.geometry.coordinates, 'walk');
+      route = { coords: r.geometry.coordinates, dist: r.distance, dur: r.duration };
+      setRoute(route.coords, 'walk');
       setChip(`${fmtD(r.distance)} · ${fmtT(r.duration)}`);
     }).catch(e => {
       if (ac !== routeAbort) return;
       console.log('[DIAG-ROUTE] sin ruta a pie, queda la línea directa:', e.message || e);
+      if (route) return; // se queda la ruta anterior; se reintenta en el próximo movimiento
       setRoute([[pos.lng, pos.lat], [best.c.lng, best.c.lat]], 'air');
       setChip(`${fmtD(best.d)} · ~${fmtT(best.d * 1.3 / 1.33)}`);
     }).finally(() => clearTimeout(to));
@@ -672,8 +779,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     map?.off?.('moveend', repaint);
     document.removeEventListener('visibilitychange', onVis);
     stopWatch();
+    closeMenu();
     meMk?.remove(); meMk = null;
     removeRoute();
+    map?.off?.('rotate', paintNorth);
     thermo.classList.remove('in');
     setTimeout(() => thermo.remove(), instant ? 0 : 280);
     (mv.markerEls || []).forEach(el => el.classList.remove('wp-visited', 'wp-fogged'));
