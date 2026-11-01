@@ -1224,7 +1224,8 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 .wp-fb-ring, .wp-fb-fr { filter: drop-shadow(0 3px 6px rgba(17,24,39,0.22)); }
 
 /* ── Tú en el mapa de colecciones (con GPS): avatar en sello + ruta ── */
-.wp-me-mk { position: relative; width: 48px; height: 48px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* position absolute = la de MapLibre (con relative el marker entra al flujo y se corre) */
+.wp-me-mk { position: absolute; width: 48px; height: 48px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 /* Tú en el mapa: la flecha de navegación; gira con tu rumbo (--hd).
    La flecha original apunta en diagonal (arriba-derecha): -45° */
 .wp-me-nav {
