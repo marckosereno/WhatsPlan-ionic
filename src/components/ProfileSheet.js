@@ -317,21 +317,10 @@ export class ProfileSheet {
       </div>
       ${isMe ? '' : '<div class="wp-pf-ins"></div>'}
       ${isMe ? `<button type="button" class="wp-pf-banner">
-          <svg class="wp-pf-banner-map" viewBox="0 0 360 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <g fill="none" stroke="#fff" stroke-linecap="round">
-              <path d="M-10 32 H380 M-10 104 H380 M52 -10 V160 M140 -10 V160 M236 -10 V160 M300 -10 V160" stroke-width="5" opacity="0.13"/>
-              <path d="M-10 68 C60 60 90 80 160 70 S270 58 380 66 M96 -10 C102 50 88 100 104 160 M190 -10 L206 160" stroke-width="3" opacity="0.16"/>
-            </g>
-            <path d="M-10 128 C40 112 70 130 120 118 C170 106 210 128 260 114 C300 104 330 120 380 110 V160 H-10Z" fill="#fff" opacity="0.12"/>
-            <path d="M200 46 l14 -8 14 8 v16 l-14 8 -14 -8z M230 62 l14 -8 14 8 v16 l-14 8 -14 -8z M170 64 l14 -8 14 8 v16 l-14 8 -14 -8z" fill="#fff" opacity="0.14"/>
-            <!-- Ruta punteada que llega a tu punto azul (sin cruzar el número) -->
-            <path d="M150 150 C170 120 196 112 224 98 S266 72 280 54" fill="none" stroke="#fff" stroke-width="3.2"
-              stroke-linecap="round" stroke-dasharray="0.1 9" opacity="0.75"/>
-          </svg>
           <div class="wp-pf-banner-l"><span>Guardados</span><b class="wp-pf-saved-n">–</b>
+            <small class="wp-pf-banner-sub"></small>
             <span class="wp-pf-banner-pill">${ICON.map} Ver en el mapa</span></div>
-          <span class="wp-pf-banner-dot"></span>
-          <div class="wp-pf-stickers"></div>
+          <div class="wp-pf-bn-photos"></div>
         </button>
         <button type="button" class="wp-pf-explore">
           <span class="wp-pf-ex-hex" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 40 40"><path d="M13 4l9 5v10l-9 5-9-5V9z" fill="#1a5cf5" opacity=".9"/><path d="M27 12l9 5v10l-9 5-9-5V17z" fill="#ffc928"/><path d="M13 20l9 5v10l-9 5-9-5V25z" fill="#1a5cf5" opacity=".45"/></svg></span>
@@ -706,16 +695,14 @@ export class ProfileSheet {
       const banner = view.querySelector('.wp-pf-banner');
       const saved = favIds.map(id => places.get(String(id))).filter(Boolean);
       view.querySelector('.wp-pf-saved-n').textContent = String(favIds.length);
-      // Stickers 3D: emojis de tus colecciones con más lugares (sin
-      // repetir), completados con unos de comida/plan
-      const fromCols = cols.slice().sort((a, b) => b.items.length - a.items.length).map(c => c.emoji).filter(e => e && STICKER3D[e]);
-      const emojis = [...new Set([...fromCols, ...STICKER_FILL])].slice(0, STICKER_SLOTS.length);
-      view.querySelector('.wp-pf-stickers').innerHTML = emojis.map((e, i) => {
-        const sl = STICKER_SLOTS[i];
-        return `<img class="wp-pf-sticker" alt="" draggable="false" src="${FLUENT + STICKER3D[e]}"
-          style="right:${sl.r}px;bottom:${sl.b}px;width:${sl.s}px;height:${sl.s}px;--r:${sl.rot}deg;z-index:${10 - i}"
-          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wp-pf-sticker wp-pf-sticker-txt',textContent:'${e}',style:this.getAttribute('style')}))">`;
-      }).join('');
+      // Fotos reales de tus guardados, como polaroids en abanico
+      const pics = saved.map(p => this._photo(p)).filter(Boolean).slice(0, 4);
+      const ROT = [-11, 7, -4, 13];
+      view.querySelector('.wp-pf-bn-photos').innerHTML = (pics.length ? pics : [null, null, null]).map((u, i) =>
+        `<i class="b${i}" style="--r:${ROT[i]}deg;${u ? `background-image:url('${String(u).replace(/'/g, '%27')}')` : ''}"></i>`).join('');
+      view.querySelector('.wp-pf-banner-sub').textContent = cols.length
+        ? `en ${cols.length} ${cols.length === 1 ? 'colección' : 'colecciones'}`
+        : (favIds.length ? 'lugares que te gustaron' : 'Guarda lugares para verlos aquí');
       banner.onclick = () => {
         this._pulse(banner);
         if (!saved.length) { this._toast('Aún no tienes lugares guardados'); return; }
@@ -1508,10 +1495,24 @@ export class ProfileSheet {
       .wp-pf-banner {
         width:100%; height:150px; margin-top:18px; position:relative; overflow:hidden; display:block;
         border:none; border-radius:26px; padding:0; text-align:left; color:#fff; cursor:pointer;
-        background:linear-gradient(100deg,#3557ff 0%,#4f6cff 30%,#8f9ff2 66%,#c9cbf2 100%);
-        box-shadow:0 10px 26px rgba(53,87,255,0.28); font-family:inherit; -webkit-tap-highlight-color:transparent;
+        /* Azul de la marca + trama de puntitos (sin líneas ni stickers) */
+        background:
+          radial-gradient(rgba(255,255,255,0.16) 1.2px, transparent 1.6px) 0 0 / 14px 14px,
+          radial-gradient(120% 140% at 0% 0%, #5b7bff 0%, #2f55ff 45%, #1a3fe0 100%);
+        box-shadow:0 12px 28px rgba(26,63,224,0.30), inset 0 1px 0 rgba(255,255,255,0.25); font-family:inherit; -webkit-tap-highlight-color:transparent;
       }
-      .wp-pf-banner-map { position:absolute; inset:0; width:100%; height:100%; }
+      /* Polaroids de tus lugares guardados (derecha) */
+      .wp-pf-bn-photos { position:absolute; right:-6px; top:0; bottom:0; width:58%; pointer-events:none; }
+      .wp-pf-bn-photos i {
+        position:absolute; width:74px; height:96px; box-sizing:border-box; border-radius:14px;
+        background:#dfe6ff center/cover no-repeat; border:4px solid #fff;
+        box-shadow:0 10px 20px rgba(10,20,90,0.35); transform:rotate(var(--r));
+      }
+      .wp-pf-bn-photos .b0 { right:118px; top:34px; z-index:1; }
+      .wp-pf-bn-photos .b1 { right:72px; top:14px; z-index:3; }
+      .wp-pf-bn-photos .b2 { right:28px; top:40px; z-index:2; }
+      .wp-pf-bn-photos .b3 { right:-12px; top:10px; z-index:1; }
+      .wp-pf-banner-sub { margin-top:2px; font-size:12.5px; font-weight:600; color:rgba(255,255,255,0.82); }
       /* Explora tu ciudad */
       .wp-pf-explore {
         width:100%; margin-top:12px; display:flex; align-items:center; gap:12px; padding:12px 16px 12px 12px;
@@ -1701,24 +1702,11 @@ export class ProfileSheet {
       .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
       .wp-pf-banner-l > span:first-child { font-size:17px; font-weight:700; color:rgba(255,255,255,0.78); }
       .wp-pf-banner-l b {
-        font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:68px; line-height:0.95; margin-top:2px;
+        font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:60px; line-height:0.95; margin-top:2px;
         color:#fff; text-shadow:0 2px 10px rgba(20,30,120,0.25);
       }
       .wp-pf-banner-pill { margin-top:6px; display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
         background:#fff; font-size:12px; font-weight:800; color:#1f4bff; box-shadow:0 4px 12px rgba(20,30,120,0.22); }
-      /* Punto azul de ubicación con brillo */
-      .wp-pf-banner-dot {
-        position:absolute; right:40px; top:22px; z-index:3; width:32px; height:32px; border-radius:999px;
-        background:radial-gradient(circle at 38% 35%, #6aa8ff 0%, #1f5cff 55%, #1440d6 100%);
-        box-shadow:0 0 0 4px rgba(255,255,255,0.85), 0 6px 14px rgba(20,40,160,0.35);
-      }
-      /* Onda que sale del punto (solo transform/opacity) */
-      .wp-pf-banner-dot::after {
-        content:''; position:absolute; inset:-4px; border-radius:999px; border:3px solid rgba(255,255,255,0.7);
-        animation:wpPfDotWave 2.4s ease-out infinite;
-      }
-      @keyframes wpPfDotWave { 0% { transform:scale(1); opacity:.9; } 100% { transform:scale(2.1); opacity:0; } }
-      .wp-pf-stickers { position:absolute; inset:0; z-index:4; pointer-events:none; }
       /* Borde blanco tipo sticker: 4 sombras sólidas + una suave */
       .wp-pf-sticker {
         position:absolute; object-fit:contain; transform:rotate(var(--r));
