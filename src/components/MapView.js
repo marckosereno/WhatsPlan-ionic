@@ -2339,7 +2339,10 @@ export class MapView {
     // INTERNO de tamaño fijo (ver _buildClusterStickerHtml), que nunca
     // depende de que MapLibre lo mida — su tamaño lo define el CSS
     // directamente, sin ambigüedad posible.
-    el.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+    // position:ABSOLUTE (la de MapLibre). Con 'relative' en línea el marker
+    // entra al flujo del contenedor y empuja a los markers que vienen
+    // después → clusters/GPS "desubicados" que cambian con el zoom.
+    el.style.cssText = 'position:absolute;width:2px;height:2px;overflow:visible;cursor:pointer;';
     el.innerHTML = _buildClusterStickerHtml(group, customDef);
 
     // Pin de ESTILO ÚNICO (un solo lugar — ver paso 3 de _updateClusters):
@@ -4939,7 +4942,7 @@ export class MapView {
       // su contenido y MapLibre —que centra la caja del elemento— lo
       // dibuja corrido. Se le devuelve su cssText original.
       if (wrapper.classList.contains('place-cluster-el')) {
-        wrapper.style.cssText = 'position:relative;width:2px;height:2px;overflow:visible;cursor:pointer;';
+        wrapper.style.cssText = 'position:absolute;width:2px;height:2px;overflow:visible;cursor:pointer;'; // absolute: ver place-cluster-el
       }
       const z = this.map ? this.map.getZoom() : 0;
       wrapper.querySelectorAll('.place-act-badge').forEach(function(b) {
