@@ -478,8 +478,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
 
   thermo.querySelector('.wp-th-go').onclick = (e) => { e.stopPropagation(); nextMode(); };
 
-  // Brújula (arriba del termómetro): carátula con N · E · S · O y rayitas
-  // en las diagonales. Gira con el mapa para que la N apunte siempre al
+  // Brújula: escondida; aparece (arriba a la derecha, bajo la campanita)
+  // solo cuando giras el mapa y se esconde al volver al norte. Carátula
+  // con N · E · S · O y rayitas en las diagonales. Gira con el mapa para que la N apunte siempre al
   // norte real; la letra hacia donde estás viendo (arriba de la pantalla)
   // sobresale. Al centro, la estrella fija = tu frente. Tocar → norte arriba.
   document.getElementById('wp-focus-compass')?.remove();
@@ -495,7 +496,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     <svg class="wp-cp-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.5 6.2 4.3 10 10.5 10.5-6.2.5-10 4.3-10.5 10.5-.5-6.2-4.3-10-10.5-10.5C7.7 11.5 11.5 7.7 12 1.5z"/></svg>`;
   document.body.appendChild(compass);
   const cpLetters = [...compass.querySelectorAll('.wp-cp-l')];
-  let cpFacing = '';
+  let cpFacing = '', cpHideT = null;
   const paintNorth = () => {
     const b = map?.getBearing?.() || 0;            // hacia dónde ve la parte de arriba de la pantalla (0 = norte)
     compass.style.setProperty('--brg', `${-b}deg`);
@@ -508,11 +509,14 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       cpLetters.forEach(el => el.classList.toggle('on', el.dataset.l === facing));
     }
     compass.classList.toggle('turned', Math.abs(b) > 1);
+    // Mostrar al girar; esconder un momento después de volver al norte
+    clearTimeout(cpHideT);
+    if (Math.abs(b) > 2) compass.classList.add('show');
+    else if (compass.classList.contains('show')) cpHideT = setTimeout(() => compass.classList.remove('show'), 700);
   };
   paintNorth();
   map?.on?.('rotate', paintNorth);
   compass.onclick = () => { mv.haptic?.('light'); map?.easeTo?.({ bearing: 0, pitch: 0, duration: 500 }); };
-  requestAnimationFrame(() => requestAnimationFrame(() => compass.classList.add('in')));
   const startRoute = () => { routeOn = true; routeFit = true; routeFor = ''; paintProgress(); };
   const stopRoute = () => { routeOn = false; thPick = null; paintProgress(); }; // vuelve al más cercano
   // Punto más cercano de la ruta: { off (m a la línea), i (tramo), p ([lng,lat]) }
@@ -827,7 +831,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     meMk?.remove(); meMk = null;
     removeRoute();
     map?.off?.('rotate', paintNorth);
-    compass.classList.remove('in');
+    clearTimeout(cpHideT);
+    compass.classList.remove('show');
     setTimeout(() => compass.remove(), instant ? 0 : 280);
     thermo.classList.remove('in');
     setTimeout(() => thermo.remove(), instant ? 0 : 280);
