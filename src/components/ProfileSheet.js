@@ -319,7 +319,7 @@ export class ProfileSheet {
       ${isMe ? `<button type="button" class="wp-pf-banner">
           <div class="wp-pf-banner-l"><span>Guardados</span><b class="wp-pf-saved-n">–</b>
             <small class="wp-pf-banner-sub"></small>
-            <span class="wp-pf-banner-pill">${ICON.map} Ver en el mapa</span></div>
+            <span class="wp-pf-banner-pill">Ver en el mapa</span></div>
           <div class="wp-pf-bn-photos"></div>
         </button>
         <button type="button" class="wp-pf-explore">
@@ -1616,7 +1616,7 @@ export class ProfileSheet {
       .wp-pf-col-done { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; font-size:13px; font-weight:700; color:#16a34a; }
       .wp-pf-col-done[hidden] { display:none; }
       .wp-pf-col-faces { display:flex; }
-      .wp-pf-col-faces i { width:24px; height:24px; margin-left:-7px; border-radius:50%; background:#e5e7eb center/cover no-repeat; box-shadow:0 0 0 2px #fff; }
+      .wp-pf-col-faces i { width:24px; height:24px; margin-left:-7px; border-radius:50%; background:#e5e7eb center/cover no-repeat; }
       .wp-pf-col-faces i:first-child { margin-left:0; }
       /* Creador de avatar */
       .wp-av-mk { padding-top:4px; }
@@ -1683,7 +1683,7 @@ export class ProfileSheet {
       .wp-pf-ins-mutual { display:flex; align-items:center; gap:10px; margin:12px 4px 0; font-size:13px; color:#4b5563; }
       .wp-pf-ins-mutual b { color:#111827; }
       .wp-pf-ins-faces { display:flex; flex-shrink:0; }
-      .wp-pf-ins-faces i { width:26px; height:26px; margin-left:-8px; border-radius:50%; background:#e5e7eb center/cover no-repeat; box-shadow:0 0 0 2px #fff; }
+      .wp-pf-ins-faces i { width:26px; height:26px; margin-left:-8px; border-radius:50%; background:#e5e7eb center/cover no-repeat; }
       .wp-pf-ins-faces i:first-child { margin-left:0; }
       .wp-pf-ins-cards { display:flex; gap:10px; overflow-x:auto; margin:0 -16px; padding:2px 16px 6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
       .wp-pf-ins-cards::-webkit-scrollbar { display:none; }
