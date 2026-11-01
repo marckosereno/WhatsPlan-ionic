@@ -548,7 +548,7 @@ export class MomentsUI {
       .wp-mo-bars b { display:block; height:100%; width:0; background:#fff; }
       .wp-mo-head { position:absolute; top:calc(env(safe-area-inset-top,0px) + 20px); left:12px; right:12px; display:flex; align-items:center; gap:10px; z-index:4; color:#fff; }
       .wp-mo-head .wp-mo-round { width:36px; height:36px; }
-      .wp-mo-av { width:38px; height:38px; border-radius:50%; border:2px solid #fff; background:#334 center/cover; flex-shrink:0; }
+      .wp-mo-av { width:40px; height:40px; border-radius:50%; background:#334 center/cover; flex-shrink:0; }
       .wp-mo-who { flex:1; min-width:0; display:flex; flex-direction:column; }
       .wp-mo-who b { font-size:14px; } .wp-mo-who small { font-size:12px; opacity:0.85; }
       .wp-mo-tap { position:absolute; top:90px; bottom:150px; z-index:2; -webkit-tap-highlight-color:transparent; touch-action:none; }
@@ -558,7 +558,7 @@ export class MomentsUI {
       .wp-mo-own { width:100%; display:flex; flex-direction:column; gap:10px; }
       .wp-mo-own:empty { display:none; }
       .wp-mo-views { display:flex; align-items:center; gap:8px; color:#fff; font-size:12.5px; min-height:26px; }
-      .wp-mo-fp { display:flex; } .wp-mo-fp i { width:26px; height:26px; border-radius:50%; border:2px solid #fff; background:#556 center/cover; margin-left:-8px; } .wp-mo-fp i:first-child { margin-left:0; }
+      .wp-mo-fp { display:flex; } .wp-mo-fp i { width:26px; height:26px; border-radius:50%; background:#556 center/cover; margin-left:-8px; } .wp-mo-fp i:first-child { margin-left:0; }
       .wp-mo-save { width:100%; height:50px; justify-content:center; font-size:15px; }
       .wp-mo-save em { font-style:normal; color:#8e8e93; font-weight:500; }
       .wp-mo-save.done { background:rgba(255,255,255,0.85); color:#16a34a; }
@@ -566,7 +566,7 @@ export class MomentsUI {
       .wp-mo-mk { position:relative; width:62px; height:62px; cursor:pointer; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.22)); }
       .wp-mo-ring { display:block; width:100%; height:100%; border-radius:50%; padding:3px; box-sizing:border-box; }
       .wp-mo-in { display:block; width:100%; height:100%; border-radius:50%; border:3px solid #fff; box-sizing:border-box; background-size:cover; background-position:center; }
-      .wp-mo-mk-av { position:absolute; right:-4px; bottom:-4px; width:24px; height:24px; border-radius:50%; border:2px solid #fff; background:#556 center/cover; }
+      .wp-mo-mk-av { position:absolute; right:-4px; bottom:-4px; width:26px; height:26px; border-radius:50%; background:#556 center/cover; }
       .wp-mo-mk-n { position:absolute; right:-4px; top:-4px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:999px; background:#111827; color:#fff; border:2px solid #fff; font:700 10.5px/16px var(--wp-font); text-align:center; }
       .wp-mo-pol { position:relative; width:52px; padding:4px 4px 11px; background:#fff; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,0.2); transform:rotate(5deg); cursor:pointer; }
       .wp-mo-pol-ph { height:44px; border-radius:5px; background-size:cover; background-position:center; }
