@@ -25,7 +25,9 @@ const MODEL_LEN = 2.55;    // largo de los modelos de Kenney (unidades = metros)
 let libP = null;
 const loadLib = () => (libP ||= import('/src/vendor/three-gltf.js'));
 
-export function createVehicle3D(map, { onFail } = {}) {
+// opts: id (capa; para tener 2 a la vez), smooth (giro suave; el juego
+// de manejar lo apaga), sizePx (largo en pantalla)
+export function createVehicle3D(map, { onFail, id = LAYER_ID, smooth = true, sizePx = SIZE_PX } = {}) {
   let T = null, scene = null, camera = null, renderer = null, holder = null;
   let pos = null, heading = 0, shown = null, visible = false, failed = false, url = '';
   const cache = new Map(); // url → objeto 3D ya cargado
@@ -38,7 +40,7 @@ export function createVehicle3D(map, { onFail } = {}) {
   };
 
   const layer = {
-    id: LAYER_ID,
+    id,
     type: 'custom',
     renderingMode: '3d',
     onAdd(m, gl) {
@@ -63,11 +65,11 @@ export function createVehicle3D(map, { onFail } = {}) {
         const mc = window.maplibregl.MercatorCoordinate.fromLngLat([pos.lng, pos.lat], 0);
         // metros por píxel en este zoom/latitud → escala para medir SIZE_PX
         const mpp = 40075016.686 * Math.cos(pos.lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom()));
-        const meters = (SIZE_PX * mpp) / MODEL_LEN;
+        const meters = (sizePx * mpp) / MODEL_LEN;
         const s = mc.meterInMercatorCoordinateUnits() * meters;
         const rotX = new T.Matrix4().makeRotationAxis(new T.Vector3(1, 0, 0), Math.PI / 2);
         // Rumbo suave: se acerca al nuevo por el camino más corto
-        if (shown == null) shown = heading;
+        if (shown == null || !smooth) shown = heading;
         const d = ((heading - shown) % 360 + 540) % 360 - 180;
         shown += Math.abs(d) < 0.5 ? d : d * 0.18;
         if (Math.abs(d) >= 0.5) map.triggerRepaint();
@@ -88,7 +90,7 @@ export function createVehicle3D(map, { onFail } = {}) {
 
   const ensureLayer = () => {
     if (failed || !map.getStyle?.()) return;
-    if (!map.getLayer(LAYER_ID)) {
+    if (!map.getLayer(id)) {
       try { map.addLayer(layer); } catch (e) { fail(e); }
     }
   };
@@ -129,7 +131,7 @@ export function createVehicle3D(map, { onFail } = {}) {
     remove() {
       visible = false;
       map.off('styledata', onStyle);
-      try { if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID); } catch (_) {}
+      try { if (map.getLayer(id)) map.removeLayer(id); } catch (_) {}
       try { holder?.clear(); } catch (_) {}
     },
   };
