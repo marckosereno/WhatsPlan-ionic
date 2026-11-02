@@ -1284,3 +1284,10 @@ body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
 /* Etiqueta de distancia/minutos: marker aparte (no se inclina con el mapa) */
 .wp-me-chipmk { position: absolute; width: 0; height: 0; }
 .wp-me-chipmk .wp-me-chip { top: 0; }
+/* Mapa inclinado: vehículo 3D de lado (o de frente), parado sobre tu punto */
+.wp-me-mk[data-view=side] .wp-me-veh, .wp-me-mk[data-view=front] .wp-me-veh {
+  width: 60px; height: 60px; margin: -44px 0 0 -30px; /* la base queda sobre tu ubicación */
+  transform: none; transition: none; filter: drop-shadow(0 4px 3px rgba(17,24,39,0.35));
+}
+.wp-me-veh img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; transition: transform .25s ease; }
+.wp-me-veh.flip img { transform: scaleX(-1); }
