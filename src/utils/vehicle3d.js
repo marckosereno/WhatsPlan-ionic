@@ -29,7 +29,7 @@ const loadLib = () => (libP ||= import('/src/vendor/three-gltf.js'));
 // de manejar lo apaga), sizePx (largo en pantalla)
 export function createVehicle3D(map, { onFail, id = LAYER_ID, smooth = true, sizePx = SIZE_PX } = {}) {
   let T = null, scene = null, camera = null, renderer = null, holder = null;
-  let pos = null, heading = 0, shown = null, visible = false, failed = false, url = '';
+  let pos = null, heading = 0, shown = null, visible = false, failed = false, url = '', len = MODEL_LEN;
   const cache = new Map(); // url → objeto 3D ya cargado
 
   const fail = (e) => {
@@ -65,7 +65,7 @@ export function createVehicle3D(map, { onFail, id = LAYER_ID, smooth = true, siz
         const mc = window.maplibregl.MercatorCoordinate.fromLngLat([pos.lng, pos.lat], 0);
         // metros por píxel en este zoom/latitud → escala para medir SIZE_PX
         const mpp = 40075016.686 * Math.cos(pos.lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom()));
-        const meters = (sizePx * mpp) / MODEL_LEN;
+        const meters = (sizePx * mpp) / len;
         const s = mc.meterInMercatorCoordinateUnits() * meters;
         const rotX = new T.Matrix4().makeRotationAxis(new T.Vector3(1, 0, 0), Math.PI / 2);
         // Rumbo suave: se acerca al nuevo por el camino más corto
@@ -100,13 +100,14 @@ export function createVehicle3D(map, { onFail, id = LAYER_ID, smooth = true, siz
 
   const api = {
     get failed() { return failed; },
-    async setModel(u) {
+    // u = .glb · modelLen = largo real del modelo en metros (para el tamaño en pantalla)
+    async setModel(u, modelLen = MODEL_LEN) {
       if (failed) return false;
       try {
         T = await loadLib();
         if (!T?.WebGLRenderer) throw new Error('three.js no cargó');
         ensureLayer();
-        if (u === url && holder?.children.length) return true;
+        if (u === url && holder?.children.length) { len = modelLen || MODEL_LEN; return true; }
         url = u;
         let obj = cache.get(u);
         if (!obj) {
@@ -117,6 +118,7 @@ export function createVehicle3D(map, { onFail, id = LAYER_ID, smooth = true, siz
         if (url !== u) return true; // mientras cargaba se pidió otro
         holder.clear();
         holder.add(obj);
+        len = modelLen || MODEL_LEN;
         map.triggerRepaint();
         return true;
       } catch (e) { fail(e); return false; }
