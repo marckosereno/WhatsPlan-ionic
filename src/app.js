@@ -448,6 +448,21 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // modelo 3D dentro del mapa (se ve de lado/de frente al inclinar). Si el
   // 3D falla, se queda el dibujo plano. Por ahora solo el auto.
   let v3d = null, v3dOn = false;
+  // Modo manejar (DriveMode.js): parte de tu ubicación y rumbo; el auto
+  // de la colección se esconde mientras tanto
+  const startDrive = async () => {
+    const p = myPos();
+    if (!p) return;
+    mv.haptic?.('action');
+    try {
+      const { DriveMode } = await import('/src/components/DriveMode.js');
+      set3d(false);
+      DriveMode.open(map, {
+        start: p, heading: myHd ?? 0, haptic: (k) => mv.haptic?.(k),
+        onClose: () => { if (meEl) apply3d(); },
+      });
+    } catch (e) { console.warn('[DIAG-DRIVE] no abrió:', e?.message || e); }
+  };
   const set3d = (on) => {
     v3dOn = !!on;
     meEl?.classList.toggle('is3d', v3dOn);
@@ -524,7 +539,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     paintMode();
     const v = meEl?.querySelector('.wp-me-veh');
     if (v) { v.classList.remove('swap'); void v.offsetWidth; v.classList.add('swap'); }
-    showFocusBubble(bar, `<strong>${MODES[mode].label}</strong><span>Toca tu vehículo para cambiar</span>`, 'hint', 1300);
+    showFocusBubble(bar, `<strong>${MODES[mode].label}</strong><span>Toca para cambiar · deja presionado para manejar</span>`, 'hint', 1600);
     route = null; routeFor = ''; // ruta y minutos de nuevo, para este modo
     paintProgress();
   };
@@ -638,7 +653,15 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
       chipEl = document.createElement('div');
       chipEl.className = 'wp-me-chipmk';
       chipEl.innerHTML = `<span class="wp-me-chip" hidden><span class="wp-me-chip-t"></span><button type="button" class="wp-me-x" aria-label="Quitar ruta" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></span>`;
-      meEl.onclick = (e) => { e.stopPropagation(); nextMode(); }; // tocar tu vehículo: cambia de modo
+      meEl.onclick = (e) => { e.stopPropagation(); if (lpFired) { lpFired = false; return; } nextMode(); }; // tocar tu vehículo: cambia de modo
+      // Dejar presionado tu vehículo: MODO MANEJAR (juego; no cuenta como visita)
+      let lpT = 0, lpFired = false, lpXY = null;
+      meEl.addEventListener('pointerdown', (e) => {
+        lpXY = [e.clientX, e.clientY]; lpFired = false; clearTimeout(lpT);
+        lpT = setTimeout(() => { lpFired = true; startDrive(); }, 600);
+      });
+      const lpCancel = (e) => { if (e?.type === 'pointermove' && lpXY && Math.hypot(e.clientX - lpXY[0], e.clientY - lpXY[1]) < 10) return; clearTimeout(lpT); };
+      ['pointerup', 'pointercancel', 'pointerleave', 'pointermove'].forEach(t => meEl.addEventListener(t, lpCancel));
       chipEl.onclick = (e) => e.stopPropagation();
       chipEl.querySelector('.wp-me-x').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); stopRoute(); };
       meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center', pitchAlignment: 'map' }).setLngLat([pos.lng, pos.lat]).addTo(map);
@@ -912,6 +935,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     meMk?.remove(); meMk = null;
     chipMk?.remove(); chipMk = null;
     v3d?.remove(); v3d = null;
+    import('/src/components/DriveMode.js').then(m => m.DriveMode.close()).catch(() => {});
     removeRoute();
     map?.off?.('rotate', paintNorth);
     clearTimeout(cpHideT);
