@@ -1287,3 +1287,65 @@ body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
 /* Con el vehículo en 3D (capa del mapa): se esconden el dibujo plano y el
    pulso (irían encima); el marker sigue ahí, invisible, para tocarlo */
 .wp-me-mk.is3d .wp-me-veh, .wp-me-mk.is3d .wp-me-pulse { visibility: hidden; }
+
+/* ── Modo manejar (DriveMode.js) ──────────────────────────────────────
+   Mientras manejas se esconde la interfaz del mapa de colecciones */
+body.wp-driving #wp-focus-bar, body.wp-driving #wp-focus-top, body.wp-driving #wp-focus-thermo,
+body.wp-driving #wp-focus-compass, body.wp-driving .wp-me-mk, body.wp-driving .wp-me-chipmk,
+body.wp-driving #topbar-notif-btn, body.wp-driving .wp-fb-bubble { visibility: hidden; pointer-events: none; }
+#wp-drive {
+  position: fixed; inset: 0; z-index: 1300; pointer-events: none; font-family: var(--wp-font, inherit);
+  opacity: 0; transition: opacity .25s ease;
+}
+#wp-drive.in { opacity: 1; }
+#wp-drive button { -webkit-tap-highlight-color: transparent; font-family: inherit; }
+.wp-dr-exit {
+  pointer-events: auto; position: absolute; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 14px);
+  height: 42px; padding: 0 16px 0 12px; border: none; border-radius: 999px; display: flex; align-items: center; gap: 6px;
+  background: rgba(10,10,10,0.82); color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+.wp-dr-exit svg { width: 18px; height: 18px; }
+.wp-dr-speed {
+  position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px); transform: translateX(-50%);
+  min-width: 92px; padding: 6px 16px 8px; border-radius: 22px; text-align: center; line-height: 1;
+  background: rgba(255,255,255,0.92); box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+.wp-dr-speed b { display: block; font-size: 30px; font-weight: 900; color: #0a0a0a; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.wp-dr-speed small { font-size: 11px; font-weight: 700; color: #6b7280; }
+#wp-drive.offroad .wp-dr-speed b { color: #d97706; }
+.wp-dr-toast {
+  position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 82px); transform: translateX(-50%);
+  padding: 7px 14px; border-radius: 999px; background: #0a0a0a; color: #fff; font-size: 13px; font-weight: 800; white-space: nowrap;
+}
+.wp-dr-toast[hidden] { display: none; }
+/* Volante: una barra donde el botón se arrastra a los lados */
+.wp-dr-wheel {
+  pointer-events: auto; touch-action: none; position: absolute; left: 18px; bottom: calc(env(safe-area-inset-bottom, 0px) + 34px);
+  width: 170px; height: 64px; border-radius: 999px;
+  background: rgba(255,255,255,0.82); box-shadow: 0 8px 20px rgba(0,0,0,0.22), inset 0 2px 6px rgba(0,0,0,0.08);
+  display: flex; align-items: center; justify-content: center;
+}
+.wp-dr-wheel::before, .wp-dr-wheel::after {
+  content: ''; position: absolute; top: 50%; width: 0; height: 0; margin-top: -7px;
+  border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+}
+.wp-dr-wheel::before { left: 14px; border-right: 9px solid #9ca3af; }
+.wp-dr-wheel::after { right: 14px; border-left: 9px solid #9ca3af; }
+.wp-dr-wheel i {
+  display: block; width: 52px; height: 52px; border-radius: 50%; background: #1a5cf5;
+  box-shadow: 0 4px 10px rgba(26,92,245,0.45), inset 0 2px 0 rgba(255,255,255,0.35); transition: transform .12s ease-out;
+}
+.wp-dr-pedals {
+  position: absolute; right: 18px; bottom: calc(env(safe-area-inset-bottom, 0px) + 34px);
+  display: flex; align-items: flex-end; gap: 12px;
+}
+.wp-dr-pedals button {
+  pointer-events: auto; touch-action: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25); transition: transform .08s;
+}
+.wp-dr-pedals button.on { transform: scale(0.92) translateY(2px); }
+.wp-dr-brake { width: 64px; height: 64px; border-radius: 20px; background: #fff; color: #ef4444; }
+.wp-dr-gas { width: 78px; height: 104px; border-radius: 24px; background: #1a5cf5; color: #fff; }
+.wp-dr-brake svg { width: 26px; height: 26px; }
+.wp-dr-gas svg { width: 36px; height: 36px; }
