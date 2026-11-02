@@ -430,17 +430,17 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // cambia de modo y recalcula ruta y minutos. En el MAPA tú siempre eres
   // la flecha de navegación, que apunta hacia donde te mueves (o hacia el
   // lugar mientras estás quieto). Se recuerda el último modo.
-  // Íconos tipo apps de mapas (un solo color, de frente o de lado), dentro
-  // engrosados con contorno negro. Trazos de Material Design Icons (Apache 2.0).
+  // Íconos de línea (estilo apps de mapas): auto de frente = Lucide (ISC),
+  // moto (scooter) y a pie = Tabler (MIT); bici y mototaxi dibujados aquí.
   // Versión con emojis: app.before-glyphs.js · dibujados desde arriba: app.before-emoji.js
   // mpm = metros por minuto para el tiempo aproximado (sin ruta).
   // Mototaxi y moto: el servidor no tiene perfil propio → calles de auto.
   const MODES = {
-    car:  { label: 'En auto',     osrm: 'routed-car',  mpm: 450, ic: 'M5,11L6.5,6.5H17.5L19,11M17.5,16A1.5,1.5 0 0,1 16,14.5A1.5,1.5 0 0,1 17.5,13A1.5,1.5 0 0,1 19,14.5A1.5,1.5 0 0,1 17.5,16M6.5,16A1.5,1.5 0 0,1 5,14.5A1.5,1.5 0 0,1 6.5,13A1.5,1.5 0 0,1 8,14.5A1.5,1.5 0 0,1 6.5,16M18.92,6C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 19,21H20A1,1 0 0,0 21,20V12L18.92,6Z' },
-    moto: { label: 'En mototaxi', osrm: 'routed-car',  mpm: 330, ic: 'M20 14.05V12.73C20 12.26 19.84 11.8 19.54 11.44L15.6 6.72C15.22 6.26 14.66 6 14.06 6H4C2.9 6 2 6.9 2 8V15C2 16.1 2.9 17 4 17H4.05C4.28 18.14 5.29 19 6.5 19S8.72 18.14 8.95 17H17.05C17.28 18.14 18.29 19 19.5 19C20.88 19 22 17.88 22 16.5C22 15.29 21.14 14.28 20 14.05M3.5 8C3.5 7.73 3.73 7.5 4 7.5H7V12H3.5V8M6.5 17.5C5.95 17.5 5.5 17.05 5.5 16.5S5.95 15.5 6.5 15.5 7.5 15.95 7.5 16.5 7.05 17.5 6.5 17.5M13 15.5H9V14H11V12H9V7.5H13V15.5M15 8.34L18.05 12H15V8.34M19.5 17.5C18.95 17.5 18.5 17.05 18.5 16.5S18.95 15.5 19.5 15.5 20.5 15.95 20.5 16.5 20.05 17.5 19.5 17.5Z' },
-    mbk:  { label: 'En moto',     osrm: 'routed-car',  mpm: 500, ic: 'M17.42,10L13.41,6H9V8H12.59L14.59,10H6.5C4,10 2,12 2,14.5C2,17 4,19 6.5,19C8.72,19 10.56,17.38 10.92,15.27L13.04,14C13,14.17 13,14.33 13,14.5C13,17 15,19 17.5,19C20,19 22,17 22,14.5C22,12 20,10 17.5,10M8.84,15.26C8.5,16.27 7.58,17 6.47,17C5.09,17 3.97,15.88 3.97,14.5C3.97,13.12 5.09,12 6.47,12C7.59,12 8.5,12.74 8.84,13.75H6V15.25L8.84,15.26M17.47,17C16.09,17 14.97,15.88 14.97,14.5C14.97,13.12 16.09,12 17.47,12A2.5,2.5 0 0,1 19.97,14.5A2.5,2.5 0 0,1 17.47,17Z' },
-    bike: { label: 'En bici',     osrm: 'routed-bike', mpm: 250, ic: 'M19 10C18.44 10 17.91 10.11 17.41 10.28L14.46 4.5H11V6H13.54L14.42 7.72L12 13.13L10.23 8.95C10.5 8.85 10.74 8.58 10.74 8.25C10.74 7.84 10.41 7.5 10 7.5H8C7.58 7.5 7.24 7.84 7.24 8.25S7.58 9 8 9H8.61L10.86 14.25H9.92C9.56 11.85 7.5 10 5 10C2.24 10 0 12.24 0 15S2.24 20 5 20C7.5 20 9.56 18.15 9.92 15.75H12.5L15.29 9.43L16.08 10.96C14.82 11.87 14 13.34 14 15C14 17.76 16.24 20 19 20S24 17.76 24 15 21.76 10 19 10M5 18.5C3.07 18.5 1.5 16.93 1.5 15S3.07 11.5 5 11.5C6.67 11.5 8.07 12.68 8.41 14.25H4V15.75H8.41C8.07 17.32 6.67 18.5 5 18.5M19 18.5C17.07 18.5 15.5 16.93 15.5 15C15.5 13.92 16 12.97 16.77 12.33L18.57 15.85L19.89 15.13L18.1 11.63C18.39 11.56 18.69 11.5 19 11.5C20.93 11.5 22.5 13.07 22.5 15S20.93 18.5 19 18.5Z' },
-    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  ic: 'M14.12,10H19V8.2H15.38L13.38,4.87C13.08,4.37 12.54,4.03 11.92,4.03C11.74,4.03 11.58,4.06 11.42,4.11L6,5.8V11H7.8V7.33L9.91,6.67L6,22H7.8L10.67,13.89L13,17V22H14.8V15.59L12.31,11.05L13.04,8.18M14,3.8C15,3.8 15.8,3 15.8,2C15.8,1 15,0.2 14,0.2C13,0.2 12.2,1 12.2,2C12.2,3 13,3.8 14,3.8Z' },
+    car:  { label: 'En auto',     osrm: 'routed-car',  mpm: 450, ic: '<path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/>' },
+    moto: { label: 'En mototaxi', osrm: 'routed-car',  mpm: 330, ic: '<path d="M2.5 6.5h13.5"/><path d="M4 6.5V15"/><path d="M14.8 6.5 17.6 12.4l2.9 1.2-.4 2.4"/><path d="M4 12.5h7v3"/><path d="M8.8 16h7.4"/><circle cx="6.8" cy="17" r="2"/><circle cx="18.4" cy="17.4" r="1.9"/><path d="M11 6.5v6"/>' },
+    mbk:  { label: 'En moto',     osrm: 'routed-car',  mpm: 500, ic: '<path d="M18 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 16v1a2 2 0 0 0 4 0v-5h-3a3 3 0 0 0 -3 3v1h10a6 6 0 0 1 5 -4v-5a2 2 0 0 0 -2 -2h-1"/><path d="M6 9l3 0"/>' },
+    bike: { label: 'En bici',     osrm: 'routed-bike', mpm: 250, ic: '<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9.5h7l2.5 7"/><path d="M9 9.5l3 7 4-7"/><path d="M8.6 9.5 8 7"/><path d="M6.8 7h2.6"/><path d="M16 9.5 15 6.5h2"/>' },
+    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  ic: '<path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l3 -4"/><path d="M16 21l-2 -4l-3 -3l1 -6"/><path d="M6 12l2 -3l4 -1l3 3l3 1"/>' },
   };
   const ORDER = ['car', 'moto', 'mbk', 'bike', 'walk'];
   let mode = 'car';
@@ -484,7 +484,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   };
   const thVeh = thermo.querySelector('.wp-th-veh');
   const paintMode = () => {
-    thVeh.innerHTML = `<span class="wp-th-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MODES[mode].ic}" stroke="#0a0a0a" stroke-width="1.3" stroke-linejoin="round"/></svg></span>`;
+    thVeh.innerHTML = `<span class="wp-th-ic"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#0a0a0a" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${MODES[mode].ic}</svg></span>`;
     thermo.dataset.mode = mode;
     thermo.querySelector('.wp-th-go').setAttribute('aria-label', `${MODES[mode].label} · tocar para cambiar`);
   };
