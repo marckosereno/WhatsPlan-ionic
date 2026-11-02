@@ -348,7 +348,10 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     <div class="wp-th-track"><span class="wp-th-fill"></span>
       <button type="button" class="wp-th-goal" aria-label="Lugar más cercano"><i class="g1"></i><i class="g0"></i></button>
       <div class="wp-th-me">
-        <button type="button" class="wp-th-go" aria-label="Cambiar cómo vas"><span class="wp-th-veh"></span></button>
+        <svg class="wp-th-arrow" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#fff" stroke="#fff" stroke-width="4.6" stroke-linejoin="round"/>
+          <path class="wp-th-arrow-fill" d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
       </div>
     </div>`;
   document.body.appendChild(thermo);
@@ -425,22 +428,20 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // × de la etiqueta o sola al llegar (<100 m). Tocar en "Todos" no la toca.
   let routeOn = false;
 
-  // ── Cómo vas: auto → mototaxi → moto → bici → a pie ──────────────────────────────────
-  // El ícono va en el TERMÓMETRO; tocarlo
-  // cambia de modo y recalcula ruta y minutos. En el MAPA tú siempre eres
-  // la flecha de navegación, que apunta hacia donde te mueves (o hacia el
-  // lugar mientras estás quieto). Se recuerda el último modo.
-  // Íconos de línea (estilo apps de mapas): auto de frente = Lucide (ISC),
-  // moto (scooter) y a pie = Tabler (MIT); bici y mototaxi dibujados aquí.
-  // Versión con emojis: app.before-glyphs.js · dibujados desde arriba: app.before-emoji.js
+  // ── Cómo vas: auto → mototaxi → moto → bici → a pie ───────────────
+  // En el MAPA tú eres tu vehículo en 3D visto desde arriba (estilo
+  // Bolt/Uber): gira hacia donde te mueves (o hacia el lugar si estás
+  // quieto); tocarlo cambia de modo y recalcula ruta y minutos. En el
+  // TERMÓMETRO va la flecha de navegación. Se recuerda el último modo.
+  // Versiones anteriores: app.before-3d.js (línea), app.before-glyphs.js (emoji).
   // mpm = metros por minuto para el tiempo aproximado (sin ruta).
   // Mototaxi y moto: el servidor no tiene perfil propio → calles de auto.
   const MODES = {
-    car:  { label: 'En auto',     osrm: 'routed-car',  mpm: 450, ic: '<path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/>' },
-    moto: { label: 'En mototaxi', osrm: 'routed-car',  mpm: 330, ic: '<path d="M2.5 6.5h13.5"/><path d="M4 6.5V15"/><path d="M14.8 6.5 17.6 12.4l2.9 1.2-.4 2.4"/><path d="M4 12.5h7v3"/><path d="M8.8 16h7.4"/><circle cx="6.8" cy="17" r="2"/><circle cx="18.4" cy="17.4" r="1.9"/><path d="M11 6.5v6"/>' },
-    mbk:  { label: 'En moto',     osrm: 'routed-car',  mpm: 500, ic: '<path d="M18 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 16v1a2 2 0 0 0 4 0v-5h-3a3 3 0 0 0 -3 3v1h10a6 6 0 0 1 5 -4v-5a2 2 0 0 0 -2 -2h-1"/><path d="M6 9l3 0"/>' },
-    bike: { label: 'En bici',     osrm: 'routed-bike', mpm: 250, ic: '<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9.5h7l2.5 7"/><path d="M9 9.5l3 7 4-7"/><path d="M8.6 9.5 8 7"/><path d="M6.8 7h2.6"/><path d="M16 9.5 15 6.5h2"/>' },
-    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  ic: '<path d="M13 4m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M7 21l3 -4"/><path d="M16 21l-2 -4l-3 -3l1 -6"/><path d="M6 12l2 -3l4 -1l3 3l3 1"/>' },
+    car:  { label: 'En auto',     osrm: 'routed-car',  mpm: 450, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wcB" x1="0" x2="1"><stop offset="0" stop-color="#0f3fb8"/><stop offset=".22" stop-color="#2b6cff"/><stop offset=".5" stop-color="#5b93ff"/><stop offset=".78" stop-color="#2b6cff"/><stop offset="1" stop-color="#0f3fb8"/></linearGradient><linearGradient id="wcG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c2433"/><stop offset="1" stop-color="#3a4a66"/></linearGradient><linearGradient id="wcR" x1="0" x2="1"><stop offset="0" stop-color="#1e56e6"/><stop offset=".5" stop-color="#4a86ff"/><stop offset="1" stop-color="#1e56e6"/></linearGradient></defs><rect x="9.6" y="13.6" width="3.4" height="2.6" rx="1.2" fill="#123fa8"/><rect x="27" y="13.6" width="3.4" height="2.6" rx="1.2" fill="#123fa8"/><path d="M14.2 3.2h11.6c2.6 0 3.8 1.6 3.9 4.2l.4 24.4c0 3-1.6 5-4.4 5H14.3c-2.8 0-4.4-2-4.4-5l.4-24.4c.1-2.6 1.3-4.2 3.9-4.2z" fill="url(#wcB)"/><path d="M13.4 12.6c3.6-1.6 9.6-1.6 13.2 0l-1.2 5.2c-3.4-.9-7.4-.9-10.8 0z" fill="url(#wcG)"/><path d="M14.6 17.8c3.4-.8 7.4-.8 10.8 0v9.4c-3.4.7-7.4.7-10.8 0z" fill="url(#wcR)"/><path d="M14.6 27.2c3.4.7 7.4.7 10.8 0l.9 3.8c-4 1.1-8.6 1.1-12.6 0z" fill="url(#wcG)"/><path d="M12.6 13.4l1.8 4.3v9.6l-1.6 3.2zM27.4 13.4l-1.8 4.3v9.6l1.6 3.2z" fill="#24324d" opacity=".75"/><rect x="11.6" y="4" width="4.2" height="2" rx="1" fill="#fff6c2"/><rect x="24.2" y="4" width="4.2" height="2" rx="1" fill="#fff6c2"/><rect x="11.8" y="34.2" width="3.6" height="1.3" rx=".65" fill="#ff5a5a"/><rect x="24.6" y="34.2" width="3.6" height="1.3" rx=".65" fill="#ff5a5a"/><path d="M17 4.6c2-.5 4-.5 6 0" stroke="#fff" stroke-opacity=".55" stroke-width=".9" fill="none" stroke-linecap="round"/><path d="M18.2 19.5v6.4" stroke="#fff" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/></svg>' },
+    moto: { label: 'En mototaxi', osrm: 'routed-car',  mpm: 330, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wmC" x1="0" x2="1"><stop offset="0" stop-color="#c7861a"/><stop offset=".25" stop-color="#ffc83d"/><stop offset=".5" stop-color="#ffe27a"/><stop offset=".75" stop-color="#ffc83d"/><stop offset="1" stop-color="#c7861a"/></linearGradient><linearGradient id="wmT" x1="0" x2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset=".5" stop-color="#3a4252"/><stop offset="1" stop-color="#0b0f17"/></linearGradient></defs><rect x="7.2" y="25.4" width="4.4" height="9.6" rx="2" fill="url(#wmT)"/><rect x="28.4" y="25.4" width="4.4" height="9.6" rx="2" fill="url(#wmT)"/><rect x="18" y="1.4" width="4" height="8" rx="2" fill="url(#wmT)"/><path d="M14.6 7.4h10.8l2.6 3.6H12z" fill="#d63a3a"/><path d="M12.2 10.6c0-1.4 1-2.2 2.4-2.2h10.8c1.4 0 2.4.8 2.4 2.2L29.6 31c.1 2.6-1.4 4.4-4 4.4H14.4c-2.6 0-4.1-1.8-4-4.4z" fill="url(#wmC)"/><path d="M13.4 11.6h13.2l.3 2.4H13.1z" fill="#1c2433" opacity=".8"/><path d="M15 16v16M20 16v16.6M25 16v16" stroke="#a96d0c" stroke-opacity=".55" stroke-width="1.2" stroke-linecap="round"/><path d="M16.4 9.6c2.4-.6 4.8-.6 7.2 0" stroke="#fff" stroke-opacity=".6" stroke-width=".9" fill="none" stroke-linecap="round"/><path d="M17.4 18v11" stroke="#fff" stroke-opacity=".45" stroke-width="1.3" stroke-linecap="round"/></svg>' },
+    mbk:  { label: 'En moto',     osrm: 'routed-car',  mpm: 500, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wsB" x1="0" x2="1"><stop offset="0" stop-color="#b4141f"/><stop offset=".3" stop-color="#ef3b3b"/><stop offset=".5" stop-color="#ff7a6e"/><stop offset=".7" stop-color="#ef3b3b"/><stop offset="1" stop-color="#b4141f"/></linearGradient><linearGradient id="wsT" x1="0" x2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset=".5" stop-color="#3a4252"/><stop offset="1" stop-color="#0b0f17"/></linearGradient><linearGradient id="wsS" x1="0" x2="1"><stop offset="0" stop-color="#141a24"/><stop offset=".5" stop-color="#3d4656"/><stop offset="1" stop-color="#141a24"/></linearGradient></defs><rect x="18.2" y="1.6" width="3.6" height="8.4" rx="1.8" fill="url(#wsT)"/><rect x="18.2" y="29.4" width="3.6" height="9" rx="1.8" fill="url(#wsT)"/><path d="M10.6 10.2h18.8" stroke="#2a3140" stroke-width="2" stroke-linecap="round"/><circle cx="10.4" cy="10.2" r="1.5" fill="#cfd6e2"/><circle cx="29.6" cy="10.2" r="1.5" fill="#cfd6e2"/><path d="M16.6 7.2c2.2-1 4.6-1 6.8 0l.8 7.2c.6 2.6 1 5 1 8.2v6.4c0 2.8-2.2 4.6-5.2 4.6s-5.2-1.8-5.2-4.6v-6.4c0-3.2.4-5.6 1-8.2z" fill="url(#wsB)"/><path d="M17.2 17.6h5.6c.9 0 1.5.6 1.5 1.5v8.6c0 1.8-1.8 3-4.3 3s-4.3-1.2-4.3-3v-8.6c0-.9.6-1.5 1.5-1.5z" fill="url(#wsS)"/><path d="M18.2 8.6c1.2-.4 2.4-.4 3.6 0" stroke="#fff" stroke-opacity=".6" stroke-width=".9" fill="none" stroke-linecap="round"/><rect x="18.8" y="5.6" width="2.4" height="1.4" rx=".7" fill="#fff6c2"/></svg>' },
+    bike: { label: 'En bici',     osrm: 'routed-bike', mpm: 250, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wbT" x1="0" x2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset=".5" stop-color="#454e60"/><stop offset="1" stop-color="#0b0f17"/></linearGradient><linearGradient id="wbF" x1="0" x2="1"><stop offset="0" stop-color="#0f8a6a"/><stop offset=".5" stop-color="#34d3a5"/><stop offset="1" stop-color="#0f8a6a"/></linearGradient><linearGradient id="wbS" x1="0" x2="1"><stop offset="0" stop-color="#141a24"/><stop offset=".5" stop-color="#4a5466"/><stop offset="1" stop-color="#141a24"/></linearGradient></defs><rect x="18.4" y="1.4" width="3.2" height="12" rx="1.6" fill="url(#wbT)"/><rect x="18.4" y="26.6" width="3.2" height="12" rx="1.6" fill="url(#wbT)"/><rect x="18.6" y="9" width="2.8" height="21" rx="1.4" fill="url(#wbF)"/><path d="M11.2 10.8c2.4-1.2 5-1.6 8.8-1.6s6.4.4 8.8 1.6" stroke="#2a3140" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="9.6" y="9.4" width="3" height="2.6" rx="1.2" fill="#1c2433"/><rect x="27.4" y="9.4" width="3" height="2.6" rx="1.2" fill="#1c2433"/><path d="M18.2 24.4c0-1.2.8-2 1.8-2s1.8.8 1.8 2v3.4c0 1-.8 1.6-1.8 1.6s-1.8-.6-1.8-1.6z" fill="url(#wbS)"/><path d="M15.4 19.6h9.2" stroke="#6b7280" stroke-width="1.6" stroke-linecap="round"/><rect x="13.6" y="18.6" width="2.6" height="2" rx=".8" fill="#1c2433"/><rect x="23.8" y="18.6" width="2.6" height="2" rx=".8" fill="#1c2433"/><path d="M19.4 11v17" stroke="#fff" stroke-opacity=".45" stroke-width=".8" stroke-linecap="round"/></svg>' },
+    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  svg: '<svg viewBox="0 0 40 40"><defs><radialGradient id="wpH" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#7a5640"/><stop offset="1" stop-color="#2b1a10"/></radialGradient><linearGradient id="wpS" x1="0" x2="1"><stop offset="0" stop-color="#0f3fb8"/><stop offset=".3" stop-color="#2b6cff"/><stop offset=".5" stop-color="#5b93ff"/><stop offset=".7" stop-color="#2b6cff"/><stop offset="1" stop-color="#0f3fb8"/></linearGradient><radialGradient id="wpA" cx=".4" cy=".4" r=".8"><stop offset="0" stop-color="#e9b38c"/><stop offset="1" stop-color="#b77a52"/></radialGradient></defs><ellipse class="wp-ft-l" cx="16.4" cy="12.6" rx="2.4" ry="3.6" fill="#1c2433"/><ellipse class="wp-ft-r" cx="23.6" cy="27.4" rx="2.4" ry="3.6" fill="#1c2433"/><ellipse cx="9.6" cy="22.4" rx="2.3" ry="3.4" fill="url(#wpA)"/><ellipse cx="30.4" cy="17.6" rx="2.3" ry="3.4" fill="url(#wpA)"/><path d="M10.4 20c0-3 4.2-4.8 9.6-4.8s9.6 1.8 9.6 4.8-4.2 4.8-9.6 4.8-9.6-1.8-9.6-4.8z" fill="url(#wpS)"/><circle cx="20" cy="19.4" r="4.6" fill="url(#wpH)"/><path d="M18 17.2c1-.8 2.4-.9 3.6-.4" stroke="#fff" stroke-opacity=".35" stroke-width=".9" fill="none" stroke-linecap="round"/></svg>' },
   };
   const ORDER = ['car', 'moto', 'mbk', 'bike', 'walk'];
   let mode = 'car';
@@ -455,9 +456,9 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     const x = Math.cos(toR(a.lat)) * Math.sin(toR(b.lat)) - Math.sin(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.cos(toR(b.lng - a.lng));
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   };
-  // Gira la flecha del mapa: tu rumbo menos lo que esté girado el mapa
+  // Gira tu vehículo en el mapa: tu rumbo menos lo que esté girado el mapa
   const paintHeading = () => {
-    const v = meEl?.querySelector('.wp-me-nav');
+    const v = meEl?.querySelector('.wp-me-veh');
     if (!v) return;
     let hd = myHd != null && Date.now() - myHdT < 20000 ? myHd : null;
     if (hd == null) {
@@ -482,24 +483,25 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     hdShown = hdShown == null ? target : hdShown + ((((target - hdShown) % 360) + 540) % 360 - 180);
     v.style.setProperty('--hd', `${hdShown}deg`);
   };
-  const thVeh = thermo.querySelector('.wp-th-veh');
   const paintMode = () => {
-    thVeh.innerHTML = `<span class="wp-th-ic"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#0a0a0a" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${MODES[mode].ic}</svg></span>`;
-    thermo.dataset.mode = mode;
-    thermo.querySelector('.wp-th-go').setAttribute('aria-label', `${MODES[mode].label} · tocar para cambiar`);
+    const v = meEl?.querySelector('.wp-me-veh');
+    if (!v) return;
+    v.innerHTML = MODES[mode].svg;
+    meEl.dataset.mode = mode;
+    meEl.setAttribute('aria-label', `${MODES[mode].label} · tocar para cambiar`);
+    paintHeading();
   };
-  paintMode();
   const nextMode = () => {
     mode = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
     try { localStorage.setItem('wpGoMode', mode); } catch (_) {}
     mv.haptic?.('light');
     paintMode();
-    thVeh.classList.remove('swap'); void thVeh.offsetWidth; thVeh.classList.add('swap');
+    const v = meEl?.querySelector('.wp-me-veh');
+    if (v) { v.classList.remove('swap'); void v.offsetWidth; v.classList.add('swap'); }
+    showFocusBubble(bar, `<strong>${MODES[mode].label}</strong><span>Toca tu vehículo para cambiar</span>`, 'hint', 1300);
     route = null; routeFor = ''; // ruta y minutos de nuevo, para este modo
     paintProgress();
   };
-
-  thermo.querySelector('.wp-th-go').onclick = (e) => { e.stopPropagation(); nextMode(); };
 
   // Brújula: escondida; aparece (arriba a la derecha, bajo la campanita)
   // solo cuando giras el mapa y se esconde al volver al norte. Carátula
@@ -603,11 +605,12 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!meMk) {
       meEl = document.createElement('div');
       meEl.className = 'wp-me-mk';
-      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-nav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#fff" stroke="#fff" stroke-width="4.6" stroke-linejoin="round"/><path d="M18.871 3.838C19.7933 3.42454 20.7382 4.36939 20.3247 5.29172L13.8301 19.7797C13.2154 21.1509 11.2904 21.2097 10.5931 19.8786L9.00442 16.8456C8.62675 16.1246 8.03812 15.536 7.31712 15.1583L4.28415 13.5696C2.95299 12.8723 3.01181 10.9473 4.38306 10.3326L18.871 3.838Z" fill="#1a5cf5" stroke="#1a5cf5" stroke-width="1.2" stroke-linejoin="round"/></svg></span>
+      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-veh"></span>
         <span class="wp-me-chip" hidden><span class="wp-me-chip-t"></span><button type="button" class="wp-me-x" aria-label="Quitar ruta" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></span>`;
-      meEl.onclick = (e) => e.stopPropagation();
+      meEl.onclick = (e) => { e.stopPropagation(); nextMode(); }; // tocar tu vehículo: cambia de modo
       meEl.querySelector('.wp-me-x').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); stopRoute(); };
       meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
+      paintMode();
     } else meMk.setLngLat([pos.lng, pos.lat]);
     paintHeading();
     // Sin lugar pendiente o ya llegaste: sin ruta
