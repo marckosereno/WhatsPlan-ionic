@@ -1226,11 +1226,9 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 .wp-me-veh.swap svg { animation: wpVehSwap .38s cubic-bezier(0.3,1.6,0.5,1); }
 @keyframes wpVehSwap { from { transform: scale(0.4) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .wp-me-mk:active .wp-me-veh svg { transform: scale(0.9); }
-/* A pie: los pies se alternan como dando pasos */
-.wp-me-mk[data-mode=walk] .wp-ft-l { animation: wpStepL 1s ease-in-out infinite; }
-.wp-me-mk[data-mode=walk] .wp-ft-r { animation: wpStepR 1s ease-in-out infinite; }
-@keyframes wpStepL { 0%,100% { transform: translateY(0); } 50% { transform: translateY(12px); } }
-@keyframes wpStepR { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+/* A pie: punto azul con cono (estilo Google Maps); el cono apunta a tu rumbo.
+   Sombra más ligera (el punto ya lleva su orilla blanca) */
+.wp-me-mk[data-mode=walk] .wp-me-veh { filter: drop-shadow(0 1px 2px rgba(17,24,39,0.3)); }
 .wp-me-pulse {
   position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
   background: rgba(26,92,245,0.28); animation: wpMePulse 2.2s ease-out infinite; pointer-events: none;
@@ -1283,3 +1281,6 @@ body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
 .wp-me-x[hidden] { display: none; }
 .wp-me-x svg { width: 11px; height: 11px; }
 .wp-me-x:active { background: rgba(255,255,255,0.4); }
+/* Etiqueta de distancia/minutos: marker aparte (no se inclina con el mapa) */
+.wp-me-chipmk { position: absolute; width: 0; height: 0; }
+.wp-me-chipmk .wp-me-chip { top: 0; }
