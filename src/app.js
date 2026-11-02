@@ -1,4 +1,4 @@
-// =================================================================
+// ===================================================================
 // WHATSPLAN — app.js
 // ====================================================================
 
@@ -419,7 +419,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   // (otro rumbo, >35 m), se pide una ruta nueva desde donde estás.
   // Mientras llega (o si falla) va una línea punteada directa.
   const ROUTE = 'wp-focus-route';
-  let meMk = null, meEl = null, routeFor = '', routeAbort = null, routeFit = true;
+  let meMk = null, meEl = null, chipMk = null, chipEl = null, routeFor = '', routeAbort = null, routeFit = true;
   let route = null;      // { coords, dist, dur } la última ruta a pie
   let routeAsk = 0;      // cuándo se pidió la última (máx. 1 cada 8 s)
   const OFF_ROUTE = 35;  // m fuera de la línea = tomaste otro rumbo
@@ -441,7 +441,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     moto: { label: 'En mototaxi', osrm: 'routed-car',  mpm: 330, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wmC" x1="0" x2="1"><stop offset="0" stop-color="#c7861a"/><stop offset=".25" stop-color="#ffc83d"/><stop offset=".5" stop-color="#ffe27a"/><stop offset=".75" stop-color="#ffc83d"/><stop offset="1" stop-color="#c7861a"/></linearGradient><linearGradient id="wmT" x1="0" x2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset=".5" stop-color="#3a4252"/><stop offset="1" stop-color="#0b0f17"/></linearGradient></defs><rect x="7.2" y="25.4" width="4.4" height="9.6" rx="2" fill="url(#wmT)"/><rect x="28.4" y="25.4" width="4.4" height="9.6" rx="2" fill="url(#wmT)"/><rect x="18" y="1.4" width="4" height="8" rx="2" fill="url(#wmT)"/><path d="M14.6 7.4h10.8l2.6 3.6H12z" fill="#d63a3a"/><path d="M12.2 10.6c0-1.4 1-2.2 2.4-2.2h10.8c1.4 0 2.4.8 2.4 2.2L29.6 31c.1 2.6-1.4 4.4-4 4.4H14.4c-2.6 0-4.1-1.8-4-4.4z" fill="url(#wmC)"/><path d="M13.4 11.6h13.2l.3 2.4H13.1z" fill="#1c2433" opacity=".8"/><path d="M15 16v16M20 16v16.6M25 16v16" stroke="#a96d0c" stroke-opacity=".55" stroke-width="1.2" stroke-linecap="round"/><path d="M16.4 9.6c2.4-.6 4.8-.6 7.2 0" stroke="#fff" stroke-opacity=".6" stroke-width=".9" fill="none" stroke-linecap="round"/><path d="M17.4 18v11" stroke="#fff" stroke-opacity=".45" stroke-width="1.3" stroke-linecap="round"/></svg>' },
     mbk:  { label: 'En moto',     osrm: 'routed-car',  mpm: 500, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wsB" x1="0" x2="1"><stop offset="0" stop-color="#b4141f"/><stop offset=".3" stop-color="#ef3b3b"/><stop offset=".5" stop-color="#ff7a6e"/><stop offset=".7" stop-color="#ef3b3b"/><stop offset="1" stop-color="#b4141f"/></linearGradient><linearGradient id="wsT" x1="0" x2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset=".5" stop-color="#3a4252"/><stop offset="1" stop-color="#0b0f17"/></linearGradient><linearGradient id="wsS" x1="0" x2="1"><stop offset="0" stop-color="#141a24"/><stop offset=".5" stop-color="#3d4656"/><stop offset="1" stop-color="#141a24"/></linearGradient></defs><rect x="18.2" y="1.6" width="3.6" height="8.4" rx="1.8" fill="url(#wsT)"/><rect x="18.2" y="29.4" width="3.6" height="9" rx="1.8" fill="url(#wsT)"/><path d="M10.6 10.2h18.8" stroke="#2a3140" stroke-width="2" stroke-linecap="round"/><circle cx="10.4" cy="10.2" r="1.5" fill="#cfd6e2"/><circle cx="29.6" cy="10.2" r="1.5" fill="#cfd6e2"/><path d="M16.6 7.2c2.2-1 4.6-1 6.8 0l.8 7.2c.6 2.6 1 5 1 8.2v6.4c0 2.8-2.2 4.6-5.2 4.6s-5.2-1.8-5.2-4.6v-6.4c0-3.2.4-5.6 1-8.2z" fill="url(#wsB)"/><path d="M17.2 17.6h5.6c.9 0 1.5.6 1.5 1.5v8.6c0 1.8-1.8 3-4.3 3s-4.3-1.2-4.3-3v-8.6c0-.9.6-1.5 1.5-1.5z" fill="url(#wsS)"/><path d="M18.2 8.6c1.2-.4 2.4-.4 3.6 0" stroke="#fff" stroke-opacity=".6" stroke-width=".9" fill="none" stroke-linecap="round"/><rect x="18.8" y="5.6" width="2.4" height="1.4" rx=".7" fill="#fff6c2"/></svg>' },
     bike: { label: 'En bici',     osrm: 'routed-bike', mpm: 250, svg: '<svg viewBox="0 0 40 40"><defs><linearGradient id="wbT" x1="0" x2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset=".5" stop-color="#454e60"/><stop offset="1" stop-color="#0b0f17"/></linearGradient><linearGradient id="wbF" x1="0" x2="1"><stop offset="0" stop-color="#0f8a6a"/><stop offset=".5" stop-color="#34d3a5"/><stop offset="1" stop-color="#0f8a6a"/></linearGradient><linearGradient id="wbS" x1="0" x2="1"><stop offset="0" stop-color="#141a24"/><stop offset=".5" stop-color="#4a5466"/><stop offset="1" stop-color="#141a24"/></linearGradient></defs><rect x="18.4" y="1.4" width="3.2" height="12" rx="1.6" fill="url(#wbT)"/><rect x="18.4" y="26.6" width="3.2" height="12" rx="1.6" fill="url(#wbT)"/><rect x="18.6" y="9" width="2.8" height="21" rx="1.4" fill="url(#wbF)"/><path d="M11.2 10.8c2.4-1.2 5-1.6 8.8-1.6s6.4.4 8.8 1.6" stroke="#2a3140" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="9.6" y="9.4" width="3" height="2.6" rx="1.2" fill="#1c2433"/><rect x="27.4" y="9.4" width="3" height="2.6" rx="1.2" fill="#1c2433"/><path d="M18.2 24.4c0-1.2.8-2 1.8-2s1.8.8 1.8 2v3.4c0 1-.8 1.6-1.8 1.6s-1.8-.6-1.8-1.6z" fill="url(#wbS)"/><path d="M15.4 19.6h9.2" stroke="#6b7280" stroke-width="1.6" stroke-linecap="round"/><rect x="13.6" y="18.6" width="2.6" height="2" rx=".8" fill="#1c2433"/><rect x="23.8" y="18.6" width="2.6" height="2" rx=".8" fill="#1c2433"/><path d="M19.4 11v17" stroke="#fff" stroke-opacity=".45" stroke-width=".8" stroke-linecap="round"/></svg>' },
-    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  svg: '<svg viewBox="0 0 40 40"><defs><radialGradient id="wpH" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#7a5640"/><stop offset="1" stop-color="#2b1a10"/></radialGradient><linearGradient id="wpS" x1="0" x2="1"><stop offset="0" stop-color="#0f3fb8"/><stop offset=".3" stop-color="#2b6cff"/><stop offset=".5" stop-color="#5b93ff"/><stop offset=".7" stop-color="#2b6cff"/><stop offset="1" stop-color="#0f3fb8"/></linearGradient><radialGradient id="wpA" cx=".4" cy=".4" r=".8"><stop offset="0" stop-color="#e9b38c"/><stop offset="1" stop-color="#b77a52"/></radialGradient></defs><ellipse class="wp-ft-l" cx="16.4" cy="12.6" rx="2.4" ry="3.6" fill="#1c2433"/><ellipse class="wp-ft-r" cx="23.6" cy="27.4" rx="2.4" ry="3.6" fill="#1c2433"/><ellipse cx="9.6" cy="22.4" rx="2.3" ry="3.4" fill="url(#wpA)"/><ellipse cx="30.4" cy="17.6" rx="2.3" ry="3.4" fill="url(#wpA)"/><path d="M10.4 20c0-3 4.2-4.8 9.6-4.8s9.6 1.8 9.6 4.8-4.2 4.8-9.6 4.8-9.6-1.8-9.6-4.8z" fill="url(#wpS)"/><circle cx="20" cy="19.4" r="4.6" fill="url(#wpH)"/><path d="M18 17.2c1-.8 2.4-.9 3.6-.4" stroke="#fff" stroke-opacity=".35" stroke-width=".9" fill="none" stroke-linecap="round"/></svg>' },
+    walk: { label: 'A pie',       osrm: 'routed-foot', mpm: 80,  svg: '<svg viewBox="0 0 40 40"><defs><radialGradient id="t3C" cx=".5" cy="1" r="1"><stop offset="0" stop-color="#2b6cff" stop-opacity=".55"/><stop offset="1" stop-color="#2b6cff" stop-opacity="0"/></radialGradient><radialGradient id="t3D" cx=".38" cy=".35" r=".75"><stop offset="0" stop-color="#7fb0ff"/><stop offset=".6" stop-color="#2b6cff"/><stop offset="1" stop-color="#0f3fb8"/></radialGradient></defs><path d="M20 22 9.6 4.4A20 20 0 0 1 30.4 4.4z" fill="url(#t3C)"/><circle cx="20" cy="22" r="8" fill="#fff"/><circle cx="20" cy="22" r="6.2" fill="url(#t3D)"/><ellipse cx="18" cy="19.8" rx="2" ry="1.2" fill="#fff" opacity=".5"/></svg>' },
   };
   const ORDER = ['car', 'moto', 'mbk', 'bike', 'walk'];
   let mode = 'car';
@@ -587,7 +587,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     try { [ROUTE + '-air', ROUTE + '-walk', ROUTE + '-case'].forEach(l => map?.getLayer?.(l) && map.removeLayer(l)); if (map?.getSource?.(ROUTE)) map.removeSource(ROUTE); } catch (_) {}
   };
   const setChip = (txt) => {
-    const c = meEl?.querySelector('.wp-me-chip');
+    const c = chipEl?.querySelector('.wp-me-chip');
     if (!c) return;
     c.querySelector('.wp-me-chip-t').textContent = txt || '';
     c.hidden = !txt;
@@ -605,13 +605,20 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (!meMk) {
       meEl = document.createElement('div');
       meEl.className = 'wp-me-mk';
-      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-veh"></span>
-        <span class="wp-me-chip" hidden><span class="wp-me-chip-t"></span><button type="button" class="wp-me-x" aria-label="Quitar ruta" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></span>`;
+      meEl.innerHTML = `<span class="wp-me-pulse"></span><span class="wp-me-veh"></span>`;
+      // La etiqueta va en su propio marker: el vehículo se ACUESTA sobre la
+      // calle al inclinar el mapa (pitchAlignment 'map'), la etiqueta no
+      // (se queda de frente para poder leerla)
+      chipEl = document.createElement('div');
+      chipEl.className = 'wp-me-chipmk';
+      chipEl.innerHTML = `<span class="wp-me-chip" hidden><span class="wp-me-chip-t"></span><button type="button" class="wp-me-x" aria-label="Quitar ruta" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></span>`;
       meEl.onclick = (e) => { e.stopPropagation(); nextMode(); }; // tocar tu vehículo: cambia de modo
-      meEl.querySelector('.wp-me-x').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); stopRoute(); };
-      meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center' }).setLngLat([pos.lng, pos.lat]).addTo(map);
+      chipEl.onclick = (e) => e.stopPropagation();
+      chipEl.querySelector('.wp-me-x').onclick = (e) => { e.stopPropagation(); mv.haptic?.('light'); stopRoute(); };
+      meMk = new window.maplibregl.Marker({ element: meEl, anchor: 'center', pitchAlignment: 'map' }).setLngLat([pos.lng, pos.lat]).addTo(map);
+      chipMk = new window.maplibregl.Marker({ element: chipEl, anchor: 'top', offset: [0, 28] }).setLngLat([pos.lng, pos.lat]).addTo(map);
       paintMode();
-    } else meMk.setLngLat([pos.lng, pos.lat]);
+    } else { meMk.setLngLat([pos.lng, pos.lat]); chipMk?.setLngLat([pos.lng, pos.lat]); }
     paintHeading();
     // Sin lugar pendiente o ya llegaste: sin ruta
     if (!best || best.d <= 100) {
@@ -876,6 +883,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     document.removeEventListener('visibilitychange', onVis);
     stopWatch();
     meMk?.remove(); meMk = null;
+    chipMk?.remove(); chipMk = null;
     removeRoute();
     map?.off?.('rotate', paintNorth);
     clearTimeout(cpHideT);
