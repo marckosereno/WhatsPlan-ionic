@@ -19,7 +19,7 @@
 // ====================================================================
 
 const LAYER_ID = 'wp-vehicle-3d';
-const SIZE_PX = 54;        // largo del vehículo en pantalla (px)
+const SIZE_PX = 44;        // largo del vehículo en pantalla (px)
 const MODEL_LEN = 2.55;    // largo de los modelos de Kenney (unidades = metros)
 
 let libP = null;
