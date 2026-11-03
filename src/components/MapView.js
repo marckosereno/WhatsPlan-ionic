@@ -1796,8 +1796,8 @@ export class MapView {
     // Vista inicial de la categoría: centro de todos sus lugares, con un
     // zoom más cercano (antes 15) para que de entrada se carguen pocos
     // pines; los demás van entrando al moverte por el mapa.
-    // Zoom al abrir una categoría: el antepenúltimo (máximo − 2 → 17)
-    const OPEN_ZOOM = (this.map.getMaxZoom?.() || 19) - 2;
+    // Zoom al abrir una categoría: el máximo (19)
+    const OPEN_ZOOM = this.map.getMaxZoom?.() || 19;
     if (hasCoords) {
       const c = bounds.getCenter();
       const cv = this.map.getCanvas();
@@ -2106,6 +2106,7 @@ export class MapView {
 
     const CLUSTER_PX = 58;   // distancia máxima en pantalla para agrupar (auto)
     const MIN_GROUP  = 3;    // mínimo de pines juntos para volverse cluster (auto)
+    const MAX_GROUP  = 6;    // máximo de lugares en un cluster automático (los demás forman otro)
 
     const candidates = this.markerEls
       // _wpForcedDot excluido: son pines que por zoom deberían estar
@@ -2221,14 +2222,14 @@ export class MapView {
       if (usedAuto.has(item.el)) return;
       const group = [item];
       usedAuto.add(item.el);
-      remaining.forEach(other => {
-        if (usedAuto.has(other.el)) return;
-        const dx = other.px.x - item.px.x, dy = other.px.y - item.px.y;
-        if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_PX) {
-          group.push(other);
-          usedAuto.add(other.el);
-        }
-      });
+      // Los vecinos más cercanos primero, hasta MAX_GROUP en total
+      remaining
+        .filter(other => !usedAuto.has(other.el))
+        .map(other => ({ other, d: Math.hypot(other.px.x - item.px.x, other.px.y - item.px.y) }))
+        .filter(o => o.d < CLUSTER_PX)
+        .sort((a, b) => a.d - b.d)
+        .slice(0, MAX_GROUP - 1)
+        .forEach(({ other }) => { group.push(other); usedAuto.add(other.el); });
       groups.push(group);
     });
 
@@ -5632,7 +5633,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     const dy    = override?.dy ?? slot.dy;
     const z     = override?.z ?? slot.z;
     const borderColor  = override?.borderColor  ?? '#ffffff';
-    const borderWidth  = override?.borderWidth  ?? 2;
+    const borderWidth  = override?.borderWidth  ?? 3.5; // orilla blanca gruesa (antes 2)
     const borderRadius = override?.borderRadius ?? 9;
 
     // Square con la MISMA área que el portrait (√(46×60) ≈ 52.5px de
