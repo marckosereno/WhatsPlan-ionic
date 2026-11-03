@@ -554,8 +554,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   compass.type = 'button';
   compass.id = 'wp-focus-compass';
   compass.setAttribute('aria-label', 'Brújula: tocar para poner el norte arriba');
-  // Carátula: la flecha de GPS al centro apunta siempre al norte y las
-  // letras N · E · S · O en la orilla giran con ella (quedan derechas).
+  // Carátula: letras N · E · S · O FIJAS en la orilla y la flecha de GPS
+  // al centro girando hacia donde ves (si ves al este, apunta a la E).
   const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
   compass.innerHTML = `<span class="wp-cp-dial">
       ${[['N', 0], ['E', 90], ['S', 180], ['O', 270]].map(([l, a]) => `<b class="wp-cp-l${l === 'N' ? ' n' : ''}" style="--a:${a}deg">${l}</b>`).join('')}
@@ -933,6 +933,8 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     import('/src/components/DriveMode.js').then(m => m.DriveMode.close()).catch(() => {});
     removeRoute();
     map?.off?.('rotate', paintNorth);
+    // De vuelta al mapa normal: sin inclinación ni giro
+    if (!instant) try { map?.easeTo?.({ pitch: 0, bearing: 0, duration: 450 }); } catch (_) {}
     clearTimeout(cpHideT);
     compass.classList.remove('show');
     setTimeout(() => compass.remove(), instant ? 0 : 280);
