@@ -1796,7 +1796,8 @@ export class MapView {
     // Vista inicial de la categoría: centro de todos sus lugares, con un
     // zoom más cercano (antes 15) para que de entrada se carguen pocos
     // pines; los demás van entrando al moverte por el mapa.
-    const OPEN_ZOOM = 16;
+    // Zoom al abrir una categoría: el antepenúltimo (máximo − 2 → 17)
+    const OPEN_ZOOM = (this.map.getMaxZoom?.() || 19) - 2;
     if (hasCoords) {
       const c = bounds.getCenter();
       const cv = this.map.getCanvas();
@@ -1821,7 +1822,8 @@ export class MapView {
       this.map.fitBounds(bounds, {
         padding: { top: 70, bottom: 120, left: 50, right: 50 },
         maxZoom: OPEN_ZOOM,
-        minZoom: OPEN_ZOOM
+        minZoom: OPEN_ZOOM,
+        pitch: 0, bearing: 0 // vista normal (sin inclinación ni giro de colecciones)
       });
     }
     this._refreshActivityBadges();
