@@ -1796,10 +1796,25 @@ export class MapView {
     // Vista inicial de la categoría: centro de todos sus lugares, con un
     // zoom más cercano (antes 15) para que de entrada se carguen pocos
     // pines; los demás van entrando al moverte por el mapa.
-    // Zoom al abrir una categoría: el máximo (19)
-    const OPEN_ZOOM = this.map.getMaxZoom?.() || 19;
+    // OJO: antes se usaba fitBounds(…, {minZoom}) pero fitBounds NO tiene
+    // minZoom → el zoom salía del encuadre de TODOS los lugares (muy lejos)
+    // y cambiar OPEN_ZOOM no se notaba. Ahora la cámara va directo a
+    // OPEN_ZOOM, centrada en la zona con MÁS lugares juntos (así de entrada
+    // se ven clusters y pines, no un hueco en medio de todos).
+    // Zoom 16 = clusters activos (se deshacen arriba de 17.2). Ver [DIAG-ZOOM].
+    const OPEN_ZOOM = 16;
     if (hasCoords) {
-      const c = bounds.getCenter();
+      let c = bounds.getCenter();
+      try {
+        const pts = this.markerEls.map(el => el._marker.getLngLat());
+        const R = 0.004; // ~400 m
+        let best = -1;
+        pts.forEach(p => {
+          let n = 0;
+          for (const q of pts) if (Math.abs(q.lng - p.lng) < R && Math.abs(q.lat - p.lat) < R) n++;
+          if (n > best) { best = n; c = p; }
+        });
+      } catch (_) {}
       const cv = this.map.getCanvas();
       const W = cv.clientWidth, H = cv.clientHeight, M = Math.max(W, H) * 0.35;
       // Posición en pantalla que tendrá cada pin en esa vista (Mercator,
@@ -1819,12 +1834,11 @@ export class MapView {
           el._wpCulled = true;
         }
       });
-      this.map.fitBounds(bounds, {
-        padding: { top: 70, bottom: 120, left: 50, right: 50 },
-        maxZoom: OPEN_ZOOM,
-        minZoom: OPEN_ZOOM,
-        pitch: 0, bearing: 0 // vista normal (sin inclinación ni giro de colecciones)
-      });
+      this.map.easeTo({ center: [c.lng, c.lat], zoom: OPEN_ZOOM, pitch: 0, bearing: 0, duration: 650 }); // vista normal (sin inclinación ni giro)
+      if (!this._diagZoomOn) { // [DIAG-ZOOM] para elegir el zoom exacto que te guste
+        this._diagZoomOn = true;
+        this.map.on('zoomend', () => console.log('[DIAG-ZOOM] zoom actual:', this.map.getZoom().toFixed(2)));
+      }
     }
     this._refreshActivityBadges();
     // Asignar zoom threshold fijo por pin (una vez) y aplicar
@@ -2947,6 +2961,9 @@ export class MapView {
           // ESTE slide lo cambió a mano.
           if (style.radius != null) clone.style.borderRadius = style.radius + 'px';
           if (style.borderColor) clone.style.border = `${style.borderWidth || 2}px solid ${style.borderColor}`;
+          // Sin estilo propio en este slide ni borde curado en el mapa: orilla
+          // blanca GRUESA (en el mapa es de 3px; aquí la tarjeta es grande)
+          else if (!(customDef?.cards || []).some(cd => cd.placeId === placeIds[idx] && cd.borderColor)) clone.style.border = '6px solid #fff';
           // ver comentario en el clon inicial: nunca por debajo de 100000,
           // o el fondo blanco del wrap (99999) los tapa
           clone.style.zIndex = String(100000 + Math.round(p.z));
@@ -5633,7 +5650,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     const dy    = override?.dy ?? slot.dy;
     const z     = override?.z ?? slot.z;
     const borderColor  = override?.borderColor  ?? '#ffffff';
-    const borderWidth  = override?.borderWidth  ?? 3.5; // orilla blanca gruesa (antes 2)
+    const borderWidth  = override?.borderWidth  ?? 3; // orilla blanca (antes 2)
     const borderRadius = override?.borderRadius ?? 9;
 
     // Square con la MISMA área que el portrait (√(46×60) ≈ 52.5px de
