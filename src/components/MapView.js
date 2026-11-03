@@ -1827,7 +1827,7 @@ export class MapView {
       this.map.easeTo({ center: [c.lng, c.lat], zoom: OPEN_ZOOM, pitch: 0, bearing: 0, duration: 650 }); // vista normal (sin inclinación ni giro)
       if (!this._diagZoomOn) { // [DIAG-ZOOM] para elegir el zoom exacto que te guste
         this._diagZoomOn = true;
-        this.map.on('zoomend', () => console.log('[DIAG-ZOOM] zoom actual:', this.map.getZoom().toFixed(2)));
+        this.map.on('moveend', () => { const m = this.map.getCenter(); console.log('[DIAG-ZOOM] zoom:', this.map.getZoom().toFixed(2), '· centro:', m.lat.toFixed(5) + ',', m.lng.toFixed(5)); });
       }
     }
     this._refreshActivityBadges();
@@ -2949,14 +2949,14 @@ export class MapView {
           // trae SU PROPIO borde/radio heredado del mapa (cloneNode
           // conserva el style original); solo se pisa si el editor de
           // ESTE slide lo cambió a mano.
-          if (clone._wpBaseRadius == null) clone._wpBaseRadius = parseFloat(clone.style.borderRadius) || 9;
-          if (style.radius != null) clone.style.borderRadius = style.radius + 'px';
+
           // TODAS las tarjetas del carrusel: orilla blanca gruesa de 7px, sin
           // excepción (ni el borde del mapa ni el del editor la cambian aquí)
           clone.style.border = '7px solid #fff';
-          // Esquinas: 4px más redondas que las de la tarjeta en el mapa (o
-          // las que se pongan a mano en este slide)
-          if (style.radius == null) clone.style.borderRadius = (clone._wpBaseRadius + 4) + 'px';
+          // Esquinas: TODAS iguales, 4px más redondas que las predeterminadas
+          // (9 → 13px). Ignora el redondeado guardado de cada slide: ese era
+          // el que no dejaba ver el cambio en los carruseles ya editados.
+          clone.style.borderRadius = CAROUSEL_RADIUS + 'px';
           // ver comentario en el clon inicial: nunca por debajo de 100000,
           // o el fondo blanco del wrap (99999) los tapa
           clone.style.zIndex = String(100000 + Math.round(p.z));
@@ -5606,6 +5606,8 @@ export const CLUSTER_CARD_SLOTS = [
   { dx: 34,  dy: 30,  rot: 7,  scale: 0.66, z: 5 },
 ];
 export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
+// Carrusel: orilla blanca 7px y esquinas de 13px en TODAS las tarjetas
+const CAROUSEL_RADIUS = 13;
 
 // Único punto que resuelve el id de un lugar para todo lo relacionado a
 // clusters — usado tanto acá (render) como en _updateClusters() y en
