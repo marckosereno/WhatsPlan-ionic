@@ -2960,10 +2960,9 @@ export class MapView {
           // conserva el style original); solo se pisa si el editor de
           // ESTE slide lo cambió a mano.
           if (style.radius != null) clone.style.borderRadius = style.radius + 'px';
-          if (style.borderColor) clone.style.border = `${style.borderWidth || 2}px solid ${style.borderColor}`;
-          // Sin estilo propio en este slide ni borde curado en el mapa: orilla
-          // blanca GRUESA (en el mapa es de 3px; aquí la tarjeta es grande)
-          else if (!(customDef?.cards || []).some(cd => cd.placeId === placeIds[idx] && cd.borderColor)) clone.style.border = '6px solid #fff';
+          // TODAS las tarjetas del carrusel: orilla blanca gruesa de 6px, sin
+          // excepción (ni el borde del mapa ni el del editor la cambian aquí)
+          clone.style.border = '6px solid #fff';
           // ver comentario en el clon inicial: nunca por debajo de 100000,
           // o el fondo blanco del wrap (99999) los tapa
           clone.style.zIndex = String(100000 + Math.round(p.z));
