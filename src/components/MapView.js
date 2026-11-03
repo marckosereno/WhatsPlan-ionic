@@ -1799,22 +1799,12 @@ export class MapView {
     // OJO: antes se usaba fitBounds(…, {minZoom}) pero fitBounds NO tiene
     // minZoom → el zoom salía del encuadre de TODOS los lugares (muy lejos)
     // y cambiar OPEN_ZOOM no se notaba. Ahora la cámara va directo a
-    // OPEN_ZOOM, centrada en la zona con MÁS lugares juntos (así de entrada
-    // se ven clusters y pines, no un hueco en medio de todos).
+    // OPEN_ZOOM, SIEMPRE en el centro del pueblo (la calle principal), igual
+    // para todas las categorías.
     // Zoom 16 = clusters activos (se deshacen arriba de 17.2). Ver [DIAG-ZOOM].
     const OPEN_ZOOM = 16;
     if (hasCoords) {
-      let c = bounds.getCenter();
-      try {
-        const pts = this.markerEls.map(el => el._marker.getLngLat());
-        const R = 0.004; // ~400 m
-        let best = -1;
-        pts.forEach(p => {
-          let n = 0;
-          for (const q of pts) if (Math.abs(q.lng - p.lng) < R && Math.abs(q.lat - p.lat) < R) n++;
-          if (n > best) { best = n; c = p; }
-        });
-      } catch (_) {}
+      const c = { lng: CENTER_LNG, lat: CENTER_LAT };
       const cv = this.map.getCanvas();
       const W = cv.clientWidth, H = cv.clientHeight, M = Math.max(W, H) * 0.35;
       // Posición en pantalla que tendrá cada pin en esa vista (Mercator,
@@ -2959,10 +2949,14 @@ export class MapView {
           // trae SU PROPIO borde/radio heredado del mapa (cloneNode
           // conserva el style original); solo se pisa si el editor de
           // ESTE slide lo cambió a mano.
+          if (clone._wpBaseRadius == null) clone._wpBaseRadius = parseFloat(clone.style.borderRadius) || 9;
           if (style.radius != null) clone.style.borderRadius = style.radius + 'px';
-          // TODAS las tarjetas del carrusel: orilla blanca gruesa de 6px, sin
+          // TODAS las tarjetas del carrusel: orilla blanca gruesa de 7px, sin
           // excepción (ni el borde del mapa ni el del editor la cambian aquí)
-          clone.style.border = '6px solid #fff';
+          clone.style.border = '7px solid #fff';
+          // Esquinas: 4px más redondas que las de la tarjeta en el mapa (o
+          // las que se pongan a mano en este slide)
+          if (style.radius == null) clone.style.borderRadius = (clone._wpBaseRadius + 4) + 'px';
           // ver comentario en el clon inicial: nunca por debajo de 100000,
           // o el fondo blanco del wrap (99999) los tapa
           clone.style.zIndex = String(100000 + Math.round(p.z));
