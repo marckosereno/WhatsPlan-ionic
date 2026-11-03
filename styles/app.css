@@ -1262,15 +1262,16 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 #wp-focus-compass.show { opacity: 1; transform: none; pointer-events: auto; }
 #wp-focus-compass:active { transform: scale(0.93); }
 body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
-.wp-cp-dial { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--brg)); }
-/* Letras en la orilla: giran con la carátula pero quedan derechas */
+.wp-cp-dial { position: absolute; inset: 0; pointer-events: none; }
+/* Letras FIJAS en la orilla (N arriba, E derecha, S abajo, O izquierda) */
 .wp-cp-l {
   position: absolute; left: 50%; top: 50%; font-size: 9px; font-weight: 800; line-height: 1; color: #9aa1ad;
-  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-16.5px) rotate(calc(-1 * var(--a) - var(--brg)));
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-16.5px) rotate(calc(-1 * var(--a)));
 }
 .wp-cp-l.n { color: #ef4444; font-size: 10.5px; font-weight: 900; }
-/* Flecha de GPS al centro: apunta al norte (la original va en diagonal: -45°) */
-.wp-cp-arrow { position: absolute; left: 50%; top: 50%; width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; transform: rotate(-45deg); }
+/* Flecha de GPS al centro: apunta hacia donde ves (rumbo del mapa) sobre
+   las letras fijas. --brg = −rumbo; la flecha original va en diagonal: −45° */
+.wp-cp-arrow { position: absolute; left: 50%; top: 50%; width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; transform: rotate(calc(-45deg - var(--brg))); }
 /* Con ruta: etiqueta azul y una × para quitarla (área de toque amplia) */
 .wp-me-chip.route { background: #1a5cf5; height: 26px; padding: 0 3px 0 10px; }
 .wp-me-x {
