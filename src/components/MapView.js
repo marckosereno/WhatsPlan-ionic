@@ -2719,7 +2719,7 @@ export class MapView {
       const hiRes = rawPhoto ? proxyPhotoSlide(rawPhoto) : null;
       const c = document.createElement('div');
       c.className = 'wp-ce-flip-piece';
-      c.style.cssText = 'position:fixed;margin:0;border-radius:9px;border:2px solid #ffffff;box-shadow:0 3px 8px rgba(0,0,0,0.28);cursor:pointer;opacity:0;z-index:100000;';
+      c.style.cssText = `position:fixed;margin:0;border-radius:${CAROUSEL_RADIUS}px;border:7px solid #ffffff;box-shadow:0 3px 8px rgba(0,0,0,0.28);cursor:pointer;opacity:0;z-index:100000;`;
       setCardPhoto(c, hiRes);
       document.body.appendChild(c);
       const entry = { node: null, kind: 'card', idx: i, rect: null, clone: c };
@@ -2936,7 +2936,7 @@ export class MapView {
             void clone.offsetHeight; // forzar reflow — mismo motivo que en las decoraciones
           }
           clone.style.transition = animated
-            ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s cubic-bezier(0.34,1.56,0.64,1), height ${duration}s cubic-bezier(0.34,1.56,0.64,1), transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease`
+            ? `left ${duration}s cubic-bezier(0.34,1.56,0.64,1), top ${duration}s cubic-bezier(0.34,1.56,0.64,1), width ${duration}s cubic-bezier(0.34,1.56,0.64,1), height ${duration}s cubic-bezier(0.34,1.56,0.64,1), transform ${duration}s cubic-bezier(0.34,1.56,0.64,1), opacity ${duration}s ease, border-radius ${duration}s ease, border-width ${duration}s ease`
             : 'none';
           clone.style.transitionDelay = animated ? `${Math.min(order * stagger, stagger * 4)}ms` : '0ms';
           clone.style.left = p.x + 'px'; clone.style.top = p.y + 'px';
@@ -2955,7 +2955,7 @@ export class MapView {
           // excepción (ni el borde del mapa ni el del editor la cambian aquí)
           clone.style.border = '7px solid #fff';
           // Esquinas: TODAS iguales, 4px más redondas que las predeterminadas
-          // (9 → 13px). Ignora el redondeado guardado de cada slide: ese era
+          // (CAROUSEL_RADIUS). Ignora el redondeado guardado de cada slide: ese era
           // el que no dejaba ver el cambio en los carruseles ya editados.
           clone.style.borderRadius = CAROUSEL_RADIUS + 'px';
           // ver comentario en el clon inicial: nunca por debajo de 100000,
@@ -5607,8 +5607,8 @@ export const CLUSTER_CARD_SLOTS = [
   { dx: 34,  dy: 30,  rot: 7,  scale: 0.66, z: 5 },
 ];
 export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
-// Carrusel: orilla blanca 7px y esquinas de 13px en TODAS las tarjetas
-const CAROUSEL_RADIUS = 13;
+// Carrusel: orilla blanca 7px y esquinas de 26px en TODAS las tarjetas
+const CAROUSEL_RADIUS = 26;
 
 // Único punto que resuelve el id de un lugar para todo lo relacionado a
 // clusters — usado tanto acá (render) como en _updateClusters() y en
