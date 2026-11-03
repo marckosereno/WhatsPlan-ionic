@@ -1218,7 +1218,7 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 .wp-me-mk { position: absolute; width: 48px; height: 48px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 /* Tú en el mapa: tu vehículo en 3D (visto desde arriba); gira con tu rumbo (--hd) */
 .wp-me-veh {
-  position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
   transform: rotate(var(--hd, 0deg)); transition: transform .5s cubic-bezier(0.3,0.9,0.4,1);
   filter: drop-shadow(0 5px 5px rgba(17,24,39,0.35));
 }
@@ -1262,14 +1262,15 @@ body.wp-pm-open #wp-focus-thermo { opacity: 0; pointer-events: none; }
 #wp-focus-compass.show { opacity: 1; transform: none; pointer-events: auto; }
 #wp-focus-compass:active { transform: scale(0.93); }
 body.wp-pm-open #wp-focus-compass.show { opacity: 0; pointer-events: none; }
-.wp-cp-dial { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: rotate(var(--brg)); }
-/* Dirección hacia donde ves, al centro (no gira) */
-.wp-cp-dir {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 800; line-height: 1; color: #0a0a0a; letter-spacing: -0.3px; pointer-events: none;
+.wp-cp-dial { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--brg)); }
+/* Letras en la orilla: giran con la carátula pero quedan derechas */
+.wp-cp-l {
+  position: absolute; left: 50%; top: 50%; font-size: 9px; font-weight: 800; line-height: 1; color: #9aa1ad;
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-16.5px) rotate(calc(-1 * var(--a) - var(--brg)));
 }
-.wp-cp-dir.two { font-size: 12.5px; }
-.wp-cp-dir.n { color: #ef4444; }
+.wp-cp-l.n { color: #ef4444; font-size: 10.5px; font-weight: 900; }
+/* Flecha de GPS al centro: apunta al norte (la original va en diagonal: -45°) */
+.wp-cp-arrow { position: absolute; left: 50%; top: 50%; width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; transform: rotate(-45deg); }
 /* Con ruta: etiqueta azul y una × para quitarla (área de toque amplia) */
 .wp-me-chip.route { background: #1a5cf5; height: 26px; padding: 0 3px 0 10px; }
 .wp-me-x {
