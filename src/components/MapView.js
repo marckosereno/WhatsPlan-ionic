@@ -5607,8 +5607,8 @@ export const CLUSTER_CARD_SLOTS = [
   { dx: 34,  dy: 30,  rot: 7,  scale: 0.66, z: 5 },
 ];
 export const CLUSTER_MAX_CARDS = CLUSTER_CARD_SLOTS.length;
-// Carrusel: orilla blanca 7px y esquinas de 26px en TODAS las tarjetas
-const CAROUSEL_RADIUS = 26;
+// Carrusel: orilla blanca 7px y esquinas de 32px en TODAS las tarjetas
+const CAROUSEL_RADIUS = 32;
 
 // Único punto que resuelve el id de un lugar para todo lo relacionado a
 // clusters — usado tanto acá (render) como en _updateClusters() y en
