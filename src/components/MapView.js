@@ -1799,12 +1799,13 @@ export class MapView {
     // OJO: antes se usaba fitBounds(…, {minZoom}) pero fitBounds NO tiene
     // minZoom → el zoom salía del encuadre de TODOS los lugares (muy lejos)
     // y cambiar OPEN_ZOOM no se notaba. Ahora la cámara va directo a
-    // OPEN_ZOOM, SIEMPRE en el centro del pueblo (la calle principal), igual
-    // para todas las categorías.
+    // OPEN_ZOOM, SIEMPRE en OPEN_CENTER (Calle Sonora), igual para todas
+    // las categorías.
     // Zoom 16 = clusters activos (se deshacen arriba de 17.2). Ver [DIAG-ZOOM].
     const OPEN_ZOOM = 16;
+    const OPEN_CENTER = [-97.95085, 26.05789]; // Calle Sonora, entre Victoria y Reynosa
     if (hasCoords) {
-      const c = { lng: CENTER_LNG, lat: CENTER_LAT };
+      const c = { lng: OPEN_CENTER[0], lat: OPEN_CENTER[1] };
       const cv = this.map.getCanvas();
       const W = cv.clientWidth, H = cv.clientHeight, M = Math.max(W, H) * 0.35;
       // Posición en pantalla que tendrá cada pin en esa vista (Mercator,
