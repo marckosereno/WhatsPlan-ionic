@@ -251,12 +251,17 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     const pts = places.map(p => [Number(p.lng ?? p.location?.lng), Number(p.lat ?? p.location?.lat)]).filter(([x, y]) => isFinite(x) && isFinite(y));
     if (!map || !pts.length) return;
     // Mismo zoom que al abrir una categoría en el mapa (16), centrado en la
-    // zona de la colección con más lugares juntos (~400 m a la redonda)
+    // zona de la colección con más lugares juntos: el lugar con más vecinos
+    // a ≤180 m, y el centro es el PROMEDIO de ese grupo (no el lugar mismo,
+    // que podía quedar en la orilla y dejar la zona llena fuera de pantalla)
+    const R = 180, kx = 111320 * Math.cos(26.05 * Math.PI / 180), ky = 110540;
     let c = pts[0], best = -1;
     pts.forEach(p => {
-      let n = 0;
-      for (const q of pts) if (Math.abs(q[0] - p[0]) < 0.004 && Math.abs(q[1] - p[1]) < 0.004) n++;
-      if (n > best) { best = n; c = p; }
+      const near = pts.filter(q => Math.hypot((q[0] - p[0]) * kx, (q[1] - p[1]) * ky) <= R);
+      if (near.length > best) {
+        best = near.length;
+        c = [near.reduce((a, q) => a + q[0], 0) / near.length, near.reduce((a, q) => a + q[1], 0) / near.length];
+      }
     });
     map.easeTo({ center: c, zoom: 16, pitch: 0, bearing: 0, duration: animate ? 700 : 0 });
   };
