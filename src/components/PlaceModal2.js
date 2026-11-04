@@ -1300,6 +1300,33 @@ export class PlaceModal2 {
       .wp-pv-card-faces i { display:block; width:28px; height:28px; margin-left:-8px; border-radius:50%; background:#eef0f3 center/cover no-repeat; }
       .wp-pv-card-faces i:first-child { margin-left:0; }
       .wp-pv-card-faces b { margin-left:4px; font-size:12px; font-weight:800; color:#374151; }
+      /* El campo del nombre: alto fijo (en columna, flex:1 lo aplastaba) */
+      .wp-pv-step .wp-pm2-col-field { flex:none; height:46px; }
+      .wp-pv-seg button { white-space:nowrap; }
+      .wp-pv-vis-hint { font-size:12.5px; font-weight:500; color:#6b7280; padding:0 2px; margin-top:-2px; }
+      .wp-pv-cupo { display:flex; flex-direction:column; gap:8px; }
+      .wp-pv-cupo[hidden] { display:none; }
+      .wp-pv-addnote { display:inline-flex; align-items:center; gap:6px; }
+      /* Nota como post-it: papel amarillo con renglones y una cinta arriba */
+      .wp-pv-postit[hidden] { display:none; }
+      .wp-pv-postit {
+        position:relative; margin:10px 6px 4px; padding:16px 16px 10px; border-radius:4px 4px 18px 4px;
+        background:#fff3a3 repeating-linear-gradient(to bottom, transparent 0 25px, rgba(120,100,20,0.16) 25px 26px);
+        background-position:0 14px; box-shadow:0 8px 18px rgba(120,90,0,0.18), 0 1px 0 rgba(0,0,0,0.04);
+        transform:rotate(-1.2deg);
+      }
+      .wp-pv-postit.in { animation:wpPvNote 0.42s cubic-bezier(0.34,1.56,0.64,1); }
+      @keyframes wpPvNote { from { transform:rotate(-8deg) scale(0.6); opacity:0; } to { transform:rotate(-1.2deg); opacity:1; } }
+      .wp-pv-tape { position:absolute; left:50%; top:-9px; width:70px; height:18px; margin-left:-35px; background:rgba(255,255,255,0.65);
+        box-shadow:0 1px 2px rgba(0,0,0,0.08); transform:rotate(2deg); border-radius:2px; }
+      .wp-pv-note {
+        display:block; width:100%; box-sizing:border-box; border:none; outline:none; resize:none; background:transparent; padding:0;
+        font-size:15px; line-height:26px; font-weight:500; color:#3d3200; font-family:var(--wp-font);
+      }
+      .wp-pv-note::placeholder { color:rgba(61,50,0,0.4); }
+      .wp-pv-postit-foot { display:flex; align-items:center; justify-content:space-between; margin-top:4px; }
+      .wp-pv-note-n { font-size:11px; font-weight:700; color:rgba(61,50,0,0.45); }
+      .wp-pv-note-x { border:none; background:none; padding:4px 2px; font-size:12.5px; font-weight:700; color:#8a6d00; font-family:var(--wp-font); cursor:pointer; }
 
       .wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
       .wp-pm2-col-bulk-del {
@@ -6970,7 +6997,7 @@ export class PlaceModal2 {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
     const dayLabel = (d, i) => i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${DOW[d.getDay()]} ${d.getDate()}`;
-    let day = 0, customDay = null, time = null, timeCustom = false, n = 4, vis = 'public', step = 0;
+    let day = 0, customDay = null, time = null, timeCustom = false, n = 4, nTouched = false, vis = 'public', step = 0;
     const invited = new Set();
     const people = new Map(); // id → perfil (para el resumen)
     const pad = (x) => String(x).padStart(2, '0');
@@ -6997,17 +7024,18 @@ export class PlaceModal2 {
             <div class="wp-pv-chips" data-k="time"></div>
           </section>
           <section class="wp-pv-step">
-            <div class="wp-pv-lbl">¿Cuántos van? <span class="wp-pv-hint">contándote</span></div>
-            <div class="wp-pv-chips" data-k="n">
-              ${[2, 3, 4, 6, 8, 10].map(v => `<button type="button" data-v="${v}">${v}</button>`).join('')}
+            <div class="wp-pv-lbl">¿Quién puede unirse?</div>
+            <div class="wp-pv-chips wp-pv-seg" data-k="vis">
+              <button type="button" data-v="public">Cualquiera</button>
+              <button type="button" data-v="followers">Seguidores</button>
+              <button type="button" data-v="invited">Invitados</button>
             </div>
+            <div class="wp-pv-vis-hint"></div>
             <div class="wp-pv-lbl">¿A quién invitas? <span class="wp-pv-hint wp-pv-inv-count">opcional</span></div>
             <div class="wp-pv-people"><span class="wp-pv-empty">Cargando…</span></div>
-            <div class="wp-pv-lbl">¿Quién lo ve?</div>
-            <div class="wp-pv-chips wp-pv-seg" data-k="vis">
-              <button type="button" data-v="public">Todos</button>
-              <button type="button" data-v="followers">Seguidores</button>
-              <button type="button" data-v="invited">Solo invitados</button>
+            <div class="wp-pv-cupo">
+              <div class="wp-pv-lbl">¿Cuántos lugares? <span class="wp-pv-hint">contándote</span></div>
+              <div class="wp-pv-chips" data-k="n"></div>
             </div>
           </section>
           <section class="wp-pv-step">
@@ -7015,9 +7043,13 @@ export class PlaceModal2 {
             <div class="wp-pm2-col-field">
               <input class="wp-pm2-col-input2 wp-pv-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
             </div>
-            <button type="button" class="wp-pv-addnote">+ Agregar una nota</button>
-            <div class="wp-pm2-col-field wp-pv-notef" hidden>
-              <input class="wp-pm2-col-input2 wp-pv-note" type="text" maxlength="280" placeholder="Ej. Yo llevo el pastel · nos vemos en la entrada" autocapitalize="sentences" autocomplete="off">
+            <button type="button" class="wp-pv-addnote">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></svg>
+              Agregar una nota</button>
+            <div class="wp-pv-postit" hidden>
+              <i class="wp-pv-tape"></i>
+              <textarea class="wp-pv-note" rows="3" maxlength="280" placeholder="Ej. Yo llevo el pastel · nos vemos en la entrada" autocapitalize="sentences"></textarea>
+              <div class="wp-pv-postit-foot"><span class="wp-pv-note-n">0/280</span><button type="button" class="wp-pv-note-x">Quitar nota</button></div>
             </div>
             <div class="wp-pv-card">
               <div class="wp-pv-card-emo"></div>
@@ -7069,7 +7101,7 @@ export class PlaceModal2 {
       const h = d.getHours();
       return `${dl} · ${h > 12 ? h - 12 : h || 12}:${pad(d.getMinutes())} ${h >= 12 ? 'pm' : 'am'}`;
     };
-    const VIS = { public: 'Lo ven todos', followers: 'Lo ven tus seguidores', invited: 'Solo lo ven tus invitados' };
+    const VIS = { public: 'Abierto a cualquiera', followers: 'Para tus seguidores', invited: 'Solo invitados' };
 
     // Alto de la hoja = alto del paso actual (anima al cambiar de paso)
     const fitStep = (animate = true) => {
@@ -7097,16 +7129,27 @@ export class PlaceModal2 {
       timeBox.querySelectorAll('button').forEach(b => b.classList.toggle('on', custom ? b.dataset.v === 'other' : b.dataset.v === time));
       const oT = timeBox.querySelector('.wp-pv-other'); if (oT) oT.firstChild.textContent = custom ? time : 'Otra hora';
       // Paso 2
+      // Cupo: con "Invitados" es tú + tus invitados (sin elegir). Abierto:
+      // eliges cuántos lugares, nunca menos que tú + los que ya invitaste.
+      const minN = invited.size + 1;
+      if (vis === 'invited') n = Math.max(2, minN);
+      else if (n < minN || !nTouched) n = Math.max(nTouched ? n : 4, minN);
+      const NOPTS = [...new Set([2, 3, 4, 6, 8, 10, 15, 20].filter(v => v >= minN).concat(minN >= 2 ? [minN] : []))].sort((a, b) => a - b).slice(0, 8);
+      $('[data-k="n"]').innerHTML = NOPTS.map(v => `<button type="button" data-v="${v}">${v}</button>`).join('');
+      $('.wp-pv-cupo').hidden = vis === 'invited';
       body.querySelectorAll('[data-k="n"] button').forEach(b => b.classList.toggle('on', b.dataset.v === String(n)));
       body.querySelectorAll('[data-k="vis"] button').forEach(b => b.classList.toggle('on', b.dataset.v === vis));
       body.querySelectorAll('.wp-pv-person').forEach(b => b.classList.toggle('on', invited.has(b.dataset.id)));
-      $('.wp-pv-inv-count').textContent = invited.size ? `${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}` : 'opcional';
+      $('.wp-pv-inv-count').textContent = invited.size ? `${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}` : (vis === 'invited' ? 'elige al menos 1' : 'opcional');
+      $('.wp-pv-vis-hint').textContent = vis === 'public' ? 'Aparece en el mapa y cualquiera puede pedir unirse.'
+        : vis === 'followers' ? 'Solo lo ve y se puede unir la gente que te sigue.'
+        : 'Privado: solo lo ven las personas que invites. Van tú y ellos.';
       // Paso 3
       if (!titleIn.dataset.touched) titleIn.value = autoTitle();
       titleIn.placeholder = autoTitle();
       $('.wp-pv-card-emo').textContent = tEmo();
       $('.wp-pv-card-t').textContent = titleIn.value.trim() || autoTitle();
-      $('.wp-pv-card-w').textContent = `${fmtWhen()} · hasta ${n}`;
+      $('.wp-pv-card-w').textContent = vis === 'invited' ? `${fmtWhen()} · tú + ${invited.size}` : `${fmtWhen()} · ${n} lugares`;
       $('.wp-pv-card-v').textContent = VIS[vis];
       $('.wp-pv-card-faces').innerHTML = [...invited].slice(0, 4).map(id => {
         const p = people.get(id) || {};
@@ -7120,7 +7163,9 @@ export class PlaceModal2 {
       const past = time !== 'now' && when() < new Date();
       const noInv = vis === 'invited' && !invited.size;
       const msg = step === 0 ? (past ? 'Elige una hora que no haya pasado' : `${tName()} · ${fmtWhen()}`)
-        : step === 1 ? (noInv ? 'Invita al menos a una persona o cambia quién lo ve' : `Hasta ${n} · ${VIS[vis].toLowerCase()}`)
+        : step === 1 ? (noInv ? 'Elige a quién invitas, o deja que se una cualquiera'
+          : vis === 'invited' ? `Tú + ${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}`
+          : `${n} lugares · ${invited.size ? invited.size + ' invitad' + (invited.size === 1 ? 'o' : 'os') + ' · ' : ''}${VIS[vis].toLowerCase()}`)
         : '';
       sumEl.textContent = msg;
       sumEl.hidden = !msg;
@@ -7147,11 +7192,18 @@ export class PlaceModal2 {
       if (b.dataset.v === 'other') { const tIn = b.querySelector('input'); try { tIn.showPicker ? tIn.showPicker() : tIn.click(); } catch (_) { tIn.click(); } return; }
       time = b.dataset.v; timeCustom = false; paint();
     });
-    $('[data-k="n"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; n = +b.dataset.v; paint(); });
+    $('[data-k="n"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; n = +b.dataset.v; nTouched = true; paint(); });
     $('[data-k="vis"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; vis = b.dataset.v; paint(); });
     titleIn.addEventListener('input', () => { titleIn.dataset.touched = '1'; paint(); });
-    const noteBtn = $('.wp-pv-addnote'), noteF = $('.wp-pv-notef'), noteIn = $('.wp-pv-note');
-    noteBtn.onclick = () => { noteBtn.hidden = true; noteF.hidden = false; fitStep(true); try { noteIn.focus({ preventScroll: true }); } catch (_) { noteIn.focus(); } };
+    const noteBtn = $('.wp-pv-addnote'), noteF = $('.wp-pv-postit'), noteIn = $('.wp-pv-note'), noteN = $('.wp-pv-note-n');
+    noteBtn.onclick = () => {
+      noteBtn.hidden = true; noteF.hidden = false;
+      noteF.classList.remove('in'); void noteF.offsetWidth; noteF.classList.add('in');
+      fitStep(true);
+      try { noteIn.focus({ preventScroll: true }); } catch (_) { noteIn.focus(); }
+    };
+    noteIn.addEventListener('input', () => { noteN.textContent = `${noteIn.value.length}/280`; });
+    $('.wp-pv-note-x').onclick = () => { noteIn.value = ''; noteN.textContent = '0/280'; noteF.hidden = true; noteBtn.hidden = false; fitStep(true); };
     backBtn.onclick = () => goStep(step - 1);
 
     // ¿A quién invitas?: la gente que sigues (avatar con sello). Tocar = invitar.
@@ -7232,6 +7284,46 @@ export class PlaceModal2 {
         this._showToast(e?.message || 'No se pudo crear el plan');
       } finally { cta.classList.remove('busy'); }
     };
+
+    // ── Teclado: la hoja se acomoda entre la barra de estado y el teclado
+    // (mismo principio que "Añadir a una colección") y el campo en el que
+    // escribes siempre queda a la vista
+    const sheetEl = document.getElementById('wp-pm2-menu-sheet');
+    const menuEl = sheetEl?.querySelector('.wp-pm2-ms-menu');
+    const pv = $('.wp-pv');
+    const safe = (() => {
+      const pr = document.createElement('div');
+      pr.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
+      document.body.appendChild(pr);
+      const cs = getComputedStyle(pr), r = { top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 };
+      pr.remove(); return r;
+    })();
+    const keepVisible = () => {
+      const a = document.activeElement;
+      if (!a || !pv.contains(a)) return;
+      const pr = pv.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      if (ar.bottom > pr.bottom - 8) pv.scrollTop += ar.bottom - pr.bottom + 16;
+      else if (ar.top < pr.top + 8) pv.scrollTop -= pr.top - ar.top + 16;
+    };
+    const fitKb = () => {
+      if (!sheetEl?.isConnected || !menuEl) {
+        window.removeEventListener('resize', fitKb); window.visualViewport?.removeEventListener('resize', fitKb); return;
+      }
+      const vv = window.visualViewport;
+      const visH = vv ? vv.height : window.innerHeight;
+      const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+      menuEl.style.bottom = kb ? `${kb + 8}px` : '';
+      const vTop = vv ? vv.offsetTop : 0;
+      const bottomY = kb ? vTop + visH - 8 : window.innerHeight - 12 - safe.bottom;
+      const topY = vTop + safe.top + 12;
+      const rest = menuEl.offsetHeight - pv.offsetHeight; // hoja sin el contenido
+      pv.style.maxHeight = `${Math.max(160, Math.floor(bottomY - topY - rest))}px`;
+      requestAnimationFrame(keepVisible);
+    };
+    window.addEventListener('resize', fitKb);
+    window.visualViewport?.addEventListener('resize', fitKb);
+    [titleIn, noteIn].forEach(i => i.addEventListener('focus', () => setTimeout(fitKb, 350)));
+    setTimeout(fitKb, 380);
 
     paintTimes(); paint();
     steps.forEach((el, i) => { el.inert = i !== 0; });
