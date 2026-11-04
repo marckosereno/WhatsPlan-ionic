@@ -1244,6 +1244,16 @@ export class PlaceModal2 {
       }
       .wp-pv-chips button:active { transform:scale(0.95); }
       .wp-pv-chips button.on { background:#0a0a0a; color:#fff; }
+      /* Reglas del plan */
+      .wp-pv-rules { display:flex; flex-wrap:wrap; gap:6px; }
+      .wp-pv-rules button { height:34px; padding:0 12px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
+        font-family:var(--wp-font); font-size:13px; font-weight:700; cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.15s, color 0.15s, transform 0.15s; }
+      .wp-pv-rules button:active { transform:scale(0.95); }
+      .wp-pv-rules button.on { background:#0a0a0a; color:#fff; }
+      .wp-pv-rules-ro { display:flex; flex-wrap:wrap; gap:6px; }
+      .wp-pv-rules-ro span { padding:5px 10px; border-radius:999px; background:#f3f4f6; font-size:12.5px; font-weight:700; color:#111827; }
+      .wp-pv-rules-ro.sm span { padding:3px 8px; font-size:11.5px; background:#fff; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.07); }
       .wp-pv-chips[data-k="n"] button { width:52px; padding:0; }
       /* Selector nativo de fecha/hora escondido dentro del pill "Otro…" */
       .wp-pv-native { position:absolute; inset:0; opacity:0; pointer-events:none; width:100%; height:100%; border:0; }
@@ -2125,16 +2135,6 @@ export class PlaceModal2 {
       .wp-pm2-plan-chip { flex:none; height:22px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center;
         background:rgba(255,255,255,0.22); font-size:12px; font-weight:800; }
       .wp-pm2-plan-chip.full { background:#16a34a; color:#fff; }
-      /* Stickers de "estás en un plan" (esquina izquierda, asomando) */
-      .wp-pm2-plan-stk { position:absolute; left:10px; top:-16px; display:flex; pointer-events:none; }
-      .wp-pm2-plan-stk i { display:block; font-style:normal; font-size:22px; line-height:1;
-        filter:drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 3px 4px rgba(0,0,0,0.25));
-        transform:rotate(-14deg); animation:wpPlanStk 3.2s ease-in-out infinite; }
-      .wp-pm2-plan-stk i + i { margin-left:-5px; margin-top:7px; font-size:18px; transform:rotate(12deg); animation-delay:-1.6s; }
-      @keyframes wpPlanStk { 0%,100% { translate:0 0; } 50% { translate:0 -3px; } }
-      .wp-pm2-plan-stk.pop i { animation:wpPlanStkPop 0.7s cubic-bezier(0.34,1.8,0.64,1) both, wpPlanStk 3.2s ease-in-out 0.7s infinite; }
-      .wp-pm2-plan-stk.pop i + i { animation-delay:0.12s, -0.9s; }
-      @keyframes wpPlanStkPop { from { scale:0; } 60% { scale:1.35; } to { scale:1; } }
       .wp-pm2-plan-faces b.full { background:#16a34a; color:#fff; }
       .wp-pm2-plan-faces b.inv { background:#1a5cf5; color:#fff; }
       .wp-pm2-plan-faces b.live { gap:5px; }
@@ -5284,51 +5284,6 @@ export class PlaceModal2 {
     } catch (_) {}
   }
 
-  // Confeti + emojis que salen del botón "Vas a ir" (al unirte a un plan)
-  _planConfetti(btn) {
-    try {
-      if (!btn?.isConnected) return;
-      this._haptic?.('success');
-      this._scaleKeys?.(btn, [1, 0.94, 1.05, 1], 420);
-      btn.querySelector('.wp-pm2-plan-stk')?.classList.add('pop');
-      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-      const r = btn.getBoundingClientRect();
-      const layer = document.createElement('div');
-      layer.style.cssText = `position:fixed;left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:0;height:0;z-index:1600000;pointer-events:none;`;
-      const COLORS = ['#1a5cf5', '#4ade80', '#facc15', '#ff3d5e', '#a78bfa', '#38bdf8', '#fb923c'];
-      const EMOJI = ['✌️', '🤩', '💙', '🫡', '🎉', '🙌', '🥳'];
-      const piece = (i, emoji) => {
-        const el = document.createElement('i');
-        // salen hacia arriba en abanico desde todo lo ancho del botón
-        const x0 = (Math.random() - 0.5) * r.width * 0.9;
-        const ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.9;
-        const v = (emoji ? 90 : 110) + Math.random() * 120;
-        const tx = x0 + Math.cos(ang) * v, peak = Math.sin(ang) * v - 30;
-        const fall = 60 + Math.random() * 90;
-        const rot = (Math.random() - 0.5) * (emoji ? 70 : 720);
-        if (emoji) {
-          el.textContent = emoji;
-          el.style.cssText = `position:absolute;left:-14px;top:-14px;font-size:${22 + Math.random() * 10}px;line-height:1;font-style:normal;` +
-            'filter:drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff) drop-shadow(0 3px 4px rgba(0,0,0,0.25));';
-        } else {
-          const w = 6 + Math.random() * 5, h = Math.random() < 0.5 ? w : w * 0.45;
-          el.style.cssText = `position:absolute;left:${-w / 2}px;top:${-h / 2}px;width:${w}px;height:${h}px;border-radius:${Math.random() < 0.3 ? '50%' : '2px'};background:${COLORS[i % COLORS.length]};`;
-        }
-        layer.appendChild(el);
-        el.animate([
-          { transform: `translate(${x0}px,0) scale(0.4) rotate(0deg)`, opacity: 0 },
-          { transform: `translate(${x0 + (tx - x0) * 0.6}px,${peak * 0.85}px) scale(1.1) rotate(${rot * 0.4}deg)`, opacity: 1, offset: 0.3 },
-          { transform: `translate(${tx}px,${peak}px) scale(1) rotate(${rot * 0.7}deg)`, opacity: 1, offset: 0.55 },
-          { transform: `translate(${tx + (Math.random() - 0.5) * 30}px,${peak + fall}px) scale(0.8) rotate(${rot}deg)`, opacity: 0 },
-        ], { duration: 1100 + Math.random() * 500, delay: Math.random() * 120, easing: 'cubic-bezier(0.2,0.65,0.35,1)', fill: 'forwards' });
-      };
-      for (let i = 0; i < 34; i++) piece(i, null);
-      for (let i = 0; i < 6; i++) piece(i, EMOJI[i % EMOJI.length]);
-      document.body.appendChild(layer);
-      setTimeout(() => layer.remove(), 1900);
-    } catch (_) {}
-  }
-
   _scaleKeys(el, keys, dur) {
     if (!el) return;
     if (el.__wpScaleRaf) cancelAnimationFrame(el.__wpScaleRaf);
@@ -7182,6 +7137,19 @@ export class PlaceModal2 {
     return { me, mine, pending, others };
   }
 
+  // Reglas del plan (chips). [clave, emoji, texto, excluye]
+  _planRules() {
+    return [
+      ['split', '💵', 'Cada quien paga', 'treat'], ['treat', '🤝', 'Yo invito', 'split'], ['cash', '💳', 'Llevar efectivo'],
+      ['punctual', '⏰', 'Puntual, no esperamos'], ['ride', '🚗', 'Hay raite'], ['parking', '🅿️', 'Hay estacionamiento'],
+      ['adults', '🔞', 'Solo mayores de 18', 'kids'], ['kids', '👶', 'Niños bienvenidos', 'adults'], ['pets', '🐶', 'Mascotas OK'],
+    ];
+  }
+  _planRulesHtml(a, cls = '') {
+    const R = this._planRules(), on = (a?.rules || []).map(k => R.find(r => r[0] === k)).filter(Boolean);
+    return on.length ? `<div class="wp-pv-rules-ro ${cls}">${on.map(([, e, t]) => `<span>${e} ${this._esc(t)}</span>`).join('')}</div>` : '';
+  }
+
   _planEmoji(t) {
     const G = { food: '🍔', drinks: '☕', hangout: '🎈', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
     return G[t] || (this._actTypes || []).find(x => x.key === t)?.emoji || '🎈';
@@ -7234,27 +7202,14 @@ export class PlaceModal2 {
       badge = `${others.length} plan${others.length > 1 ? 'es' : ''}`;
     }
     btn.dataset.state = state;
-    // Estás en un plan: emojis tipo sticker (orilla blanca) en la esquina
-    let stk = '';
-    if (state === 'mine') {
-      const SET = ['✌️', '🤩', '💙', '🫡', '🙌', '🥳', '🔥', '😎'];
-      const h = [...String(mine.id || '')].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7);
-      const e1 = SET[h % SET.length], e2 = SET[(h >> 3) % SET.length] === e1 ? SET[(h + 1) % SET.length] : SET[(h >> 3) % SET.length];
-      stk = `<span class="wp-pm2-plan-stk" aria-hidden="true"><i>${e1}</i><i>${e2}</i></span>`;
-    }
     const shown = faces.slice(0, 3);
     const bHtml = badge && typeof badge === 'object' ? `<b class="${badge.cls}">${badge.html}</b>`
       : badge ? `<b>${this._esc(badge)}</b>` : faces.length > 3 ? `<b>+${faces.length - 3}</b>` : '';
-    btn.innerHTML = `${stk}${icon}<span class="wp-pm2-plan-lbl">${this._esc(label)}</span>${chip}` +
+    btn.innerHTML = `${icon}<span class="wp-pm2-plan-lbl">${this._esc(label)}</span>${chip}` +
       (shown.length ? `<span class="wp-pm2-plan-faces">${shown.map(id => this._planFace(id)).join('')}${bHtml}</span>` : '');
     if (animate && state !== 'none') {
       const f = btn.querySelector('.wp-pm2-plan-faces');
       if (f) { f.classList.remove('in'); void f.offsetWidth; f.classList.add('in'); }
-    }
-    // Recién te uniste: fiesta en el botón cuando ya se cerró la hoja
-    if (state === 'mine' && this._planCelebrate) {
-      this._planCelebrate = false;
-      setTimeout(() => this._planConfetti(btn), 380);
     }
   }
 
@@ -7333,6 +7288,7 @@ export class PlaceModal2 {
           ${isOwner && a.max_participants ? `<button type="button" class="wp-pv-spots-save" hidden></button>
           ${!full && going > 1 ? `<button type="button" class="wp-pv-spots-close">Cerrar el plan con los ${going} que van</button>` : ''}` : ''}
         </div>
+        ${this._planRulesHtml(a)}
         ${a.note ? `<div class="wp-pv-postit wp-pv-postit-ro"><i class="wp-pv-tape"></i><div class="wp-pv-note-ro">${this._esc(a.note)}</div></div>` : ''}
         <div class="wp-pv-lbl">Quién va <span class="wp-pv-hint">${going} confirmad${going === 1 ? 'o' : 'os'}</span></div>
         <div class="wp-pv-who">
@@ -7500,6 +7456,7 @@ export class PlaceModal2 {
                 <span class="wp-pv-card-v">${full ? `<span class="wp-pv-full-tag">${going} de ${going} · Completo</span>` : a.max_participants ? `Queda${left === 1 ? '' : 'n'} ${left} cupo${left === 1 ? '' : 's'}` : 'Sin límite'}</span></div>
               <div class="wp-pv-card-faces">${(a.participants || []).slice(0, 3).map(id => this._planFace(id)).join('')}${going > 3 ? `<b>+${going - 3}</b>` : ''}</div>
             </div>
+            ${this._planRulesHtml(a, 'sm')}
             ${a.note ? `<div class="wp-ph-note">“${this._esc(a.note)}”</div>` : ''}
             <div class="wp-ph-btns">
               ${inIt ? `<button type="button" class="wp-ph-yes" disabled>Ya vas</button>`
@@ -7516,9 +7473,8 @@ export class PlaceModal2 {
       const a = list[+b.closest('.wp-ph-card').dataset.i];
       const yes = b.dataset.a === 'yes';
       b.disabled = true;
-      if (yes) this._planCelebrate = true;
       const ok = await this._planRpc('respond_plan', { p_activity: a.id, p_accept: yes }, yes ? `¡Vas! ${this._planWhen(a.scheduled_at)}` : 'Le avisamos que no puedes');
-      if (ok) close(); else { b.disabled = false; this._planCelebrate = false; }
+      if (ok) close(); else b.disabled = false;
     });
     // Lista de espera
     body.querySelectorAll('.wp-ph-card button[data-wl]').forEach(b => b.onclick = async () => {
@@ -7646,6 +7602,8 @@ export class PlaceModal2 {
             <div class="wp-pm2-col-field">
               <input class="wp-pm2-col-input2 wp-pv-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
             </div>
+            <div class="wp-pv-lbl">Reglas del plan <span class="wp-pv-hint">opcional</span></div>
+            <div class="wp-pv-rules">${this._planRules().map(([k, e, t]) => `<button type="button" data-r="${k}">${e} ${t}</button>`).join('')}</div>
             <button type="button" class="wp-pv-addnote">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></svg>
               Agregar una nota</button>
@@ -7799,6 +7757,18 @@ export class PlaceModal2 {
     $('[data-k="n"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; n = +b.dataset.v; nTouched = true; paint(); });
     $('[data-k="vis"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; vis = b.dataset.v; paint(); });
     titleIn.addEventListener('input', () => { titleIn.dataset.touched = '1'; paint(); });
+    // Reglas: se tocan; las opuestas se apagan solas (paga cada quien / yo invito)
+    const rules = new Set();
+    const RULES = this._planRules();
+    $('.wp-pv-rules').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-r]'); if (!b) return;
+      const k = b.dataset.r, ex = RULES.find(r => r[0] === k)?.[3];
+      if (rules.has(k)) rules.delete(k);
+      else { rules.add(k); if (ex) rules.delete(ex); }
+      body.querySelectorAll('.wp-pv-rules button').forEach(x => x.classList.toggle('on', rules.has(x.dataset.r)));
+      this._haptic?.('light');
+      paint();
+    });
     const noteBtn = $('.wp-pv-addnote'), noteF = $('.wp-pv-postit'), noteIn = $('.wp-pv-note'), noteN = $('.wp-pv-note-n');
     noteBtn.onclick = () => {
       noteBtn.hidden = true; noteF.hidden = false;
@@ -7853,7 +7823,7 @@ export class PlaceModal2 {
           p_title: title, p_type: type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
           p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: n,
           p_spontaneous: time === 'now', p_visibility: vis, p_note: noteIn.value.trim() || null, p_invited: [...invited],
-          p_icon: ICON[type] || null,
+          p_icon: ICON[type] || null, p_rules: [...rules],
         });
         if (error) {
           const missing = error.code === 'PGRST202' || /create_plan/.test(error.message || '');
