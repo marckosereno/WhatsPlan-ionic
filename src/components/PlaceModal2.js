@@ -1275,6 +1275,42 @@ export class PlaceModal2 {
       .wp-pv-stopres i { flex:none; width:30px; height:30px; border-radius:50%; background:#0a0a0a; color:#fff; font-style:normal; font-size:18px; font-weight:700;
         display:flex; align-items:center; justify-content:center; }
       .wp-pv-route-ro { display:flex; flex-direction:column; gap:6px; }
+      .wp-pv-addstop-card { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1.5px dashed #c7ccd4; border-radius:18px; background:#fff;
+        text-align:left; font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+      .wp-pv-addstop-card:active { background:#f7f8fa; }
+      .wp-pv-addstop-card > span:first-child { font-size:24px; }
+      .wp-pv-addstop-card > span:nth-child(2) { flex:1; display:flex; flex-direction:column; }
+      .wp-pv-addstop-card b { font-size:14.5px; font-weight:800; color:#111827; }
+      .wp-pv-addstop-card small { font-size:12.5px; color:#6b7280; font-weight:600; }
+      .wp-pv-addstop-card i { flex:none; width:32px; height:32px; border-radius:50%; background:#0a0a0a; color:#fff; font-style:normal; font-size:20px;
+        display:flex; align-items:center; justify-content:center; }
+      /* Hoja "Agregar parada" */
+      .wp-sp { gap:10px; }
+      .wp-sp-hero h2 { margin:0; font-size:30px; font-weight:900; letter-spacing:-0.8px; line-height:1.1; color:#0a0a0a; }
+      .wp-sp-hero p { margin:4px 0 0; font-size:14px; color:#9ca3af; font-weight:500; }
+      .wp-sp-hero p b { color:#4b5563; font-weight:700; }
+      .wp-sp-q { gap:8px; flex:none !important; height:46px !important; }
+      .wp-sp-sep { display:flex; align-items:center; gap:8px; margin-top:2px; }
+      .wp-sp-sep i { flex:1; height:1px; background:#f0f0f0; }
+      .wp-sp-sep span { font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.04em; }
+      .wp-sp-list { display:flex; flex-direction:column; gap:8px; padding-bottom:6px; }
+      .wp-sp-place { position:relative; display:flex; align-items:center; gap:12px; padding:10px; border-radius:16px; border:2px solid #f0f0f0; background:#fff;
+        text-align:left; font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:border-color 0.15s, background-color 0.15s; }
+      .wp-sp-place.on { border-color:#1a5cf5; background:#f5f8ff; }
+      .wp-sp-ph { flex:none; width:52px; height:52px; border-radius:12px; background:#f0f0f0 center/cover no-repeat; display:flex; align-items:center; justify-content:center; font-size:22px; }
+      .wp-sp-t { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+      .wp-sp-t b { font-size:14.5px; font-weight:800; color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-sp-t small { font-size:12px; color:#6b7280; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-sp-chk { flex:none; width:26px; height:26px; border-radius:50%; border:2px solid #e5e7eb; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+      .wp-sp-chk svg { opacity:0; }
+      .wp-sp-place.on .wp-sp-chk { background:#1a5cf5; border-color:#1a5cf5; }
+      .wp-sp-place.on .wp-sp-chk svg { opacity:1; }
+      .wp-sp-foot { flex-direction:column; }
+      .wp-sp-when { display:flex; flex-direction:column; gap:6px; }
+      .wp-sp-when[hidden] { display:none; }
+      .wp-sp-when > span { font-size:13px; font-weight:700; color:#6b7280; padding-left:2px; }
+      .wp-sp-row { display:flex; gap:8px; }
+      .wp-sp-row .wp-pv-cta { flex:1; }
       .wp-pv-route-acts { display:flex; gap:8px; }
       .wp-pv-route-acts button { height:38px; padding:0 14px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
         font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; }
@@ -7201,38 +7237,102 @@ export class PlaceModal2 {
       return j.places || [];
     } catch (_) { return window.wpApp?.mapView?.allPlaces || []; }
   }
-  // Buscador de lugares para una parada (cerca primero). onPick(place)
-  _stopPicker(host, { origin, exclude = new Set(), onPick, onFocus } = {}) {
-    host.innerHTML = `<div class="wp-pm2-col-field wp-pv-stopq-f"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="wp-pm2-col-input2 wp-pv-stopq" type="search" placeholder="Busca un lugar o elige uno cerca" enterkeyhint="search" autocomplete="off"></div>
-      <div class="wp-pv-stoplist"><span class="wp-pv-empty">Cargando lugares…</span></div>`;
-    const q = host.querySelector('.wp-pv-stopq'), list = host.querySelector('.wp-pv-stoplist');
-    let all = [];
+  // ── Hoja "Agregar parada" (como el paso "¿Dónde?" de Crear actividad) ──
+  // Se abre desde "Tu plan". Elegir lugar (chips de categoría + buscador +
+  // sugeridos cerca) → cuánto después → "Agregar parada · 2:30 pm".
+  _openStopSheet(a) {
+    const cur = Array.isArray(a.stops) ? a.stops : [];
+    const last = cur[cur.length - 1];
+    const t0 = new Date(a.scheduled_at);
+    const lastT = new Date(t0.getTime() + (last?.after || 0) * 60000);
+    const origin = last ? { lat: Number(last.lat), lng: Number(last.lng) } : { lat: Number(a.lat), lng: Number(a.lng) };
+    const exclude = new Set([String(a.place_id || ''), ...cur.map(x => String(x.place_id))]);
+    const { body, close } = this._openSheet('Agregar parada', a.title);
+    const CATS = [['', 'Todos'], ['RESTAURANTS', '🍽️ Comer'], ['ENTERTAINMENT', '🎉 Salir'], ['SHOPPING', '🛍️ Compras'], ['PARKS', '🌳 Parques'], ['HEALTH', '💆 Salud'], ['WORKSHOPS', '🔧 Talleres']];
+    const GAPS = [30, 60, 90, 120, 180];
+    const gapTxt = (g) => g < 60 ? `+${g} min` : `+${Math.floor(g / 60)}${g % 60 ? ':' + String(g % 60).padStart(2, '0') : ''} h`;
+    let cat = '', pick = null, gap = 60, all = [];
+    body.innerHTML = `
+      <div class="wp-pv wp-sp">
+        <div class="wp-sp-hero"><h2>¿A dónde después?</h2>
+          <p>Después de <b>${this._esc(last?.name || a.place_name || 'la primera parada')}</b> · ${this._hhmm(lastT)}</p></div>
+        <div class="wp-pv-chips wp-sp-cats">${CATS.map(([k, l]) => `<button type="button" data-c="${k}"${!k ? ' class="on"' : ''}>${l}</button>`).join('')}</div>
+        <div class="wp-pm2-col-field wp-sp-q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="wp-pm2-col-input2" type="search" placeholder="Busca un lugar" enterkeyhint="search" autocomplete="off"></div>
+        <div class="wp-sp-sep"><i></i><span>Cerca de la parada anterior</span><i></i></div>
+        <div class="wp-sp-list"><span class="wp-pv-empty">Cargando lugares…</span></div>
+      </div>
+      <div class="wp-pv-foot wp-sp-foot">
+        <div class="wp-sp-when" hidden><span>¿Cuánto después?</span>
+          <div class="wp-pv-chips">${GAPS.map(g => `<button type="button" data-g="${g}"${g === gap ? ' class="on"' : ''}>${gapTxt(g)}</button>`).join('')}</div></div>
+        <div class="wp-sp-row">
+          <button type="button" class="wp-pv-back" aria-label="Volver al plan"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+          <button type="button" class="wp-pv-cta wp-sp-go" disabled><span>Elige un lugar</span></button>
+        </div>
+      </div>`;
+    const $ = (q) => body.querySelector(q);
+    const list = $('.wp-sp-list'), q = $('.wp-sp-q input'), go = $('.wp-sp-go'), whenBox = $('.wp-sp-when');
     const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const CATN = { RESTAURANTS: 'Restaurantes', ENTERTAINMENT: 'Entretenimiento', SHOPPING: 'Compras', PARKS: 'Parques', HEALTH: 'Salud', WORKSHOPS: 'Talleres' };
+    const paintGo = () => {
+      whenBox.hidden = !pick;
+      whenBox.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.g === gap));
+      go.disabled = !pick;
+      go.querySelector('span').textContent = pick ? `Agregar · ${this._hhmm(new Date(lastT.getTime() + gap * 60000))}` : 'Elige un lugar';
+    };
     const render = () => {
       const k = norm(q.value.trim());
-      const res = all.filter(p => !exclude.has(String(p.place_id)) && (!k || norm(p.name).includes(k) || norm(p.formattedAddress).includes(k)))
-        .map(p => [p, origin?.lat ? this._distM(origin, p) : 0]).sort((a, b) => a[1] - b[1]).slice(0, 6);
-      list.innerHTML = res.length ? res.map(([p, d], i) => `<button type="button" class="wp-pv-stopres" data-i="${i}">
-          <span class="wp-pv-stopres-ph"${p.photoUrl ? ` style="background-image:url('${this._esc(p.photoUrl)}')"` : ''}>${p.photoUrl ? '' : this._stopEmoji(p.category)}</span>
-          <span class="wp-pv-stopres-t"><b>${this._esc(p.name)}</b><small>${this._stopEmoji(p.category)} ${d ? (d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km') : ''}</small></span>
-          <i>+</i></button>`).join('') : '<span class="wp-pv-empty">No encontramos ese lugar</span>';
+      const res = all.filter(p => !exclude.has(String(p.place_id)) && (!cat || String(p.category || '').toUpperCase() === cat)
+          && (!k || norm(p.name).includes(k) || norm(p.formattedAddress).includes(k)))
+        .map(p => [p, this._distM(origin, p)]).sort((x, y) => x[1] - y[1]).slice(0, 12);
       list._res = res.map(r => r[0]);
+      list.innerHTML = res.length ? res.map(([p, d], i) => {
+        const ph = p.photoUrl || p.photosUrls?.[0] || '';
+        const km = d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km';
+        return `<button type="button" class="wp-sp-place${pick && String(pick.place_id) === String(p.place_id) ? ' on' : ''}" data-i="${i}">
+          <span class="wp-sp-ph"${ph ? ` style="background-image:url('${this._esc(ph)}')"` : ''}>${ph ? '' : this._stopEmoji(p.category)}</span>
+          <span class="wp-sp-t"><b>${this._esc(p.name)}</b>
+            <small>${p.rating ? `⭐ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${km} · ${this._stopEmoji(p.category)} ${CATN[String(p.category || '').toUpperCase()] || 'Lugar'}</small></span>
+          <i class="wp-sp-chk"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></i></button>`;
+      }).join('') : '<span class="wp-pv-empty">No encontramos lugares aquí 🗺️</span>';
     };
     list.addEventListener('click', (e) => {
-      const b = e.target.closest('.wp-pv-stopres'); if (!b) return;
-      const p = list._res?.[+b.dataset.i]; if (p) { this._haptic?.('light'); onPick?.(p); }
+      const b = e.target.closest('.wp-sp-place'); if (!b) return;
+      const p = list._res?.[+b.dataset.i]; if (!p) return;
+      pick = pick && String(pick.place_id) === String(p.place_id) ? null : p;
+      this._haptic?.('light');
+      list.querySelectorAll('.wp-sp-place').forEach(x => x.classList.toggle('on', !!pick && x === b));
+      paintGo();
     });
-    let t = 0;
-    q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(render, 120); });
-    if (onFocus) q.addEventListener('focus', onFocus);
-    this._planPlaces().then(ps => { all = (ps || []).filter(p => p.place_id && p.lat && p.lng); if (host.isConnected) render(); });
-    return { input: q };
+    $('.wp-sp-cats').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-c]'); if (!b) return;
+      cat = b.dataset.c;
+      body.querySelectorAll('.wp-sp-cats button').forEach(x => x.classList.toggle('on', x === b));
+      render();
+    });
+    whenBox.addEventListener('click', (e) => { const b = e.target.closest('button[data-g]'); if (!b) return; gap = +b.dataset.g; this._haptic?.('light'); paintGo(); });
+    let qt = 0;
+    q.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(render, 120); });
+    const back = () => { close(true); setTimeout(() => this._openMyPlanSheet(a), 60); };
+    $('.wp-sp-foot .wp-pv-back').onclick = back;
+    go.onclick = async () => {
+      if (!pick) return;
+      go.disabled = true;
+      const next = [...cur, { place_id: String(pick.place_id), name: pick.name || pick.displayName, lat: Number(pick.lat), lng: Number(pick.lng), cat: pick.category || '', after: (last?.after || 0) + gap }];
+      const ok = await this._planRpc('set_plan_stops', { p_activity: a.id, p_stops: next }, `Agregaste ${pick.name || 'una parada'} · ya les avisamos`);
+      if (!ok) { go.disabled = false; return; }
+      a.stops = next;
+      back();
+    };
+    this._planPlaces().then(ps => { all = (ps || []).filter(p => p.place_id && p.lat && p.lng); if (body.isConnected) render(); });
+    paintGo();
   }
+
   // Línea de tiempo de solo lectura (Tu plan / Planes aquí)
   _planRouteHtml(a, { owner = false, compact = false } = {}) {
     const st = Array.isArray(a?.stops) ? a.stops : [];
-    if (!st.length) return owner ? `<div class="wp-pv-route-ro" data-empty="1"><button type="button" class="wp-pv-addstop" data-a="addstop">+ Agregar otra parada</button><div class="wp-pv-stoppick" hidden></div></div>` : '';
+    if (!st.length) return owner ? `<div class="wp-pv-route-ro"><button type="button" class="wp-pv-addstop-card" data-a="addstop">
+        <span>🗺️</span><span><b>¿Siguen en otro lado?</b><small>Agrega una parada al plan</small></span><i>+</i></button></div>` : '';
     const t0 = new Date(a.scheduled_at);
     if (compact) return `<div class="wp-ph-route">🗺️ ${1 + st.length} paradas · ${[a.place_name, ...st.map(x => x.name)].map(n => this._esc(String(n || '').split(' ').slice(0, 3).join(' '))).join(' → ')}</div>`;
     const row = (i, name, d, cat, rm) => `<div class="wp-pv-stop"><span class="wp-pv-stop-n">${i}</span>
@@ -7242,7 +7342,6 @@ export class PlaceModal2 {
         <div class="wp-pv-route">${row(1, a.place_name || this._placeInfo().name, t0, this._place?.category, 0)}
           ${st.map((x, i) => row(i + 2, x.name, new Date(t0.getTime() + (x.after || 0) * 60000), x.cat, owner ? String(i + 1) : '')).join('')}</div>
         <div class="wp-pv-route-acts"><button type="button" data-a="route">🗺️ Ver ruta en el mapa</button>${owner && st.length < 3 ? '<button type="button" data-a="addstop">+ Parada</button>' : ''}</div>
-        ${owner ? '<div class="wp-pv-stoppick" hidden></div>' : ''}
       </div>`;
   }
   // Abrir el mapa solo con las paradas (ruta), y al cerrar volver a la ficha
@@ -7446,21 +7545,7 @@ export class PlaceModal2 {
         else b.disabled = false;
         return;
       }
-      if (b.dataset.a === 'addstop') {
-        const pk = rBox.querySelector('.wp-pv-stoppick');
-        if (!pk.hidden) { pk.hidden = true; return; }
-        pk.hidden = false;
-        const last = cur[cur.length - 1];
-        const { input } = this._stopPicker(pk, {
-          origin: last || { lat: Number(a.lat), lng: Number(a.lng) },
-          exclude: new Set([String(a.place_id || ''), ...cur.map(x => String(x.place_id))]),
-          onPick: async (p) => {
-            const next = [...cur, { place_id: String(p.place_id), name: p.name || p.displayName, lat: Number(p.lat), lng: Number(p.lng), cat: p.category || '', after: (last?.after || 0) + 60 }];
-            if (await this._planRpc('set_plan_stops', { p_activity: a.id, p_stops: next }, `Agregaste ${p.name || 'una parada'} · ya les avisamos`)) close();
-          },
-        });
-        setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (_) {} }, 60);
-      }
+      if (b.dataset.a === 'addstop') { close(true); setTimeout(() => this._openStopSheet(a), 60); }
     });
     // Cancelar / salirme: segundo toque para confirmar
     const danger = body.closest('.wp-pm2-ms-menu')?.querySelector('.wp-pv-danger') || $('.wp-pv-danger');
@@ -7750,10 +7835,6 @@ export class PlaceModal2 {
             <div class="wp-pm2-col-field">
               <input class="wp-pm2-col-input2 wp-pv-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
             </div>
-            <div class="wp-pv-lbl">Paradas <span class="wp-pv-hint wp-pv-stops-n">opcional · hasta 3 más</span></div>
-            <div class="wp-pv-route wp-pv-route-ed"></div>
-            <button type="button" class="wp-pv-addstop">+ Agregar otra parada</button>
-            <div class="wp-pv-stoppick" hidden></div>
             <div class="wp-pv-lbl">Reglas del plan <span class="wp-pv-hint">opcional</span></div>
             <div class="wp-pv-rules">${this._planRules().map(([k, e, t]) => `<button type="button" data-r="${k}">${e} ${t}</button>`).join('')}</div>
             <button type="button" class="wp-pv-addnote">
@@ -7864,8 +7945,7 @@ export class PlaceModal2 {
       $('.wp-pv-card-emo').textContent = tEmo();
       $('.wp-pv-card-t').textContent = titleIn.value.trim() || autoTitle();
       $('.wp-pv-card-w').textContent = vis === 'invited' ? `${fmtWhen()} · tú + ${invited.size}` : `${fmtWhen()} · ${n} cupos`;
-      $('.wp-pv-card-v').textContent = VIS[vis] + (stops.length ? ` · ${stops.length + 1} paradas` : '');
-      renderRoute();
+      $('.wp-pv-card-v').textContent = VIS[vis];
       $('.wp-pv-card-faces').innerHTML = [...invited].slice(0, 4).map(id => {
         const p = people.get(id) || {};
         return `<i class="wp-seal" style="background-image:url('${this._esc(p.avatar_url || getAvatarUrl(p.name || p.username || 'user'))}')"></i>`;
@@ -7910,44 +7990,6 @@ export class PlaceModal2 {
     $('[data-k="n"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; n = +b.dataset.v; nTouched = true; paint(); });
     $('[data-k="vis"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; vis = b.dataset.v; paint(); });
     titleIn.addEventListener('input', () => { titleIn.dataset.touched = '1'; paint(); });
-    // Paradas: [{place_id, name, lat, lng, cat, gap}] · gap = min después de la anterior
-    const stops = [];
-    const GAPS = [30, 60, 90, 120, 180];
-    const gapTxt = (g) => g < 60 ? `+${g} min` : `+${Math.floor(g / 60)}${g % 60 ? ':' + String(g % 60).padStart(2, '0') : ''} h`;
-    const afterOf = (i) => stops.slice(0, i + 1).reduce((x, s0) => x + s0.gap, 0);
-    const routeEl = $('.wp-pv-route-ed'), addStop = $('.wp-pv-addstop'), pickEl = $('.wp-pv-stoppick');
-    const renderRoute = () => {
-      const t0 = time === 'now' ? new Date() : when();
-      routeEl.hidden = !stops.length;
-      routeEl.innerHTML = !stops.length ? '' : `<div class="wp-pv-stop"><span class="wp-pv-stop-n">1</span><span class="wp-pv-stop-t"><b>${this._esc(info.name)}</b><small>${this._stopEmoji(place.category)} ${this._hhmm(t0)} · aquí</small></span></div>` +
-        stops.map((x, i) => `<div class="wp-pv-stop"><span class="wp-pv-stop-n">${i + 2}</span>
-          <span class="wp-pv-stop-t"><b>${this._esc(x.name)}</b><small>${this._stopEmoji(x.cat)} ${this._hhmm(new Date(t0.getTime() + afterOf(i) * 60000))}</small></span>
-          <button type="button" class="wp-pv-stop-gap" data-g="${i}" aria-label="Cuánto después">${gapTxt(x.gap)}</button>
-          <button type="button" class="wp-pv-stop-x" data-rm="${i}" aria-label="Quitar parada">×</button></div>`).join('');
-      addStop.hidden = stops.length >= 3;
-      $('.wp-pv-stops-n').textContent = stops.length ? `${stops.length + 1} paradas` : 'opcional · hasta 3 más';
-    };
-    routeEl.addEventListener('click', (e) => {
-      const g = e.target.closest('[data-g]'), rm = e.target.closest('[data-rm]');
-      if (g) { const x = stops[+g.dataset.g]; x.gap = GAPS[(GAPS.indexOf(x.gap) + 1) % GAPS.length]; this._haptic?.('light'); paint(); }
-      if (rm) { stops.splice(+rm.dataset.rm, 1); this._haptic?.('light'); paint(); }
-    });
-    addStop.onclick = () => {
-      if (!pickEl.hidden) { pickEl.hidden = true; paint(); return; }
-      pickEl.hidden = false;
-      const { input } = this._stopPicker(pickEl, {
-        origin: stops.length ? stops[stops.length - 1] : { lat: Number(info.lat), lng: Number(info.lng) },
-        exclude: new Set([String(place.place_id || place.id || ''), ...stops.map(x => String(x.place_id))]),
-        onFocus: () => setTimeout(() => { try { fitKb(); } catch (_) {} }, 350),
-        onPick: (p) => {
-          stops.push({ place_id: String(p.place_id), name: p.name || p.displayName, lat: Number(p.lat), lng: Number(p.lng), cat: p.category || '', gap: 60 });
-          pickEl.hidden = true; pickEl.innerHTML = '';
-          paint();
-        },
-      });
-      paint();
-      setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (_) {} }, 60);
-    };
     // Reglas: se tocan; las opuestas se apagan solas (paga cada quien / yo invito)
     const rules = new Set();
     const RULES = this._planRules();
@@ -8015,7 +8057,6 @@ export class PlaceModal2 {
           p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: n,
           p_spontaneous: time === 'now', p_visibility: vis, p_note: noteIn.value.trim() || null, p_invited: [...invited],
           p_icon: ICON[type] || null, p_rules: [...rules],
-          p_stops: stops.map((x, i) => ({ place_id: x.place_id, name: x.name, lat: x.lat, lng: x.lng, cat: x.cat, after: afterOf(i) })),
         });
         if (error) {
           const missing = error.code === 'PGRST202' || /create_plan/.test(error.message || '');
