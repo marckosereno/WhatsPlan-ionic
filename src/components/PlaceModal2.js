@@ -1229,6 +1229,8 @@ export class PlaceModal2 {
       .wp-pv-hint { font-weight:500; color:#9ca3af; }
       .wp-pv-strip { margin:0 -16px; overflow-x:auto; scrollbar-width:none; touch-action:pan-x; }
       .wp-pv-strip::-webkit-scrollbar { display:none; }
+      /* pocos planes (según el lugar) → centrados; si no caben, se deslizan */
+      .wp-pv-strip .wp-pm2-col-strip-track { margin:0 auto; }
       .wp-pv-chips { display:flex; gap:8px; overflow-x:auto; margin:0 -16px; padding:2px 16px; scrollbar-width:none; }
       .wp-pv-chips::-webkit-scrollbar { display:none; }
       .wp-pv-chips button {
@@ -1972,6 +1974,18 @@ export class PlaceModal2 {
         font-family:var(--wp-font);
       }
       #wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-menu { transform:translateY(0); }
+      /* Teclado abierto: hoja = tarjeta flotante; el campo, barra aparte encima del teclado */
+      #wp-pm2-menu-sheet .wp-pm2-ms-menu.wp-kb-float { transition:bottom 0.22s cubic-bezier(0.32,0.72,0,1); box-shadow:0 10px 36px rgba(0,0,0,0.16); }
+      .wp-kb-dockbar { position:fixed; left:12px; right:12px; z-index:1500300; font-family:var(--wp-font);
+        animation:wpKbDock 0.24s cubic-bezier(0.32,0.72,0,1); }
+      @keyframes wpKbDock { from { transform:translateY(16px); opacity:0.3; } to { transform:none; opacity:1; } }
+      .wp-kb-docked { margin:0 !important; box-sizing:border-box; transform:none !important; animation:none !important; }
+      .wp-kb-away { display:none !important; }
+      /* campo de una línea → barra blanca con sombra y el campo gris adentro */
+      .wp-kb-dockbar.pill { background:#fff; padding:7px; border-radius:34px; box-shadow:0 6px 24px rgba(0,0,0,0.16); }
+      .wp-kb-dockbar.pill .wp-pm2-col-field { height:46px; }
+      /* la nota: el post-it mismo, derechito */
+      .wp-pv-postit.wp-kb-docked { box-shadow:0 10px 28px rgba(120,90,0,0.26); }
       .wp-pm2-ms-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
       .wp-pm2-ms-header { padding:4px 20px 8px; }
       .wp-pm2-ms-title { display:block; font-size:16px; font-weight:700; color:#0a0a0a; }
@@ -6353,6 +6367,98 @@ export class PlaceModal2 {
   // Devuelve { body, close }. body es donde se mete el contenido.
   // Animación de entrada/salida: ver _sheetIn/_sheetOut (modo elegible).
   // instant=true → aparece y se va sin animación (formulario de reclamo)
+  // ── Teclado estilo "tarjeta flotante" (como One UI / iMessage) ───────
+  // Con el teclado abierto, el campo en el que escribes se despega de la
+  // hoja y queda como barra propia justo ENCIMA del teclado; la hoja queda
+  // arriba como tarjeta con las 4 esquinas redondas → el campo nunca se tapa.
+  // Cómo: se pone una COPIA del bloque del campo en una barra fija (fuera
+  // de la hoja: ahí adentro hay transforms y recortes) y el foco pasa a la
+  // copia (pasar de un campo a otro no cierra el teclado). Lo que escribes
+  // se copia al campo original (y le avisa con 'input'); los botones de la
+  // copia tocan los del original. Al cerrar el teclado todo vuelve.
+  // pick(activeElement) → bloque a despegar (o null).
+  // update(kb, open) → px a dejar libres entre la hoja y el teclado.
+  _kbDock(hostEl, menuEl, pick, onChange) {
+    let cur = null;
+    const sync = () => {
+      if (!cur) return;
+      cur.pairs.forEach(([o, c]) => {
+        if (c === cur.cIn) return;
+        if (c.className !== o.className + ' wp-kb-docked' && o !== cur.block) c.className = o.className;
+        c.hidden = o.hidden;
+        if ('disabled' in o) c.disabled = o.disabled;
+        if (!o.children.length && c.textContent !== o.textContent) c.textContent = o.textContent;
+      });
+    };
+    const undock = () => {
+      if (!cur) return;
+      const k = cur; cur = null;
+      k.block.classList.remove('wp-kb-away');
+      k.bar.remove();
+      onChange?.();
+    };
+    const dock = (block, oIn) => {
+      const bar = document.createElement('div');
+      bar.className = 'wp-kb-dockbar ' + (block.matches('.wp-pv-postit') ? 'note' : 'pill');
+      const clone = block.cloneNode(true);
+      clone.classList.add('wp-kb-docked');
+      bar.appendChild(clone);
+      const os = [block, ...block.querySelectorAll('*')], cs = [clone, ...clone.querySelectorAll('*')];
+      const pairs = os.map((o, i) => [o, cs[i]]);
+      const cIn = cs[os.indexOf(oIn)];
+      if (!cIn) return;
+      cur = { block, bar, pairs, cIn, oIn };
+      cIn.value = oIn.value;
+      cIn.addEventListener('input', () => {
+        oIn.value = cIn.value;
+        oIn.dispatchEvent(new Event('input', { bubbles: true }));
+        sync();
+      });
+      cIn.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || cIn.tagName === 'TEXTAREA') return;
+        oIn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+        requestAnimationFrame(() => { sync(); if (block.hidden || !block.isConnected) undock(); });
+      });
+      cIn.addEventListener('blur', () => setTimeout(() => { if (cur?.cIn === cIn && document.activeElement !== cIn) undock(); }, 40));
+      pairs.forEach(([o, c]) => {
+        if (c.tagName !== 'BUTTON') return;
+        c.addEventListener('pointerdown', (e) => e.preventDefault()); // que no se vaya el foco
+        c.addEventListener('click', (e) => {
+          e.preventDefault();
+          o.click();
+          requestAnimationFrame(() => {
+            sync();
+            if (!cur) return;
+            if (block.hidden || !block.isConnected) { undock(); return; }
+            if (document.activeElement !== cIn) try { cIn.focus({ preventScroll: true }); } catch (_) {}
+          });
+        });
+      });
+      hostEl.appendChild(bar);
+      try { cIn.focus({ preventScroll: true }); } catch (_) { cIn.focus(); }
+      try { const n = cIn.value.length; cIn.setSelectionRange(n, n); } catch (_) {}
+      block.classList.add('wp-kb-away');
+      sync();
+      onChange?.();
+    };
+    return {
+      get el() { return cur?.bar || null; },
+      update(kb, open) {
+        if (cur && (!open || !hostEl.isConnected)) { const c = cur.cIn; undock(); try { c.blur(); } catch (_) {} }
+        if (!cur && open) {
+          const a = document.activeElement;
+          const blk = a && menuEl.contains(a) ? pick(a) : null;
+          if (blk) dock(blk, a);
+        }
+        menuEl.classList.toggle('wp-kb-float', !!cur);
+        if (!cur) return 0;
+        cur.bar.style.bottom = `${(kb || 0) + 8}px`;
+        return cur.bar.offsetHeight + 8;
+      },
+      undock,
+    };
+  }
+
   _openSheet(title, subtitle = '', { instant = false } = {}) {
     const prev = document.getElementById('wp-pm2-menu-sheet');
     // ¿Viene de otra hoja que se cerró dejando el fondo oscuro puesto
@@ -7482,6 +7588,24 @@ export class PlaceModal2 {
     let type = /caf|coffee|bakery|pan/.test(cat) ? 'drinks' : /restaur|food|taco|comida|meal/.test(cat) ? 'food'
       : /bar|night|antro|music/.test(cat) ? 'music' : /store|shop|tienda|mall/.test(cat) ? 'shop'
       : /gym|sport|park|parque|campo/.test(cat) ? 'sport' : /spa|beauty|salon|barber/.test(cat) ? 'spa' : 'hangout';
+    // Solo los planes que tienen sentido en ESTE tipo de lugar (antes salían
+    // los 9 en todos: "Spa" en un restaurante, "Comer" en un spa…)
+    const CAT_TYPES = {
+      RESTAURANTS:   ['food', 'drinks', 'hangout', 'music', 'photo'],
+      HEALTH:        ['spa', 'sport', 'hangout'],
+      SHOPPING:      ['shop', 'hangout', 'drinks', 'food', 'photo'],
+      ENTERTAINMENT: ['hangout', 'music', 'drinks', 'food', 'photo', 'explore'],
+      PARKS:         ['hangout', 'sport', 'explore', 'photo'],
+      WORKSHOPS:     ['explore', 'hangout', 'shop', 'photo'],
+    };
+    let allowed = CAT_TYPES[String(place.category || '').toUpperCase()];
+    if (!allowed) { // categoría desconocida: lo que diga el texto del lugar, si no, todos
+      allowed = TYPES.map(t => t[0]);
+    }
+    if (!allowed.includes(type)) type = allowed[0];
+    // el sugerido va primero
+    allowed = [type, ...allowed.filter(k => k !== type)];
+    const SHOWN = allowed.map(k => TYPES.find(t => t[0] === k)).filter(Boolean);
     const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
@@ -7502,7 +7626,7 @@ export class PlaceModal2 {
           <section class="wp-pv-step">
             <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b></div>
             <div class="wp-pm2-col-strip wp-pv-strip"><div class="wp-pm2-col-strip-track">
-              ${TYPES.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
+              ${SHOWN.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
             </div></div>
             <div class="wp-pv-lbl">¿Cuándo?</div>
             <div class="wp-pv-chips" data-k="day">
@@ -7789,6 +7913,9 @@ export class PlaceModal2 {
       const cs = getComputedStyle(pr), r = { top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 };
       pr.remove(); return r;
     })();
+    const baseH = window.innerHeight;
+    const dock = this._kbDock(sheetEl, menuEl, (a) => a === titleIn ? titleIn.closest('.wp-pm2-col-field') : a === noteIn ? noteIn.closest('.wp-pv-postit') : null,
+      () => requestAnimationFrame(() => { try { fitStep(false); fitKb(); } catch (_) {} }));
     const keepVisible = () => {
       const a = document.activeElement;
       if (!a || !pv.contains(a)) return;
@@ -7803,9 +7930,11 @@ export class PlaceModal2 {
       const vv = window.visualViewport;
       const visH = vv ? vv.height : window.innerHeight;
       const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
-      menuEl.style.bottom = kb ? `${kb + 8}px` : '';
+      const open = kb > 80 || baseH - visH > 150;
+      const dh = dock.update(kb, open);
+      menuEl.style.bottom = kb || dh ? `${kb + 8 + dh}px` : '';
       const vTop = vv ? vv.offsetTop : 0;
-      const bottomY = kb ? vTop + visH - 8 : window.innerHeight - 12 - safe.bottom;
+      const bottomY = (kb || dh ? vTop + visH - 8 : window.innerHeight - 12 - safe.bottom) - dh;
       const topY = vTop + safe.top + 12;
       const rest = menuEl.offsetHeight - pv.offsetHeight; // hoja sin el contenido
       pv.style.maxHeight = `${Math.max(160, Math.floor(bottomY - topY - rest))}px`;
@@ -7813,7 +7942,10 @@ export class PlaceModal2 {
     };
     window.addEventListener('resize', fitKb);
     window.visualViewport?.addEventListener('resize', fitKb);
-    [titleIn, noteIn].forEach(i => i.addEventListener('focus', () => setTimeout(fitKb, 350)));
+    [titleIn, noteIn].forEach(i => {
+      i.addEventListener('focus', () => { fitKb(); setTimeout(fitKb, 350); });
+      i.addEventListener('blur', () => setTimeout(fitKb, 60));
+    });
     setTimeout(fitKb, 380);
 
     paintTimes(); paint();
@@ -7896,6 +8028,8 @@ export class PlaceModal2 {
     const titleEl = header?.querySelector('.wp-pm2-ms-title');
     const subEl   = header?.querySelector('.wp-pm2-ms-sub');
     let fitReady = false, lastDiag = '';
+    const baseH = window.innerHeight;
+    const dock = this._kbDock(sheetEl, menuEl, (a) => a === input ? input.closest('.wp-pm2-col-row') : null, () => requestAnimationFrame(() => fit()));
     // Alto de la barra de estado (y de la barra de abajo), el mismo
     // env(safe-area-inset-*) que usa el header de la ficha
     const safe = (() => {
@@ -7917,11 +8051,12 @@ export class PlaceModal2 {
       const vv = window.visualViewport;
       const visH = vv ? vv.height : window.innerHeight;
       const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
-      menuEl.style.bottom = kb ? `${kb + 8}px` : '';
+      const dh = dock.update(kb, kb > 80 || baseH - visH > 150);
+      menuEl.style.bottom = kb || dh ? `${kb + 8 + dh}px` : '';
       // Dónde queda el borde de abajo de la hoja y hasta dónde puede subir
       // (siempre DEBAJO de la barra de estado, con 12px de aire)
       const vTop = vv ? vv.offsetTop : 0;
-      const bottomY = kb ? vTop + visH - 8 : window.innerHeight - 12 - safe.bottom;
+      const bottomY = (kb || dh ? vTop + visH - 8 : window.innerHeight - 12 - safe.bottom) - dh;
       const topY = vTop + safe.top + 12;
       const rest = menuEl.offsetHeight - listEl.offsetHeight; // hoja sin la lista
       const room = Math.floor(bottomY - topY - rest);
@@ -7955,7 +8090,8 @@ export class PlaceModal2 {
       try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
       console.log('[DIAG-CAP] autocapitalize=' + input.autocapitalize + ' attr=' + input.getAttribute('autocapitalize') + ' value="' + input.value + '" ua=' + navigator.userAgent); // [DIAG] temporal
     };
-    input.addEventListener('focus', () => setTimeout(fit, 350));
+    input.addEventListener('focus', () => { fit(); setTimeout(fit, 350); });
+    input.addEventListener('blur', () => setTimeout(fit, 60));
 
     let cols = null;
     // 'normal' | 'order' (ordenar arrastrando) | 'delete' (elegir cuáles)
