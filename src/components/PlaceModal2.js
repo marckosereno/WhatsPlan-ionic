@@ -1357,6 +1357,14 @@ export class PlaceModal2 {
       .wp-pv-danger { margin-top:4px; height:44px; border:none; border-radius:999px; background:none; color:#e0123c;
         font-size:14px; font-weight:800; font-family:var(--wp-font); cursor:pointer; transition:background-color 0.15s; }
       .wp-pv-danger.armed { background:#e0123c; color:#fff; }
+      /* en la cabecera de la hoja: badge arriba a la derecha */
+      .wp-pv-hd { position:relative; padding-right:150px !important; }
+      .wp-pv-hd .wp-pm2-ms-sub { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-pv-hd > .wp-pv-danger { position:absolute; top:2px; right:16px; margin:0; height:32px; padding:0 13px; border-radius:999px;
+        background:#fff0f2; color:#e0123c; font-size:12.5px; white-space:nowrap; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.15s, color 0.15s, transform 0.15s; }
+      .wp-pv-hd > .wp-pv-danger:active { transform:scale(0.95); }
+      .wp-pv-hd > .wp-pv-danger.armed { background:#e0123c; color:#fff; animation:wpPvAsk 0.25s ease; }
       /* Cupos + Completo */
       .wp-pv-spots { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:16px; background:#f7f8fa; transition:background-color 0.2s; }
       .wp-pv-spots-row { display:flex; align-items:center; gap:10px; }
@@ -7267,15 +7275,18 @@ export class PlaceModal2 {
         </div>
         <button type="button" class="wp-pv-danger">${isOwner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>
       </div>`;
+    // "Cancelar plan" / "Ya no puedo ir" como badge arriba a la derecha de la hoja
+    { const hd = body.closest('.wp-pm2-ms-menu')?.querySelector('.wp-pm2-ms-header'), dg = body.querySelector('.wp-pv-danger');
+      if (hd && dg) { hd.classList.add('wp-pv-hd'); hd.appendChild(dg); } }
     const $ = (s) => body.querySelector(s);
     body.querySelector('[data-a="share"]').onclick = () => this._planShare(a);
     // Cancelar / salirme: segundo toque para confirmar
-    const danger = $('.wp-pv-danger');
+    const danger = body.closest('.wp-pm2-ms-menu')?.querySelector('.wp-pv-danger') || $('.wp-pv-danger');
     let armed = false, armT = 0;
     danger.onclick = async () => {
       if (!armed) {
         armed = true; danger.classList.add('armed');
-        danger.textContent = isOwner ? 'Toca otra vez para cancelar el plan' : 'Toca otra vez para confirmar';
+        danger.textContent = '¿Seguro? Toca otra vez';
         clearTimeout(armT); armT = setTimeout(() => { armed = false; danger.classList.remove('armed'); danger.textContent = isOwner ? 'Cancelar plan' : 'Ya no puedo ir'; }, 3000);
         this._haptic?.('light');
         return;
