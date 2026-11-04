@@ -4980,7 +4980,9 @@ export class MapView {
       if (onlyOpen && this._actFull(a)) return false;
       const aName = (a.place_name || '').toLowerCase().trim();
       const aId   = (a.place_id  || '').toLowerCase();
-      return (pId && aId === pId) || (pName && aName === pName);
+      // también cuenta si el plan pasa por aquí como parada
+      const viaStop = pId && Array.isArray(a.stops) && a.stops.some(st => String(st.place_id || '').toLowerCase() === pId);
+      return (pId && aId === pId) || (pName && aName === pName) || viaStop;
     }).length;
   }
 
