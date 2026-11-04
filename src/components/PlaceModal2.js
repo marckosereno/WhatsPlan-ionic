@@ -1034,9 +1034,13 @@ export class PlaceModal2 {
         white-space:nowrap; border-color:transparent;
         display:inline-flex; align-items:center; gap:5px;
       }
+      /* Rojo "pro": carmesí profundo con un brillo arriba. Sin borde (con
+         borde transparente, el degradado se repetía en la orilla y el rojo
+         no llenaba todo el botón) — el padding compensa los 1.5px */
       #wp-pm2-add-review.wp-pm2-fav-add {
-        background:linear-gradient(135deg,#fb7185,#e11d48); color:#fff;
-        box-shadow:0 2px 8px rgba(225,29,72,0.30);
+        border:0; padding:7.5px 13.5px;
+        background:linear-gradient(180deg,#ff3d5e 0%,#e0123c 100%); color:#fff;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 3px 10px rgba(224,18,60,0.32);
       }
       #wp-pm2-add-review.wp-pm2-fav-coll {
         background:#0a0a0a; color:#fff;
@@ -2010,7 +2014,7 @@ export class PlaceModal2 {
       const btn = e.currentTarget;
       this._pulseTap(btn, () => {
         if (this._isFav) this._openCollectionsSheet();
-        else this._setFavorite(true);
+        else { this._heartBurst(btn); this._setFavorite(true); }
       });
     });
   }
@@ -5003,6 +5007,41 @@ export class PlaceModal2 {
   // Escala por puntos clave [1, 0.92, 1.04, 1] repartidos en `dur` ms,
   // escribiendo transform:scale() 2D en cada cuadro. Sin transición ni
   // animación CSS → el teléfono no crea capa: solo re-dibuja el elemento.
+  // Explosión ligera de corazones hacia AFUERA del botón al añadir a
+  // favoritos. Capa fija encima de la ficha; se borra sola.
+  _heartBurst(btn) {
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+      const r = btn.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const layer = document.createElement('div');
+      layer.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:0;height:0;z-index:1600000;pointer-events:none;`;
+      const COLORS = ['#ff3d5e', '#e0123c', '#ff7a93', '#ffb3c1', '#ff3d5e'];
+      const N = 12;
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        const sz = 8 + Math.random() * 7;
+        // Sale de la orilla del botón (es una pastilla ancha: elipse)
+        // (arranca justo afuera de la orilla, para no tapar el texto)
+        const ox = Math.cos(a) * (r.width / 2 + 4), oy = Math.sin(a) * (r.height / 2 + 4);
+        const far = 16 + Math.random() * 22;
+        const tx = ox + Math.cos(a) * far, ty = oy + Math.sin(a) * far - 6;
+        const h = document.createElement('i');
+        h.style.cssText = `position:absolute;left:${-sz / 2}px;top:${-sz / 2}px;width:${sz}px;height:${sz}px;`;
+        h.innerHTML = `<svg viewBox="0 0 24 24" width="${sz}" height="${sz}"><path fill="${COLORS[i % COLORS.length]}" d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>`;
+        layer.appendChild(h);
+        const rot = (Math.random() - 0.5) * 60;
+        h.animate([
+          { transform: `translate(${ox}px,${oy}px) scale(0.3) rotate(0deg)`, opacity: 0 },
+          { transform: `translate(${ox + (tx - ox) * 0.55}px,${oy + (ty - oy) * 0.55}px) scale(1.1) rotate(${rot / 2}deg)`, opacity: 1, offset: 0.35 },
+          { transform: `translate(${tx}px,${ty}px) scale(0.7) rotate(${rot}deg)`, opacity: 0 },
+        ], { duration: 650 + Math.random() * 250, delay: Math.random() * 60, easing: 'cubic-bezier(0.2,0.7,0.3,1)', fill: 'forwards' });
+      }
+      document.body.appendChild(layer);
+      setTimeout(() => layer.remove(), 1100);
+    } catch (_) {}
+  }
+
   _scaleKeys(el, keys, dur) {
     if (!el) return;
     if (el.__wpScaleRaf) cancelAnimationFrame(el.__wpScaleRaf);
