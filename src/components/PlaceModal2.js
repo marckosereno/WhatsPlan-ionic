@@ -1213,6 +1213,68 @@ export class PlaceModal2 {
         cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background-color 0.12s;
       }
       .wp-pm2-col-newbtn:active { background:#e5e7eb; }
+      /* ── Planear visita (misma hoja que "Añadir a una colección") ── */
+      .wp-pv { display:flex; flex-direction:column; gap:8px; padding:2px 16px 4px;
+        /* en teléfonos chicos la hoja no se sale de la pantalla: se desliza */
+        max-height:calc(100dvh - 150px - env(safe-area-inset-top, 0px)); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+      .wp-pv::-webkit-scrollbar { display:none; }
+      .wp-pv-lbl { font-size:13px; font-weight:700; color:#6b7280; margin-top:4px; padding-left:2px; }
+      .wp-pv-lbl b { color:#0a0a0a; font-weight:800; }
+      .wp-pv-hint { font-weight:500; color:#9ca3af; }
+      .wp-pv-strip { margin:0 -16px; overflow-x:auto; scrollbar-width:none; touch-action:pan-x; }
+      .wp-pv-strip::-webkit-scrollbar { display:none; }
+      .wp-pv-chips { display:flex; gap:8px; overflow-x:auto; margin:0 -16px; padding:2px 16px; scrollbar-width:none; }
+      .wp-pv-chips::-webkit-scrollbar { display:none; }
+      .wp-pv-chips button {
+        position:relative; flex:none; height:38px; padding:0 16px; border:none; border-radius:999px;
+        background:#f3f4f6; color:#111827; font-size:14px; font-weight:700; font-family:var(--wp-font);
+        cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background-color 0.15s, color 0.15s, transform 0.12s;
+      }
+      .wp-pv-chips button:active { transform:scale(0.95); }
+      .wp-pv-chips button.on { background:#0a0a0a; color:#fff; }
+      .wp-pv-chips[data-k="n"] button { width:52px; padding:0; }
+      /* Selector nativo de fecha/hora escondido dentro del pill "Otro…" */
+      .wp-pv-native { position:absolute; inset:0; opacity:0; pointer-events:none; width:100%; height:100%; border:0; }
+      .wp-pv-compose { display:flex; flex-direction:column; gap:10px; padding-top:12px; margin:6px -16px 0; padding-left:16px; padding-right:16px;
+        border-top:1px solid rgba(0,0,0,0.06); }
+      .wp-pv-sum { font-size:13px; font-weight:600; color:#374151; text-align:center; }
+      .wp-pv-sum.warn { color:#e0123c; }
+      .wp-pv-cta {
+        width:100%; height:50px; border:none; border-radius:999px; background:#0a0a0a; color:#fff;
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        font-size:15px; font-weight:800; font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+        transition:background-color 0.15s, opacity 0.15s, transform 0.12s;
+      }
+      .wp-pv-cta:active { transform:scale(0.98); }
+      .wp-pv-cta:disabled { background:#e5e7eb; color:#9ca3af; }
+      .wp-pv-cta.busy { opacity:0.55; }
+      /* ¿Con quién?: avatares con sello; el invitado lleva palomita azul */
+      .wp-pv-people { display:flex; gap:12px; overflow-x:auto; margin:0 -16px; padding:4px 16px 2px; scrollbar-width:none; min-height:76px; align-items:flex-start; }
+      .wp-pv-people::-webkit-scrollbar { display:none; }
+      .wp-pv-empty { font-size:13px; color:#9ca3af; font-weight:500; align-self:center; }
+      .wp-pv-person { position:relative; flex:none; width:58px; padding:0; border:none; background:none; display:flex; flex-direction:column; align-items:center; gap:5px;
+        cursor:pointer; -webkit-tap-highlight-color:transparent; font-family:var(--wp-font); }
+      .wp-pv-pav { display:block; width:50px; height:50px; border-radius:50%; background:#eef0f3 center/cover no-repeat; transition:opacity 0.15s, filter 0.15s; }
+      .wp-pv-person:not(.on) .wp-pv-pav { filter:saturate(0.85); }
+      .wp-pv-pchk { position:absolute; top:-2px; right:2px; width:20px; height:20px; border-radius:50%; background:#1a5cf5; border:2px solid #fff; box-sizing:border-box;
+        display:flex; align-items:center; justify-content:center; transform:scale(0); transition:transform 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+      .wp-pv-person.on .wp-pv-pchk { transform:scale(1); }
+      .wp-pv-pname { max-width:58px; font-size:11.5px; font-weight:700; color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-pv-person.on .wp-pv-pname { color:#1a5cf5; }
+      /* ¿Quién lo ve?: tres opciones iguales */
+      .wp-pv-seg { overflow:visible; }
+      .wp-pv-seg button { flex:1; padding:0 8px; font-size:13px; }
+      .wp-pv-addnote { align-self:flex-start; border:none; background:none; padding:2px 4px; font-size:13.5px; font-weight:700; color:#1a5cf5; font-family:var(--wp-font); cursor:pointer; }
+      .wp-pv-addnote[hidden], .wp-pv-notef[hidden] { display:none; }
+      /* Listo */
+      .wp-pv-done { display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px 16px 4px; text-align:center; }
+      .wp-pv-done-ic { width:68px; height:68px; border-radius:50%; background:#0a0a0a; color:#fff; display:flex; align-items:center; justify-content:center;
+        animation:wpPvPop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+      @keyframes wpPvPop { from { transform:scale(0.3); opacity:0; } to { transform:none; opacity:1; } }
+      .wp-pv-done-t { font-size:20px; font-weight:800; color:#0a0a0a; }
+      .wp-pv-done-s { font-size:14px; color:#4b5563; line-height:1.4; margin-bottom:6px; }
+      .wp-pv-ok { width:100%; height:46px; border:none; border-radius:999px; background:#f3f4f6; color:#111827; font-size:15px; font-weight:700; font-family:var(--wp-font); cursor:pointer; }
+
       .wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
       .wp-pm2-col-bulk-del {
         width:100%; height:48px; border:none; border-radius:999px;
@@ -1949,9 +2011,7 @@ export class PlaceModal2 {
       if (e.target.id === 'wp-pm2-lightbox') this._closeLightbox();
     });
 
-    el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => {
-      console.log('[PM2] Planear visita:', this._place);
-    });
+    el.querySelector('#wp-pm2-plan-btn').addEventListener('click', () => this._openPlanSheet());
     // (#wp-pm2-here-btn: "Estuve aquí" con anillo de cercanía → _setupVisit)
     el.querySelector('#wp-pm2-fuiste').addEventListener('click', () => {
       console.log('[PM2] ¿Fuiste?:', this._place);
@@ -6849,6 +6909,238 @@ export class PlaceModal2 {
     // Sin 👨‍👩‍👧 ni 📍 (pedido: nunca usarlos)
     // El primero es el ícono por defecto
     return ['❤️','⭐','💙','🤩','✌️','☕','🥐','🍔','🌮','🍕','🍰','🍦','🍻','🍷','🎉','🎵','🌳','🛍️','🎨','🏋️','🦷','🛺','🛸','👽','👻'];
+  }
+
+
+  // ── Planear visita: crear un plan (actividad) en este lugar ─────────
+  // Misma hoja y mismo lenguaje que "Añadir a una colección": tira de
+  // íconos (qué plan), pills (cuándo / a qué hora / cuántos), campo pill
+  // para el título y el botón negro. Guarda con ActivityService.createActivity
+  // (tabla activities: no requiere SQL nuevo).
+  _openPlanSheet() {
+    const user = this._requireUser('Inicia sesión para planear una visita');
+    if (!user || !this._place) return;
+    const place = this._place;
+    const info = this._placeInfo();
+    const { body, close } = this._openSheet('Planear visita', info.name);
+    const TYPES = [
+      ['food', '🍔', 'Comer'], ['drinks', '☕', 'Café'], ['hangout', '🎈', 'Pasar el rato'],
+      ['explore', '🚀', 'Explorar'], ['shop', '🛍️', 'Compras'], ['music', '🎵', 'Música'],
+      ['sport', '🏃', 'Deporte'], ['photo', '📸', 'Fotos'], ['spa', '💆', 'Spa'],
+    ];
+    // Tipo sugerido por la categoría del lugar
+    const cat = `${place.category || ''} ${(place.types || []).join(' ')} ${place.subcategory || ''}`.toLowerCase();
+    let type = /caf|coffee|bakery|pan/.test(cat) ? 'drinks' : /restaur|food|taco|comida|meal/.test(cat) ? 'food'
+      : /bar|night|antro|music/.test(cat) ? 'music' : /store|shop|tienda|mall/.test(cat) ? 'shop'
+      : /gym|sport|park|parque|campo/.test(cat) ? 'sport' : /spa|beauty|salon|barber/.test(cat) ? 'spa' : 'hangout';
+    const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
+    const dayLabel = (d, i) => i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${DOW[d.getDay()]} ${d.getDate()}`;
+    let day = 0, customDay = null, time = null, timeCustom = false, n = 4, vis = 'public';
+    const invited = new Set();
+    const pad = (x) => String(x).padStart(2, '0');
+    const CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+    body.innerHTML = `
+      <div class="wp-pv">
+        <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b></div>
+        <div class="wp-pm2-col-strip wp-pv-strip"><div class="wp-pm2-col-strip-track">
+          ${TYPES.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
+        </div></div>
+        <div class="wp-pv-lbl">¿Cuándo?</div>
+        <div class="wp-pv-chips" data-k="day">
+          ${days.map((d, i) => `<button type="button" data-v="${i}">${dayLabel(d, i)}</button>`).join('')}
+          <button type="button" data-v="other" class="wp-pv-other">Otro día<input type="date" class="wp-pv-native" tabindex="-1"></button>
+        </div>
+        <div class="wp-pv-chips" data-k="time"></div>
+        <div class="wp-pv-lbl">¿Cuántos van? <span class="wp-pv-hint">contándote</span></div>
+        <div class="wp-pv-chips" data-k="n">
+          ${[2, 3, 4, 6, 8, 10].map(v => `<button type="button" data-v="${v}">${v}</button>`).join('')}
+        </div>
+        <div class="wp-pv-lbl">¿Con quién? <span class="wp-pv-hint wp-pv-inv-count">opcional</span></div>
+        <div class="wp-pv-people"><span class="wp-pv-empty">Cargando…</span></div>
+        <div class="wp-pv-lbl">¿Quién lo ve?</div>
+        <div class="wp-pv-chips wp-pv-seg" data-k="vis">
+          <button type="button" data-v="public">Todos</button>
+          <button type="button" data-v="followers">Seguidores</button>
+          <button type="button" data-v="invited">Solo invitados</button>
+        </div>
+        <div class="wp-pv-compose">
+          <div class="wp-pm2-col-row">
+            <div class="wp-pm2-col-field">
+              <input class="wp-pm2-col-input2 wp-pv-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
+            </div>
+          </div>
+          <button type="button" class="wp-pv-addnote">+ Agregar una nota</button>
+          <div class="wp-pm2-col-field wp-pv-notef" hidden>
+            <input class="wp-pm2-col-input2 wp-pv-note" type="text" maxlength="280" placeholder="Ej. Yo llevo el pastel · nos vemos en la entrada" autocapitalize="sentences" autocomplete="off">
+          </div>
+          <div class="wp-pv-sum"></div>
+          <button type="button" class="wp-pv-cta" disabled>${CHECK}<span>Crear plan</span></button>
+        </div>
+      </div>`;
+    const $ = (s) => body.querySelector(s);
+    const typeName = $('.wp-pv-type-name'), timeBox = $('[data-k="time"]'), titleIn = $('.wp-pv-title');
+    const sumEl = $('.wp-pv-sum'), cta = $('.wp-pv-cta');
+    const dateIn = $('[data-k="day"] .wp-pv-native');
+    const tName = () => (TYPES.find(t => t[0] === type) || TYPES[2])[2];
+    const autoTitle = () => `${tName()} en ${info.name}`.slice(0, 60);
+
+    const dayDate = () => customDay ? new Date(customDay) : days[day];
+    const isToday = () => !customDay && day === 0;
+    const paintTimes = () => {
+      const now = new Date();
+      const hours = [];
+      for (let h = 8; h <= 23; h++) if (!isToday() || h > now.getHours()) hours.push(h);
+      const opts = [...(isToday() ? [['now', 'Ahora']] : []), ...hours.map(h => [`${pad(h)}:00`, `${h > 12 ? h - 12 : h}${h >= 12 ? ' pm' : ' am'}`])];
+      if (time && time !== 'now' && !timeCustom && !opts.some(o => o[0] === time)) time = null;
+      if (time === 'now' && !isToday()) time = null;
+      timeBox.innerHTML = opts.map(([v, l]) => `<button type="button" data-v="${v}">${l}</button>`).join('') +
+        `<button type="button" data-v="other" class="wp-pv-other">Otra hora<input type="time" class="wp-pv-native" tabindex="-1"></button>`;
+      const tIn = timeBox.querySelector('.wp-pv-native');
+      tIn.onchange = () => { if (tIn.value) { time = tIn.value; timeCustom = true; paint(); } };
+      if (!time) time = (opts.find(o => o[0] !== 'now') || opts[0])?.[0] || '18:00'; // de entrada, la próxima hora (no "Ahora")
+    };
+    const when = () => {
+      if (time === 'now') return new Date(Date.now() + 5 * 60000);
+      const d = dayDate(); const [h, m] = String(time || '18:00').split(':').map(Number);
+      const r = new Date(d); r.setHours(h || 0, m || 0, 0, 0); return r;
+    };
+    const fmtWhen = () => {
+      if (time === 'now') return 'Ahora';
+      const d = when(); const i = Math.round((new Date(d).setHours(0, 0, 0, 0) - today) / 86400000);
+      const dl = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${DOW[d.getDay()]} ${d.getDate()}`;
+      const h = d.getHours();
+      return `${dl} · ${h > 12 ? h - 12 : h || 12}:${pad(d.getMinutes())} ${h >= 12 ? 'pm' : 'am'}`;
+    };
+    const paint = () => {
+      body.querySelectorAll('.wp-pv-strip button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.t === type));
+      typeName.textContent = '· ' + tName();
+      body.querySelectorAll('[data-k="day"] button').forEach(b => b.classList.toggle('on', customDay ? b.dataset.v === 'other' : b.dataset.v === String(day)));
+      const oDay = $('[data-k="day"] .wp-pv-other');
+      oDay.firstChild.textContent = customDay ? (() => { const d = new Date(customDay); return `${DOW[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`; })() : 'Otro día';
+      const custom = time && time !== 'now' && !timeBox.querySelector(`[data-v="${time}"]`);
+      timeBox.querySelectorAll('button').forEach(b => b.classList.toggle('on', custom ? b.dataset.v === 'other' : b.dataset.v === time));
+      const oT = timeBox.querySelector('.wp-pv-other'); if (oT) oT.firstChild.textContent = custom ? time : 'Otra hora';
+      body.querySelectorAll('[data-k="n"] button').forEach(b => b.classList.toggle('on', b.dataset.v === String(n)));
+      if (!titleIn.dataset.touched) titleIn.value = autoTitle();
+      titleIn.placeholder = autoTitle();
+      body.querySelectorAll('[data-k="vis"] button').forEach(b => b.classList.toggle('on', b.dataset.v === vis));
+      body.querySelectorAll('.wp-pv-person').forEach(b => b.classList.toggle('on', invited.has(b.dataset.id)));
+      $('.wp-pv-inv-count').textContent = invited.size ? `${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}` : 'opcional';
+      const past = time !== 'now' && when() < new Date();
+      const noInv = vis === 'invited' && !invited.size;
+      const VIS = { public: 'lo ven todos', followers: 'lo ven tus seguidores', invited: 'solo invitados' };
+      sumEl.textContent = past ? 'Elige una hora que no haya pasado'
+        : noInv ? 'Invita al menos a una persona'
+        : `${fmtWhen()} · hasta ${n} · ${VIS[vis]}`;
+      sumEl.classList.toggle('warn', past || noInv);
+      cta.disabled = past || noInv || !titleIn.value.trim();
+    };
+
+    body.querySelector('.wp-pv-strip').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-t]'); if (!b) return;
+      type = b.dataset.t; this._scaleKeys?.(b, [0.85, 1.1, 1], 260); paint();
+    });
+    $('[data-k="day"]').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.v === 'other') { try { dateIn.showPicker ? dateIn.showPicker() : dateIn.click(); } catch (_) { dateIn.click(); } return; }
+      day = +b.dataset.v; customDay = null; paintTimes(); paint();
+    });
+    dateIn.min = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    dateIn.onchange = () => { if (!dateIn.value) return; const [y, m, d] = dateIn.value.split('-').map(Number); customDay = new Date(y, m - 1, d).getTime(); paintTimes(); paint(); };
+    timeBox.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.v === 'other') { const tIn = b.querySelector('input'); try { tIn.showPicker ? tIn.showPicker() : tIn.click(); } catch (_) { tIn.click(); } return; }
+      time = b.dataset.v; timeCustom = false; paint();
+    });
+    $('[data-k="n"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; n = +b.dataset.v; paint(); });
+    titleIn.addEventListener('input', () => { titleIn.dataset.touched = '1'; paint(); });
+    $('[data-k="vis"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; vis = b.dataset.v; paint(); });
+    const noteBtn = $('.wp-pv-addnote'), noteF = $('.wp-pv-notef'), noteIn = $('.wp-pv-note');
+    noteBtn.onclick = () => { noteBtn.hidden = true; noteF.hidden = false; try { noteIn.focus({ preventScroll: true }); } catch (_) { noteIn.focus(); } };
+    // ¿Con quién?: la gente que sigues (avatar con sello). Tocar = invitar.
+    const peopleEl = $('.wp-pv-people');
+    peopleEl.addEventListener('click', (e) => {
+      const b = e.target.closest('.wp-pv-person'); if (!b) return;
+      invited.has(b.dataset.id) ? invited.delete(b.dataset.id) : invited.add(b.dataset.id);
+      this._haptic?.('light'); this._scaleKeys?.(b, [0.9, 1.06, 1], 240); paint();
+    });
+    (async () => {
+      try {
+        const sb = getSupabase();
+        const { data: fl, error } = await sb.from('follows').select('following_id').eq('follower_id', user.id).limit(80);
+        if (error) throw error;
+        const ids = (fl || []).map(r => r.following_id);
+        if (!ids.length) { peopleEl.innerHTML = '<span class="wp-pv-empty">Cuando sigas a alguien, aquí podrás invitarlo</span>'; return; }
+        const { data: ps, error: e2 } = await sb.from('profiles').select('id, name, username, avatar_url').in('id', ids);
+        if (e2) throw e2;
+        const list = (ps || []).sort((a, b) => String(a.name || a.username || '').localeCompare(String(b.name || b.username || '')));
+        const first = (p) => this._esc(String(p.name || (p.username ? '@' + p.username : 'Alguien')).split(' ')[0]);
+        peopleEl.innerHTML = list.map(p => `<button type="button" class="wp-pv-person" data-id="${p.id}">
+            <span class="wp-pv-pav wp-seal" style="background-image:url('${this._esc(p.avatar_url || getAvatarUrl(p.name || p.username || 'user'))}')"></span>
+            <i class="wp-pv-pchk"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
+            <span class="wp-pv-pname">${first(p)}</span></button>`).join('');
+        paint();
+      } catch (e) {
+        console.warn('[DIAG-PLAN] no cargó a quién sigues:', e?.message || e);
+        peopleEl.innerHTML = '<span class="wp-pv-empty">No se pudo cargar a quién sigues</span>';
+      }
+    })();
+
+    cta.onclick = async () => {
+      if (cta.disabled || cta.classList.contains('busy')) return;
+      cta.classList.add('busy');
+      const at = when();
+      const title = titleIn.value.trim() || autoTitle();
+      const whenTxt = fmtWhen();
+      try {
+        // create_plan (activities_plans.sql): visibilidad, nota e invitados.
+        // Si aún no se corrió ese SQL, se crea como antes (público, sin invitados).
+        const { error } = await getSupabase().rpc('create_plan', {
+          p_title: title, p_type: type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
+          p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: n,
+          p_spontaneous: time === 'now', p_visibility: vis, p_note: noteIn.value.trim() || null, p_invited: [...invited],
+        });
+        if (error) {
+          const missing = error.code === 'PGRST202' || /create_plan/.test(error.message || '');
+          if (!missing) throw error;
+          console.warn('[DIAG-PLAN] falta activities_plans.sql: se crea sin invitados ni visibilidad');
+          await ActivityService.createActivity({
+            title, type, place_name: info.name, place_id: place.place_id || place.id || null,
+            lat: Number(info.lat), lng: Number(info.lng), scheduled_at: at.toISOString(), max_participants: n, is_spontaneous: time === 'now',
+          });
+        }
+        this._haptic?.('success');
+        try { this._loadPlaceActivities(place); } catch (_) {}
+        try { window.wpApp?.mapView?._loadActivities?.(); } catch (_) {}
+        // Pantalla de listo: palomita + compartir por WhatsApp/otras apps
+        const shareTxt = `¿Vamos? ${title} · ${whenTxt}${info.address ? ' · ' + info.address : ''}${info.url ? '\n' + info.url : ''}`;
+        body.innerHTML = `<div class="wp-pv-done">
+            <div class="wp-pv-done-ic">${CHECK.replace('width="18" height="18"', 'width="34" height="34"')}</div>
+            <div class="wp-pv-done-t">¡Plan creado!</div>
+            <div class="wp-pv-done-s">${this._esc(title)}<br>${this._esc(whenTxt)}${invited.size ? ` · ${invited.size} invitad${invited.size === 1 ? 'o' : 'os'} (ya les avisamos)` : ''}</div>
+            <button type="button" class="wp-pv-cta wp-pv-share"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg><span>Compartir el plan</span></button>
+            <button type="button" class="wp-pv-ok">Listo</button>
+          </div>`;
+        body.querySelector('.wp-pv-ok').onclick = () => close();
+        body.querySelector('.wp-pv-share').onclick = async () => {
+          try {
+            if (navigator.share) await navigator.share({ title, text: shareTxt });
+            else window.open('https://wa.me/?text=' + encodeURIComponent(shareTxt), '_blank');
+          } catch (_) {}
+        };
+        return;
+      } catch (e) {
+        console.warn('[DIAG-PLAN] no se creó el plan:', e?.message || e);
+        this._showToast(e?.message || 'No se pudo crear el plan');
+      } finally { cta.classList.remove('busy'); }
+    };
+
+    paintTimes(); paint();
+    // Que se vea el tipo elegido en la tira
+    requestAnimationFrame(() => body.querySelector('.wp-pv-strip .wp-pm2-on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' }));
   }
 
   async _openCollectionsSheet() {
