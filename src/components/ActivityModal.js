@@ -2905,3 +2905,4 @@ export class ActivityModal {
   }
 
 }
+export { ACTIVITY_TYPES };
