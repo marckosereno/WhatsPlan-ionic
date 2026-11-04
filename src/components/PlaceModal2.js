@@ -1274,6 +1274,32 @@ export class PlaceModal2 {
       .wp-pv-done-t { font-size:20px; font-weight:800; color:#0a0a0a; }
       .wp-pv-done-s { font-size:14px; color:#4b5563; line-height:1.4; margin-bottom:6px; }
       .wp-pv-ok { width:100%; height:46px; border:none; border-radius:999px; background:#f3f4f6; color:#111827; font-size:15px; font-weight:700; font-family:var(--wp-font); cursor:pointer; }
+      /* Pasos de "Planear visita" */
+      .wp-pv-progress { display:flex; align-items:center; gap:5px; margin:0 0 6px; }
+      .wp-pv-progress i { flex:none; width:22px; height:4px; border-radius:9px; background:#e5e7eb; transition:background-color 0.25s, width 0.25s; }
+      .wp-pv-progress i.on { background:#0a0a0a; }
+      .wp-pv-step-t { margin-left:6px; font-size:12.5px; font-weight:700; color:#6b7280; }
+      .wp-pv-viewport { overflow:hidden; margin:0 -16px; }
+      .wp-pv-track { display:flex; transition:transform 0.34s cubic-bezier(0.32,0.72,0,1); will-change:transform; }
+      .wp-pv-step { flex:0 0 100%; min-width:0; box-sizing:border-box; padding:0 16px 4px; display:flex; flex-direction:column; gap:8px; align-self:flex-start; }
+      .wp-pv-foot { display:flex; gap:8px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); margin:4px -16px 0; padding-left:16px; padding-right:16px; }
+      .wp-pv-foot .wp-pv-cta { flex:1; }
+      .wp-pv-back { flex:none; width:56px; height:50px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
+        display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+      .wp-pv-back[hidden] { display:none; }
+      .wp-pv-back:active { background:#e5e7eb; }
+      .wp-pv-sum[hidden] { display:none; }
+      /* Resumen del paso 3: tarjeta del plan */
+      .wp-pv-card { display:flex; align-items:center; gap:12px; margin-top:6px; padding:12px 14px; border-radius:20px; background:#f7f8fa; border:1px solid rgba(0,0,0,0.05); }
+      .wp-pv-card-emo { flex:none; width:46px; height:46px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center;
+        font-size:25px; box-shadow:0 2px 6px rgba(0,0,0,0.06); font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+      .wp-pv-card-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+      .wp-pv-card-t { font-size:14.5px; font-weight:800; color:#0a0a0a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .wp-pv-card-w, .wp-pv-card-v { font-size:12.5px; font-weight:600; color:#6b7280; }
+      .wp-pv-card-faces { flex:none; display:flex; align-items:center; }
+      .wp-pv-card-faces i { display:block; width:28px; height:28px; margin-left:-8px; border-radius:50%; background:#eef0f3 center/cover no-repeat; }
+      .wp-pv-card-faces i:first-child { margin-left:0; }
+      .wp-pv-card-faces b { margin-left:4px; font-size:12px; font-weight:800; color:#374151; }
 
       .wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
       .wp-pm2-col-bulk-del {
@@ -6917,6 +6943,13 @@ export class PlaceModal2 {
   // íconos (qué plan), pills (cuándo / a qué hora / cuántos), campo pill
   // para el título y el botón negro. Guarda con ActivityService.createActivity
   // (tabla activities: no requiere SQL nuevo).
+  // ── Planear visita: crear un plan (actividad) en este lugar ─────────
+  // Misma hoja y mismo lenguaje que "Añadir a una colección", en 3 PASOS:
+  //   1 · Qué y cuándo (tipo, día, hora)
+  //   2 · Con quién (cuántos, invitados, quién lo ve)
+  //   3 · Listo para crear (título, nota y resumen)
+  // Guarda con la RPC create_plan (activities_plans.sql); sin ese SQL cae a
+  // ActivityService.createActivity (público, sin invitados ni nota).
   _openPlanSheet() {
     const user = this._requireUser('Inicia sesión para planear una visita');
     if (!user || !this._place) return;
@@ -6937,54 +6970,76 @@ export class PlaceModal2 {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
     const dayLabel = (d, i) => i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${DOW[d.getDay()]} ${d.getDate()}`;
-    let day = 0, customDay = null, time = null, timeCustom = false, n = 4, vis = 'public';
+    let day = 0, customDay = null, time = null, timeCustom = false, n = 4, vis = 'public', step = 0;
     const invited = new Set();
+    const people = new Map(); // id → perfil (para el resumen)
     const pad = (x) => String(x).padStart(2, '0');
     const CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    const BACK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
+    const STEP_T = ['Qué y cuándo', 'Con quién', 'Último toque'];
 
     body.innerHTML = `
       <div class="wp-pv">
-        <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b></div>
-        <div class="wp-pm2-col-strip wp-pv-strip"><div class="wp-pm2-col-strip-track">
-          ${TYPES.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
-        </div></div>
-        <div class="wp-pv-lbl">¿Cuándo?</div>
-        <div class="wp-pv-chips" data-k="day">
-          ${days.map((d, i) => `<button type="button" data-v="${i}">${dayLabel(d, i)}</button>`).join('')}
-          <button type="button" data-v="other" class="wp-pv-other">Otro día<input type="date" class="wp-pv-native" tabindex="-1"></button>
-        </div>
-        <div class="wp-pv-chips" data-k="time"></div>
-        <div class="wp-pv-lbl">¿Cuántos van? <span class="wp-pv-hint">contándote</span></div>
-        <div class="wp-pv-chips" data-k="n">
-          ${[2, 3, 4, 6, 8, 10].map(v => `<button type="button" data-v="${v}">${v}</button>`).join('')}
-        </div>
-        <div class="wp-pv-lbl">¿Con quién? <span class="wp-pv-hint wp-pv-inv-count">opcional</span></div>
-        <div class="wp-pv-people"><span class="wp-pv-empty">Cargando…</span></div>
-        <div class="wp-pv-lbl">¿Quién lo ve?</div>
-        <div class="wp-pv-chips wp-pv-seg" data-k="vis">
-          <button type="button" data-v="public">Todos</button>
-          <button type="button" data-v="followers">Seguidores</button>
-          <button type="button" data-v="invited">Solo invitados</button>
-        </div>
-        <div class="wp-pv-compose">
-          <div class="wp-pm2-col-row">
+        <div class="wp-pv-progress"><i></i><i></i><i></i><span class="wp-pv-step-t"></span></div>
+        <div class="wp-pv-viewport"><div class="wp-pv-track">
+          <section class="wp-pv-step">
+            <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b></div>
+            <div class="wp-pm2-col-strip wp-pv-strip"><div class="wp-pm2-col-strip-track">
+              ${TYPES.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
+            </div></div>
+            <div class="wp-pv-lbl">¿Cuándo?</div>
+            <div class="wp-pv-chips" data-k="day">
+              ${days.map((d, i) => `<button type="button" data-v="${i}">${dayLabel(d, i)}</button>`).join('')}
+              <button type="button" data-v="other" class="wp-pv-other">Otro día<input type="date" class="wp-pv-native" tabindex="-1"></button>
+            </div>
+            <div class="wp-pv-lbl">¿A qué hora?</div>
+            <div class="wp-pv-chips" data-k="time"></div>
+          </section>
+          <section class="wp-pv-step">
+            <div class="wp-pv-lbl">¿Cuántos van? <span class="wp-pv-hint">contándote</span></div>
+            <div class="wp-pv-chips" data-k="n">
+              ${[2, 3, 4, 6, 8, 10].map(v => `<button type="button" data-v="${v}">${v}</button>`).join('')}
+            </div>
+            <div class="wp-pv-lbl">¿A quién invitas? <span class="wp-pv-hint wp-pv-inv-count">opcional</span></div>
+            <div class="wp-pv-people"><span class="wp-pv-empty">Cargando…</span></div>
+            <div class="wp-pv-lbl">¿Quién lo ve?</div>
+            <div class="wp-pv-chips wp-pv-seg" data-k="vis">
+              <button type="button" data-v="public">Todos</button>
+              <button type="button" data-v="followers">Seguidores</button>
+              <button type="button" data-v="invited">Solo invitados</button>
+            </div>
+          </section>
+          <section class="wp-pv-step">
+            <div class="wp-pv-lbl">Nombre del plan</div>
             <div class="wp-pm2-col-field">
               <input class="wp-pm2-col-input2 wp-pv-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
             </div>
-          </div>
-          <button type="button" class="wp-pv-addnote">+ Agregar una nota</button>
-          <div class="wp-pm2-col-field wp-pv-notef" hidden>
-            <input class="wp-pm2-col-input2 wp-pv-note" type="text" maxlength="280" placeholder="Ej. Yo llevo el pastel · nos vemos en la entrada" autocapitalize="sentences" autocomplete="off">
-          </div>
-          <div class="wp-pv-sum"></div>
-          <button type="button" class="wp-pv-cta" disabled>${CHECK}<span>Crear plan</span></button>
+            <button type="button" class="wp-pv-addnote">+ Agregar una nota</button>
+            <div class="wp-pm2-col-field wp-pv-notef" hidden>
+              <input class="wp-pm2-col-input2 wp-pv-note" type="text" maxlength="280" placeholder="Ej. Yo llevo el pastel · nos vemos en la entrada" autocapitalize="sentences" autocomplete="off">
+            </div>
+            <div class="wp-pv-card">
+              <div class="wp-pv-card-emo"></div>
+              <div class="wp-pv-card-txt"><b class="wp-pv-card-t"></b><span class="wp-pv-card-w"></span><span class="wp-pv-card-v"></span></div>
+              <div class="wp-pv-card-faces"></div>
+            </div>
+          </section>
+        </div></div>
+        <div class="wp-pv-sum"></div>
+        <div class="wp-pv-foot">
+          <button type="button" class="wp-pv-back" aria-label="Atrás">${BACK}</button>
+          <button type="button" class="wp-pv-cta" disabled></button>
         </div>
       </div>`;
     const $ = (s) => body.querySelector(s);
     const typeName = $('.wp-pv-type-name'), timeBox = $('[data-k="time"]'), titleIn = $('.wp-pv-title');
-    const sumEl = $('.wp-pv-sum'), cta = $('.wp-pv-cta');
+    const sumEl = $('.wp-pv-sum'), cta = $('.wp-pv-cta'), backBtn = $('.wp-pv-back');
+    const viewport = $('.wp-pv-viewport'), track = $('.wp-pv-track');
+    const steps = [...body.querySelectorAll('.wp-pv-step')];
     const dateIn = $('[data-k="day"] .wp-pv-native');
     const tName = () => (TYPES.find(t => t[0] === type) || TYPES[2])[2];
+    const tEmo = () => (TYPES.find(t => t[0] === type) || TYPES[2])[1];
     const autoTitle = () => `${tName()} en ${info.name}`.slice(0, 60);
 
     const dayDate = () => customDay ? new Date(customDay) : days[day];
@@ -7000,7 +7055,7 @@ export class PlaceModal2 {
         `<button type="button" data-v="other" class="wp-pv-other">Otra hora<input type="time" class="wp-pv-native" tabindex="-1"></button>`;
       const tIn = timeBox.querySelector('.wp-pv-native');
       tIn.onchange = () => { if (tIn.value) { time = tIn.value; timeCustom = true; paint(); } };
-      if (!time) time = (opts.find(o => o[0] !== 'now') || opts[0])?.[0] || '18:00'; // de entrada, la próxima hora (no "Ahora")
+      if (!time) time = (opts.find(o => o[0] !== 'now') || opts[0])?.[0] || '18:00'; // de entrada, la próxima hora
     };
     const when = () => {
       if (time === 'now') return new Date(Date.now() + 5 * 60000);
@@ -7014,7 +7069,25 @@ export class PlaceModal2 {
       const h = d.getHours();
       return `${dl} · ${h > 12 ? h - 12 : h || 12}:${pad(d.getMinutes())} ${h >= 12 ? 'pm' : 'am'}`;
     };
+    const VIS = { public: 'Lo ven todos', followers: 'Lo ven tus seguidores', invited: 'Solo lo ven tus invitados' };
+
+    // Alto de la hoja = alto del paso actual (anima al cambiar de paso)
+    const fitStep = (animate = true) => {
+      const h = steps[step].offsetHeight;
+      viewport.style.transition = animate ? 'height 0.32s cubic-bezier(0.32,0.72,0,1)' : 'none';
+      viewport.style.height = h + 'px';
+    };
+    const goStep = (s) => {
+      step = Math.max(0, Math.min(2, s));
+      track.style.transform = `translateX(${-step * 100}%)`;
+      steps.forEach((el, i) => { el.inert = i !== step; el.setAttribute('aria-hidden', String(i !== step)); });
+      this._haptic?.('light');
+      paint();
+      fitStep(true);
+    };
+
     const paint = () => {
+      // Paso 1
       body.querySelectorAll('.wp-pv-strip button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.t === type));
       typeName.textContent = '· ' + tName();
       body.querySelectorAll('[data-k="day"] button').forEach(b => b.classList.toggle('on', customDay ? b.dataset.v === 'other' : b.dataset.v === String(day)));
@@ -7023,20 +7096,39 @@ export class PlaceModal2 {
       const custom = time && time !== 'now' && !timeBox.querySelector(`[data-v="${time}"]`);
       timeBox.querySelectorAll('button').forEach(b => b.classList.toggle('on', custom ? b.dataset.v === 'other' : b.dataset.v === time));
       const oT = timeBox.querySelector('.wp-pv-other'); if (oT) oT.firstChild.textContent = custom ? time : 'Otra hora';
+      // Paso 2
       body.querySelectorAll('[data-k="n"] button').forEach(b => b.classList.toggle('on', b.dataset.v === String(n)));
-      if (!titleIn.dataset.touched) titleIn.value = autoTitle();
-      titleIn.placeholder = autoTitle();
       body.querySelectorAll('[data-k="vis"] button').forEach(b => b.classList.toggle('on', b.dataset.v === vis));
       body.querySelectorAll('.wp-pv-person').forEach(b => b.classList.toggle('on', invited.has(b.dataset.id)));
       $('.wp-pv-inv-count').textContent = invited.size ? `${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}` : 'opcional';
+      // Paso 3
+      if (!titleIn.dataset.touched) titleIn.value = autoTitle();
+      titleIn.placeholder = autoTitle();
+      $('.wp-pv-card-emo').textContent = tEmo();
+      $('.wp-pv-card-t').textContent = titleIn.value.trim() || autoTitle();
+      $('.wp-pv-card-w').textContent = `${fmtWhen()} · hasta ${n}`;
+      $('.wp-pv-card-v').textContent = VIS[vis];
+      $('.wp-pv-card-faces').innerHTML = [...invited].slice(0, 4).map(id => {
+        const p = people.get(id) || {};
+        return `<i class="wp-seal" style="background-image:url('${this._esc(p.avatar_url || getAvatarUrl(p.name || p.username || 'user'))}')"></i>`;
+      }).join('') + (invited.size > 4 ? `<b>+${invited.size - 4}</b>` : '');
+      // Encabezado de pasos
+      body.querySelectorAll('.wp-pv-progress i').forEach((el, i) => el.classList.toggle('on', i <= step));
+      $('.wp-pv-step-t').textContent = `${step + 1} de 3 · ${STEP_T[step]}`;
+      backBtn.hidden = step === 0;
+      // Condiciones de cada paso
       const past = time !== 'now' && when() < new Date();
       const noInv = vis === 'invited' && !invited.size;
-      const VIS = { public: 'lo ven todos', followers: 'lo ven tus seguidores', invited: 'solo invitados' };
-      sumEl.textContent = past ? 'Elige una hora que no haya pasado'
-        : noInv ? 'Invita al menos a una persona'
-        : `${fmtWhen()} · hasta ${n} · ${VIS[vis]}`;
-      sumEl.classList.toggle('warn', past || noInv);
-      cta.disabled = past || noInv || !titleIn.value.trim();
+      const msg = step === 0 ? (past ? 'Elige una hora que no haya pasado' : `${tName()} · ${fmtWhen()}`)
+        : step === 1 ? (noInv ? 'Invita al menos a una persona o cambia quién lo ve' : `Hasta ${n} · ${VIS[vis].toLowerCase()}`)
+        : '';
+      sumEl.textContent = msg;
+      sumEl.hidden = !msg;
+      sumEl.classList.toggle('warn', (step === 0 && past) || (step === 1 && noInv));
+      const ok = step === 0 ? !past : step === 1 ? !noInv : (!past && !noInv && !!titleIn.value.trim());
+      cta.disabled = !ok;
+      cta.innerHTML = step < 2 ? `<span>Siguiente</span>${ARROW}` : `${CHECK}<span>Crear plan</span>`;
+      if (step === 2) requestAnimationFrame(() => fitStep(false));
     };
 
     body.querySelector('.wp-pv-strip').addEventListener('click', (e) => {
@@ -7056,11 +7148,13 @@ export class PlaceModal2 {
       time = b.dataset.v; timeCustom = false; paint();
     });
     $('[data-k="n"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; n = +b.dataset.v; paint(); });
-    titleIn.addEventListener('input', () => { titleIn.dataset.touched = '1'; paint(); });
     $('[data-k="vis"]').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; vis = b.dataset.v; paint(); });
+    titleIn.addEventListener('input', () => { titleIn.dataset.touched = '1'; paint(); });
     const noteBtn = $('.wp-pv-addnote'), noteF = $('.wp-pv-notef'), noteIn = $('.wp-pv-note');
-    noteBtn.onclick = () => { noteBtn.hidden = true; noteF.hidden = false; try { noteIn.focus({ preventScroll: true }); } catch (_) { noteIn.focus(); } };
-    // ¿Con quién?: la gente que sigues (avatar con sello). Tocar = invitar.
+    noteBtn.onclick = () => { noteBtn.hidden = true; noteF.hidden = false; fitStep(true); try { noteIn.focus({ preventScroll: true }); } catch (_) { noteIn.focus(); } };
+    backBtn.onclick = () => goStep(step - 1);
+
+    // ¿A quién invitas?: la gente que sigues (avatar con sello). Tocar = invitar.
     const peopleEl = $('.wp-pv-people');
     peopleEl.addEventListener('click', (e) => {
       const b = e.target.closest('.wp-pv-person'); if (!b) return;
@@ -7077,12 +7171,14 @@ export class PlaceModal2 {
         const { data: ps, error: e2 } = await sb.from('profiles').select('id, name, username, avatar_url').in('id', ids);
         if (e2) throw e2;
         const list = (ps || []).sort((a, b) => String(a.name || a.username || '').localeCompare(String(b.name || b.username || '')));
+        list.forEach(p => people.set(p.id, p));
         const first = (p) => this._esc(String(p.name || (p.username ? '@' + p.username : 'Alguien')).split(' ')[0]);
         peopleEl.innerHTML = list.map(p => `<button type="button" class="wp-pv-person" data-id="${p.id}">
             <span class="wp-pv-pav wp-seal" style="background-image:url('${this._esc(p.avatar_url || getAvatarUrl(p.name || p.username || 'user'))}')"></span>
             <i class="wp-pv-pchk"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
             <span class="wp-pv-pname">${first(p)}</span></button>`).join('');
         paint();
+        if (step === 1) fitStep(true);
       } catch (e) {
         console.warn('[DIAG-PLAN] no cargó a quién sigues:', e?.message || e);
         peopleEl.innerHTML = '<span class="wp-pv-empty">No se pudo cargar a quién sigues</span>';
@@ -7091,13 +7187,12 @@ export class PlaceModal2 {
 
     cta.onclick = async () => {
       if (cta.disabled || cta.classList.contains('busy')) return;
+      if (step < 2) { goStep(step + 1); return; }
       cta.classList.add('busy');
       const at = when();
       const title = titleIn.value.trim() || autoTitle();
       const whenTxt = fmtWhen();
       try {
-        // create_plan (activities_plans.sql): visibilidad, nota e invitados.
-        // Si aún no se corrió ese SQL, se crea como antes (público, sin invitados).
         const { error } = await getSupabase().rpc('create_plan', {
           p_title: title, p_type: type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
           p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: n,
@@ -7139,8 +7234,14 @@ export class PlaceModal2 {
     };
 
     paintTimes(); paint();
-    // Que se vea el tipo elegido en la tira
-    requestAnimationFrame(() => body.querySelector('.wp-pv-strip .wp-pm2-on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' }));
+    steps.forEach((el, i) => { el.inert = i !== 0; });
+    // El tipo elegido, a la vista en la tira. OJO: sin scrollIntoView — ese
+    // también movía la ficha de atrás (era el "rebote" al abrir la hoja)
+    requestAnimationFrame(() => {
+      fitStep(false);
+      const strip = body.querySelector('.wp-pv-strip'), on = strip?.querySelector('.wp-pm2-on');
+      if (strip && on) strip.scrollLeft = Math.max(0, on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2);
+    });
   }
 
   async _openCollectionsSheet() {
