@@ -1284,33 +1284,58 @@ export class PlaceModal2 {
       .wp-pv-addstop-card small { font-size:12.5px; color:#6b7280; font-weight:600; }
       .wp-pv-addstop-card i { flex:none; width:32px; height:32px; border-radius:50%; background:#0a0a0a; color:#fff; font-style:normal; font-size:20px;
         display:flex; align-items:center; justify-content:center; }
-      /* Hoja "Agregar parada" */
-      .wp-sp { gap:10px; }
-      .wp-sp-hero h2 { margin:0; font-size:30px; font-weight:900; letter-spacing:-0.8px; line-height:1.1; color:#0a0a0a; }
-      .wp-sp-hero p { margin:4px 0 0; font-size:14px; color:#9ca3af; font-weight:500; }
-      .wp-sp-hero p b { color:#4b5563; font-weight:700; }
-      .wp-sp-q { gap:8px; flex:none !important; height:46px !important; }
-      .wp-sp-sep { display:flex; align-items:center; gap:8px; margin-top:2px; }
-      .wp-sp-sep i { flex:1; height:1px; background:#f0f0f0; }
-      .wp-sp-sep span { font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.04em; }
-      .wp-sp-list { display:flex; flex-direction:column; gap:8px; padding-bottom:6px; }
-      .wp-sp-place { position:relative; display:flex; align-items:center; gap:12px; padding:10px; border-radius:16px; border:2px solid #f0f0f0; background:#fff;
-        text-align:left; font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:border-color 0.15s, background-color 0.15s; }
-      .wp-sp-place.on { border-color:#1a5cf5; background:#f5f8ff; }
-      .wp-sp-ph { flex:none; width:52px; height:52px; border-radius:12px; background:#f0f0f0 center/cover no-repeat; display:flex; align-items:center; justify-content:center; font-size:22px; }
-      .wp-sp-t { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-      .wp-sp-t b { font-size:14.5px; font-weight:800; color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-sp-t small { font-size:12px; color:#6b7280; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-sp-chk { flex:none; width:26px; height:26px; border-radius:50%; border:2px solid #e5e7eb; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+      /* Hoja "Agregar parada" (compacta) */
+      .wp-sp { gap:12px; }
+      /* mini ruta 1 → 2 */
+      .wp-sp-flow { display:flex; align-items:flex-start; gap:4px; padding:14px 10px 12px; border-radius:22px; background:#f7f8fa; }
+      .wp-sp-node { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:7px; text-align:center; }
+      .wp-sp-dot { position:relative; flex:none; width:44px; height:44px; border-radius:50%; background:#0a0a0a center/cover no-repeat;
+        box-shadow:0 0 0 3px #fff, 0 4px 12px rgba(0,0,0,0.14); display:flex; align-items:center; justify-content:center; }
+      .wp-sp-dot b { position:absolute; right:-4px; bottom:-4px; min-width:20px; height:20px; padding:0 4px; box-sizing:border-box; border-radius:999px;
+        background:#0a0a0a; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
+      .wp-sp-node.to .wp-sp-dot b { right:auto; left:-4px; background:#1a5cf5; }
+      .wp-sp-dot.empty { background:#fff; box-shadow:inset 0 0 0 2px #c7ccd4; border:2px dashed transparent; }
+      .wp-sp-dot.empty::after { content:'?'; font-size:18px; font-weight:900; color:#9ca3af; }
+      .wp-sp-dot.emo b { position:static; min-width:0; height:auto; padding:0; background:none !important; box-shadow:none; font-size:22px; }
+      .wp-sp-dot.pop { animation:wpSpPop 0.45s cubic-bezier(0.34,1.7,0.64,1); }
+      @keyframes wpSpPop { from { transform:scale(0.5); } to { transform:none; } }
+      .wp-sp-dot { width:52px; height:52px; }
+      .wp-sp-nt { min-width:0; max-width:100%; display:flex; flex-direction:column; align-items:center; }
+      .wp-sp-nt b { font-size:13px; font-weight:800; color:#111827; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .wp-sp-nt small { font-size:12px; font-weight:700; color:#6b7280; }
+      .wp-sp-node.to .wp-sp-nt small { color:#1a5cf5; }
+      .wp-sp-link { flex:none; display:flex; align-items:center; gap:4px; height:52px; }
+      .wp-sp-link > i { width:10px; border-top:2px dashed #c7ccd4; }
+      .wp-sp-gap { display:flex; align-items:center; height:30px; border-radius:999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+      .wp-sp-gap b { min-width:46px; text-align:center; font-size:12.5px; font-weight:900; color:#0a0a0a; }
+      .wp-sp-gap button { width:24px; height:30px; border:none; background:none; color:#6b7280; font-size:18px; font-weight:700; cursor:pointer; padding:0; }
+      /* categorías / buscador (misma altura) */
+      .wp-sp-bar { height:38px; }
+      .wp-sp-cats[hidden], .wp-sp-q[hidden] { display:none !important; }
+      .wp-sp-cats button { height:36px; }
+      .wp-sp-find { flex:none; width:36px; padding:0 !important; display:flex; align-items:center; justify-content:center; }
+      .wp-sp-q { gap:8px; flex:none !important; height:38px !important; }
+      .wp-sp-qx { flex:none; width:26px; height:26px; border:none; border-radius:50%; background:#e5e7eb; color:#4b5563; font-size:16px; line-height:1; cursor:pointer; }
+      /* carrusel de lugares */
+      .wp-sp-car { display:flex; gap:10px; overflow-x:auto; margin:0 -16px; padding:2px 16px 6px; scroll-snap-type:x proximity; scroll-padding:0 16px; scrollbar-width:none; min-height:156px; padding-top:6px !important; }
+      .wp-sp-car::-webkit-scrollbar { display:none; }
+      .wp-sp-car > .wp-pv-empty { margin:auto; }
+      .wp-sp-card { flex:0 0 118px; display:flex; flex-direction:column; gap:3px; padding:0; border:none; background:none; text-align:left;
+        font-family:var(--wp-font); cursor:pointer; scroll-snap-align:start; -webkit-tap-highlight-color:transparent; }
+      .wp-sp-ph { position:relative; width:118px; height:100px; border-radius:18px; background:#eef0f3 center/cover no-repeat; display:flex; align-items:center; justify-content:center;
+        box-shadow:0 0 0 0 #1a5cf5; transition:box-shadow 0.18s, transform 0.18s; }
+      .wp-sp-ph em { font-style:normal; font-size:34px; }
+      .wp-sp-card:active .wp-sp-ph { transform:scale(0.96); }
+      .wp-sp-card.on .wp-sp-ph { box-shadow:0 0 0 3px #fff, 0 0 0 5.5px #1a5cf5; }
+      .wp-sp-km { position:absolute; left:7px; bottom:7px; padding:2px 7px; border-radius:999px; background:rgba(0,0,0,0.55); color:#fff;
+        font-size:11px; font-weight:800; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+      .wp-sp-chk { position:absolute; right:7px; top:7px; width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,0.85);
+        box-shadow:inset 0 0 0 1.5px rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
       .wp-sp-chk svg { opacity:0; }
-      .wp-sp-place.on .wp-sp-chk { background:#1a5cf5; border-color:#1a5cf5; }
-      .wp-sp-place.on .wp-sp-chk svg { opacity:1; }
-      .wp-sp-foot { flex-direction:column; }
-      .wp-sp-when { display:flex; flex-direction:column; gap:6px; }
-      .wp-sp-when[hidden] { display:none; }
-      .wp-sp-when > span { font-size:13px; font-weight:700; color:#6b7280; padding-left:2px; }
-      .wp-sp-row { display:flex; gap:8px; }
-      .wp-sp-row .wp-pv-cta { flex:1; }
+      .wp-sp-card.on .wp-sp-chk { background:#1a5cf5; box-shadow:0 0 0 2px #fff; }
+      .wp-sp-card.on .wp-sp-chk svg { opacity:1; }
+      .wp-sp-card b { font-size:13px; font-weight:800; color:#111827; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; padding:0 2px; }
+      .wp-sp-card small { font-size:11.5px; font-weight:700; color:#6b7280; padding:0 2px; }
       .wp-pv-route-acts { display:flex; gap:8px; }
       .wp-pv-route-acts button { height:38px; padding:0 14px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
         font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; }
@@ -7237,84 +7262,115 @@ export class PlaceModal2 {
       return j.places || [];
     } catch (_) { return window.wpApp?.mapView?.allPlaces || []; }
   }
-  // ── Hoja "Agregar parada" (como el paso "¿Dónde?" de Crear actividad) ──
-  // Se abre desde "Tu plan". Elegir lugar (chips de categoría + buscador +
-  // sugeridos cerca) → cuánto después → "Agregar parada · 2:30 pm".
+  // ── Hoja "Agregar parada" (compacta, mismo principio que las demás) ──
+  // Arriba, la mini ruta "1 → 2": de dónde vienes, cuánto después (‹ +1 h ›)
+  // y a dónde vas (se llena con la foto del lugar que eliges). Abajo,
+  // categorías (🔍 abre el buscador ahí mismo) y un carrusel de lugares
+  // cerca de la parada anterior. Sin listas largas: la hoja no crece.
   _openStopSheet(a) {
     const cur = Array.isArray(a.stops) ? a.stops : [];
     const last = cur[cur.length - 1];
     const t0 = new Date(a.scheduled_at);
     const lastT = new Date(t0.getTime() + (last?.after || 0) * 60000);
     const origin = last ? { lat: Number(last.lat), lng: Number(last.lng) } : { lat: Number(a.lat), lng: Number(a.lng) };
+    const fromName = last?.name || a.place_name || 'Primera parada';
     const exclude = new Set([String(a.place_id || ''), ...cur.map(x => String(x.place_id))]);
-    const { body, close } = this._openSheet('Agregar parada', a.title);
-    const CATS = [['', 'Todos'], ['RESTAURANTS', '🍽️ Comer'], ['ENTERTAINMENT', '🎉 Salir'], ['SHOPPING', '🛍️ Compras'], ['PARKS', '🌳 Parques'], ['HEALTH', '💆 Salud'], ['WORKSHOPS', '🔧 Talleres']];
-    const GAPS = [30, 60, 90, 120, 180];
+    const nFrom = cur.length + 1;
+    const { body, close } = this._openSheet('Agregar parada', `${a.title} · parada ${nFrom + 1}`);
+    const CATS = [['', 'Cerca'], ['RESTAURANTS', '🍽️ Comer'], ['ENTERTAINMENT', '🎉 Salir'], ['SHOPPING', '🛍️ Compras'], ['PARKS', '🌳 Parques'], ['HEALTH', '💆 Salud'], ['WORKSHOPS', '🔧 Talleres']];
+    const TINT = { RESTAURANTS: '#ffe6c7', ENTERTAINMENT: '#ffdeeb', SHOPPING: '#e6defe', PARKS: '#ddf2d2', HEALTH: '#d9e8ff', WORKSHOPS: '#e3e6ea' };
+    const GAPS = [15, 30, 45, 60, 90, 120, 180];
     const gapTxt = (g) => g < 60 ? `+${g} min` : `+${Math.floor(g / 60)}${g % 60 ? ':' + String(g % 60).padStart(2, '0') : ''} h`;
-    let cat = '', pick = null, gap = 60, all = [];
+    let cat = '', pick = null, gap = 60, all = [], searching = false;
+    const lastPh = (() => { const p = (window.wpApp?._allPlacesCache || []).find(x => String(x.place_id) === String(last?.place_id || a.place_id)); return p?.photoUrl || p?.photosUrls?.[0] || ''; })();
     body.innerHTML = `
       <div class="wp-pv wp-sp">
-        <div class="wp-sp-hero"><h2>¿A dónde después?</h2>
-          <p>Después de <b>${this._esc(last?.name || a.place_name || 'la primera parada')}</b> · ${this._hhmm(lastT)}</p></div>
-        <div class="wp-pv-chips wp-sp-cats">${CATS.map(([k, l]) => `<button type="button" data-c="${k}"${!k ? ' class="on"' : ''}>${l}</button>`).join('')}</div>
-        <div class="wp-pm2-col-field wp-sp-q"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input class="wp-pm2-col-input2" type="search" placeholder="Busca un lugar" enterkeyhint="search" autocomplete="off"></div>
-        <div class="wp-sp-sep"><i></i><span>Cerca de la parada anterior</span><i></i></div>
-        <div class="wp-sp-list"><span class="wp-pv-empty">Cargando lugares…</span></div>
-      </div>
-      <div class="wp-pv-foot wp-sp-foot">
-        <div class="wp-sp-when" hidden><span>¿Cuánto después?</span>
-          <div class="wp-pv-chips">${GAPS.map(g => `<button type="button" data-g="${g}"${g === gap ? ' class="on"' : ''}>${gapTxt(g)}</button>`).join('')}</div></div>
-        <div class="wp-sp-row">
-          <button type="button" class="wp-pv-back" aria-label="Volver al plan"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
-          <button type="button" class="wp-pv-cta wp-sp-go" disabled><span>Elige un lugar</span></button>
+        <div class="wp-sp-flow">
+          <div class="wp-sp-node"><span class="wp-sp-dot"${lastPh ? ` style="background-image:url('${this._esc(lastPh)}')"` : ''}><b>${nFrom}</b></span>
+            <span class="wp-sp-nt"><b>${this._esc(fromName)}</b><small>${this._hhmm(lastT)}</small></span></div>
+          <div class="wp-sp-link"><i></i>
+            <span class="wp-sp-gap"><button type="button" data-d="-1" aria-label="Menos tiempo">‹</button><b></b><button type="button" data-d="1" aria-label="Más tiempo">›</button></span><i></i></div>
+          <div class="wp-sp-node to"><span class="wp-sp-dot empty"><b>${nFrom + 1}</b></span>
+            <span class="wp-sp-nt"><b class="wp-sp-to-n">¿A dónde?</b><small class="wp-sp-to-t"></small></span></div>
         </div>
+        <div class="wp-sp-bar">
+          <div class="wp-pv-chips wp-sp-cats"><button type="button" class="wp-sp-find" aria-label="Buscar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>${CATS.map(([k, l]) => `<button type="button" data-c="${k}"${!k ? ' class="on"' : ''}>${l}</button>`).join('')}</div>
+          <div class="wp-pm2-col-field wp-sp-q" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="wp-pm2-col-input2" type="search" placeholder="Busca un lugar" enterkeyhint="search" autocomplete="off">
+            <button type="button" class="wp-sp-qx" aria-label="Cerrar búsqueda">×</button></div>
+        </div>
+        <div class="wp-sp-car"><span class="wp-pv-empty">Cargando lugares…</span></div>
+      </div>
+      <div class="wp-pv-foot">
+        <button type="button" class="wp-pv-back" aria-label="Volver al plan"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+        <button type="button" class="wp-pv-cta wp-sp-go" disabled><span>Elige un lugar</span></button>
       </div>`;
     const $ = (q) => body.querySelector(q);
-    const list = $('.wp-sp-list'), q = $('.wp-sp-q input'), go = $('.wp-sp-go'), whenBox = $('.wp-sp-when');
-    const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const CATN = { RESTAURANTS: 'Restaurantes', ENTERTAINMENT: 'Entretenimiento', SHOPPING: 'Compras', PARKS: 'Parques', HEALTH: 'Salud', WORKSHOPS: 'Talleres' };
-    const paintGo = () => {
-      whenBox.hidden = !pick;
-      whenBox.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.g === gap));
+    const car = $('.wp-sp-car'), qf = $('.wp-sp-q'), q = qf.querySelector('input'), go = $('.wp-sp-go'), cats = $('.wp-sp-cats');
+    const toDot = $('.wp-sp-node.to .wp-sp-dot');
+    const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const paintFlow = () => {
+      const at = new Date(lastT.getTime() + gap * 60000);
+      $('.wp-sp-gap b').textContent = gapTxt(gap);
+      $('.wp-sp-to-t').textContent = this._hhmm(at);
+      $('.wp-sp-to-n').textContent = pick ? (pick.name || pick.displayName) : '¿A dónde?';
+      const ph = pick ? (pick.photoUrl || pick.photosUrls?.[0] || '') : '';
+      toDot.classList.toggle('empty', !pick);
+      toDot.style.backgroundImage = ph ? `url('${ph.replace(/'/g, '%27')}')` : '';
+      toDot.style.backgroundColor = pick && !ph ? (TINT[String(pick.category || '').toUpperCase()] || '#eef0f3') : '';
+      toDot.querySelector('b').textContent = pick && !ph ? this._stopEmoji(pick.category) : String(nFrom + 1);
+      toDot.classList.toggle('emo', !!pick && !ph);
       go.disabled = !pick;
-      go.querySelector('span').textContent = pick ? `Agregar · ${this._hhmm(new Date(lastT.getTime() + gap * 60000))}` : 'Elige un lugar';
+      go.querySelector('span').textContent = pick ? `Agregar parada · ${this._hhmm(at)}` : 'Elige un lugar';
     };
     const render = () => {
       const k = norm(q.value.trim());
       const res = all.filter(p => !exclude.has(String(p.place_id)) && (!cat || String(p.category || '').toUpperCase() === cat)
           && (!k || norm(p.name).includes(k) || norm(p.formattedAddress).includes(k)))
-        .map(p => [p, this._distM(origin, p)]).sort((x, y) => x[1] - y[1]).slice(0, 12);
-      list._res = res.map(r => r[0]);
-      list.innerHTML = res.length ? res.map(([p, d], i) => {
+        .map(p => [p, this._distM(origin, p)]).sort((x, y) => x[1] - y[1]).slice(0, 14);
+      car._res = res.map(r => r[0]);
+      car.innerHTML = res.length ? res.map(([p, d], i) => {
         const ph = p.photoUrl || p.photosUrls?.[0] || '';
         const km = d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km';
-        return `<button type="button" class="wp-sp-place${pick && String(pick.place_id) === String(p.place_id) ? ' on' : ''}" data-i="${i}">
-          <span class="wp-sp-ph"${ph ? ` style="background-image:url('${this._esc(ph)}')"` : ''}>${ph ? '' : this._stopEmoji(p.category)}</span>
-          <span class="wp-sp-t"><b>${this._esc(p.name)}</b>
-            <small>${p.rating ? `⭐ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${km} · ${this._stopEmoji(p.category)} ${CATN[String(p.category || '').toUpperCase()] || 'Lugar'}</small></span>
-          <i class="wp-sp-chk"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></i></button>`;
-      }).join('') : '<span class="wp-pv-empty">No encontramos lugares aquí 🗺️</span>';
+        const on = pick && String(pick.place_id) === String(p.place_id);
+        return `<button type="button" class="wp-sp-card${on ? ' on' : ''}" data-i="${i}">
+          <span class="wp-sp-ph" style="${ph ? `background-image:url('${this._esc(ph)}')` : `background-color:${TINT[String(p.category || '').toUpperCase()] || '#eef0f3'}`}">${ph ? '' : `<em>${this._stopEmoji(p.category)}</em>`}
+            <span class="wp-sp-km">${km}</span><i class="wp-sp-chk"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i></span>
+          <b>${this._esc(p.name)}</b>
+          <small>${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)}` : this._stopEmoji(p.category)}</small></button>`;
+      }).join('') : `<span class="wp-pv-empty">${k ? 'No encontramos ese lugar' : 'No hay lugares de este tipo cerca'}</span>`;
     };
-    list.addEventListener('click', (e) => {
-      const b = e.target.closest('.wp-sp-place'); if (!b) return;
-      const p = list._res?.[+b.dataset.i]; if (!p) return;
+    car.addEventListener('click', (e) => {
+      const b = e.target.closest('.wp-sp-card'); if (!b) return;
+      const p = car._res?.[+b.dataset.i]; if (!p) return;
       pick = pick && String(pick.place_id) === String(p.place_id) ? null : p;
       this._haptic?.('light');
-      list.querySelectorAll('.wp-sp-place').forEach(x => x.classList.toggle('on', !!pick && x === b));
-      paintGo();
+      car.querySelectorAll('.wp-sp-card').forEach(x => x.classList.toggle('on', !!pick && x === b));
+      if (pick) { toDot.classList.remove('pop'); void toDot.offsetWidth; toDot.classList.add('pop'); }
+      paintFlow();
     });
-    $('.wp-sp-cats').addEventListener('click', (e) => {
+    cats.addEventListener('click', (e) => {
+      if (e.target.closest('.wp-sp-find')) {
+        searching = true; cats.hidden = true; qf.hidden = false;
+        setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (_) {} }, 30);
+        return;
+      }
       const b = e.target.closest('button[data-c]'); if (!b) return;
       cat = b.dataset.c;
-      body.querySelectorAll('.wp-sp-cats button').forEach(x => x.classList.toggle('on', x === b));
-      render();
+      cats.querySelectorAll('button[data-c]').forEach(x => x.classList.toggle('on', x === b));
+      car.scrollLeft = 0; render();
     });
-    whenBox.addEventListener('click', (e) => { const b = e.target.closest('button[data-g]'); if (!b) return; gap = +b.dataset.g; this._haptic?.('light'); paintGo(); });
+    $('.wp-sp-qx').onclick = () => { searching = false; q.value = ''; q.blur(); qf.hidden = true; cats.hidden = false; render(); };
+    $('.wp-sp-gap').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-d]'); if (!b) return;
+      const i = Math.max(0, Math.min(GAPS.length - 1, GAPS.indexOf(gap) + +b.dataset.d));
+      if (GAPS[i] === gap) return;
+      gap = GAPS[i]; this._haptic?.('light'); paintFlow();
+    });
     let qt = 0;
-    q.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(render, 120); });
+    q.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { car.scrollLeft = 0; render(); }, 120); });
     const back = () => { close(true); setTimeout(() => this._openMyPlanSheet(a), 60); };
-    $('.wp-sp-foot .wp-pv-back').onclick = back;
+    body.querySelector('.wp-pv-foot .wp-pv-back').onclick = back;
     go.onclick = async () => {
       if (!pick) return;
       go.disabled = true;
@@ -7325,7 +7381,7 @@ export class PlaceModal2 {
       back();
     };
     this._planPlaces().then(ps => { all = (ps || []).filter(p => p.place_id && p.lat && p.lng); if (body.isConnected) render(); });
-    paintGo();
+    paintFlow();
   }
 
   // Línea de tiempo de solo lectura (Tu plan / Planes aquí)
