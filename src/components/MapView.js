@@ -1420,6 +1420,7 @@ export class MapView {
         .wp-act-pin    { animation: wpActFloat 2.4s ease-in-out infinite; }
         .wp-act-shadow { animation: wpActShadow 2.4s ease-in-out infinite; }
         body.map-dragging .wp-act-pin, body.map-dragging .wp-act-shadow { animation-play-state: paused; }
+        .wp-act-pin.full { animation: none; } /* lleno: quieto y gris */
       `;
       document.head.appendChild(s);
     }
@@ -1428,16 +1429,18 @@ export class MapView {
       const activity = groupActs[0];
       const count    = groupActs.length;
       const hasMine  = groupActs.some(a => a.creator_id === currentUserId);
-      const badgeBg  = hasMine ? '#1a5cf5' : '#7c5cf5';
-      const badgeTxt = count > 1 ? `${count}` : `${activity.participants?.length || 0}/${activity.max_participants || '∞'}`;
+      const allFull  = groupActs.every(a => this._actFull(a));
+      const badgeBg  = allFull ? '#9ca3af' : hasMine ? '#1a5cf5' : '#7c5cf5';
+      const badgeTxt = allFull ? (count > 1 ? `${count} · Completo` : 'Completo')
+        : count > 1 ? `${count}` : `${activity.participants?.length || 0}/${activity.max_participants || '∞'}`;
       const fallback = TYPE_FALLBACK[activity.type] || '💎';
       const iconUrl  = activity.icon_url || TYPE_ICONS[activity.type] || (R3D+'Balloon/3D/balloon_3d.png');
 
       const el = document.createElement('div');
       el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
       el.innerHTML = `
-        <div class="wp-act-pin" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
-          <img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">
+        <div class="wp-act-pin${allFull ? ' full' : ''}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
+          <img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">
           <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
         </div>
         <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
@@ -4967,10 +4970,14 @@ export class MapView {
   }
 
   // ── Actividades ───────────────────────────────────────────────────
-  _activityCount(place) {
+  // Plan lleno: ya llegó al cupo (sin cupo = nunca se llena)
+  _actFull(a) { return !!a?.max_participants && (a.participants?.length || 0) >= a.max_participants; }
+
+  _activityCount(place, onlyOpen = false) {
     const pName = (place.name || '').toLowerCase().trim();
     const pId   = (place.place_id || place.placeId || '').toLowerCase();
     return this.activities.filter(a => {
+      if (onlyOpen && this._actFull(a)) return false;
       const aName = (a.place_name || '').toLowerCase().trim();
       const aId   = (a.place_id  || '').toLowerCase();
       return (pId && aId === pId) || (pName && aName === pName);
@@ -4984,7 +4991,11 @@ export class MapView {
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
         if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
-        badge.textContent = count; badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
+        // Todos sus planes llenos → gris "Completo"
+        const allFull = this._activityCount(place, true) === 0;
+        badge.classList.toggle('full', allFull);
+        badge.textContent = allFull ? (count > 1 ? `${count} · Completo` : 'Completo') : count;
+        badge.style.opacity = this.map.getZoom() >= 15 ? '1' : '0';
       } else if (badge) badge.remove();
     });
   }
