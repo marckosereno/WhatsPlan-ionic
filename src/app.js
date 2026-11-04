@@ -250,9 +250,15 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     }
     const pts = places.map(p => [Number(p.lng ?? p.location?.lng), Number(p.lat ?? p.location?.lat)]).filter(([x, y]) => isFinite(x) && isFinite(y));
     if (!map || !pts.length) return;
-    if (pts.length === 1) { map.flyTo({ center: pts[0], zoom: 17, essential: true, animate }); return; }
-    const b = pts.reduce((bb, pt) => bb.extend(pt), new maplibregl.LngLatBounds(pts[0], pts[0]));
-    map.fitBounds(b, { padding: { top: 110, bottom: 190, left: 60, right: 60 }, maxZoom: 17.2, duration: animate ? 700 : 0 });
+    // Mismo zoom que al abrir una categoría en el mapa (16), centrado en la
+    // zona de la colección con más lugares juntos (~400 m a la redonda)
+    let c = pts[0], best = -1;
+    pts.forEach(p => {
+      let n = 0;
+      for (const q of pts) if (Math.abs(q[0] - p[0]) < 0.004 && Math.abs(q[1] - p[1]) < 0.004) n++;
+      if (n > best) { best = n; c = p; }
+    });
+    map.easeTo({ center: c, zoom: 16, pitch: 0, bearing: 0, duration: animate ? 700 : 0 });
   };
   setTimeout(() => fit(true), 60);
 
