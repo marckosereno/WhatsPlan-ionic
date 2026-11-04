@@ -2125,6 +2125,16 @@ export class PlaceModal2 {
       .wp-pm2-plan-chip { flex:none; height:22px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center;
         background:rgba(255,255,255,0.22); font-size:12px; font-weight:800; }
       .wp-pm2-plan-chip.full { background:#16a34a; color:#fff; }
+      /* Stickers de "estás en un plan" (esquina izquierda, asomando) */
+      .wp-pm2-plan-stk { position:absolute; left:10px; top:-16px; display:flex; pointer-events:none; }
+      .wp-pm2-plan-stk i { display:block; font-style:normal; font-size:22px; line-height:1;
+        filter:drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 3px 4px rgba(0,0,0,0.25));
+        transform:rotate(-14deg); animation:wpPlanStk 3.2s ease-in-out infinite; }
+      .wp-pm2-plan-stk i + i { margin-left:-5px; margin-top:7px; font-size:18px; transform:rotate(12deg); animation-delay:-1.6s; }
+      @keyframes wpPlanStk { 0%,100% { translate:0 0; } 50% { translate:0 -3px; } }
+      .wp-pm2-plan-stk.pop i { animation:wpPlanStkPop 0.7s cubic-bezier(0.34,1.8,0.64,1) both, wpPlanStk 3.2s ease-in-out 0.7s infinite; }
+      .wp-pm2-plan-stk.pop i + i { animation-delay:0.12s, -0.9s; }
+      @keyframes wpPlanStkPop { from { scale:0; } 60% { scale:1.35; } to { scale:1; } }
       .wp-pm2-plan-faces b.full { background:#16a34a; color:#fff; }
       .wp-pm2-plan-faces b.inv { background:#1a5cf5; color:#fff; }
       .wp-pm2-plan-faces b.live { gap:5px; }
@@ -5274,6 +5284,51 @@ export class PlaceModal2 {
     } catch (_) {}
   }
 
+  // Confeti + emojis que salen del botón "Vas a ir" (al unirte a un plan)
+  _planConfetti(btn) {
+    try {
+      if (!btn?.isConnected) return;
+      this._haptic?.('success');
+      this._scaleKeys?.(btn, [1, 0.94, 1.05, 1], 420);
+      btn.querySelector('.wp-pm2-plan-stk')?.classList.add('pop');
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+      const r = btn.getBoundingClientRect();
+      const layer = document.createElement('div');
+      layer.style.cssText = `position:fixed;left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:0;height:0;z-index:1600000;pointer-events:none;`;
+      const COLORS = ['#1a5cf5', '#4ade80', '#facc15', '#ff3d5e', '#a78bfa', '#38bdf8', '#fb923c'];
+      const EMOJI = ['✌️', '🤩', '💙', '🫡', '🎉', '🙌', '🥳'];
+      const piece = (i, emoji) => {
+        const el = document.createElement('i');
+        // salen hacia arriba en abanico desde todo lo ancho del botón
+        const x0 = (Math.random() - 0.5) * r.width * 0.9;
+        const ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.9;
+        const v = (emoji ? 90 : 110) + Math.random() * 120;
+        const tx = x0 + Math.cos(ang) * v, peak = Math.sin(ang) * v - 30;
+        const fall = 60 + Math.random() * 90;
+        const rot = (Math.random() - 0.5) * (emoji ? 70 : 720);
+        if (emoji) {
+          el.textContent = emoji;
+          el.style.cssText = `position:absolute;left:-14px;top:-14px;font-size:${22 + Math.random() * 10}px;line-height:1;font-style:normal;` +
+            'filter:drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff) drop-shadow(0 3px 4px rgba(0,0,0,0.25));';
+        } else {
+          const w = 6 + Math.random() * 5, h = Math.random() < 0.5 ? w : w * 0.45;
+          el.style.cssText = `position:absolute;left:${-w / 2}px;top:${-h / 2}px;width:${w}px;height:${h}px;border-radius:${Math.random() < 0.3 ? '50%' : '2px'};background:${COLORS[i % COLORS.length]};`;
+        }
+        layer.appendChild(el);
+        el.animate([
+          { transform: `translate(${x0}px,0) scale(0.4) rotate(0deg)`, opacity: 0 },
+          { transform: `translate(${x0 + (tx - x0) * 0.6}px,${peak * 0.85}px) scale(1.1) rotate(${rot * 0.4}deg)`, opacity: 1, offset: 0.3 },
+          { transform: `translate(${tx}px,${peak}px) scale(1) rotate(${rot * 0.7}deg)`, opacity: 1, offset: 0.55 },
+          { transform: `translate(${tx + (Math.random() - 0.5) * 30}px,${peak + fall}px) scale(0.8) rotate(${rot}deg)`, opacity: 0 },
+        ], { duration: 1100 + Math.random() * 500, delay: Math.random() * 120, easing: 'cubic-bezier(0.2,0.65,0.35,1)', fill: 'forwards' });
+      };
+      for (let i = 0; i < 34; i++) piece(i, null);
+      for (let i = 0; i < 6; i++) piece(i, EMOJI[i % EMOJI.length]);
+      document.body.appendChild(layer);
+      setTimeout(() => layer.remove(), 1900);
+    } catch (_) {}
+  }
+
   _scaleKeys(el, keys, dur) {
     if (!el) return;
     if (el.__wpScaleRaf) cancelAnimationFrame(el.__wpScaleRaf);
@@ -7158,9 +7213,9 @@ export class PlaceModal2 {
       state = 'mine';
       icon = CAL;
       label = mine.creator_id === me ? 'Ver tu plan' : 'Vas a ir';
-      faces = (mine.participants || []).filter(id => id !== me);
-      if (!faces.length) faces = (mine.invited || []).filter(id => id !== me);
-      if (!faces.length) faces = [me];
+      // tú primero (ya estás dentro) + quien organiza + los demás que van
+      const others = (mine.participants || []).filter(id => id !== me);
+      faces = [me, ...(others.length ? others : (mine.invited || []).filter(id => id !== me))];
       const mins = Math.round((new Date(mine.scheduled_at) - Date.now()) / 60000);
       const n = (mine.participants || []).length;
       if (mins <= 0) badge = { html: '<i class="dot"></i>Ahora', cls: 'live' };
@@ -7179,14 +7234,27 @@ export class PlaceModal2 {
       badge = `${others.length} plan${others.length > 1 ? 'es' : ''}`;
     }
     btn.dataset.state = state;
+    // Estás en un plan: emojis tipo sticker (orilla blanca) en la esquina
+    let stk = '';
+    if (state === 'mine') {
+      const SET = ['✌️', '🤩', '💙', '🫡', '🙌', '🥳', '🔥', '😎'];
+      const h = [...String(mine.id || '')].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7);
+      const e1 = SET[h % SET.length], e2 = SET[(h >> 3) % SET.length] === e1 ? SET[(h + 1) % SET.length] : SET[(h >> 3) % SET.length];
+      stk = `<span class="wp-pm2-plan-stk" aria-hidden="true"><i>${e1}</i><i>${e2}</i></span>`;
+    }
     const shown = faces.slice(0, 3);
     const bHtml = badge && typeof badge === 'object' ? `<b class="${badge.cls}">${badge.html}</b>`
       : badge ? `<b>${this._esc(badge)}</b>` : faces.length > 3 ? `<b>+${faces.length - 3}</b>` : '';
-    btn.innerHTML = `${icon}<span class="wp-pm2-plan-lbl">${this._esc(label)}</span>${chip}` +
+    btn.innerHTML = `${stk}${icon}<span class="wp-pm2-plan-lbl">${this._esc(label)}</span>${chip}` +
       (shown.length ? `<span class="wp-pm2-plan-faces">${shown.map(id => this._planFace(id)).join('')}${bHtml}</span>` : '');
     if (animate && state !== 'none') {
       const f = btn.querySelector('.wp-pm2-plan-faces');
       if (f) { f.classList.remove('in'); void f.offsetWidth; f.classList.add('in'); }
+    }
+    // Recién te uniste: fiesta en el botón cuando ya se cerró la hoja
+    if (state === 'mine' && this._planCelebrate) {
+      this._planCelebrate = false;
+      setTimeout(() => this._planConfetti(btn), 380);
     }
   }
 
@@ -7448,8 +7516,9 @@ export class PlaceModal2 {
       const a = list[+b.closest('.wp-ph-card').dataset.i];
       const yes = b.dataset.a === 'yes';
       b.disabled = true;
+      if (yes) this._planCelebrate = true;
       const ok = await this._planRpc('respond_plan', { p_activity: a.id, p_accept: yes }, yes ? `¡Vas! ${this._planWhen(a.scheduled_at)}` : 'Le avisamos que no puedes');
-      if (ok) close(); else b.disabled = false;
+      if (ok) close(); else { b.disabled = false; this._planCelebrate = false; }
     });
     // Lista de espera
     body.querySelectorAll('.wp-ph-card button[data-wl]').forEach(b => b.onclick = async () => {
