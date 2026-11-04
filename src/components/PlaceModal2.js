@@ -1290,6 +1290,8 @@ export class PlaceModal2 {
       .wp-pv-step { flex:0 0 100%; min-width:0; box-sizing:border-box; padding:0 16px 4px; display:flex; flex-direction:column; gap:8px; align-self:flex-start; }
       .wp-pv-foot { display:flex; gap:8px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); margin:4px -16px 0; padding-left:16px; padding-right:16px; }
       .wp-pv-foot .wp-pv-cta { flex:1; }
+      /* fuera del contenido que se desliza: pegado al fondo de la hoja */
+      .wp-pm2-ms-body > .wp-pv-foot { position:static; margin:6px 0 0; padding:10px 16px 2px; background:#fff; border-radius:0 0 24px 24px; }
       .wp-pv-back { flex:none; width:56px; height:50px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
         display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
       .wp-pv-back[hidden] { display:none; }
@@ -1355,8 +1357,15 @@ export class PlaceModal2 {
       .wp-pv-danger { margin-top:4px; height:44px; border:none; border-radius:999px; background:none; color:#e0123c;
         font-size:14px; font-weight:800; font-family:var(--wp-font); cursor:pointer; transition:background-color 0.15s; }
       .wp-pv-danger.armed { background:#e0123c; color:#fff; }
-      /* Cupo + Completo + lugares */
-      .wp-pv-spots { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:16px; background:#f7f8fa; }
+      /* Cupos + Completo */
+      .wp-pv-spots { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:16px; background:#f7f8fa; transition:background-color 0.2s; }
+      .wp-pv-spots-row { display:flex; align-items:center; gap:10px; }
+      .wp-pv-spots-k { font-size:12px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:0.04em; width:100%; }
+      .wp-pv-spots-left[hidden] { display:none; }
+      .wp-pv-spots-close { height:38px; border:none; border-radius:999px; background:#fff; color:#15803d; box-shadow:inset 0 0 0 1px rgba(22,163,74,0.35);
+        font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+      .wp-pv-spots-close[hidden], .wp-pv-spots-save[hidden] { display:none; }
+      .wp-pv-spots-ctl button:disabled { opacity:0.35; }
       .wp-pv-spots.full { background:#ecfdf3; }
       .wp-pv-spots-txt { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:13px; font-weight:700; color:#6b7280; }
       .wp-pv-spots-txt b { font-size:16px; font-weight:900; color:#111827; }
@@ -1366,10 +1375,9 @@ export class PlaceModal2 {
       .wp-pv-spots-ctl { flex:none; display:flex; align-items:center; gap:6px; }
       .wp-pv-spots-ctl button { height:36px; border:none; border-radius:999px; font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent; }
       .wp-pv-spots-ctl button[hidden] { display:none; }
-      .wp-pv-spots-minus { width:36px; background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); font-size:18px !important; }
-      .wp-pv-spots-add { padding:0 14px; background:#0a0a0a; color:#fff; transition:background-color 0.15s, transform 0.15s; }
-      .wp-pv-spots-add.mini { width:36px; padding:0; font-size:18px !important; background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); }
-      .wp-pv-spots-save { padding:0 14px; background:#16a34a; color:#fff; animation:wpPvAsk 0.25s ease; }
+      .wp-pv-spots-minus, .wp-pv-spots-add { width:38px; height:38px !important; background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.12); font-size:20px !important; line-height:1; }
+      .wp-pv-spots-save { height:42px; border:none; border-radius:999px; background:#0a0a0a; color:#fff; font-family:var(--wp-font); font-size:14px; font-weight:800; cursor:pointer; animation:wpPvAsk 0.25s ease; }
+      .wp-pv-spots-save.less { background:#16a34a; }
       .wp-pv-spots-add:active { transform:scale(0.95); }
       .wp-pv-ask { display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:18px; background:#fff7e0; border:1px solid rgba(161,98,7,0.2); animation:wpPvAsk 0.3s cubic-bezier(0.34,1.56,0.64,1); }
       .wp-pv-ask[hidden] { display:none; }
@@ -2084,7 +2092,7 @@ export class PlaceModal2 {
       }
       .wp-pm2-plan-lbl { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       /* Con plan (o invitación): el botón en azul de la marca */
-      #wp-pm2-plan-btn[data-state="mine"], #wp-pm2-plan-btn[data-state="invited"] { background:#1a5cf5; box-shadow:0 6px 16px rgba(26,92,245,0.32); }
+      /* Con plan o invitación: mismo botón negro; lo distinto va en la pastilla de las caritas */
       /* Caritas que asoman MEDIO AFUERA por la esquina de arriba del botón */
       .wp-pm2-plan-faces {
         position:absolute; right:14px; top:-15px; display:flex; align-items:center; pointer-events:none;
@@ -2103,6 +2111,10 @@ export class PlaceModal2 {
       .wp-pm2-plan-chip { flex:none; height:22px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center;
         background:rgba(255,255,255,0.22); font-size:12px; font-weight:800; }
       .wp-pm2-plan-chip.full { background:#16a34a; color:#fff; }
+      .wp-pm2-plan-faces b.full { background:#16a34a; color:#fff; }
+      .wp-pm2-plan-faces b.inv { background:#1a5cf5; color:#fff; }
+      .wp-pm2-plan-faces b.live { gap:5px; }
+      .wp-pm2-plan-faces b.live .dot { width:7px; height:7px; border-radius:50%; background:#22c55e; animation:wpPlanLive 1.6s ease-out infinite; }
       .wp-pm2-plan-live { flex:none; width:9px; height:9px; border-radius:50%; background:#4ade80; animation:wpPlanLive 1.6s ease-out infinite; }
       @keyframes wpPlanLive { 0% { box-shadow:0 0 0 0 rgba(74,222,128,0.7); } 100% { box-shadow:0 0 0 9px rgba(74,222,128,0); } }
     `;
@@ -7126,20 +7138,22 @@ export class PlaceModal2 {
     if (mine) {
       state = 'mine';
       icon = CAL;
-      label = `${mine.creator_id === me ? 'Tu plan' : 'Vas a ir'} · ${this._planWhen(mine.scheduled_at, true)}`;
+      label = mine.creator_id === me ? 'Ver tu plan' : 'Vas a ir';
       faces = (mine.participants || []).filter(id => id !== me);
       if (!faces.length) faces = (mine.invited || []).filter(id => id !== me);
+      if (!faces.length) faces = [me];
       const mins = Math.round((new Date(mine.scheduled_at) - Date.now()) / 60000);
       const n = (mine.participants || []).length;
-      if (mins <= 0) chip = '<span class="wp-pm2-plan-live"></span>';
-      else if (this._planFull(mine)) chip = `<span class="wp-pm2-plan-chip full">${n}/${n} · Completo</span>`;
-      else if (mins < 60) chip = `<span class="wp-pm2-plan-chip">en ${mins} min</span>`;
-      else if (mins < 6 * 60) chip = `<span class="wp-pm2-plan-chip">en ${Math.round(mins / 60)} h</span>`;
+      if (mins <= 0) badge = { html: '<i class="dot"></i>Ahora', cls: 'live' };
+      else if (this._planFull(mine)) badge = { html: `✓ ${n}/${n} Completo`, cls: 'full' };
+      else if (mins < 60) badge = { html: `En ${mins} min`, cls: '' };
+      else if (mins < 6 * 60) badge = { html: `En ${Math.round(mins / 60)} h`, cls: '' };
+      else badge = { html: this._esc(this._planWhen(mine.scheduled_at, true)), cls: '' };
     } else if (pending.length) {
       state = 'invited';
       label = 'Te invitaron · Responder';
       faces = pending.map(a => a.creator_id);
-      badge = pending.length > 1 ? `${pending.length}` : '';
+      badge = { html: pending.length > 1 ? `${pending.length} invitaciones` : 'Invitación', cls: 'inv' };
     } else if (others.length) {
       state = 'others';
       faces = [...new Set(others.map(a => a.creator_id))];
@@ -7147,9 +7161,10 @@ export class PlaceModal2 {
     }
     btn.dataset.state = state;
     const shown = faces.slice(0, 3);
+    const bHtml = badge && typeof badge === 'object' ? `<b class="${badge.cls}">${badge.html}</b>`
+      : badge ? `<b>${this._esc(badge)}</b>` : faces.length > 3 ? `<b>+${faces.length - 3}</b>` : '';
     btn.innerHTML = `${icon}<span class="wp-pm2-plan-lbl">${this._esc(label)}</span>${chip}` +
-      (shown.length ? `<span class="wp-pm2-plan-faces">${shown.map(id => this._planFace(id)).join('')}` +
-        `${badge ? `<b>${this._esc(badge)}</b>` : faces.length > 3 ? `<b>+${faces.length - 3}</b>` : ''}</span>` : '');
+      (shown.length ? `<span class="wp-pm2-plan-faces">${shown.map(id => this._planFace(id)).join('')}${bHtml}</span>` : '');
     if (animate && state !== 'none') {
       const f = btn.querySelector('.wp-pm2-plan-faces');
       if (f) { f.classList.remove('in'); void f.offsetWidth; f.classList.add('in'); }
@@ -7220,13 +7235,16 @@ export class PlaceModal2 {
             <span class="wp-pv-card-v">${VIS[a.visibility] || VIS.public}</span></div>
         </div>
         <div class="wp-pv-spots${full ? ' full' : ''}">
-          <div class="wp-pv-spots-txt"><b>${going} de ${a.max_participants || '∞'}</b>${full ? '<span class="wp-pv-full-tag">✓ Completo</span>'
-            : a.max_participants ? `<span>Queda${a.max_participants - going === 1 ? '' : 'n'} ${a.max_participants - going} lugar${a.max_participants - going === 1 ? '' : 'es'}</span>` : ''}
-            ${(a.waitlist || []).length ? `<span class="wp-pv-wl">${a.waitlist.length} en espera</span>` : ''}</div>
-          ${isOwner && a.max_participants && a.max_participants < 50 ? `<div class="wp-pv-spots-ctl">
-            <button type="button" class="wp-pv-spots-minus" aria-label="Un lugar menos" hidden>−</button>
-            <button type="button" class="wp-pv-spots-add"><span>+ Lugares</span></button>
-            <button type="button" class="wp-pv-spots-save" hidden>Abrir</button></div>` : ''}
+          <div class="wp-pv-spots-row">
+            <div class="wp-pv-spots-txt"><span class="wp-pv-spots-k">Cupos</span><b>${going} de ${a.max_participants || '∞'}</b>${full ? '<span class="wp-pv-full-tag">✓ Completo</span>'
+              : a.max_participants ? `<span class="wp-pv-spots-left">Queda${a.max_participants - going === 1 ? '' : 'n'} ${a.max_participants - going}</span>` : ''}
+              ${(a.waitlist || []).length ? `<span class="wp-pv-wl">${a.waitlist.length} en espera</span>` : ''}</div>
+            ${isOwner && a.max_participants ? `<div class="wp-pv-spots-ctl">
+              <button type="button" class="wp-pv-spots-minus" aria-label="Un cupo menos"${a.max_participants <= Math.max(1, going) ? ' disabled' : ''}>−</button>
+              <button type="button" class="wp-pv-spots-add" aria-label="Un cupo más"${a.max_participants >= 50 ? ' disabled' : ''}>+</button></div>` : ''}
+          </div>
+          ${isOwner && a.max_participants ? `<button type="button" class="wp-pv-spots-save" hidden></button>
+          ${!full && going > 1 ? `<button type="button" class="wp-pv-spots-close">Cerrar el plan con los ${going} que van</button>` : ''}` : ''}
         </div>
         ${a.note ? `<div class="wp-pv-postit wp-pv-postit-ro"><i class="wp-pv-tape"></i><div class="wp-pv-note-ro">${this._esc(a.note)}</div></div>` : ''}
         <div class="wp-pv-lbl">Quién va <span class="wp-pv-hint">${going} confirmad${going === 1 ? 'o' : 'os'}</span></div>
@@ -7268,32 +7286,39 @@ export class PlaceModal2 {
       if (ok) close();
     };
     if (!isOwner) return;
-    // + Lugares: [+] suma, [−] resta, "Abrir N" lo guarda
-    const addB = $('.wp-pv-spots-add'), minus = $('.wp-pv-spots-minus'), save = $('.wp-pv-spots-save');
+    // Cupos: − / + cambian, "Guardar" lo aplica; "Cerrar el plan" = cupo igual a los que van
+    const addB = $('.wp-pv-spots-add'), minus = $('.wp-pv-spots-minus'), save = $('.wp-pv-spots-save'), closeB = $('.wp-pv-spots-close');
     if (addB) {
-      let extra = 0;
+      const max0 = a.max_participants, minMax = Math.max(1, going);
+      let max = max0;
       const paint = () => {
-        $('.wp-pv-spots-txt b').textContent = `${going} de ${a.max_participants + extra}`;
-        minus.hidden = save.hidden = !extra;
-        addB.classList.toggle('mini', !!extra);
-        addB.querySelector('span').textContent = extra ? '+' : '+ Lugares';
-        save.textContent = `Abrir ${extra}`;
-        // mientras abres lugares ya no se ve "Completo"
-        $('.wp-pv-spots').classList.toggle('full', full && !extra);
-        const tag = $('.wp-pv-spots .wp-pv-full-tag'); if (tag) tag.hidden = !!extra;
+        const d = max - max0;
+        $('.wp-pv-spots-txt b').textContent = `${going} de ${max}`;
+        minus.disabled = max <= minMax; addB.disabled = max >= 50;
+        const willFull = going >= max;
+        $('.wp-pv-spots').classList.toggle('full', willFull);
+        const tag = $('.wp-pv-spots .wp-pv-full-tag'), left = $('.wp-pv-spots-left');
+        if (tag) tag.hidden = !willFull;
+        if (left) { left.hidden = willFull; left.textContent = `Queda${max - going === 1 ? '' : 'n'} ${max - going}`; }
+        save.hidden = !d;
+        save.className = 'wp-pv-spots-save' + (d < 0 ? ' less' : '');
+        save.textContent = !d ? '' : d > 0 ? `Abrir ${d} cupo${d === 1 ? '' : 's'} más` : willFull ? `Cerrar el plan con ${going}` : `Quitar ${-d} cupo${d === -1 ? '' : 's'}`;
+        if (closeB) closeB.hidden = !!d;
       };
-      addB.onclick = () => {
-        if (a.max_participants + extra >= 50) { this._showToast('Máximo 50 lugares'); return; }
-        extra++; this._haptic?.('light'); paint();
-      };
-      minus.onclick = () => { if (extra) { extra--; this._haptic?.('light'); paint(); } };
-      save.onclick = async () => {
-        save.disabled = true;
-        const ok = await this._planRpc('add_plan_spots', { p_activity: a.id, p_n: extra },
-          `Abriste ${extra} lugar${extra === 1 ? '' : 'es'}${(a.waitlist || []).length ? ' · le avisamos a quien esperaba' : ''}`);
-        save.disabled = false;
+      addB.onclick = () => { if (max < 50) { max++; this._haptic?.('light'); paint(); } };
+      minus.onclick = () => { if (max > minMax) { max--; this._haptic?.('light'); paint(); } };
+      const apply = async (n, btn) => {
+        btn.disabled = true;
+        const d = n - max0;
+        const msg = n <= going ? `Plan cerrado · ${going} de ${going} ✓ Completo`
+          : d > 0 ? `Abriste ${d} cupo${d === 1 ? '' : 's'}${(a.waitlist || []).length && max0 <= going ? ' · le avisamos a quien esperaba' : ''}`
+          : `Quitaste ${-d} cupo${d === -1 ? '' : 's'}`;
+        const ok = await this._planRpc('set_plan_cupo', { p_activity: a.id, p_max: n }, msg);
+        btn.disabled = false;
         if (ok) close();
       };
+      save.onclick = () => apply(max, save);
+      if (closeB) closeB.onclick = () => apply(going, closeB);
     }
     // Cambiar hora (fecha y hora del teléfono)
     const tBtn = body.querySelector('[data-a="time"]'), tIn = tBtn.querySelector('input');
@@ -7340,12 +7365,12 @@ export class PlaceModal2 {
       go.disabled = true;
       const n = sel.size;
       const ok = await this._planRpc('invite_to_plan', { p_activity: a.id, p_invited: [...sel], p_expand: expand },
-        `Invitaste a ${n}${expand ? ' · abriste más lugares' : ''} · ya les avisamos`, {
+        `Invitaste a ${n}${expand ? ' · abriste más cupos' : ''} · ya les avisamos`, {
           onError: (err) => {
             const m = /PLAN_LLENO:(\d+)/.exec(err?.message || '');
             if (!m) return false;
             const k = +m[1];
-            ask.querySelector('.wp-pv-ask-q').textContent = `Tu plan está lleno: ¿abrir ${k} lugar${k === 1 ? '' : 'es'} más para invitar?`;
+            ask.querySelector('.wp-pv-ask-q').textContent = `Tu plan está lleno: ¿abrir ${k} cupo${k === 1 ? '' : 's'} más para invitar?`;
             ask.hidden = false; go.hidden = true;
             this._haptic?.('light');
             requestAnimationFrame(() => { try { ask.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {} });
@@ -7374,15 +7399,15 @@ export class PlaceModal2 {
           const going = (a.participants || []).length, left = Math.max(0, (a.max_participants || 0) - going);
           const full = this._planFull(a), waiting = (a.waitlist || []).includes(me);
           const inv = pending.includes(a), inIt = (a.participants || []).includes(me);
-          const WL = waiting ? `<button type="button" class="wp-ph-wl on" data-wl="off">✓ Te avisaremos si se libera</button>`
-            : `<button type="button" class="wp-ph-wl" data-wl="on">🔔 Avísame si se libera</button>`;
+          const WL = waiting ? `<button type="button" class="wp-ph-wl on" data-wl="off">✓ Te avisaremos si se libera un cupo</button>`
+            : `<button type="button" class="wp-ph-wl" data-wl="on">🔔 Avísame si se libera un cupo</button>`;
           return `<div class="wp-ph-card${inv ? ' inv' : ''}" data-i="${i}">
             ${inv ? `<span class="wp-ph-tag">Te invitó ${name(a.creator_id)}</span>` : ''}
             <div class="wp-ph-top">
               <div class="wp-pv-card-emo">${EMO[a.type] || '🎈'}</div>
               <div class="wp-pv-card-txt"><b class="wp-pv-card-t">${this._esc(a.title)}</b>
                 <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))} · organiza ${name(a.creator_id)}</span>
-                <span class="wp-pv-card-v">${full ? `<span class="wp-pv-full-tag">${going} de ${going} · Completo</span>` : a.max_participants ? `Quedan ${left} lugar${left === 1 ? '' : 'es'}` : 'Sin límite'}</span></div>
+                <span class="wp-pv-card-v">${full ? `<span class="wp-pv-full-tag">${going} de ${going} · Completo</span>` : a.max_participants ? `Queda${left === 1 ? '' : 'n'} ${left} cupo${left === 1 ? '' : 's'}` : 'Sin límite'}</span></div>
               <div class="wp-pv-card-faces">${(a.participants || []).slice(0, 3).map(id => this._planFace(id)).join('')}${going > 3 ? `<b>+${going - 3}</b>` : ''}</div>
             </div>
             ${a.note ? `<div class="wp-ph-note">“${this._esc(a.note)}”</div>` : ''}
@@ -7410,14 +7435,15 @@ export class PlaceModal2 {
       const on = b.dataset.wl === 'on';
       b.disabled = true;
       const ok = await this._planRpc('plan_waitlist', { p_activity: a.id, p_on: on },
-        on ? 'Listo · te avisamos si se libera un lugar' : 'Ya no estás en la lista de espera');
+        on ? 'Listo · te avisamos si se libera un cupo' : 'Ya no estás en la lista de espera');
       b.disabled = false;
       if (!ok) return;
       a.waitlist = on ? [...(a.waitlist || []), me] : (a.waitlist || []).filter(id => id !== me);
       b.dataset.wl = on ? 'off' : 'on';
       b.classList.toggle('on', on);
-      b.textContent = on ? '✓ Te avisaremos si se libera' : '🔔 Avísame si se libera';
+      b.textContent = on ? '✓ Te avisaremos si se libera un cupo' : '🔔 Avísame si se libera un cupo';
     });
+    { const f = body.querySelector('.wp-pv > .wp-pv-foot'); if (f) body.appendChild(f); }
     const nb = body.querySelector('.wp-ph-new');
     if (nb) nb.onclick = () => { close(true); setTimeout(() => this._openPlanSheet(), 60); };
   }
@@ -7486,7 +7512,7 @@ export class PlaceModal2 {
             <div class="wp-pv-lbl">¿A quién invitas? <span class="wp-pv-hint wp-pv-inv-count">opcional</span></div>
             <div class="wp-pv-people"><span class="wp-pv-empty">Cargando…</span></div>
             <div class="wp-pv-cupo">
-              <div class="wp-pv-lbl">¿Cuántos lugares? <span class="wp-pv-hint">contándote</span></div>
+              <div class="wp-pv-lbl">¿Cuántos cupos? <span class="wp-pv-hint">contándote</span></div>
               <div class="wp-pv-chips" data-k="n"></div>
             </div>
           </section>
@@ -7516,6 +7542,7 @@ export class PlaceModal2 {
           <button type="button" class="wp-pv-cta" disabled></button>
         </div>
       </div>`;
+    { const f = body.querySelector('.wp-pv > .wp-pv-foot'); if (f) body.appendChild(f); }
     const $ = (s) => body.querySelector(s);
     const typeName = $('.wp-pv-type-name'), timeBox = $('[data-k="time"]'), titleIn = $('.wp-pv-title');
     const sumEl = $('.wp-pv-sum'), cta = $('.wp-pv-cta'), backBtn = $('.wp-pv-back');
@@ -7601,7 +7628,7 @@ export class PlaceModal2 {
       titleIn.placeholder = autoTitle();
       $('.wp-pv-card-emo').textContent = tEmo();
       $('.wp-pv-card-t').textContent = titleIn.value.trim() || autoTitle();
-      $('.wp-pv-card-w').textContent = vis === 'invited' ? `${fmtWhen()} · tú + ${invited.size}` : `${fmtWhen()} · ${n} lugares`;
+      $('.wp-pv-card-w').textContent = vis === 'invited' ? `${fmtWhen()} · tú + ${invited.size}` : `${fmtWhen()} · ${n} cupos`;
       $('.wp-pv-card-v').textContent = VIS[vis];
       $('.wp-pv-card-faces').innerHTML = [...invited].slice(0, 4).map(id => {
         const p = people.get(id) || {};
@@ -7617,7 +7644,7 @@ export class PlaceModal2 {
       const msg = step === 0 ? (past ? 'Elige una hora que no haya pasado' : `${tName()} · ${fmtWhen()}`)
         : step === 1 ? (noInv ? 'Elige a quién invitas, o deja que se una cualquiera'
           : vis === 'invited' ? `Tú + ${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}`
-          : `${n} lugares · ${invited.size ? invited.size + ' invitad' + (invited.size === 1 ? 'o' : 'os') + ' · ' : ''}${VIS[vis].toLowerCase()}`)
+          : `${n} cupos · ${invited.size ? invited.size + ' invitad' + (invited.size === 1 ? 'o' : 'os') + ' · ' : ''}${VIS[vis].toLowerCase()}`)
         : '';
       sumEl.textContent = msg;
       sumEl.hidden = !msg;
