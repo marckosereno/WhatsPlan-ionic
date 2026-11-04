@@ -13,6 +13,10 @@ import { VisitService }                from '/src/services/VisitService.js';
 
 export class PlaceModal2 {
   constructor(opts = {}) {
+    // Catálogo de actividades de "Crear actividad" (ACTIVITY_TYPES): mismas
+    // subcategorías para "Planear visita". Import dinámico: si ActivityModal
+    // aún no lo exporta, el plan sigue con los tipos genéricos.
+    import('/src/components/ActivityModal.js').then(m => { this._actTypes = Array.isArray(m.ACTIVITY_TYPES) ? m.ACTIVITY_TYPES : null; }).catch(() => {});
     this.onPlaceSelect  = opts.onPlaceSelect  || null;
     this.getCurrentUser = opts.getCurrentUser || (() => null);
     this.proxyPhoto     = opts.proxyPhoto     || (u => u);
@@ -1231,26 +1235,6 @@ export class PlaceModal2 {
       .wp-pv-strip::-webkit-scrollbar { display:none; }
       /* pocos planes (según el lugar) → centrados; si no caben, se deslizan */
       .wp-pv-strip .wp-pm2-col-strip-track { margin:0 auto; }
-      /* Abanico de planes (sobresale por arriba de la hoja) */
-      .wp-pv-hasfan .wp-pm2-ms-header { padding-top:8px; }
-      .wp-pv-fan { position:absolute; left:0; right:0; bottom:calc(100% - 30px); height:136px; z-index:3; pointer-events:none;
-        opacity:0; transform:translateY(24px) scale(0.9); transition:opacity 0.3s, transform 0.45s cubic-bezier(0.34,1.4,0.64,1); }
-      .wp-pv-fan.in { opacity:1; transform:none; }
-      .wp-pv-fan.gone { opacity:0; transform:translateY(30px) scale(0.8); }
-      .wp-pv-fan-sc { pointer-events:auto; height:100%; display:flex; align-items:flex-start; padding-top:22px !important; overflow-x:auto; overflow-y:hidden;
-        padding:0 calc(50% - 36px) 4px; box-sizing:border-box; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x;
-        -webkit-mask-image:linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-image:linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
-      .wp-pv-fan-sc::-webkit-scrollbar { display:none; }
-      .wp-pv-fan-it { flex:0 0 72px; height:72px; padding:0; border:none; background:none; scroll-snap-align:center; cursor:pointer;
-        display:flex; align-items:center; justify-content:center; transform-origin:50% 140%; transition:opacity 0.2s; -webkit-tap-highlight-color:transparent; }
-      .wp-pv-fan-disc { width:62px; height:62px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center;
-        box-shadow:0 8px 20px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.08); transition:box-shadow 0.2s, background-color 0.2s; }
-      .wp-pv-fan-disc img { width:40px; height:40px; object-fit:contain; pointer-events:none; filter:drop-shadow(0 3px 3px rgba(0,0,0,0.18)); }
-      .wp-pv-fan-disc b { font-size:30px; }
-      .wp-pv-fan-it.on .wp-pv-fan-disc { box-shadow:0 0 0 3px #0a0a0a, 0 12px 26px rgba(0,0,0,0.28); }
-      /* paso 2: queda solo el elegido */
-      .wp-pv-fan.mini .wp-pv-fan-sc { overflow:hidden; pointer-events:none; }
-      .wp-pv-fan.mini .wp-pv-fan-it:not(.on) { opacity:0 !important; }
       .wp-pv-chips { display:flex; gap:8px; overflow-x:auto; margin:0 -16px; padding:2px 16px; scrollbar-width:none; }
       .wp-pv-chips::-webkit-scrollbar { display:none; }
       .wp-pv-chips button {
@@ -7143,6 +7127,11 @@ export class PlaceModal2 {
     return { me, mine, pending, others };
   }
 
+  _planEmoji(t) {
+    const G = { food: '🍔', drinks: '☕', hangout: '🎈', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
+    return G[t] || (this._actTypes || []).find(x => x.key === t)?.emoji || '🎈';
+  }
+
   _planWhen(at, short = false) {
     const d = new Date(at), today = new Date(); today.setHours(0, 0, 0, 0);
     const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -7259,7 +7248,7 @@ export class PlaceModal2 {
     body.innerHTML = `
       <div class="wp-pv wp-mp-plan">
         <div class="wp-pv-card">
-          <div class="wp-pv-card-emo">${EMO[a.type] || '🎈'}</div>
+          <div class="wp-pv-card-emo">${this._planEmoji(a.type)}</div>
           <div class="wp-pv-card-txt"><b class="wp-pv-card-t">${this._esc(a.title)}</b>
             <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))}</span>
             <span class="wp-pv-card-v">${VIS[a.visibility] || VIS.public}</span></div>
@@ -7437,7 +7426,7 @@ export class PlaceModal2 {
           return `<div class="wp-ph-card${inv ? ' inv' : ''}" data-i="${i}">
             ${inv ? `<span class="wp-ph-tag">Te invitó ${name(a.creator_id)}</span>` : ''}
             <div class="wp-ph-top">
-              <div class="wp-pv-card-emo">${EMO[a.type] || '🎈'}</div>
+              <div class="wp-pv-card-emo">${this._planEmoji(a.type)}</div>
               <div class="wp-pv-card-txt"><b class="wp-pv-card-t">${this._esc(a.title)}</b>
                 <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))} · organiza ${name(a.creator_id)}</span>
                 <span class="wp-pv-card-v">${full ? `<span class="wp-pv-full-tag">${going} de ${going} · Completo</span>` : a.max_participants ? `Queda${left === 1 ? '' : 'n'} ${left} cupo${left === 1 ? '' : 's'}` : 'Sin límite'}</span></div>
@@ -7521,7 +7510,23 @@ export class PlaceModal2 {
     if (!allowed.includes(type)) type = allowed[0];
     // el sugerido va primero
     allowed = [type, ...allowed.filter(k => k !== type)];
-    const SHOWN = allowed.map(k => TYPES.find(t => t[0] === k)).filter(Boolean);
+    let SHOWN = allowed.map(k => TYPES.find(t => t[0] === k)).filter(Boolean);
+    // Como en "Crear actividad": si el lugar es de una categoría con
+    // actividades (Restaurantes → tacos, birria, mariscos…), salen las de SU
+    // subcategoría (una taquería → tacos; un café → café) y al final
+    // "Pasar el rato" y "Fotos". Sin subcategoría: todas las de la categoría.
+    const ACTS = (this._actTypes || []).filter(t => t.cat === String(place.category || '').toUpperCase());
+    const ICON = {};
+    if (ACTS.length) {
+      const tags = new Set([...(Array.isArray(place.subcategoryTags) ? place.subcategoryTags : []),
+        ...String(place.subcategory_tags || '').split(','), place.subcategory, place.subcategory_id]
+        .map(x => String(x || '').trim().toLowerCase()).filter(Boolean));
+      let mine = ACTS.filter(t => (t.subcats || []).some(sc => tags.has(sc)));
+      if (!mine.length) mine = ACTS;
+      SHOWN = [...mine.map(t => { ICON[t.key] = t.icon3d; return [t.key, t.emoji, t.label]; }),
+        ...['hangout', 'photo'].map(k => TYPES.find(t => t[0] === k))];
+      type = SHOWN[0][0];
+    }
     const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; });
@@ -7540,7 +7545,10 @@ export class PlaceModal2 {
         <div class="wp-pv-progress"><i></i><i></i><i></i><span class="wp-pv-step-t"></span></div>
         <div class="wp-pv-viewport"><div class="wp-pv-track">
           <section class="wp-pv-step">
-            <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b> <span class="wp-pv-hint">desliza los íconos</span></div>
+            <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b></div>
+            <div class="wp-pm2-col-strip wp-pv-strip"><div class="wp-pm2-col-strip-track">
+              ${SHOWN.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
+            </div></div>
             <div class="wp-pv-lbl">¿Cuándo?</div>
             <div class="wp-pv-chips" data-k="day">
               ${days.map((d, i) => `<button type="button" data-v="${i}">${dayLabel(d, i)}</button>`).join('')}
@@ -7592,63 +7600,13 @@ export class PlaceModal2 {
       </div>`;
     { const f = body.querySelector('.wp-pv > .wp-pv-foot'); if (f) body.appendChild(f); }
     const $ = (s) => body.querySelector(s);
-    // ── Abanico de planes: íconos 3D que sobresalen de la hoja, se deslizan
-    // de lado y el del centro es el elegido (con imán al soltar)
-    const R3D = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
-    const ICON3D = {
-      food: 'Hamburger/3D/hamburger_3d.png', drinks: 'Hot beverage/3D/hot_beverage_3d.png', explore: 'Rocket/3D/rocket_3d.png',
-      hangout: 'Balloon/3D/balloon_3d.png', shop: 'Shopping bags/3D/shopping_bags_3d.png', music: 'Musical note/3D/musical_note_3d.png',
-      spa: 'Person getting massage/3D/person_getting_massage_3d.png', sport: 'Person running/3D/person_running_3d.png',
-      photo: 'Camera with flash/3D/camera_with_flash_3d.png',
-    };
-    const fanMenu = body.closest('.wp-pm2-ms-menu');
-    const fan = document.createElement('div');
-    fan.className = 'wp-pv-fan';
-    fan.innerHTML = `<div class="wp-pv-fan-sc">${SHOWN.map(([k, e, l]) => `<button type="button" class="wp-pv-fan-it" data-t="${k}" aria-label="${l}">
-        <span class="wp-pv-fan-disc"><img src="${R3D + ICON3D[k]}" alt="" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'${e}'}))"></span></button>`).join('')}</div>`;
-    fanMenu?.classList.add('wp-pv-hasfan');
-    fanMenu?.appendChild(fan);
-    const fanSc = fan.querySelector('.wp-pv-fan-sc'), fanIts = [...fan.querySelectorAll('.wp-pv-fan-it')];
-    let fanCenter = -1, fanT = 0, fanLock = false;
-    const fanLayout = () => {
-      const mid = fanSc.scrollLeft + fanSc.clientWidth / 2;
-      let best = 0, bd = 1e9;
-      fanIts.forEach((it, i) => {
-        const c = it.offsetLeft + it.offsetWidth / 2;
-        const d = (c - mid) / it.offsetWidth;            // en "íconos" desde el centro
-        const ad = Math.min(Math.abs(d), 3.2);
-        const ty = Math.min(ad, 2.2) ** 2 * 5.5;         // los de los lados bajan (abanico)
-        const rot = Math.max(-28, Math.min(28, d * 11));
-        const sc = 1.22 - Math.min(ad, 1) * 0.3 - Math.max(0, ad - 1) * 0.08;
-        it.style.transform = `translateY(${ty.toFixed(1)}px) rotate(${rot.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
-        it.style.opacity = String(Math.max(0.25, 1 - Math.max(0, ad - 1) * 0.3));
-        it.style.zIndex = String(10 - Math.round(ad));
-        if (Math.abs(d) < bd) { bd = Math.abs(d); best = i; }
-      });
-      if (best !== fanCenter) {
-        fanCenter = best;
-        fanIts.forEach((it, i) => it.classList.toggle('on', i === best));
-        if (!fanLock) { this._haptic?.('light'); type = fanIts[best].dataset.t; paint(); }
-      }
-    };
-    const fanTo = (i, smooth = true) => {
-      const it = fanIts[i]; if (!it) return;
-      fanSc.scrollTo({ left: it.offsetLeft + it.offsetWidth / 2 - fanSc.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
-    };
-    fanSc.addEventListener('scroll', () => requestAnimationFrame(fanLayout), { passive: true });
-    fanSc.addEventListener('click', (e) => {
-      const b = e.target.closest('.wp-pv-fan-it'); if (!b) return;
-      const i = fanIts.indexOf(b);
-      if (i === fanCenter) this._scaleKeys?.(b.firstElementChild, [0.85, 1.1, 1], 260);
-      fanTo(i);
-    });
     const typeName = $('.wp-pv-type-name'), timeBox = $('[data-k="time"]'), titleIn = $('.wp-pv-title');
     const sumEl = $('.wp-pv-sum'), cta = $('.wp-pv-cta'), backBtn = $('.wp-pv-back');
     const viewport = $('.wp-pv-viewport'), track = $('.wp-pv-track');
     const steps = [...body.querySelectorAll('.wp-pv-step')];
     const dateIn = $('[data-k="day"] .wp-pv-native');
-    const tName = () => (TYPES.find(t => t[0] === type) || TYPES[2])[2];
-    const tEmo = () => (TYPES.find(t => t[0] === type) || TYPES[2])[1];
+    const tName = () => (SHOWN.find(t => t[0] === type) || TYPES.find(t => t[0] === type) || TYPES[2])[2];
+    const tEmo = () => (SHOWN.find(t => t[0] === type) || TYPES.find(t => t[0] === type) || TYPES[2])[1];
     const autoTitle = () => `${tName()} en ${info.name}`.slice(0, 60);
 
     const dayDate = () => customDay ? new Date(customDay) : days[day];
@@ -7689,8 +7647,6 @@ export class PlaceModal2 {
     const goStep = (s) => {
       step = Math.max(0, Math.min(2, s));
       track.style.transform = `translateX(${-step * 100}%)`;
-      fan.classList.toggle('mini', step === 1);   // paso 2: solo el elegido
-      fan.classList.toggle('gone', step === 2);   // paso 3 (teclado): se esconde
       steps.forEach((el, i) => { el.inert = i !== step; el.setAttribute('aria-hidden', String(i !== step)); });
       this._haptic?.('light');
       paint();
@@ -7699,6 +7655,7 @@ export class PlaceModal2 {
 
     const paint = () => {
       // Paso 1
+      body.querySelectorAll('.wp-pv-strip button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.t === type));
       typeName.textContent = '· ' + tName();
       body.querySelectorAll('[data-k="day"] button').forEach(b => b.classList.toggle('on', customDay ? b.dataset.v === 'other' : b.dataset.v === String(day)));
       const oDay = $('[data-k="day"] .wp-pv-other');
@@ -7754,6 +7711,10 @@ export class PlaceModal2 {
       if (step === 2) requestAnimationFrame(() => fitStep(false));
     };
 
+    body.querySelector('.wp-pv-strip').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-t]'); if (!b) return;
+      type = b.dataset.t; this._scaleKeys?.(b, [0.85, 1.1, 1], 260); paint();
+    });
     $('[data-k="day"]').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.v === 'other') { try { dateIn.showPicker ? dateIn.showPicker() : dateIn.click(); } catch (_) { dateIn.click(); } return; }
@@ -7823,13 +7784,14 @@ export class PlaceModal2 {
           p_title: title, p_type: type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
           p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: n,
           p_spontaneous: time === 'now', p_visibility: vis, p_note: noteIn.value.trim() || null, p_invited: [...invited],
+          p_icon: ICON[type] || null,
         });
         if (error) {
           const missing = error.code === 'PGRST202' || /create_plan/.test(error.message || '');
           if (!missing) throw error;
           console.warn('[DIAG-PLAN] falta activities_plans.sql: se crea sin invitados ni visibilidad');
           await ActivityService.createActivity({
-            title, type, place_name: info.name, place_id: place.place_id || place.id || null,
+            title, type, place_name: info.name, place_id: place.place_id || place.id || null, icon_url: ICON[type] || null,
             lat: Number(info.lat), lng: Number(info.lng), scheduled_at: at.toISOString(), max_participants: n, is_spontaneous: time === 'now',
           });
         }
@@ -7906,8 +7868,8 @@ export class PlaceModal2 {
     // también movía la ficha de atrás (era el "rebote" al abrir la hoja)
     requestAnimationFrame(() => {
       fitStep(false);
-      fanLock = true; fanTo(Math.max(0, fanIts.findIndex(it => it.dataset.t === type)), false); fanLayout(); fanLock = false;
-      requestAnimationFrame(() => fan.classList.add('in'));
+      const strip = body.querySelector('.wp-pv-strip'), on = strip?.querySelector('.wp-pm2-on');
+      if (strip && on) strip.scrollLeft = Math.max(0, on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2);
     });
   }
 
