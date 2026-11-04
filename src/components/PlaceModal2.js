@@ -1355,6 +1355,33 @@ export class PlaceModal2 {
       .wp-pv-danger { margin-top:4px; height:44px; border:none; border-radius:999px; background:none; color:#e0123c;
         font-size:14px; font-weight:800; font-family:var(--wp-font); cursor:pointer; transition:background-color 0.15s; }
       .wp-pv-danger.armed { background:#e0123c; color:#fff; }
+      /* Cupo + Completo + lugares */
+      .wp-pv-spots { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:16px; background:#f7f8fa; }
+      .wp-pv-spots.full { background:#ecfdf3; }
+      .wp-pv-spots-txt { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:13px; font-weight:700; color:#6b7280; }
+      .wp-pv-spots-txt b { font-size:16px; font-weight:900; color:#111827; }
+      .wp-pv-full-tag[hidden] { display:none; }
+      .wp-pv-full-tag { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; background:#16a34a; color:#fff; font-size:11.5px; font-weight:800; }
+      .wp-pv-wl { padding:3px 9px; border-radius:999px; background:#fff7e0; color:#a16207; font-size:11.5px; font-weight:800; }
+      .wp-pv-spots-ctl { flex:none; display:flex; align-items:center; gap:6px; }
+      .wp-pv-spots-ctl button { height:36px; border:none; border-radius:999px; font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+      .wp-pv-spots-ctl button[hidden] { display:none; }
+      .wp-pv-spots-minus { width:36px; background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); font-size:18px !important; }
+      .wp-pv-spots-add { padding:0 14px; background:#0a0a0a; color:#fff; transition:background-color 0.15s, transform 0.15s; }
+      .wp-pv-spots-add.mini { width:36px; padding:0; font-size:18px !important; background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); }
+      .wp-pv-spots-save { padding:0 14px; background:#16a34a; color:#fff; animation:wpPvAsk 0.25s ease; }
+      .wp-pv-spots-add:active { transform:scale(0.95); }
+      .wp-pv-ask { display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:18px; background:#fff7e0; border:1px solid rgba(161,98,7,0.2); animation:wpPvAsk 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+      .wp-pv-ask[hidden] { display:none; }
+      .wp-pv-ask-q { font-size:14.5px; font-weight:800; color:#3d2a00; line-height:1.3; }
+      .wp-pv-ask-btns { display:flex; gap:8px; }
+      .wp-pv-ask-btns button { flex:1; height:42px; border:none; border-radius:999px; font-family:var(--wp-font); font-size:14px; font-weight:800; cursor:pointer; }
+      .wp-pv-ask-no { background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); }
+      .wp-pv-ask-yes { background:#0a0a0a; color:#fff; }
+      @keyframes wpPvAsk { from { transform:translateY(8px) scale(0.97); opacity:0; } to { transform:none; opacity:1; } }
+      .wp-pv-invite-go[hidden] { display:none; }
+      .wp-ph-wl { background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.12); }
+      .wp-ph-wl.on { background:#ecfdf3; color:#15803d; box-shadow:inset 0 0 0 1px rgba(22,163,74,0.3); }
       /* "Planes aquí" */
       .wp-ph { gap:10px; }
       .wp-ph-card { position:relative; display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:20px; background:#f7f8fa; border:1px solid rgba(0,0,0,0.05); }
@@ -2075,6 +2102,7 @@ export class PlaceModal2 {
       @keyframes wpPlanFace { from { transform:translateY(14px) scale(0.4); opacity:0; } to { transform:none; opacity:1; } }
       .wp-pm2-plan-chip { flex:none; height:22px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center;
         background:rgba(255,255,255,0.22); font-size:12px; font-weight:800; }
+      .wp-pm2-plan-chip.full { background:#16a34a; color:#fff; }
       .wp-pm2-plan-live { flex:none; width:9px; height:9px; border-radius:50%; background:#4ade80; animation:wpPlanLive 1.6s ease-out infinite; }
       @keyframes wpPlanLive { 0% { box-shadow:0 0 0 0 rgba(74,222,128,0.7); } 100% { box-shadow:0 0 0 9px rgba(74,222,128,0); } }
     `;
@@ -7102,7 +7130,9 @@ export class PlaceModal2 {
       faces = (mine.participants || []).filter(id => id !== me);
       if (!faces.length) faces = (mine.invited || []).filter(id => id !== me);
       const mins = Math.round((new Date(mine.scheduled_at) - Date.now()) / 60000);
+      const n = (mine.participants || []).length;
       if (mins <= 0) chip = '<span class="wp-pm2-plan-live"></span>';
+      else if (this._planFull(mine)) chip = `<span class="wp-pm2-plan-chip full">${n}/${n} · Completo</span>`;
       else if (mins < 60) chip = `<span class="wp-pm2-plan-chip">en ${mins} min</span>`;
       else if (mins < 6 * 60) chip = `<span class="wp-pm2-plan-chip">en ${Math.round(mins / 60)} h</span>`;
     } else if (pending.length) {
@@ -7143,9 +7173,13 @@ export class PlaceModal2 {
     } catch (_) {}
   }
 
-  async _planRpc(fn, args, okMsg) {
+  _planFull(a) { return !!a?.max_participants && (a.participants || []).length >= a.max_participants; }
+
+  // opts.onError(error) → true si ya lo manejó (no se muestra el aviso)
+  async _planRpc(fn, args, okMsg, opts = {}) {
     const { error } = await getSupabase().rpc(fn, args);
     if (error) {
+      try { if (opts.onError?.(error)) return false; } catch (_) {}
       const missing = error.code === 'PGRST202' || new RegExp(fn).test(error.message || '');
       console.warn('[DIAG-PLAN]', fn, error.message || error, missing ? '(falta activities_plans.sql)' : '');
       this._showToast(missing ? 'Esta función aún no está activa' : (error.message || 'No se pudo'));
@@ -7173,6 +7207,7 @@ export class PlaceModal2 {
     (a.invited || []).filter(id => !(a.participants || []).includes(id) && !(a.declined || []).includes(id)).forEach(id => rows.push([id, 'Pendiente', 'wait']));
     (a.declined || []).filter(id => !(a.participants || []).includes(id)).forEach(id => rows.push([id, 'No puede', 'no']));
     const going = (a.participants || []).length;
+    const full = this._planFull(a);
     const SHARE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
     const ADD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M19 8v6M16 11h6"/></svg>';
     const CLOCK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
@@ -7181,8 +7216,17 @@ export class PlaceModal2 {
         <div class="wp-pv-card">
           <div class="wp-pv-card-emo">${EMO[a.type] || '🎈'}</div>
           <div class="wp-pv-card-txt"><b class="wp-pv-card-t">${this._esc(a.title)}</b>
-            <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))} · ${going} de ${a.max_participants || '∞'}</span>
+            <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))}</span>
             <span class="wp-pv-card-v">${VIS[a.visibility] || VIS.public}</span></div>
+        </div>
+        <div class="wp-pv-spots${full ? ' full' : ''}">
+          <div class="wp-pv-spots-txt"><b>${going} de ${a.max_participants || '∞'}</b>${full ? '<span class="wp-pv-full-tag">✓ Completo</span>'
+            : a.max_participants ? `<span>Queda${a.max_participants - going === 1 ? '' : 'n'} ${a.max_participants - going} lugar${a.max_participants - going === 1 ? '' : 'es'}</span>` : ''}
+            ${(a.waitlist || []).length ? `<span class="wp-pv-wl">${a.waitlist.length} en espera</span>` : ''}</div>
+          ${isOwner && a.max_participants && a.max_participants < 50 ? `<div class="wp-pv-spots-ctl">
+            <button type="button" class="wp-pv-spots-minus" aria-label="Un lugar menos" hidden>−</button>
+            <button type="button" class="wp-pv-spots-add"><span>+ Lugares</span></button>
+            <button type="button" class="wp-pv-spots-save" hidden>Abrir</button></div>` : ''}
         </div>
         ${a.note ? `<div class="wp-pv-postit wp-pv-postit-ro"><i class="wp-pv-tape"></i><div class="wp-pv-note-ro">${this._esc(a.note)}</div></div>` : ''}
         <div class="wp-pv-lbl">Quién va <span class="wp-pv-hint">${going} confirmad${going === 1 ? 'o' : 'os'}</span></div>
@@ -7197,6 +7241,10 @@ export class PlaceModal2 {
         </div>
         <div class="wp-pv-invite" hidden>
           <div class="wp-pv-people"><span class="wp-pv-empty">Cargando…</span></div>
+          <div class="wp-pv-ask" hidden>
+            <b class="wp-pv-ask-q"></b>
+            <div class="wp-pv-ask-btns"><button type="button" class="wp-pv-ask-no">Ahora no</button><button type="button" class="wp-pv-ask-yes">Abrir e invitar</button></div>
+          </div>
           <button type="button" class="wp-pv-cta wp-pv-invite-go" disabled><span>Enviar invitaciones</span></button>
         </div>
         <button type="button" class="wp-pv-danger">${isOwner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>
@@ -7220,6 +7268,33 @@ export class PlaceModal2 {
       if (ok) close();
     };
     if (!isOwner) return;
+    // + Lugares: [+] suma, [−] resta, "Abrir N" lo guarda
+    const addB = $('.wp-pv-spots-add'), minus = $('.wp-pv-spots-minus'), save = $('.wp-pv-spots-save');
+    if (addB) {
+      let extra = 0;
+      const paint = () => {
+        $('.wp-pv-spots-txt b').textContent = `${going} de ${a.max_participants + extra}`;
+        minus.hidden = save.hidden = !extra;
+        addB.classList.toggle('mini', !!extra);
+        addB.querySelector('span').textContent = extra ? '+' : '+ Lugares';
+        save.textContent = `Abrir ${extra}`;
+        // mientras abres lugares ya no se ve "Completo"
+        $('.wp-pv-spots').classList.toggle('full', full && !extra);
+        const tag = $('.wp-pv-spots .wp-pv-full-tag'); if (tag) tag.hidden = !!extra;
+      };
+      addB.onclick = () => {
+        if (a.max_participants + extra >= 50) { this._showToast('Máximo 50 lugares'); return; }
+        extra++; this._haptic?.('light'); paint();
+      };
+      minus.onclick = () => { if (extra) { extra--; this._haptic?.('light'); paint(); } };
+      save.onclick = async () => {
+        save.disabled = true;
+        const ok = await this._planRpc('add_plan_spots', { p_activity: a.id, p_n: extra },
+          `Abriste ${extra} lugar${extra === 1 ? '' : 'es'}${(a.waitlist || []).length ? ' · le avisamos a quien esperaba' : ''}`);
+        save.disabled = false;
+        if (ok) close();
+      };
+    }
     // Cambiar hora (fecha y hora del teléfono)
     const tBtn = body.querySelector('[data-a="time"]'), tIn = tBtn.querySelector('input');
     const pad = (x) => String(x).padStart(2, '0');
@@ -7259,10 +7334,30 @@ export class PlaceModal2 {
       go.disabled = !sel.size;
       go.querySelector('span').textContent = sel.size ? `Invitar a ${sel.size}` : 'Enviar invitaciones';
     });
-    go.onclick = async () => {
+    const ask = $('.wp-pv-ask');
+    const sendInv = async (expand) => {
       if (!sel.size) return;
-      if (await this._planRpc('invite_to_plan', { p_activity: a.id, p_invited: [...sel] }, `Invitaste a ${sel.size} · ya les avisamos`)) close();
+      go.disabled = true;
+      const n = sel.size;
+      const ok = await this._planRpc('invite_to_plan', { p_activity: a.id, p_invited: [...sel], p_expand: expand },
+        `Invitaste a ${n}${expand ? ' · abriste más lugares' : ''} · ya les avisamos`, {
+          onError: (err) => {
+            const m = /PLAN_LLENO:(\d+)/.exec(err?.message || '');
+            if (!m) return false;
+            const k = +m[1];
+            ask.querySelector('.wp-pv-ask-q').textContent = `Tu plan está lleno: ¿abrir ${k} lugar${k === 1 ? '' : 'es'} más para invitar?`;
+            ask.hidden = false; go.hidden = true;
+            this._haptic?.('light');
+            requestAnimationFrame(() => { try { ask.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {} });
+            return true;
+          },
+        });
+      go.disabled = !sel.size;
+      if (ok) close();
     };
+    go.onclick = () => sendInv(false);
+    ask.querySelector('.wp-pv-ask-yes').onclick = () => { ask.hidden = true; go.hidden = false; sendInv(true); };
+    ask.querySelector('.wp-pv-ask-no').onclick = () => { ask.hidden = true; go.hidden = false; };
   }
 
   // ── Hoja "Planes aquí": unirme / aceptar invitación / crear el mío ──
@@ -7277,22 +7372,26 @@ export class PlaceModal2 {
       <div class="wp-pv wp-ph">
         ${list.map((a, i) => {
           const going = (a.participants || []).length, left = Math.max(0, (a.max_participants || 0) - going);
+          const full = this._planFull(a), waiting = (a.waitlist || []).includes(me);
           const inv = pending.includes(a), inIt = (a.participants || []).includes(me);
+          const WL = waiting ? `<button type="button" class="wp-ph-wl on" data-wl="off">✓ Te avisaremos si se libera</button>`
+            : `<button type="button" class="wp-ph-wl" data-wl="on">🔔 Avísame si se libera</button>`;
           return `<div class="wp-ph-card${inv ? ' inv' : ''}" data-i="${i}">
             ${inv ? `<span class="wp-ph-tag">Te invitó ${name(a.creator_id)}</span>` : ''}
             <div class="wp-ph-top">
               <div class="wp-pv-card-emo">${EMO[a.type] || '🎈'}</div>
               <div class="wp-pv-card-txt"><b class="wp-pv-card-t">${this._esc(a.title)}</b>
                 <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))} · organiza ${name(a.creator_id)}</span>
-                <span class="wp-pv-card-v">${left ? `Quedan ${left} lugar${left === 1 ? '' : 'es'}` : 'Lleno'}</span></div>
+                <span class="wp-pv-card-v">${full ? `<span class="wp-pv-full-tag">${going} de ${going} · Completo</span>` : a.max_participants ? `Quedan ${left} lugar${left === 1 ? '' : 'es'}` : 'Sin límite'}</span></div>
               <div class="wp-pv-card-faces">${(a.participants || []).slice(0, 3).map(id => this._planFace(id)).join('')}${going > 3 ? `<b>+${going - 3}</b>` : ''}</div>
             </div>
             ${a.note ? `<div class="wp-ph-note">“${this._esc(a.note)}”</div>` : ''}
             <div class="wp-ph-btns">
-              ${inv ? `<button type="button" class="wp-ph-no" data-a="no">No puedo</button><button type="button" class="wp-ph-yes" data-a="yes">Aceptar</button>`
-                : inIt ? `<button type="button" class="wp-ph-yes" disabled>Ya vas</button>`
-                : left ? `<button type="button" class="wp-ph-yes" data-a="yes">Unirme</button>`
-                : `<button type="button" class="wp-ph-yes" disabled>Lleno</button>`}
+              ${inIt ? `<button type="button" class="wp-ph-yes" disabled>Ya vas</button>`
+                : inv && !full ? `<button type="button" class="wp-ph-no" data-a="no">No puedo</button><button type="button" class="wp-ph-yes" data-a="yes">Aceptar</button>`
+                : inv ? `<button type="button" class="wp-ph-no" data-a="no">No puedo</button>${WL}`
+                : !full ? `<button type="button" class="wp-ph-yes" data-a="yes">Unirme</button>`
+                : WL}
             </div>
           </div>`;
         }).join('')}
@@ -7304,6 +7403,20 @@ export class PlaceModal2 {
       b.disabled = true;
       const ok = await this._planRpc('respond_plan', { p_activity: a.id, p_accept: yes }, yes ? `¡Vas! ${this._planWhen(a.scheduled_at)}` : 'Le avisamos que no puedes');
       if (ok) close(); else b.disabled = false;
+    });
+    // Lista de espera
+    body.querySelectorAll('.wp-ph-card button[data-wl]').forEach(b => b.onclick = async () => {
+      const a = list[+b.closest('.wp-ph-card').dataset.i];
+      const on = b.dataset.wl === 'on';
+      b.disabled = true;
+      const ok = await this._planRpc('plan_waitlist', { p_activity: a.id, p_on: on },
+        on ? 'Listo · te avisamos si se libera un lugar' : 'Ya no estás en la lista de espera');
+      b.disabled = false;
+      if (!ok) return;
+      a.waitlist = on ? [...(a.waitlist || []), me] : (a.waitlist || []).filter(id => id !== me);
+      b.dataset.wl = on ? 'off' : 'on';
+      b.classList.toggle('on', on);
+      b.textContent = on ? '✓ Te avisaremos si se libera' : '🔔 Avísame si se libera';
     });
     const nb = body.querySelector('.wp-ph-new');
     if (nb) nb.onclick = () => { close(true); setTimeout(() => this._openPlanSheet(), 60); };
