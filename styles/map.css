@@ -96,6 +96,7 @@
 }
 
 /* ── Badge de actividades ── */
+.place-act-badge.full { background: #9ca3af !important; white-space: nowrap; }
 .place-act-badge {
   position: absolute;
   top: -7px;
