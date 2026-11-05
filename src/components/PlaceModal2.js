@@ -1235,6 +1235,12 @@ export class PlaceModal2 {
       .wp-pv-strip::-webkit-scrollbar { display:none; }
       /* pocos planes (según el lugar) → centrados; si no caben, se deslizan */
       .wp-pv-strip .wp-pm2-col-strip-track { margin:0 auto; }
+      .wp-pv-strip[hidden] { display:none; }
+      .wp-pv-titlef { padding-left:5px !important; gap:8px; }
+      .wp-pv-ico { flex:none; width:36px; height:36px; border:none; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.12);
+        display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer; -webkit-tap-highlight-color:transparent; position:relative; }
+      .wp-pv-ico::after { content:''; position:absolute; right:-1px; bottom:-1px; width:12px; height:12px; border-radius:50%; background:#0a0a0a
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E") center/9px no-repeat; box-shadow:0 0 0 1.5px #fff; }
       .wp-pv-chips { display:flex; gap:8px; overflow-x:auto; margin:0 -16px; padding:2px 16px; scrollbar-width:none; }
       .wp-pv-chips::-webkit-scrollbar { display:none; }
       .wp-pv-chips button {
@@ -7812,17 +7818,13 @@ export class PlaceModal2 {
     const CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
     const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
     const BACK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
-    const STEP_T = ['Qué y cuándo', 'Con quién', 'Último toque'];
+    const STEP_T = ['Cuándo', 'Con quién', 'Último toque'];
 
     body.innerHTML = `
       <div class="wp-pv">
         <div class="wp-pv-progress"><i></i><i></i><i></i><span class="wp-pv-step-t"></span></div>
         <div class="wp-pv-viewport"><div class="wp-pv-track">
           <section class="wp-pv-step">
-            <div class="wp-pv-lbl">¿Qué plan? <b class="wp-pv-type-name"></b></div>
-            <div class="wp-pm2-col-strip wp-pv-strip"><div class="wp-pm2-col-strip-track">
-              ${SHOWN.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
-            </div></div>
             <div class="wp-pv-lbl">¿Cuándo?</div>
             <div class="wp-pv-chips" data-k="day">
               ${days.map((d, i) => `<button type="button" data-v="${i}">${dayLabel(d, i)}</button>`).join('')}
@@ -7847,10 +7849,14 @@ export class PlaceModal2 {
             </div>
           </section>
           <section class="wp-pv-step">
-            <div class="wp-pv-lbl">Nombre del plan</div>
-            <div class="wp-pm2-col-field">
+            <div class="wp-pv-lbl">Nombre del plan <span class="wp-pv-hint">toca el ícono para cambiarlo</span></div>
+            <div class="wp-pm2-col-field wp-pv-titlef">
+              <button type="button" class="wp-pv-ico" aria-label="Cambiar ícono del plan"><span></span></button>
               <input class="wp-pm2-col-input2 wp-pv-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off">
             </div>
+            <div class="wp-pm2-col-strip wp-pv-strip" hidden><div class="wp-pm2-col-strip-track">
+              ${SHOWN.map(([k, e, l]) => `<button type="button" data-t="${k}" aria-label="${l}">${e}</button>`).join('')}
+            </div></div>
             <div class="wp-pv-lbl">Reglas del plan <span class="wp-pv-hint">opcional</span></div>
             <div class="wp-pv-rules">${this._planRules().map(([k, e, t]) => `<button type="button" data-r="${k}">${e} ${t}</button>`).join('')}</div>
             <button type="button" class="wp-pv-addnote">
@@ -7883,7 +7889,7 @@ export class PlaceModal2 {
     const dateIn = $('[data-k="day"] .wp-pv-native');
     const tName = () => (SHOWN.find(t => t[0] === type) || TYPES.find(t => t[0] === type) || TYPES[2])[2];
     const tEmo = () => (SHOWN.find(t => t[0] === type) || TYPES.find(t => t[0] === type) || TYPES[2])[1];
-    const autoTitle = () => `${tName()} en ${info.name}`.slice(0, 60);
+    const autoTitle = () => `Plan en ${info.name}`.slice(0, 60);
 
     const dayDate = () => customDay ? new Date(customDay) : days[day];
     const isToday = () => !customDay && day === 0;
@@ -7932,7 +7938,7 @@ export class PlaceModal2 {
     const paint = () => {
       // Paso 1
       body.querySelectorAll('.wp-pv-strip button').forEach(b => b.classList.toggle('wp-pm2-on', b.dataset.t === type));
-      typeName.textContent = '· ' + tName();
+      $('.wp-pv-ico span').textContent = tEmo();
       body.querySelectorAll('[data-k="day"] button').forEach(b => b.classList.toggle('on', customDay ? b.dataset.v === 'other' : b.dataset.v === String(day)));
       const oDay = $('[data-k="day"] .wp-pv-other');
       oDay.firstChild.textContent = customDay ? (() => { const d = new Date(customDay); return `${DOW[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`; })() : 'Otro día';
@@ -7973,7 +7979,7 @@ export class PlaceModal2 {
       // Condiciones de cada paso
       const past = time !== 'now' && when() < new Date();
       const noInv = vis === 'invited' && !invited.size;
-      const msg = step === 0 ? (past ? 'Elige una hora que no haya pasado' : `${tName()} · ${fmtWhen()}`)
+      const msg = step === 0 ? (past ? 'Elige una hora que no haya pasado' : fmtWhen())
         : step === 1 ? (noInv ? 'Elige a quién invitas, o deja que se una cualquiera'
           : vis === 'invited' ? `Tú + ${invited.size} invitad${invited.size === 1 ? 'o' : 'os'}`
           : `${n} cupos · ${invited.size ? invited.size + ' invitad' + (invited.size === 1 ? 'o' : 'os') + ' · ' : ''}${VIS[vis].toLowerCase()}`)
@@ -7987,9 +7993,22 @@ export class PlaceModal2 {
       if (step === 2) requestAnimationFrame(() => fitStep(false));
     };
 
-    body.querySelector('.wp-pv-strip').addEventListener('click', (e) => {
+    // Ícono del plan: solo para identificarlo (no es un paso)
+    const icoStrip = body.querySelector('.wp-pv-strip');
+    $('.wp-pv-ico').onclick = () => {
+      icoStrip.hidden = !icoStrip.hidden;
+      this._haptic?.('light');
+      if (!icoStrip.hidden) {
+        const on = icoStrip.querySelector('.wp-pm2-on');
+        if (on) icoStrip.scrollLeft = Math.max(0, on.offsetLeft - (icoStrip.clientWidth - on.offsetWidth) / 2);
+      }
+      requestAnimationFrame(() => fitStep(false));
+    };
+    icoStrip.addEventListener('click', (e) => {
       const b = e.target.closest('button[data-t]'); if (!b) return;
       type = b.dataset.t; this._scaleKeys?.(b, [0.85, 1.1, 1], 260); paint();
+      this._scaleKeys?.($('.wp-pv-ico'), [0.8, 1.15, 1], 300);
+      setTimeout(() => { icoStrip.hidden = true; requestAnimationFrame(() => fitStep(false)); }, 220);
     });
     $('[data-k="day"]').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
@@ -8156,8 +8175,6 @@ export class PlaceModal2 {
     // también movía la ficha de atrás (era el "rebote" al abrir la hoja)
     requestAnimationFrame(() => {
       fitStep(false);
-      const strip = body.querySelector('.wp-pv-strip'), on = strip?.querySelector('.wp-pm2-on');
-      if (strip && on) strip.scrollLeft = Math.max(0, on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2);
     });
   }
 
