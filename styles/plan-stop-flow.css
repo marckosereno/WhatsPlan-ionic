@@ -1,0 +1,151 @@
+@charset "UTF-8";
+/* ══════════════════════════════════════════════════════════════════
+   WHATSPLAN — plan-stop-flow.css
+   Pantalla completa "Nueva parada" (src/components/place-plans/
+   stop-flow.js): una sola pantalla en tarjetas — ruta, qué, dónde,
+   a qué hora, indicación — y un botón fijo abajo.
+   ══════════════════════════════════════════════════════════════════ */
+
+#wp-sf {
+  --sf-ink: #0a0a0a;
+  --sf-sub: #8e8e93;
+  --sf-line: #eef0f3;
+  --sf-blue: #1a5cf5;
+  --sf-blue-soft: #eef4ff;
+  position: fixed; inset: 0; z-index: 1500500;
+  display: flex; flex-direction: column;
+  background: #f6f7f9;
+  font-family: var(--wp-font);
+  padding-top: env(safe-area-inset-top, 0px);
+  transform: translateY(100%);
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+#wp-sf.in { transform: none; }
+#wp-sf button { font-family: inherit; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+#wp-sf [hidden] { display: none !important; }
+
+/* ── Barra superior ── */
+.wp-sf-top { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px 10px; }
+.wp-sf-top h1 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 800; color: var(--sf-ink); }
+.wp-sf-iconbtn {
+  flex: none; width: 40px; height: 40px; border: none; border-radius: 50%;
+  background: #fff; color: var(--sf-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: flex; align-items: center; justify-content: center;
+}
+.wp-sf-n { font-size: 14px; font-weight: 900; }
+
+/* ── Contenido ── */
+.wp-sf-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Ruta del plan sobre "papel de mapa" */
+.wp-sf-route {
+  flex: none; overflow-x: auto; scrollbar-width: none; border-radius: 22px; padding: 14px;
+  background-color: #eef2f6;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120' viewBox='0 0 160 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='3'%3E%3Cpath d='M-10 30 Q40 10 80 40 T170 30'/%3E%3Cpath d='M30 -10 L50 130'/%3E%3Cpath d='M-10 90 L170 75'/%3E%3C/g%3E%3Cg fill='none' stroke='%23dfe5ec' stroke-width='1.2'%3E%3Cpath d='M110 -10 L120 130'/%3E%3Cpath d='M-10 60 L170 55'/%3E%3C/g%3E%3C/svg%3E");
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+.wp-sf-route::-webkit-scrollbar { display: none; }
+.wp-sf-route-track { display: flex; align-items: center; width: max-content; }
+.wp-sf-stop { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+.wp-sf-stop.new { background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1.5px #c9d0d9; }
+.wp-sf-stop.new.set { background: var(--sf-blue-soft); box-shadow: inset 0 0 0 1.5px var(--sf-blue); animation: wpSfPop 0.4s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.wp-sf-stop-i {
+  position: relative; width: 36px; height: 36px; border-radius: 50%; background: #f6f7f9;
+  display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #9ca3af;
+}
+.wp-sf-stop-i img { width: 24px; height: 24px; object-fit: contain; }
+.wp-sf-stop-i b {
+  position: absolute; right: -3px; bottom: -3px; min-width: 16px; height: 16px; padding: 0 3px; box-sizing: border-box;
+  border-radius: 999px; background: var(--sf-ink); color: #fff; font-size: 9.5px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 1.5px #fff;
+}
+.wp-sf-stop.new .wp-sf-stop-i b { background: var(--sf-blue); }
+.wp-sf-stop-t { display: flex; flex-direction: column; max-width: 118px; }
+.wp-sf-stop-t small { font-size: 11px; font-weight: 800; color: #6b7280; }
+.wp-sf-stop.new .wp-sf-stop-t small { color: var(--sf-blue); }
+.wp-sf-stop-t em { font-style: normal; font-size: 13px; font-weight: 800; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-sf-dash { flex: none; width: 18px; border-top: 2px dashed #b8c1cc; margin: 0 3px; }
+@keyframes wpSfPop { from { transform: scale(0.9); } to { transform: none; } }
+
+/* Tarjetas */
+.wp-sf-card { flex: none; background: #fff; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.wp-sf-card-h { display: flex; align-items: baseline; gap: 10px; }
+.wp-sf-card-h h2 { flex: 1; margin: 0; font-size: 17px; font-weight: 800; color: var(--sf-ink); letter-spacing: -0.2px; }
+.wp-sf-card-h h2 small { font-size: 12.5px; font-weight: 600; color: var(--sf-sub); margin-left: 4px; }
+.wp-sf-card-v { font-size: 13px; font-weight: 700; color: var(--sf-blue); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-sf-card-v[data-v="time"] { color: var(--sf-sub); font-weight: 600; }
+.wp-sf-link { display: flex; align-items: center; gap: 5px; border: none; background: none; padding: 0; color: var(--sf-blue); font-size: 13.5px; font-weight: 800; }
+
+/* Qué van a hacer: categorías + íconos 3D */
+.wp-sf-cats, .wp-sf-acts, .wp-sf-times { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px; scrollbar-width: none; scroll-padding: 0 16px; }
+.wp-sf-cats::-webkit-scrollbar, .wp-sf-acts::-webkit-scrollbar, .wp-sf-times::-webkit-scrollbar { display: none; }
+.wp-sf-cats button { flex: none; height: 34px; padding: 0 13px; border: none; border-radius: 999px; background: #f3f4f6; color: #111827; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.wp-sf-cats button.on { background: var(--sf-ink); color: #fff; }
+.wp-sf-acts { padding-top: 4px; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.wp-sf-act { flex: 0 0 82px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: none; background: none; scroll-snap-align: start; }
+.wp-sf-act-i {
+  width: 74px; height: 74px; border-radius: 20px; background: var(--t, #f3f4f6);
+  display: flex; align-items: center; justify-content: center; font-size: 34px;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.wp-sf-act-i img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.14)); }
+.wp-sf-act:active .wp-sf-act-i { transform: scale(0.95); }
+.wp-sf-act.on .wp-sf-act-i { box-shadow: inset 0 0 0 2.5px var(--sf-blue); background: var(--sf-blue-soft); }
+.wp-sf-act-l { width: 100%; font-size: 12px; font-weight: 700; color: #374151; line-height: 1.2; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wp-sf-act.on .wp-sf-act-l { color: var(--sf-blue); }
+
+/* Dónde */
+.wp-sf-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 16px; border-radius: 999px; background: #f3f4f6; }
+.wp-sf-search input { flex: 1; min-width: 0; border: none; background: none; outline: none; font: inherit; font-size: 15px; color: var(--sf-ink); }
+.wp-sf-search button { width: 30px; height: 30px; border: none; border-radius: 50%; background: #e5e7eb; color: #4b5563; font-size: 17px; line-height: 1; }
+.wp-sf-places { display: flex; flex-direction: column; margin: 0 -8px; }
+.wp-sf-place { display: flex; align-items: center; gap: 12px; padding: 8px; border: none; border-radius: 16px; background: none; text-align: left; transition: background-color 0.15s; }
+.wp-sf-place:active { background: #f6f7f9; }
+.wp-sf-place.on { background: var(--sf-blue-soft); }
+.wp-sf-place-ph { flex: none; width: 46px; height: 46px; border-radius: 14px; background: #eef0f3 center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.wp-sf-place-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wp-sf-place-t b { font-size: 15px; font-weight: 700; color: var(--sf-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-sf-place-t small { font-size: 12.5px; color: var(--sf-sub); }
+.wp-sf-radio { flex: none; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px #d1d5db; transition: box-shadow 0.15s; }
+.wp-sf-place.on .wp-sf-radio { box-shadow: inset 0 0 0 7px var(--sf-blue); }
+.wp-sf-own { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px dashed #d1d5db; border-radius: 18px; background: #fff; text-align: left; }
+.wp-sf-own.on { border-style: solid; border-color: var(--sf-blue); background: var(--sf-blue-soft); }
+.wp-sf-own > span:first-child { font-size: 22px; }
+.wp-sf-own > span:last-child { display: flex; flex-direction: column; }
+.wp-sf-own b { font-size: 14.5px; font-weight: 800; color: #111827; }
+.wp-sf-own small { font-size: 12.5px; color: var(--sf-sub); }
+.wp-sf-ownf { display: flex; flex-direction: column; gap: 8px; }
+.wp-sf-gps { align-self: flex-start; height: 36px; padding: 0 14px; border: none; border-radius: 999px; background: var(--sf-blue-soft); color: var(--sf-blue); font-size: 13.5px; font-weight: 800; }
+.wp-sf-gps.ok { background: #ecfdf3; color: #15803d; }
+.wp-sf-gps:disabled { opacity: 0.6; }
+.wp-sf-empty { margin: 4px 8px; font-size: 13.5px; color: var(--sf-sub); }
+
+/* A qué hora: tira tipo calendario */
+.wp-sf-time {
+  flex: none; min-width: 78px; padding: 0 10px; box-sizing: border-box; height: 64px; white-space: nowrap; border: none; border-radius: 18px; background: #f3f4f6;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  transition: background-color 0.15s, transform 0.15s;
+}
+.wp-sf-time small { font-size: 11px; font-weight: 700; color: var(--sf-sub); }
+.wp-sf-time b { font-size: 15px; font-weight: 800; color: var(--sf-ink); font-variant-numeric: tabular-nums; }
+.wp-sf-time:active { transform: scale(0.95); }
+.wp-sf-time.on { background: var(--sf-blue); box-shadow: 0 6px 14px rgba(26, 92, 245, 0.28); }
+.wp-sf-time.on small, .wp-sf-time.on b { color: #fff; }
+
+/* Indicación */
+.wp-sf-in {
+  height: 46px; padding: 0 16px; border: none; border-radius: 999px; background: #f3f4f6; outline: none;
+  font: inherit; font-size: 15px; color: var(--sf-ink); box-sizing: border-box; width: 100%;
+}
+.wp-sf-in:focus { box-shadow: inset 0 0 0 2px var(--sf-ink); background: #fff; }
+.wp-sf-hint { margin: 0; font-size: 12.5px; color: var(--sf-sub); }
+
+/* Botón fijo */
+.wp-sf-foot { flex: none; padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(180deg, rgba(246, 247, 249, 0), #f6f7f9 30%); }
+.wp-sf-go {
+  width: 100%; height: 56px; border: none; border-radius: 999px; background: var(--sf-ink); color: #fff;
+  font-size: 16px; font-weight: 800; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); transition: opacity 0.2s, transform 0.15s;
+}
+.wp-sf-go:active { transform: scale(0.98); }
+.wp-sf-go:disabled { background: #d9dde3; color: #6b7280; box-shadow: none; }
