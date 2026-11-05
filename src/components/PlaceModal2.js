@@ -1404,6 +1404,9 @@ export class PlaceModal2 {
       .wp-pv-foot { display:flex; gap:8px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); margin:4px -16px 0; padding-left:16px; padding-right:16px; }
       .wp-pv-foot .wp-pv-cta { flex:1; }
       /* fuera del contenido que se desliza: pegado al fondo de la hoja */
+      .wp-mp-invfoot { flex-direction:column; }
+      .wp-mp-invfoot[hidden] { display:none !important; }
+      .wp-mp-invfoot .wp-pv-cta { width:100%; flex:none !important; height:50px; }
       .wp-pm2-ms-body > .wp-pv-foot { position:static; margin:6px 0 0; padding:10px 16px 2px; background:#fff; border-radius:0 0 24px 24px; }
       .wp-pv-back { flex:none; width:56px; height:50px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
         display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -7583,6 +7586,15 @@ export class PlaceModal2 {
         </div>
         <button type="button" class="wp-pv-danger">${isOwner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>
       </div>`;
+    // Invitar: el botón "Enviar invitaciones" (y la pregunta de cupos) va
+    // FUERA del contenido que se desliza → siempre a la vista abajo
+    { const pv = body.querySelector('.wp-pv'), inv = body.querySelector('.wp-pv-invite');
+      if (pv && inv) {
+        const f = document.createElement('div');
+        f.className = 'wp-pv-foot wp-mp-invfoot'; f.hidden = true;
+        f.append(inv.querySelector('.wp-pv-ask'), inv.querySelector('.wp-pv-invite-go'));
+        body.appendChild(f);
+      } }
     // "Cancelar plan" / "Ya no puedo ir" como badge arriba a la derecha de la hoja
     { const hd = body.closest('.wp-pm2-ms-menu')?.querySelector('.wp-pm2-ms-header'), dg = body.querySelector('.wp-pv-danger');
       if (hd && dg) { hd.classList.add('wp-pv-hd'); hd.appendChild(dg); } }
@@ -7669,8 +7681,15 @@ export class PlaceModal2 {
     const invBox = $('.wp-pv-invite'), peopleEl = invBox.querySelector('.wp-pv-people'), go = $('.wp-pv-invite-go');
     const sel = new Set();
     const already = new Set([...(a.participants || []), ...(a.invited || [])]);
+    const invFoot = body.querySelector('.wp-mp-invfoot'), pvEl = body.querySelector('.wp-pv');
     body.querySelector('[data-a="invite"]').onclick = async () => {
       invBox.hidden = !invBox.hidden;
+      if (invFoot) {
+        invFoot.hidden = invBox.hidden;
+        // el contenido se hace más bajo lo que mide el botón, y se desliza
+        pvEl.style.maxHeight = invBox.hidden ? '' : `calc(100dvh - 150px - env(safe-area-inset-top, 0px) - ${invFoot.offsetHeight + 6}px)`;
+        if (!invBox.hidden) requestAnimationFrame(() => { pvEl.scrollTo({ top: pvEl.scrollTop + invBox.getBoundingClientRect().top - pvEl.getBoundingClientRect().top - 12, behavior: 'smooth' }); });
+      }
       if (invBox.hidden || peopleEl.dataset.loaded) return;
       peopleEl.dataset.loaded = '1';
       try {
