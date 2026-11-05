@@ -1,0 +1,1588 @@
+@charset "UTF-8";
+/* ══════════════════════════════════════════════════════════════════
+   WHATSPLAN — place-modal.css
+   Estilos de la ficha de lugar (PlaceModal2): hero, cuerpo, hojas
+   (menú, colecciones, reportes…), lightbox. Antes vivían como texto
+   dentro de PlaceModal2.js. Los de PLANES están en place-plans.css.
+   ══════════════════════════════════════════════════════════════════ */
+
+#wp-pm2 {
+  display:none; position:fixed; inset:0;
+  /* 2100 alcanza de sobra contra el mapa/minicard normal — pero
+     cuando la ficha se abre desde el slide de cluster (el flip en
+     MapView.js), el slide NO se destruye, se pausa: sus tarjetas y
+     decoraciones se quedan en el DOM a z-index 100000+ (hasta
+     999999 el puente que "vuela" hacia acá), solo con
+     pointer-events:none. Con 2100 la ficha se abría por DEBAJO de
+     todo eso — se veía perfecto desde el minicard (nada compite
+     ahí) pero invisible desde el slide (tapada por sus propias
+     tarjetas, que siguen ahí, pausadas pero visibles). Subida por
+     encima de cualquier cosa que el slide pueda dejar viva detrás. */
+  z-index: 1500000;
+  /* Fuente global: se cambia solo en styles/fonts.css */
+  font-family: var(--wp-font);
+  font-weight:400;
+}
+#wp-pm2.visible { display:block; }
+/* Todo lo que queda DETRÁS de la ficha abierta (mapa con sus pins
+   animados, slide de clusters pausado, minicard, paneles): se oculta
+   y se congelan sus animaciones mientras la ficha lo tapa completo.
+   Ver _coverBehind. */
+.wp-pm2-under { visibility:hidden; }
+#wp-pm2-backdrop { opacity:0; transition:opacity 0.32s ease-out; }
+#wp-pm2.wp-pm2-in #wp-pm2-backdrop { opacity:1; }
+#wp-pm2-card {
+  opacity:0; transform:translateY(18px) scale(0.97);
+  transition:opacity 0.26s ease-out, transform 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+#wp-pm2.wp-pm2-in #wp-pm2-card { opacity:1; transform:none; }
+/* Modo flip (viene del slide, o vuelve hacia él) — el card entero
+   solo hace fade, nunca traslado/escala: ese movimiento ya lo
+   hace el puente que vuela por fuera, y si el card TAMBIÉN se
+   mueve son dos cosas animando a la vez. Especificidad (0,2,0)
+   contra la base #wp-pm2-card (0,1,0) — no hace falta !important,
+   gana por ser más específica.
+   0.34s — misma duración que el vuelo del puente (ver flyTo() en
+   MapView.js). Antes esto duraba menos (0.22s) que el vuelo: el
+   fondo de la ficha desaparecía mientras la foto todavía seguía
+   volando sola contra un fondo casi vacío — eso es lo que se veía
+   forzado/descoordinado. Con la misma duración, todo resuelve
+   junto. */
+/* Modo flip (viene del slide, o vuelve hacia él) — ya NO hay
+   puente volando por fuera (se sacó, era la parte pesada de la
+   transición: recreaba posición+tamaño+radio+borde a la vez).
+   Ahora el card entero hace su propio pulse — entra achicado y
+   transparente, sale igual — independiente de la tarjeta del
+   slide, que hace SU PROPIO pulse-in por separado, sin ninguna
+   interpolación de forma entre una y otra. Rápido (0.22s) porque
+   es un pulse simple, no un vuelo con distancia real que
+   recorrer. */
+#wp-pm2.wp-pm2-flip-entry #wp-pm2-card {
+  transform:scale(0.92);
+  transition:opacity 0.22s ease-out, transform 0.22s cubic-bezier(0.34,1.4,0.64,1);
+}
+#wp-pm2.wp-pm2-in.wp-pm2-flip-entry #wp-pm2-card { transform:scale(1); }
+/* Salida: fade puro, sin ningún movimiento (ni escala ni
+   traslado) — el card entero se desvanece en el lugar. Sin nada
+   viajando, no hay "rectángulo con esquinas cuadradas" que se
+   note rígido en pleno movimiento; ver también la regla del hero
+   más abajo (#wp-pm2.wp-pm2-flip-exit #wp-pm2-hero), que le
+   redondea las esquinas apenas arranca esta salida.
+   SOLO depende de wp-pm2-flip-exit — a propósito, sin exigir
+   también wp-pm2-flip-entry: hide() agrega esta clase siempre
+   (ver el JS), sin importar si la ficha se abrió desde el flip
+   del slide, desde el minicard o desde la búsqueda global. Así
+   esta salida es la misma en los tres casos. */
+/* Salida más ágil (220ms): la tarjeta se encoge un poquito con
+   las esquinas redondeadas mientras se desvanece, como al cerrar
+   una app en el teléfono. Solo opacity/transform → GPU. */
+/* Salida = la entrada al revés, más corta (180ms): baja un poco,
+   se achica a 0.97 y se desvanece. Solo opacity/transform (GPU), sin
+   animar esquinas (repintaba toda la tarjeta en cada cuadro). */
+#wp-pm2.wp-pm2-flip-exit #wp-pm2-card {
+  transform:translateY(18px) scale(0.97);
+  border-radius:28px;
+  transition:opacity 0.18s ease-in, transform 0.2s cubic-bezier(0.4,0,1,1);
+  will-change:transform, opacity;
+}
+/* ── Otras salidas (se eligen en SuperUserPanel → "Salida de la
+   ficha"; se guarda en el teléfono: localStorage wpPmExit) ── */
+/* "Deslizar": baja completa como hoja, sin desvanecerse hasta el final
+   (el mapa se va descubriendo de arriba hacia abajo) */
+#wp-pm2.wp-pm2-flip-exit.wp-pm2-exit-slide #wp-pm2-card {
+  transform:translateY(100%);
+  border-radius:28px 28px 0 0;
+  opacity:1;
+  transition:transform 0.3s cubic-bezier(0.32,0,0.67,0);
+}
+/* "Encoger": se hace chiquita hacia el centro y se desvanece */
+#wp-pm2.wp-pm2-flip-exit.wp-pm2-exit-shrink #wp-pm2-card {
+  transform:scale(0.86);
+  border-radius:34px;
+  transition:opacity 0.2s ease-in, transform 0.22s cubic-bezier(0.4,0,0.6,1);
+}
+/* "Fundido": solo se desvanece, rapidísimo */
+#wp-pm2.wp-pm2-flip-exit.wp-pm2-exit-fade #wp-pm2-card {
+  transform:none;
+  transition:opacity 0.14s linear;
+}
+#wp-pm2.wp-pm2-flip-exit #wp-pm2-backdrop { transition:opacity 0.16s ease-out; }
+#wp-pm2-backdrop {
+  position:absolute; inset:0; background:rgba(0,0,0,0.45);
+}
+#wp-pm2-card {
+  position:absolute; inset:0;
+  background:#fff;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+/* Mientras el flip de una foto viene "volando" desde el slide, la
+   foto real del hero se mantiene invisible — revealHeroNow() la
+   hace aparecer recién cuando el clon que vuela llega a destino,
+   para que no se vean las dos superpuestas ni un salto entre una y
+   otra. */
+#wp-pm2-hero-bg.wp-pm2-hero-pending { opacity:0; }
+
+/* TOPBAR BG — foto del hero con blur, aparece al hacer scroll */
+/* TOPBAR */
+#wp-pm2-topbar {
+  position:fixed; top:0; left:0; right:0;
+  height:calc(68px + env(safe-area-inset-top,0px));
+  padding-top:env(safe-area-inset-top,0px);
+  display:flex; align-items:center;
+  padding-left:12px; padding-right:12px;
+  z-index:10; background:transparent;
+  overflow:hidden;
+  font-family:var(--wp-font);
+  /* Misma entrada que usa el header del slide (.wp-ce-collage-header
+     en MapView.js) — mismos valores exactos (opacity, distancia del
+     translateY, duración, curva bouncy) para que se sientan como
+     el mismo gesto en las dos pantallas. Es SOLO del topbar — el
+     resto de la ficha (fondo, contenido) sigue con su propia
+     entrada de siempre, sin tocar. Aplica siempre que la ficha
+     entra, sin importar si es flip desde el slide o apertura
+     normal — .wp-pm2-in se activa en los dos casos por igual. */
+  opacity:0; transform:translateY(-10px);
+  transition:opacity 0.38s cubic-bezier(0.34,1.56,0.64,1), transform 0.38s cubic-bezier(0.34,1.56,0.64,1);
+}
+#wp-pm2.wp-pm2-in #wp-pm2-topbar { opacity:1; transform:translateY(0); }
+/* Topbar 100% transparente: no tiene fondo propio. La sombra usa el
+   mismo blur sutil (0.5px) + mask-image que la versión nativa de
+   app.css (ion-app::before) — acá con control propio para poder
+   reaccionar al scroll (la nativa es estática). */
+#wp-pm2-topbar-fade {
+  position:fixed; top:0; left:0; right:0;
+  height:calc(env(safe-area-inset-top,20px) + 100px);
+  background:linear-gradient(to bottom,
+    rgba(255,255,255,0.9) 0%,
+    rgba(255,255,255,0.5) 55%,
+    rgba(255,255,255,0) 100%);
+  /* Sin backdrop-filter: el blur de 0.5px casi no se notaba y en
+     Safari (y en Android mientras la ficha hace fade-in) el borde
+     inferior de esa capa de blur se dibujaba como una LÍNEA oscura
+     horizontal — Safari no le aplica el mask-image al blur, así que
+     el corte quedaba duro. Además esa capa se repinta tarde durante
+     el scroll con inercia, que es el "retraso" de la sombra. */
+  mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+  z-index:9; pointer-events:none;
+  opacity:0.4; /* JS la sube con el scroll — sin transition: la
+                  transición de 0.05s le sumaba retraso al seguir el scroll */
+}
+
+/* Sombra blanca en el borde inferior — igual que la del top pero
+   invertida (blanco abajo, transparente arriba), fija (no se anima
+   con el scroll). Vive DETRÁS de los botones flotantes del footer
+   (z-index menor) para que el contenido se pierda ahí suavemente. */
+#wp-pm2-bottom-fade {
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:110px;
+  background:linear-gradient(to top,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.7) 45%,
+    rgba(255,255,255,0) 100%);
+  z-index:5; pointer-events:none;
+}
+
+/* ACTIVITY STACK — mini-fichas en abanico, fixed en la esquina */
+#wp-pm2-activity-stack {
+  position:fixed;
+  top:calc(78px + env(safe-area-inset-top,0px));
+  right:2px;
+  width:92px; height:118px;
+  z-index:6; pointer-events:none;
+  transform-origin:right center;
+  transition:transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease;
+}
+#wp-pm2-activity-stack .wp-pm2-activity-card {
+  position:absolute; inset:0;
+  border-radius:18px; padding:10px;
+  display:flex; flex-direction:column; justify-content:space-between;
+  box-shadow:0 8px 20px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.10);
+  pointer-events:auto; cursor:pointer;
+  transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(0.4);
+  opacity:0;
+  animation: wp-pm2-activity-in 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes wp-pm2-activity-in {
+  0%   { transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(0.4); opacity:0; }
+  60%  { opacity:1; }
+  100% { transform:rotate(var(--rot,0deg)) translate(var(--tx,0), var(--ty,0)) scale(1); opacity:1; }
+}
+.wp-pm2-activity-date {
+  display:flex; flex-direction:column; align-items:center; line-height:1;
+  background:rgba(255,255,255,0.35); border-radius:10px; padding:5px 8px;
+  align-self:flex-start; backdrop-filter:blur(4px);
+}
+.wp-pm2-activity-date .d { font-size:16px; font-weight:800; color:#fff; }
+.wp-pm2-activity-date .m {
+  font-size:9px; font-weight:700; color:rgba(255,255,255,0.85);
+  text-transform:uppercase; letter-spacing:0.04em; margin-top:1px;
+}
+.wp-pm2-activity-title {
+  font-size:11.5px; font-weight:700; color:#fff; line-height:1.25;
+  text-shadow:0 1px 3px rgba(0,0,0,0.2);
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden;
+}
+.wp-pm2-activity-people {
+  display:flex; align-items:center; gap:4px;
+}
+.wp-pm2-activity-av-w { display:block; flex:none; width:22px; height:22px; border-radius:50%; }
+.wp-pm2-activity-avatar {
+  display:block; width:100%; height:100%; border-radius:50%; object-fit:cover;
+}
+.wp-pm2-activity-people span {
+  font-size:10px; font-weight:700; color:rgba(255,255,255,0.9);
+}
+/* Abanico de fotos (experimento PHOTO_STACK) */
+#wp-pm2-activity-stack .wp-pm2-photo-card {
+  padding:0;
+  background-color:#e5e7eb; background-size:cover; background-position:center;
+  border:2.5px solid #fff;
+  box-shadow:0 8px 20px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.12);
+}
+.wp-pm2-photo-count {
+  position:absolute; left:6px; bottom:6px;
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 7px; border-radius:999px;
+  background:rgba(0,0,0,0.55); color:#fff;
+  font-size:10.5px; font-weight:700; font-family:var(--wp-font);
+}
+/* Estado vacío: invitación a crear actividad */
+.wp-pm2-activity-empty {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 8px,#eceef1 8px,#eceef1 16px);
+  border:1.5px dashed #c7cbd1;
+}
+.wp-pm2-activity-empty svg { color:#9ca3af; }
+.wp-pm2-activity-empty span {
+  font-size:11px; font-weight:700; color:#6b7280; text-align:center;
+  text-shadow:none; -webkit-line-clamp:2;
+}
+
+#wp-pm2-back {
+  position:relative; z-index:1;
+  /* Pill: flecha + "Volver" */
+  height:48px; padding:0 18px 0 14px; border-radius:9999px; border:none; flex-shrink:0;
+  font-family:inherit; font-size:14px; font-weight:600; letter-spacing:-0.1px;
+  background:rgba(255,255,255,0.88);
+  backdrop-filter:blur(16px) saturate(1.8);
+  -webkit-backdrop-filter:blur(16px) saturate(1.8);
+  box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+  color:#111; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform 0.15s, padding 0.22s cubic-bezier(0.4,0,0.2,1); flex-shrink:0;
+}
+#wp-pm2-back:active { transform:scale(0.92); }
+/* Al tocar: "Volver" se retrae hacia el ícono y el pill se encoge
+   a la izquierda hasta quedar redondo (solo el ícono) */
+#wp-pm2-back .wp-pm2-back-label {
+  display:inline-block; max-width:80px; margin-left:6px;
+  overflow:hidden; white-space:nowrap;
+  transition:max-width 0.22s cubic-bezier(0.4,0,0.2,1), margin-left 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.16s ease-out;
+}
+/* El retraído (al tocar y con el scroll) lo maneja _setBackQ() en JS */
+#wp-pm2-topbar-title {
+  position:relative; z-index:1; margin-left:12px;
+  flex:1 1 auto; min-width:0; max-width:85%;
+  font-size:16px; font-weight:800; color:#111;
+  letter-spacing:-0.2px; opacity:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  text-align:left;
+}
+#wp-pm2-topbar-actions {
+  margin-left:auto; display:flex; align-items:center; gap:8px;
+  position:relative; z-index:1;
+}
+.wp-pm2-tb-btn {
+  /* Redondo de 48px, igual que los botones del footer de la ficha */
+  position:relative;
+  width:48px; height:48px; border-radius:9999px; border:none; flex-shrink:0;
+  background:rgba(255,255,255,0.88);
+  backdrop-filter:blur(16px) saturate(1.8);
+  -webkit-backdrop-filter:blur(16px) saturate(1.8);
+  box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+  color:#111; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform 0.15s;
+}
+.wp-pm2-tb-btn:active { transform:scale(0.92); }
+
+/* Destello tipo GPS al tocar — mismo lenguaje visual que el anillo
+   de las actividades en el mapa (.pin-pulse-ring/@keyframes
+   pinPulse en map.css: scale(1)→scale(2.2), opacity 0.7→0), pero
+   disparado UNA vez por toque (no infinito) en vez de repetirse
+   solo. z-index:-1 para quedar SIEMPRE detrás del ícono del
+   botón, nunca tapándolo. */
+@keyframes wpPm2TapFlash {
+  0%   { transform:scale(1);   opacity:0.55; }
+  100% { transform:scale(1.5); opacity:0; }
+}
+#wp-pm2-back::after, .wp-pm2-tb-btn::after {
+  content:''; position:absolute; inset:0; border-radius:9999px;
+  background:rgba(255,255,255,0.75);
+  opacity:0; pointer-events:none; z-index:-1;
+}
+#wp-pm2-back.wp-pm2-tap-flash::after, .wp-pm2-tb-btn.wp-pm2-tap-flash::after {
+  animation:wpPm2TapFlash 0.5s ease-out;
+}
+
+/* CONTENT AREA — hero (overlay) encima de body (ocupa TODO el área,
+   incl. detrás del hero) */
+#wp-pm2-content-area {
+  position:relative; flex:1; overflow:hidden;
+}
+
+/* HERO — overlay absoluto que se encoge (overflow:hidden) */
+#wp-pm2-hero {
+  position:absolute; top:0; left:0; right:0; z-index:5;
+  height:88vw; min-height:320px; max-height:460px;
+  overflow:hidden; background:transparent;
+  will-change:height;
+  /* Al salir (wp-pm2-flip-exit, ver más abajo), las esquinas se
+     redondean RÁPIDO (0.15s — más corto que el fade de 0.24s del
+     card) para que ya estén redondeadas antes de que el
+     desvanecido se note. Es lo que evita que la foto se lea como
+     un cartón cuadrado despidiéndose. */
+  border-radius:0px;
+  transition:border-radius 0.15s ease-out;
+}
+#wp-pm2.wp-pm2-flip-exit #wp-pm2-hero { border-radius:22px; }
+/* PARALLAX — el hero está DENTRO de #wp-pm2-body y se desplaza con
+   el scroll nativo (borde inferior y título pegados al contenido).
+   Como en el activity stack ("Crear actividad en este lugar"), lo
+   que mueve JS (la foto y las opacidades) usa solo transform/opacity
+   con una transición corta que tapa los cuadros perdidos. La clase
+   se pone después de ubicar todo al abrir (si no, al reabrir
+   animaría desde la posición de la ficha anterior). */
+/* Solo la FOTO se suaviza (su parallax lo calcula JS): el borde del
+   hero y el título ya se mueven con el scroll nativo, sin retraso. */
+#wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-inner {
+  transition:border-radius 0.15s ease-out, transform 0.14s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease;
+}
+#wp-pm2.wp-pm2-hero-smooth #wp-pm2-hero-bottom,
+#wp-pm2.wp-pm2-hero-smooth #wp-pm2-topbar-fade,
+#wp-pm2.wp-pm2-hero-smooth #wp-pm2-topbar-actions {
+  transition:opacity 0.2s ease;
+}
+/* Wrapper de alto FIJO (= alto inicial del hero) que se traslada hacia
+   arriba. Imagen + gradiente + título viven aquí y suben juntos. */
+/* height:100% = alto del hero mientras el JS todavía no fijó fullH
+   en px (los primeros frames de la apertura). Sin esto medían 0 y
+   la foto/gradiente aparecían de golpe un par de frames después. */
+/* FOTO del hero — capa de fondo, fuera del scroll (ver _build).
+   Mismo alto inicial que #wp-pm2-hero; JS lo fija en px al abrir. */
+#wp-pm2-hero-inner {
+  position:absolute; top:0; left:0; right:0; z-index:0;
+  height:88vw; min-height:320px; max-height:460px;
+  overflow:hidden; border-radius:0px;
+  transition:border-radius 0.15s ease-out;
+  will-change:transform;
+}
+#wp-pm2.wp-pm2-flip-exit #wp-pm2-hero-inner { border-radius:22px; }
+#wp-pm2-hero-overlay-fast {
+  position:absolute; top:0; left:0; right:0; height:100%;
+  will-change:transform;
+  z-index:2;
+}
+#wp-pm2-hero-bg {
+  position:absolute; inset:0;
+  background-size:cover; background-position:center;
+  /* SIN filter: un filter:saturate() en la foto del hero hacía que el
+     WebView de Android la re-dibujara con glitch cada vez que una
+     hoja se animaba encima (confirmado en el teléfono quitándolo). */
+}
+/* bottom:-6px + blanco sólido en los últimos 8px: el borde de
+   recorte del hero (height en px, se ajusta al píxel) y el gradiente
+   (que sube con transform, se posiciona con subpíxeles) nunca
+   coinciden exacto. Esa diferencia de ~1px dejaba ver una fila de la
+   foto debajo del blanco = la línea oscura bajo el header, más
+   visible en Safari al scrollear y durante el pulse de entrada (el
+   scale reacomoda los subpíxeles). Ahora el blanco sobra por debajo
+   del recorte, así que el borde siempre cae sobre blanco. */
+#wp-pm2-hero-gradient {
+  position:absolute; left:0; right:0; bottom:-6px;
+  height:42%; /* 42% inferior del hero (antes 60%: tapaba mucha foto) */
+  background:linear-gradient(to bottom,
+    transparent 0%,
+    rgba(255,255,255,0.35) 45%,
+    rgba(255,255,255,0.85) 80%,
+    rgba(255,255,255,1) calc(100% - 8px),
+    rgba(255,255,255,1) 100%);
+  pointer-events:none;
+  z-index:2;
+  will-change:opacity;
+}
+#wp-pm2-hero-bottom {
+  position:absolute; bottom:0; left:0; right:0;
+  padding:8px 16px 16px; z-index:3;
+}
+.wp-pm2-featured-badge {
+  display:inline-block; font-size:10px; font-weight:700; padding:3px 8px;
+  border-radius:9999px; white-space:nowrap; letter-spacing:0.01em;
+  margin-bottom:6px;
+}
+.wp-pm2-badge-featured {
+  background:linear-gradient(135deg,#fef3c7,#fde68a);
+  color:#92400e; border:1px solid rgba(253,230,138,0.6);
+  box-shadow:0 2px 6px rgba(251,191,36,0.25);
+}
+.wp-pm2-badge-verified {
+  background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+  color:#111111; border:1px solid rgba(180,180,180,0.6);
+  box-shadow:0 2px 6px rgba(28,28,30,0.20);
+}
+.wp-pm2-badge-premium {
+  background:linear-gradient(135deg,#f3e8ff,#e9d5ff);
+  color:#6b21a8; border:1px solid rgba(216,180,254,0.6);
+  box-shadow:0 2px 6px rgba(168,85,247,0.22);
+}
+#wp-pm2-name {
+  font-size:24px; font-weight:800; color:#0a0a0a; margin:0 0 4px;
+  letter-spacing:-0.4px; line-height:1.2;
+  max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-family:'Instrument Serif', serif;
+}
+#wp-pm2-meta {
+  display:flex; align-items:center; gap:5px;
+  font-size:13px; color:#374151; font-weight:500;
+}
+.wp-pm2-dot { opacity:0.5; }
+
+/* BODY — ocupa TODA el content-area (incl. detrás del hero); el
+   spacer de adentro queda tapado por el hero mientras esté grande */
+#wp-pm2-body {
+  position:absolute; inset:0; z-index:1;
+  /* none: sin el estirado/brillo propio de Android en los bordes —
+     el rebote elástico lo hace _wireElastic (y no hay dos a la vez) */
+  overflow-y:auto; overscroll-behavior:none;
+  overflow-x:hidden; /* el swipe de responder desplaza tarjetas a la derecha */
+  -webkit-overflow-scrolling:touch;
+  background:transparent; /* deja ver la foto; el blanco lo pone #wp-pm2-sheet */
+}
+/* Todo el contenido debajo del hero: fondo blanco que al subir tapa la
+   foto. padding-top (JS) = el aire entre el borde del hero y el primer
+   contenido, para que el blanco empiece justo donde termina el hero. */
+#wp-pm2-sheet { position:relative; background:#fff; min-height:100%; }
+#wp-pm2-scroll-spacer {
+  width:100%; height:0; /* alto real (=travel) seteado por JS */
+}
+
+/* AI DESCRIPTION */
+.wp-pm2-ai-block {
+  margin:4px 16px 12px; padding:0; background:transparent; border:none;
+  display:flex; flex-direction:column; gap:8px;
+}
+.wp-pm2-ai-header { display:flex; align-items:center; gap:8px; }
+.wp-pm2-ai-icon {
+  flex-shrink:0; color:#1c1c1e; transition:color 0.3s ease;
+  filter:drop-shadow(0 0 6px rgba(28,28,30,0.4));
+  overflow:visible;
+}
+.wp-pm2-ai-badge {
+  font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+  color:#000; background:linear-gradient(135deg,#f2f2f2,#e5e5e5);
+  border:1px solid rgba(180,180,180,0.5); padding:3px 9px; border-radius:999px;
+  font-family:inherit; box-shadow:0 2px 6px rgba(28,28,30,0.15);
+}
+/* Solo color (antes también animaba filter:drop-shadow, que obliga
+   a re-dibujar la sombra en cada cuadro) */
+@keyframes wp-pm2-ai-pulse {
+  0%   { color:#60a5fa; }
+  50%  { color:#818cf8; }
+  100% { color:#60a5fa; }
+}
+.wp-pm2-ai-pulse { animation: wp-pm2-ai-pulse 1.4s ease-in-out infinite; }
+/* Cada sparkle tiene SU PROPIO color cíclico + SU PROPIO pulse, con
+   distinta duración/delay — se ven "vivos" e independientes, no
+   parpadeando todos al unísono */
+.wp-pm2-spark { transform-box:fill-box; transform-origin:center; }
+@keyframes wp-pm2-spark-color {
+  0%   { fill:#60a5fa; }
+  25%  { fill:#a78bfa; }
+  50%  { fill:#f472b6; }
+  75%  { fill:#fb923c; }
+  100% { fill:#60a5fa; }
+}
+@keyframes wp-pm2-spark-scale {
+  0%,100% { transform:scale(1); opacity:0.85; }
+  50%     { transform:scale(1.1); opacity:1; }
+}
+.wp-pm2-ai-pulse .wp-pm2-spark-1 {
+  animation: wp-pm2-spark-color 2.4s ease-in-out infinite,
+             wp-pm2-spark-scale 1.1s ease-in-out infinite;
+}
+.wp-pm2-ai-pulse .wp-pm2-spark-2 {
+  animation: wp-pm2-spark-color 3.1s ease-in-out infinite 0.4s,
+             wp-pm2-spark-scale 1.6s ease-in-out infinite 0.2s;
+}
+.wp-pm2-ai-pulse .wp-pm2-spark-3 {
+  animation: wp-pm2-spark-color 2.7s ease-in-out infinite 0.8s,
+             wp-pm2-spark-scale 1.3s ease-in-out infinite 0.5s;
+}
+@keyframes wp-pm2-dot-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%     { opacity:0.5; transform:scale(0.8); }
+}
+@keyframes wp-pm2-ai-fadein {
+  from { opacity:0; transform:translateY(4px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.wp-pm2-ai-text {
+  font-size:14px; line-height:1.6; color:#3a3a3c; font-weight:400;
+  font-family:var(--wp-font);
+}
+/* Revelado suave (estilo Apple Intelligence): el texto completo ya
+   está puesto (su alto es el final, nada de abajo se mueve) y una
+   máscara con borde difuminado baja de arriba hacia abajo. Solo se
+   re-dibuja el párrafo ~1.3s; sin transform/filter (sin capas
+   nuevas). Al terminar se quita la clase: en reposo no hay máscara. */
+.wp-pm2-ai-text.wp-pm2-ai-reveal {
+  -webkit-mask-image:linear-gradient(to bottom, #000 0%, #000 44%, transparent 56%, transparent 100%);
+  mask-image:linear-gradient(to bottom, #000 0%, #000 44%, transparent 56%, transparent 100%);
+  -webkit-mask-size:100% 260%; mask-size:100% 260%;
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  animation: wp-pm2-ai-reveal 1.3s cubic-bezier(0.25,0.6,0.3,1) both;
+}
+@keyframes wp-pm2-ai-reveal {
+  from { -webkit-mask-position:0 100%; mask-position:0 100%; }
+  to   { -webkit-mask-position:0 0%;   mask-position:0 0%; }
+}
+/* steps(28): el brillo avanza a ~20 cuadros/s en vez de 120. Es una
+   animación de background-position (se re-dibuja en cada cuadro);
+   a 120 cuadros/s, con varios skeletons a la vez, cargaba la ficha. */
+@keyframes wp-pm2-skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.wp-pm2-ai-skeleton { display:flex; flex-direction:column; gap:8px; }
+.wp-pm2-ai-sk-line {
+  height:12px; border-radius:6px; width:100%;
+  background:linear-gradient(90deg,#e8eaed 25%,#f3f4f6 50%,#e8eaed 75%);
+  background-size:200% 100%;
+  animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
+}
+/* Skeleton de imágenes — sin !important: cada regla iguala/supera la
+   especificidad de la regla base del elemento que targetea, así gana
+   por cascada normal. El hero usa ::before (no toca su background-image
+   real, que lo pone JS directamente sobre el div). */
+#wp-pm2-hero-bg.wp-pm2-skel::before {
+  content:''; position:absolute; inset:0;
+  background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+  background-size:400% 100%;
+  animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
+}
+#wp-pm2-strip img.wp-pm2-skel {
+  background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+  background-size:400% 100%;
+  animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
+}
+#wp-pm2-strip img { cursor:pointer; }
+
+/* LIGHTBOX — carrusel de fotos a pantalla completa, con swipe */
+#wp-pm2-lightbox {
+  display:none; position:fixed; inset:0; z-index:3000;
+  background:#000;
+}
+#wp-pm2-lightbox.visible { display:block; }
+#wp-pm2-lb-close {
+  position:fixed; top:calc(12px + env(safe-area-inset-top,0px)); right:12px;
+  z-index:3002; width:38px; height:38px; border-radius:50%; border:none;
+  background:rgba(255,255,255,0.16); backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+#wp-pm2-lb-counter {
+  position:fixed; top:calc(20px + env(safe-area-inset-top,0px)); left:0; right:0;
+  z-index:3001; text-align:center;
+  font-size:13px; font-weight:700; color:#fff;
+  text-shadow:0 1px 4px rgba(0,0,0,0.5);
+  pointer-events:none;
+}
+#wp-pm2-lb-track {
+  display:flex; height:100%; overflow-x:auto;
+  scroll-snap-type:x mandatory; scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+#wp-pm2-lb-track::-webkit-scrollbar { display:none; }
+.wp-pm2-lb-slide {
+  flex:0 0 100%; scroll-snap-align:center;
+  display:flex; align-items:center; justify-content:center;
+  height:100%;
+}
+.wp-pm2-lb-slide img {
+  max-width:100%; max-height:100%; object-fit:contain;
+}
+
+#wp-pm2-reviews-avatars .wp-pm2-fp-avatar.wp-pm2-skel {
+  background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+  background-size:400% 100%;
+  animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
+}
+.wp-pm2-review-avatar.wp-pm2-skel {
+  background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+  background-size:400% 100%;
+  animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
+}
+#wp-pm2-user-avatar.wp-pm2-skel {
+  background-image:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+  background-size:400% 100%;
+  animation: wp-pm2-skeleton-shimmer 1.4s steps(28) infinite;
+}
+
+/* ROWS */
+.wp-pm2-row {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 16px;
+}
+.wp-pm2-pill-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:7px 14px; border-radius:999px; border:1.5px solid #e5e7eb;
+  background:#fff; font-size:13px; font-weight:600; color:#374151;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  font-family:inherit;
+}
+
+/* CTA ROW */
+/* ETIQUETAR LUGAR — chip + scroll horizontal fullwidth de tags */
+#wp-pm2-tag-row {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 16px 8px;
+}
+#wp-pm2-tag-toggle-btn { flex-shrink:0; }
+#wp-pm2-tag-toggle-btn.wp-pm2-active {
+  background:#0a0a0a; color:#fff; border-color:#0a0a0a;
+}
+#wp-pm2-tag-scroll {
+  flex:1; min-width:0; display:flex; gap:6px;
+  overflow-x:auto; scrollbar-width:none;
+}
+#wp-pm2-tag-scroll::-webkit-scrollbar { display:none; }
+.wp-pm2-tag-chip {
+  flex-shrink:0; white-space:nowrap;
+  padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb;
+  font-size:12px; font-weight:600; color:#374151; background:#f9fafb;
+  font-family:inherit;
+}
+/* Modo selección: chips tocables, con estado activo/inactivo */
+button.wp-pm2-tag-chip {
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform 0.1s ease;
+}
+button.wp-pm2-tag-chip:active { transform:scale(0.95); }
+button.wp-pm2-tag-chip.wp-pm2-tag-selected {
+  background:#dbeafe; border-color:#93c5fd; color:#1d4ed8;
+}
+
+/* REVIEWS SUMMARY — facepile de avatares + contador */
+#wp-pm2-reviews-summary {
+  display:flex; align-items:center; gap:8px;
+  padding:4px 16px 12px; margin-top:-28px;
+}
+#wp-pm2-reviews-avatars {
+  display:flex; align-items:center;
+}
+#wp-pm2-reviews-avatars .wp-pm2-fp-avatar {
+  width:28px; height:28px; border-radius:9999px;
+  border:2px solid #fff; background:#e2e8f0;
+  object-fit:cover;
+  margin-left:-8px; flex-shrink:0; position:relative;
+}
+#wp-pm2-reviews-avatars .wp-pm2-fp-more {
+  width:28px; height:28px; border-radius:9999px;
+  border:2px solid #fff; background:#374151;
+  margin-left:-8px; flex-shrink:0; position:relative;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:#fff;
+}
+#wp-pm2-reviews-avatars .wp-pm2-fp-avatar:first-child { margin-left:0; }
+#wp-pm2-reviews-count {
+  font-size:13px; font-weight:600; color:#374151;
+}
+/* "N personas lo guardaron" */
+#wp-pm2-saves-ico {
+  width:28px; height:28px; border-radius:999px; flex-shrink:0;
+  background:#ffe4ea; color:#e11d48;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+#wp-pm2-reviews-count b { color:#111827; font-weight:700; }
+/* Con el botón largo al lado, el texto pasa a 2 renglones en vez de cortarse */
+#wp-pm2-reviews-count.wp-pm2-saves {
+  white-space:normal; font-size:12.5px; line-height:1.25;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+}
+/* Mismo estilo que el "✦ Añadir reseña" de las pestañas (naranja
+   con gradiente): es la misma acción, se ve igual en los dos lugares */
+/* Botón bajo el hero: "Añadir a favoritos" → (ya guardado) "Añadir a
+   una colección". Antes era "Añadir reseña" (sigue en la sección de
+   reseñas y en "Escribe una reseña"). */
+#wp-pm2-add-review {
+  margin-left:auto; padding:6px 12px; font-size:12px; font-weight:700; flex-shrink:0;
+  white-space:nowrap; border-color:transparent;
+  display:inline-flex; align-items:center; gap:5px;
+}
+/* Rojo "pro": carmesí profundo con un brillo arriba. Sin borde (con
+   borde transparente, el degradado se repetía en la orilla y el rojo
+   no llenaba todo el botón) — el padding compensa los 1.5px */
+#wp-pm2-add-review.wp-pm2-fav-add {
+  border:0; padding:7.5px 13.5px;
+  background:linear-gradient(180deg,#ff3d5e 0%,#e0123c 100%); color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 3px 10px rgba(224,18,60,0.32);
+}
+#wp-pm2-add-review.wp-pm2-fav-coll {
+  background:#0a0a0a; color:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,0.18);
+}
+/* Ya está en una colección: muestra cuál (estado, no acción) */
+#wp-pm2-add-review.wp-pm2-fav-in {
+  background:#f3f4f6; color:#111827; border:1px solid rgba(0,0,0,0.08);
+  box-shadow:none; flex-shrink:1; min-width:0; max-width:58%;
+}
+.wp-pm2-fav-in-emoji { font-size:13px; line-height:1;
+  font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+.wp-pm2-fav-in-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wp-pm2-fav-in-more {
+  flex:none; padding:1px 6px; border-radius:999px; background:#0a0a0a; color:#fff;
+  font-size:10.5px; font-weight:800;
+}
+.wp-pm2-fav-chev { flex:none; opacity:0.55; }
+#wp-pm2-reviews-count { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Pill "♥ En tus favoritos" en el hero (junto a Destacado/Verificado) */
+.wp-pm2-fav-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent; pointer-events:auto;
+  background:linear-gradient(135deg,#ffe4ea,#fecdd6);
+  color:#be123c; border:1px solid rgba(251,113,133,0.5);
+  box-shadow:0 2px 6px rgba(225,29,72,0.18);
+}
+/* Hoja "Añadir a una colección" */
+.wp-pm2-col-meta { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:#9ca3af; }
+.wp-pm2-col-check {
+  width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db;
+  display:flex; align-items:center; justify-content:center; color:transparent;
+  transition:background-color 0.15s, border-color 0.15s;
+}
+.wp-pm2-col-check.wp-pm2-on { background:#0a0a0a; border-color:#0a0a0a; color:#fff; }
+.wp-pm2-ms-ico.wp-pm2-col-fav-ico { color:#e11d48; opacity:1; }
+div.wp-pm2-ms-opt { box-sizing:border-box; }
+.wp-pm2-col-unfav.wp-pm2-col-done { background:#0a0a0a; color:#fff; }
+.wp-pm2-col-unfav {
+  margin-left:auto; border:none; background:#f3f4f6; color:#4b5563;
+  font-size:12px; font-weight:700; font-family:var(--wp-font);
+  padding:6px 12px; border-radius:999px; cursor:pointer;
+}
+.wp-pm2-col-sep { height:1px; background:#f0f0f2; margin:4px 20px; }
+.wp-pm2-col-emoji { width:22px; text-align:center; font-size:19px; line-height:1;
+  font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+.wp-pm2-col-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Nueva colección: [ícono] [campo], cada uno con su propio redondeado */
+.wp-pm2-col-list.wp-pm2-col-list-clip { overflow:hidden; }
+.wp-pm2-col-list.wp-pm2-col-list-scroll { overflow-y:auto; overscroll-behavior:contain; }
+.wp-pm2-col-composer {
+  padding:12px 16px 4px; display:flex; flex-direction:column; gap:10px;
+  border-top:1px solid rgba(0,0,0,0.06); margin-top:4px;
+}
+.wp-pm2-col-row { display:flex; align-items:center; gap:10px; }
+/* Campo pill con el ícono (redondo) adentro, a la izquierda */
+.wp-pm2-col-form { display:flex; flex-direction:column; gap:8px; }
+.wp-pm2-col-form[hidden] { display:none; }
+.wp-pm2-col-row { gap:8px; }
+/* Campo: pill del mismo alto que ✕ y ✓ */
+.wp-pm2-col-field {
+  position:relative; flex:1; min-width:0; height:40px; box-sizing:border-box;
+  display:flex; align-items:center; padding:0 16px;
+  border-radius:999px; background:#f3f4f6; border:1px solid rgba(0,0,0,0.06);
+  transition:background-color 0.15s, border-color 0.15s;
+}
+.wp-pm2-col-field:focus-within { background:#fff; border-color:#d1d5db; }
+.wp-pm2-col-input2 {
+  flex:1; min-width:0; height:100%; padding:0; border:none; background:transparent; outline:none;
+  font-size:15px; font-weight:500; font-family:var(--wp-font); color:#0a0a0a;
+}
+/* Tira de íconos (arriba del campo), difuminada en los dos lados */
+.wp-pm2-col-strip {
+  position:relative; height:46px; overflow:hidden; touch-action:pan-y;
+  display:flex; align-items:center; margin:0 -16px;
+  -webkit-mask-image:linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+  mask-image:linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+}
+.wp-pm2-col-strip-track { position:relative; display:flex; align-items:center; gap:2px; width:max-content; padding:0 14px; }
+.wp-pm2-col-strip-track button {
+  position:relative; flex:none; width:34px; height:34px; border:none; border-radius:999px; background:transparent; padding:0;
+  font-size:17px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
+  transition:font-size 0.15s;
+}
+/* El elegido crece en un pill gris suave */
+.wp-pm2-col-strip-track button.wp-pm2-on {
+  width:52px; height:38px; margin:0 4px; font-size:23px;
+  background:#f3f4f6; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+/* ✕ y ✓: pills del mismo tamaño que el campo */
+.wp-pm2-col-x {
+  flex:none; width:52px; height:40px; padding:0; border:none; border-radius:999px;
+  background:#f3f4f6; color:#374151; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background-color 0.12s;
+}
+.wp-pm2-col-x:active { background:#e5e7eb; }
+/* ✓: pill negro fuera del campo */
+.wp-pm2-col-ok {
+  flex:none; width:52px; height:40px; padding:0; border-radius:999px; border:none;
+  background:#0a0a0a; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.wp-pm2-col-ok:disabled { background:#e5e7eb; color:#9ca3af; }
+.wp-pm2-col-ok.wp-pm2-busy { opacity:0.5; }
+/* Cada colección va en una "tarjeta" redondeada (.wp-pm2-col-sw):
+   el hundido, el swipe y el arrastre se ven redondos */
+.wp-pm2-col-sw { position:relative; margin:0 8px; border-radius:999px; overflow:hidden; }
+.wp-pm2-col-sw .wp-pm2-ms-opt.wp-pm2-col-row-item {
+  position:relative; width:100%; margin:0; padding:11px 16px; border-radius:999px;
+  background:#fff; touch-action:pan-y; transition:background-color 0.25s ease;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+}
+/* Al tocar y al deslizar se ve la tarjeta redonda completa */
+.wp-pm2-col-sw.wp-pm2-tap .wp-pm2-ms-opt.wp-pm2-col-row-item,
+.wp-pm2-col-sw.wp-pm2-swiping .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#f4f5f7; transition:none; }
+/* Botones que aparecen al deslizar a la izquierda */
+.wp-pm2-col-acts { position:absolute; right:8px; top:0; bottom:0; display:flex; align-items:center; gap:8px; }
+.wp-pm2-col-act {
+  width:34px; height:34px; padding:0; border:none; border-radius:999px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-col-act-edit { background:#e5e7eb; color:#111827; }
+.wp-pm2-col-act-del  { background:#e11d48; color:#fff; }
+/* Modos Ordenar / Eliminar: tarjetas gris claro (se ven tocables) */
+.wp-pm2-col-sw.wp-pm2-col-tile { margin:0 8px 6px; overflow:visible; }
+.wp-pm2-col-tile .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#f4f5f7; transition:background-color 0.15s; }
+.wp-pm2-col-tile.wp-pm2-sel .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff1f2; }
+.wp-pm2-col-tile.wp-pm2-editing .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#eaf2ff; box-shadow:inset 0 0 0 1.5px #93c5fd; }
+.wp-pm2-col-pen { color:#6b7280; }
+.wp-pm2-col-selbox {
+  flex:none; width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center; color:transparent; background:#fff;
+}
+.wp-pm2-sel .wp-pm2-col-selbox { background:#e11d48; border-color:#e11d48; color:#fff; }
+.wp-pm2-col-grip { margin-left:auto; padding:6px; color:#9ca3af; display:flex; touch-action:none; }
+.wp-pm2-col-sw.wp-pm2-shift { transition:top 0.16s ease; }
+.wp-pm2-col-sw.wp-pm2-dragging { z-index:5; border-radius:999px; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
+.wp-pm2-col-sw.wp-pm2-dragging .wp-pm2-ms-opt.wp-pm2-col-row-item { background:#fff; }
+/* Botón del header: ⋯ / ✓ (listo) / ✕ */
+.wp-pm2-ms-header.wp-pm2-col-header { position:relative; padding-right:110px; }
+.wp-pm2-col-hbtn {
+  position:absolute; right:14px; top:2px; width:36px; height:36px; padding:0;
+  border:none; border-radius:999px; background:transparent; color:#374151;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.15s;
+}
+.wp-pm2-col-hbtn:active { background:#eef0f3; }
+/* En Ordenar / Eliminar: pill con texto ("Listo" / "Cancelar") */
+.wp-pm2-col-hbtn.wp-pm2-pill {
+  width:auto; height:34px; padding:0 16px;
+  font-size:14px; font-weight:700; font-family:var(--wp-font);
+  background:#f3f4f6; color:#111827;
+}
+.wp-pm2-col-hbtn.wp-pm2-pill.wp-pm2-done { background:#0a0a0a; color:#fff; }
+.wp-pm2-col-hbtn.wp-pm2-pill:active { background:#e5e7eb; }
+.wp-pm2-col-hbtn.wp-pm2-pill.wp-pm2-done:active { background:#262626; }
+/* Barra de abajo del modo Eliminar */
+.wp-pm2-col-composer[hidden], .wp-pm2-col-bulk[hidden],
+.wp-pm2-col-newbtn[hidden], .wp-pm2-col-row[hidden] { display:none; }
+.wp-pm2-col-newbtn {
+  width:100%; height:48px; border:none; border-radius:999px;
+  background:#f3f4f6; color:#111827;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  font-size:15px; font-weight:700; font-family:var(--wp-font);
+  cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background-color 0.12s;
+}
+.wp-pm2-col-newbtn:active { background:#e5e7eb; }
+/* "Planes aquí" */
+.wp-ph { gap:10px; }
+
+.wp-pm2-col-bulk { padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,0.06); margin-top:4px; }
+.wp-pm2-col-bulk-del {
+  width:100%; height:48px; border:none; border-radius:999px;
+  background:#e11d48; color:#fff; font-size:15px; font-weight:700; font-family:var(--wp-font);
+  cursor:pointer; -webkit-tap-highlight-color:transparent; transition:opacity 0.15s;
+}
+.wp-pm2-col-bulk-del:disabled { opacity:0.35; }
+.wp-pm2-col-editing {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 2px 0 4px; font-size:13px; font-weight:600; color:#6b7280;
+}
+.wp-pm2-col-editing[hidden] { display:none; }
+.wp-pm2-col-editing-t { display:flex; align-items:center; gap:6px; }
+.wp-pm2-col-editing-x {
+  border:none; background:#f3f4f6; padding:5px 12px; border-radius:999px; color:#111827;
+  font-size:12.5px; font-weight:700; font-family:var(--wp-font); cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-col-editing-x:active { background:#e5e7eb; }
+/* Menú ⋯ tipo iOS */
+.wp-pm2-pop { position:fixed; inset:0; z-index:1500400; }
+.wp-pm2-pop-catch { position:absolute; inset:0; }
+.wp-pm2-pop-menu {
+  position:absolute; min-width:210px; max-width:260px; padding:5px 0;
+  background:#fff; border-radius:14px;
+  box-shadow:0 10px 38px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(0,0,0,0.08);
+  font-family:var(--wp-font);
+}
+.wp-pm2-pop-item {
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:14px;
+  padding:11px 16px; border:none; background:transparent; text-align:left;
+  font-size:15px; font-weight:500; color:#111827; font-family:var(--wp-font);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-pop-item:active { background:#f3f4f6; }
+.wp-pm2-pop-item:disabled { color:#c4c7cc; }
+.wp-pm2-pop-item.wp-pm2-danger { color:#e11d48; }
+.wp-pm2-pop-sep { height:6px; background:#f3f4f6; }
+/* Ítem con interruptor (no cierra el menú al tocarlo) */
+.wp-pm2-pop-sw { position:relative; flex-shrink:0; width:42px; height:26px; border-radius:999px; background:#e5e7eb; transition:background 0.2s; }
+.wp-pm2-pop-sw::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:transform 0.22s cubic-bezier(0.34,1.4,0.64,1); }
+.wp-pm2-pop-item.on .wp-pm2-pop-sw { background:#1a5cf5; }
+/* Opción activa: su ícono dentro de un pill gris suave */
+/* Ancho fijo para todos: los íconos quedan en la misma columna,
+   centrados, con o sin el pill de la opción activa */
+.wp-pm2-pop-ic { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:42px; height:28px; border-radius:999px; transition:background 0.15s; }
+.wp-pm2-pop-item.act { font-weight:600; }
+.wp-pm2-pop-item.act .wp-pm2-pop-ic { background:#eef0f3; }
+.wp-pm2-pop-item.on .wp-pm2-pop-sw::after { transform:translateX(16px); }
+.wp-pm2-col-hint { margin:2px 20px 6px; font-size:11.5px; color:#9ca3af; }
+.wp-pm2-col-empty { padding:6px 20px 10px; font-size:13px; color:#8e8e93; }
+
+/* PULSE al tocar — se hunde y rebota. Lo dispara _pulseTap() y la
+   acción (abrir la hoja) espera a que se vea el rebote. */
+@keyframes wpPm2TapPulse {
+  0%   { transform:scale(1); }
+  35%  { transform:scale(0.92); }
+  70%  { transform:scale(1.04); }
+  100% { transform:scale(1); }
+}
+@keyframes wpPm2TapPulseWide {
+  0%   { transform:scale(1); }
+  35%  { transform:scale(0.97); }
+  70%  { transform:scale(1.015); }
+  100% { transform:scale(1); }
+}
+.wp-pm2-tap-pulse      { animation:wpPm2TapPulse 0.34s cubic-bezier(0.34,1.4,0.64,1); }
+/* Dentro del scroll de la ficha (reseñas, chips, "Escribe una
+   reseña"…) el pulse lo hace JS cuadro por cuadro con un transform
+   2D sin transición/animación CSS (ver _scaleKeys): se ve igual
+   que el rebote de siempre, pero el teléfono lo re-dibuja en vez de
+   crear capas — y no separa en capas lo de alrededor (eso era el
+   parpadeo del long-press con 3+ respuestas). */
+.wp-pm2-tap-pulse-wide { animation:wpPm2TapPulseWide 0.34s cubic-bezier(0.34,1.4,0.64,1); }
+
+#wp-pm2-cta-row { gap:8px; }
+#wp-pm2-fuiste {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+  height:42px; border-radius:999px; border:none;
+  background:#0a0a0a; color:#fff; font-size:15px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-icon-btn {
+  width:42px; height:42px; border-radius:50%; border:1.5px solid #e5e7eb;
+  background:#fff; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:#374151; -webkit-tap-highlight-color:transparent; flex-shrink:0;
+}
+
+/* ACTION PILLS */
+#wp-pm2-actions {
+  display:flex; gap:10px; padding:14px 16px; overflow-x:auto;
+  scrollbar-width:none;
+}
+#wp-pm2-actions::-webkit-scrollbar { display:none; }
+.wp-pm2-action {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 16px 8px 8px; border-radius:999px; border:none;
+  background:#fff; font-size:13px; font-weight:700; color:#1f2937;
+  cursor:pointer; white-space:nowrap; flex-shrink:0; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  transition:transform 0.12s ease, box-shadow 0.12s ease;
+}
+.wp-pm2-action:active { transform:scale(0.96); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.wp-pm2-action-icon {
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+#wp-pm2-map-btn .wp-pm2-action-icon  { background:#dbeafe; color:#2563eb; }
+/* "Estuve aquí" (visitas · gamificación fase 1) */
+#wp-pm2-call-btn .wp-pm2-action-icon { background:#dcfce7; color:#16a34a; }
+#wp-pm2-web-btn .wp-pm2-action-icon  { background:#ede9fe; color:#7c3aed; }
+#wp-pm2-more-btn { padding:8px; }
+#wp-pm2-more-btn .wp-pm2-action-icon { background:#f3f4f6; color:#4b5563; }
+
+/* HOURS — colapsable */
+.wp-pm2-hours-trigger {
+  display:flex; align-items:center; gap:8px;
+  padding:12px 16px; cursor:pointer; font-size:14px; color:#374151;
+  -webkit-tap-highlight-color:transparent;
+}
+#wp-pm2-hours-text { flex:1; font-weight:500; }
+.wp-pm2-hours-status {
+  font-size:12px; font-weight:600; padding:2px 8px; border-radius:9999px;
+}
+.wp-pm2-hours-status.wp-pm2-open   { background:#e8fdf0; color:#16a34a; }
+.wp-pm2-hours-status.wp-pm2-closed { background:#fff1f0; color:#ef4444; }
+.wp-pm2-chevron { transition:transform 0.25s ease; flex-shrink:0; }
+.wp-pm2-hours-list {
+  max-height:0; overflow:hidden;
+  transition:max-height 0.3s ease;
+  padding:0 16px;
+}
+.wp-pm2-hours-list.expanded { max-height:300px; padding-bottom:8px; }
+.wp-pm2-hours-row {
+  display:flex; justify-content:space-between;
+  padding:6px 0; font-size:13px; color:#9ca3af;
+  border-bottom:0.5px solid #e5e5ea;
+}
+.wp-pm2-hours-row:last-child { border-bottom:none; }
+.wp-pm2-hours-day { min-width:90px; }
+.wp-pm2-hours-today .wp-pm2-hours-day,
+.wp-pm2-hours-today .wp-pm2-hours-time { color:#0a0a0a; font-weight:600; }
+
+/* PHOTO STRIP */
+/* overflow:hidden (NO auto): una franja con scroll horizontal propio
+   dentro del scroll de la ficha hacía que el WebView de Android
+   re-dibujara la galería con glitch cada vez que una hoja aparecía
+   encima (confirmado en el teléfono: con overflow hidden, sin
+   glitch). El deslizamiento lo hace JS (_wireStripDrag) moviendo
+   la tira interna con transform; pan-y deja el scroll vertical de
+   la ficha en manos del sistema. */
+#wp-pm2-strip {
+  padding:14px 18px;
+  overflow:hidden;
+  touch-action:pan-y;
+}
+.wp-pm2-strip-track {
+  display:flex; gap:6px; width:max-content;
+}
+/* Solo mientras se arrastra / sigue por inercia: capa propia para
+   que el movimiento lo haga la GPU sin re-dibujar. Al terminar se
+   quita (sin capa en reposo = sin glitch al abrir hojas). */
+.wp-pm2-strip-track.wp-pm2-moving { will-change:transform; }
+#wp-pm2-strip::-webkit-scrollbar { display:none; }
+#wp-pm2-strip img {
+  width:150px; height:210px; object-fit:cover;
+  border-radius:0; flex-shrink:0; cursor:pointer;
+}
+/* Solo los bordes EXTERNOS del strip quedan bien redondeados —
+   izquierdo de la primera foto, derecho de la última — como si
+   todo el slide fuera una sola píldora continua */
+#wp-pm2-strip img:first-child {
+  border-top-left-radius:14px;
+  border-bottom-left-radius:14px;
+}
+#wp-pm2-strip img:last-child {
+  border-top-right-radius:14px;
+  border-bottom-right-radius:14px;
+}
+#wp-pm2-strip:empty { display:none; }
+
+/* DESCRIPTION */
+#wp-pm2-desc-wrap { padding:14px 16px; }
+#wp-pm2-desc {
+  margin:0; font-size:14px; line-height:1.6; color:#374151;
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+}
+#wp-pm2-desc.expanded { display:block; }
+#wp-pm2-leer-mas {
+  margin-top:6px; font-size:13px; font-weight:700; color:#1a5cf5;
+  border:none; background:none; padding:0; cursor:pointer; font-family:inherit;
+}
+
+/* MAP PREVIEW */
+/* ADDRESS — misma fuente/estilo que el trigger de horarios */
+#wp-pm2-address-row {
+  display:flex; align-items:center; gap:8px;
+  padding:14px 16px; font-size:14px; color:#374151;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+#wp-pm2-address-row svg { flex-shrink:0; color:#6b7280; }
+#wp-pm2-address {
+  font-weight:500; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; min-width:0;
+}
+
+#wp-pm2-map-preview {
+  margin:0 16px 12px; border-radius:16px; overflow:hidden;
+  border:1px solid #e5e7eb; cursor:pointer; position:relative;
+}
+#wp-pm2-map-canvas {
+  height:190px; width:100%; position:relative; background:#e8e8e8;
+}
+#wp-pm2-map-canvas .maplibregl-marker { cursor:pointer; }
+
+/* SECTION TITLE */
+.wp-pm2-section-title {
+  font-size:15px; font-weight:800; color:#0a0a0a; padding:16px 16px 8px;
+  letter-spacing:-0.2px;
+}
+/* Header con tabs de reseñas — calcado de PlaceModal1 */
+.wpr-header-row {
+  display:flex; align-items:center; gap:10px;
+  padding:16px 16px 10px;
+}
+.wpr-header-row .wp-pm2-reviews-title-text {
+  font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+  color:#0a0a0a; flex-shrink:0; line-height:1;
+}
+/* Título de sección reutilizable (Fotos, Ubicación, etc.) — mismo
+   padding y fuente que el título "Reseñas" */
+.wp-pm2-section-heading {
+  font-family:'Instrument Serif', serif; font-size:20px; font-weight:600;
+  color:#0a0a0a; line-height:1; padding:16px 16px 10px;
+}
+.wpr-header-tabs-row {
+  display:flex; gap:5px; align-items:center; flex:1;
+}
+.wpr-tab {
+  display:inline-flex; align-items:center; justify-content:center; gap:4px;
+  padding:5px 10px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+  background:#f4f4f6; font-size:11px; font-weight:600;
+  color:#6b7280; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+  transition:all 0.15s ease; white-space:nowrap;
+}
+.wpr-tab-active { background:#0a0a0a; color:#fff; border-color:#0a0a0a; }
+.wpr-tab-count {
+  font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
+  background:rgba(0,0,0,0.08); color:#6b7280;
+}
+.wpr-tab-active .wpr-tab-count { background:rgba(255,255,255,0.2); color:#fff; }
+/* Añadir reseña — naranja motivador, empujado a la derecha */
+.wpr-tab.wpr-tab-add {
+  margin-left:auto;
+  background:linear-gradient(135deg,#f59e0b,#f97316);
+  border-color:transparent; color:#fff;
+  box-shadow:0 2px 8px rgba(249,115,22,0.30);
+}
+.wpr-tab.wpr-tab-add:active { filter:brightness(0.92); }
+.wpr-empty {
+  text-align:center; color:#9ca3af; font-size:13px; padding:24px 20px;
+}
+.wpr-see-more {
+  display:block; text-align:center;
+  font-size:12px; font-weight:600; color:#4285F4;
+  padding:12px 0 4px; text-decoration:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.wpr-see-more:active { opacity:0.7; }
+
+
+/* MENTIONS */
+#wp-pm2-mentions { padding-bottom:16px; }
+#wp-pm2-mentions-list {
+  display:flex; gap:8px; padding:0 16px; overflow-x:auto; scrollbar-width:none;
+}
+#wp-pm2-mentions-list::-webkit-scrollbar { display:none; }
+.wp-pm2-mention-card {
+  width:130px; height:160px; border-radius:12px; flex-shrink:0;
+  overflow:hidden; position:relative; cursor:pointer; background:#e5e7eb;
+}
+.wp-pm2-mention-card img { width:100%; height:100%; object-fit:cover; }
+.wp-pm2-mention-label {
+  position:absolute; bottom:0; left:0; right:0;
+  padding:6px 8px; background:linear-gradient(transparent, rgba(0,0,0,0.7));
+  font-size:10px; color:#fff; font-weight:600;
+}
+.wp-pm2-mention-icon {
+  position:absolute; bottom:6px; left:6px;
+  width:18px; height:18px; background:rgba(0,0,0,0.5);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:10px;
+}
+
+/* REVIEWS */
+#wp-pm2-reviews-section { padding-bottom:8px; }
+#wp-pm2-comment-input-row {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 16px 12px;
+}
+#wp-pm2-user-avatar {
+  width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0;
+  background:#e5e7eb;
+}
+#wp-pm2-comment-box {
+  transition:background-color 0.15s ease;
+  -webkit-tap-highlight-color:transparent;
+  flex:1; display:flex; align-items:center; justify-content:space-between;
+  background:#f3f4f6; border-radius:999px; padding:10px 8px 10px 16px;
+  font-size:14px; color:#9ca3af; cursor:pointer;
+}
+#wp-pm2-comment-send {
+  width:30px; height:30px; border-radius:50%; border:none;
+  background:#6b7280; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0;
+}
+.wp-pm2-review-row {
+  display:flex; gap:10px; padding:10px 16px;
+}
+.wp-pm2-review-avatar {
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background:#e5e7eb; object-fit:cover;
+}
+.wp-pm2-review-body { flex:1; }
+.wp-pm2-review-name { font-size:13px; font-weight:700; color:#0a0a0a; }
+.wp-pm2-review-stars { font-size:11px; color:#f59e0b; margin-top:1px; }
+.wp-pm2-review-text {
+  font-size:13px; color:#374151; margin-top:4px; line-height:1.5; font-weight:400;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6;
+  overflow:hidden; font-family:var(--wp-font);
+}
+.wp-pm2-review-text.wp-pm2-expanded {
+  -webkit-line-clamp:unset; overflow:visible;
+}
+.wp-pm2-review-more {
+  display:none; margin-top:4px; font-size:12px; font-weight:700;
+  color:#2563eb; background:none; border:none; padding:0;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-review-time { font-size:11px; color:#9ca3af; margin-top:2px; }
+
+/* ── REACCIONES Y RESPUESTAS ─────────────────────────────────── */
+/* La tarjeta no permite seleccionar texto: el long-press abre las
+   reacciones en vez del menú de copiar del sistema. */
+.wp-pm2-review-row {
+  -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none;
+  transition:background-color 0.2s ease;
+  border-radius:16px;
+}
+/* touch-action:pan-y → el scroll vertical lo maneja el navegador y
+   el gesto horizontal (swipe para responder) llega al JS */
+.wp-pm2-review-row { position:relative; touch-action:pan-y; }
+/* Long-press: solo se tiñe el fondo. Antes también se encogía
+   (transform:scale), y eso convertía la tarjeta en una capa aparte
+   y obligaba al teléfono a separar en capas todo lo que tiene
+   encima/debajo (las demás respuestas) → parpadeo en esa zona, más
+   notorio con 3+ respuestas. */
+.wp-pm2-review-row.wp-pm2-rv-pressing { background-color:#f6f7f9; }
+.wp-pm2-review-row.wp-pm2-rv-focus { background-color:#f3f4f6; }
+.wp-pm2-emoji {
+  font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;
+  line-height:1;
+}
+/* Chips con el resumen de reacciones (😍 4  😂 1) */
+.wp-pm2-rv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.wp-pm2-rv-chips:empty { display:none; }
+.wp-pm2-rv-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 8px 3px 6px; border-radius:999px;
+  background:#f3f4f6; border:1px solid transparent;
+  font-size:11px; font-weight:700; color:#4b5563;
+  font-family:var(--wp-font); cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.15s ease;
+}
+.wp-pm2-rv-chip .wp-pm2-emoji { font-size:13px; }
+.wp-pm2-rv-chip.wp-pm2-mine { background:#eef4ff; border-color:#bfd4fb; color:#1d4ed8; }
+
+/* Fila de acciones: Útil · Responder */
+.wp-pm2-rv-actions { display:flex; align-items:center; gap:8px; margin-top:8px; }
+.wp-pm2-rv-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  height:26px; padding:0 10px; border-radius:999px; border:none;
+  background:#f3f4f6; color:#6b7280;
+  font-size:11.5px; font-weight:700; font-family:var(--wp-font);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.15s ease;
+}
+.wp-pm2-rv-btn svg { flex-shrink:0; }
+      .wp-pm2-rv-btn.wp-pm2-on {
+  background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+  color:#fff;
+}
+
+/* Respuestas — un solo nivel, colapsadas por defecto */
+.wp-pm2-rv-replies { margin-top:6px; }
+.wp-pm2-rv-replies:empty { display:none; }
+.wp-pm2-rv-toggle {
+  display:inline-flex; align-items:center; gap:6px;
+  background:none; border:none; padding:4px 0; cursor:pointer;
+  font-size:12px; font-weight:700; color:#2563eb; font-family:var(--wp-font);
+  -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-rv-toggle::before {
+  content:''; width:18px; height:1px; background:#d1d5db;
+}
+.wp-pm2-rv-reply {
+  /* padding + margin negativo del mismo valor: el texto queda
+     alineado igual que antes, pero el fondo del long-press/focus
+     deja aire alrededor del avatar en vez de pegarse a él */
+  display:flex; gap:8px; padding:8px 10px; margin:0 -10px;
+  position:relative; touch-action:pan-y; border-radius:12px;
+  transition:background-color 0.2s ease;
+}
+.wp-pm2-rv-reply.wp-pm2-rv-pressing { background-color:#f3f4f6; }
+.wp-pm2-rv-reply.wp-pm2-rv-focus { background-color:#eef0f3; }
+.wp-pm2-rv-reply-to { margin-left:6px; font-size:11px; font-weight:600; color:#9ca3af; }
+.wp-pm2-rv-mention { color:#2563eb; font-weight:600; }
+.wp-pm2-rv-reply-act {
+  background:none; border:none; padding:0; cursor:pointer;
+  font-size:11px; font-weight:700; color:#6b7280; font-family:var(--wp-font);
+  -webkit-tap-highlight-color:transparent;
+}
+.wp-pm2-rv-chips-sm { margin-top:4px; gap:4px; }
+.wp-pm2-rv-chips-sm .wp-pm2-rv-chip { padding:1px 6px 1px 4px; font-size:10px; }
+.wp-pm2-rv-chips-sm .wp-pm2-rv-chip .wp-pm2-emoji { font-size:11px; }
+/* Ícono que aparece a la izquierda al deslizar para responder */
+.wp-pm2-rv-swipe-icon {
+  position:absolute; left:0; top:50%;
+  width:28px; height:28px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:#e5e7eb; color:#6b7280;
+  opacity:0; transform:translateY(-50%) scale(0.6);
+  pointer-events:none; z-index:2;
+}
+.wp-pm2-review-row > .wp-pm2-rv-swipe-icon { top:27px; }
+.wp-pm2-rv-swipe-icon.wp-pm2-on {
+  background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+  color:#fff;
+}
+.wp-pm2-rv-reply img {
+  width:24px; height:24px; border-radius:50%; object-fit:cover;
+  flex-shrink:0; background:#e5e7eb;
+}
+.wp-pm2-rv-reply-body { flex:1; min-width:0; }
+.wp-pm2-rv-reply-name { font-size:12px; font-weight:700; color:#0a0a0a; }
+.wp-pm2-rv-reply-text {
+  font-size:12.5px; color:#374151; line-height:1.45; margin-top:1px;
+  font-family:var(--wp-font); word-wrap:break-word;
+}
+.wp-pm2-rv-reply-meta { display:flex; gap:10px; margin-top:2px; font-size:11px; color:#9ca3af; }
+
+/* Botón ⋯ (Copiar / Editar / Eliminar / Reportar / Bloquear) */
+.wp-pm2-rv-more {
+  position:absolute; top:4px; right:6px; z-index:3;
+  width:32px; height:32px; border-radius:50%; border:none;
+  background:transparent; color:#9ca3af;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.15s;
+}
+.wp-pm2-rv-more:active { background-color:#e5e7eb; }
+.wp-pm2-rv-more-sm { top:2px; right:4px; width:28px; height:28px; }
+.wp-pm2-review-name, .wp-pm2-rv-reply-name { padding-right:30px; }
+
+/* Contenido que ESTE usuario reportó (pendiente de revisión) */
+.wp-pm2-rv-review-badge {
+  display:inline-block; margin-left:6px; vertical-align:1px;
+  padding:1px 7px; border-radius:999px;
+  background:linear-gradient(180deg,#fde68a 0%,#fbbf24 100%);
+  color:#78350f; font-size:10px; font-weight:700; letter-spacing:0.01em;
+}
+.wp-pm2-rv-blur { filter:blur(5px); opacity:0.7; pointer-events:none; }
+.wp-pm2-rv-reveal {
+  display:inline-flex; align-items:center; gap:5px;
+  margin-top:4px; padding:3px 10px; border-radius:999px;
+  border:none; background:#f3f4f6; color:#4b5563;
+  font-size:11px; font-weight:700; font-family:var(--wp-font);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.15s;
+}
+      .wp-pm2-ms-opt:disabled { color:#9ca3af; cursor:default; }
+.wp-pm2-ms-opt:disabled:active { background-color:transparent; }
+
+/* Pill "Dueño" (dueño verificado del lugar) */
+.wp-pm2-rv-owner-badge {
+  display:inline-block; margin-left:6px; vertical-align:1px;
+  padding:1px 7px; border-radius:999px;
+  background:linear-gradient(180deg,#3a3a3c 0%,#111111 100%);
+  color:#fff; font-size:10px; font-weight:700; letter-spacing:0.01em;
+}
+
+/* Formulario "¿Es tu negocio?" */
+.wp-pm2-cl { padding:0 20px 6px; }
+.wp-pm2-cl-intro { margin:0 0 12px; font-size:13px; line-height:1.45; color:#4b5563; }
+.wp-pm2-cl-intro b { color:#111827; }
+.wp-pm2-cl-field { display:block; margin-bottom:10px; }
+.wp-pm2-cl-field > span { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+.wp-pm2-cl-field em { font-style:normal; font-weight:500; color:#9ca3af; }
+.wp-pm2-cl-input {
+  width:100%; box-sizing:border-box; border-radius:12px;
+  border:1px solid rgba(0,0,0,0.10); background:#f9f9f9;
+  padding:10px 12px; font-size:14px; color:#0a0a0a;
+  font-family:var(--wp-font); outline:none; resize:none;
+}
+.wp-pm2-cl-input:focus { border-color:#93c5fd; background:#fff; }
+.wp-pm2-cl-roles { display:flex; gap:8px; }
+.wp-pm2-cl-role {
+  flex:1; height:36px; border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+  background:#f3f4f6; color:#4b5563; font-size:13px; font-weight:700;
+  font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.wp-pm2-cl-role:active { transform:scale(0.92); }
+.wp-pm2-cl-role.wp-pm2-on {
+  background:linear-gradient(180deg,#4f8ff7 0%,#2563eb 100%);
+  color:#fff; border-color:transparent;
+}
+.wp-pm2-cl-note { margin:4px 0 12px; font-size:11.5px; line-height:1.45; color:#8e8e93; }
+.wp-pm2-cl-submit {
+  width:100%; height:46px; border-radius:999px; border:none;
+  background:#0a0a0a; color:#fff; font-size:15px; font-weight:700;
+  font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:opacity 0.15s;
+}
+.wp-pm2-cl-submit:disabled { opacity:0.4; }
+/* Hojas altas (solo el formulario "¿Es tu negocio?"): el scroll va
+   en el CONTENIDO, nunca en .wp-pm2-ms-menu. Ponerle overflow a la
+   hoja que se anima con transform + border-radius hacía que el
+   WebView de Android creara una capa de scroll aparte y la pintara
+   un cuadro tarde, sin recortar las esquinas → destello al abrir
+   TODAS las hojas. */
+#wp-pm2-menu-sheet.wp-pm2-ms-tall .wp-pm2-ms-body {
+  max-height:calc(100vh - 150px - env(safe-area-inset-top,0px));
+  max-height:calc(100dvh - 150px - env(safe-area-inset-top,0px));
+  overflow-y:auto; overscroll-behavior:contain;
+}
+
+
+
+/* Hoja de opciones / reportar / confirmar */
+#wp-pm2-menu-sheet .wp-pm2-ms-overlay {
+  position:fixed; inset:0; z-index:1500100;
+  background:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s ease;
+}
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-overlay { opacity:1; }
+/* Hoja abierta desde otra: el fondo arranca ya oscuro, sin fade */
+#wp-pm2-menu-sheet.wp-pm2-ms-chained .wp-pm2-ms-overlay { opacity:1; transition:none; }
+#wp-pm2-menu-sheet .wp-pm2-ms-menu {
+  position:fixed; left:12px; right:12px;
+  bottom:calc(12px + env(safe-area-inset-bottom,0px)); z-index:1500200;
+  background:#fff; border-radius:24px; padding:8px 0 10px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.18);
+  transform:translateY(110%);
+  transition:transform 0.32s cubic-bezier(0.34,1.2,0.64,1);
+  font-family:var(--wp-font);
+}
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-menu { transform:translateY(0); }
+.wp-pm2-ms-handle { width:36px; height:4px; border-radius:2px; background:rgba(0,0,0,0.15); margin:0 auto 8px; }
+.wp-pm2-ms-header { padding:4px 20px 8px; }
+.wp-pm2-ms-title { display:block; font-size:16px; font-weight:700; color:#0a0a0a; }
+.wp-pm2-ms-sub { display:block; font-size:12px; color:#8e8e93; margin-top:2px; }
+.wp-pm2-ms-opt {
+  width:100%; display:flex; align-items:center; gap:12px;
+  padding:13px 20px; border:none; background:transparent;
+  font-size:15px; font-weight:600; color:#111827; font-family:var(--wp-font);
+  text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background-color 0.12s;
+}
+.wp-pm2-ms-opt:active { background-color:#f3f4f6; }
+.wp-pm2-ms-opt.wp-pm2-danger { color:#e60000; }
+.wp-pm2-ms-ico { display:flex; width:20px; justify-content:center; color:inherit; opacity:0.85; }
+.wp-pm2-ms-ico:empty { display:none; }
+.wp-pm2-ms-msg { margin:0; padding:0 20px 14px; font-size:14px; line-height:1.45; color:#4b5563; }
+.wp-pm2-ms-actions { display:flex; gap:10px; padding:0 16px 6px; }
+.wp-pm2-ms-btn {
+  flex:1; height:46px; border-radius:999px; border:none;
+  font-size:15px; font-weight:700; font-family:var(--wp-font);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.wp-pm2-ms-btn:active { transform:scale(0.94); }
+.wp-pm2-ms-cancel { background:#f3f4f6; color:#111827; }
+.wp-pm2-ms-danger-btn { background:linear-gradient(180deg,#ff4d4d 0%,#e60000 100%); color:#fff; }
+.wp-pm2-ms-primary-btn { background:#0a0a0a; color:#fff; }
+
+/* Barra flotante de reacciones (long-press) — vive en <body>,
+   por encima de la ficha (#wp-pm2 = 1500000) */
+#wp-pm2-react-layer { position:fixed; inset:0; z-index:1500100; }
+#wp-pm2-react-dim {
+  position:absolute; inset:0; background:rgba(0,0,0,0.08);
+  opacity:0; transition:opacity 0.2s ease;
+}
+#wp-pm2-react-layer.wp-pm2-in #wp-pm2-react-dim { opacity:1; }
+#wp-pm2-react-bar {
+  position:absolute; display:flex; gap:2px; padding:6px 8px;
+  background:#fff; border-radius:999px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  transform:scale(0.6); opacity:0; transform-origin:var(--wp-pm2-origin, 50% 100%);
+  transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease;
+}
+#wp-pm2-react-layer.wp-pm2-in #wp-pm2-react-bar { transform:scale(1); opacity:1; }
+.wp-pm2-react-opt {
+  width:44px; height:44px; border-radius:50%; border:none; background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transform:translateY(8px) scale(0.5); opacity:0;
+  transition:transform 0.34s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease, background-color 0.15s;
+}
+#wp-pm2-react-layer.wp-pm2-in .wp-pm2-react-opt { transform:none; opacity:1; }
+.wp-pm2-react-opt.wp-pm2-mine { background:#eef4ff; }
+.wp-pm2-react-opt:active { transform:scale(1.25); }
+
+/* FOOTER */
+#wp-pm2-footer {
+  position:absolute; left:0; right:0; bottom:0; z-index:6;
+  display:flex; align-items:center; gap:10px;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  background:transparent;
+  pointer-events:none; /* el aire entre botones deja pasar el scroll de abajo */
+  font-family:var(--wp-font);
+}
+#wp-pm2-footer > * { pointer-events:auto; }
+#wp-pm2-here-btn {
+  position:relative; width:48px; height:48px; margin:0 4px; border-radius:50%; border:none; padding:0;
+  background:#0a0a0a; color:#fff; display:flex; align-items:center;
+  justify-content:center; cursor:pointer; flex-shrink:0; overflow:visible;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:none; transition:background-color .3s;
+}
+/* Anillo de cercanía (64px alrededor del botón de 48) */
+/* El anillo va DENTRO del botón (a 3px de la orilla), alrededor del pin */
+.wp-pm2-ring { position:absolute; left:3px; top:3px; width:42px; height:42px; transform:rotate(-90deg); pointer-events:none; overflow:visible; }
+.wp-pm2-ring circle { fill:none; stroke-width:5.5; }
+.wp-pm2-ring .bg { stroke:rgba(255,255,255,0.16); }
+.wp-pm2-ring .fg { stroke-linecap:round; transition:stroke-dashoffset .8s cubic-bezier(0.32,1.1,0.5,1), stroke .5s; }
+#wp-pm2-here-btn.nopos .wp-pm2-ring .bg { stroke:rgba(255,255,255,0.35); stroke-dasharray:4 7; }
+/* Ya cerca / registrado (botón verde): la pista del anillo en blanco */
+.wp-pm2-here-ok { display:none; }
+/* Ya cerca: el botón late suavemente (onda verde, solo transform/opacity) */
+#wp-pm2-here-btn.near { background:#16a34a; }
+#wp-pm2-here-btn.near::after {
+  content:''; position:absolute; inset:-8px; border-radius:50%; border:3px solid #22c55e; pointer-events:none;
+  animation:wpPmHereWave 1.6s ease-out infinite;
+}
+@keyframes wpPmHereWave { 0% { transform:scale(0.95); opacity:.8; } 100% { transform:scale(1.45); opacity:0; } }
+/* Registrado hoy: verde sólido con palomita */
+#wp-pm2-here-btn.done { background:#16a34a; }
+#wp-pm2-here-btn.done .wp-pm2-here-pin { display:none; }
+#wp-pm2-here-btn.done .wp-pm2-here-ok { display:block; }
+#wp-pm2-here-btn.busy { opacity:.6; pointer-events:none; }
+/* Visitas anteriores: badge verde en la esquina */
+.wp-pm2-here-n {
+  position:absolute; right:-6px; top:-6px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:999px;
+  background:#16a34a; color:#fff; border:2px solid #fff; font-size:10.5px; font-weight:800; line-height:16px; text-align:center;
+}
+.wp-pm2-here-n[hidden] { display:none; }
+/* Distancia arriba del botón: badge blanco con sombra */
+.wp-pm2-here-d {
+  position:absolute; left:50%; bottom:calc(100% + 7px); transform:translateX(-50%); white-space:nowrap; pointer-events:none;
+  height:22px; padding:0 9px; border-radius:999px; box-sizing:border-box; display:flex; align-items:center;
+  background:#fff; color:#0a0a0a; font-size:11.5px; font-weight:800; letter-spacing:0.1px;
+  box-shadow:0 0 0 0.5px rgba(17,24,39,0.08), 0 3px 10px rgba(17,24,39,0.18);
+}
+.wp-pm2-here-d:empty { display:none; }
+#wp-pm2-here-btn.near .wp-pm2-here-d, #wp-pm2-here-btn.done .wp-pm2-here-d { background:#16a34a; color:#fff; }
+/* Al registrar: el anillo "explota" y sube "+N pts" */
+#wp-pm2-here-btn.burst .wp-pm2-ring { animation:wpPmRingBurst .6s cubic-bezier(0.3,1.6,0.5,1); }
+@keyframes wpPmRingBurst { 0% { transform:rotate(-90deg) scale(1); } 40% { transform:rotate(-90deg) scale(1.3); opacity:.6; } 100% { transform:rotate(-90deg) scale(1); opacity:1; } }
+.wp-pm2-here-pts {
+  position:absolute; left:50%; bottom:100%; pointer-events:none; white-space:nowrap;
+  font-family:'Anton','Open Sans',sans-serif; font-size:20px; color:#f59e0b;
+  text-shadow:2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 1.4px 1.4px 0 #fff, -1.4px 1.4px 0 #fff, 1.4px -1.4px 0 #fff, -1.4px -1.4px 0 #fff;
+  animation:wpPmPtsUp 1.25s cubic-bezier(0.2,0.8,0.3,1) forwards;
+}
+@keyframes wpPmPtsUp { 0% { transform:translate(-50%, 6px) scale(.6); opacity:0; } 20% { opacity:1; transform:translate(-50%, -14px) scale(1.1); } 100% { transform:translate(-50%, -54px) scale(1); opacity:0; } }
