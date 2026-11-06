@@ -126,5 +126,5 @@ export function initIOSFixes() {
   // Capacitor native
   applyStatusBarFix();
 
-  console.log(`✅ iOS fixes init — iOS:${isIOS()} Capacitor:${isCapacitor()}`);
+  console.log(`iOS fixes init — iOS:${isIOS()} Capacitor:${isCapacitor()}`);
 }

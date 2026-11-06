@@ -191,7 +191,7 @@ iconColor:       '${p.iconColor}',`;
     navigator.clipboard.writeText(text).then(() => {
       const btn = this.panel.querySelector('#lgp-copy');
       if (btn) {
-        btn.textContent = '✅ Copiado!';
+        btn.textContent = '✓ Copiado!';
         setTimeout(() => { btn.textContent = '📋 Copiar parámetros'; }, 2000);
       }
     });

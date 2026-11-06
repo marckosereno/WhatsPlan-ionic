@@ -635,7 +635,7 @@ export class MapView {
     })();
 
     this.map.on('load', () => {
-      console.log('✅ Mapa listo');
+      console.log('Mapa listo');
 
       // Placeholder transparente para iconos del sprite no disponibles
       this.map.on('styleimagemissing', (e) => {
@@ -1144,7 +1144,7 @@ export class MapView {
         }
       });
 
-      console.log('✅ WhatsPlan gamified style aplicado');
+      console.log('WhatsPlan gamified style aplicado');
     } catch(e){ console.warn('⚠️ applyBlinkLight:',e.message); }
   }
 
@@ -1244,7 +1244,7 @@ export class MapView {
       this.activityMarkers.push(marker);
     });
 
-    console.log(`✅ ${this.activityMarkers.length} pines de actividad en el mapa`);
+    console.log(`${this.activityMarkers.length} pines de actividad en el mapa`);
   }
 
   async _loadLandmarks() {
@@ -1298,7 +1298,7 @@ export class MapView {
       this._renderPlaceMarkers(this.allPlaces);
       // Notificar al SearchBar que el conteo cambió
       document.dispatchEvent(new CustomEvent('wp:placesloaded', { detail: { count: this.allPlaces.length } }));
-    } catch(e) { console.error('❌ loadCategory:', e); }
+    } catch(e) { console.error('loadCategory:', e); }
     if (this._allLandmarks) this._renderLandmarks([]);
   }
 
@@ -4741,7 +4741,7 @@ export class MapView {
       this.landmarkMarkers.push(marker);
     });
 
-    console.log('✅ Landmarks renderizados:', items.length);
+    console.log('Landmarks renderizados:', items.length);
   }
 
   // ── Featured Highlight — igual que el original ─────────────────────
@@ -4832,7 +4832,7 @@ export class MapView {
       root.appendChild(shadow);
     }
     if (root && !root.querySelector('.pin-featured-name')) {
-      const badge  = closest.place.featured==='verified'?'✅ Verificado':closest.place.featured==='premium'?'💎 Premium':'⭐ Destacado';
+      const badge  = closest.place.featured==='verified'?'✓ Verificado':closest.place.featured==='premium'?'💎 Premium':'⭐ Destacado';
       const badgeBg = closest.place.featured==='verified'?'linear-gradient(135deg,#10b981,#059669)':closest.place.featured==='premium'?'linear-gradient(135deg,#3b82f6,#2563eb)':'linear-gradient(135deg,#f59e0b,#f97316)';
       const nameEl = document.createElement('div');
       nameEl.className = 'pin-featured-name';

@@ -22,7 +22,7 @@ export function initSupabase() {
   SUPABASE_URL = window.__SUPABASE_URL__ || "";
   SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__ || "";
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('❌ Supabase: faltan variables de entorno');
+    console.error('Supabase: faltan variables de entorno');
     return null;
   }
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -32,7 +32,7 @@ export function initSupabase() {
       lock: (name, acquireTimeout, fn) => fn()
     }
   });
-  console.log('✅ Supabase inicializado');
+  console.log('Supabase inicializado');
   return supabase;
 }
 

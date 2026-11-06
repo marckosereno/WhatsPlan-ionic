@@ -35,7 +35,7 @@ export const PLACE_TAGS = [
   { key:'precio_justo',  emoji:'👍', label:'Precio justo',        cat:'Precio' },
   { key:'caro',          emoji:'💎', label:'Premium / Caro',      cat:'Precio' },
   // Destacados
-  { key:'recomendado',   emoji:'✅', label:'Muy recomendado',     cat:'Destacado' },
+  { key:'recomendado',   emoji:'👍', label:'Muy recomendado',     cat:'Destacado' },
   { key:'mejor_del_area',emoji:'🏆', label:'Mejor del área',      cat:'Destacado' },
   { key:'imperdible',    emoji:'🌟', label:'Imperdible',          cat:'Destacado' },
 ];
