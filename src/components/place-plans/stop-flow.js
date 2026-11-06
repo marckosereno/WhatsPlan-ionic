@@ -104,8 +104,8 @@ export class StopFlow {
       <button type="button" class="wp-st-row wp-st-own" data-a="own"><span class="wp-st-row-ph">📍</span>
         <span class="wp-st-row-t"><b>Un lugar que no está en el mapa</b><small>Casa de alguien, un parque sin nombre…</small></span><i class="wp-st-radio"></i></button>
       <div class="wp-st-ownf" hidden>
-        <input class="wp-st-in" data-f="name" type="text" maxlength="80" placeholder="Nombre (ej. Casa de Ana)" autocapitalize="sentences" autocomplete="off">
-        <input class="wp-st-in" data-f="address" type="text" maxlength="160" placeholder="Dirección o referencia (opcional)" autocapitalize="sentences" autocomplete="off">
+        <input class="wp-st-in" data-zoom="Nombre del lugar" data-f="name" type="text" maxlength="80" placeholder="Nombre (ej. Casa de Ana)" autocapitalize="sentences" autocomplete="off">
+        <input class="wp-st-in" data-zoom="Dirección o referencia" data-f="address" type="text" maxlength="160" placeholder="Dirección o referencia (opcional)" autocapitalize="sentences" autocomplete="off">
       </div>`;
     let qt = 0;
     el.querySelector('.wp-st-search input').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => this._sfPaintPlaces(f), 120); });
@@ -199,7 +199,7 @@ export class StopFlow {
 
   // ── Paso 4 · indicación ───────────────────────────────────────────────
   _sfMountNote(f, el) {
-    el.innerHTML = `<textarea class="wp-st-in" maxlength="140" rows="3" placeholder="Ej. Aquí cada quien pide lo suyo" autocapitalize="sentences"></textarea>
+    el.innerHTML = `<textarea class="wp-st-in" data-zoom="Indicación para esta parada" maxlength="140" rows="3" placeholder="Ej. Aquí cada quien pide lo suyo" autocapitalize="sentences"></textarea>
       <p class="wp-st-hint">Las reglas (quién paga, puntualidad…) son de todo el plan.</p>`;
     el.querySelector('textarea').addEventListener('input', (e) => { f.note = e.target.value; });
   }

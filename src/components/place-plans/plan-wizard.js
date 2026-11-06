@@ -243,8 +243,8 @@ export class PlanWizard {
   _pwMountName(w, el) {
     w.nameEl = el;
     el.innerHTML = `<div class="wp-pw-dial"></div>
-      <input class="wp-st-in wp-pw-title" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off" placeholder="Nombre del plan">`;
-    const items = w.shown.map(([key, emoji, label]) => ({ key, emoji, label, img: w.icons[key] || '' }));
+      <input class="wp-st-in wp-pw-title" data-zoom="Nombre del plan" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off" placeholder="Nombre del plan">`;
+    const items = w.shown.map(([key, emoji, label]) => ({ key, emoji, label }));   // emojis normales
     w.dial = createEmojiDial(el.querySelector('.wp-pw-dial'), {
       items, value: w.type, haptic: (k) => this._haptic?.(k),
       onChange: (k) => { w.type = k; this._pwPaintName(w); },
@@ -266,7 +266,7 @@ export class PlanWizard {
     w.detEl = el;
     el.innerHTML = `
       <div class="wp-st-chips wrap">${this._planRules().map(([k, e, t]) => `<button type="button" data-r="${k}">${e} ${t}</button>`).join('')}</div>
-      <textarea class="wp-st-in" maxlength="280" rows="3" placeholder="Nota para los que van (ej. yo llevo el pastel)" autocapitalize="sentences"></textarea>
+      <textarea class="wp-st-in" data-zoom="Nota para los que van" maxlength="280" rows="3" placeholder="Nota para los que van (ej. yo llevo el pastel)" autocapitalize="sentences"></textarea>
       <p class="wp-st-hint" data-sum></p>`;
     el.querySelector('textarea').addEventListener('input', (e) => { w.note = e.target.value; });
     el.addEventListener('click', (e) => {
