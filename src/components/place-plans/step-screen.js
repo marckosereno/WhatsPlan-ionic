@@ -17,7 +17,8 @@
 // Estilos: /styles/plan-steps.css (#wp-st, .wp-st-*)
 // ════════════════════════════════════════════════════════════════════
 
-const ICON_BACK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
+// Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
+const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1)"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>';
 const ICON_NEXT = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const RING_R = 36;
 const RING_C = 2 * Math.PI * RING_R;
@@ -28,7 +29,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   root.id = 'wp-st';
   root.innerHTML = `
     <header class="wp-st-top">
-      <button type="button" class="wp-st-round" data-a="back" aria-label="Atrás">${ICON_BACK}</button>
+      <button type="button" class="wp-st-back" data-a="back" aria-label="Volver">${ICON_BACK}<span>Volver</span></button>
       <span class="wp-st-count"></span>
       <button type="button" class="wp-st-skip" data-a="skip">Omitir</button>
     </header>
@@ -46,6 +47,18 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   document.body.appendChild(root);
   const $ = (q) => root.querySelector(q);
   const secs = [...root.querySelectorAll('.wp-st-step')];
+  // El contenido va centrado en el espacio libre entre la barra de arriba
+  // y el botón de abajo (los dos flotan encima y el contenido pasa por debajo)
+  const layout = () => {
+    if (!root.isConnected) { window.visualViewport?.removeEventListener('resize', layout); window.removeEventListener('resize', layout); return; }
+    const top = $('.wp-st-top')?.offsetHeight || 0, foot = $('.wp-st-foot')?.offsetHeight || 0;
+    const vp = $('.wp-st-vp');
+    root.style.setProperty('--st-top', `${top}px`);
+    root.style.setProperty('--st-foot', `${foot}px`);
+    root.style.setProperty('--st-area', `${Math.max(0, vp.clientHeight - top - foot)}px`);
+  };
+  window.visualViewport?.addEventListener('resize', layout);
+  window.addEventListener('resize', layout);
   secs.forEach((sec, k) => steps[k].mount?.(sec.querySelector('.wp-st-body'), sec));
 
   const refresh = () => {
@@ -66,6 +79,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     root.querySelector('.wp-st-vp').scrollTop = 0;
     steps[i].onEnter?.();
     refresh();
+    layout();
   };
   const close = () => {
     root.classList.remove('in');
@@ -98,6 +112,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
       root.classList.add('done');
       $('.wp-st-vp').innerHTML = `<div class="wp-st-done">${html}</div>`;
       $('.wp-st-foot').remove();
+      layout();
       $('.wp-st-count').textContent = '';
       $('[data-a="skip"]').hidden = true;
       return $('.wp-st-done');

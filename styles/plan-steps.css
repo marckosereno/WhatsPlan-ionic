@@ -14,26 +14,49 @@
   --st-soft: #f3f4f6;
   --st-accent: #1a5cf5;
   --st-accent-soft: #eef4ff;
+  --st-bg: #fafafa;
   position: fixed; inset: 0; z-index: 1500500;
-  display: flex; flex-direction: column;
-  background: #fafafa; font-family: var(--wp-font); color: var(--st-ink);
-  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--st-bg); font-family: var(--wp-font); color: var(--st-ink);
   transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
 }
 #wp-st.in { transform: none; }
 #wp-st button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 #wp-st [hidden] { display: none !important; }
 
-/* ── Barra superior: atrás · "2 de 4" · Omitir ── */
-.wp-st-top { flex: none; display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; padding: 8px 16px; }
-.wp-st-round { width: 46px; height: 46px; border: none; border-radius: 50%; background: #fff; color: var(--st-ink); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
-.wp-st-count { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--st-sub); }
+/* ── Barra superior (flota, con sombra abajo para que el contenido no se corte de golpe) ── */
+.wp-st-top {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 10px;
+  background: rgba(250, 250, 250, 0.86);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+/* Igual que el "Volver" de la ficha: pill con el círculo negro y la flecha */
+.wp-st-back {
+  justify-self: start; height: 48px; padding: 0 18px 0 14px; border: none; border-radius: 9999px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 600; letter-spacing: -0.1px; color: #111;
+  background: rgba(255, 255, 255, 0.88);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.15s;
+}
+.wp-st-back svg { flex-shrink: 0; }
+.wp-st-back:active { transform: scale(0.92); }
+.wp-st-count { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--st-sub); white-space: nowrap; }
 .wp-st-skip { justify-self: end; height: 40px; padding: 0 14px; border: none; border-radius: 14px; background: #eceef1; color: var(--st-ink); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
 
-/* ── Pasos ── */
-.wp-st-vp { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+/* ── Pasos: el contenido pasa por debajo de la barra y del botón, y cada
+   paso queda centrado en el espacio libre entre los dos ── */
+.wp-st-vp { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: var(--st-top, 72px) 0 var(--st-foot, 112px); box-sizing: border-box; }
 .wp-st-track { display: flex; align-items: flex-start; transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
-.wp-st-step { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 18px 20px 28px; display: flex; flex-direction: column; opacity: 0.25; transition: opacity 0.3s; }
+.wp-st-step {
+  flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 20px 20px 24px;
+  min-height: var(--st-area, 60vh); display: flex; flex-direction: column; justify-content: center;
+  opacity: 0.25; transition: opacity 0.3s;
+}
+.wp-st-step:not(.on) { max-height: var(--st-area, 60vh); overflow: hidden; }
 .wp-st-step.on { opacity: 1; }
 .wp-st-step h1 { margin: 0; text-align: center; font-size: 30px; line-height: 1.15; font-weight: 800; letter-spacing: -0.6px; }
 .wp-st-sub { margin: 8px 0 0; text-align: center; font-size: 14.5px; line-height: 1.4; color: var(--st-sub); }
@@ -41,7 +64,13 @@
 .wp-st-lbl { font-size: 13px; font-weight: 700; color: var(--st-sub); margin-top: 4px; }
 
 /* ── Botón redondo con anillo de progreso (en el último paso: píldora) ── */
-.wp-st-foot { flex: none; display: flex; justify-content: center; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.wp-st-foot {
+  /* sin contenedor: el botón flota sobre un velo blanco que se desvanece */
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
+  display: flex; justify-content: center; padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(250, 250, 250, 0) 0%, rgba(250, 250, 250, 0.92) 45%, var(--st-bg) 100%);
+}
+.wp-st-foot > * { pointer-events: auto; }
 .wp-st-next {
   position: relative; width: 80px; height: 80px; padding: 0; border: none; background: none;
   display: flex; align-items: center; justify-content: center;
@@ -159,7 +188,7 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-st-empty { margin: 8px 0; text-align: center; font-size: 14px; color: var(--st-sub); }
 
 /* Pantalla final */
-#wp-st.done .wp-st-vp { display: flex; align-items: center; justify-content: center; }
+#wp-st.done .wp-st-vp { display: flex; align-items: center; justify-content: center; padding-bottom: 24px; }
 .wp-st-done { width: 100%; max-width: 360px; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .wp-st-done-ic { width: 84px; height: 84px; border-radius: 50%; background: var(--st-ink); color: #fff; display: flex; align-items: center; justify-content: center; animation: wpStPop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1); }
 .wp-st-done h2 { margin: 6px 0 0; font-size: 30px; font-weight: 800; letter-spacing: -0.6px; }
