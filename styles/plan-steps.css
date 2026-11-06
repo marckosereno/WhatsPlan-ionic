@@ -1,0 +1,169 @@
+@charset "UTF-8";
+/* ══════════════════════════════════════════════════════════════════
+   WHATSPLAN — plan-steps.css
+   Pantalla completa por pasos (src/components/place-plans/
+   step-screen.js) y las piezas que usan sus pasos: tarjetas de
+   opción, íconos, tira de días, hora grande, personas, listas.
+   La usan "Planear visita" (plan-wizard.js) y "Nueva parada"
+   (stop-flow.js).
+   ══════════════════════════════════════════════════════════════════ */
+
+#wp-st {
+  --st-ink: #0a0a0a;
+  --st-sub: #8e8e93;
+  --st-soft: #f3f4f6;
+  --st-accent: #1a5cf5;
+  --st-accent-soft: #eef4ff;
+  position: fixed; inset: 0; z-index: 1500500;
+  display: flex; flex-direction: column;
+  background: #fafafa; font-family: var(--wp-font); color: var(--st-ink);
+  padding-top: env(safe-area-inset-top, 0px);
+  transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+#wp-st.in { transform: none; }
+#wp-st button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#wp-st [hidden] { display: none !important; }
+
+/* ── Barra superior: atrás · "2 de 4" · Omitir ── */
+.wp-st-top { flex: none; display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; padding: 8px 16px; }
+.wp-st-round { width: 46px; height: 46px; border: none; border-radius: 50%; background: #fff; color: var(--st-ink); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+.wp-st-count { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--st-sub); }
+.wp-st-skip { justify-self: end; height: 40px; padding: 0 14px; border: none; border-radius: 14px; background: #eceef1; color: var(--st-ink); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+
+/* ── Pasos ── */
+.wp-st-vp { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.wp-st-track { display: flex; align-items: flex-start; transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1); }
+.wp-st-step { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 18px 20px 28px; display: flex; flex-direction: column; opacity: 0.25; transition: opacity 0.3s; }
+.wp-st-step.on { opacity: 1; }
+.wp-st-step h1 { margin: 0; text-align: center; font-size: 30px; line-height: 1.15; font-weight: 800; letter-spacing: -0.6px; }
+.wp-st-sub { margin: 8px 0 0; text-align: center; font-size: 14.5px; line-height: 1.4; color: var(--st-sub); }
+.wp-st-body { margin-top: 24px; display: flex; flex-direction: column; gap: 14px; }
+.wp-st-lbl { font-size: 13px; font-weight: 700; color: var(--st-sub); margin-top: 4px; }
+
+/* ── Botón redondo con anillo de progreso (en el último paso: píldora) ── */
+.wp-st-foot { flex: none; display: flex; justify-content: center; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.wp-st-next {
+  position: relative; width: 80px; height: 80px; padding: 0; border: none; background: none;
+  display: flex; align-items: center; justify-content: center;
+  transition: width 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.wp-st-ring { position: absolute; inset: 0; width: 80px; height: 80px; transform: rotate(-90deg); transition: opacity 0.25s; }
+.wp-st-ring circle { fill: none; stroke-width: 3; }
+.wp-st-ring .bg { stroke: #e5e7eb; }
+.wp-st-ring .fg { stroke: var(--st-accent); stroke-linecap: round; transition: stroke-dashoffset 0.45s cubic-bezier(0.32, 0.72, 0, 1); }
+.wp-st-next-in {
+  position: relative; width: 62px; height: 62px; border-radius: 999px; background: var(--st-ink); color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  transition: width 0.4s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.2s, transform 0.15s;
+}
+.wp-st-next-in b { display: none; font-size: 16px; font-weight: 800; white-space: nowrap; }
+.wp-st-next:active .wp-st-next-in { transform: scale(0.95); }
+.wp-st-next:disabled .wp-st-next-in { background: #d1d5db; box-shadow: none; }
+.wp-st-next.last { width: 100%; max-width: 380px; }
+.wp-st-next.last .wp-st-ring { opacity: 0; }
+.wp-st-next.last .wp-st-next-in { width: 100%; height: 58px; }
+.wp-st-next.last .wp-st-next-in svg { display: none; }
+.wp-st-next.last .wp-st-next-in b { display: block; }
+.wp-st-next.busy .wp-st-next-in { opacity: 0.6; }
+
+/* ── Piezas de los pasos ── */
+/* Tarjetas de opción grandes (como "Male / Female") */
+.wp-st-opts { display: flex; flex-direction: column; gap: 10px; }
+.wp-st-opt {
+  display: flex; align-items: center; gap: 14px; padding: 16px; border: none; border-radius: 22px; background: #fff; text-align: left;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); transition: box-shadow 0.15s, transform 0.15s;
+}
+.wp-st-opt:active { transform: scale(0.98); }
+.wp-st-opt.on { box-shadow: inset 0 0 0 2.5px var(--st-ink), 0 8px 20px rgba(0, 0, 0, 0.08); }
+.wp-st-opt-i { flex: none; width: 52px; height: 52px; border-radius: 16px; background: var(--st-soft); display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.wp-st-opt-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wp-st-opt-t b { font-size: 16.5px; font-weight: 800; }
+.wp-st-opt-t small { font-size: 13px; line-height: 1.35; color: var(--st-sub); }
+
+/* Chips */
+.wp-st-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
+.wp-st-chips::-webkit-scrollbar { display: none; }
+.wp-st-chips.wrap { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; justify-content: center; }
+.wp-st-chips button { flex: none; height: 40px; padding: 0 15px; border: none; border-radius: 999px; background: #fff; color: var(--st-ink); font-size: 14px; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07); }
+.wp-st-chips button.on { background: var(--st-ink); color: #fff; }
+
+/* Íconos 3D en cuadrícula */
+.wp-st-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.wp-st-tile { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 6px 12px; border: none; border-radius: 22px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); transition: box-shadow 0.15s, transform 0.15s; }
+.wp-st-tile:active { transform: scale(0.96); }
+.wp-st-tile.on { box-shadow: inset 0 0 0 2.5px var(--st-ink); }
+.wp-st-tile-i { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+.wp-st-tile-i img { width: 52px; height: 52px; object-fit: contain; filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.15)); }
+.wp-st-tile-l { font-size: 12.5px; font-weight: 700; line-height: 1.2; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Tira de días (como la de un calendario de hábitos) */
+.wp-st-days { display: flex; gap: 6px; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
+.wp-st-days::-webkit-scrollbar { display: none; }
+.wp-st-day { flex: 0 0 58px; height: 76px; border: none; border-radius: 20px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+.wp-st-day small { font-size: 12px; font-weight: 600; color: var(--st-sub); }
+.wp-st-day b { font-size: 20px; font-weight: 800; }
+.wp-st-day.on { background: var(--st-ink); }
+.wp-st-day.on small, .wp-st-day.on b { color: #fff; }
+
+/* Hora grande + − / + */
+.wp-st-clock { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 10px 0 2px; }
+.wp-st-clock b { min-width: 170px; text-align: center; font-size: 52px; font-weight: 800; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
+.wp-st-clock button { width: 52px; height: 52px; border: none; border-radius: 50%; background: #fff; color: var(--st-ink); font-size: 26px; font-weight: 600; line-height: 1; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1); }
+.wp-st-clock button:disabled { opacity: 0.35; }
+.wp-st-clock-sub { text-align: center; font-size: 14px; font-weight: 600; color: var(--st-sub); }
+
+/* Número con − / + (cupos) */
+.wp-st-num { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 18px; border-radius: 22px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+.wp-st-num span { display: flex; flex-direction: column; }
+.wp-st-num span b { font-size: 16px; font-weight: 800; }
+.wp-st-num span small { font-size: 12.5px; color: var(--st-sub); }
+.wp-st-num div { display: flex; align-items: center; gap: 10px; }
+.wp-st-num div b { min-width: 30px; text-align: center; font-size: 22px; font-weight: 800; }
+.wp-st-num button { width: 40px; height: 40px; border: none; border-radius: 50%; background: var(--st-soft); color: var(--st-ink); font-size: 20px; font-weight: 700; }
+.wp-st-num button:disabled { opacity: 0.35; }
+
+/* Personas */
+.wp-st-people { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 8px; }
+.wp-st-person { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: none; background: none; }
+.wp-st-person i { width: 60px; height: 60px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; display: block; transition: box-shadow 0.15s, transform 0.15s; }
+.wp-st-person.on i { box-shadow: 0 0 0 3px #fafafa, 0 0 0 5.5px var(--st-accent); }
+.wp-st-person em { position: absolute; top: 40px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--st-accent); box-shadow: 0 0 0 2px #fafafa; display: none; align-items: center; justify-content: center; }
+.wp-st-person.on em { display: flex; }
+.wp-st-person small { max-width: 100%; font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Lista de lugares */
+.wp-st-list { display: flex; flex-direction: column; gap: 8px; }
+.wp-st-row { display: flex; align-items: center; gap: 12px; padding: 10px; border: none; border-radius: 20px; background: #fff; text-align: left; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); transition: box-shadow 0.15s; }
+.wp-st-row.on { box-shadow: inset 0 0 0 2.5px var(--st-ink); }
+.wp-st-row-ph { flex: none; width: 52px; height: 52px; border-radius: 15px; background: #eef0f3 center / cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.wp-st-row-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wp-st-row-t b { font-size: 15px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-st-row-t small { font-size: 12.5px; color: var(--st-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-st-radio { flex: none; width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 2px #d1d5db; transition: box-shadow 0.15s; }
+.wp-st-row.on .wp-st-radio { box-shadow: inset 0 0 0 7.5px var(--st-ink); }
+.wp-st-ownf { display: flex; flex-direction: column; gap: 8px; }
+.wp-st-own { border: 1.5px dashed #d1d5db; box-shadow: none; background: transparent; }
+
+/* Campos */
+.wp-st-in { width: 100%; box-sizing: border-box; height: 54px; padding: 0 18px; border: none; border-radius: 18px; background: #fff; outline: none; font: inherit; font-size: 16px; color: var(--st-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+.wp-st-in:focus { box-shadow: inset 0 0 0 2px var(--st-ink); }
+textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-height: 1.4; resize: none; }
+.wp-st-search { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 16px; border-radius: 18px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); color: var(--st-sub); }
+.wp-st-search input { flex: 1; min-width: 0; border: none; outline: none; background: none; font: inherit; font-size: 15.5px; color: var(--st-ink); }
+.wp-st-titlef { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 6px; border-radius: 20px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+.wp-st-titlef input { flex: 1; min-width: 0; height: 46px; border: none; outline: none; background: none; font: inherit; font-size: 16px; font-weight: 700; color: var(--st-ink); }
+.wp-st-ico { flex: none; width: 46px; height: 46px; border: none; border-radius: 15px; background: var(--st-soft); font-size: 24px; display: flex; align-items: center; justify-content: center; }
+.wp-st-hint { margin: 0; text-align: center; font-size: 13px; color: var(--st-sub); }
+.wp-st-people .wp-st-empty { grid-column: 1 / -1; }
+.wp-st-empty { margin: 8px 0; text-align: center; font-size: 14px; color: var(--st-sub); }
+
+/* Pantalla final */
+#wp-st.done .wp-st-vp { display: flex; align-items: center; justify-content: center; }
+.wp-st-done { width: 100%; max-width: 360px; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.wp-st-done-ic { width: 84px; height: 84px; border-radius: 50%; background: var(--st-ink); color: #fff; display: flex; align-items: center; justify-content: center; animation: wpStPop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.wp-st-done h2 { margin: 6px 0 0; font-size: 30px; font-weight: 800; letter-spacing: -0.6px; }
+.wp-st-done p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--st-sub); }
+.wp-st-done .wp-st-btn { width: 100%; height: 56px; border: none; border-radius: 999px; background: var(--st-ink); color: #fff; font-size: 16px; font-weight: 800; margin-top: 10px; }
+.wp-st-done .wp-st-btn.ghost { background: transparent; color: var(--st-ink); margin-top: 0; }
+@keyframes wpStPop { from { transform: scale(0.5); opacity: 0; } to { transform: none; opacity: 1; } }
