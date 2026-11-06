@@ -4,8 +4,8 @@
 // "2 de 4" arriba, "Omitir" en los pasos opcionales y un botón redondo
 // con anillo de progreso abajo (en el último paso se abre en píldora
 // con el texto final). La usan "Planear visita" y "Nueva parada".
-// Con sheet: true va dentro de una hoja que se ajusta a cada paso
-// (step-sheet.js); sin él, en pantalla completa.
+// Con sheet: true va dentro de una hoja que llega hasta debajo de la
+// barra de estado (step-sheet.js); sin él, en pantalla completa.
 //
 // Uso:
 //   const s = openStepScreen({
@@ -61,8 +61,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   const layout = () => {
     if (!root.isConnected) { window.visualViewport?.removeEventListener('resize', layout); window.removeEventListener('resize', layout); return; }
     const top = $('.wp-st-top')?.offsetHeight || 0, foot = $('.wp-st-foot')?.offsetHeight || 0;
-    // en hoja: la hoja toma el alto del paso actual
-    const h = sh ? sh.fit($('.wp-st-done') || secs[i], top, foot) : $('.wp-st-vp').clientHeight;
+    const h = $('.wp-st-vp').clientHeight;
     root.style.setProperty('--st-top', `${top}px`);
     root.style.setProperty('--st-foot', `${foot}px`);
     root.style.setProperty('--st-area', `${Math.max(0, h - top - foot)}px`);
@@ -94,14 +93,14 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     if (was && !next.disabled) { next.classList.remove('ready'); void next.offsetWidth; next.classList.add('ready'); }
     next.setAttribute('aria-label', last ? doneLabel : 'Siguiente');
     $('.wp-st-ring .fg').style.strokeDashoffset = String(RING_C * (1 - (i + 1) / steps.length));
-    if (sh) requestAnimationFrame(layout);   // el contenido cambió → la hoja se reajusta
   };
-  const go = (k) => {
+  const go = (k, cascade = true) => {
     i = Math.max(0, Math.min(steps.length - 1, k));
     $('.wp-st-track').style.transform = `translateX(${-i * 100}%)`;
     secs.forEach((sec, n) => { sec.inert = n !== i; sec.classList.toggle('on', n === i); });
     // entrada: título y contenido suben en cascada con rebote
-    secs[i].classList.remove('enter'); void secs[i].offsetWidth; secs[i].classList.add('enter');
+    secs[i].classList.remove('enter');
+    if (cascade) { void secs[i].offsetWidth; secs[i].classList.add('enter'); }
     root.querySelector('.wp-st-vp').scrollTop = 0;
     steps[i].onEnter?.();
     refresh();
@@ -133,8 +132,12 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     else if (a === 'next') { haptic('light'); i < steps.length - 1 ? go(i + 1) : finish(); }
   });
 
-  go(0);
-  requestAnimationFrame(() => root.classList.add('in'));
+  // En hoja, la entrada es la hoja subiendo (sin cascada encima, que
+  // en teléfonos lentos se traba). Se fija el estilo inicial antes de
+  // animar para que no brinque.
+  go(0, !sh);
+  void root.offsetHeight;
+  root.classList.add('in');
   return {
     root, refresh, go, close,
     get index() { return i; },

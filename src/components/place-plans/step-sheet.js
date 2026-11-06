@@ -2,12 +2,12 @@
 // WHATSPLAN — place-plans/step-sheet.js
 // Modo "hoja" de la pantalla por pasos (step-screen.js con sheet: true):
 // los mismos pasos, pero dentro de una hoja que sube desde abajo, con
-// fondo oscurecido, jaladera arriba y altura que se ajusta al contenido
-// de cada paso (crece o se encoge con un resorte al cambiar de paso).
-// Se cierra tocando lo oscuro o jalando la hoja hacia abajo.
+// fondo oscurecido y jaladera arriba. Alto fijo: llega hasta justo
+// debajo de la barra de estado (no cambia de alto entre pasos, así no
+// brinca). Se cierra tocando lo oscuro o jalando la hoja hacia abajo.
 //
 // Uso (lo hace step-screen.js):
-//   const sh = attachSheet(root, close)   → { fit(content, top, foot), remove() }
+//   const sh = attachSheet(root, close)   → { remove() }
 // Estilos: /styles/plan-steps.css (#wp-st.sheet, .wp-st-scrim, .wp-st-grab)
 // ════════════════════════════════════════════════════════════════════
 
@@ -18,20 +18,14 @@ export function attachSheet(root, close) {
   const scrim = document.createElement('div');
   scrim.className = 'wp-st-scrim';
   document.body.insertBefore(scrim, root);
-  requestAnimationFrame(() => scrim.classList.add('in'));
+  void scrim.offsetWidth;   // que arranque transparente antes de oscurecer
+  scrim.classList.add('in');
   scrim.addEventListener('click', () => close());
   const top = root.querySelector('.wp-st-top');
   top.insertAdjacentHTML('afterbegin', '<i class="wp-st-grab" aria-hidden="true"></i>');
   dragToClose(root, top, close);
 
   return {
-    // Alto = barra + contenido del paso + botón (sin pasarse del máximo)
-    fit(content, topH, footH) {
-      const max = parseFloat(getComputedStyle(root).maxHeight) || window.innerHeight * 0.92;
-      const h = Math.min(max, Math.ceil(topH + (content?.scrollHeight || 0) + footH));
-      root.style.height = `${h}px`;
-      return h;
-    },
     remove() { scrim.classList.remove('in'); setTimeout(() => scrim.remove(), 340); },
   };
 }
