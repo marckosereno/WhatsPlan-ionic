@@ -15,6 +15,9 @@ import { getSupabase, ActivityService } from '/src/services/SupabaseService.js';
 import { getAvatarUrl } from '/src/services/AvatarService.js';
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
 import { createEmojiDial } from '/src/components/place-plans/emoji-dial.js';
+import { openTimePicker } from '/src/components/place-plans/time-picker.js';
+import { openPeoplePicker } from '/src/components/place-plans/people-picker.js';
+import { pulse } from '/src/components/place-plans/pulse.js';
 
 const GENERIC = [
   ['food', '🍔', 'Comer'], ['drinks', '☕', 'Café'], ['hangout', '🎈', 'Pasar el rato'],
@@ -28,7 +31,7 @@ const CAT_TYPES = {
 };
 const VIS = [
   ['public', '🌎', 'Cualquiera', 'Sale en el mapa y cualquiera puede unirse.'],
-  ['followers', '👥', 'Mis seguidores', 'Solo lo ve y se puede unir la gente que te sigue.'],
+  ['followers', '🫶', 'Mis seguidores', 'Solo lo ve y se puede unir la gente que te sigue.'],
   ['invited', '🔒', 'Solo invitados', 'Privado: van tú y las personas que invites.'],
 ];
 const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -111,7 +114,7 @@ export class PlanWizard {
     el.innerHTML = `
       <div class="wp-st-days">${w.days.map((d, i) => `<button type="button" class="wp-st-day" data-day="${i}"><small>${i === 0 ? 'Hoy' : DOW[d.getDay()]}</small><b>${d.getDate()}</b></button>`).join('')}</div>
       <div class="wp-st-lbl">Hora</div>
-      <div class="wp-st-clock"><button type="button" data-d="-1" aria-label="Más temprano">−</button><b></b><button type="button" data-d="1" aria-label="Más tarde">+</button></div>
+      <div class="wp-st-clock"><button type="button" data-d="-1" aria-label="Más temprano">−</button><button type="button" class="wp-st-clock-v" data-clock aria-label="Elegir la hora"><b></b></button><button type="button" data-d="1" aria-label="Más tarde">+</button></div>
       <p class="wp-st-clock-sub"></p>
       <div class="wp-st-chips" data-quick></div>`;
     el.classList.add('wp-st-when');
@@ -121,10 +124,20 @@ export class PlanWizard {
       else if (b.dataset.d) { w.now = false; w.mins = Math.max(0, Math.min(23 * 60 + 30, w.mins + SLOT * +b.dataset.d)); }
       else if (b.dataset.t === 'now') w.now = !w.now;
       else if (b.dataset.t) { w.now = false; w.mins = +b.dataset.t; }
+      else if (b.hasAttribute('data-clock')) { this._pwPickTime(w, el, b); return; }
       this._haptic?.('light');
       this._pwPaintWhen(w, el);
     });
     this._pwPaintWhen(w, el);
+  }
+
+  // Tocar la hora grande → elegir la hora exacta en una tarjeta en zoom
+  _pwPickTime(w, el, b) {
+    const now = new Date();
+    openTimePicker({
+      from: b, mins: w.now ? now.getHours() * 60 + now.getMinutes() : w.mins, haptic: (k) => this._haptic?.(k),
+      onPick: (m) => { w.now = false; w.mins = m; this._pwPaintWhen(w, el); },
+    });
   }
 
   _pwPaintWhen(w, el) {
@@ -165,20 +178,39 @@ export class PlanWizard {
     el.innerHTML = `
       <div class="wp-seats"><div class="wp-seats-row"></div>
         <div class="wp-seats-ctl"><button type="button" data-n="-1" aria-label="Un cupo menos">−</button><span data-v="n"></span><button type="button" data-n="1" aria-label="Un cupo más">+</button></div></div>
-      <label class="wp-st-search wp-seats-q"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Buscar a quién sigues" autocomplete="off"></label>
+      <button type="button" class="wp-st-search wp-seats-q" data-q><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Buscar a quién sigues</span></button>
       <div class="wp-st-people wp-seats-people"><p class="wp-st-empty">Cargando…</p></div>`;
-    el.querySelector('.wp-seats-q input').addEventListener('input', () => this._pwPaintPeople(w, true));
     el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-q]')) { this._pwSearch(w, e.target.closest('[data-q]')); return; }
       const p = e.target.closest('[data-id]');
-      if (p) {
-        const id = p.dataset.id;
-        w.invited.has(id) ? w.invited.delete(id) : w.invited.add(id);
-        w.justSeated = w.invited.has(id) ? id : null;
-        this._haptic?.('light'); this._pwPaintPeople(w);
-        return;
-      }
+      if (p) { this._pwToggle(w, p.dataset.id, p); return; }
       const n = e.target.closest('button[data-n]');
       if (n && !n.disabled) { w.n += +n.dataset.n; w.nTouched = true; this._haptic?.('light'); this._pwPaintPeople(w); }
+    });
+  }
+
+  // Invitar / quitar. Al quitar, el asiento se encoge y se va, y la
+  // persona regresa a la lista con un pulso.
+  _pwToggle(w, id, from) {
+    this._haptic?.('light');
+    if (!w.invited.has(id)) { w.invited.add(id); w.justSeated = id; this._pwPaintPeople(w); return; }
+    const seat = from?.closest('.wp-seat');
+    const done = () => {
+      w.invited.delete(id); this._pwPaintPeople(w);
+      pulse(w.peopleSec.querySelector(`.wp-seats-people [data-id="${CSS.escape(id)}"]`), 'wp-back-in');
+    };
+    if (!seat) { done(); return; }
+    seat.classList.add('out');
+    setTimeout(done, 220);
+  }
+
+  // Buscador en zoom: escribes y tocas para invitar sin salir
+  _pwSearch(w, from) {
+    const face = (p) => this._esc(p?.avatar_url || getAvatarUrl(p?.name || p?.username || 'user'));
+    openPeoplePicker({
+      from, people: [...w.people.values()].filter(p => p.id !== w.user.id), face, esc: (t) => this._esc(t),
+      isOn: (id) => w.invited.has(id), haptic: (k) => this._haptic?.(k),
+      onToggle: (id) => { w.invited.has(id) ? w.invited.delete(id) : (w.invited.add(id), w.justSeated = id); this._pwPaintPeople(w); },
     });
   }
 
@@ -201,7 +233,7 @@ export class PlanWizard {
     this._pwPaintPeople(w);
   }
 
-  _pwPaintPeople(w, rebuild = false) {
+  _pwPaintPeople(w) {
     const sec = w.peopleSec; if (!sec) return;
     const face = (p) => this._esc(p?.avatar_url || getAvatarUrl(p?.name || p?.username || 'user'));
     const first = (p) => this._esc(String(p?.name || (p?.username ? '@' + p.username : 'Alguien')).split(' ')[0]);
@@ -212,7 +244,7 @@ export class PlanWizard {
     // Asientos
     const me = w.people.get(w.user.id) || { name: 'Tú', avatar_url: window.wpApp?.currentUser?.avatar_url };
     const seats = [`<span class="wp-seat me"><i class="wp-seal" style="background-image:url('${face(me)}')"></i><small>Tú</small></span>`]
-      .concat([...w.invited].map(id => { const p = w.people.get(id); return `<button type="button" class="wp-seat${w.justSeated === id ? ' pop' : ''}" data-id="${id}" aria-label="Quitar a ${first(p)}"><i class="wp-seal" style="background-image:url('${face(p)}')"></i><small>${first(p)}</small><em>×</em></button>`; }))
+      .concat([...w.invited].map(id => { const p = w.people.get(id); return `<button type="button" class="wp-seat${w.justSeated === id ? ' pop' : ''}" data-id="${id}" data-nopulse aria-label="Quitar a ${first(p)}"><i class="wp-seal" style="background-image:url('${face(p)}')"></i><small>${first(p)}</small><em>×</em></button>`; }))
       .concat(w.vis === 'invited' ? [] : Array.from({ length: Math.max(0, w.n - 1 - w.invited.size) }, () => '<span class="wp-seat free"><i></i><small>Libre</small></span>'));
     sec.querySelector('.wp-seats-row').innerHTML = seats.join('');
     w.justSeated = null;
@@ -224,14 +256,12 @@ export class PlanWizard {
     ctl.querySelector('[data-n="1"]').disabled = w.n >= 50;
     // Gente que sigues (los ya invitados no se repiten)
     const grid = sec.querySelector('.wp-seats-people');
-    const q = (sec.querySelector('.wp-seats-q input').value || '').trim().toLowerCase();
     if (w.peopleError) grid.innerHTML = '<p class="wp-st-empty">No se pudo cargar a quién sigues</p>';
     else if (w.peopleLoaded && !w.people.size) grid.innerHTML = '<p class="wp-st-empty">Cuando sigas a alguien, aquí podrás invitarlo</p>';
     else if (w.peopleLoaded) {
-      const list = [...w.people.values()].filter(p => p.id !== w.user.id && !w.invited.has(p.id)
-        && (!q || String(p.name || '').toLowerCase().includes(q) || String(p.username || '').toLowerCase().includes(q)));
+      const list = [...w.people.values()].filter(p => p.id !== w.user.id && !w.invited.has(p.id));
       grid.innerHTML = list.length ? list.map(p => `<button type="button" class="wp-st-person" data-id="${p.id}"><i class="wp-seal" style="background-image:url('${face(p)}')"></i><small>${first(p)}</small></button>`).join('')
-        : `<p class="wp-st-empty">${q ? 'Nadie con ese nombre' : 'Ya invitaste a todos 🎉'}</p>`;
+        : '<p class="wp-st-empty">Ya invitaste a todos 🎉</p>';
     }
     sec.querySelector('.wp-st-sub').textContent = w.vis === 'invited'
       ? (w.invited.size ? `Van tú y ${w.invited.size} más` : 'Elige al menos a una persona')

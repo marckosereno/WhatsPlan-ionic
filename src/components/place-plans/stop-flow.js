@@ -10,6 +10,7 @@
 // Estilos: /styles/plan-steps.css
 // ════════════════════════════════════════════════════════════════════
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
+import { openTimePicker } from '/src/components/place-plans/time-picker.js';
 
 const R3 = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
 const GROUPS = [
@@ -176,21 +177,39 @@ export class StopFlow {
   // ── Paso 3 · a qué hora ───────────────────────────────────────────────
   _sfMountTime(f, el) {
     el.innerHTML = `
-      <div class="wp-st-clock"><button type="button" data-d="-1" aria-label="Más temprano">−</button><b></b><button type="button" data-d="1" aria-label="Más tarde">+</button></div>
+      <div class="wp-st-clock"><button type="button" data-d="-1" aria-label="Más temprano">−</button><button type="button" class="wp-st-clock-v" data-clock aria-label="Elegir la hora"><b></b></button><button type="button" data-d="1" aria-label="Más tarde">+</button></div>
       <p class="wp-st-clock-sub"></p>
       <div class="wp-st-chips wrap">${[30, 60, 90, 120, 180].map(g => `<button type="button" data-g="${g}">+${gapTxt(g)}</button>`).join('')}</div>`;
     el.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b || b.disabled) return;
       if (b.dataset.d) f.gap = Math.max(STEP_MIN, Math.min(MAX_GAP, f.gap + STEP_MIN * +b.dataset.d));
       else if (b.dataset.g) f.gap = +b.dataset.g;
+      else if (b.hasAttribute('data-clock')) { this._sfPickTime(f, el, b); return; }
       this._haptic?.('light');
       this._sfPaintTime(f, el);
     });
     this._sfPaintTime(f, el);
   }
 
+  // Tocar la hora grande → hora exacta; se guarda como "tiempo después"
+  // de la parada anterior (si queda antes, es al día siguiente)
+  _sfPickTime(f, el, b) {
+    const at = new Date(f.lastT.getTime() + f.gap * 60000);
+    openTimePicker({
+      from: b, mins: at.getHours() * 60 + at.getMinutes(), haptic: (k) => this._haptic?.(k),
+      onPick: (m) => {
+        const t = new Date(f.lastT); t.setHours(0, m, 0, 0);
+        if (t <= f.lastT) t.setDate(t.getDate() + 1);
+        f.gap = Math.max(STEP_MIN, Math.min(MAX_GAP, Math.round((t - f.lastT) / 60000)));
+        this._sfPaintTime(f, el);
+      },
+    });
+  }
+
   _sfPaintTime(f, el) {
-    el.querySelector('.wp-st-clock b').textContent = this._hhmm(new Date(f.lastT.getTime() + f.gap * 60000));
+    const clock = el.querySelector('.wp-st-clock b'), txt = this._hhmm(new Date(f.lastT.getTime() + f.gap * 60000));
+    if (clock.textContent && clock.textContent !== txt) { clock.classList.remove('tick'); void clock.offsetWidth; clock.classList.add('tick'); }
+    clock.textContent = txt;
     el.querySelector('.wp-st-clock-sub').textContent = `${gapTxt(f.gap)} después de ${f.fromName}`;
     el.querySelector('[data-d="-1"]').disabled = f.gap <= STEP_MIN;
     el.querySelector('[data-d="1"]').disabled = f.gap >= MAX_GAP;
