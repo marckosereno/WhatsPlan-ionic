@@ -68,7 +68,10 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     $('[data-a="skip"]').hidden = !opt || last;
     const next = $('.wp-st-next');
     next.classList.toggle('last', last);
+    const was = next.disabled;
     next.disabled = busy || (s.valid ? !s.valid() : false);
+    // se puede seguir → "gota" que late una vez para invitar a tocar
+    if (was && !next.disabled) { next.classList.remove('ready'); void next.offsetWidth; next.classList.add('ready'); }
     next.setAttribute('aria-label', last ? doneLabel : 'Siguiente');
     $('.wp-st-ring .fg').style.strokeDashoffset = String(RING_C * (1 - (i + 1) / steps.length));
   };
@@ -76,6 +79,8 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     i = Math.max(0, Math.min(steps.length - 1, k));
     $('.wp-st-track').style.transform = `translateX(${-i * 100}%)`;
     secs.forEach((sec, n) => { sec.inert = n !== i; sec.classList.toggle('on', n === i); });
+    // entrada: título y contenido suben en cascada con rebote
+    secs[i].classList.remove('enter'); void secs[i].offsetWidth; secs[i].classList.add('enter');
     root.querySelector('.wp-st-vp').scrollTop = 0;
     steps[i].onEnter?.();
     refresh();
@@ -93,6 +98,18 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     busy = false; $('.wp-st-next').classList.remove('busy');
     if (ok === true) close(); else refresh();
   };
+  // Efecto "agua": onda que sale de donde tocas cualquier botón
+  root.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
+    const w = document.createElement('i');
+    w.className = 'wp-st-ripple';
+    w.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+    if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+    b.style.overflow = b.classList.contains('wp-st-next') ? '' : 'hidden';
+    (b.querySelector('.wp-st-next-in') || b).appendChild(w);
+    setTimeout(() => w.remove(), 650);
+  });
   root.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-a]'); if (!b || b.disabled) return;
     const a = b.dataset.a;
