@@ -3,9 +3,10 @@
 // Hoja "Tu plan" / "Vas a ir". Usa la misma hoja de "Planear visita"
 // (openSheetPage de step-sheet.js: sube desde abajo y llega hasta
 // debajo de la barra de estado) con la línea de diseño de los pasos:
-//  · tarjeta del plan con degradado celeste → azul (emoji, nombre,
-//    horario y cuenta regresiva)
-//  · quién va: tira de caras con su estado en una insignia
+//  · tarjeta del plan (emoji, nombre, horario y cuenta regresiva)
+//  · "3 de 4 ya van" con caritas encimadas
+//  · quién va: tarjetitas (cara, nombre y emoji de estado); la de quien
+//    organiza es el único acento con degradado
 //  · detalles en 4 mosaicos (hora, dura, cupos con barra, quién puede);
 //    los que puedes cambiar llevan una flecha y abren en zoom
 //  · ruta, reglas y nota; "Compartir el plan" fijo abajo
@@ -38,11 +39,10 @@ export class MyPlan {
   }
 
   _mpHtml(a, owner, me) {
-    const P = a.participants || [], max = a.max_participants || 0, left = Math.max(0, max - P.length);
-    const count = this._planFull(a) ? '¡Completo!' : max ? `${P.length} de ${max} · queda${left === 1 ? '' : 'n'} ${left}` : `${P.length}`;
     return `
       ${this._mpCard(a)}
-      <div class="wp-mp-lbl"><b>Quién va</b><small>${count}</small></div>
+      ${this._mpSocial(a)}
+      <div class="wp-mp-lbl">Quién va</div>
       <div class="wp-mp-who">${this._mpWho(a, owner, me)}</div>
       <div class="wp-mp-grid">${this._mpTiles(a, owner)}</div>
       ${this._planRouteHtml(a, { owner }) ? `<div class="wp-mp-route">${this._planRouteHtml(a, { owner })}</div>` : ''}
@@ -51,7 +51,7 @@ export class MyPlan {
 `;
   }
 
-  // Tarjeta del plan: degradado, emoji, nombre, horario y cuenta regresiva
+  // Tarjeta del plan: emoji, nombre, horario y cuenta regresiva
   _mpCard(a) {
     const end = a.ends_at ? ` → ${this._hhmm(new Date(a.ends_at))}` : '';
     return `<section class="wp-mp-card">
@@ -68,15 +68,27 @@ export class MyPlan {
     return `<span class="wp-mp-count${live ? ' live' : ''}">${txt}</span>`;
   }
 
-  // Tira de caras: insignia con el estado, nombre debajo
+  // "3 de 4 ya van" con caritas encimadas
+  _mpSocial(a) {
+    const P = a.participants || [], max = a.max_participants || 0, left = Math.max(0, max - P.length);
+    const pend = (a.invited || []).filter(id => !P.includes(id) && !(a.declined || []).includes(id)).length;
+    const wl = (a.waitlist || []).length, full = this._planFull(a);
+    const title = full ? `¡Completo! Van ${P.length}` : max ? `${P.length} de ${max} ya van` : `Van ${P.length}`;
+    const sub = [full ? 'Ya no quedan cupos' : max ? `Queda${left === 1 ? '' : 'n'} ${left} cupo${left === 1 ? '' : 's'}` : '',
+      pend ? `${pend} sin responder` : '', wl ? `${wl} en espera` : ''].filter(Boolean).join(' · ');
+    return `<section class="wp-mp-social"><span class="wp-mp-faces">${P.slice(0, 3).map(id => this._planFace(id)).join('')}</span>
+        <span class="wp-mp-social-t"><b>${title}</b><small>${sub}</small></span></section>`;
+  }
+
+  // Quién va: tarjetitas con cara, nombre y emoji de estado debajo
   _mpWho(a, owner, me) {
     const P = a.participants || [], D = a.declined || [];
     const rows = [[a.creator_id, 'host'], ...P.filter(id => id !== a.creator_id).map(id => [id, 'go']),
       ...(a.invited || []).filter(id => !P.includes(id) && !D.includes(id)).map(id => [id, 'wait']),
       ...D.filter(id => !P.includes(id)).map(id => [id, 'no'])];
     const first = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || p.username || 'Alguien').split(' ')[0]); };
-    return (owner ? '<button type="button" class="wp-mp-p add" data-a="invite"><span class="wp-mp-av">+</span><b>Invitar</b></button>' : '')
-      + rows.map(([id, k]) => `<div class="wp-mp-p ${k}"><span class="wp-mp-av">${this._planFace(id)}<em title="${ROLE[k][1]}">${ROLE[k][0]}</em></span><b>${id === me ? 'Tú' : first(id)}</b></div>`).join('');
+    return (owner ? '<button type="button" class="wp-mp-p add" data-a="invite"><i>+</i><b>Invitar</b><em>✨</em></button>' : '')
+      + rows.map(([id, k]) => `<div class="wp-mp-p ${k}" title="${ROLE[k][1]}">${this._planFace(id)}<b>${id === me ? 'Tú' : first(id)}</b><em>${ROLE[k][0]}</em></div>`).join('');
   }
 
   // 4 mosaicos; los que puede cambiar quien organiza llevan flecha
