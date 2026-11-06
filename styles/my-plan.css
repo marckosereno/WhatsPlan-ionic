@@ -3,104 +3,115 @@
    Hoja "Tu plan" / "Vas a ir" (src/components/place-plans/my-plan.js y
    my-plan-actions.js), dentro de la hoja de "Planear visita"
    (#wp-st.sheet, openSheetPage de step-sheet.js).
-   Degradado celeste → azul, mosaicos suaves, pulso y onda.
+   Regla de color: el degradado solo en 2 lugares (botón principal y la
+   tarjetita de quien organiza). Todo lo demás: tarjetas blancas, texto
+   tinta y el azul como acento chico (íconos, flechas, barra).
+   Pesos: títulos 700, datos 600, etiquetas 500.
    Usa piezas globales de plan-steps.css (.wp-pulse, .wp-st-ripple,
    .wp-fz-*, wpStTick, wpStPop).
    ════════════════════════════════════════════════════════════════════ */
 
-.wp-mp { --mp-ink: var(--wp-ink, #14121f); --mp-sub: var(--wp-sub, #8a879a); --mp-blue: var(--wp-blue, #2563eb);
-  --mp-grad: var(--wp-grad-sky, #2563eb); --mp-soft: #f2f7fe;
+.wp-mp { --mp-ink: var(--wp-ink, #14121f); --mp-sub: #6b7280; --mp-blue: var(--wp-blue, #2563eb);
+  --mp-card: 0 1px 2px rgba(20, 18, 31, 0.04), 0 4px 14px rgba(20, 18, 31, 0.05);
   display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 8px; box-sizing: border-box; color: var(--mp-ink); }
 
 /* Barra de arriba: título y la insignia de cancelar a la derecha */
-.wp-st-title { color: var(--wp-ink, #14121f); font-size: 15.5px; font-weight: 800; }
+.wp-st-title { color: var(--wp-ink, #14121f); font-size: 15.5px; font-weight: 700; }
 .wp-mp-danger { justify-self: end; height: 34px; padding: 0 13px; border: none; border-radius: 999px;
-  background: #fff0f2; color: #e0123c; font: inherit; font-size: 12.5px; font-weight: 800; white-space: nowrap;
+  background: #fff0f2; color: #d0103a; font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap;
   -webkit-tap-highlight-color: transparent; transition: background-color 0.15s, color 0.15s, transform 0.15s; }
 .wp-mp-danger:active { transform: scale(0.95); }
 .wp-mp-danger.armed { background: #e0123c; color: #fff; animation: wpStPop 0.3s ease; }
 
-/* ── Tarjeta del plan ── */
-.wp-mp-card { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 22px;
-  background: var(--mp-grad); color: #fff; box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
-.wp-mp-ic { flex: none; width: 50px; height: 50px; border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 28px; box-shadow: 0 4px 10px rgba(15, 40, 120, 0.18); }
-.wp-mp-card-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.wp-mp-card-t b { font-size: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-card-t small { font-size: 13px; font-weight: 600; opacity: 0.92; }
+/* ── Tarjeta del plan (blanca) ── */
+.wp-mp-card { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 22px; background: #fff; box-shadow: var(--mp-card); }
+.wp-mp-ic { flex: none; width: 50px; height: 50px; border-radius: 16px; background: #eef6ff; display: flex; align-items: center; justify-content: center; font-size: 27px; }
+.wp-mp-card-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wp-mp-card-t b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-card-t small { font-size: 13px; font-weight: 500; color: var(--mp-sub); }
 .wp-mp-count { flex: none; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.24); font-size: 12.5px; font-weight: 800; white-space: nowrap; }
-.wp-mp-count.live i { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; animation: wpMpLive 1.6s infinite; }
-@keyframes wpMpLive { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); } 70%, 100% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); } }
+  background: #eef6ff; color: var(--mp-blue); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.wp-mp-count.live { background: #ecfdf3; color: #15803d; }
+.wp-mp-count.live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: wpMpLive 1.6s infinite; }
+@keyframes wpMpLive { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); } }
 
-/* ── Quién va ── */
-.wp-mp-lbl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 2px -6px; }
-.wp-mp-lbl b { font-size: 15px; font-weight: 800; }
-.wp-mp-lbl small { font-size: 12.5px; font-weight: 700; color: var(--mp-sub); }
-/* padding arriba/abajo: que no se corten las insignias ni el pulso */
-.wp-mp-who { flex: none; display: flex; gap: 14px; overflow-x: auto; margin: 0 -16px; padding: 10px 16px 8px; scrollbar-width: none; overscroll-behavior: none; }
+/* ── "3 de 4 ya van" ── */
+.wp-mp-social { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 22px;
+  background: linear-gradient(120deg, #eef7ff 0%, #fff 75%); box-shadow: inset 0 0 0 1px #e3efff; }
+.wp-mp-faces { flex: none; display: flex; }
+.wp-mp-faces i { display: block; width: 36px; height: 36px; margin-left: -10px; border-radius: 50%; border: 2.5px solid #fff; background: #e5e7eb center / cover no-repeat; }
+.wp-mp-faces i:first-child { margin-left: 0; }
+.wp-mp-social-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wp-mp-social-t b { font-size: 15px; font-weight: 700; }
+.wp-mp-social-t small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
+
+/* ── Quién va: tarjetitas con cara, nombre y emoji ── */
+.wp-mp-lbl { margin: 4px 2px -6px; font-size: 15px; font-weight: 700; }
+/* padding arriba/abajo: que no se corten la sombra ni el pulso */
+.wp-mp-who { flex: none; display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior: none; }
 .wp-mp-who::-webkit-scrollbar { display: none; }
-.wp-mp-p { flex: none; width: 56px; padding: 0; border: none; background: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  font: inherit; color: var(--mp-ink); }
-.wp-mp-av { position: relative; display: block; width: 52px; height: 52px; }
-.wp-mp-av i { display: block; width: 100%; height: 100%; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
-.wp-mp-av em { position: absolute; right: -4px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; background: #fff;
-  display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 12px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16); }
-.wp-mp-p.host .wp-mp-av i { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px #38bdf8; }
+.wp-mp-p { flex: none; width: 72px; padding: 10px 0 9px; border: none; border-radius: 22px; background: #fff; box-shadow: var(--mp-card);
+  display: flex; flex-direction: column; align-items: center; gap: 5px; font: inherit; color: var(--mp-ink); }
+.wp-mp-p i { display: block; width: 44px; height: 44px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
+.wp-mp-p b { max-width: 64px; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-p em { font-style: normal; font-size: 17px; line-height: 1; }
+/* el único acento fuerte de la hoja: quien organiza */
+.wp-mp-p.host { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5); }
+.wp-mp-p.host i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
 .wp-mp-p.no { opacity: 0.5; }
-.wp-mp-p b { max-width: 60px; font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-p.add .wp-mp-av { border-radius: 50%; border: 2px dashed #7dd3fc; background: var(--mp-soft); box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center; color: var(--mp-blue); font-size: 24px; font-weight: 600; }
+.wp-mp-p.add i { display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: #f3f8ff; border: 2px dashed #93c5fd;
+  color: var(--mp-blue); font-style: normal; font-size: 22px; font-weight: 500; }
 .wp-mp-p.add b { color: var(--mp-blue); }
 
-/* ── Detalles: 4 mosaicos suaves ── */
-.wp-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.wp-mp-tile { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 13px; border: none; border-radius: 18px;
-  background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.06); text-align: left; font: inherit; color: var(--mp-ink); box-sizing: border-box; }
-.wp-mp-tile small { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: #5b6473; }
-.wp-mp-go { margin-left: auto; color: var(--mp-blue); opacity: 0.75; }
-.wp-mp-tile b { font-size: 16.5px; font-weight: 800; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-bar { display: block; height: 6px; border-radius: 999px; background: #dbeafe; overflow: hidden; }
-.wp-mp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--mp-grad); }
+/* ── Detalles: 4 mosaicos blancos ── */
+.wp-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wp-mp-tile { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 13px 14px; border: none; border-radius: 20px;
+  background: #fff; box-shadow: var(--mp-card); text-align: left; font: inherit; color: var(--mp-ink); box-sizing: border-box; }
+.wp-mp-tile small { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
+.wp-mp-go { margin-left: auto; color: var(--mp-blue); opacity: 0.7; }
+.wp-mp-tile b { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-bar { display: block; height: 6px; border-radius: 999px; background: #e8f1ff; overflow: hidden; }
+.wp-mp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--mp-blue); }
 
 /* ── Ruta, reglas y nota ── */
-.wp-mp-route { padding: 12px; border-radius: 18px; background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.06); }
+.wp-mp-route { padding: 12px; border-radius: 20px; background: #fff; box-shadow: var(--mp-card); }
 .wp-mp-route .wp-pv-lbl { margin-top: 0; }
-.wp-mp-route .wp-pv-stop-n { background: var(--mp-grad); }
-.wp-mp-route .wp-pv-route-acts button { background: #fff; }
-.wp-mp-route .wp-pv-route-acts button:first-child { background: var(--mp-grad); color: #fff; }
+.wp-mp-route .wp-pv-stop-n { background: var(--mp-blue); }
+.wp-mp-route .wp-pv-stop-t b { font-weight: 600; }
+.wp-mp-route .wp-pv-stop-t small, .wp-mp-route .wp-pv-lbl { font-weight: 500; }
+.wp-mp-route .wp-pv-route-acts button { background: #f3f6fb; font-weight: 600; }
+.wp-mp-route .wp-pv-route-acts button:first-child { background: #eef6ff; color: var(--mp-blue); }
 .wp-mp-route .wp-pv-addstop-card { background: none; box-shadow: none; padding: 0; }
-.wp-mp-rules span { background: #fff; box-shadow: 0 1px 3px rgba(20, 18, 31, 0.06); }
-.wp-mp-note { padding: 12px 13px; border-radius: 18px; background: #fffbea; }
-.wp-mp-note small { font-size: 12.5px; font-weight: 700; color: #8a6d00; }
+.wp-mp-rules span { background: #fff; box-shadow: var(--mp-card); font-weight: 500; }
+.wp-mp-note { padding: 12px 14px; border-radius: 20px; background: #fffbea; }
+.wp-mp-note small { font-size: 12.5px; font-weight: 600; color: #8a6d00; }
 .wp-mp-note p { margin: 4px 0 0; font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; }
 
 /* ── Compartir: fijo abajo (pie de la hoja) ── */
 .wp-mp-cta { width: 100%; height: 52px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff;
-  display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-size: 15.5px; font-weight: 800;
-  box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+  display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-size: 15.5px; font-weight: 700;
+  box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); -webkit-tap-highlight-color: transparent; }
 
 /* ── Pulso, resorte y onda (como en los pasos) ── */
-.wp-mp-cta { -webkit-tap-highlight-color: transparent; }
 .wp-mp button { -webkit-tap-highlight-color: transparent; cursor: pointer; transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1); }
 .wp-mp button.press { transform: scale(0.93); transition-duration: 0.12s; }
-.wp-mp .wp-rippled:not(.wp-mp-p) { overflow: hidden; }
+.wp-mp .wp-rippled { overflow: hidden; }
 
 /* ── Tarjetas en zoom de "Tu plan" ── */
 .wp-mp-z-durs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 0; }
 .wp-mp-z-durs button, .wp-mp-z-num button { height: 44px; padding: 0 16px; border: none; border-radius: 14px; background: #f1f5fb; color: var(--wp-ink, #14121f);
-  font: inherit; font-size: 15.5px; font-weight: 800; -webkit-tap-highlight-color: transparent; }
+  font: inherit; font-size: 15.5px; font-weight: 600; -webkit-tap-highlight-color: transparent; }
 .wp-mp-z-durs button.on { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 6px 14px -4px rgba(37, 99, 235, 0.5); }
 .wp-mp-z-cupo { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .wp-mp-z-num { display: flex; align-items: center; gap: 22px; }
 .wp-mp-z-num button { width: 54px; height: 54px; padding: 0; border-radius: 50%; font-size: 26px; font-weight: 600; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }
 .wp-mp-z-num button:disabled { opacity: 0.35; }
-.wp-mp-z-num b { min-width: 80px; text-align: center; font-size: 60px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+.wp-mp-z-num b { min-width: 80px; text-align: center; font-size: 60px; font-weight: 700; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
 .wp-mp-z-num b.tick { animation: wpStTick 0.35s cubic-bezier(0.34, 1.7, 0.64, 1); }
 .wp-mp-z-sub { margin: 0; font-size: 14px; font-weight: 600; color: var(--wp-sub, #8a879a); }
-.wp-mp-z-close { height: 44px; padding: 0 16px; border: none; border-radius: 999px; background: #e9fbf2; color: #15803d; font: inherit; font-size: 14px; font-weight: 800; }
-.wp-mp-z-ask p { margin: 4px 0 14px; font-size: 16px; line-height: 1.4; font-weight: 700; text-align: center; }
-.wp-mp-z-yes { width: 100%; height: 50px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff; font: inherit; font-size: 15.5px; font-weight: 800;
+.wp-mp-z-close { height: 44px; padding: 0 16px; border: none; border-radius: 999px; background: #e9fbf2; color: #15803d; font: inherit; font-size: 14px; font-weight: 600; }
+.wp-mp-z-ask p { margin: 4px 0 14px; font-size: 16px; line-height: 1.4; font-weight: 600; text-align: center; }
+.wp-mp-z-yes { width: 100%; height: 50px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff; font: inherit; font-size: 15.5px; font-weight: 700;
   box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5); }
 
 @media (prefers-reduced-motion: reduce) { .wp-mp *, .wp-mp *::before { animation: none !important; } }
