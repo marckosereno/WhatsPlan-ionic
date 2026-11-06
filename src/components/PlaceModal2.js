@@ -14,6 +14,7 @@ import { PlanCore }                    from '/src/components/place-plans/plan-co
 import { PlanWizard }                  from '/src/components/place-plans/plan-wizard.js';
 import { PlanStops }                   from '/src/components/place-plans/plan-stops.js';
 import { StopFlow }                    from '/src/components/place-plans/stop-flow.js';
+import { PlanDetail }                  from '/src/components/place-plans/plan-detail.js';
 
 // Hojas de estilo de la ficha: se piden desde que se importa el módulo
 // para que ya estén listas cuando se abre la primera ficha.
@@ -26,6 +27,7 @@ function wpEnsureCss(id, href) {
 wpEnsureCss('wp-pm2-css', '/styles/place-modal.css');
 wpEnsureCss('wp-pm2-plans-css', '/styles/place-plans.css');
 wpEnsureCss('wp-pm2-stopflow-css', '/styles/plan-stop-flow.css');
+wpEnsureCss('wp-pm2-plandetail-css', '/styles/plan-detail.css');
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -336,6 +338,7 @@ export class PlaceModal2 {
     wpEnsureCss('wp-pm2-css', '/styles/place-modal.css');
     wpEnsureCss('wp-pm2-plans-css', '/styles/place-plans.css');
 wpEnsureCss('wp-pm2-stopflow-css', '/styles/plan-stop-flow.css');
+wpEnsureCss('wp-pm2-plandetail-css', '/styles/plan-detail.css');
   }
 
   // ── WIRE EVENTS ────────────────────────────────────────────────────
@@ -6286,7 +6289,7 @@ wpEnsureCss('wp-pm2-stopflow-css', '/styles/plan-stop-flow.css');
 
 // Planes (botón, hojas, asistente y paradas) viven en place-plans/*.js
 // y se agregan a la ficha como métodos propios.
-for (const Mix of [PlanCore, PlanWizard, PlanStops, StopFlow]) {
+for (const Mix of [PlanCore, PlanWizard, PlanStops, StopFlow, PlanDetail]) {
   for (const k of Object.getOwnPropertyNames(Mix.prototype)) {
     if (k !== 'constructor') Object.defineProperty(PlaceModal2.prototype, k, Object.getOwnPropertyDescriptor(Mix.prototype, k));
   }

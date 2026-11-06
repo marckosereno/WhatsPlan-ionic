@@ -1,0 +1,102 @@
+@charset "UTF-8";
+/* ══════════════════════════════════════════════════════════════════
+   WHATSPLAN — plan-detail.css
+   Detalle de un plan en pantalla completa (src/components/place-plans/
+   plan-detail.js): foto arriba, cuerpo en tarjetas y botón fijo.
+   ══════════════════════════════════════════════════════════════════ */
+
+#wp-pd {
+  --pd-ink: #0a0a0a;
+  --pd-sub: #8e8e93;
+  --pd-bg: #f6f7f9;
+  --pd-blue: #1a5cf5;
+  position: fixed; inset: 0; z-index: 1500500;
+  display: flex; flex-direction: column;
+  background: var(--pd-bg); font-family: var(--wp-font);
+  transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow-y: auto; overscroll-behavior: contain;
+}
+#wp-pd.in { transform: none; }
+#wp-pd button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+/* Foto del lugar */
+.wp-pd-hero {
+  position: relative; flex: none; height: 300px;
+  background: #dfe3e8 center / cover no-repeat;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 0;
+}
+.wp-pd-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0) 40%); pointer-events: none; }
+.wp-pd-round {
+  position: relative; z-index: 1; width: 44px; height: 44px; border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92); color: var(--pd-ink);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.wp-pd-badge {
+  position: absolute; z-index: 2; left: 20px; bottom: -30px;
+  width: 64px; height: 64px; border-radius: 20px; background: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 32px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+}
+.wp-pd-badge img { width: 44px; height: 44px; object-fit: contain; }
+
+/* Cuerpo */
+.wp-pd-body {
+  position: relative; flex: none; margin-top: -24px; border-radius: 28px 28px 0 0; background: var(--pd-bg);
+  padding: 50px 16px 24px; display: flex; flex-direction: column; gap: 12px;
+}
+.wp-pd-head { display: flex; flex-direction: column; gap: 8px; padding: 0 4px; }
+.wp-pd-inv { align-self: flex-start; padding: 5px 12px; border-radius: 999px; background: #eef4ff; color: var(--pd-blue); font-size: 13px; font-weight: 800; }
+.wp-pd-head h1 { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 900; letter-spacing: -0.6px; color: var(--pd-ink); }
+.wp-pd-host { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563; }
+.wp-pd-host b { color: var(--pd-ink); font-weight: 800; }
+.wp-pd-av { flex: none; display: flex; }
+.wp-pd-av i { width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; display: block; }
+
+/* Datos rápidos (como "Cooking time · Difficulty · Servings") */
+.wp-pd-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.wp-pd-stat {
+  display: flex; flex-direction: column; gap: 3px; padding: 14px 12px; border-radius: 20px; background: #fff;
+  color: var(--pd-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); min-width: 0;
+}
+.wp-pd-stat svg { color: #6b7280; margin-bottom: 4px; }
+.wp-pd-stat small { font-size: 12px; font-weight: 600; color: var(--pd-sub); }
+.wp-pd-stat b { font-size: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-pd-stat em { font-style: normal; font-size: 12px; font-weight: 700; color: #6b7280; }
+.wp-pd-stat.hot em { color: #e0123c; }
+.wp-pd-stat.full em { color: #15803d; }
+
+/* Tarjetas */
+.wp-pd-card { background: #fff; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.wp-pd-card h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--pd-ink); }
+.wp-pd-faces { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; }
+.wp-pd-faces::-webkit-scrollbar { display: none; }
+.wp-pd-face { flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 54px; }
+.wp-pd-face i { width: 50px; height: 50px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; display: block; }
+.wp-pd-face small { font-size: 12px; font-weight: 700; color: #374151; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-pd-face.more i { display: flex; align-items: center; justify-content: center; background: #f3f4f6; font-style: normal; font-size: 14px; font-weight: 800; color: #4b5563; }
+.wp-pd-proof { margin: 0; font-size: 13.5px; font-weight: 700; color: #15803d; }
+
+/* Nota del organizador como mensaje */
+.wp-pd-note { flex-direction: row; align-items: flex-start; gap: 10px; }
+.wp-pd-note p { margin: 0; flex: 1; padding: 10px 14px; border-radius: 4px 18px 18px 18px; background: #fff7d6; font-size: 15px; line-height: 1.4; color: #3d2a00; }
+.wp-pd-note small { display: block; font-size: 12px; font-weight: 800; color: #a16207; margin-bottom: 2px; }
+
+/* Botón fijo */
+.wp-pd-foot {
+  position: sticky; bottom: 0; margin-top: auto; flex: none;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(246, 247, 249, 0), var(--pd-bg) 28%);
+}
+.wp-pd-left { margin: 0 0 8px; text-align: center; font-size: 13px; font-weight: 800; color: #e0123c; }
+.wp-pd-btns { display: flex; gap: 8px; }
+.wp-pd-cta {
+  flex: 1; height: 56px; border: none; border-radius: 999px; background: var(--pd-ink); color: #fff;
+  font-size: 16px; font-weight: 800; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); transition: transform 0.15s;
+}
+.wp-pd-cta:active { transform: scale(0.98); }
+.wp-pd-cta.done { background: #ecfdf3; color: #15803d; box-shadow: none; }
+.wp-pd-ghost { flex: none; height: 56px; padding: 0 20px; border: none; border-radius: 999px; background: #fff; color: var(--pd-ink); font-size: 15px; font-weight: 800; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
+.wp-pd-cta:disabled, .wp-pd-ghost:disabled { opacity: 0.6; }
