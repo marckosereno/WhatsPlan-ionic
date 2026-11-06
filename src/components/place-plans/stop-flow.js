@@ -58,16 +58,19 @@ export class StopFlow {
     const cur = Array.isArray(a.stops) ? a.stops : [];
     const last = cur[cur.length - 1];
     const t0 = new Date(a.scheduled_at);
+    // la siguiente parada empieza donde termina la anterior: la última
+    // parada, o el fin del plan si aún no hay paradas
+    const base = last ? (last.after || 0) : (a.ends_at ? Math.max(0, Math.round((new Date(a.ends_at) - t0) / 60000)) : 0);
     let cat = String(last?.cat || this._place?.category || 'RESTAURANTS').toUpperCase();
     if (!GROUPS.some(g => g[0] === cat)) cat = 'RESTAURANTS';
     return {
       a, cur, last, cat,
       acts: (this._actTypes || []).length ? this._actTypes : FALLBACK_ACTS,
-      lastT: new Date(t0.getTime() + (last?.after || 0) * 60000),
+      base, fromEnd: !last && !!a.ends_at, lastT: new Date(t0.getTime() + base * 60000),
       origin: last?.lat ? { lat: Number(last.lat), lng: Number(last.lng) } : { lat: Number(a.lat), lng: Number(a.lng) },
       fromName: last?.name || a.place_name || 'la parada anterior',
       exclude: new Set([String(a.place_id || ''), ...cur.map(x => String(x.place_id))]),
-      act: null, place: null, custom: null, gap: 60, note: '', all: [],
+      act: null, place: null, custom: null, gap: !last && a.ends_at ? 15 : 60, note: '', all: [],
     };
   }
 
@@ -211,7 +214,7 @@ export class StopFlow {
     const clock = el.querySelector('.wp-st-clock b'), txt = this._hhmm(new Date(f.lastT.getTime() + f.gap * 60000));
     if (clock.textContent && clock.textContent !== txt) { clock.classList.remove('tick'); void clock.offsetWidth; clock.classList.add('tick'); }
     clock.textContent = txt;
-    el.querySelector('.wp-st-clock-sub').textContent = `${gapTxt(f.gap)} después de ${f.fromName}`;
+    el.querySelector('.wp-st-clock-sub').textContent = `${gapTxt(f.gap)} después de ${f.fromEnd ? 'terminar en ' : ''}${f.fromName}`;
     el.querySelector('[data-d="-1"]').disabled = f.gap <= STEP_MIN;
     el.querySelector('[data-d="1"]').disabled = f.gap >= MAX_GAP;
     el.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('on', +b.dataset.g === f.gap));
@@ -231,7 +234,7 @@ export class StopFlow {
     const stop = {
       place_id: String(W.place_id), name: W.name || W.displayName || 'Lugar',
       lat: W.lat != null ? Number(W.lat) : undefined, lng: W.lng != null ? Number(W.lng) : undefined,
-      cat: W.category || A.cat || '', after: (f.last?.after || 0) + f.gap,
+      cat: W.category || A.cat || '', after: f.base + f.gap,
       act: A.key, emoji: A.emoji, icon: A.icon3d,
       note: f.note.trim() || undefined, address: W.address || W.formattedAddress || undefined,
     };
