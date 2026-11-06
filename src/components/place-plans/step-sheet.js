@@ -6,12 +6,21 @@
 // debajo de la barra de estado (no cambia de alto entre pasos, así no
 // brinca). Se cierra tocando lo oscuro o jalando la hoja hacia abajo.
 //
-// Uso (step-screen.js y my-plan.js):
-//   const sh = attachSheet(root, close, '.barra-de-arriba')   → { remove() }
+// Uso:
+//   attachSheet(root, close, '.barra-de-arriba') → { remove() }   (step-screen.js)
+//   openSheetPage({ title, right, html, foot, onClose })            (my-plan.js)
+//     → la misma hoja de "Planear visita" con cualquier contenido:
+//       barra arriba (botón redondo atrás · título · algo a la derecha),
+//       contenido que se desliza y un pie fijo. Devuelve { root, body, close }.
 // Estilos: /styles/plan-steps.css (#wp-st.sheet, .wp-st-scrim, .wp-st-grab)
 // ════════════════════════════════════════════════════════════════════
 
+import { addElastic } from '/src/components/place-plans/elastic.js';
+import { attachPulse } from '/src/components/place-plans/pulse.js';
+
 const CLOSE_PX = 110;   // jalar más de esto hacia abajo = cerrar
+// Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
+export const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1)"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>';
 
 export function attachSheet(root, close, handleSel = '.wp-st-top') {
   root.classList.add('sheet');
@@ -28,6 +37,38 @@ export function attachSheet(root, close, handleSel = '.wp-st-top') {
   return {
     remove() { scrim.classList.remove('in'); setTimeout(() => scrim.remove(), 340); },
   };
+}
+
+export function openSheetPage({ title = '', right = '', html = '', foot = '', onClose }) {
+  const root = document.createElement('div');
+  root.id = 'wp-st';
+  root.innerHTML = `
+    <header class="wp-st-top">
+      <button type="button" class="wp-st-back" data-a="close" aria-label="Cerrar">${ICON_BACK}</button>
+      <span class="wp-st-count wp-st-title">${title}</span>
+      ${right || '<span></span>'}
+    </header>
+    <div class="wp-st-vp"><div class="wp-st-page">${html}</div></div>
+    ${foot ? `<footer class="wp-st-foot">${foot}</footer>` : ''}`;
+  document.body.appendChild(root);
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    root.classList.remove('in');
+    sh.remove();
+    setTimeout(() => root.remove(), 340);
+    onClose?.();
+  };
+  const sh = attachSheet(root, close);
+  root.style.setProperty('--st-top', `${root.querySelector('.wp-st-top').offsetHeight}px`);
+  root.style.setProperty('--st-foot', `${root.querySelector('.wp-st-foot')?.offsetHeight || 24}px`);
+  addElastic(root.querySelector('.wp-st-vp'), 'y');
+  attachPulse(root);
+  root.querySelector('[data-a="close"]').addEventListener('click', close);
+  void root.offsetHeight;   // fijar el estilo inicial antes de animar (que no brinque)
+  root.classList.add('in');
+  return { root, body: root.querySelector('.wp-st-page'), close };
 }
 
 // Jalar la barra de arriba hacia abajo: la hoja sigue al dedo y si pasa

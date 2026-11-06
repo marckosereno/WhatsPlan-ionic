@@ -1,7 +1,8 @@
 /* ════════════════════════════════════════════════════════════════════
    WHATSPLAN — styles/my-plan.css
    Hoja "Tu plan" / "Vas a ir" (src/components/place-plans/my-plan.js y
-   my-plan-actions.js), dentro de la hoja de la ficha (#wp-pm2-menu-sheet).
+   my-plan-actions.js), dentro de la hoja de "Planear visita"
+   (#wp-st.sheet, openSheetPage de step-sheet.js).
    Degradado celeste → azul, mosaicos suaves, pulso y onda.
    Usa piezas globales de plan-steps.css (.wp-pulse, .wp-st-ripple,
    .wp-fz-*, wpStTick, wpStPop).
@@ -9,13 +10,11 @@
 
 .wp-mp { --mp-ink: var(--wp-ink, #14121f); --mp-sub: var(--wp-sub, #8a879a); --mp-blue: var(--wp-blue, #2563eb);
   --mp-grad: var(--wp-grad-sky, #2563eb); --mp-soft: #f2f7fe;
-  display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 0; box-sizing: border-box; color: var(--mp-ink); scrollbar-width: none; }
-.wp-mp::-webkit-scrollbar { display: none; }
+  display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 8px; box-sizing: border-box; color: var(--mp-ink); }
 
-/* Encabezado de la hoja: insignia de cancelar a la derecha */
-.wp-mp-hd { position: relative; padding-right: 140px !important; }
-.wp-mp-hd .wp-pm2-ms-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-danger { position: absolute; top: 2px; right: 16px; height: 32px; padding: 0 13px; border: none; border-radius: 999px;
+/* Barra de arriba: título y la insignia de cancelar a la derecha */
+.wp-st-title { color: var(--wp-ink, #14121f); font-size: 15.5px; font-weight: 800; }
+.wp-mp-danger { justify-self: end; height: 34px; padding: 0 13px; border: none; border-radius: 999px;
   background: #fff0f2; color: #e0123c; font: inherit; font-size: 12.5px; font-weight: 800; white-space: nowrap;
   -webkit-tap-highlight-color: transparent; transition: background-color 0.15s, color 0.15s, transform 0.15s; }
 .wp-mp-danger:active { transform: scale(0.95); }
@@ -57,7 +56,7 @@
 /* ── Detalles: 4 mosaicos suaves ── */
 .wp-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .wp-mp-tile { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 13px; border: none; border-radius: 18px;
-  background: var(--mp-soft); text-align: left; font: inherit; color: var(--mp-ink); box-sizing: border-box; }
+  background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.06); text-align: left; font: inherit; color: var(--mp-ink); box-sizing: border-box; }
 .wp-mp-tile small { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: #5b6473; }
 .wp-mp-go { margin-left: auto; color: var(--mp-blue); opacity: 0.75; }
 .wp-mp-tile b { font-size: 16.5px; font-weight: 800; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -65,25 +64,24 @@
 .wp-mp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--mp-grad); }
 
 /* ── Ruta, reglas y nota ── */
-.wp-mp-route { padding: 12px; border-radius: 18px; background: var(--mp-soft); }
+.wp-mp-route { padding: 12px; border-radius: 18px; background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.06); }
 .wp-mp-route .wp-pv-lbl { margin-top: 0; }
 .wp-mp-route .wp-pv-stop-n { background: var(--mp-grad); }
 .wp-mp-route .wp-pv-route-acts button { background: #fff; }
 .wp-mp-route .wp-pv-route-acts button:first-child { background: var(--mp-grad); color: #fff; }
 .wp-mp-route .wp-pv-addstop-card { background: none; box-shadow: none; padding: 0; }
-.wp-mp-rules span { background: var(--mp-soft); }
+.wp-mp-rules span { background: #fff; box-shadow: 0 1px 3px rgba(20, 18, 31, 0.06); }
 .wp-mp-note { padding: 12px 13px; border-radius: 18px; background: #fffbea; }
 .wp-mp-note small { font-size: 12.5px; font-weight: 700; color: #8a6d00; }
 .wp-mp-note p { margin: 4px 0 0; font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; }
 
-/* ── Compartir: pegado abajo mientras deslizas ── */
-.wp-mp-foot { position: sticky; bottom: 0; z-index: 2; margin: 0 -16px; padding: 14px 16px 6px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #fff 38%); }
-.wp-mp-cta { width: 100%; height: 52px; border: none; border-radius: 999px; background: var(--mp-grad); color: #fff;
+/* ── Compartir: fijo abajo (pie de la hoja) ── */
+.wp-mp-cta { width: 100%; height: 52px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff;
   display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-size: 15.5px; font-weight: 800;
   box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
 
 /* ── Pulso, resorte y onda (como en los pasos) ── */
+.wp-mp-cta { -webkit-tap-highlight-color: transparent; }
 .wp-mp button { -webkit-tap-highlight-color: transparent; cursor: pointer; transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1); }
 .wp-mp button.press { transform: scale(0.93); transition-duration: 0.12s; }
 .wp-mp .wp-rippled:not(.wp-mp-p) { overflow: hidden; }

@@ -24,8 +24,7 @@ export class MyPlanActions {
     const b = e.target.closest('button'); if (!b || b.disabled) return;
     const { a, close } = ctx, act = b.dataset.a;
     if (b.dataset.rm) { this._mpRemoveStop(ctx, b); return; }
-    if (act === 'close') close();
-    else if (act === 'share') this._planShare(a);
+    if (act === 'share') this._planShare(a);
     else if (act === 'route') { close(); setTimeout(() => this._planShowRoute(a), 200); }
     else if (act === 'addstop') { close(); setTimeout(() => this._openStopFlow(a), 140); }
     else if (act === 'time') this._mpTime(ctx, b);
