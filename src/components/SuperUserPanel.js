@@ -18,7 +18,7 @@ const STICKER_PRESETS = [
   { emoji: '⭐', label: 'Destacado' },
   { emoji: '🔥', label: 'Popular' },
   { emoji: '🎉', label: 'Evento' },
-  { emoji: '📍', label: 'Punto clave' },
+  { emoji: '🧭', label: 'Punto clave' },
   { emoji: '🏛️', label: 'Monumento' },
   { emoji: '🛑', label: 'Alerta' },
   { emoji: '💎', label: 'Exclusivo' },
@@ -90,7 +90,7 @@ export class SuperUserPanel {
       </div>
       <div class="su-panel-body">
         <button class="su-btn su-btn-cyan" id="su-btn-add-landmark">
-          📍 Agregar punto de referencia
+          🧭 Agregar punto de referencia
         </button>
         <button class="su-btn su-btn-purple" id="su-btn-add-sticker">
           🎉 Agregar sticker al mapa
@@ -105,10 +105,10 @@ export class SuperUserPanel {
           🏪 Agregar lugar
         </button>
         <button class="su-btn su-btn-orange" id="su-btn-reposition" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
-          🎯 Reposicionar lugares
+          ✋ Reposicionar lugares
         </button>
         <button class="su-btn su-btn-gray" id="su-btn-map-theme">
-          🗺️ Estilo del mapa: <b id="su-map-theme-name"></b>
+          🧭 Estilo del mapa: <b id="su-map-theme-name"></b>
         </button>
         <button class="su-btn su-btn-gray" id="su-btn-optimize-photos">
           🗜️ Optimizar fotos existentes <b id="su-optimize-state"></b>
@@ -390,7 +390,7 @@ export class SuperUserPanel {
     document.body.appendChild(modal);
 
     // Poblar grids
-    this._buildEmojiGrid('su-landmark-emoji-grid', '📍');
+    this._buildEmojiGrid('su-landmark-emoji-grid', '🧭');
     this._buildEmojiGrid('su-sticker-grid', '⭐');
     this._buildColorRow();
 
@@ -455,7 +455,7 @@ export class SuperUserPanel {
       {key:'RESTAURANTS',emoji:'🍔',label_es:'Restaurantes'},
       {key:'HEALTH',emoji:'🩺',label_es:'Salud & Estética'},
       {key:'SHOPPING',emoji:'🛍️',label_es:'Compras'},
-      {key:'ENTERTAINMENT',emoji:'🎈',label_es:'Entretenimiento'},
+      {key:'ENTERTAINMENT',emoji:'🎉',label_es:'Entretenimiento'},
       {key:'PARKS',emoji:'🌵',label_es:'Parques'},
       {key:'WORKSHOPS',emoji:'🔧',label_es:'Talleres'},
     ];
@@ -583,7 +583,7 @@ export class SuperUserPanel {
     this._togglePanel(false);
     const banner = document.getElementById('su-pick-banner');
     document.getElementById('su-pick-text').textContent =
-      type === 'landmark' ? '📍 Toca el mapa donde va el punto de referencia'
+      type === 'landmark' ? '🧭 Toca el mapa donde va el punto de referencia'
                           : '🎉 Toca el mapa donde va el sticker';
     banner.classList.add('visible');
 
@@ -613,11 +613,11 @@ export class SuperUserPanel {
   async _openForm(type) {
     const modal = document.getElementById('su-form-modal');
     document.getElementById('su-form-title').textContent =
-      type === 'landmark' ? '📍 Nuevo punto de referencia' : '🎉 Nuevo sticker';
+      type === 'landmark' ? '🧭 Nuevo punto de referencia' : '🎉 Nuevo sticker';
     document.getElementById('su-form-landmark-fields').style.display = type === 'landmark' ? '' : 'none';
     document.getElementById('su-form-sticker-fields').style.display  = type === 'sticker'  ? '' : 'none';
     document.getElementById('su-coord-display').textContent =
-      `📌 ${this.pendingLat?.toFixed(5)}, ${this.pendingLng?.toFixed(5)}`;
+      `🔖 ${this.pendingLat?.toFixed(5)}, ${this.pendingLng?.toFixed(5)}`;
     document.getElementById('su-form-error').textContent = '';
     // Reset campos
     document.getElementById('su-field-title').value = '';
@@ -667,7 +667,7 @@ export class SuperUserPanel {
         description = document.getElementById('su-field-desc').value.trim();
         const customEmoji = document.getElementById('su-field-custom-emoji').value.trim();
         emoji = customEmoji ||
-          document.querySelector('#su-landmark-emoji-grid .su-emoji-btn.active')?.textContent || '📍';
+          document.querySelector('#su-landmark-emoji-grid .su-emoji-btn.active')?.textContent || '🧭';
         color = document.querySelector('#su-color-row .su-color-btn.active')?.dataset.color || '#00bcd4';
       } else {
         const customEmoji = document.getElementById('su-field-sticker-custom').value.trim();
@@ -733,7 +733,7 @@ export class SuperUserPanel {
         row.className = 'su-list-row';
         const visLabel = item.visible === false ? ' · 👁️‍🗨️ oculto' : '';
         row.innerHTML = `
-          <span class="su-list-emoji">${item.icon_url ? '<img src="' + item.icon_url + '" style="width:28px;height:28px;object-fit:contain;">' : (item.emoji || '📍')}</span>
+          <span class="su-list-emoji">${item.icon_url ? '<img src="' + item.icon_url + '" style="width:28px;height:28px;object-fit:contain;">' : (item.emoji || '🧭')}</span>
           <div class="su-list-info">
             <div class="su-list-name">${item.title || '—'}</div>
             <div class="su-list-meta">${item.type}${visLabel} · ${item.lat?.toFixed(4)}, ${item.lng?.toFixed(4)}</div>
@@ -3115,7 +3115,7 @@ export class SuperUserPanel {
           '<input id="su-pf-lat" class="su-input" placeholder="Latitud *" type="number" step="any" value="' + _esc(prefill?.lat) + '">' +
           '<input id="su-pf-lng" class="su-input" placeholder="Longitud *" type="number" step="any" value="' + _esc(prefill?.lng) + '">' +
         '</div>' +
-        '<button id="su-pf-pick-coords" class="su-btn su-btn-cyan" style="padding:10px;font-size:13px;">🗺️ Tomar coordenadas del mapa</button>' +
+        '<button id="su-pf-pick-coords" class="su-btn su-btn-cyan" style="padding:10px;font-size:13px;">🧭 Tomar coordenadas del mapa</button>' +
 
         '<div style="display:flex;flex-direction:column;gap:6px;">' +
           '<div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Destacado</div>' +
@@ -3321,7 +3321,7 @@ export class SuperUserPanel {
           preview.innerHTML = '<img src="' + iconUrl + '" style="width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;filter:drop-shadow(' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(-' + outlineW + 'px 0 0 ' + strokeColor + ') drop-shadow(0 ' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(0 -' + outlineW + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px ' + diag + 'px 0 ' + strokeColor + ') drop-shadow(' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(-' + diag + 'px -' + diag + 'px 0 ' + strokeColor + ') drop-shadow(0 3px 6px rgba(0,0,0,0.3));">';
         }
       } else if (noStroke) {
-        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:0 3px 5px rgba(0,0,0,0.35);">' + (emoji || '📍') + '</div>';
+        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:0 3px 5px rgba(0,0,0,0.35);">' + (emoji || '🧭') + '</div>';
       } else {
         // Apilado de 12 puntos (cada 30°) — mismo criterio que MapView.js,
         // -webkit-text-stroke no se aplica a emoji a color en la mayoría
@@ -3333,7 +3333,7 @@ export class SuperUserPanel {
           const y = +(Math.sin(angle) * outlineW).toFixed(2);
           return x + 'px ' + y + 'px 0 ' + strokeColor;
         }).join(',');
-        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:' + stack + ',0 3px 5px rgba(0,0,0,0.25);">' + (emoji || '📍') + '</div>';
+        preview.innerHTML = '<div style="font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Segoe UI Symbol\',\'Noto Color Emoji\',sans-serif;font-size:' + px + 'px;line-height:1;text-shadow:' + stack + ',0 3px 5px rgba(0,0,0,0.25);">' + (emoji || '🧭') + '</div>';
       }
     };
 

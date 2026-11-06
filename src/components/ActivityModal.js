@@ -24,7 +24,7 @@ const PIN_CATEGORIES = [
   },
   {
     label: '🎉 Diversión',
-    emojis: ['🎉','🎊','🎶','🎮','🎯','🎭','🎪','🎠','🃏','🎲','🕹️','🎸','🪅','🎤','🎧'],
+    emojis: ['🎉','🎊','🎶','🎮','🎳','🎭','🎪','🎠','🃏','🎲','🕹️','🎸','🪅','🎤','🎧'],
   },
   {
     label: '🚀 Lugares',
@@ -53,8 +53,8 @@ const FLUENT_SECTIONS = [
     { emoji:'🦷', url: R3D+'Tooth/3D/tooth_3d.png' },
     { emoji:'🍣', url: R3D+'Sushi/3D/sushi_3d.png' },
   ]},
-  { label: '🎈 Diversión', items: [
-    { emoji:'🎈', url: R3D+'Balloon/3D/balloon_3d.png' },
+  { label: '🎉 Diversión', items: [
+    { emoji:'🎉', url: R3D+'Balloon/3D/balloon_3d.png' },
     { emoji:'🎤', url: R3D+'Microphone/3D/microphone_3d.png' },
     { emoji:'🎸', url: R3D+'Guitar/3D/guitar_3d.png' },
     { emoji:'🎟️', url: R3D+'Ticket/3D/ticket_3d.png' },
@@ -86,7 +86,7 @@ const FLUENT_SECTIONS = [
     { emoji:'🔔', url: R3D+'Bell/3D/bell_3d.png' },
     { emoji:'💎', url: R3D+'Ring/3D/ring_3d.png' },
     { emoji:'⭐', url: R3D+'Star/3D/star_3d.png' },
-    { emoji:'🎈', url: R3D+'Balloon/3D/balloon_3d.png' },
+    { emoji:'🎉', url: R3D+'Balloon/3D/balloon_3d.png' },
     { emoji:'🌵', url: R3D+'Cactus/3D/cactus_3d.png' },
   ]},
 ];
@@ -340,7 +340,7 @@ const ACTIVITY_TYPES = [
     cat: 'ENTERTAINMENT', subcats: ['bar'] },
 
   // subcat: atraccion
-  { key: 'tour_np',       emoji: '🗺️', icon3d: R3D+'World+Map/3D/world_map_3d.png',
+  { key: 'tour_np',       emoji: '🧭', icon3d: R3D+'World+Map/3D/world_map_3d.png',
     label: 'Recorrer Nuevo Progreso', label_en: 'Tour Nuevo Progreso',
     cat: 'ENTERTAINMENT', subcats: ['atraccion'] },
   { key: 'foto_puente',   emoji: '📸', icon3d: R3D+'Camera+with+Flash/3D/camera_with_flash_3d.png',
@@ -505,7 +505,7 @@ const ACTIVITY_TYPES = [
   { key: 'segunda_opinion', emoji: '🤔', icon3d: R3D+'Thinking+Face/3D/thinking_face_3d.png',
     label: 'Segunda opinión dental',  label_en: 'Second dental opinion',
     cat: 'HEALTH', subcats: ['dental'] },
-  { key: 'dental_tour',  emoji: '🗺️', icon3d: R3D+'World+Map/3D/world_map_3d.png',
+  { key: 'dental_tour',  emoji: '🧭', icon3d: R3D+'World+Map/3D/world_map_3d.png',
     label: 'Tour dental completo',    label_en: 'Full dental tour',
     cat: 'HEALTH', subcats: ['dental'] },
 
@@ -783,7 +783,7 @@ export class ActivityModal {
               </div>
               <div style="flex:1;overflow-y:auto;padding:0 16px;scrollbar-width:none;" id="am-cat-list"></div>
               <div style="padding:14px 24px calc(14px + env(safe-area-inset-bottom));flex-shrink:0;background:white;border-top:1px solid #f5f5f5;display:flex;align-items:center;justify-content:center;gap:8px;">
-                <span style="font-size:15px;">🗺️</span>
+                <span style="font-size:15px;">🧭</span>
                 <p style="font-size:12px;color:#b0b0b0;margin:0;text-align:center;line-height:1.4;">
                   Elige tu próxima actividad y conoce los lugares<br>más emblemáticos en <strong style="color:#6366f1;">Nuevo Progreso</strong>
                 </p>
@@ -1094,7 +1094,7 @@ export class ActivityModal {
     }
 
     if (places.length === 0) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">No encontramos lugares para esta actividad.<br>Puedes seleccionar uno en el mapa. 🗺️</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">No encontramos lugares para esta actividad.<br>Puedes seleccionar uno en el mapa. 🧭</div>';
       return;
     }
     // Ordenar: featured primero, luego por rating
@@ -1236,7 +1236,7 @@ export class ActivityModal {
           '<div style="font-size:15px;font-weight:700;color:#111;">' + g.name + '</div>' +
           '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">' + g.desc + '</div>' +
         '</div>' +
-        '<span style="color:#d1d5db;font-size:18px;flex-shrink:0;">›</span>' +
+        '<span style="color:#d1d5db;font-size:18px;flex-shrink:0;">→</span>' +
       '</button>'
     ).join('');
 

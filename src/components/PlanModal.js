@@ -201,7 +201,7 @@ export class PlanModal {
             <div style="font-size:14px;font-weight:700;color:#111;">Crear desde cero</div>
             <div style="font-size:12px;color:#9ca3af;margin-top:2px;">Arma tu propio itinerario</div>
           </div>
-          <span style="margin-left:auto;color:#9ca3af;font-size:18px;">›</span>
+          <span style="margin-left:auto;color:#9ca3af;font-size:18px;">→</span>
         </button>
 
         <!-- Plantillas -->
@@ -231,7 +231,7 @@ export class PlanModal {
 
       list.innerHTML = templates.map(t => {
         const steps = (t.plan_activities || []).slice(0, 3)
-          .map(s => STEP_TYPES.find(st => st.key === s.type)?.emoji || '📍').join(' ');
+          .map(s => STEP_TYPES.find(st => st.key === s.type)?.emoji || '🧭').join(' ');
         return `
           <button class="pm-template-btn" data-id="${t.id}" data-title="${t.title}" data-emoji="${t.emoji}" data-desc="${t.description || ''}"
             style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1.5px solid #e5e7eb;background:white;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;">
@@ -240,7 +240,7 @@ export class PlanModal {
               <div style="font-size:14px;font-weight:700;color:#111;">${t.title}</div>
               <div style="font-size:11px;color:#9ca3af;margin-top:2px;">${steps || ''} ${t.description ? '· ' + t.description.substring(0, 35) + '...' : ''}</div>
             </div>
-            <span style="color:#9ca3af;font-size:18px;flex-shrink:0;">›</span>
+            <span style="color:#9ca3af;font-size:18px;flex-shrink:0;">→</span>
           </button>`;
       }).join('');
 
@@ -311,7 +311,7 @@ export class PlanModal {
         <!-- Botones de acción -->
         <div style="display:flex;gap:8px;margin-bottom:20px;">
           <button id="pm-add-existing" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:14px;border:1.5px solid #e5e7eb;background:white;cursor:pointer;color:#374151;font-size:12px;font-weight:700;-webkit-tap-highlight-color:transparent;">
-            🗺️ Del mapa
+            🧭 Del mapa
           </button>
           <button id="pm-add-new" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:14px;border:1.5px solid #6366f1;background:#eef2ff;cursor:pointer;color:#6366f1;font-size:12px;font-weight:700;-webkit-tap-highlight-color:transparent;">
             + Nueva
@@ -438,7 +438,7 @@ export class PlanModal {
     if (!acts.length) {
       list.innerHTML = `
         <div style="text-align:center;padding:20px 16px;background:#f9fafb;border-radius:14px;margin-bottom:12px;">
-          <div style="font-size:28px;margin-bottom:6px;">🗺️</div>
+          <div style="font-size:28px;margin-bottom:6px;">🧭</div>
           <p style="font-size:13px;color:#9ca3af;margin:0;">Sin actividades aún.<br>Agrega una del mapa o crea una nueva.</p>
         </div>`;
       return;
@@ -502,12 +502,12 @@ export class PlanModal {
         return `<div class="pm-act-opt" data-id="${a.id}"
           style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:1.5px solid #f0f0f0;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;">
           <div style="width:44px;height:44px;border-radius:12px;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
-            ${a.icon_url ? '<img src="'+a.icon_url+'" style="width:32px;height:32px;object-fit:contain;">' : '📍'}
+            ${a.icon_url ? '<img src="'+a.icon_url+'" style="width:32px;height:32px;object-fit:contain;">' : '🧭'}
           </div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;color:#111;">${a.title || a.type}</div>
             <div style="font-size:11px;color:#9ca3af;">${a.place_name || ''}${time?' · '+time:''}</div>
-            <div style="font-size:11px;color:#6366f1;margin-top:2px;">👥 ${parts}/${max} personas</div>
+            <div style="font-size:11px;color:#6366f1;margin-top:2px;">🫶 ${parts}/${max} personas</div>
           </div>
           <div style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:16px;color:#9ca3af;">+</div>
         </div>`;
@@ -603,7 +603,7 @@ export class PlanModal {
     if (!steps.length) {
       list.innerHTML = `
         <div style="text-align:center;padding:24px 16px;background:#f9fafb;border-radius:14px;margin-bottom:12px;">
-          <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
+          <div style="font-size:32px;margin-bottom:8px;">🧭</div>
           <p style="font-size:13px;color:#9ca3af;margin:0;">Sin pasos todavía.<br>Agrega actividades a tu plan.</p>
         </div>`;
       return;
@@ -615,7 +615,7 @@ export class PlanModal {
       <div class="pm-step-item" data-index="${i}"
         style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f9fafb;border-radius:14px;margin-bottom:8px;">
         <div style="width:32px;height:32px;border-radius:50%;background:#111;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
-        <div style="font-size:22px;flex-shrink:0;">${s.emoji || '📍'}</div>
+        <div style="font-size:22px;flex-shrink:0;">${s.emoji || '🧭'}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;color:#111;">${s.label || s.type}</div>
           ${hasPlace
@@ -688,7 +688,7 @@ export class PlanModal {
 
         <!-- Botón seleccionar en mapa -->
         <div id="pm-pick-on-map" style="background:#fff8e1;border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1.5px dashed #fcd34d;cursor:pointer;display:flex;align-items:center;gap:12px;">
-          <span style="font-size:24px;flex-shrink:0;">🗺️</span>
+          <span style="font-size:24px;flex-shrink:0;">🧭</span>
           <div>
             <p style="margin:0;font-size:13px;font-weight:700;color:#d97706;">Seleccionar en el mapa</p>
             <p style="margin:2px 0 0;font-size:11px;color:#d97706;">Toca cualquier lugar del mapa</p>
@@ -831,7 +831,7 @@ export class PlanModal {
     }).slice(0, 12);
 
     if (!places.length) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">No hay lugares para esta actividad.<br>Selecciona en el mapa. 🗺️</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;">No hay lugares para esta actividad.<br>Selecciona en el mapa. 🧭</div>';
       return;
     }
 
@@ -849,7 +849,7 @@ export class PlanModal {
         '" style="display:flex;align-items:center;gap:12px;padding:12px;background:white;border-radius:14px;border:1.5px solid #f0f0f0;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
         (photo
           ? '<img src="' + photo + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
-          : '<div style="width:52px;height:52px;border-radius:10px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">📍</div>') +
+          : '<div style="width:52px;height:52px;border-radius:10px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🧭</div>') +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
             '<div style="font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.name||'') + '</div>' +
@@ -858,7 +858,7 @@ export class PlanModal {
           (rating ? '<div style="font-size:12px;color:#f59e0b;margin-top:2px;">' + rating + '</div>' : '') +
           (addr   ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">' + addr + '</div>' : '') +
         '</div>' +
-        '<div style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#9ca3af;">›</div>' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#9ca3af;">→</div>' +
         '</div>';
     }).join('');
 
@@ -1034,7 +1034,7 @@ export class PlanModal {
           ${allActs.slice(0,5).map((s,i) => `
             <div style="display:flex;align-items:center;gap:10px;${i<Math.min(steps.length,5)-1?'margin-bottom:10px;':''}">
               <div style="width:24px;height:24px;border-radius:50%;background:#111;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
-              <span style="font-size:16px;">${s.emoji||'📍'}</span>
+              <span style="font-size:16px;">${s.emoji||'🧭'}</span>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:700;color:#111;">${s.label||s.type}</div>
                 ${s.place_name ? `<div style="font-size:11px;color:#16a34a;">✓ ${s.place_name}</div>` : '<div style="font-size:11px;color:#d1d5db;">Sin lugar asignado</div>'}
@@ -1046,7 +1046,7 @@ export class PlanModal {
         <!-- Pines en el mapa -->
         ${allActs.length > 0 ? `
         <div style="background:#f0fdf4;border-radius:14px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;border:1.5px solid #86efac;">
-          <span style="font-size:20px;">📍</span>
+          <span style="font-size:20px;">🧭</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:#15803d;">${allActs.length} actividad${allActs.length!==1?'es':''} en el plan</div>
             <div style="font-size:11px;color:#16a34a;">Visibles en el mapa · Otros pueden unirse</div>
@@ -1094,7 +1094,7 @@ export class PlanModal {
   // ── Emoji picker simple ──────────────────────────────────────────
   _showEmojiPicker() {
     document.getElementById('pm-emoji-sheet')?.remove();
-    const emojis = ['✨','🎉','🦷','🛍️','🌮','🍻','🎵','🌳','📸','💆','🏖️','🎯','🍔','☕','🥗','🌯','🎮','🎤','🛒','💊','🩺','⚽','🚴','🤝'];
+    const emojis = ['✨','🎉','🦷','🛍️','🌮','🍻','🎵','🌳','📸','💆','🏖️','🎳','🍔','☕','🥗','🌯','🎮','🎤','🛒','💊','🩺','⚽','🚴','🤝'];
 
     const sheet = document.createElement('div');
     sheet.id = 'pm-emoji-sheet';

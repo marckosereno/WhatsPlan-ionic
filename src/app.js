@@ -1435,10 +1435,10 @@ try {
     document.addEventListener('wp:activity-tap', (e) => {
       const { activity, group } = e.detail;
       if (group.length > 1) {
-        console.log('📍 Grupo de actividades:', group);
+        console.log('🧭 Grupo de actividades:', group);
         // TODO: carrusel si hay varias actividades en el mismo punto
       } else {
-        console.log('📍 Actividad:', activity);
+        console.log('🧭 Actividad:', activity);
         // TODO: popup de detalles + botón unirse (ActivityService.joinActivity)
       }
     });
@@ -1501,7 +1501,7 @@ try {
       }
     });
 
-    console.log('🗺️ Creando MapView...');
+    console.log('🧭 Creando MapView...');
     const mv = new MapView();
     window.wpApp.mapView = mv;
     // onPlaceSelect se asigna en Promise.all cuando PlaceModal está listo

@@ -19,7 +19,7 @@ import { openPeoplePicker } from '/src/components/place-plans/people-picker.js';
 import { pulse } from '/src/components/place-plans/pulse.js';
 
 const GENERIC = [
-  ['food', '🍔', 'Comer'], ['drinks', '☕', 'Café'], ['hangout', '🎈', 'Pasar el rato'],
+  ['food', '🍔', 'Comer'], ['drinks', '☕', 'Café'], ['hangout', '🎉', 'Pasar el rato'],
   ['explore', '🚀', 'Explorar'], ['shop', '🛍️', 'Compras'], ['music', '🎵', 'Música'],
   ['sport', '🏃', 'Deporte'], ['photo', '📸', 'Fotos'], ['spa', '💆', 'Spa'],
 ];
@@ -65,13 +65,13 @@ export class PlanWizard {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const now = new Date();
     const first = new Date(now); first.setMinutes(now.getMinutes() < 30 ? 30 : 60, 0, 0);   // próxima media hora
-    const { shown, type, icons } = this._pwTypes(this._place);
+    const { shown, type } = this._pwTypes(this._place);
     return {
       user, place: this._place, info: this._placeInfo(), today,
       days: Array.from({ length: DAYS }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; }),
       day: first.getDate() === now.getDate() ? 0 : 1, mins: first.getHours() * 60 + first.getMinutes(), now: false, dur: 120,
       vis: 'public', invited: new Set(), people: new Map(), n: 4, nTouched: false,
-      shown, type, icons, rules: new Set(), title: '', titleTouched: false, note: '',
+      shown, type, rules: new Set(), title: '', titleTouched: false, note: '',
     };
   }
 
@@ -86,17 +86,16 @@ export class PlanWizard {
     if (!keys.includes(type)) type = keys[0];
     keys = [type, ...keys.filter(k => k !== type)];
     let shown = keys.map(k => GENERIC.find(t => t[0] === k));
-    const icons = {};
     const acts = (this._actTypes || []).filter(t => t.cat === cat);
     if (acts.length) {
       const tags = new Set([...(Array.isArray(place.subcategoryTags) ? place.subcategoryTags : []), ...String(place.subcategory_tags || '').split(','), place.subcategory]
         .map(x => String(x || '').trim().toLowerCase()).filter(Boolean));
       let mine = acts.filter(t => (t.subcats || []).some(s => tags.has(s)));
       if (!mine.length) mine = acts;
-      shown = [...mine.map(t => { icons[t.key] = t.icon3d; return [t.key, t.emoji, t.label]; }), ...['hangout', 'photo'].map(k => GENERIC.find(t => t[0] === k))];
+      shown = [...mine.map(t => [t.key, t.emoji, t.label]), ...['hangout', 'photo'].map(k => GENERIC.find(t => t[0] === k))];
       type = shown[0][0];
     }
-    return { shown, type, icons };
+    return { shown, type };
   }
 
   _pwAt(w) {
@@ -279,12 +278,12 @@ export class PlanWizard {
         p_title: title, p_type: w.type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
         p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: w.n,
         p_spontaneous: w.now, p_visibility: w.vis, p_note: w.note.trim() || null, p_invited: [...w.invited],
-        p_icon: w.icons[w.type] || null, p_rules: [...w.rules], p_duration: w.dur,
+        p_icon: null, p_rules: [...w.rules], p_duration: w.dur,
       });
       if (!plan) {
         console.warn('[DIAG-PLAN] falta activities_plans.sql: se crea sin invitados ni visibilidad');
         await ActivityService.createActivity({
-          title, type: w.type, place_name: info.name, place_id: place.place_id || place.id || null, icon_url: w.icons[w.type] || null,
+          title, type: w.type, place_name: info.name, place_id: place.place_id || place.id || null, icon_url: null,
           lat: Number(info.lat), lng: Number(info.lng), scheduled_at: at.toISOString(), max_participants: w.n, is_spontaneous: w.now,
         });
       }
@@ -323,7 +322,7 @@ export class PlanWizard {
       <h2>¡Plan creado!</h2>
       <p>${this._esc(title)}<br>${this._esc(whenTxt)}${n ? ` · ${n} invitad${n === 1 ? 'o' : 'os'} (ya les avisamos)` : ''}</p>
       ${plan?.id ? `<button type="button" class="wp-st-itin" data-x="stop">
-        <span class="wp-st-itin-ic">🗺️</span>
+        <span class="wp-st-itin-ic">🧭</span>
         <span class="wp-st-itin-t"><b>¿Y después a dónde?</b><small>Arma el itinerario: agrega la siguiente parada</small></span>
         <span class="wp-st-itin-plus" aria-hidden="true">+</span></button>` : ''}
       <button type="button" class="wp-st-btn" data-x="share">Compartir el plan</button>

@@ -792,7 +792,7 @@ export class PlaceModal {
 
     // Si no hay fotos, emoji placeholder
     if (this._photos.length === 0) {
-      carousel.innerHTML = `<div class="wp-pm-slide wp-pm-slide-placeholder"><span>${place.emoji || '📍'}</span></div>`;
+      carousel.innerHTML = `<div class="wp-pm-slide wp-pm-slide-placeholder"><span>${place.emoji || '🧭'}</span></div>`;
       dotsEl.style.display = 'none';
       return;
     }

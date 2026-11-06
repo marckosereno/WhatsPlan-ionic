@@ -213,7 +213,7 @@ export class SubcategoryRow {
                          window.wpApp.currentUser.user_metadata.avatar_url) || '';
       el.innerHTML = avatarUrl
         ? '<img class="hm-loc-avatar-img" src="' + avatarUrl + '">'
-        : '<div class="hm-loc-avatar-fallback">📍</div>';
+        : '<div class="hm-loc-avatar-fallback">🧭</div>';
       this._locationMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .addTo(this.map);
