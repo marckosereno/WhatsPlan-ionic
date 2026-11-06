@@ -140,6 +140,7 @@ export class PlanCore {
   _onPlanBtn() {
     const { mine, pending, others } = this._planGroups();
     if (mine) this._openMyPlanSheet(mine);
+    else if (pending.length + others.length === 1) this._openPlanDetail(pending[0] || others[0]);   // un solo plan → su detalle
     else if (pending.length || others.length) this._openPlansHereSheet();
     else this._openPlanSheet();
   }
@@ -446,6 +447,12 @@ export class PlanCore {
       b.classList.toggle('on', on);
       b.textContent = on ? '✓ Te avisaremos si se libera un cupo' : '🔔 Avísame si se libera un cupo';
     });
+    // Tocar la tarjeta (fuera de sus botones) → detalle completo del plan
+    body.querySelectorAll('.wp-ph-card').forEach(c => c.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      close();
+      setTimeout(() => this._openPlanDetail(list[+c.dataset.i]), 120);
+    }));
     { const f = body.querySelector('.wp-pv > .wp-pv-foot'); if (f) body.appendChild(f); }
     const nb = body.querySelector('.wp-ph-new');
     if (nb) nb.onclick = () => { close(true); setTimeout(() => this._openPlanSheet(), 60); };
