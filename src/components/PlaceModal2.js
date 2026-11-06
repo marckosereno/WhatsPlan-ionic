@@ -23,6 +23,7 @@ function wpEnsureCss(id, href) {
   l.id = id; l.rel = 'stylesheet'; l.href = href;
   document.head.appendChild(l);
 }
+wpEnsureCss('wp-tokens-css', '/styles/tokens.css');
 wpEnsureCss('wp-pm2-css', '/styles/place-modal.css');
 wpEnsureCss('wp-pm2-plans-css', '/styles/place-plans.css');
 wpEnsureCss('wp-pm2-steps-css', '/styles/plan-steps.css');

@@ -1,0 +1,24 @@
+@charset "UTF-8";
+/* ══════════════════════════════════════════════════════════════════
+   WHATSPLAN — tokens.css
+   Paleta de la app (colores alegres y suaves, no solo blanco/negro).
+   Úsala con var(--wp-…) en cualquier hoja de estilos nueva.
+   Lo carga PlaceModal2.js antes que los demás estilos.
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --wp-ink: #14121f;          /* texto principal (negro con un toque violeta) */
+  --wp-sub: #8a879a;          /* texto secundario */
+  --wp-bg: #f7f6fb;           /* fondo de pantallas completas */
+  --wp-card: #ffffff;
+
+  --wp-orange: #ff7a1a;  --wp-orange-soft: #fff1e6;
+  --wp-pink:   #ff5fa2;  --wp-pink-soft:   #ffeaf3;
+  --wp-lilac:  #8b6cf6;  --wp-lilac-soft:  #f1ecff;
+  --wp-yellow: #ffc93c;  --wp-yellow-soft: #fff6d6;
+  --wp-sky:    #4fb3ff;  --wp-sky-soft:    #e8f5ff;
+  --wp-mint:   #2ecc8f;  --wp-mint-soft:   #e5f8ef;
+
+  --wp-grad-warm: linear-gradient(100deg, #ffb04a 0%, #ff7a1a 45%, #ff5fa2 100%);
+  --wp-grad-cool: linear-gradient(100deg, #8b6cf6 0%, #4fb3ff 100%);
+  --wp-grad-mint: linear-gradient(135deg, #6ee7b7 0%, #2ecc8f 100%);
+}
