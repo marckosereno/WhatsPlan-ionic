@@ -39,6 +39,7 @@ export class StopFlow {
   _openStopFlow(a) {
     const f = this._sfContext(a);
     f.screen = openStepScreen({
+      sheet: true,
       doneLabel: 'Agregar parada',
       haptic: (k) => this._haptic?.(k),
       onDone: () => this._sfSave(f),
