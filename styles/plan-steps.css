@@ -88,7 +88,7 @@
 .wp-st-ring .bg { stroke: rgba(255, 122, 26, 0.16); }
 .wp-st-ring .fg { stroke: var(--st-hot); stroke-linecap: round; transition: stroke-dashoffset 0.45s cubic-bezier(0.32, 0.72, 0, 1); }
 .wp-st-next-in {
-  position: relative; width: 62px; height: 62px; border-radius: 999px; background: var(--wp-grad-warm, #ff7a1a); color: #fff;
+  position: relative; overflow: hidden; width: 62px; height: 62px; border-radius: 999px; background: var(--wp-grad-warm, #ff7a1a); color: #fff;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   box-shadow: 0 10px 24px rgba(255, 95, 162, 0.35);
   transition: width 0.4s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.2s, transform 0.15s;
@@ -140,12 +140,13 @@
 .wp-st-tile-l { font-size: 12.5px; font-weight: 700; line-height: 1.2; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Tira de días (como la de un calendario de hábitos) */
-.wp-st-days { display: flex; gap: 6px; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
+/* padding arriba/abajo para que las sombras de los días no se corten */
+.wp-st-days { display: flex; gap: 8px; overflow-x: auto; margin: -10px -20px -14px; padding: 10px 20px 16px; scrollbar-width: none; }
 .wp-st-days::-webkit-scrollbar { display: none; }
-.wp-st-day { flex: 0 0 58px; height: 76px; border: none; border-radius: 20px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+.wp-st-day { flex: 0 0 56px; height: 70px; border: none; border-radius: 20px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 2px 8px rgba(20, 18, 31, 0.06); transition: transform 0.2s; }
 .wp-st-day small { font-size: 12px; font-weight: 600; color: var(--st-sub); }
 .wp-st-day b { font-size: 20px; font-weight: 800; }
-.wp-st-day.on { background: var(--wp-grad-warm, #ff7a1a); box-shadow: 0 8px 18px rgba(255, 95, 162, 0.3); }
+.wp-st-day.on { background: var(--wp-grad-warm, #ff7a1a); box-shadow: 0 6px 12px -2px rgba(255, 95, 162, 0.35); }
 .wp-st-day.on small, .wp-st-day.on b { color: #fff; }
 
 /* Hora grande + − / + */
@@ -209,3 +210,79 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-st-done .wp-st-btn { width: 100%; height: 56px; border: none; border-radius: 999px; background: var(--wp-grad-warm, #ff7a1a); box-shadow: 0 10px 24px rgba(255, 95, 162, 0.3); color: #fff; font-size: 16px; font-weight: 800; margin-top: 10px; }
 .wp-st-done .wp-st-btn.ghost { background: transparent; box-shadow: none; color: var(--st-ink); margin-top: 0; }
 @keyframes wpStPop { from { transform: scale(0.5); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ══ Paso "¿Cuándo?" compacto: entra todo sin scroll ══ */
+.wp-st-when { gap: 10px; margin-top: 18px; }
+.wp-st-when .wp-st-clock { padding: 4px 0 0; gap: 14px; }
+.wp-st-when .wp-st-clock b { font-size: 46px; min-width: 160px; }
+.wp-st-when .wp-st-clock button { width: 48px; height: 48px; }
+.wp-st-when .wp-st-chips { margin-top: 2px; padding-bottom: 10px; margin-bottom: -8px; }
+.wp-st-when .wp-st-lbl { margin-top: 2px; }
+
+/* ══ Animaciones ══ */
+/* entrada en cascada con rebote */
+.wp-st-step.enter > h1, .wp-st-step.enter > .wp-st-sub, .wp-st-step.enter > .wp-st-body > * { animation: wpStUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.wp-st-step.enter > .wp-st-sub { animation-delay: 0.05s; }
+.wp-st-step.enter > .wp-st-body > *:nth-child(1) { animation-delay: 0.1s; }
+.wp-st-step.enter > .wp-st-body > *:nth-child(2) { animation-delay: 0.15s; }
+.wp-st-step.enter > .wp-st-body > *:nth-child(3) { animation-delay: 0.2s; }
+.wp-st-step.enter > .wp-st-body > *:nth-child(n+4) { animation-delay: 0.25s; }
+@keyframes wpStUp { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: none; } }
+/* elegir algo: salto elástico */
+.wp-st-day.on, .wp-st-opt.on, .wp-st-tile.on, .wp-st-row.on, .wp-st-chips button.on, .wp-st-person:active i { animation: wpStBoing 0.5s cubic-bezier(0.34, 1.7, 0.64, 1); }
+@keyframes wpStBoing { 0% { transform: scale(0.9); } 55% { transform: scale(1.06); } 100% { transform: scale(1); } }
+/* la hora cambia con un pequeño golpe */
+.wp-st-clock b.tick { animation: wpStTick 0.35s cubic-bezier(0.34, 1.7, 0.64, 1); }
+@keyframes wpStTick { from { transform: translateY(6px) scale(0.94); opacity: 0.4; } to { transform: none; opacity: 1; } }
+/* agua: onda al tocar */
+.wp-st-ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.16; transform: scale(0); pointer-events: none; animation: wpStRipple 0.62s ease-out forwards; }
+@keyframes wpStRipple { to { transform: scale(1); opacity: 0; } }
+/* pulso: cuando ya se puede seguir, el botón "late" dos veces */
+.wp-st-next.ready::before { content: ''; position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%;
+  background: rgba(255, 95, 162, 0.35); animation: wpStWater 1.1s ease-out 2; pointer-events: none; }
+.wp-st-next.ready.last::before { width: 100%; height: 58px; left: 0; margin: -29px 0 0; border-radius: 999px; }
+@keyframes wpStWater { from { transform: scale(1); opacity: 0.6; } to { transform: scale(1.55); opacity: 0; } }
+.wp-st-next.ready .wp-st-next-in { animation: wpStBoing 0.55s cubic-bezier(0.34, 1.7, 0.64, 1); }
+@media (prefers-reduced-motion: reduce) { #wp-st *, #wp-st *::before { animation: none !important; } }
+
+/* ══ Paso "¿Quién va?": asientos ══ */
+.wp-seats { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 12px 14px; border-radius: 26px; background: #fff;
+  box-shadow: 0 2px 10px rgba(20, 18, 31, 0.06); }
+.wp-seats-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 10px; }
+.wp-seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 56px; padding: 0; border: none; background: none; overflow: visible !important; }
+.wp-seat i { width: 52px; height: 52px; border-radius: 50%; background: #e9e7f2 center / cover no-repeat; display: block; }
+.wp-seat small { max-width: 100%; font-size: 12px; font-weight: 700; color: var(--st-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-seat.me i { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--wp-orange, #ff7a1a); }
+.wp-seat.free i { background: transparent; box-shadow: inset 0 0 0 2px #d9d6e6; border: 0; background-image: radial-gradient(circle, #d9d6e6 1.5px, transparent 2px); background-size: 9px 9px; }
+.wp-seat.free small { color: var(--st-sub); font-weight: 600; }
+.wp-seat em { position: absolute; top: -2px; right: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--st-ink); color: #fff; font-style: normal; font-size: 13px; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+.wp-seat.pop i { animation: wpSeatIn 0.55s cubic-bezier(0.34, 1.8, 0.64, 1); }
+@keyframes wpSeatIn { 0% { transform: translateY(40px) scale(0.3); opacity: 0; } 70% { transform: translateY(-4px) scale(1.08); opacity: 1; } 100% { transform: none; } }
+.wp-seats-ctl { display: flex; align-items: center; gap: 10px; }
+.wp-seats-ctl span { min-width: 150px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--st-sub); }
+.wp-seats-ctl button { width: 36px; height: 36px; border: none; border-radius: 50%; background: var(--st-accent-soft); color: var(--st-accent); font-size: 19px; font-weight: 800; }
+.wp-seats-ctl button:disabled { opacity: 0.35; }
+.wp-seats-q { height: 46px; }
+.wp-seats-people { max-height: 200px; overflow-y: auto; padding: 6px 2px; scrollbar-width: none; }
+.wp-seats-people::-webkit-scrollbar { display: none; }
+.wp-st-person i { width: 56px; height: 56px; }
+
+/* ══ Paso "¿Cómo lo llamamos?": íconos en media luna ══ */
+.wp-pw-dial { margin-top: -6px; }
+.wp-dial { position: relative; display: flex; flex-direction: column; align-items: center; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.wp-dial-stage { position: relative; width: 100%; height: 176px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
+.wp-dial-it { position: absolute; left: 50%; top: 74px; width: 120px; height: 120px; padding: 0; border: none; background: none; font-size: 92px; line-height: 1;
+  display: flex; align-items: center; justify-content: center; will-change: transform; filter: drop-shadow(0 10px 14px rgba(20, 18, 31, 0.18)); }
+.wp-dial-it img { width: 104px; height: 104px; object-fit: contain; pointer-events: none; }
+.wp-dial.anim .wp-dial-it { transition: transform 0.45s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.3s; }
+.wp-dial-it.on { filter: drop-shadow(0 14px 18px rgba(255, 95, 162, 0.28)); }
+.wp-dial-label { position: relative; z-index: 2; margin-top: 4px; padding: 7px 16px; border-radius: 999px; background: #fff; font-size: 14px; font-weight: 800; color: var(--st-ink); box-shadow: 0 4px 14px rgba(20, 18, 31, 0.1); white-space: nowrap; max-width: 80%; overflow: hidden; text-overflow: ellipsis; }
+.wp-dial-label.pop { animation: wpStBoing 0.45s cubic-bezier(0.34, 1.7, 0.64, 1); }
+.wp-dial-gauge { width: 210px; height: 88px; margin-top: 4px; }
+.wp-dial-gauge path { fill: none; stroke-width: 7; stroke-linecap: round; }
+.wp-dial-gauge .trk { stroke: #ece9f5; }
+.wp-dial-gauge .val { stroke: url(#wpDialG); transition: stroke-dashoffset 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
+.wp-dial-gauge line { stroke: #d7d3e3; stroke-width: 1.6; stroke-linecap: round; }
+.wp-dial-gauge .needle { stroke: var(--wp-orange, #ff7a1a); stroke-width: 3.2; transform-origin: 120px 66px; transition: transform 0.4s cubic-bezier(0.34, 1.45, 0.64, 1); }
+.wp-dial-gauge .hub { fill: var(--wp-orange, #ff7a1a); }
+.wp-pw-title { text-align: center; font-weight: 800; font-size: 17px; }
