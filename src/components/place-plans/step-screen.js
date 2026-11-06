@@ -29,7 +29,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   root.id = 'wp-st';
   root.innerHTML = `
     <header class="wp-st-top">
-      <button type="button" class="wp-st-back" data-a="back" aria-label="Volver">${ICON_BACK}<span>Volver</span></button>
+      <button type="button" class="wp-st-back" data-a="back" aria-label="Volver">${ICON_BACK}</button>
       <span class="wp-st-count"></span>
       <button type="button" class="wp-st-skip" data-a="skip">Omitir</button>
     </header>
