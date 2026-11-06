@@ -63,7 +63,7 @@
 .wp-pv-rules-ro span { padding:5px 10px; border-radius:999px; background:#f3f4f6; font-size:12.5px; font-weight:700; color:#111827; }
 .wp-pv-rules-ro.sm span { padding:3px 8px; font-size:11.5px; background:#fff; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.07); }
 /* Selector nativo de fecha/hora escondido dentro del pill "Otro…" */
-.wp-pv-native { position:absolute; inset:0; opacity:0; pointer-events:none; width:100%; height:100%; border:0; }
+
 .wp-pv-cta {
   width:100%; height:50px; border:none; border-radius:999px; background:#0a0a0a; color:#fff;
   display:flex; align-items:center; justify-content:center; gap:8px;
@@ -74,25 +74,11 @@
 .wp-pv-cta:disabled { background:#e5e7eb; color:#9ca3af; }
 .wp-pv-cta.busy { opacity:0.55; }
 /* ¿Con quién?: avatares con sello; el invitado lleva palomita azul */
-.wp-pv-people { display:flex; gap:12px; overflow-x:auto; margin:0 -16px; padding:4px 16px 2px; scrollbar-width:none; min-height:76px; align-items:flex-start; }
-.wp-pv-people::-webkit-scrollbar { display:none; }
-.wp-pv-empty { font-size:13px; color:#9ca3af; font-weight:500; align-self:center; }
-.wp-pv-person { position:relative; flex:none; width:58px; padding:0; border:none; background:none; display:flex; flex-direction:column; align-items:center; gap:5px;
-  cursor:pointer; -webkit-tap-highlight-color:transparent; font-family:var(--wp-font); }
-.wp-pv-pav { display:block; width:50px; height:50px; border-radius:50%; background:#eef0f3 center/cover no-repeat; transition:opacity 0.15s, filter 0.15s; }
-.wp-pv-person:not(.on) .wp-pv-pav { filter:saturate(0.85); }
-.wp-pv-pchk { position:absolute; top:-2px; right:2px; width:20px; height:20px; border-radius:50%; background:#1a5cf5; border:2px solid #fff; box-sizing:border-box;
-  display:flex; align-items:center; justify-content:center; transform:scale(0); transition:transform 0.22s cubic-bezier(0.34,1.56,0.64,1); }
-.wp-pv-person.on .wp-pv-pchk { transform:scale(1); }
-.wp-pv-pname { max-width:58px; font-size:11.5px; font-weight:700; color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wp-pv-person.on .wp-pv-pname { color:#1a5cf5; }
-@keyframes wpPvPop { from { transform:scale(0.3); opacity:0; } to { transform:none; opacity:1; } }
+
 .wp-pv-foot { display:flex; gap:8px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); margin:4px -16px 0; padding-left:16px; padding-right:16px; }
 .wp-pv-foot .wp-pv-cta { flex:1; }
 /* fuera del contenido que se desliza: pegado al fondo de la hoja */
-.wp-mp-invfoot { flex-direction:column; }
-.wp-mp-invfoot[hidden] { display:none !important; }
-.wp-mp-invfoot .wp-pv-cta { width:100%; flex:none !important; height:50px; }
+
 .wp-pm2-ms-body > .wp-pv-foot { position:static; margin:6px 0 0; padding:10px 16px 2px; background:#fff; border-radius:0 0 24px 24px; }
 /* Resumen del paso 3: tarjeta del plan */
 .wp-pv-card { display:flex; align-items:center; gap:12px; margin-top:6px; padding:12px 14px; border-radius:20px; background:#f7f8fa; border:1px solid rgba(0,0,0,0.05); }
@@ -106,83 +92,15 @@
 .wp-pv-card-faces i:first-child { margin-left:0; }
 .wp-pv-card-faces b { margin-left:4px; font-size:12px; font-weight:800; color:#374151; }
 /* Nota como post-it: papel amarillo con renglones y una cinta arriba */
-.wp-pv-postit[hidden] { display:none; }
-.wp-pv-postit {
-  position:relative; margin:10px 6px 4px; padding:16px 16px 10px; border-radius:4px 4px 18px 4px;
-  background:#fff3a3 repeating-linear-gradient(to bottom, transparent 0 25px, rgba(120,100,20,0.16) 25px 26px);
-  background-position:0 14px; box-shadow:0 8px 18px rgba(120,90,0,0.18), 0 1px 0 rgba(0,0,0,0.04);
-  transform:rotate(-1.2deg);
-}
-.wp-pv-postit.in { animation:wpPvNote 0.42s cubic-bezier(0.34,1.56,0.64,1); }
-@keyframes wpPvNote { from { transform:rotate(-8deg) scale(0.6); opacity:0; } to { transform:rotate(-1.2deg); opacity:1; } }
-.wp-pv-tape { position:absolute; left:50%; top:-9px; width:70px; height:18px; margin-left:-35px; background:rgba(255,255,255,0.65);
-  box-shadow:0 1px 2px rgba(0,0,0,0.08); transform:rotate(2deg); border-radius:2px; }
-.wp-pv-note {
-  display:block; width:100%; box-sizing:border-box; border:none; outline:none; resize:none; background:transparent; padding:0;
-  font-size:15px; line-height:26px; font-weight:500; color:#3d3200; font-family:var(--wp-font);
-}
-.wp-pv-note::placeholder { color:rgba(61,50,0,0.4); }
+
 /* "Tu plan": quién va + acciones */
-.wp-pv-postit-ro { transform:rotate(-1deg); margin-top:12px; }
-.wp-pv-note-ro { font-size:15px; line-height:26px; font-weight:500; color:#3d3200; white-space:pre-wrap; }
-.wp-pv-who { display:flex; flex-direction:column; gap:4px; }
-.wp-pv-who-row { display:flex; align-items:center; gap:10px; padding:6px 4px; }
-.wp-pv-who-av i { display:block; width:36px; height:36px; border-radius:50%; background:#eef0f3 center/cover no-repeat; }
-.wp-pv-who-n { flex:1; min-width:0; font-size:14.5px; font-weight:700; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wp-pv-who-st { flex:none; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:800; background:#f3f4f6; color:#374151; }
-.wp-pv-who-st.host { background:#0a0a0a; color:#fff; }
-.wp-pv-who-st.go { background:#e8f0ff; color:#1a5cf5; }
-.wp-pv-who-st.wait { background:#fff7e0; color:#a16207; }
-.wp-pv-who-st.no { background:#f3f4f6; color:#9ca3af; }
-.wp-pv-acts { display:flex; gap:8px; margin-top:4px; }
-.wp-pv-acts button { position:relative; flex:1; height:62px; border:none; border-radius:18px; background:#f3f4f6; color:#111827;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-  font-size:12.5px; font-weight:700; font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent; }
-.wp-pv-acts button:active { background:#e5e7eb; }
-.wp-pv-invite { display:flex; flex-direction:column; gap:8px; }
-.wp-pv-invite[hidden] { display:none; }
-.wp-pv-danger { margin-top:4px; height:44px; border:none; border-radius:999px; background:none; color:#e0123c;
-  font-size:14px; font-weight:800; font-family:var(--wp-font); cursor:pointer; transition:background-color 0.15s; }
-.wp-pv-danger.armed { background:#e0123c; color:#fff; }
+
 /* en la cabecera de la hoja: badge arriba a la derecha */
-.wp-pv-hd { position:relative; padding-right:150px !important; }
-.wp-pv-hd .wp-pm2-ms-sub { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wp-pv-hd > .wp-pv-danger { position:absolute; top:2px; right:16px; margin:0; height:32px; padding:0 13px; border-radius:999px;
-  background:#fff0f2; color:#e0123c; font-size:12.5px; white-space:nowrap; -webkit-tap-highlight-color:transparent;
-  transition:background-color 0.15s, color 0.15s, transform 0.15s; }
-.wp-pv-hd > .wp-pv-danger:active { transform:scale(0.95); }
-.wp-pv-hd > .wp-pv-danger.armed { background:#e0123c; color:#fff; animation:wpPvAsk 0.25s ease; }
+
 /* Cupos + Completo */
-.wp-pv-spots { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:16px; background:#f7f8fa; transition:background-color 0.2s; }
-.wp-pv-spots-row { display:flex; align-items:center; gap:10px; }
-.wp-pv-spots-k { font-size:12px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:0.04em; width:100%; }
-.wp-pv-spots-left[hidden] { display:none; }
-.wp-pv-spots-close { height:38px; border:none; border-radius:999px; background:#fff; color:#15803d; box-shadow:inset 0 0 0 1px rgba(22,163,74,0.35);
-  font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-.wp-pv-spots-close[hidden], .wp-pv-spots-save[hidden] { display:none; }
-.wp-pv-spots-ctl button:disabled { opacity:0.35; }
-.wp-pv-spots.full { background:#ecfdf3; }
-.wp-pv-spots-txt { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:13px; font-weight:700; color:#6b7280; }
-.wp-pv-spots-txt b { font-size:16px; font-weight:900; color:#111827; }
+
 .wp-pv-full-tag[hidden] { display:none; }
 .wp-pv-full-tag { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; background:#16a34a; color:#fff; font-size:11.5px; font-weight:800; }
-.wp-pv-wl { padding:3px 9px; border-radius:999px; background:#fff7e0; color:#a16207; font-size:11.5px; font-weight:800; }
-.wp-pv-spots-ctl { flex:none; display:flex; align-items:center; gap:6px; }
-.wp-pv-spots-ctl button { height:36px; border:none; border-radius:999px; font-family:var(--wp-font); font-size:13.5px; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-.wp-pv-spots-ctl button[hidden] { display:none; }
-.wp-pv-spots-minus, .wp-pv-spots-add { width:38px; height:38px !important; background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.12); font-size:20px !important; line-height:1; }
-.wp-pv-spots-save { height:42px; border:none; border-radius:999px; background:#0a0a0a; color:#fff; font-family:var(--wp-font); font-size:14px; font-weight:800; cursor:pointer; animation:wpPvAsk 0.25s ease; }
-.wp-pv-spots-save.less { background:#16a34a; }
-.wp-pv-spots-add:active { transform:scale(0.95); }
-.wp-pv-ask { display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:18px; background:#fff7e0; border:1px solid rgba(161,98,7,0.2); animation:wpPvAsk 0.3s cubic-bezier(0.34,1.56,0.64,1); }
-.wp-pv-ask[hidden] { display:none; }
-.wp-pv-ask-q { font-size:14.5px; font-weight:800; color:#3d2a00; line-height:1.3; }
-.wp-pv-ask-btns { display:flex; gap:8px; }
-.wp-pv-ask-btns button { flex:1; height:42px; border:none; border-radius:999px; font-family:var(--wp-font); font-size:14px; font-weight:800; cursor:pointer; }
-.wp-pv-ask-no { background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); }
-.wp-pv-ask-yes { background:#0a0a0a; color:#fff; }
-@keyframes wpPvAsk { from { transform:translateY(8px) scale(0.97); opacity:0; } to { transform:none; opacity:1; } }
-.wp-pv-invite-go[hidden] { display:none; }
 .wp-ph-wl { background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.12); }
 .wp-ph-wl.on { background:#ecfdf3; color:#15803d; box-shadow:inset 0 0 0 1px rgba(22,163,74,0.3); }
 .wp-ph-card { position:relative; display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:20px; background:#f7f8fa; border:1px solid rgba(0,0,0,0.05); }
