@@ -17,10 +17,11 @@
 // Estilos: /styles/plan-steps.css (#wp-st, .wp-st-*)
 // ════════════════════════════════════════════════════════════════════
 
-// Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
 import { addElastic } from '/src/components/place-plans/elastic.js';
 import { attachFocusZoom } from '/src/components/place-plans/focus-zoom.js';
+import { attachPulse } from '/src/components/place-plans/pulse.js';
 
+// Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
 const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1)"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>';
 const ICON_NEXT = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const RING_R = 36;
@@ -65,13 +66,14 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   // El contenedor solo se desliza en vertical: si algo lo corre de lado
   // (un foco, un elemento más ancho), se regresa al instante
   $('.wp-st-vp').addEventListener('scroll', (e) => { if (e.currentTarget.scrollLeft) e.currentTarget.scrollLeft = 0; }, { passive: true });
-  // Rebote elástico en todos los scrolls (vertical y horizontales)
-  addElastic($('.wp-st-vp'), 'y');
-  root.querySelectorAll('.wp-st-days, .wp-st-chips:not(.wrap)').forEach(el => addElastic(el, 'x'));
-  root.querySelectorAll('.wp-seats-people, .wp-st-list').forEach(el => addElastic(el, 'y'));
   // Campos de texto: zoom al centro con lo de atrás borroso
   attachFocusZoom(root);
   secs.forEach((sec, k) => steps[k].mount?.(sec.querySelector('.wp-st-body'), sec));
+  // Rebote elástico en todos los scrolls (vertical y horizontales).
+  // Va después de armar los pasos: antes las tiras aún no existen.
+  addElastic($('.wp-st-vp'), 'y');
+  root.querySelectorAll('.wp-st-days, .wp-st-chips:not(.wrap)').forEach(el => addElastic(el, 'x'));
+  root.querySelectorAll('.wp-seats-people, .wp-st-list').forEach(el => addElastic(el, 'y'));
 
   const refresh = () => {
     const s = steps[i], last = i === steps.length - 1;
@@ -110,23 +112,8 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     busy = false; $('.wp-st-next').classList.remove('busy');
     if (ok === true) close(); else refresh();
   };
-  // Efecto "agua": onda que sale de donde tocas cualquier botón
-  const unpress = (e) => { const b = e.target.closest?.('button.press'); root.querySelectorAll('button.press').forEach(x => x.classList.remove('press')); };
-  root.addEventListener('pointerup', unpress);
-  root.addEventListener('pointercancel', unpress);
-  root.addEventListener('pointerleave', unpress);
-  root.addEventListener('pointerdown', (e) => {
-    const b = e.target.closest('button'); if (!b || b.disabled) return;
-    if (!b.classList.contains('wp-dial-it')) b.classList.add('press');
-    const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
-    const w = document.createElement('i');
-    w.className = 'wp-st-ripple';
-    w.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
-    if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
-    b.style.overflow = b.classList.contains('wp-st-next') ? '' : 'hidden';
-    (b.querySelector('.wp-st-next-in') || b).appendChild(w);
-    setTimeout(() => w.remove(), 650);
-  });
+  // Pulso + onda de agua en todos los botones (al elegir y al quitar)
+  attachPulse(root);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-a]'); if (!b || b.disabled) return;
     const a = b.dataset.a;

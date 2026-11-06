@@ -17,8 +17,12 @@
   --wp-yellow: #ffc93c;  --wp-yellow-soft: #fff6d6;
   --wp-sky:    #4fb3ff;  --wp-sky-soft:    #e8f5ff;
   --wp-mint:   #2ecc8f;  --wp-mint-soft:   #e5f8ef;
+  --wp-celeste: #38bdf8; --wp-celeste-soft: #e6f6ff;
+  --wp-blue:   #2563eb;  --wp-blue-soft:   #e8f0ff;
 
   --wp-grad-warm: linear-gradient(100deg, #ffb04a 0%, #ff7a1a 45%, #ff5fa2 100%);
   --wp-grad-cool: linear-gradient(100deg, #8b6cf6 0%, #4fb3ff 100%);
   --wp-grad-mint: linear-gradient(135deg, #6ee7b7 0%, #2ecc8f 100%);
+  /* principal de los pasos: celeste → azul (con brillo blanco arriba) */
+  --wp-grad-sky: linear-gradient(100deg, #7dd3fc 0%, #38bdf8 38%, #2563eb 100%);
 }

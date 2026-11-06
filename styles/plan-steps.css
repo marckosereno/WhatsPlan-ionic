@@ -13,17 +13,19 @@
   --st-ink: var(--wp-ink, #14121f);
   --st-sub: var(--wp-sub, #8a879a);
   --st-soft: #f1f0f6;
-  --st-accent: var(--wp-lilac, #8b6cf6);
-  --st-accent-soft: var(--wp-lilac-soft, #f1ecff);
-  --st-hot: var(--wp-orange, #ff7a1a);
-  --st-bg: var(--wp-bg, #f7f6fb);
+  --st-accent: var(--wp-blue, #2563eb);
+  --st-accent-soft: var(--wp-blue-soft, #e8f0ff);
+  --st-hot: var(--wp-celeste, #38bdf8);
+  --st-grad: var(--wp-grad-sky, #2563eb);
+  --st-glow: rgba(37, 99, 235, 0.3);
+  --st-bg: #f4f8fe;   /* blanco con un toque celeste */
   position: fixed; inset: 0; z-index: 1500500;
   font-family: var(--wp-font); color: var(--st-ink);
-  /* fondo con manchas de color suaves (durazno y lila) */
+  /* fondo con manchas suaves celeste y azul sobre blanco */
   background:
-    radial-gradient(60% 40% at 0% 0%, rgba(255, 176, 74, 0.22), transparent 70%),
-    radial-gradient(55% 38% at 100% 8%, rgba(139, 108, 246, 0.2), transparent 70%),
-    radial-gradient(70% 40% at 50% 100%, rgba(79, 179, 255, 0.12), transparent 70%),
+    radial-gradient(60% 40% at 0% 0%, rgba(125, 211, 252, 0.32), transparent 70%),
+    radial-gradient(55% 38% at 100% 8%, rgba(37, 99, 235, 0.14), transparent 70%),
+    radial-gradient(70% 40% at 50% 100%, rgba(56, 189, 248, 0.14), transparent 70%),
     var(--st-bg);
   transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -37,7 +39,7 @@
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
   padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 26px;
   /* sin contenedor: velo del color del fondo que se desvanece hacia abajo */
-  background: linear-gradient(180deg, var(--st-bg) 0%, rgba(247, 246, 251, 0.9) 55%, rgba(247, 246, 251, 0) 100%);
+  background: linear-gradient(180deg, var(--st-bg) 0%, rgba(244, 248, 254, 0.9) 55%, rgba(244, 248, 254, 0) 100%);
 }
 .wp-st-top > * { pointer-events: auto; }
 /* El botón redondo de la ficha (círculo negro con flecha), sin texto */
@@ -75,7 +77,7 @@
   /* sin contenedor: el botón flota sobre un velo blanco que se desvanece */
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
   display: flex; justify-content: center; padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, rgba(247, 246, 251, 0) 0%, rgba(247, 246, 251, 0.92) 45%, var(--st-bg) 100%);
+  background: linear-gradient(180deg, rgba(244, 248, 254, 0) 0%, rgba(244, 248, 254, 0.92) 45%, var(--st-bg) 100%);
 }
 .wp-st-foot > * { pointer-events: auto; }
 .wp-st-next {
@@ -85,12 +87,12 @@
 }
 .wp-st-ring { position: absolute; inset: 0; width: 80px; height: 80px; transform: rotate(-90deg); transition: opacity 0.25s; }
 .wp-st-ring circle { fill: none; stroke-width: 3; }
-.wp-st-ring .bg { stroke: rgba(255, 122, 26, 0.16); }
-.wp-st-ring .fg { stroke: var(--st-hot); stroke-linecap: round; transition: stroke-dashoffset 0.45s cubic-bezier(0.32, 0.72, 0, 1); }
+.wp-st-ring .bg { stroke: rgba(56, 189, 248, 0.2); }
+.wp-st-ring .fg { stroke: var(--st-accent); stroke-linecap: round; transition: stroke-dashoffset 0.45s cubic-bezier(0.32, 0.72, 0, 1); }
 .wp-st-next-in {
-  position: relative; overflow: hidden; width: 62px; height: 62px; border-radius: 999px; background: var(--wp-grad-warm, #ff7a1a); color: #fff;
+  position: relative; overflow: hidden; width: 62px; height: 62px; border-radius: 999px; background: var(--st-grad); color: #fff;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: 0 10px 24px rgba(255, 95, 162, 0.35);
+  box-shadow: 0 10px 24px var(--st-glow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   transition: width 0.4s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.2s, transform 0.15s;
 }
 .wp-st-next-in b { display: none; font-size: 16px; font-weight: 800; white-space: nowrap; }
@@ -111,7 +113,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); transition: box-shadow 0.15s, transform 0.15s;
 }
 .wp-st-opt:active { transform: scale(0.98); }
-.wp-st-opt.on { background: var(--st-accent-soft); box-shadow: inset 0 0 0 2.5px var(--st-accent), 0 10px 24px rgba(139, 108, 246, 0.18); }
+.wp-st-opt.on { background: var(--st-accent-soft); box-shadow: inset 0 0 0 2.5px var(--st-accent), 0 10px 24px rgba(37, 99, 235, 0.16); }
 .wp-st-opt:nth-child(3n+1) .wp-st-opt-i { background: var(--wp-yellow-soft, #fff6d6); }
 .wp-st-opt:nth-child(3n+2) .wp-st-opt-i { background: var(--wp-sky-soft, #e8f5ff); }
 .wp-st-opt:nth-child(3n) .wp-st-opt-i { background: var(--wp-pink-soft, #ffeaf3); }
@@ -121,18 +123,18 @@
 .wp-st-opt-t small { font-size: 13px; line-height: 1.35; color: var(--st-sub); }
 
 /* Chips */
-.wp-st-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
+.wp-st-chips { display: flex; gap: 8px; overflow-x: auto; margin: -8px -20px -10px; padding: 10px 20px 14px; scrollbar-width: none; }
 .wp-st-chips::-webkit-scrollbar { display: none; }
 .wp-st-chips.wrap { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; justify-content: center; }
 .wp-st-chips button { flex: none; height: 40px; padding: 0 15px; border: none; border-radius: 999px; background: #fff; color: var(--st-ink); font-size: 14px; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07); }
-.wp-st-chips button.on { background: var(--st-hot); color: #fff; box-shadow: 0 6px 14px rgba(255, 122, 26, 0.3); }
+.wp-st-chips button.on { background: var(--st-grad); color: #fff; box-shadow: 0 6px 14px var(--st-glow); }
 
 /* Íconos 3D en cuadrícula */
 .wp-st-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .wp-st-tile { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 6px 12px; border: none; border-radius: 22px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); transition: box-shadow 0.15s, transform 0.15s; }
 .wp-st-tile:active { transform: scale(0.96); }
 .wp-st-tile.on { background: var(--st-accent-soft); box-shadow: inset 0 0 0 2.5px var(--st-accent); }
-.wp-st-tile:nth-child(6n+1) .wp-st-tile-i, .wp-st-tile:nth-child(6n+5) .wp-st-tile-i { background: var(--wp-orange-soft, #fff1e6); }
+.wp-st-tile:nth-child(6n+1) .wp-st-tile-i, .wp-st-tile:nth-child(6n+5) .wp-st-tile-i { background: var(--wp-celeste-soft, #e6f6ff); }
 .wp-st-tile:nth-child(6n+2) .wp-st-tile-i, .wp-st-tile:nth-child(6n+6) .wp-st-tile-i { background: var(--wp-lilac-soft, #f1ecff); }
 .wp-st-tile:nth-child(6n+3) .wp-st-tile-i, .wp-st-tile:nth-child(6n+4) .wp-st-tile-i { background: var(--wp-sky-soft, #e8f5ff); }
 .wp-st-tile-i { width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 36px; }
@@ -146,14 +148,17 @@
 .wp-st-day { flex: 0 0 56px; height: 70px; border: none; border-radius: 20px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 2px 8px rgba(20, 18, 31, 0.06); transition: transform 0.2s; }
 .wp-st-day small { font-size: 12px; font-weight: 600; color: var(--st-sub); }
 .wp-st-day b { font-size: 20px; font-weight: 800; }
-.wp-st-day.on { background: var(--wp-grad-warm, #ff7a1a); box-shadow: 0 6px 12px -2px rgba(255, 95, 162, 0.35); }
+.wp-st-day.on { background: var(--st-grad); box-shadow: 0 6px 12px -2px var(--st-glow); }
 .wp-st-day.on small, .wp-st-day.on b { color: #fff; }
 
 /* Hora grande + − / + */
 .wp-st-clock { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 10px 0 2px; }
 .wp-st-clock b { min-width: 170px; text-align: center; font-size: 52px; font-weight: 800; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
-.wp-st-clock button { width: 52px; height: 52px; border: none; border-radius: 50%; background: #fff; color: var(--st-ink); font-size: 26px; font-weight: 600; line-height: 1; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1); }
-.wp-st-clock button:disabled { opacity: 0.35; }
+.wp-st-clock button[data-d] { width: 52px; height: 52px; border: none; border-radius: 50%; background: #fff; color: var(--st-ink); font-size: 26px; font-weight: 600; line-height: 1; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1); }
+.wp-st-clock button[data-d]:disabled { opacity: 0.35; }
+.wp-st-clock-v { padding: 2px 6px; border: none; border-radius: 20px; background: none; color: var(--st-ink); }
+/* subrayado punteado: "tócame para elegir la hora exacta" */
+.wp-st-clock-v b { display: block; border-bottom: 2.5px dotted rgba(37, 99, 235, 0.35); padding-bottom: 2px; }
 .wp-st-clock-sub { text-align: center; font-size: 14px; font-weight: 600; color: var(--st-sub); }
 
 /* Número con − / + (cupos) */
@@ -207,7 +212,7 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-st-done-ic { width: 84px; height: 84px; border-radius: 50%; background: var(--wp-grad-mint, #2ecc8f); color: #fff; box-shadow: 0 12px 28px rgba(46, 204, 143, 0.35); display: flex; align-items: center; justify-content: center; animation: wpStPop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1); }
 .wp-st-done h2 { margin: 6px 0 0; font-size: 30px; font-weight: 800; letter-spacing: -0.6px; }
 .wp-st-done p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--st-sub); }
-.wp-st-done .wp-st-btn { width: 100%; height: 56px; border: none; border-radius: 999px; background: var(--wp-grad-warm, #ff7a1a); box-shadow: 0 10px 24px rgba(255, 95, 162, 0.3); color: #fff; font-size: 16px; font-weight: 800; margin-top: 10px; }
+.wp-st-done .wp-st-btn { width: 100%; height: 56px; border: none; border-radius: 999px; background: var(--st-grad); box-shadow: 0 10px 24px var(--st-glow); color: #fff; font-size: 16px; font-weight: 800; margin-top: 10px; }
 .wp-st-done .wp-st-btn.ghost { background: transparent; box-shadow: none; color: var(--st-ink); margin-top: 0; }
 @keyframes wpStPop { from { transform: scale(0.5); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -215,8 +220,9 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-st-when { gap: 10px; margin-top: 18px; }
 .wp-st-when .wp-st-clock { padding: 4px 0 0; gap: 14px; }
 .wp-st-when .wp-st-clock b { font-size: 46px; min-width: 160px; }
-.wp-st-when .wp-st-clock button { width: 48px; height: 48px; }
-.wp-st-when .wp-st-chips { margin-top: 2px; padding-bottom: 10px; margin-bottom: -8px; }
+.wp-st-when .wp-st-clock button[data-d] { width: 48px; height: 48px; }
+/* espacio arriba y abajo para que las sombras (y el pulso) no se corten */
+.wp-st-when .wp-st-chips { margin: -10px -20px -14px; padding: 12px 20px 18px; }
 .wp-st-when .wp-st-lbl { margin-top: 2px; }
 
 /* ══ Animaciones ══ */
@@ -228,23 +234,24 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-st-step.enter > .wp-st-body > *:nth-child(3) { animation-delay: 0.2s; }
 .wp-st-step.enter > .wp-st-body > *:nth-child(n+4) { animation-delay: 0.25s; }
 @keyframes wpStUp { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: none; } }
-/* elegir algo: salto elástico */
-.wp-st-day.on, .wp-st-opt.on, .wp-st-tile.on, .wp-st-row.on, .wp-st-chips button.on, .wp-st-person:active i { animation: wpStBoing 0.5s cubic-bezier(0.34, 1.7, 0.64, 1); }
-@keyframes wpStBoing { 0% { transform: scale(0.9); } 55% { transform: scale(1.06); } 100% { transform: scale(1); } }
+/* pulso al soltar (elegir o quitar, cualquier botón): crece y regresa */
+.wp-pulse { animation: wpStGrow 0.5s cubic-bezier(0.34, 1.6, 0.64, 1); }
 /* la hora cambia con un pequeño golpe */
 .wp-st-clock b.tick { animation: wpStTick 0.35s cubic-bezier(0.34, 1.7, 0.64, 1); }
 @keyframes wpStTick { from { transform: translateY(6px) scale(0.94); opacity: 0.4; } to { transform: none; opacity: 1; } }
 /* agua: onda al tocar */
+.wp-rippled { position: relative; }
+#wp-st .wp-rippled:not(.wp-st-next):not(.wp-seat), .wp-fz .wp-rippled { overflow: hidden; }
 .wp-st-ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.16; transform: scale(0); pointer-events: none; animation: wpStRipple 0.62s ease-out forwards; }
 @keyframes wpStRipple { to { transform: scale(1); opacity: 0; } }
 /* pulso (como el buscador global): al tocar se encoge y regresa con un
    resorte que lo pasa un poquito de grande */
-#wp-st button:not(.wp-dial-it) { transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1); }
-#wp-st button.press:not(.wp-dial-it) { transform: scale(0.91); transition-duration: 0.1s; transition-timing-function: ease-out; }
+#wp-st button:not(.wp-dial-it), .wp-fz button { transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1); }
+#wp-st button.press, .wp-fz button.press { transform: scale(0.91); transition-duration: 0.1s; transition-timing-function: ease-out; }
 /* cuando ya se puede seguir, el botón crece y regresa (late) */
 .wp-st-next.ready .wp-st-next-in { animation: wpStGrow 0.7s cubic-bezier(0.34, 1.6, 0.64, 1); }
-@keyframes wpStGrow { 0% { transform: scale(1); } 35% { transform: scale(1.16); } 65% { transform: scale(0.97); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { #wp-st *, #wp-st *::before { animation: none !important; } }
+@keyframes wpStGrow { 0% { transform: scale(0.92); } 35% { transform: scale(1.14); } 65% { transform: scale(0.97); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { #wp-st *, #wp-st *::before, .wp-fz * { animation: none !important; } }
 
 /* ══ Paso "¿Quién va?": asientos ══ */
 .wp-seats { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 12px 14px; border-radius: 26px; background: #fff;
@@ -253,46 +260,85 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 56px; padding: 0; border: none; background: none; overflow: visible !important; }
 .wp-seat i { width: 52px; height: 52px; border-radius: 50%; background: #e9e7f2 center / cover no-repeat; display: block; }
 .wp-seat small { max-width: 100%; font-size: 12px; font-weight: 700; color: var(--st-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-seat.me i { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--wp-orange, #ff7a1a); }
+.wp-seat.me i { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--st-hot); }
 .wp-seat.free i { background: transparent; box-shadow: inset 0 0 0 2px #d9d6e6; border: 0; background-image: radial-gradient(circle, #d9d6e6 1.5px, transparent 2px); background-size: 9px 9px; }
 .wp-seat.free small { color: var(--st-sub); font-weight: 600; }
 .wp-seat em { position: absolute; top: -2px; right: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--st-ink); color: #fff; font-style: normal; font-size: 13px; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; }
 .wp-seat.pop i { animation: wpSeatIn 0.55s cubic-bezier(0.34, 1.8, 0.64, 1); }
 @keyframes wpSeatIn { 0% { transform: translateY(40px) scale(0.3); opacity: 0; } 70% { transform: translateY(-4px) scale(1.08); opacity: 1; } 100% { transform: none; } }
+.wp-seat i, .wp-seat small, .wp-seat em { transition: transform 0.22s ease-in, opacity 0.22s ease-in; }
+.wp-seat.out i, .wp-seat.out em { transform: translateY(26px) scale(0.2); opacity: 0; }
+.wp-seat.out small { opacity: 0; }
+/* la persona regresa a la lista con un pulso */
+.wp-back-in i { animation: wpBackIn 0.55s cubic-bezier(0.34, 1.7, 0.64, 1); }
+@keyframes wpBackIn { 0% { transform: translateY(-30px) scale(0.3); opacity: 0; } 65% { transform: scale(1.12); opacity: 1; } 100% { transform: none; } }
 .wp-seats-ctl { display: flex; align-items: center; gap: 10px; }
 .wp-seats-ctl span { min-width: 150px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--st-sub); }
 .wp-seats-ctl button { width: 36px; height: 36px; border: none; border-radius: 50%; background: var(--st-accent-soft); color: var(--st-accent); font-size: 19px; font-weight: 800; }
 .wp-seats-ctl button:disabled { opacity: 0.35; }
-.wp-seats-q { height: 46px; }
+.wp-seats-q { height: 46px; width: 100%; border: none; font: inherit; font-size: 15.5px; text-align: left; cursor: text; }
 .wp-seats-people { max-height: 200px; overflow-y: auto; padding: 6px 2px; scrollbar-width: none; }
 .wp-seats-people::-webkit-scrollbar { display: none; }
 .wp-st-person i { width: 56px; height: 56px; }
 
-/* ══ Paso "¿Cómo lo llamamos?": emojis en curva suave ══ */
+/* ══ Paso "¿Cómo lo llamamos?": 5 emojis en curva suave ══ */
 .wp-pw-dial { margin-top: 4px; }
-.wp-dial { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
-.wp-dial-stage { position: relative; width: 100%; height: 150px; overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
-.wp-dial-it { position: absolute; left: 50%; top: 62px; width: 104px; height: 104px; padding: 0; border: none; background: none; font-size: 80px; line-height: 1;
-  display: flex; align-items: center; justify-content: center; will-change: transform; filter: drop-shadow(0 8px 12px rgba(20, 18, 31, 0.16)); }
+.wp-dial { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.wp-dial-stage { position: relative; height: 132px; margin: 0 -20px; width: calc(100% + 40px); overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+/* sin caja ni contorno al tocar: solo el emoji */
+.wp-dial-it { position: absolute; left: 50%; top: 56px; width: 84px; height: 84px; padding: 0; border: none; background: none; outline: none; font-size: 62px; line-height: 1;
+  -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; will-change: transform; filter: drop-shadow(0 8px 12px rgba(20, 18, 31, 0.16)); }
+.wp-dial-it img { width: 64px; height: 64px; object-fit: contain; }
+.wp-dial-e { display: block; }
 .wp-dial.anim .wp-dial-it { transition: transform 0.5s cubic-bezier(0.34, 1.5, 0.64, 1), opacity 0.3s; }
-.wp-dial-label { position: relative; z-index: 2; padding: 7px 16px; border-radius: 999px; background: #fff; font-size: 14px; font-weight: 800; color: var(--st-ink);
-  box-shadow: 0 4px 14px rgba(20, 18, 31, 0.1); white-space: nowrap; max-width: 80%; overflow: hidden; text-overflow: ellipsis; }
-.wp-dial-label.pop { animation: wpStBoing 0.45s cubic-bezier(0.34, 1.7, 0.64, 1); }
+/* el que queda al centro late: crece y regresa */
+.wp-dial-pop { animation: wpDialPop 0.6s cubic-bezier(0.34, 1.6, 0.64, 1); }
+@keyframes wpDialPop { 0% { transform: scale(0.9); } 40% { transform: scale(1.28); } 70% { transform: scale(0.95); } 100% { transform: scale(1); } }
 .wp-pw-dial + .wp-st-in { margin-top: 14px; }
 .wp-pw-title { text-align: center; font-weight: 800; font-size: 17px; }
 
 /* ══ Campo de texto en zoom (focus-zoom.js) ══ */
 .wp-fz { position: fixed; inset: 0; z-index: 1500600; background: rgba(247, 246, 251, 0); -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0);
   transition: background-color 0.28s, backdrop-filter 0.28s, -webkit-backdrop-filter 0.28s; font-family: var(--wp-font); }
-.wp-fz.in { background: rgba(247, 246, 251, 0.55); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+.wp-fz.in { background: rgba(244, 248, 254, 0.55); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
 .wp-fz-card { position: absolute; left: 16px; right: 16px; padding: 14px; border-radius: 26px; background: #fff;
-  box-shadow: 0 24px 60px rgba(20, 18, 31, 0.22), 0 2px 6px rgba(20, 18, 31, 0.06); display: flex; flex-direction: column; gap: 10px; transform-origin: 50% 0; }
+  box-shadow: 0 24px 60px rgba(20, 18, 31, 0.22), 0 2px 6px rgba(20, 18, 31, 0.06); display: flex; flex-direction: column; gap: 10px; transform-origin: 50% 0; overflow: hidden; box-sizing: border-box; }
 .wp-fz-top { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
-.wp-fz-top span { font-size: 13px; font-weight: 800; color: var(--wp-lilac, #8b6cf6); }
+.wp-fz-top span { font-size: 13px; font-weight: 800; color: var(--wp-blue, #2563eb); }
 .wp-fz-top small { font-size: 12px; font-weight: 700; color: var(--wp-sub, #8a879a); }
 .wp-fz-field { width: 100%; box-sizing: border-box; height: 56px; padding: 0 16px; border: none; border-radius: 18px; background: var(--wp-bg, #f7f6fb);
-  outline: none; font: inherit; font-size: 18px; font-weight: 700; color: var(--wp-ink, #14121f); box-shadow: inset 0 0 0 2px var(--wp-lilac, #8b6cf6); }
+  outline: none; font: inherit; font-size: 18px; font-weight: 700; color: var(--wp-ink, #14121f); box-shadow: inset 0 0 0 2px var(--wp-celeste, #38bdf8); }
 .wp-fz-field.area { height: auto; min-height: 120px; padding: 14px 16px; font-weight: 500; font-size: 17px; line-height: 1.4; resize: none; }
-.wp-fz-done { align-self: flex-end; height: 42px; padding: 0 20px; border: none; border-radius: 999px; background: var(--wp-grad-warm, #ff7a1a); color: #fff;
-  font: inherit; font-size: 15px; font-weight: 800; box-shadow: 0 8px 18px rgba(255, 95, 162, 0.3); cursor: pointer; }
+.wp-fz-done { align-self: flex-end; height: 42px; padding: 0 20px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff;
+  font: inherit; font-size: 15px; font-weight: 800; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3); cursor: pointer; }
+
+/* ══ Hora a tu gusto (time-picker.js) ══ */
+.wp-tp { display: flex; flex-direction: column; gap: 14px; }
+.wp-tp-big { display: flex; align-items: baseline; justify-content: center; gap: 6px; padding: 4px 0; color: var(--wp-ink, #14121f); }
+.wp-tp-big b { font-size: 54px; font-weight: 800; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
+.wp-tp-big small { font-size: 20px; font-weight: 800; color: var(--wp-blue, #2563eb); }
+.wp-tp-tick { animation: wpStTick 0.35s cubic-bezier(0.34, 1.7, 0.64, 1); }
+.wp-tp-h { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.wp-tp-row { display: flex; gap: 10px; }
+.wp-tp-m { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.wp-tp-ap { display: flex; gap: 4px; padding: 3px; border-radius: 16px; background: var(--wp-blue-soft, #e8f0ff); }
+.wp-tp button { height: 44px; border: none; border-radius: 14px; background: #f1f5fb; color: var(--wp-ink, #14121f); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wp-tp-ap button { min-width: 46px; height: 38px; background: none; color: var(--wp-blue, #2563eb); }
+.wp-tp button.on { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3); }
+
+/* ══ Buscar a quién invitar (people-picker.js) ══ */
+.wp-fz-slot { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.wp-pp { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.wp-pp-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; max-height: 300px; overflow-y: auto; margin: 0 -6px; padding: 2px 6px; scrollbar-width: none; }
+.wp-pp-list::-webkit-scrollbar { display: none; }
+.wp-pp-row { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px; border: none; border-radius: 18px; background: none; text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wp-pp-row.on { background: var(--wp-blue-soft, #e8f0ff); }
+.wp-pp-row i { flex: none; width: 46px; height: 46px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
+.wp-pp-row span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wp-pp-row b { font-size: 15px; font-weight: 800; color: var(--wp-ink, #14121f); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-pp-row small { font-size: 12.5px; color: var(--wp-sub, #8a879a); }
+.wp-pp-row em { flex: none; width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 2px #d1d5db; display: flex; align-items: center; justify-content: center; }
+.wp-pp-row em svg { opacity: 0; transform: scale(0.4); transition: opacity 0.2s, transform 0.35s cubic-bezier(0.34, 1.8, 0.64, 1); }
+.wp-pp-row.on em { background: var(--wp-grad-sky, #2563eb); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
+.wp-pp-row.on em svg { opacity: 1; transform: none; }
