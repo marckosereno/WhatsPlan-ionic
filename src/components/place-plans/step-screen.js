@@ -1,9 +1,11 @@
 // ════════════════════════════════════════════════════════════════════
 // WHATSPLAN — place-plans/step-screen.js
-// Pantalla completa "por pasos": una pregunta grande por pantalla,
+// Pantalla "por pasos": una pregunta grande por pantalla,
 // "2 de 4" arriba, "Omitir" en los pasos opcionales y un botón redondo
 // con anillo de progreso abajo (en el último paso se abre en píldora
 // con el texto final). La usan "Planear visita" y "Nueva parada".
+// Con sheet: true va dentro de una hoja que se ajusta a cada paso
+// (step-sheet.js); sin él, en pantalla completa.
 //
 // Uso:
 //   const s = openStepScreen({
@@ -11,6 +13,7 @@
 //     doneLabel: 'Crear plan',
 //     onDone: async () => true,   // true = cerrar
 //     onClose: () => {},
+//     sheet: true,                // opcional: en hoja
 //   });
 //   s.refresh()   → vuelve a revisar si el paso actual se puede pasar
 //   s.root, s.go(i), s.close(), s.showDone(html)
@@ -20,6 +23,7 @@
 import { addElastic } from '/src/components/place-plans/elastic.js';
 import { attachFocusZoom } from '/src/components/place-plans/focus-zoom.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
+import { attachSheet } from '/src/components/place-plans/step-sheet.js';
 
 // Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
 const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1)"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>';
@@ -27,7 +31,7 @@ const ICON_NEXT = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" s
 const RING_R = 36;
 const RING_C = 2 * Math.PI * RING_R;
 
-export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, haptic = () => {} }) {
+export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, haptic = () => {}, sheet = false }) {
   let i = 0, busy = false;
   const root = document.createElement('div');
   root.id = 'wp-st';
@@ -51,15 +55,17 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   document.body.appendChild(root);
   const $ = (q) => root.querySelector(q);
   const secs = [...root.querySelectorAll('.wp-st-step')];
+  const sh = sheet ? attachSheet(root, () => close()) : null;
   // El contenido va centrado en el espacio libre entre la barra de arriba
   // y el botón de abajo (los dos flotan encima y el contenido pasa por debajo)
   const layout = () => {
     if (!root.isConnected) { window.visualViewport?.removeEventListener('resize', layout); window.removeEventListener('resize', layout); return; }
     const top = $('.wp-st-top')?.offsetHeight || 0, foot = $('.wp-st-foot')?.offsetHeight || 0;
-    const vp = $('.wp-st-vp');
+    // en hoja: la hoja toma el alto del paso actual
+    const h = sh ? sh.fit($('.wp-st-done') || secs[i], top, foot) : $('.wp-st-vp').clientHeight;
     root.style.setProperty('--st-top', `${top}px`);
     root.style.setProperty('--st-foot', `${foot}px`);
-    root.style.setProperty('--st-area', `${Math.max(0, vp.clientHeight - top - foot)}px`);
+    root.style.setProperty('--st-area', `${Math.max(0, h - top - foot)}px`);
   };
   window.visualViewport?.addEventListener('resize', layout);
   window.addEventListener('resize', layout);
@@ -88,6 +94,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     if (was && !next.disabled) { next.classList.remove('ready'); void next.offsetWidth; next.classList.add('ready'); }
     next.setAttribute('aria-label', last ? doneLabel : 'Siguiente');
     $('.wp-st-ring .fg').style.strokeDashoffset = String(RING_C * (1 - (i + 1) / steps.length));
+    if (sh) requestAnimationFrame(layout);   // el contenido cambió → la hoja se reajusta
   };
   const go = (k) => {
     i = Math.max(0, Math.min(steps.length - 1, k));
@@ -100,8 +107,12 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     refresh();
     layout();
   };
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
     root.classList.remove('in');
+    sh?.remove();
     setTimeout(() => root.remove(), 340);
     onClose?.();
   };

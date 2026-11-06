@@ -45,6 +45,7 @@ export class PlanWizard {
     if (!user || !this._place) return;
     const w = this._pwContext(user);
     w.screen = openStepScreen({
+      sheet: true,
       doneLabel: 'Crear plan',
       haptic: (k) => this._haptic?.(k),
       onDone: () => this._pwCreate(w),
