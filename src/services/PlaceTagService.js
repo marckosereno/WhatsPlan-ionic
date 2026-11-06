@@ -14,7 +14,7 @@ export const PLACE_TAGS = [
   { key:'romantico',     emoji:'🕯️', label:'Romántico',           cat:'Ambiente' },
   { key:'animado',       emoji:'🎉', label:'Muy animado',         cat:'Ambiente' },
   { key:'instagrameable',emoji:'📸', label:'Instagrameable',      cat:'Ambiente' },
-  { key:'escondido',     emoji:'🗺️', label:'Lugar escondido',     cat:'Ambiente' },
+  { key:'escondido',     emoji:'🧭', label:'Lugar escondido',     cat:'Ambiente' },
   // Público
   { key:'ninos',         emoji:'👶', label:'Para niños',          cat:'Público' },
   { key:'pet_friendly',  emoji:'🐾', label:'Pet Friendly',        cat:'Público' },

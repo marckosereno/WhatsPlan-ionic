@@ -728,7 +728,7 @@ export class SearchBar {
     if (mv.markerEls.length > 0) {
       var firstEl = mv.markerEls[0];
       var firstP  = firstEl._place;
-      console.log('🗺️ HIGHLIGHT DEBUG — primer marker._place:', {
+      console.log('🧭 HIGHLIGHT DEBUG — primer marker._place:', {
         place_id: firstP && firstP.place_id,
         placeId:  firstP && firstP.placeId,
         name:     firstP && firstP.name,

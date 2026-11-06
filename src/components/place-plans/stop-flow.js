@@ -12,7 +12,6 @@
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
 import { openTimePicker } from '/src/components/place-plans/time-picker.js';
 
-const R3 = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/';
 const GROUPS = [
   ['RESTAURANTS', '🍽️', 'Comer y beber'], ['ENTERTAINMENT', '🎉', 'Salir'], ['SHOPPING', '🛍️', 'Compras'],
   ['PARKS', '🌳', 'Aire libre'], ['HEALTH', '💆', 'Bienestar'], ['WORKSHOPS', '🔧', 'Talleres'],
@@ -22,12 +21,12 @@ const FALLBACK_ACTS = [
   ['food', '🍔', 'Comer', 'RESTAURANTS', 'Hamburger/3D/hamburger_3d.png'],
   ['drinks', '☕', 'Café', 'RESTAURANTS', 'Hot beverage/3D/hot_beverage_3d.png'],
   ['music', '🎵', 'Música', 'ENTERTAINMENT', 'Musical note/3D/musical_note_3d.png'],
-  ['hangout', '🎈', 'Pasar el rato', 'ENTERTAINMENT', 'Balloon/3D/balloon_3d.png'],
+  ['hangout', '🎉', 'Pasar el rato', 'ENTERTAINMENT', 'Balloon/3D/balloon_3d.png'],
   ['shop', '🛍️', 'Compras', 'SHOPPING', 'Shopping bags/3D/shopping_bags_3d.png'],
   ['sport', '🏃', 'Deporte', 'PARKS', 'Person running/3D/person_running_3d.png'],
   ['photo', '📸', 'Fotos', 'PARKS', 'Camera with flash/3D/camera_with_flash_3d.png'],
   ['spa', '💆', 'Spa', 'HEALTH', 'Person getting massage/3D/person_getting_massage_3d.png'],
-].map(([key, emoji, label, cat, ic]) => ({ key, emoji, label, cat, icon3d: R3 + ic }));
+].map(([key, emoji, label, cat]) => ({ key, emoji, label, cat }));
 
 const STEP_MIN = 15, MAX_GAP = 360;
 const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -96,7 +95,7 @@ export class StopFlow {
   _sfPaintWhat(f, el) {
     el.querySelectorAll('[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === f.cat));
     el.querySelector('.wp-st-tiles').innerHTML = f.acts.filter(x => x.cat === f.cat).map(x => `<button type="button" class="wp-st-tile${x.key === f.act ? ' on' : ''}" data-k="${x.key}">
-        <span class="wp-st-tile-i">${x.icon3d ? `<img src="${this._esc(x.icon3d)}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${x.emoji}'))">` : x.emoji}</span>
+        <span class="wp-st-tile-i">${x.emoji}</span>
         <span class="wp-st-tile-l">${this._esc(x.label)}</span></button>`).join('');
   }
 
@@ -106,7 +105,7 @@ export class StopFlow {
     el.innerHTML = `
       <label class="wp-st-search">${SEARCH}<input type="search" placeholder="Buscar un lugar" enterkeyhint="search" autocomplete="off"></label>
       <div class="wp-st-list"></div>
-      <button type="button" class="wp-st-row wp-st-own" data-a="own"><span class="wp-st-row-ph">📍</span>
+      <button type="button" class="wp-st-row wp-st-own" data-a="own"><span class="wp-st-row-ph">🏡</span>
         <span class="wp-st-row-t"><b>Un lugar que no está en el mapa</b><small>Casa de alguien, un parque sin nombre…</small></span><i class="wp-st-radio"></i></button>
       <div class="wp-st-ownf" hidden>
         <input class="wp-st-in" data-zoom="Nombre del lugar" data-f="name" type="text" maxlength="80" placeholder="Nombre (ej. Casa de Ana)" autocapitalize="sentences" autocomplete="off">
@@ -235,7 +234,7 @@ export class StopFlow {
       place_id: String(W.place_id), name: W.name || W.displayName || 'Lugar',
       lat: W.lat != null ? Number(W.lat) : undefined, lng: W.lng != null ? Number(W.lng) : undefined,
       cat: W.category || A.cat || '', after: f.base + f.gap,
-      act: A.key, emoji: A.emoji, icon: A.icon3d,
+      act: A.key, emoji: A.emoji,
       note: f.note.trim() || undefined, address: W.address || W.formattedAddress || undefined,
     };
     const next = [...f.cur, stop];

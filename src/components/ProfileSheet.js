@@ -643,10 +643,10 @@ export class ProfileSheet {
     }
     // ── Su progreso (tarjetas que se deslizan)
     const cards = [];
-    if (pct != null) cards.push(['🗺️', `${String(pct).replace('.', ',')}%`, 'de la ciudad explorada']);
+    if (pct != null) cards.push(['🧭', `${String(pct).replace('.', ',')}%`, 'de la ciudad explorada']);
     if (d.show_points && d.points != null) cards.push(['⭐', `Nivel ${d.level}`, `${Number(d.points).toLocaleString('es-MX')} pts${d.rank && d.rank_of > 1 ? ` · #${d.rank} de ${d.rank_of} amigos` : ''}`]);
     if (d.show_points && d.collections != null) cards.push(['🏁', String(d.collections), d.collections === 1 ? 'colección completada' : 'colecciones completadas']);
-    if (d.show_visits && d.places != null) cards.push(['📌', String(d.places), d.places === 1 ? 'lugar visitado' : 'lugares visitados']);
+    if (d.show_visits && d.places != null) cards.push(['🔖', String(d.places), d.places === 1 ? 'lugar visitado' : 'lugares visitados']);
     if (cards.length) {
       html += `<div class="wp-pf-sec"><span>Su progreso</span></div>
         <div class="wp-pf-ins-cards">${cards.map(([e, n, t]) => `<div class="wp-pf-ins-card"><span>${e}</span><b>${this._esc(n)}</b><small>${this._esc(t)}</small></div>`).join('')}</div>`;

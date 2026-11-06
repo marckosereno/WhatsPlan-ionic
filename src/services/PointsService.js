@@ -19,7 +19,7 @@ export const POINTS_RULES = [
 export const BADGES = [
   { id: 'primeros_pasos', emoji: '🚀', name: 'Despegaste',            desc: 'Registraste tu primera visita' },
   { id: 'explorador',     emoji: '🧭', name: 'Brújula activa',        desc: '10 lugares descubiertos' },
-  { id: 'conocedor',      emoji: '🗺️', name: 'Mapa en mano',          desc: '25 lugares descubiertos' },
+  { id: 'conocedor',      emoji: '🧭', name: 'Mapa en mano',          desc: '25 lugares descubiertos' },
   { id: 'leyenda',        emoji: '🏙️', name: 'Leyenda local',         desc: '50 lugares: la ciudad es tuya' },
   { id: 'coleccionista',  emoji: '🏁', name: 'Misión cumplida',       desc: 'Completaste tu primera colección' },
   { id: 'maestro',        emoji: '🏆', name: 'Cazador de colecciones', desc: '5 colecciones completadas' },

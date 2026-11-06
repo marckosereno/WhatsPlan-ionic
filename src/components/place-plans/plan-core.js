@@ -74,8 +74,8 @@ export class PlanCore {
   }
 
   _planEmoji(t) {
-    const G = { food: '🍔', drinks: '☕', hangout: '🎈', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
-    return G[t] || (this._actTypes || []).find(x => x.key === t)?.emoji || '🎈';
+    const G = { food: '🍔', drinks: '☕', hangout: '🎉', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
+    return G[t] || (this._actTypes || []).find(x => x.key === t)?.emoji || '🎉';
   }
 
   _planWhen(at, short = false) {
@@ -179,7 +179,7 @@ export class PlanCore {
     const { me, mine, pending, others } = this._planGroups();
     const info = this._placeInfo();
     const { body, close } = this._openSheet('Planes aquí', info.name);
-    const EMO = { food: '🍔', drinks: '☕', hangout: '🎈', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
+    const EMO = { food: '🍔', drinks: '☕', hangout: '🎉', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
     const list = [...pending, ...others.filter(a => !pending.includes(a))];
     const name = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || (p.username ? '@' + p.username : 'Alguien')).split(' ')[0]); };
     body.innerHTML = `

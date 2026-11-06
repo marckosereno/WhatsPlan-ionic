@@ -10,7 +10,7 @@
 export class PlanStops {
   // ── Paradas del plan ─────────────────────────────────────────────────
   _stopEmoji(cat) {
-    return { RESTAURANTS: '🍽️', HEALTH: '💆', SHOPPING: '🛍️', ENTERTAINMENT: '🎉', PARKS: '🌳', WORKSHOPS: '🔧' }[String(cat || '').toUpperCase()] || '📍';
+    return { RESTAURANTS: '🍽️', HEALTH: '💆', SHOPPING: '🛍️', ENTERTAINMENT: '🎉', PARKS: '🌳', WORKSHOPS: '🔧' }[String(cat || '').toUpperCase()] || '🧭';
   }
 
   _hhmm(d) {
@@ -38,16 +38,16 @@ export class PlanStops {
   _planRouteHtml(a, { owner = false, compact = false } = {}) {
     const st = Array.isArray(a?.stops) ? a.stops : [];
     if (!st.length) return owner ? `<div class="wp-pv-route-ro"><button type="button" class="wp-pv-addstop-card" data-a="addstop">
-        <span>🗺️</span><span><b>¿Siguen en otro lado?</b><small>Agrega una parada al plan</small></span><i>+</i></button></div>` : '';
+        <span>🧭</span><span><b>¿Siguen en otro lado?</b><small>Agrega una parada al plan</small></span><i>+</i></button></div>` : '';
     const t0 = new Date(a.scheduled_at);
-    if (compact) return `<div class="wp-ph-route">🗺️ ${1 + st.length} paradas · ${[a.place_name, ...st.map(x => x.name)].map(n => this._esc(String(n || '').split(' ').slice(0, 3).join(' '))).join(' → ')}</div>`;
+    if (compact) return `<div class="wp-ph-route">🧭 ${1 + st.length} paradas · ${[a.place_name, ...st.map(x => x.name)].map(n => this._esc(String(n || '').split(' ').slice(0, 3).join(' '))).join(' → ')}</div>`;
     const row = (i, name, d, cat, rm, x = {}) => `<div class="wp-pv-stop"><span class="wp-pv-stop-n">${i}</span>
         <span class="wp-pv-stop-t"><b>${this._esc(name)}</b><small>${x.emoji || this._stopEmoji(cat)} ${this._hhmm(d)}${x.custom ? ' · lugar propio' : ''}${x.address ? ' · ' + this._esc(x.address) : ''}</small>${x.note ? `<span class="wp-pv-stop-note">“${this._esc(x.note)}”</span>` : ''}</span>${rm ? `<button type="button" class="wp-pv-stop-x" data-rm="${rm}" aria-label="Quitar parada">×</button>` : ''}</div>`;
     return `<div class="wp-pv-route-ro">
         <div class="wp-pv-lbl">Ruta <span class="wp-pv-hint">${1 + st.length} paradas</span></div>
         <div class="wp-pv-route">${row(1, a.place_name || this._placeInfo().name, t0, this._place?.category, 0)}
           ${st.map((x, i) => row(i + 2, x.name, new Date(t0.getTime() + (x.after || 0) * 60000), x.cat, owner ? String(i + 1) : '', x)).join('')}</div>
-        <div class="wp-pv-route-acts"><button type="button" data-a="route">🗺️ Ver ruta en el mapa</button>${owner && st.length < 3 ? '<button type="button" data-a="addstop">+ Parada</button>' : ''}</div>
+        <div class="wp-pv-route-acts"><button type="button" data-a="route">🧭 Ver ruta en el mapa</button>${owner && st.length < 3 ? '<button type="button" data-a="addstop">+ Parada</button>' : ''}</div>
       </div>`;
   }
 

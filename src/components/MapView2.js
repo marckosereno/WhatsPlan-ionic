@@ -29,7 +29,7 @@ const CATEGORIES = {
   RESTAURANTS:   { icon: '🍔',  icon3d: null },
   HEALTH:        { icon: '🩺',  icon3d: null },
   SHOPPING:      { icon: '🛍️', icon3d: null },
-  ENTERTAINMENT: { icon: '🎈',  icon3d: null },
+  ENTERTAINMENT: { icon: '🎉',  icon3d: null },
   PARKS:         { icon: '🌵',  icon3d: null },
   WORKSHOPS:     { icon: '🔧',  icon3d: null },
 };
@@ -478,7 +478,7 @@ export class MapView {
       RESTAURANTS:   { icon: '🍔',  icon3d: null },
       HEALTH:        { icon: '🩺',  icon3d: null },
       SHOPPING:      { icon: '🛍️', icon3d: null },
-      ENTERTAINMENT: { icon: '🎈',  icon3d: null },
+      ENTERTAINMENT: { icon: '🎉',  icon3d: null },
       PARKS:         { icon: '🌵',  icon3d: null },
       WORKSHOPS:     { icon: '🔧',  icon3d: null },
     };
@@ -1198,7 +1198,7 @@ export class MapView {
       spa: R3D+'Person getting massage/3D/person_getting_massage_3d.png',
       sport: R3D+'Person running/3D/person_running_3d.png', photo: R3D+'Camera with flash/3D/camera_with_flash_3d.png',
     };
-    const TYPE_FALLBACK = { food:'🍔', drinks:'🧋', explore:'🚀', hangout:'🎈', shop:'🛍️', music:'🎵', spa:'💆', sport:'🏃', photo:'📸' };
+    const TYPE_FALLBACK = { food:'🍔', drinks:'🧋', explore:'🚀', hangout:'🎉', shop:'🛍️', music:'🎵', spa:'💆', sport:'🏃', photo:'📸' };
 
     if (!document.getElementById('wp-act-float-keyframes')) {
       const s = document.createElement('style');
@@ -4721,7 +4721,7 @@ export class MapView {
           : `box-shadow:0 0 0 2px ${color}66,0 4px 12px rgba(0,0,0,0.3);`;
         const pin = document.createElement('div');
         pin.style.cssText = `width:${pinSize}px;height:${pinSize}px;border-radius:50%;background:linear-gradient(145deg,${color}dd 0%,${color} 50%,${color}99 100%);border:3px solid white;${borderStyle}display:flex;align-items:center;justify-content:center;font-size:20px;`;
-        pin.textContent = item.emoji || '📍';
+        pin.textContent = item.emoji || '🧭';
 
         const shadow = document.createElement('div');
         shadow.className = 'lm-shadow';
@@ -4866,7 +4866,7 @@ export class MapView {
       banner = document.createElement('div');
       banner.id = 'wp-reposition-banner';
       banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px)+12px);left:50%;transform:translateX(-50%);z-index:99999;background:rgba(0,0,0,0.82);color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:999px;font-family:var(--wp-font);box-shadow:0 4px 16px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
-      banner.innerHTML = `<span id="wp-reposition-text">🎯 Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
+      banner.innerHTML = `<span id="wp-reposition-text">✋ Toca un lugar para moverlo</span><button id="wp-reposition-cancel" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;">Salir</button>`;
       document.body.appendChild(banner);
       document.getElementById('wp-reposition-cancel').addEventListener('click', () => this.disableDragMode());
     }
@@ -4909,7 +4909,7 @@ export class MapView {
     el.style.filter = 'drop-shadow(0 0 8px rgba(245,158,11,0.7))';
 
     const txt = document.getElementById('wp-reposition-text');
-    if (txt) txt.textContent = `📍 "${place.name}" — toca el mapa para moverlo`;
+    if (txt) txt.textContent = `🧭 "${place.name}" — toca el mapa para moverlo`;
 
     // Listener en el mapa: el próximo click mueve el lugar
     if (this._dragMapClickHandler) this.map.off('click', this._dragMapClickHandler);
@@ -4937,7 +4937,7 @@ export class MapView {
     this._dragSelectedPlace = null;
 
     const txt = document.getElementById('wp-reposition-text');
-    if (txt) txt.textContent = '🎯 Toca un lugar para moverlo';
+    if (txt) txt.textContent = '✋ Toca un lugar para moverlo';
 
     if (this._dragModeCallback) {
       this._dragModeCallback(place, lat, lng);
@@ -4998,7 +4998,7 @@ export class MapView {
       this._pickMarkerHandlers.push({ el, handler });
     });
 
-    console.log('🎯 Pick mode activado');
+    console.log('✋ Pick mode activado');
   }
 
   // ── Pin visual fijo en el punto exacto donde se hizo tap ────────────
@@ -5054,7 +5054,7 @@ export class MapView {
       this._pickMarkerHandlers = [];
     }
     this._removePickPin();
-    console.log('🎯 Pick mode desactivado');
+    console.log('✋ Pick mode desactivado');
   }
 
   flyTo(lng, lat, zoom = 17) { this.map.flyTo({ center: [lng, lat], zoom, duration: 600 }); }
