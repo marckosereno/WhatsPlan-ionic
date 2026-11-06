@@ -23,10 +23,8 @@
 import { addElastic } from '/src/components/place-plans/elastic.js';
 import { attachFocusZoom } from '/src/components/place-plans/focus-zoom.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
-import { attachSheet } from '/src/components/place-plans/step-sheet.js';
+import { attachSheet, ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 
-// Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
-export const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1)"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>';
 const ICON_NEXT = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const RING_R = 36;
 const RING_C = 2 * Math.PI * RING_R;

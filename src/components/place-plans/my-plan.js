@@ -1,19 +1,19 @@
 // ════════════════════════════════════════════════════════════════════
 // WHATSPLAN — place-plans/my-plan.js
-// Hoja "Tu plan" / "Vas a ir". Usa la hoja de siempre de la ficha
-// (_openSheet: tarjeta blanca flotante que sube desde abajo) con la
-// línea de diseño de los pasos:
+// Hoja "Tu plan" / "Vas a ir". Usa la misma hoja de "Planear visita"
+// (openSheetPage de step-sheet.js: sube desde abajo y llega hasta
+// debajo de la barra de estado) con la línea de diseño de los pasos:
 //  · tarjeta del plan con degradado celeste → azul (emoji, nombre,
 //    horario y cuenta regresiva)
 //  · quién va: tira de caras con su estado en una insignia
 //  · detalles en 4 mosaicos (hora, dura, cupos con barra, quién puede);
 //    los que puedes cambiar llevan una flecha y abren en zoom
-//  · ruta, reglas, nota y "Compartir el plan" abajo
+//  · ruta, reglas y nota; "Compartir el plan" fijo abajo
 // Pulso, onda y elástico. Lo que hace cada botón: my-plan-actions.js
 //
 // Mixin de PlaceModal2. Estilos: /styles/my-plan.css (.wp-mp-*)
 // ════════════════════════════════════════════════════════════════════
-import { attachPulse } from '/src/components/place-plans/pulse.js';
+import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { addElastic } from '/src/components/place-plans/elastic.js';
 
 const VIS = { public: ['🌎', 'Cualquiera'], followers: ['🫶', 'Mis seguidores'], invited: ['🔒', 'Solo invitados'] };
@@ -24,20 +24,16 @@ const SHARE = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" strok
 export class MyPlan {
   _openMyPlanSheet(a) {
     const me = window.wpApp?.currentUser?.id, owner = a.creator_id === me;
-    const { body, close } = this._openSheet(owner ? 'Tu plan' : 'Vas a ir', a.place_name || this._placeInfo().name);
-    const sheet = body.closest('#wp-pm2-menu-sheet'), menu = body.closest('.wp-pm2-ms-menu');
-    sheet.classList.add('wp-pm2-ms-tall');     // el scroll va en el contenido
+    const { root, body, close } = openSheetPage({
+      title: owner ? 'Tu plan' : 'Vas a ir',
+      right: `<button type="button" class="wp-mp-danger" data-nopulse>${owner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>`,
+      html: this._mpHtml(a, owner, me),
+      foot: `<button type="button" class="wp-mp-cta" data-a="share">${SHARE}<span>Compartir el plan</span></button>`,
+    });
     body.classList.add('wp-mp');
-    body.innerHTML = this._mpHtml(a, owner, me);
-    // "Cancelar plan" / "Ya no puedo ir" como insignia arriba a la derecha
-    const hd = menu.querySelector('.wp-pm2-ms-header');
-    hd.classList.add('wp-mp-hd');
-    hd.insertAdjacentHTML('beforeend', `<button type="button" class="wp-mp-danger" data-nopulse>${owner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>`);
-    attachPulse(menu);
-    addElastic(body, 'y');
     addElastic(body.querySelector('.wp-mp-who'), 'x');
-    const ctx = { a, me, owner, root: menu, close };
-    menu.addEventListener('click', (e) => this._mpClick(ctx, e));
+    const ctx = { a, me, owner, root, close };
+    root.addEventListener('click', (e) => this._mpClick(ctx, e));
     this._mpDanger(ctx);
   }
 
@@ -52,7 +48,7 @@ export class MyPlan {
       ${this._planRouteHtml(a, { owner }) ? `<div class="wp-mp-route">${this._planRouteHtml(a, { owner })}</div>` : ''}
       ${this._planRulesHtml(a, 'wp-mp-rules')}
       ${a.note ? `<div class="wp-mp-note"><small>📝 Nota</small><p>${this._esc(a.note)}</p></div>` : ''}
-      <div class="wp-mp-foot"><button type="button" class="wp-mp-cta" data-a="share">${SHARE}<span>Compartir el plan</span></button></div>`;
+`;
   }
 
   // Tarjeta del plan: degradado, emoji, nombre, horario y cuenta regresiva
