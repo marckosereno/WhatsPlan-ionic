@@ -189,11 +189,11 @@ export class SuperUserPanel {
         const cats = [...new Set(places.map(p => p.category).filter(Boolean))];
         await Promise.all(cats.map(c => fetch('/api/supabase-places?category=' + encodeURIComponent(c) + '&_clear_cache=1').catch(() => {})));
         console.log('[FOTOS] resultado', tot);
-        if (st) st.textContent = `· ✅ ${tot.converted} convertidas`;
-        this._showToast(`✅ ${tot.converted} fotos optimizadas · ${tot.skipped} ya estaban · ${tot.failed + tot.errors} con error`);
+        if (st) st.textContent = `· ✓ ${tot.converted} convertidas`;
+        this._showToast(`✓ ${tot.converted} fotos optimizadas · ${tot.skipped} ya estaban · ${tot.failed + tot.errors} con error`);
       } catch (e) {
-        if (st) st.textContent = '· ❌';
-        this._showToast('❌ ' + e.message);
+        if (st) st.textContent = '· ✕';
+        this._showToast('✕ ' + e.message);
       } finally {
         _optimizing = false;
       }
@@ -234,12 +234,12 @@ export class SuperUserPanel {
         _cleanPlan = null;
         if (!r.ok) throw new Error(j.error || r.status);
         console.log('[FOTOS] limpieza (borrado)', j);
-        if (st) st.textContent = `· ✅ ${j.deleted} borrados (${j.mb} MB)`;
+        if (st) st.textContent = `· ✓ ${j.deleted} borrados (${j.mb} MB)`;
         this._showToast(`🧹 ${j.deleted} fotos originales borradas · ${j.mb} MB liberados`);
       } catch (e) {
         _cleanPlan = null;
-        if (st) st.textContent = '· ❌';
-        this._showToast('❌ ' + e.message);
+        if (st) st.textContent = '· ✕';
+        this._showToast('✕ ' + e.message);
       } finally {
         _cleaning = false;
       }
@@ -287,9 +287,9 @@ export class SuperUserPanel {
             inAll.lat = lat; inAll.lng = lng;
             if (inAll.location) { inAll.location.lat = lat; inAll.location.lng = lng; }
           }
-          this._showToast(`✅ "${place.name}" reposicionado`);
+          this._showToast(`✓ "${place.name}" reposicionado`);
         } catch (err) {
-          this._showToast('❌ ' + err.message);
+          this._showToast('✕ ' + err.message);
         }
       });
     });
@@ -706,7 +706,7 @@ export class SuperUserPanel {
       await this._reloadLandmarks();
 
     } catch (err) {
-      errorEl.textContent = '❌ ' + (err.message || 'Error al guardar');
+      errorEl.textContent = '✕ ' + (err.message || 'Error al guardar');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = '💾 Guardar';
@@ -2131,7 +2131,7 @@ export class SuperUserPanel {
       }
       this._closeCatForm();
     } catch (err) {
-      errorEl.textContent = '❌ ' + (err.message || 'Error al guardar');
+      errorEl.textContent = '✕ ' + (err.message || 'Error al guardar');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = '💾 Guardar';
@@ -2434,7 +2434,7 @@ export class SuperUserPanel {
             if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc1=document.getElementById('map-results-count');if(_rc1)_rc1.textContent=mapView.allPlaces.length+' lugares';}
           }
           this._showToast(nowHidden ? '👁️ Lugar visible' : '🙈 Lugar oculto');
-        } catch (err) { btn.textContent = nowHidden ? '👁️' : '🙈'; this._showToast('❌ ' + err.message); }
+        } catch (err) { btn.textContent = nowHidden ? '👁️' : '🙈'; this._showToast('✕ ' + err.message); }
       });
     });
 
@@ -2524,7 +2524,7 @@ export class SuperUserPanel {
           mapView.places=(mapView.places||[]).filter(pp=>pp.place_id!==place.place_id);if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc2=document.getElementById('map-results-count');if(_rc2)_rc2.textContent=mapView.allPlaces.length+' lugares';}
         }
         this._showToast('🗑️ Lugar eliminado');
-      } catch(err) { this._showToast('❌ ' + err.message); }
+      } catch(err) { this._showToast('✕ ' + err.message); }
     });
   }
 
@@ -2568,7 +2568,7 @@ export class SuperUserPanel {
         '</div>' +
         '<div style="font-size:11px;color:#9ca3af;">✨ = sugerido automáticamente según tipo de negocio. Los tags <strong style="color:#fff;">reemplazarán</strong> los existentes.</div>' +
         '<div id="su-btp-chips" style="display:flex;flex-wrap:wrap;gap:8px;overflow-y:auto;">' + renderChips() + '</div>' +
-        '<button id="su-btp-apply" style="background:linear-gradient(135deg,#00bcd4,#2563eb);border:none;border-radius:12px;color:#fff;padding:14px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;">✅ Aplicar a ' + selectedPlaces.length + ' lugares</button>' +
+        '<button id="su-btp-apply" style="background:linear-gradient(135deg,#00bcd4,#2563eb);border:none;border-radius:12px;color:#fff;padding:14px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;">✓ Aplicar a ' + selectedPlaces.length + ' lugares</button>' +
       '</div>';
 
     document.body.appendChild(modal);
@@ -2622,7 +2622,7 @@ export class SuperUserPanel {
 
       modal.remove();
       onDone();
-      this._showToast('✅ ' + ok + ' lugares actualizados' + (fail ? ' · ❌ ' + fail + ' errores' : ''));
+      this._showToast('✓ ' + ok + ' lugares actualizados' + (fail ? ' · ✕ ' + fail + ' errores' : ''));
 
       const mapView=window.wpApp?.mapView;if(mapView){mapView.allPlaces=mapView.places||[];mapView._clearPlaceMarkers();mapView._renderPlaceMarkers(mapView.allPlaces);const _rc3=document.getElementById('map-results-count');if(_rc3)_rc3.textContent=mapView.allPlaces.length+' lugares';}
     });
@@ -3122,7 +3122,7 @@ export class SuperUserPanel {
           '<select id="su-pf-featured" class="su-input" style="background:#0d0d1a;color:#fff;">' +
             '<option value=""' + (!prefill?.featured ? ' selected' : '') + '>— Sin destacar —</option>' +
             '<option value="featured"' + (prefill?.featured === 'featured' ? ' selected' : '') + '>⭐ Lugar Destacado</option>' +
-            '<option value="verified"' + (prefill?.featured === 'verified' ? ' selected' : '') + '>✅ Lugar Verificado</option>' +
+            '<option value="verified"' + (prefill?.featured === 'verified' ? ' selected' : '') + '>✓ Lugar Verificado</option>' +
             '<option value="premium"' + (prefill?.featured === 'premium' ? ' selected' : '') + '>💎 Premium</option>' +
           '</select>' +
         '</div>' +
@@ -3867,10 +3867,10 @@ export class SuperUserPanel {
         }
 
         if (isEdit) {
-          this._showToast('✅ Cambios guardados');
+          this._showToast('✓ Cambios guardados');
           setTimeout(() => this._openPlaces(), 1200);
         } else {
-          this._showToast('✅ Lugar guardado — aparece en el mapa');
+          this._showToast('✓ Lugar guardado — aparece en el mapa');
         }
       } catch(e) {
         errEl.textContent = 'Error: ' + e.message;

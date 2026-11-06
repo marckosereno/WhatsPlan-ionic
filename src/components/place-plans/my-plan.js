@@ -18,9 +18,15 @@ import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { addElastic } from '/src/components/place-plans/elastic.js';
 
 const VIS = { public: ['🌎', 'Cualquiera'], followers: ['🫶', 'Mis seguidores'], invited: ['🔒', 'Solo invitados'] };
-const ROLE = { host: ['👑', 'Organiza'], go: ['✅', 'Va'], wait: ['⏳', 'Pendiente'], no: ['😕', 'No puede'] };
+const ICO = {
+  go: '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  wait: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/></svg>',
+  no: '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M7 12h10" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>',
+};
+const ROLE = { host: ['👑', 'Organiza'], go: [ICO.go, 'Va'], wait: [ICO.wait, 'Pendiente'], no: [ICO.no, 'No puede'] };
 const ARROW = '<svg class="wp-mp-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-const SHARE = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
+// Mismo ícono de compartir que la barra de la ficha
+const SHARE = '<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>';
 
 export class MyPlan {
   _openMyPlanSheet(a) {
@@ -88,7 +94,7 @@ export class MyPlan {
       ...D.filter(id => !P.includes(id)).map(id => [id, 'no'])];
     const first = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || p.username || 'Alguien').split(' ')[0]); };
     return (owner ? '<button type="button" class="wp-mp-p add" data-a="invite"><i>+</i><b>Invitar</b><em>✨</em></button>' : '')
-      + rows.map(([id, k]) => `<div class="wp-mp-p ${k}" title="${ROLE[k][1]}">${this._planFace(id)}<b>${id === me ? 'Tú' : first(id)}</b><em>${ROLE[k][0]}</em></div>`).join('');
+      + rows.map(([id, k]) => `<div class="wp-mp-p ${k}" title="${ROLE[k][1]}">${this._planFace(id)}<b>${id === me ? 'Tú' : first(id)}</b><em class="st-${k}" aria-label="${ROLE[k][1]}">${ROLE[k][0]}</em></div>`).join('');
   }
 
   // 4 mosaicos; los que puede cambiar quien organiza llevan flecha

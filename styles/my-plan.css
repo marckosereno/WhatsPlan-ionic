@@ -41,6 +41,9 @@
 .wp-mp-faces { flex: none; display: flex; }
 .wp-mp-faces i { display: block; width: 36px; height: 36px; margin-left: -10px; border-radius: 50%; border: 2.5px solid #fff; background: #e5e7eb center / cover no-repeat; }
 .wp-mp-faces i:first-child { margin-left: 0; }
+/* aquí van encimadas: círculo limpio, sin el sello ondulado */
+.wp-mp-faces i.wp-seal { clip-path: none; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 1px 3px rgba(20, 18, 31, 0.12); }
+.wp-mp-faces i.wp-seal::after { display: none; }
 .wp-mp-social-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .wp-mp-social-t b { font-size: 15px; font-weight: 700; }
 .wp-mp-social-t small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
@@ -54,7 +57,12 @@
   display: flex; flex-direction: column; align-items: center; gap: 5px; font: inherit; color: var(--mp-ink); }
 .wp-mp-p i { display: block; width: 44px; height: 44px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
 .wp-mp-p b { max-width: 64px; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-p em { font-style: normal; font-size: 17px; line-height: 1; }
+.wp-mp-p em { font-style: normal; font-size: 16px; line-height: 1; height: 18px; display: flex; align-items: center; }
+/* estado: insignia redonda con ícono (sin emojis de palomita o tache) */
+.wp-mp-p em[class^="st-"] { width: 18px; justify-content: center; border-radius: 50%; }
+.wp-mp-p em.st-go { background: #2563eb; }
+.wp-mp-p em.st-wait { background: #f59e0b; }
+.wp-mp-p em.st-no { background: #9ca3af; }
 /* el único acento fuerte de la hoja: quien organiza */
 .wp-mp-p.host { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5); }
 .wp-mp-p.host i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }

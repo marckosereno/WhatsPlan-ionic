@@ -287,7 +287,7 @@ export class AuthModal {
     this._setLoading(true, 'auth-btn-register');
     try {
       const { user } = await AuthService.registerWithEmail(email, password, name);
-      this._showMessage('¡Cuenta creada! Revisa tu email para confirmar ✅', 'success');
+      this._showMessage('¡Cuenta creada! Revisa tu email para confirmar ✓', 'success');
       setTimeout(() => { this.hide(); this.onAuthSuccess?.(user); }, 1200);
     } catch(err) {
       this._showMessage(err.message, 'error');

@@ -48,7 +48,7 @@ async function loadConfig() {
     const c = await r.json();
     window.__SUPABASE_URL__      = c.supabaseUrl      || '';
     window.__SUPABASE_ANON_KEY__ = c.supabaseAnonKey  || '';
-    console.log('✅ Config cargada');
+    console.log('Config cargada');
   } catch(e) { console.warn('⚠️ /api/config fallo:', e.message); }
 }
 
@@ -102,7 +102,7 @@ async function renderMapCategories() {
     window.wpApp._categories = cats.map(function(cat) {
       return { key: cat.key, label_es: cat.label_es || cat.key, emoji: cat.emoji || '', icon3d_url: cat.icon3d_url || '' };
     });
-    console.log('✅ ' + cats.length + ' categorías desde Supabase');
+    console.log('' + cats.length + ' categorías desde Supabase');
   } catch(err) {
     console.warn('⚠️ renderMapCategories:', err.message);
   }
@@ -1228,7 +1228,7 @@ function mountSuperPanel(mv) {
   });
   sp.mount();
   window.wpApp.superPanel = sp;
-  console.log('✅ SuperUserPanel montado');
+  console.log('SuperUserPanel montado');
 }
 
 // ── Filtro de subcategoría ────────────────────────────────────────────
@@ -1409,10 +1409,10 @@ try {
         activityModal = new ActivityModal({
           currentUser: window.wpApp.currentUser,
           onActivityCreated: (activity) => {
-            console.log('✅ Actividad creada:', activity);
+            console.log('Actividad creada:', activity);
             window.wpApp?.mapView?._loadActivities?.();
           },
-          onActivityJoined: (activity) => { console.log('✅ Te uniste a:', activity); },
+          onActivityJoined: (activity) => { console.log('Te uniste a:', activity); },
         });
       }
       activityModal.setUser(window.wpApp.currentUser);
@@ -1476,7 +1476,7 @@ try {
     }
 
     await waitForMapLibre();
-    console.log('✅ MapLibre listo');
+    console.log('MapLibre listo');
 
     await loadConfig();
     initSupabase();
@@ -1505,7 +1505,7 @@ try {
     const mv = new MapView();
     window.wpApp.mapView = mv;
     // onPlaceSelect se asigna en Promise.all cuando PlaceModal está listo
-    console.log('✅ MapView creado');
+    console.log('MapView creado');
 
     // ── Momentos / Memories (botón de cámara del panel lateral) ──
     const momentsUI = new MomentsUI({
@@ -1729,8 +1729,8 @@ try {
       if (kbH > 100) _forceCloseMiniCard();
     }, 100);
 
-    console.log('✅ WhatsPlan listo');
+    console.log('WhatsPlan listo');
   } catch(err) {
-    console.error('❌ Error crítico:', err.message, err.stack);
+    console.error('Error crítico:', err.message, err.stack);
   }
 })();
