@@ -6,7 +6,7 @@
 // palomita entra con un pulso y lo de atrás (los asientos) se actualiza.
 //
 // Uso:
-//   openPeoplePicker({ from, people, face(p), esc(t), isOn(id), onToggle(id), haptic })
+//   openPeoplePicker({ from, people, face(p), esc(t), isOn(id), onToggle(id), haptic, label?, onClose? })
 // Estilos: /styles/plan-steps.css (.wp-pp-*)
 // ════════════════════════════════════════════════════════════════════
 import { openZoom } from '/src/components/place-plans/focus-zoom.js';
@@ -15,13 +15,13 @@ import { addElastic } from '/src/components/place-plans/elastic.js';
 const TICK = '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-export function openPeoplePicker({ from, people, face, esc, isOn, onToggle, haptic = () => {} }) {
+export function openPeoplePicker({ from, people, face, esc, isOn, onToggle, haptic = () => {}, label = 'Invitar', doneLabel = 'Listo', onClose }) {
   const box = document.createElement('div');
   box.className = 'wp-pp';
   box.innerHTML = `<input class="wp-fz-field" type="search" placeholder="Buscar a quién sigues" autocomplete="off" enterkeyhint="search">
     <div class="wp-pp-list"></div>`;
   const field = box.querySelector('input'), list = box.querySelector('.wp-pp-list');
-  const z = openZoom({ from: from?.getBoundingClientRect(), label: 'Invitar', content: box, field, kbClose: false });
+  const z = openZoom({ from: from?.getBoundingClientRect(), label, content: box, field, kbClose: false, onClose, doneLabel });
   addElastic(list, 'y');
 
   const row = (p) => `<button type="button" class="wp-pp-row${isOn(p.id) ? ' on' : ''}" data-id="${esc(p.id)}">

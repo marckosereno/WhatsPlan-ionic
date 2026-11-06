@@ -15,7 +15,7 @@ import { openTimePicker } from '/src/components/place-plans/time-picker.js';
 const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 export const DUR_MIN = 30, DUR_MAX = 12 * 60;
 const STARTS = [[9 * 60, 'Desayuno'], [14 * 60, 'Comida'], [19 * 60, 'Tarde'], [21 * 60, 'Noche']];
-const DURS = [[60, '1 h'], [120, '2 h'], [180, '3 h'], [300, '5 h'], [DUR_MAX, 'Todo el día']];
+export const DURS = [[60, '1 h'], [120, '2 h'], [180, '3 h'], [300, '5 h'], [DUR_MAX, 'Todo el día']];
 
 export class PlanWhen {
   _pwMountWhen(w, el) {

@@ -1,0 +1,144 @@
+/* ════════════════════════════════════════════════════════════════════
+   WHATSPLAN — styles/my-plan.css
+   Hoja "Tu plan" / "Vas a ir" (src/components/place-plans/my-plan.js y
+   my-plan-actions.js). Misma línea que los pasos: fondo blanco-celeste,
+   degradado celeste → azul, mosaicos blancos, pulso y onda.
+   Usa keyframes y piezas globales de plan-steps.css (wpStTick, wpStPop,
+   .wp-pulse, .wp-st-ripple, .wp-st-grab, .wp-st-scrim, .wp-fz-*).
+   ════════════════════════════════════════════════════════════════════ */
+
+#wp-mp {
+  --mp-ink: var(--wp-ink, #14121f);
+  --mp-sub: var(--wp-sub, #8a879a);
+  --mp-blue: var(--wp-blue, #2563eb);
+  --mp-grad: var(--wp-grad-sky, #2563eb);
+  --mp-glow: rgba(37, 99, 235, 0.3);
+  --mp-card: 0 2px 10px rgba(20, 18, 31, 0.06);
+  position: fixed; left: 0; right: 0; bottom: 0; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 1500500;
+  border-radius: 30px 30px 0 0; overflow: hidden; font-family: var(--wp-font); color: var(--mp-ink);
+  background:
+    radial-gradient(60% 30% at 0% 0%, rgba(125, 211, 252, 0.3), transparent 70%),
+    radial-gradient(55% 30% at 100% 30%, rgba(37, 99, 235, 0.1), transparent 70%),
+    #f4f8fe;
+  box-shadow: 0 -14px 44px rgba(15, 23, 42, 0.2);
+  transform: translateY(100%); transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; contain: layout paint;
+}
+#wp-mp.in { transform: none; }
+
+/* ── Barra de arriba (sin contenedor, velo que se desvanece) ── */
+.wp-mp-top {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3; touch-action: none;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 20px 16px 22px;
+  background: linear-gradient(180deg, #f4f8fe 0%, rgba(244, 248, 254, 0.9) 55%, rgba(244, 248, 254, 0) 100%);
+}
+.wp-mp-back { justify-self: start; width: 42px; height: 42px; padding: 0; border: none; border-radius: 50%; background: #fff; color: #111;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(20, 18, 31, 0.12); }
+.wp-mp-ttl { font-size: 15px; font-weight: 800; }
+.wp-mp-danger { justify-self: end; height: 34px; padding: 0 13px; border: none; border-radius: 999px; background: #fff0f2; color: #e0123c;
+  font: inherit; font-size: 12.5px; font-weight: 800; white-space: nowrap; transition: background-color 0.15s, color 0.15s; }
+.wp-mp-danger.armed { background: #e0123c; color: #fff; animation: wpStPop 0.3s ease; }
+
+/* ── Contenido que se desliza (pasa por debajo de las barras) ── */
+.wp-mp-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: none; scrollbar-width: none;
+  display: flex; flex-direction: column; gap: 14px; padding: 80px 16px calc(120px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+.wp-mp-scroll::-webkit-scrollbar { display: none; }
+.wp-mp-lbl { margin: 4px 2px -4px; font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
+
+/* ── Portada: degradado celeste → azul con nubes ── */
+.wp-mp-hero { position: relative; flex: none; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 30px 18px 18px; border-radius: 28px; background: var(--mp-grad); color: #fff; text-align: center;
+  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.wp-mp-cloud { position: absolute; width: 86px; height: 26px; border-radius: 20px; background: #fff; opacity: 0.5; animation: wpMpFloat 7s ease-in-out infinite alternate; }
+.wp-mp-cloud::before, .wp-mp-cloud::after { content: ''; position: absolute; border-radius: 50%; background: inherit; }
+.wp-mp-cloud::before { width: 38px; height: 38px; left: 12px; top: -18px; }
+.wp-mp-cloud::after { width: 28px; height: 28px; left: 42px; top: -12px; }
+.wp-mp-cloud.c1 { left: -22px; top: 34px; }
+.wp-mp-cloud.c2 { right: -18px; top: 74px; transform: scale(0.8); animation-delay: -3s; }
+.wp-mp-cloud.c3 { left: 40%; bottom: -14px; transform: scale(1.3); opacity: 0.25; animation-delay: -5s; }
+@keyframes wpMpFloat { to { translate: 14px 0; } }
+.wp-mp-count { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 12.5px; font-weight: 800; }
+.wp-mp-count.live i { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); animation: wpMpLive 1.6s infinite; }
+@keyframes wpMpLive { 70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
+.wp-mp-ic { position: relative; width: 88px; height: 88px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 48px; box-shadow: 0 12px 26px rgba(15, 40, 120, 0.25); animation: wpStPop 0.55s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.wp-mp-ic img { width: 62px; height: 62px; object-fit: contain; }
+.wp-mp-hero h2 { position: relative; margin: 6px 0 0; font-size: 23px; line-height: 1.2; font-weight: 800; letter-spacing: -0.4px; text-shadow: 0 2px 8px rgba(15, 40, 120, 0.25); }
+.wp-mp-chips { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 100%; }
+.wp-mp-chips span { max-width: 100%; padding: 6px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.24); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
+
+/* ── "3 de 4 ya van" ── */
+.wp-mp-social { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 22px;
+  background: linear-gradient(120deg, #e6f6ff 0%, #fff 70%); box-shadow: inset 0 0 0 1.5px #dbeefe; }
+.wp-mp-faces { flex: none; display: flex; }
+.wp-mp-faces i { display: block; width: 36px; height: 36px; margin-left: -10px; border-radius: 50%; border: 2.5px solid #fff; background: #e5e7eb center / cover no-repeat; }
+.wp-mp-faces i:first-child { margin-left: 0; }
+.wp-mp-social-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wp-mp-social-t b { font-size: 15px; font-weight: 800; }
+.wp-mp-social-t small { font-size: 12.5px; font-weight: 600; color: var(--mp-sub); }
+
+/* ── Quién va: tira con cara + emoji de estado ── */
+.wp-mp-who { flex: none; display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 8px 16px 12px; scrollbar-width: none; overscroll-behavior: none; }
+.wp-mp-who::-webkit-scrollbar { display: none; }
+.wp-mp-p { flex: none; width: 72px; padding: 10px 0 9px; border: none; border-radius: 22px; background: #fff; box-shadow: var(--mp-card);
+  display: flex; flex-direction: column; align-items: center; gap: 5px; font: inherit; color: var(--mp-ink); }
+.wp-mp-p i { display: block; width: 44px; height: 44px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
+.wp-mp-p b { max-width: 64px; font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-p em { font-style: normal; font-size: 18px; line-height: 1; }
+.wp-mp-p.host { background: var(--mp-grad); color: #fff; box-shadow: 0 8px 18px var(--mp-glow); }
+.wp-mp-p.host i { box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.8); }
+.wp-mp-p.no { opacity: 0.55; }
+.wp-mp-p.add i { display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: #f0f9ff; border: 2px dashed #7dd3fc;
+  color: var(--mp-blue); font-style: normal; font-size: 24px; font-weight: 600; }
+.wp-mp-p.add b { color: var(--mp-blue); }
+
+/* ── Detalles en mosaicos ── */
+.wp-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wp-mp-tile { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 88px; padding: 14px; box-sizing: border-box;
+  border: none; border-radius: 22px; background: #fff; box-shadow: var(--mp-card); text-align: left; font: inherit; color: var(--mp-ink); }
+.wp-mp-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.wp-mp-tile.edit::after { content: '›'; position: absolute; top: 9px; right: 13px; font-size: 22px; font-weight: 600; color: #93c5fd; }
+.wp-mp-tile-k { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #4b5563; }
+.wp-mp-tile-k i { font-style: normal; font-size: 16px; }
+.wp-mp-tile b { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-bar { display: block; height: 8px; border-radius: 999px; background: #e0f2fe; overflow: hidden; }
+.wp-mp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--mp-grad); transition: width 0.5s; }
+.wp-mp-rules span { background: #fff; box-shadow: var(--mp-card); }
+.wp-mp-note { padding: 14px; border-radius: 22px; background: #fff; box-shadow: var(--mp-card); }
+.wp-mp-note p { margin: 8px 0 0; font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; }
+.wp-mp-card { padding: 14px; border-radius: 22px; background: #fff; box-shadow: var(--mp-card); }
+.wp-mp-card .wp-pv-stop-n { background: var(--mp-grad); }
+.wp-mp-card .wp-pv-route-acts button:first-child { background: var(--mp-grad); color: #fff; }
+.wp-mp-card .wp-pv-addstop-card { box-shadow: none; padding: 2px; }
+
+/* ── Compartir: fijo abajo sobre un velo ── */
+.wp-mp-foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none; padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(244, 248, 254, 0) 0%, rgba(244, 248, 254, 0.92) 45%, #f4f8fe 100%); }
+.wp-mp-cta { pointer-events: auto; width: 100%; height: 56px; border: none; border-radius: 999px; background: var(--mp-grad); color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-size: 16px; font-weight: 800;
+  box-shadow: 0 10px 24px var(--mp-glow), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+
+/* ── Pulso, resorte y onda (como en los pasos) ── */
+#wp-mp button { -webkit-tap-highlight-color: transparent; cursor: pointer; transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1); }
+#wp-mp button.press { transform: scale(0.93); transition-duration: 0.12s; }
+#wp-mp .wp-rippled:not(.wp-mp-cta) { overflow: hidden; }
+
+/* ── Tarjetas en zoom de "Tu plan" ── */
+.wp-mp-z-durs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 4px 0; }
+.wp-mp-z-durs button, .wp-mp-z-num button { height: 44px; padding: 0 16px; border: none; border-radius: 14px; background: #f1f5fb; color: var(--wp-ink, #14121f);
+  font: inherit; font-size: 15.5px; font-weight: 800; -webkit-tap-highlight-color: transparent; }
+.wp-mp-z-durs button.on { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3); }
+.wp-mp-z-cupo { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wp-mp-z-num { display: flex; align-items: center; gap: 22px; }
+.wp-mp-z-num button { width: 54px; height: 54px; padding: 0; border-radius: 50%; font-size: 26px; font-weight: 600; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }
+.wp-mp-z-num button:disabled { opacity: 0.35; }
+.wp-mp-z-num b { min-width: 80px; text-align: center; font-size: 60px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+.wp-mp-z-num b.tick { animation: wpStTick 0.35s cubic-bezier(0.34, 1.7, 0.64, 1); }
+.wp-mp-z-sub { margin: 0; font-size: 14px; font-weight: 600; color: var(--wp-sub, #8a879a); }
+.wp-mp-z-close { height: 44px; padding: 0 16px; border: none; border-radius: 999px; background: #e9fbf2; color: #15803d; font: inherit; font-size: 14px; font-weight: 800; }
+.wp-mp-z-ask p { margin: 4px 0 14px; font-size: 16px; line-height: 1.4; font-weight: 700; text-align: center; }
+.wp-mp-z-yes { width: 100%; height: 50px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff; font: inherit; font-size: 15.5px; font-weight: 800;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3); }
+
+@media (prefers-reduced-motion: reduce) { #wp-mp *, #wp-mp *::before, #wp-mp *::after { animation: none !important; } }

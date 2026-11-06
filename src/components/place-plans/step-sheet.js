@@ -6,14 +6,14 @@
 // debajo de la barra de estado (no cambia de alto entre pasos, así no
 // brinca). Se cierra tocando lo oscuro o jalando la hoja hacia abajo.
 //
-// Uso (lo hace step-screen.js):
-//   const sh = attachSheet(root, close)   → { remove() }
+// Uso (step-screen.js y my-plan.js):
+//   const sh = attachSheet(root, close, '.barra-de-arriba')   → { remove() }
 // Estilos: /styles/plan-steps.css (#wp-st.sheet, .wp-st-scrim, .wp-st-grab)
 // ════════════════════════════════════════════════════════════════════
 
 const CLOSE_PX = 110;   // jalar más de esto hacia abajo = cerrar
 
-export function attachSheet(root, close) {
+export function attachSheet(root, close, handleSel = '.wp-st-top') {
   root.classList.add('sheet');
   const scrim = document.createElement('div');
   scrim.className = 'wp-st-scrim';
@@ -21,7 +21,7 @@ export function attachSheet(root, close) {
   void scrim.offsetWidth;   // que arranque transparente antes de oscurecer
   scrim.classList.add('in');
   scrim.addEventListener('click', () => close());
-  const top = root.querySelector('.wp-st-top');
+  const top = root.querySelector(handleSel);
   top.insertAdjacentHTML('afterbegin', '<i class="wp-st-grab" aria-hidden="true"></i>');
   dragToClose(root, top, close);
 
