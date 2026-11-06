@@ -15,7 +15,6 @@ import { getSupabase, ActivityService } from '/src/services/SupabaseService.js';
 import { getAvatarUrl } from '/src/services/AvatarService.js';
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
 import { createEmojiDial } from '/src/components/place-plans/emoji-dial.js';
-import { openTimePicker } from '/src/components/place-plans/time-picker.js';
 import { openPeoplePicker } from '/src/components/place-plans/people-picker.js';
 import { pulse } from '/src/components/place-plans/pulse.js';
 
@@ -34,8 +33,7 @@ const VIS = [
   ['followers', '🫶', 'Mis seguidores', 'Solo lo ve y se puede unir la gente que te sigue.'],
   ['invited', '🔒', 'Solo invitados', 'Privado: van tú y las personas que invites.'],
 ];
-const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-const DAYS = 14, SLOT = 30;
+const DAYS = 14;
 const CHECK = '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
 const TICK = '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -71,7 +69,7 @@ export class PlanWizard {
     return {
       user, place: this._place, info: this._placeInfo(), today,
       days: Array.from({ length: DAYS }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; }),
-      day: first.getDate() === now.getDate() ? 0 : 1, mins: first.getHours() * 60 + first.getMinutes(), now: false,
+      day: first.getDate() === now.getDate() ? 0 : 1, mins: first.getHours() * 60 + first.getMinutes(), now: false, dur: 120,
       vis: 'public', invited: new Set(), people: new Map(), n: 4, nTouched: false,
       shown, type, icons, rules: new Set(), title: '', titleTouched: false, note: '',
     };
@@ -106,56 +104,11 @@ export class PlanWizard {
     const d = new Date(w.days[w.day]); d.setHours(0, w.mins, 0, 0); return d;
   }
   _pwPast(w) { return !w.now && this._pwAt(w) < new Date(); }
-  _pwWhenTxt(w) { return w.now ? 'Ahora' : this._planWhen(this._pwAt(w).toISOString()); }
+  _pwWhenTxt(w) { return `${w.now ? 'Ahora' : this._planWhen(this._pwAt(w).toISOString())} · hasta ${this._hhmm(this._pwEnd(w))}`; }
   _pwEmoji(w) { return (w.shown.find(t => t[0] === w.type) || GENERIC[2])[1]; }
   _pwAutoTitle(w) { return `Plan en ${w.info.name}`.slice(0, 60); }
 
-  // ── Paso 1 · cuándo ──────────────────────────────────────────────────
-  _pwMountWhen(w, el) {
-    el.innerHTML = `
-      <div class="wp-st-days">${w.days.map((d, i) => `<button type="button" class="wp-st-day" data-day="${i}"><small>${i === 0 ? 'Hoy' : DOW[d.getDay()]}</small><b>${d.getDate()}</b></button>`).join('')}</div>
-      <div class="wp-st-lbl">Hora</div>
-      <div class="wp-st-clock"><button type="button" data-d="-1" aria-label="Más temprano">−</button><button type="button" class="wp-st-clock-v" data-clock aria-label="Elegir la hora"><b></b></button><button type="button" data-d="1" aria-label="Más tarde">+</button></div>
-      <p class="wp-st-clock-sub"></p>
-      <div class="wp-st-chips" data-quick></div>`;
-    el.classList.add('wp-st-when');
-    el.addEventListener('click', (e) => {
-      const b = e.target.closest('button'); if (!b || b.disabled) return;
-      if (b.dataset.day) { w.day = +b.dataset.day; w.now = false; }
-      else if (b.dataset.d) { w.now = false; w.mins = Math.max(0, Math.min(23 * 60 + 30, w.mins + SLOT * +b.dataset.d)); }
-      else if (b.dataset.t === 'now') w.now = !w.now;
-      else if (b.dataset.t) { w.now = false; w.mins = +b.dataset.t; }
-      else if (b.hasAttribute('data-clock')) { this._pwPickTime(w, el, b); return; }
-      this._haptic?.('light');
-      this._pwPaintWhen(w, el);
-    });
-    this._pwPaintWhen(w, el);
-  }
-
-  // Tocar la hora grande → elegir la hora exacta en una tarjeta en zoom
-  _pwPickTime(w, el, b) {
-    const now = new Date();
-    openTimePicker({
-      from: b, mins: w.now ? now.getHours() * 60 + now.getMinutes() : w.mins, haptic: (k) => this._haptic?.(k),
-      onPick: (m) => { w.now = false; w.mins = m; this._pwPaintWhen(w, el); },
-    });
-  }
-
-  _pwPaintWhen(w, el) {
-    el.querySelectorAll('.wp-st-day').forEach(b => b.classList.toggle('on', +b.dataset.day === w.day));
-    const at = this._pwAt(w);
-    const clock = el.querySelector('.wp-st-clock b'), txt = w.now ? 'Ahora' : this._hhmm(at);
-    if (clock.textContent !== txt) { clock.textContent = txt; clock.classList.remove('tick'); void clock.offsetWidth; clock.classList.add('tick'); }
-    el.querySelector('[data-d="-1"]').disabled = w.now || w.mins <= 0;
-    el.querySelector('[data-d="1"]').disabled = w.now || w.mins >= 23 * 60 + 30;
-    const sub = el.querySelector('.wp-st-clock-sub');
-    sub.textContent = this._pwPast(w) ? 'Esa hora ya pasó · elige otra' : this._pwWhenTxt(w);
-    sub.style.color = this._pwPast(w) ? '#e0123c' : '';
-    const quick = [[9 * 60, 'Desayuno'], [14 * 60, 'Comida'], [19 * 60, 'Tarde'], [21 * 60, 'Noche']];
-    el.querySelector('[data-quick]').innerHTML = (w.day === 0 ? `<button type="button" data-t="now"${w.now ? ' class="on"' : ''}>⚡ Ahora</button>` : '')
-      + quick.map(([m, l]) => `<button type="button" data-t="${m}"${!w.now && w.mins === m ? ' class="on"' : ''}>${l} · ${this._hhmm(new Date(2000, 0, 1, 0, m))}</button>`).join('');
-    w.screen?.refresh();
-  }
+  // ── Paso 1 · cuándo → plan-when.js ───────────────────────────────────
 
   // ── Paso 2 · quién puede unirse ──────────────────────────────────────
   _pwMountVis(w, el) {
@@ -320,15 +273,15 @@ export class PlanWizard {
   async _pwCreate(w) {
     const { place, info } = w;
     const at = this._pwAt(w), title = (w.title || '').trim() || this._pwAutoTitle(w), whenTxt = this._pwWhenTxt(w);
+    let plan = null;
     try {
-      const { error } = await getSupabase().rpc('create_plan', {
+      plan = await this._pwRpcCreate({
         p_title: title, p_type: w.type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
         p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: w.n,
         p_spontaneous: w.now, p_visibility: w.vis, p_note: w.note.trim() || null, p_invited: [...w.invited],
-        p_icon: w.icons[w.type] || null, p_rules: [...w.rules],
+        p_icon: w.icons[w.type] || null, p_rules: [...w.rules], p_duration: w.dur,
       });
-      if (error) {
-        if (!(error.code === 'PGRST202' || /create_plan/.test(error.message || ''))) throw error;
+      if (!plan) {
         console.warn('[DIAG-PLAN] falta activities_plans.sql: se crea sin invitados ni visibilidad');
         await ActivityService.createActivity({
           title, type: w.type, place_name: info.name, place_id: place.place_id || place.id || null, icon_url: w.icons[w.type] || null,
@@ -344,22 +297,42 @@ export class PlanWizard {
     try { this._loadPlaceActivities(place); } catch (_) {}
     try { this._loadPlanState(place); } catch (_) {}
     try { window.wpApp?.mapView?._loadActivities?.(); } catch (_) {}
-    this._pwDone(w, title, whenTxt);
+    this._pwDone(w, title, whenTxt, plan);
     return false;   // no cerrar: se queda la pantalla de "¡Plan creado!"
   }
 
-  _pwDone(w, title, whenTxt) {
+  // create_plan; si la base aún no tiene la duración (SQL viejo) se
+  // intenta sin ella. null = no existe create_plan (falta el SQL).
+  async _pwRpcCreate(args) {
+    const missing = (e) => e && (e.code === 'PGRST202' || /create_plan/.test(e.message || ''));
+    let { data, error } = await getSupabase().rpc('create_plan', args);
+    if (missing(error)) {
+      const { p_duration, ...old } = args;
+      ({ data, error } = await getSupabase().rpc('create_plan', old));
+    }
+    if (missing(error)) return null;
+    if (error) throw error;
+    return Array.isArray(data) ? data[0] : data;
+  }
+
+  // "¡Plan creado!" + invitación a seguir armando el itinerario
+  _pwDone(w, title, whenTxt, plan) {
     const n = w.invited.size;
     const box = w.screen.showDone(`
       <div class="wp-st-done-ic">${CHECK}</div>
       <h2>¡Plan creado!</h2>
       <p>${this._esc(title)}<br>${this._esc(whenTxt)}${n ? ` · ${n} invitad${n === 1 ? 'o' : 'os'} (ya les avisamos)` : ''}</p>
+      ${plan?.id ? `<button type="button" class="wp-st-itin" data-x="stop">
+        <span class="wp-st-itin-ic">🗺️</span>
+        <span class="wp-st-itin-t"><b>¿Y después a dónde?</b><small>Arma el itinerario: agrega la siguiente parada</small></span>
+        <span class="wp-st-itin-plus" aria-hidden="true">+</span></button>` : ''}
       <button type="button" class="wp-st-btn" data-x="share">Compartir el plan</button>
       <button type="button" class="wp-st-btn ghost" data-x="ok">Listo</button>`);
     const txt = `¿Vamos? ${title} · ${whenTxt}${w.info.address ? ' · ' + w.info.address : ''}${w.info.url ? '\n' + w.info.url : ''}`;
     box.addEventListener('click', async (e) => {
       const b = e.target.closest('button[data-x]'); if (!b) return;
       if (b.dataset.x === 'ok') { w.screen.close(); return; }
+      if (b.dataset.x === 'stop') { w.screen.close(); setTimeout(() => this._openStopFlow(plan), 140); return; }
       try {
         if (navigator.share) await navigator.share({ title, text: txt });
         else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');

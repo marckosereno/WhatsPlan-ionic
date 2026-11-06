@@ -119,7 +119,9 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
     busy = true; refresh(); $('.wp-st-next').classList.add('busy');
     let ok = false;
     try { ok = await onDone?.(); } catch (_) { ok = false; }
-    busy = false; $('.wp-st-next').classList.remove('busy');
+    busy = false;
+    if (root.classList.contains('done')) return;   // ya se mostró la pantalla final (sin botón)
+    $('.wp-st-next').classList.remove('busy');
     if (ok === true) close(); else refresh();
   };
   // Pulso + onda de agua en todos los botones (al elegir y al quitar)

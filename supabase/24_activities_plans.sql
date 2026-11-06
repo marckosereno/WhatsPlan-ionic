@@ -5,6 +5,7 @@
 --                 'invited' (solo las personas que invitaste)
 --   · note: nota opcional del plan
 --   · invited: personas invitadas (uuid[])
+--   · ends_at: a qué hora termina (duración de 30 min a 12 h)
 -- y la función create_plan(), que crea el plan y avisa a los invitados.
 --
 -- Seguridad: una política RESTRICTIVA de lectura. Se SUMA a las que ya
@@ -51,6 +52,9 @@ create policy activities_visibility_guard on public.activities
 drop function if exists public.create_plan(text, text, text, text, double precision, double precision, timestamptz, int, boolean, text, text, uuid[]);
 drop function if exists public.create_plan(text, text, text, text, double precision, double precision, timestamptz, int, boolean, text, text, uuid[], text);
 drop function if exists public.create_plan(text, text, text, text, double precision, double precision, timestamptz, int, boolean, text, text, uuid[], text, text[]);
+drop function if exists public.create_plan(text, text, text, text, double precision, double precision, timestamptz, int, boolean, text, text, uuid[], text, text[], jsonb);
+-- Hora de fin del plan (la elige quien lo crea: dura de 30 min a 12 h)
+alter table public.activities add column if not exists ends_at timestamptz;
 -- Reglas del plan (etiquetas que se tocan): cada quien paga, puntual, +18…
 alter table public.activities add column if not exists rules text[] not null default '{}';
 -- Paradas: otros lugares del mismo plan (máx. 3 además del principal).
@@ -90,7 +94,7 @@ create or replace function public.create_plan(
   p_max int default 4, p_spontaneous boolean default false,
   p_visibility text default 'public', p_note text default null,
   p_invited uuid[] default '{}', p_icon text default null, p_rules text[] default '{}',
-  p_stops jsonb default '[]'
+  p_stops jsonb default '[]', p_duration int default 120
 ) returns public.activities
 language plpgsql
 security definer
@@ -130,7 +134,7 @@ begin
 
   insert into public.activities
     (title, type, place_name, place_id, lat, lng, scheduled_at, max_participants,
-     creator_id, participants, status, is_spontaneous, visibility, note, invited, icon_url, rules, stops)
+     creator_id, participants, status, is_spontaneous, visibility, note, invited, icon_url, rules, stops, ends_at)
   values
     (left(trim(p_title), 60), coalesce(nullif(p_type, ''), 'hangout'), p_place_name, nullif(p_place_id, ''),
      p_lat, p_lng, p_at, greatest(2, least(coalesce(p_max, 4), 50)),
@@ -139,7 +143,8 @@ begin
      case when p_icon ~ '^https://' then left(p_icon, 400) end,
      coalesce((select array_agg(distinct r) from unnest(coalesce(p_rules, '{}')) r
                where r in ('split','treat','cash','punctual','ride','parking','adults','kids','pets')), '{}'),
-     public.wp_plan_clean_stops(p_stops, nullif(p_place_id, '')))
+     public.wp_plan_clean_stops(p_stops, nullif(p_place_id, '')),
+     p_at + make_interval(mins => greatest(30, least(coalesce(p_duration, 120), 720))))
   returning * into a;
 
   -- Avisos a los invitados (si falla un aviso, el plan igual se crea)
@@ -159,7 +164,7 @@ begin
 end;
 $$;
 
-grant execute on function public.create_plan(text, text, text, text, double precision, double precision, timestamptz, int, boolean, text, text, uuid[], text, text[], jsonb) to authenticated;
+grant execute on function public.create_plan(text, text, text, text, double precision, double precision, timestamptz, int, boolean, text, text, uuid[], text, text[], jsonb, int) to authenticated;
 
 -- Organizador: cambiar las paradas (avisa a los que van)
 create or replace function public.set_plan_stops(p_activity uuid, p_stops jsonb)
