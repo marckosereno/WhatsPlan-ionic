@@ -4,13 +4,14 @@
 // la hoja grande (openSheetPage, tema "explore" = blanco neutro).
 //  · Arriba el calendario en tira (plans-here-days.js).
 //  · Abajo, agrupados por día, una tarjeta por plan:
-//      racimo (la foto del lugar al frente y dos tarjetitas pastel
-//      giradas detrás, con el emoji del plan como sticker; sin foto, el
-//      emoji con borde blanco sobre pastel) · nombre · dos líneas de
-//      descripción · categoría en pastel + tu estado (tú organizas, vas,
-//      te invitaron, cuántos van) · a la derecha guardar y la hora.
+//      racimo en abanico (hasta 3 fotos del lugar con borde blanco; las
+//      que falten, tarjetitas pastel del color del tipo de plan; sin
+//      fotos, el emoji al frente) con una insignia encima con la hora
+//      (o "Ahora" si ya empezó) · nombre · descripción · caras de los
+//      que van + tu estado · guardar centrado a la derecha.
 //  · Guardar (plan-saves.js) lo deja en tu perfil para ir después.
-//  · Tocar un plan lo abre ahí mismo (acordeón): plans-here-open.js.
+//  · Tocar un plan lo abre completo en la misma hoja, con atrás a todos
+//    los planes: plans-here-detail.js.
 //
 // Mixin de PlaceModal2. Estilos: /styles/plans-here.css (.wp-ph4-*, .wp-ph2-*)
 // ════════════════════════════════════════════════════════════════════
@@ -18,7 +19,6 @@ import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { savedIds, setSaved } from '/src/components/place-plans/plan-saves.js';
 import { photoSmall } from '/src/utils/photo-url.js';
 
-const PLUS = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const MARK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4z"/></svg>';
 // Pastel por tipo de plan: [fondo, texto] (los del perfil)
 const PASTEL = {
@@ -33,12 +33,13 @@ export class PlansHere {
     const { me, mine, pending } = this._planGroups();
     const list = [...(this._plans || [])].sort((x, y) => new Date(x.scheduled_at) - new Date(y.scheduled_at));
     const p = this._place || {};
-    const photo = photoSmall((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '') || '';
-    const v = { me, mine, pending, list, day: 'all', open: -1, saved: new Set(), photo };
+    const all = [...(p.photosUrls || p.photos_urls || []), p.photoUrl || p.photo_url].filter(Boolean);
+    const photos = [...new Set(all)].slice(0, 3).map(u => photoSmall(u) || u);
+    const v = { me, mine, pending, list, day: 'all', at: -1, scroll: 0, saved: new Set(), photos };
     v.sheet = openSheetPage({
       title: 'Planes aquí', theme: 'explore',
-      html: '<div class="wp-ph2-list"><div class="wp-ph4-cal"></div><div class="wp-ph2-groups"></div></div>',
-      foot: v.mine ? '' : `<button type="button" class="wp-ph2-new" data-act="new">${PLUS}<span>Planear otra visita</span></button>`,
+      html: '<div class="wp-ph2-list"><div class="wp-ph4-cal"></div><div class="wp-ph2-groups"></div></div><div class="wp-ph2-detail wp-mp" hidden></div>',
+      foot: this._phFootList(v), onBack: () => (v.at >= 0 ? (this._phBack(v), true) : false),
     });
     this._phMountDays(v, v.sheet.body.querySelector('.wp-ph4-cal'));
     this._phPaintList(v);
@@ -49,7 +50,6 @@ export class PlansHere {
   _phPaintList(v, swap = false) {
     const box = v.sheet.body.querySelector('.wp-ph2-groups');
     const groups = this._phGroups(v);
-    v.open = -1;
     box.innerHTML = groups.length
       ? groups.map(g => `<section class="wp-ph4-day"><h3>${this._phDayLabel(g.at)}</h3>${g.items.map(([a, i]) => this._phItem(v, a, i)).join('')}</section>`).join('')
       : `<p class="wp-st-empty">${v.list.length ? 'No hay planes ese día' : 'Por ahora no hay planes aquí'}</p>`;
@@ -65,30 +65,31 @@ export class PlansHere {
   }
 
   _phItem(v, a, i) {
-    const k = this._phKind(v, a), [bg, fg, cat] = PASTEL[a.type] || PASTEL.hangout;
-    const now = Date.now(), live = new Date(a.scheduled_at) <= now && (!a.ends_at || now < new Date(a.ends_at));
-    return `<div class="wp-ph2-it ${k}" data-open="${i}">
-        <div class="wp-ph2-head" role="button" tabindex="0" aria-expanded="false">
-          ${this._phThumb(v, a, i, bg)}
-          <span class="wp-ph4-txt">
-            <b>${this._esc(a.title)}</b>
-            <small>${this._esc(this._phDesc(a))}</small>
-            <span class="wp-ph4-meta"><i class="wp-ph4-cat" style="--bg:${bg};--fg:${fg}">${cat}</i>${this._phState(v, a, k)}</span>
-          </span>
-          <span class="wp-ph4-side">
-            <button type="button" class="wp-ph4-save" data-act="save" aria-label="Guardar">${MARK}</button>
-            <small class="${live ? 'live' : ''}">${live ? '<i></i>Ahora' : this._hhmm(new Date(a.scheduled_at))}</small>
-          </span>
-        </div>
-        <div class="wp-ph2-more" hidden></div>
+    const k = this._phKind(v, a), P = a.participants || [], extra = Math.max(0, P.length - 3);
+    return `<div class="wp-ph2-it ${k}" data-open="${i}" role="button" tabindex="0">
+        ${this._phThumb(v, a, i)}
+        <span class="wp-ph4-txt">
+          <b>${this._esc(a.title)}</b>
+          <small>${this._esc(this._phDesc(a))}</small>
+          <span class="wp-ph4-meta"><span class="wp-ph4-faces">${P.slice(0, 3).map(id => this._planFace(id)).join('')}${extra ? `<em>+${extra}</em>` : ''}</span>${this._phState(v, a, k)}</span>
+        </span>
+        <button type="button" class="wp-ph4-save" data-act="save" aria-label="Guardar">${MARK}</button>
       </div>`;
   }
 
-  // Racimo: foto del lugar al frente (o pastel), dos tarjetitas detrás y el emoji como sticker
-  _phThumb(v, a, i, bg) {
-    const b1 = BACKS[i % BACKS.length], b2 = BACKS[(i + 3) % BACKS.length];
-    const front = v.photo ? `<span class="ph" style="background-image:url('${this._esc(v.photo)}')"></span>` : `<span class="ph none" style="--bg:${bg}"></span>`;
-    return `<span class="wp-ph4-thumb"><i style="--bg:${b1}"></i><i style="--bg:${b2}"></i>${front}<em>${this._planEmoji(a.type)}</em></span>`;
+  // Racimo en abanico + insignia con la hora o el estado
+  _phThumb(v, a, i) {
+    const [bg] = PASTEL[a.type] || PASTEL.hangout;
+    const backs = [bg, BACKS[(i + 2) % BACKS.length]];
+    // c2 = al frente (foto 1), c1 y c0 detrás (fotos 2 y 3, o pastel)
+    const cards = [2, 1, 0].map(n => {
+      const ph = v.photos[n];
+      if (ph) return `<i class="c${2 - n}" style="background-image:url('${this._esc(ph)}')"></i>`;
+      return `<i class="c${2 - n} pastel" style="--bg:${backs[n % 2]}">${n === 0 ? this._planEmoji(a.type) : ''}</i>`;
+    }).join('');
+    const now = Date.now(), live = new Date(a.scheduled_at) <= now && (!a.ends_at || now < new Date(a.ends_at));
+    const badge = live ? '<b class="live"><i></i>Ahora</b>' : `<b>${this._hhmm(new Date(a.scheduled_at))}</b>`;
+    return `<span class="wp-ph4-thumb">${cards}${badge}</span>`;
   }
 
   // Dos líneas: la nota si hay; si no, hasta qué hora, la ruta y quién
@@ -136,7 +137,7 @@ export class PlansHere {
     if (day) { this._phPickDay(v, day.dataset.day); return; }
     const act = e.target.closest('[data-act]');
     if (act) { act.dataset.act === 'save' ? this._phSave(v, act) : this._phDo(v, act); return; }
-    const head = e.target.closest('.wp-ph2-head');
-    if (head) this._phToggle(v, +head.closest('[data-open]').dataset.open);
+    const row = e.target.closest('.wp-ph2-it');
+    if (row && v.at < 0) this._phOpen(v, +row.dataset.open, row);
   }
 }
