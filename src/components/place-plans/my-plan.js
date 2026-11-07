@@ -53,6 +53,7 @@ export class MyPlan {
       ${this._mpStrip(stops)}
       ${this._mpHero(a, owner, stops)}
       ${this._mpRows(a, owner)}
+      <div class="wp-mp-note-slot">${this._mpNote(a.note)}</div>
       ${this._mpSummaryHtml(a)}
       <div class="wp-mp-lbl">Quién va</div>
       <div class="wp-mp-who">${this._mpWho(a, owner, me)}</div>
