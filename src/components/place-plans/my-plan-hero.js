@@ -4,8 +4,8 @@
 // viaje:
 //  · Tira de lugares del plan (fotos) repartida a lo ancho (2 → izquierda
 //    y derecha; 3 → izquierda, centro y derecha) unida por un camino
-//    punteado ondulado; cada foto lleva su número en una pill (el mismo de
-//    la ruta). Al tocar un lugar, la tarjeta muestra SUS datos:
+//    punteado ondulado; cada foto lleva su hora de inicio en una pill justo
+//    donde empieza (el primero) o termina (los demás) el camino. Al tocar un lugar, la tarjeta muestra SUS datos:
 //    foto, a qué hora llegan, cuánto tiempo ahí, qué van a hacer y la
 //    nota que se puso al armar el plan (la dirección no: se ve fea ahí).
 //  · Tarjeta principal blanca: foto grande del lugar con la cuenta
@@ -13,7 +13,8 @@
 //    quién va (+ invitar) y una cápsula con dura · cupos.
 //  · Renglones de datos (etiqueta gris · valor a la derecha, con líneas
 //    finas): estado, hora, dura, cupos, quién puede; "Más info" abre
-//    reglas y nota. Los que puede cambiar quien organiza llevan flecha.
+//    reglas y nota. Si eliges otro lugar en la tira, los de arriba pasan
+//    a ser de ese lugar (llegan, se van, dura, qué hacen, nota). Los que puede cambiar quien organiza llevan flecha.
 //
 // Mixin de PlaceModal2. Estilos: /styles/my-plan.css (.wp-mp-strip,
 // .wp-mp-hero, .wp-mp-rows)
@@ -32,7 +33,7 @@ export class MyPlanHero {
     const main = photoSmall((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '') || (p.photosUrls?.[0] || p.photoUrl || '');
     const list = [{ id: a.place_id, name: a.place_name || this._placeInfo().name, at: t0, emoji: this._planEmoji(a.type), photo: main, lat: a.lat, lng: a.lng },
       ...(Array.isArray(a.stops) ? a.stops : []).map(x => ({ id: x.place_id, name: x.name, at: new Date(t0.getTime() + (x.after || 0) * 60000),
-        emoji: x.emoji || this._stopEmoji(x.cat), act: x.act, photo: '', custom: !!x.custom, note: x.note, lat: x.lat, lng: x.lng, dur: x.dur || 0 }))];
+        emoji: x.emoji || this._stopEmoji(x.cat), act: x.act, photo: '', custom: !!x.custom, note: x.note, address: x.address, lat: x.lat, lng: x.lng, dur: x.dur || 0 }))];
     // cuánto tiempo en cada lugar: su duración; si es una parada vieja sin
     // duración, hasta la siguiente (el primero, hasta que termina el plan)
     list.forEach((s, i) => {
@@ -53,7 +54,7 @@ export class MyPlanHero {
     if (stops.length < 2) return '';
     const path = (k) => `<span class="wp-mp-path" aria-hidden="true"><svg viewBox="0 0 100 40" preserveAspectRatio="none">
         <path d="${k % 2 ? 'M2 14 C 26 40, 44 40, 52 22 S 78 2, 98 26' : 'M2 26 C 26 0, 44 0, 52 18 S 78 38, 98 14'}" vector-effect="non-scaling-stroke"/></svg></span>`;
-    return `<div class="wp-mp-strip">${stops.map((s, i) => `${i ? path(i) : ''}<button type="button" class="wp-mp-sp${i === 0 ? ' on' : ''}" data-a="pick" data-i="${i}" aria-label="${i + 1}. ${this._esc(s.name)}">${this._mpPhoto(s, i)}<span class="wp-mp-sp-n">${i + 1}</span></button>`).join('')}</div>`;
+    return `<div class="wp-mp-strip">${stops.map((s, i) => `${i ? path(i) : ''}<button type="button" class="wp-mp-sp${i === 0 ? ' on' : ''}" data-a="pick" data-i="${i}" aria-label="${i + 1}. ${this._esc(s.name)}">${this._mpPhoto(s, i)}<span class="wp-mp-sp-n ${i ? 'in' : 'out'}">${this._hhmm(s.at)}</span></button>`).join('')}</div>`;
   }
 
   // Datos del lugar elegido para la tarjeta (el primero = el plan)
@@ -103,6 +104,11 @@ export class MyPlanHero {
     const note = $('.wp-mp-hero-note');
     note.hidden = !info.note; note.textContent = info.note ? `“${info.note}”` : '';
     const t = $('.wp-mp-hero-t'); t.classList.remove('swap'); void t.offsetWidth; t.classList.add('swap');
+    // los renglones de abajo también pasan a ser los de ese lugar
+    const rows = $('.wp-mp-rows'), open = rows.classList.contains('open');
+    rows.outerHTML = this._mpRows(ctx.a, ctx.owner, i, ctx.stops);
+    const nr = $('.wp-mp-rows'); nr.classList.toggle('open', open); nr.classList.add('swap');
+    if (open) nr.querySelector('.wp-mp-moreinfo span').textContent = 'Menos info';
     this._haptic?.('light');
   }
 
@@ -122,7 +128,20 @@ export class MyPlanHero {
     return row('Termina todo', this._hhmm(end));
   }
 
-  _mpRows(a, owner) {
+  // Renglones de una parada (i > 0): llegan, se van, dura, qué hacen
+  _mpStopRows(stops, i, row) {
+    const s = stops[i], out = s.dur ? new Date(s.at.getTime() + s.dur * 60000) : null;
+    return `${row('Parada', `${i + 1} de ${stops.length}`)}
+        ${row('Llegan', this._hhmm(s.at))}
+        ${out ? row('Se van', this._hhmm(out)) : ''}
+        ${row('Dura', s.mins ? this._pwDurTxt(s.mins) : 'Sin hora de fin')}
+        ${s.act ? row('Qué hacen', `${s.emoji} ${this._esc(this._mpActLabel(s.act))}`) : ''}
+        ${s.note ? `<div class="wp-mp-row col"><span>Nota</span><p>${this._esc(s.note)}</p></div>` : ''}
+        ${s.address ? `<div class="wp-mp-row more col"><span>Dirección</span><p>${this._esc(s.address)}</p></div>` : ''}`;
+  }
+
+  // i = lugar elegido en la tira (0 = el plan; los demás, esa parada)
+  _mpRows(a, owner, i = 0, stops = null) {
     const P = a.participants || [], max = a.max_participants || 0;
     const now = Date.now(), t0 = new Date(a.scheduled_at).getTime(), end = this._mpEndAt(a), live = t0 <= now && (!end || now < end.getTime());
     const dur = a.ends_at ? this._pwDurTxt(Math.round((new Date(a.ends_at) - new Date(a.scheduled_at)) / 60000)) : 'Sin hora de fin';
@@ -130,11 +149,13 @@ export class MyPlanHero {
       ? `<button type="button" class="wp-mp-row${more ? ' more' : ''}" data-a="${act}"><span>${k}</span><b>${v}${ARROW}</b></button>`
       : `<div class="wp-mp-row${more ? ' more' : ''}"><span>${k}</span><b>${v}</b></div>`;
     const rules = this._planRulesHtml(a, 'wp-mp-rules');
-    return `<div class="wp-mp-rows">
-        ${row('Estado', live ? '<i class="wp-mp-dot"></i>En curso' : this._planFull(a) ? 'Completo' : 'Activo')}
+    const top = i > 0 && stops ? this._mpStopRows(stops, i, row)
+      : `${row('Estado', live ? '<i class="wp-mp-dot"></i>En curso' : this._planFull(a) ? 'Completo' : 'Activo')}
         ${row('Hora', `${this._hhmm(new Date(a.scheduled_at))}${a.ends_at ? ` → ${this._hhmm(new Date(a.ends_at))}` : ''}`, owner && 'time')}
         ${row('Dura', dur, owner && 'dur')}
-        ${this._mpEndRow(a, row)}
+        ${this._mpEndRow(a, row)}`;
+    return `<div class="wp-mp-rows">
+        ${top}
         ${row('Cupos', max ? `${P.length} de ${max}` : `${P.length}`, owner && max && 'cupo', true)}
         ${row('Quién puede', VIS[a.visibility] || VIS.public, '', true)}
         ${rules ? `<div class="wp-mp-row more col"><span>Reglas</span>${rules}</div>` : ''}
