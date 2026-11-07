@@ -1,23 +1,21 @@
 // ════════════════════════════════════════════════════════════════════
 // WHATSPLAN — place-plans/my-plan.js
-// Hoja "Tu plan" / "Vas a ir". Usa la misma hoja de "Planear visita"
-// (openSheetPage de step-sheet.js: sube desde abajo y llega hasta
-// debajo de la barra de estado) con la línea de diseño de los pasos:
-//  · tarjeta del plan (emoji, nombre, horario y cuenta regresiva)
-//  · "3 de 4 ya van" con caritas encimadas
-//  · quién va: tarjetitas (cara, nombre y emoji de estado); la de quien
-//    organiza es el único acento con degradado
-//  · detalles en 4 mosaicos (hora, dura, cupos con barra, quién puede);
-//    los que puedes cambiar llevan una flecha y abren en zoom
-//  · ruta, reglas y nota; "Compartir el plan" fijo abajo
-// Pulso, onda y elástico. Lo que hace cada botón: my-plan-actions.js
+// Hoja "Tu plan" / "Vas a ir" en la hoja grande (openSheetPage), como
+// una ficha de viaje con nuestros colores:
+//  · tira de fotos de los lugares + tarjeta principal + renglones de
+//    datos con "Más info" (my-plan-hero.js)
+//  · resumen del plan hecho con IA (plan-summary.js)
+//  · "3 de 4 ya van" y quién va en tarjetitas (+ Invitar)
+//  · ruta numerada con fotos (my-plan-route.js) y otros planes aquí
+//  · "Compartir el plan" fijo abajo
+// _mpBody también lo usa el plan completo de "Planes aquí"
+// (plans-here-detail.js). Lo que hace cada botón: my-plan-actions.js
 //
 // Mixin de PlaceModal2. Estilos: /styles/my-plan.css (.wp-mp-*)
 // ════════════════════════════════════════════════════════════════════
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { addElastic } from '/src/components/place-plans/elastic.js';
 
-const VIS = { public: ['🌎', 'Cualquiera'], followers: ['🫶', 'Mis seguidores'], invited: ['🔒', 'Solo invitados'] };
 const ICO = {
   go: '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   wait: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/></svg>',
@@ -31,7 +29,7 @@ const SHARE = '<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColo
 export class MyPlan {
   // opts.onBack: si vienes de "Planes aquí", atrás te regresa allá
   _openMyPlanSheet(a, opts = {}) {
-    const me = window.wpApp?.currentUser?.id, owner = a.creator_id === me;
+    const me = window.wpApp?.currentUser?.id, owner = a.creator_id === me, stops = this._mpStops(a);
     let page = null;
     const onBack = opts.onBack ? () => { page.close(); setTimeout(opts.onBack, 360); return true; } : undefined;
     const { root, body, close } = page = openSheetPage({
@@ -39,27 +37,33 @@ export class MyPlan {
       title: owner ? 'Tu plan' : 'Vas a ir',
       theme: owner ? 'mine' : 'going',
       right: `<button type="button" class="wp-mp-danger" data-nopulse>${owner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>`,
-      html: this._mpHtml(a, owner, me),
+      html: this._mpBody(a, { owner, me, stops }),
       foot: `<button type="button" class="wp-mp-cta" data-a="share">${SHARE}<span>Compartir el plan</span></button>`,
     });
     body.classList.add('wp-mp');
-    addElastic(body.querySelector('.wp-mp-who'), 'x');
-    const ctx = { a, me, owner, root, close };
+    this._mpWire(body);
+    const ctx = { a, me, owner, root, close, stops };
+    this._mpLoadPhotos(ctx);
     root.addEventListener('click', (e) => this._mpClick(ctx, e));
     this._mpDanger(ctx);
   }
 
-  _mpHtml(a, owner, me) {
+  _mpBody(a, { owner = false, me, stops = this._mpStops(a), others = true } = {}) {
     return `
-      ${this._mpCard(a)}
+      ${this._mpStrip(stops)}
+      ${this._mpHero(a, owner, stops)}
+      ${this._mpRows(a, owner)}
+      ${this._mpSummaryHtml(a)}
       ${this._mpSocial(a)}
       <div class="wp-mp-lbl">Quién va</div>
       <div class="wp-mp-who">${this._mpWho(a, owner, me)}</div>
-      <div class="wp-mp-grid">${this._mpTiles(a, owner)}</div>
-      ${this._planRouteHtml(a, { owner }) ? `<div class="wp-mp-route">${this._planRouteHtml(a, { owner })}</div>` : ''}
-      ${this._planRulesHtml(a, 'wp-mp-rules')}
-      ${a.note ? `<div class="wp-mp-note"><small>📝 Nota</small><p>${this._esc(a.note)}</p></div>` : ''}
-      ${this._mpOthers(a)}`;
+      ${this._mpRoute(a, owner, stops)}
+      ${others ? this._mpOthers(a) : ''}`;
+  }
+
+  // Tiras con rebote de lado
+  _mpWire(body) {
+    body.querySelectorAll('.wp-mp-who, .wp-mp-strip').forEach(el => addElastic(el, 'x'));
   }
 
   // "Otros planes aquí": tener tu plan no esconde los de los demás
@@ -73,16 +77,6 @@ export class MyPlan {
     return `<button type="button" class="wp-mp-more${inv ? ' inv' : ''}" data-a="others">
         <span class="wp-mp-faces">${[...new Set(list.map(x => x.creator_id))].slice(0, 3).map(id => this._planFace(id)).join('')}</span>
         <span class="wp-mp-social-t"><b>Otros planes aquí · ${list.length}</b><small>${sub}</small></span>${ARROW}</button>`;
-  }
-
-  // Tarjeta del plan: emoji, nombre, horario y cuenta regresiva
-  _mpCard(a) {
-    const end = a.ends_at ? ` → ${this._hhmm(new Date(a.ends_at))}` : '';
-    return `<section class="wp-mp-card">
-        <span class="wp-mp-ic">${this._planEmoji(a.type)}</span>
-        <span class="wp-mp-card-t"><b>${this._esc(a.title)}</b><small>${this._esc(this._planWhen(a.scheduled_at))}${end}</small></span>
-        ${this._mpCountdown(a)}
-      </section>`;
   }
 
   _mpCountdown(a) {
@@ -113,22 +107,5 @@ export class MyPlan {
     const first = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || p.username || 'Alguien').split(' ')[0]); };
     return (owner ? '<button type="button" class="wp-mp-p add" data-a="invite"><i>+</i><b>Invitar</b><em>✨</em></button>' : '')
       + rows.map(([id, k]) => `<div class="wp-mp-p ${k}" title="${ROLE[k][1]}">${this._planFace(id)}<b>${id === me ? 'Tú' : first(id)}</b><em class="st-${k}" aria-label="${ROLE[k][1]}">${ROLE[k][0]}</em></div>`).join('');
-  }
-
-  // 4 mosaicos; los que puede cambiar quien organiza llevan flecha
-  _mpTiles(a, owner) {
-    const P = a.participants || [], max = a.max_participants || 0;
-    const dur = a.ends_at ? Math.round((new Date(a.ends_at) - new Date(a.scheduled_at)) / 60000) : 0;
-    const [ve, vt] = VIS[a.visibility] || VIS.public;
-    const tile = (act, ic, k, v, extra = '') => act
-      ? `<button type="button" class="wp-mp-tile" data-a="${act}"><small>${ic} ${k}${ARROW}</small><b>${v}</b>${extra}</button>`
-      : `<div class="wp-mp-tile"><small>${ic} ${k}</small><b>${v}</b>${extra}</div>`;
-    const bar = max ? `<span class="wp-mp-bar"><i style="width:${Math.min(100, Math.round(P.length / max * 100))}%"></i></span>` : '';
-    return [
-      tile(owner && 'time', '🕒', 'Hora', `${this._hhmm(new Date(a.scheduled_at))}${a.ends_at ? ` → ${this._hhmm(new Date(a.ends_at))}` : ''}`),
-      tile(owner && 'dur', '⏳', 'Dura', dur ? this._pwDurTxt(dur) : 'Sin hora de fin'),
-      tile(owner && max && 'cupo', '🎟️', 'Cupos', max ? `${P.length} de ${max}` : `${P.length}`, bar),
-      tile('', ve, 'Quién puede', vt),
-    ].join('');
   }
 }

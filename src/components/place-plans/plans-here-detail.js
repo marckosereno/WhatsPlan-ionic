@@ -2,9 +2,9 @@
 // WHATSPLAN — place-plans/plans-here-detail.js
 // Plan completo dentro de "Planes aquí" (plans-here.js), en la misma
 // hoja grande: al tocar un plan de otros, la lista se va y entra el plan
-// con todo (lo mismo que ve quien ya va: quién va, mosaicos, ruta,
-// reglas, nota). Su encabezado viaja desde el racimo tocado (FLIP) y lo
-// demás sube en cascada. Pie: el botón del caso (Unirme · Aceptar + No
+// con todo, con las mismas piezas de "Tu plan" (_mpBody: tira de
+// lugares, tarjeta, datos, resumen IA, quién va, ruta). La foto viaja
+// desde el racimo tocado (FLIP) y lo demás sube en cascada. Pie: el botón del caso (Unirme · Aceptar + No
 // puedo · Avísame). Atrás regresa a todos los planes, donde estabas.
 // Los planes tuyos o a los que vas abren "Tu plan" / "Vas a ir" (con
 // atrás de vuelta aquí).
@@ -12,7 +12,6 @@
 // Mixin de PlaceModal2. Estilos: /styles/plans-here.css (.wp-ph2-*) y
 // las piezas de "Tu plan" (my-plan.css, .wp-mp-*)
 // ════════════════════════════════════════════════════════════════════
-import { addElastic } from '/src/components/place-plans/elastic.js';
 import { pulse } from '/src/components/place-plans/pulse.js';
 
 const SPRING = 'cubic-bezier(0.34, 1.25, 0.64, 1)';
@@ -30,22 +29,31 @@ export class PlansHereDetail {
     }
     const vp = v.sheet.root.querySelector('.wp-st-vp');
     const list = v.sheet.body.querySelector('.wp-ph2-list'), det = v.sheet.body.querySelector('.wp-ph2-detail');
-    const from = row.querySelector('.wp-ph4-thumb').getBoundingClientRect();
+    const from = row.querySelector('.wp-ph4-thumb').getBoundingClientRect();   // el racimo tocado
     v.at = i; v.scroll = vp.scrollTop;
-    det.innerHTML = this._phDetailHtml(v, a);
+    const stops = this._mpStops(a);
+    det.innerHTML = this._mpBody(a, { owner: false, me: v.me, stops, others: false });
+    v.ctx = { a, me: v.me, owner: false, root: det, stops, close: () => v.sheet.close() };
+    this._mpLoadPhotos(v.ctx);
     list.hidden = true; det.hidden = false; vp.scrollTop = 0;
     v.sheet.setTitle(`Plan de ${this._phName(a.creator_id)}`);
     v.sheet.setTheme(k === 'inv' ? 'invited' : 'explore');
     this._phPaintFoot(v, a);
-    addElastic(det.querySelector('.wp-mp-who'), 'x');
+    this._mpWire(det);
     this._haptic?.('light');
     // el encabezado sale del racimo tocado
-    const head = det.querySelector('.wp-mp-card'), to = head.getBoundingClientRect();
+    const head = det.querySelector('.wp-mp-hero-ph'), to = head.getBoundingClientRect();
     head.animate([
       { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, transformOrigin: '0 0', opacity: 0.6 },
       { transform: 'none', transformOrigin: '0 0', opacity: 1 },
     ], { duration: 440, easing: SPRING });
     det.classList.remove('enter'); void det.offsetWidth; det.classList.add('enter');
+  }
+
+  // Botones de las piezas de "Tu plan" dentro del plan abierto (elegir
+  // lugar, más info, resumen, ver ruta)
+  _phDetailClick(v, e) {
+    if (v.at >= 0 && v.ctx && e.target.closest('.wp-ph2-detail [data-a]')) this._mpClick(v.ctx, e);
   }
 
   _phBack(v) {
@@ -60,19 +68,6 @@ export class PlansHereDetail {
       v.sheet.foot.innerHTML = this._phFootList(v); v.sheet.relayout();
       pulse(list.querySelector(`.wp-ph2-it[data-open="${i}"]`));
     };
-  }
-
-  _phDetailHtml(v, a) {
-    const route = this._planRouteHtml(a, { owner: false });
-    return `
-      ${this._mpCard(a)}
-      ${this._mpSocial(a)}
-      <div class="wp-mp-lbl">Quién va</div>
-      <div class="wp-mp-who">${this._mpWho(a, false, v.me)}</div>
-      <div class="wp-mp-grid">${this._mpTiles(a, false)}</div>
-      ${route ? `<div class="wp-mp-route">${route}</div>` : ''}
-      ${this._planRulesHtml(a, 'wp-mp-rules')}
-      ${a.note ? `<div class="wp-mp-note"><small>📝 Nota</small><p>${this._esc(a.note)}</p></div>` : ''}`;
   }
 
   _phFootList(v) {

@@ -15,6 +15,9 @@ import { PlanWizard }                  from '/src/components/place-plans/plan-wi
 import { PlanWhen }                    from '/src/components/place-plans/plan-when.js';
 import { MyPlan }                      from '/src/components/place-plans/my-plan.js';
 import { MyPlanActions }               from '/src/components/place-plans/my-plan-actions.js';
+import { MyPlanHero }                  from '/src/components/place-plans/my-plan-hero.js';
+import { MyPlanRoute }                 from '/src/components/place-plans/my-plan-route.js';
+import { PlanSummary }                 from '/src/components/place-plans/plan-summary.js';
 import { PlansHere }                   from '/src/components/place-plans/plans-here.js';
 import { PlansHereDetail }             from '/src/components/place-plans/plans-here-detail.js';
 import { PlansHereDays }               from '/src/components/place-plans/plans-here-days.js';
@@ -6297,7 +6300,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
 
 // Planes (botón, hojas, asistente y paradas) viven en place-plans/*.js
 // y se agregan a la ficha como métodos propios.
-for (const Mix of [PlanCore, PlanWizard, PlanWhen, MyPlan, MyPlanActions, PlansHere, PlansHereDetail, PlansHereDays, PlanStops, StopFlow]) {
+for (const Mix of [PlanCore, PlanWizard, PlanWhen, MyPlan, MyPlanActions, MyPlanHero, MyPlanRoute, PlanSummary, PlansHere, PlansHereDetail, PlansHereDays, PlanStops, StopFlow]) {
   for (const k of Object.getOwnPropertyNames(Mix.prototype)) {
     if (k !== 'constructor') Object.defineProperty(PlaceModal2.prototype, k, Object.getOwnPropertyDescriptor(Mix.prototype, k));
   }
