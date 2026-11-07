@@ -25,7 +25,7 @@ export class MyPlanRoute {
           ${owner && i > 0 ? `<button type="button" class="wp-mp-rt-x" data-rm="${i}" aria-label="Quitar parada">×</button>` : ''}
         </div></div>`;
     return `<section class="wp-mp-rt">
-        <div class="wp-mp-sec"><b>Ruta del plan</b>${many ? `<button type="button" data-a="route">${MAP}<span>${stops.length} lugares</span></button>` : ''}</div>
+        <div class="wp-mp-sec"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route">${MAP}<span>Ver en el mapa</span></button>` : ''}</div>
         ${stops.map(item).join('')}
         ${owner && stops.length < 4 ? `<button type="button" class="wp-mp-rt-add" data-a="addstop"><span class="wp-mp-rt-n">+</span><span><b>Agregar otra parada</b><small>¿Siguen en otro lado? Arma el itinerario</small></span></button>` : ''}
       </section>`;

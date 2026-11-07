@@ -12,7 +12,7 @@
 //     → la misma hoja de "Planear visita" con cualquier contenido:
 //       barra arriba (botón redondo atrás · título · algo a la derecha),
 //       contenido que se desliza y un pie fijo. Devuelve
-//       { root, body, foot, close, relayout, setTheme, setTitle }.
+//       { root, body, foot, close, relayout, setTheme, setTitle, setRight }.
 //       theme: 'mine' | 'going' | 'explore' | 'invited' (tinte de la hoja).
 //       onBack() → true = ya lo manejé
 //       (p. ej. regresar del detalle a la lista) y la hoja no se cierra.
@@ -79,8 +79,10 @@ export function openSheetPage({ title = '', right = '', html = '', foot = '', th
   root.classList.add('in');
   const setTheme = (t) => { root.classList.remove('th-mine', 'th-going', 'th-explore', 'th-invited'); root.classList.add(`th-${t}`); };
   const setTitle = (html) => { root.querySelector('.wp-st-title').innerHTML = html; };
+  // lo de la derecha de la barra (p. ej. el botón de guardar del plan abierto)
+  const setRight = (html) => { root.querySelector('.wp-st-title').nextElementSibling.outerHTML = html || '<span></span>'; };
   setTheme(theme);
-  return { root, body: root.querySelector('.wp-st-page'), foot: ft, close, relayout, setTheme, setTitle };
+  return { root, body: root.querySelector('.wp-st-page'), foot: ft, close, relayout, setTheme, setTitle, setRight };
 }
 
 // Jalar la barra de arriba hacia abajo: la hoja sigue al dedo y si pasa

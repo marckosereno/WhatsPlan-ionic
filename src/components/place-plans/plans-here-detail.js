@@ -38,6 +38,7 @@ export class PlansHereDetail {
     list.hidden = true; det.hidden = false; vp.scrollTop = 0;
     v.sheet.setTitle(`Plan de ${this._phName(a.creator_id)}`);
     v.sheet.setTheme(k === 'inv' ? 'invited' : 'explore');
+    v.sheet.setRight(this._phSaveTop(v, a));
     this._phPaintFoot(v, a);
     this._mpWire(det);
     this._haptic?.('light');
@@ -65,9 +66,17 @@ export class PlansHereDetail {
       list.hidden = false; vp.scrollTop = v.scroll;
       v.sheet.setTitle('Planes aquí');
       v.sheet.setTheme('explore');
+      v.sheet.setRight('');
       v.sheet.foot.innerHTML = this._phFootList(v); v.sheet.relayout();
       pulse(list.querySelector(`.wp-ph2-it[data-open="${i}"]`));
     };
+  }
+
+  // Guardar, redondo como el botón de atrás
+  _phSaveTop(v, a) {
+    const on = v.saved.has(a.id);
+    return `<button type="button" class="wp-st-back wp-st-save${on ? ' on' : ''}" data-act="save-top" aria-label="${on ? 'Quitar de guardados' : 'Guardar'}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4z"/></svg></button>`;
   }
 
   _phFootList(v) {
