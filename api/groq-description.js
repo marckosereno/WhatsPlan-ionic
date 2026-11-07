@@ -160,8 +160,10 @@ async function planSummary(req, res) {
     if (!me?.is_pro) return res.status(402).json({ error: 'El resumen del plan es parte de la versión Pro', pro: true });
   }
   const stops = Array.isArray(a.stops) ? a.stops : [];
-  const sig = [a.place_id, ...stops.map(x => x.place_id), a.scheduled_at, a.ends_at, a.title].join('|');
-  if (a.ai_summary && a.ai_summary_sig === sig) return res.status(200).json({ summary: a.ai_summary, cached: true });
+  // misma firma que plan-summary.js (_mpSumSig): si cambia, el resumen se rehace
+  const sig = [a.place_id, ...stops.map(x => `${x.place_id}@${x.after || 0}+${x.dur || 0}`), a.scheduled_at, a.ends_at, a.title].join('|');
+  const legacy = [a.place_id, ...stops.map(x => x.place_id), a.scheduled_at, a.ends_at, a.title].join('|');   // resúmenes de antes de las duraciones
+  if (a.ai_summary && (a.ai_summary_sig === sig || a.ai_summary_sig === legacy)) return res.status(200).json({ summary: a.ai_summary, cached: true });
 
   const ids = [a.place_id, ...stops.map(x => x.place_id)].filter(id => id && !String(id).startsWith('custom:'));
   const places = ids.length ? await sbGet(`places?place_id=in.(${ids.map(encodeURIComponent).join(',')})&select=*`) : [];

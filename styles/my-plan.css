@@ -96,6 +96,7 @@
 .wp-mp-ai-h b { font-size: 13px; font-weight: 600; }
 .wp-mp-ai p { margin: 6px 0 0; font-size: 14.5px; line-height: 1.5; color: #374151; }
 .wp-mp-ai p.wp-mp-ai-hint { color: var(--mp-sub); font-size: 13.5px; }
+.wp-mp-ai.old .wp-mp-ai-txt { opacity: 0.5; }
 .wp-mp-ai-new { animation: wpMpRow 0.5s ease both; }
 .wp-mp-ai-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; height: 38px; padding: 0 14px; border: none; border-radius: 999px;
   background: #eef6ff; color: var(--mp-blue); font: inherit; font-size: 13.5px; font-weight: 600; }
