@@ -4,7 +4,10 @@
 //   1 ¿Qué van a hacer?   íconos 3D por categoría
 //   2 ¿Dónde?             sugeridos cerca · buscar · lugar propio
 //   3 ¿A qué hora llegan? hora grande con − / +
-//   4 ¿Alguna indicación? opcional (se puede omitir)
+//   4 ¿Cuánto tiempo ahí? duración grande con − / + (15 min a 12 h)
+//   5 ¿Alguna indicación? opcional (se puede omitir)
+// Con la duración, la siguiente parada se sugiere justo al terminar esta
+// y el plan sabe a qué hora termina toda la salida.
 // Se mezcla en PlaceModal2.prototype (usa _hhmm, _distM, _stopEmoji,
 // _planPlaces, _planRpc, _openMyPlanSheet, _esc…).
 // Estilos: /styles/plan-steps.css
@@ -28,7 +31,8 @@ const FALLBACK_ACTS = [
   ['spa', '💆', 'Spa', 'HEALTH', 'Person getting massage/3D/person_getting_massage_3d.png'],
 ].map(([key, emoji, label, cat]) => ({ key, emoji, label, cat }));
 
-const STEP_MIN = 15, MAX_GAP = 360;
+const STEP_MIN = 15, MAX_GAP = 360, MAX_DUR = 720;
+const DUR_CHIPS = [30, 60, 90, 120, 180];
 const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const kmTxt = (d) => (d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1)} km`);
 const gapTxt = (g) => (g < 60 ? `${g} min` : `${Math.floor(g / 60)} h${g % 60 ? ` ${g % 60} min` : ''}`);
@@ -47,6 +51,7 @@ export class StopFlow {
         { title: '¿Qué van a hacer?', sub: `Después de ${this._esc(f.fromName)}`, mount: (el) => this._sfMountWhat(f, el), valid: () => !!f.act },
         { title: '¿Dónde?', sub: 'Cerca de la parada anterior', mount: (el, sec) => this._sfMountWhere(f, el, sec), valid: () => !!this._sfWhere(f), onEnter: () => this._sfPaintPlaces(f) },
         { title: '¿A qué hora llegan?', sub: `Después de ${this._esc(f.fromName)}`, mount: (el) => this._sfMountTime(f, el) },
+        { title: '¿Cuánto tiempo ahí?', sub: 'Así sabemos a qué hora siguen o terminan', mount: (el) => this._sfMountDur(f, el), onEnter: () => this._sfPaintDur(f) },
         { title: '¿Alguna indicación?', sub: 'Solo para esta parada', optional: true, mount: (el) => this._sfMountNote(f, el) },
       ],
     });
@@ -59,17 +64,19 @@ export class StopFlow {
     const t0 = new Date(a.scheduled_at);
     // la siguiente parada empieza donde termina la anterior: la última
     // parada, o el fin del plan si aún no hay paradas
-    const base = last ? (last.after || 0) : (a.ends_at ? Math.max(0, Math.round((new Date(a.ends_at) - t0) / 60000)) : 0);
+    // (si la última parada tiene duración, la siguiente empieza al terminar ésa)
+    const base = last ? (last.after || 0) + (last.dur || 0) : (a.ends_at ? Math.max(0, Math.round((new Date(a.ends_at) - t0) / 60000)) : 0);
+    const fromEnd = last ? !!last.dur : !!a.ends_at;
     let cat = String(last?.cat || this._place?.category || 'RESTAURANTS').toUpperCase();
     if (!GROUPS.some(g => g[0] === cat)) cat = 'RESTAURANTS';
     return {
       a, cur, last, cat,
       acts: (this._actTypes || []).length ? this._actTypes : FALLBACK_ACTS,
-      base, fromEnd: !last && !!a.ends_at, lastT: new Date(t0.getTime() + base * 60000),
+      base, fromEnd, lastT: new Date(t0.getTime() + base * 60000),
       origin: last?.lat ? { lat: Number(last.lat), lng: Number(last.lng) } : { lat: Number(a.lat), lng: Number(a.lng) },
       fromName: last?.name || a.place_name || 'la parada anterior',
       exclude: new Set([String(a.place_id || ''), ...cur.map(x => String(x.place_id))]),
-      act: null, place: null, custom: null, gap: !last && a.ends_at ? 15 : 60, note: '', all: [],
+      act: null, place: null, custom: null, gap: fromEnd ? 15 : 60, dur: 60, note: '', all: [],
     };
   }
 
@@ -219,7 +226,36 @@ export class StopFlow {
     el.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('on', +b.dataset.g === f.gap));
   }
 
-  // ── Paso 4 · indicación ───────────────────────────────────────────────
+  // ── Paso 4 · cuánto tiempo ────────────────────────────────────────────
+  _sfMountDur(f, el) {
+    f.durEl = el;
+    el.innerHTML = `
+      <div class="wp-st-clock"><button type="button" data-d="-1" aria-label="Menos tiempo">−</button><span class="wp-st-clock-v"><b></b></span><button type="button" data-d="1" aria-label="Más tiempo">+</button></div>
+      <p class="wp-st-clock-sub"></p>
+      <div class="wp-st-chips wrap">${DUR_CHIPS.map(m => `<button type="button" data-m="${m}">${gapTxt(m)}</button>`).join('')}</div>`;
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || b.disabled) return;
+      if (b.dataset.d) f.dur = Math.max(STEP_MIN, Math.min(MAX_DUR, f.dur + STEP_MIN * +b.dataset.d));
+      else if (b.dataset.m) f.dur = +b.dataset.m;
+      this._haptic?.('light');
+      this._sfPaintDur(f);
+    });
+    this._sfPaintDur(f);
+  }
+
+  _sfPaintDur(f) {
+    const el = f.durEl; if (!el) return;
+    const clock = el.querySelector('.wp-st-clock b'), txt = gapTxt(f.dur);
+    if (clock.textContent && clock.textContent !== txt) { clock.classList.remove('tick'); void clock.offsetWidth; clock.classList.add('tick'); }
+    clock.textContent = txt;
+    const at = new Date(f.lastT.getTime() + f.gap * 60000), out = new Date(at.getTime() + f.dur * 60000);
+    el.querySelector('.wp-st-clock-sub').textContent = `Llegan ${this._hhmm(at)} · se van ${this._hhmm(out)}`;
+    el.querySelector('[data-d="-1"]').disabled = f.dur <= STEP_MIN;
+    el.querySelector('[data-d="1"]').disabled = f.dur >= MAX_DUR;
+    el.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', +b.dataset.m === f.dur));
+  }
+
+  // ── Paso 5 · indicación ───────────────────────────────────────────────
   _sfMountNote(f, el) {
     el.innerHTML = `<textarea class="wp-st-in" data-zoom="Indicación para esta parada" maxlength="140" rows="3" placeholder="Ej. Aquí cada quien pide lo suyo" autocapitalize="sentences"></textarea>
       <p class="wp-st-hint">Las reglas (quién paga, puntualidad…) son de todo el plan.</p>`;
@@ -233,7 +269,7 @@ export class StopFlow {
     const stop = {
       place_id: String(W.place_id), name: W.name || W.displayName || 'Lugar',
       lat: W.lat != null ? Number(W.lat) : undefined, lng: W.lng != null ? Number(W.lng) : undefined,
-      cat: W.category || A.cat || '', after: f.base + f.gap,
+      cat: W.category || A.cat || '', after: f.base + f.gap, dur: f.dur,
       act: A.key, emoji: A.emoji,
       note: f.note.trim() || undefined, address: W.address || W.formattedAddress || undefined,
     };

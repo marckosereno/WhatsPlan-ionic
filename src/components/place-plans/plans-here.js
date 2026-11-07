@@ -116,9 +116,9 @@ export class PlansHere {
     return esc ? this._esc(n) : n;
   }
 
-  _phPaintSaves(v) {
-    const a = v.at >= 0 ? v.list[v.at] : null;
-    if (a) v.sheet.setRight(this._phSaveTop(v, a));
+  _phPaintSaves(v, user = false) {
+    const a = v.at >= 0 ? v.list[v.at] : null, top = v.sheet.root.querySelector('.wp-st-save');
+    if (a) top ? this._phSaveState(top, v.saved.has(a.id), user) : v.sheet.setRight(this._phSaveTop(v, a));
     v.sheet.body.querySelectorAll('.wp-ph2-it').forEach(it => {
       const on = v.saved.has(v.list[+it.dataset.open]?.id), b = it.querySelector('.wp-ph4-save');
       b.classList.toggle('on', on); b.setAttribute('aria-label', on ? 'Quitar de guardados' : 'Guardar');
@@ -129,7 +129,7 @@ export class PlansHere {
     const a = b.dataset.act === 'save-top' ? v.list[v.at] : v.list[+b.closest('[data-open]').dataset.open]; if (!a) return;
     const on = !v.saved.has(a.id);
     on ? v.saved.add(a.id) : v.saved.delete(a.id);
-    this._phPaintSaves(v); this._haptic?.('light');
+    this._phPaintSaves(v, true); this._haptic?.(on ? 'medium' : 'light');
     try { await setSaved(a.id, on); this._showToast(on ? 'Guardado · lo verás en tu perfil' : 'Quitado de guardados'); }
     catch (e) { on ? v.saved.delete(a.id) : v.saved.add(a.id); this._phPaintSaves(v); this._showToast(e.message); }
   }

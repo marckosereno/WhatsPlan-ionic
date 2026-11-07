@@ -72,11 +72,24 @@ export class PlansHereDetail {
     };
   }
 
-  // Guardar, redondo como el botón de atrás
+  // Guardar, redondo como el botón de atrás: contorno + relleno con el
+  // degradado que se descubre de abajo hacia arriba (my-plan.css .wp-st-save)
   _phSaveTop(v, a) {
-    const on = v.saved.has(a.id);
-    return `<button type="button" class="wp-st-back wp-st-save${on ? ' on' : ''}" data-act="save-top" aria-label="${on ? 'Quitar de guardados' : 'Guardar'}">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4z"/></svg></button>`;
+    const on = v.saved.has(a.id), d = 'M6.5 4.5h11v15.5l-5.5-3.8-5.5 3.8z';
+    return `<button type="button" class="wp-st-back wp-st-save${on ? ' on' : ''}" data-act="save-top" data-nopulse aria-label="${on ? 'Quitar de guardados' : 'Guardar'}">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="wpSaveG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7dd3fc"/><stop offset="0.45" stop-color="#38bdf8"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
+        <path class="f" d="${d}" fill="url(#wpSaveG)"/><path class="o" d="${d}" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/></svg></button>`;
+  }
+
+  // Cambia el botón de arriba sin volver a dibujarlo (para que se anime);
+  // el saltito y el aro solo cuando lo tocaste tú
+  _phSaveState(b, on, user) {
+    if (b.classList.contains('on') === on) return;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-label', on ? 'Quitar de guardados' : 'Guardar');
+    if (!user || !on) return;
+    b.classList.remove('burst'); void b.offsetWidth; b.classList.add('burst');
+    setTimeout(() => b.classList.remove('burst'), 650);
   }
 
   _phFootList(v) {
