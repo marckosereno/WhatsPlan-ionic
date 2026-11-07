@@ -1,0 +1,111 @@
+// ════════════════════════════════════════════════════════════════════
+// WHATSPLAN — place-plans/plans-here-detail.js
+// Plan completo dentro de "Planes aquí" (plans-here.js), en la misma
+// hoja grande: al tocar un plan de otros, la lista se va y entra el plan
+// con todo (lo mismo que ve quien ya va: quién va, mosaicos, ruta,
+// reglas, nota). Su encabezado viaja desde el racimo tocado (FLIP) y lo
+// demás sube en cascada. Pie: el botón del caso (Unirme · Aceptar + No
+// puedo · Avísame). Atrás regresa a todos los planes, donde estabas.
+// Los planes tuyos o a los que vas abren "Tu plan" / "Vas a ir" (con
+// atrás de vuelta aquí).
+//
+// Mixin de PlaceModal2. Estilos: /styles/plans-here.css (.wp-ph2-*) y
+// las piezas de "Tu plan" (my-plan.css, .wp-mp-*)
+// ════════════════════════════════════════════════════════════════════
+import { addElastic } from '/src/components/place-plans/elastic.js';
+import { pulse } from '/src/components/place-plans/pulse.js';
+
+const SPRING = 'cubic-bezier(0.34, 1.25, 0.64, 1)';
+const PLUS = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const BELL = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+
+export class PlansHereDetail {
+  _phOpen(v, i, row) {
+    const a = v.list[i]; if (!a) return;
+    const k = this._phKind(v, a);
+    if (k === 'own' || k === 'go') {   // lo tuyo se ve (y se edita) en "Tu plan"
+      v.sheet.close();
+      setTimeout(() => this._openMyPlanSheet(a, { onBack: () => this._openPlansHereSheet() }), 360);
+      return;
+    }
+    const vp = v.sheet.root.querySelector('.wp-st-vp');
+    const list = v.sheet.body.querySelector('.wp-ph2-list'), det = v.sheet.body.querySelector('.wp-ph2-detail');
+    const from = row.querySelector('.wp-ph4-thumb').getBoundingClientRect();
+    v.at = i; v.scroll = vp.scrollTop;
+    det.innerHTML = this._phDetailHtml(v, a);
+    list.hidden = true; det.hidden = false; vp.scrollTop = 0;
+    v.sheet.setTitle(`Plan de ${this._phName(a.creator_id)}`);
+    v.sheet.setTheme(k === 'inv' ? 'invited' : 'explore');
+    this._phPaintFoot(v, a);
+    addElastic(det.querySelector('.wp-mp-who'), 'x');
+    this._haptic?.('light');
+    // el encabezado sale del racimo tocado
+    const head = det.querySelector('.wp-mp-card'), to = head.getBoundingClientRect();
+    head.animate([
+      { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, transformOrigin: '0 0', opacity: 0.6 },
+      { transform: 'none', transformOrigin: '0 0', opacity: 1 },
+    ], { duration: 440, easing: SPRING });
+    det.classList.remove('enter'); void det.offsetWidth; det.classList.add('enter');
+  }
+
+  _phBack(v) {
+    const vp = v.sheet.root.querySelector('.wp-st-vp');
+    const list = v.sheet.body.querySelector('.wp-ph2-list'), det = v.sheet.body.querySelector('.wp-ph2-detail');
+    const i = v.at; v.at = -1;
+    det.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(12px)' }], { duration: 160, easing: 'ease-in' }).onfinish = () => {
+      det.hidden = true; det.innerHTML = '';
+      list.hidden = false; vp.scrollTop = v.scroll;
+      v.sheet.setTitle('Planes aquí');
+      v.sheet.setTheme('explore');
+      v.sheet.foot.innerHTML = this._phFootList(v); v.sheet.relayout();
+      pulse(list.querySelector(`.wp-ph2-it[data-open="${i}"]`));
+    };
+  }
+
+  _phDetailHtml(v, a) {
+    const route = this._planRouteHtml(a, { owner: false });
+    return `
+      ${this._mpCard(a)}
+      ${this._mpSocial(a)}
+      <div class="wp-mp-lbl">Quién va</div>
+      <div class="wp-mp-who">${this._mpWho(a, false, v.me)}</div>
+      <div class="wp-mp-grid">${this._mpTiles(a, false)}</div>
+      ${route ? `<div class="wp-mp-route">${route}</div>` : ''}
+      ${this._planRulesHtml(a, 'wp-mp-rules')}
+      ${a.note ? `<div class="wp-mp-note"><small>📝 Nota</small><p>${this._esc(a.note)}</p></div>` : ''}`;
+  }
+
+  _phFootList(v) {
+    return v.mine ? '' : `<button type="button" class="wp-ph2-new" data-act="new">${PLUS}<span>Planear otra visita</span></button>`;
+  }
+
+  // Pie del plan abierto: el botón del caso (+ "No puedo" si te invitaron)
+  _phPaintFoot(v, a) {
+    const k = this._phKind(v, a), full = this._planFull(a), waiting = (a.waitlist || []).includes(v.me);
+    const no = k === 'inv' ? '<button type="button" class="wp-ph2-btn ghost" data-act="no">No puedo</button>' : '';
+    const main = !full ? `<button type="button" class="wp-ph2-btn" data-act="yes">${k === 'inv' ? 'Aceptar' : `${PLUS}<span>Unirme</span>`}</button>`
+      : waiting ? '<button type="button" class="wp-ph2-btn soft on" data-act="wl-off">Te avisaremos si se libera un cupo</button>'
+        : `<button type="button" class="wp-ph2-btn soft" data-act="wl-on">${BELL}<span>Avísame si se libera un cupo</span></button>`;
+    v.sheet.foot.innerHTML = `<div class="wp-ph2-acts">${no}${main}</div>`;
+    v.sheet.relayout();
+  }
+
+  async _phDo(v, b) {
+    const act = b.dataset.act;
+    if (act === 'new') { v.sheet.close(); setTimeout(() => this._openPlanSheet(), 140); return; }
+    const a = v.list[v.at]; if (!a) return;
+    b.disabled = true;
+    if (act === 'yes' || act === 'no') {
+      const yes = act === 'yes';
+      if (await this._planRpc('respond_plan', { p_activity: a.id, p_accept: yes }, yes ? `¡Vas! ${this._planWhen(a.scheduled_at)}` : 'Le avisamos que no puedes')) { v.sheet.close(); return; }
+    } else {
+      const on = act === 'wl-on';
+      if (await this._planRpc('plan_waitlist', { p_activity: a.id, p_on: on }, on ? 'Listo · te avisamos si se libera un cupo' : 'Ya no estás en la lista de espera')) {
+        a.waitlist = on ? [...(a.waitlist || []), v.me] : (a.waitlist || []).filter(id => id !== v.me);
+        this._phPaintFoot(v, a);
+        return;
+      }
+    }
+    b.disabled = false;
+  }
+}
