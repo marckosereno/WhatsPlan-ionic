@@ -822,7 +822,7 @@ export class ActivityModal {
                 <div id="am-chips-next-wrap" style="display:none;position:absolute;right:0;top:0;bottom:0;z-index:2;align-items:center;">
                   <div style="width:48px;height:100%;background:linear-gradient(to left,white 60%,transparent);"></div>
                   <button id="am-chips-arrow" style="position:absolute;right:8px;width:28px;height:28px;border-radius:50%;background:#111;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.25);touch-action:manipulation;flex-shrink:0;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
                 </div>
               </div>
@@ -1110,7 +1110,7 @@ export class ActivityModal {
     }
 
     const _checkSvg = '<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM16.6402 8.2318C17.0645 8.58537 17.1218 9.21593 16.7682 9.64021L11.7682 15.6402C11.5937 15.8497 11.3411 15.9788 11.0691 15.9976C10.797 16.0165 10.5291 15.9234 10.3273 15.74L7.32733 13.0127C6.91868 12.6412 6.88856 12.0087 7.26007 11.6001C7.63157 11.1914 8.26402 11.1613 8.67268 11.5328L10.9002 13.5578L15.2318 8.35984C15.5854 7.93556 16.2159 7.87824 16.6402 8.2318Z"/></svg>';
-    const _arrowSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const _arrowSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     container.innerHTML = places.map(p => {
       const photo = p.photoUrl || (p.photosUrls&&p.photosUrls[0]) || '';
@@ -2734,7 +2734,7 @@ export class ActivityModal {
       '<div style="font-size:11px;color:#888;margin-top:2px;">Arma tu itinerario completo</div>',
       '</div>',
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none">',
-      '<path d="M9 18l6-6-6-6" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      '<path d="M5 12h14M13 6l6 6-6 6" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     ].join('');
 
     const btnExisting = document.createElement('button');
@@ -2747,7 +2747,7 @@ export class ActivityModal {
       '<div style="font-size:11px;color:#aaa;margin-top:2px;">Agrégala a uno que ya tienes</div>',
       '</div>',
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none">',
-      '<path d="M9 18l6-6-6-6" stroke="#d1d5db" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      '<path d="M5 12h14M13 6l6 6-6 6" stroke="#d1d5db" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     ].join('');
 
     const btnSkip = document.createElement('button');
