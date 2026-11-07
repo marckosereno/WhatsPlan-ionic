@@ -169,8 +169,12 @@ async function planSummary(req, res) {
   const places = ids.length ? await sbGet(`places?place_id=in.(${ids.map(encodeURIComponent).join(',')})&select=*`) : [];
   const byId = (id) => places.find(p => String(p.place_id) === String(id));
   const t0 = new Date(a.scheduled_at);
-  const hh = (d) => d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Mexico_City' });
-  const route = [`1. ${a.place_name} a las ${hh(t0)}`, ...stops.map((x, i) => `${i + 2}. ${x.name} a las ${hh(new Date(t0.getTime() + (x.after || 0) * 60000))}${x.note ? ` (${x.note})` : ''}`)];
+  // "7 pm", "12:45 am" (con números, como en la app)
+  const hh = (d) => {
+    const [h, m] = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' }).split(':').map(Number);
+    return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'am' : 'pm'}`;
+  };
+  const route = [`1. ${a.place_name} a las ${hh(t0)}`, ...stops.map((x, i) => `${i + 2}. ${x.name} a las ${hh(new Date(t0.getTime() + (x.after || 0) * 60000))}${x.dur ? `, se quedan ${x.dur} min` : ''}${x.note ? ` (${x.note})` : ''}`)];
   const prompt = [
     `Escribe un resumen breve (70 a 100 palabras) en español del plan "${a.title}".`,
     `Ruta del plan:\n${route.join('\n')}`,
@@ -178,6 +182,7 @@ async function planSummary(req, res) {
     a.note ? `Nota de quien organiza: ${a.note}` : '',
     `Lugares:\n${[byId(a.place_id) ? placeBrief(byId(a.place_id), a.place_name) : `- ${a.place_name}`, ...stops.map(x => placeBrief(byId(x.place_id), x.name))].join('\n')}`,
     'Habla de los lugares (qué tienen de especial según su descripción o reseñas), menciona de forma discreta lo que se puede hacer ahí y termina con una frase de qué tal pinta el plan.',
+    'Escribe las horas siempre con números y am/pm, igual que arriba (por ejemplo 7 pm o 12:45 am), nunca con letras.',
     'Tono cálido y natural, como un amigo que conoce la zona. Sin emojis, sin listas, sin comillas, sin inventar datos (precios, horarios). Responde solo con el resumen.',
   ].filter(Boolean).join('\n\n');
   const summary = await callGroq([

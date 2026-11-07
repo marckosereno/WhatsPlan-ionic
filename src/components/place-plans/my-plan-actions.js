@@ -5,6 +5,7 @@
 //  · Hora → hora a tu gusto (time-picker.js), conserva la duración
 //  · Dura → chips 1 h · 2 h · 3 h · 5 h · Todo el día
 //  · Cupos → número grande con − / +, y "Cerrar el plan con los que van"
+//  · Nombre (lápiz junto al título) → campo con sugerencia según los lugares
 //  · Invitar → buscador de a quién sigues (people-picker.js)
 //  · Cancelar / Ya no puedo ir → segundo toque para confirmar
 // Al guardar se cierra la hoja (los datos se recargan solos).
@@ -32,6 +33,7 @@ export class MyPlanActions {
     else if (act === 'dur') this._mpDur(ctx, b);
     else if (act === 'cupo') this._mpCupo(ctx, b);
     else if (act === 'invite') this._mpInvite(ctx, b);
+    else if (act === 'rename') this._mpRename(ctx, b);
     else if (act === 'pick') this._mpPick(ctx, +b.dataset.i);
     else if (act === 'leg') this._mpLeg(ctx, b);
     else if (act === 'summary') this._mpSummary(ctx, b);
@@ -82,6 +84,27 @@ export class MyPlanActions {
         this._mpSave(ctx, 'reschedule_plan', { p_activity: a.id, p_at: a.scheduled_at, p_duration: pick }, `Ahora dura ${this._pwDurTxt(pick)} · ya les avisamos`);
       },
     });
+  }
+
+  // Nombre del plan: con más lugares puede que ya no se llame igual
+  _mpRename(ctx, b) {
+    const a = ctx.a, names = ctx.stops.map(s => s.name);
+    const tip = names.length > 1 ? (names.length === 2 ? `${names[0]} y ${names[1]}` : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`) : '';
+    const box = document.createElement('div');
+    box.innerHTML = `<input class="wp-st-in" maxlength="60" autocapitalize="sentences" enterkeyhint="done" value="${this._esc(a.title)}">
+      ${tip && tip.length <= 60 && tip !== a.title ? `<p class="wp-mp-z-sub" style="margin:14px 0 8px;text-align:center">Sugerencia</p><div class="wp-st-chips wrap"><button type="button" class="wp-mp-z-tip" data-tip>${this._esc(tip)}</button></div>` : ''}`;
+    const inp = box.querySelector('input');
+    box.querySelector('[data-tip]')?.addEventListener('click', () => { inp.value = tip; inp.focus(); });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
+    openZoom({
+      from: b.closest('.wp-mp-hero-t').getBoundingClientRect(), label: 'Nombre del plan', content: box, field: inp, doneLabel: 'Guardar',
+      onClose: () => {
+        const t = inp.value.trim().replace(/\s+/g, ' ');
+        if (t.length < 3 || t === a.title) return;
+        this._mpSave(ctx, 'rename_plan', { p_activity: a.id, p_title: t }, 'Listo · nuevo nombre');
+      },
+    });
+    setTimeout(() => inp.focus(), 60);
   }
 
   // Cupos: número grande con − / +; "Listo" guarda si cambió
