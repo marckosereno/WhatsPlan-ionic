@@ -6,7 +6,7 @@
 // Al tocar la línea entre dos lugares sale una burbujita con el tramo:
 // cuánto se quedan en el lugar anterior, la distancia y el tiempo de
 // camino aproximado al siguiente (en línea recta, a pie o en auto).
-// Arriba a la derecha la insignia gris "Abrir en el mapa" (como "Más info"). Quien organiza puede quitar
+// Arriba a la derecha la insignia gris "Abrir mapa" (como "Más info"). Quien organiza puede quitar
 // una parada (×) y agregar otra al final.
 // Las fotos de las paradas se buscan después (_planPlaces) y se pintan
 // en la tira, la tarjeta principal y la ruta sin volver a dibujar todo.
@@ -29,7 +29,7 @@ export class MyPlanRoute {
           ${owner && i > 0 ? `<button type="button" class="wp-mp-rt-x" data-rm="${i}" aria-label="Quitar parada">×</button>` : ''}
         </div></div>`;
     return `<section class="wp-mp-rt">
-        <div class="wp-mp-head"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route"><span>Abrir en el mapa</span>${NEXT}</button>` : ''}</div>
+        <div class="wp-mp-head"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route"><span>Abrir mapa</span>${NEXT}</button>` : ''}</div>
         ${stops.map(item).join('')}
         ${owner && stops.length < 4 ? `<button type="button" class="wp-mp-rt-add" data-a="addstop"><span class="wp-mp-rt-n">+</span><span><b>Agregar otra parada</b><small>¿Siguen en otro lado? Arma el itinerario</small></span></button>` : ''}
       </section>`;
