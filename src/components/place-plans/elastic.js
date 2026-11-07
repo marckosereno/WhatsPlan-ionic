@@ -12,6 +12,9 @@
 // Un scroll de adentro que sí se puede mover "se queda" el gesto, para
 // que el de afuera no se estire a la vez.
 //
+// En las tiras horizontales se mueve lo de adentro (no la tira): si se
+// mueve la tira, su borde recorta las tarjetas y se ven cortadas.
+//
 // Uso: addElastic(el, 'y' | 'x')
 // ════════════════════════════════════════════════════════════════════
 
@@ -34,14 +37,17 @@ export function addElastic(el, axis = 'y') {
   const room = () => (Y ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth);
   const atStart = () => scroll() <= 0;
   const atEnd = () => scroll() >= room() - 1;
-  const show = (v) => { el.style.transform = v ? (Y ? `translate3d(0, ${v}px, 0)` : `translate3d(${v}px, 0, 0)`) : ''; };
+  const tr = (v) => (Y ? `translate3d(0, ${v}px, 0)` : `translate3d(${v}px, 0, 0)`);
+  const parts = () => (Y ? [el] : [...el.children]);   // lo que se estira
+  const show = (v) => parts().forEach(c => { c.style.transform = v ? tr(v) : ''; });
+  const ease = (t) => parts().forEach(c => { c.style.transition = t; });
 
   el.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
     start = { x: t.clientX, y: t.clientY };
     last = Y ? t.clientY : t.clientX;
     raw = 0; locked = null; touching = true;
-    el.style.transition = 'none';
+    if (Y) el.style.transition = 'none';
   }, { passive: true });
 
   el.addEventListener('touchmove', (e) => {
@@ -60,6 +66,7 @@ export function addElastic(el, axis = 'y') {
     const next = raw + d;
     raw = raw && Math.sign(next) !== Math.sign(raw) ? 0 : next;   // regresó al borde → deja de estirar
     e._wpElastic = true;
+    if (!Y) ease('none');
     show(band(raw));
   }, { passive: true });
 
@@ -67,8 +74,9 @@ export function addElastic(el, axis = 'y') {
     start = null; touching = false;
     if (!raw) return;
     raw = 0;
-    el.style.transition = SPRING;
+    ease(SPRING);
     show(0);
+    if (!Y) setTimeout(() => { if (!raw) ease(''); }, 620);   // las tarjetas recuperan su propia transición
   };
   el.addEventListener('touchend', release, { passive: true });
   el.addEventListener('touchcancel', release, { passive: true });
@@ -82,8 +90,8 @@ export function addElastic(el, axis = 'y') {
     prev = s; prevT = now;
     if (jump || touching || Math.abs(v) < 0.6 || !(s <= 0 || s >= room() - 1)) return;
     const k = -Math.sign(v) * Math.min(48, Math.abs(v) * KICK * 16);
-    el.animate([{ transform: 'none' }, { transform: Y ? `translate3d(0, ${k}px, 0)` : `translate3d(${k}px, 0, 0)`, offset: 0.3 }, { transform: 'none' }],
-      { duration: 520, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' });
+    parts().forEach(c => c.animate([{ transform: 'none' }, { transform: tr(k), offset: 0.3 }, { transform: 'none' }],
+      { duration: 520, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }));
     v = 0;
   }, { passive: true });
 }

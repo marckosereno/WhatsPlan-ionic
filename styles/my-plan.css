@@ -163,7 +163,7 @@
 .wp-mp-p-av { position: relative; display: block; }
 .wp-mp-p-top { position: absolute; left: 50%; top: -11px; transform: translateX(-50%) rotate(-8deg); font-size: 17px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18)); }
 /* insignia del papel: Organizador · Va · Pendiente */
-.wp-mp-p em.wp-mp-role { height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.1px; white-space: nowrap; }
+.wp-mp-p em.wp-mp-role { height: 16px; padding: 0 6px; border-radius: 999px; font-size: 9px; font-weight: 600; letter-spacing: 0.1px; white-space: nowrap; }
 .wp-mp-role.r-go { background: #eef6ff; color: var(--mp-blue); }
 .wp-mp-role.r-wait { background: #fff6e5; color: #b45309; }
 .wp-mp-p.host .wp-mp-role { background: rgba(255, 255, 255, 0.24); color: #fff; }
