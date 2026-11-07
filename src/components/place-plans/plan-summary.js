@@ -19,6 +19,11 @@ import { getSupabase } from '/src/services/SupabaseService.js';
 const SPARK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9zM19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9z"/></svg>';
 
 export class PlanSummary {
+  // Texto del resumen con las horas en negrita ("7 pm", "8:15 p. m.", "19:00")
+  _mpSumFmt(text) {
+    return this._esc(text).replace(/\b\d{1,2}(?::\d{2})?\s?(?:[ap]\.?\s?m\.?|hrs?\b)|\b\d{1,2}:\d{2}\b/gi, (m) => `<b>${m}</b>`);
+  }
+
   // Firma del plan (igual que en api/groq-description.js)
   _mpSumSig(a) {
     const stops = Array.isArray(a.stops) ? a.stops : [];
@@ -35,8 +40,8 @@ export class PlanSummary {
     return `<section class="wp-mp-ai${a.ai_summary ? ' has' : ''}${old ? ' old' : ''}">
         ${head}
         ${!a.ai_summary ? `<p class="wp-mp-ai-hint">Un resumen de los lugares del plan, qué se puede hacer ahí y qué tal pinta.</p>${go('Crear resumen')}`
-          : old ? `<p class="wp-mp-ai-hint">El plan cambió · este resumen es de antes</p><p class="wp-mp-ai-txt">${this._esc(a.ai_summary)}</p>`
-            : `<p class="wp-mp-ai-txt">${this._esc(a.ai_summary)}</p>`}
+          : old ? `<p class="wp-mp-ai-hint">El plan cambió · este resumen es de antes</p><p class="wp-mp-ai-txt">${this._mpSumFmt(a.ai_summary)}</p>`
+            : `<p class="wp-mp-ai-txt">${this._mpSumFmt(a.ai_summary)}</p>`}
       </section>`;
   }
 
@@ -66,7 +71,7 @@ export class PlanSummary {
     if (err) { this._showToast(err); box.outerHTML = this._mpSummaryHtml(ctx.a); return; }
     ctx.a.ai_summary = text; ctx.a.ai_summary_sig = this._mpSumSig(ctx.a);
     box.classList.add('has');
-    box.insertAdjacentHTML('beforeend', `<p class="wp-mp-ai-new">${this._esc(text)}</p>`);
+    box.insertAdjacentHTML('beforeend', `<p class="wp-mp-ai-new">${this._mpSumFmt(text)}</p>`);
     this._haptic?.('success');
   }
 }

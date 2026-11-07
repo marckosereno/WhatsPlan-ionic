@@ -21,7 +21,8 @@
 // ════════════════════════════════════════════════════════════════════
 import { photoSmall } from '/src/utils/photo-url.js';
 
-const VIS = { public: 'Cualquiera', followers: 'Mis seguidores', invited: 'Solo invitados' };
+const VIS = { public: 'Cualquier persona', followers: 'Quienes siguen a quien organiza', invited: 'Solo invitados' };
+const NOTE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
 const PASTEL = ['#bfdbfe', '#fde68a', '#ddd6fe', '#fecdd3', '#bbf7d0', '#fed7aa'];
 const ARROW = '<svg class="wp-mp-go" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const DOWN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
@@ -59,7 +60,8 @@ export class MyPlanHero {
 
   // Datos del lugar elegido para la tarjeta (el primero = el plan)
   _mpStopInfo(a, s, i) {
-    const dur = s.mins ? this._pwDurTxt(s.mins) : '';
+    const h = Math.floor(s.mins / 60), r = s.mins % 60;   // corto en la cápsula: "1 h 30 min"
+    const dur = s.mins ? (h ? `${h} h${r ? ` ${r} min` : ''}` : `${r} min`) : '';
     if (i === 0) return {
       when: `${this._planWhen(a.scheduled_at)}${a.ends_at ? ` → ${this._hhmm(new Date(a.ends_at))}` : ''}`,
       caps: `${dur ? `<span>⏳ ${dur}</span><i></i>` : ''}<span>🎟️ ${a.max_participants ? `${(a.participants || []).length} de ${a.max_participants}` : (a.participants || []).length}</span>`,
@@ -85,7 +87,6 @@ export class MyPlanHero {
           <b>${this._esc(a.title)}</b>
           <small class="wp-mp-hero-place">${this._esc(s.name)}</small>
           <small class="wp-mp-hero-when">${this._esc(info.when)}</small>
-          <em class="wp-mp-hero-note" hidden></em>
           <span class="wp-mp-hero-faces">${P.slice(0, 4).map(id => this._planFace(id)).join('')}${owner ? '<button type="button" class="wp-mp-hero-add" data-a="invite" aria-label="Invitar">+</button>' : ''}</span>
           <span class="wp-mp-caps">${info.caps}</span>
         </div>
@@ -101,8 +102,7 @@ export class MyPlanHero {
     $('.wp-mp-hero-place').textContent = s.name;
     $('.wp-mp-hero-when').textContent = info.when;
     $('.wp-mp-caps').innerHTML = info.caps;
-    const note = $('.wp-mp-hero-note');
-    note.hidden = !info.note; note.textContent = info.note ? `“${info.note}”` : '';
+    $('.wp-mp-note-slot').innerHTML = this._mpNote(i ? s.note : ctx.a.note, i ? `Nota para ${s.name}` : 'Nota del plan');
     const t = $('.wp-mp-hero-t'); t.classList.remove('swap'); void t.offsetWidth; t.classList.add('swap');
     // los renglones de abajo también pasan a ser los de ese lugar
     const rows = $('.wp-mp-rows'), open = rows.classList.contains('open');
@@ -121,11 +121,17 @@ export class MyPlanHero {
     return ends.length ? new Date(Math.max(...ends)) : null;
   }
 
+  // Nota tipo post-it (la del plan o la de la parada elegida)
+  _mpNote(text, label = 'Nota del plan') {
+    if (!text) return '';
+    return `<div class="wp-mp-note"><small>${this._esc(label)}</small><div class="wp-mp-note-in"><p>${this._esc(text)}</p>${NOTE}</div></div>`;
+  }
+
   // Con paradas: renglón "Termina" (la salida completa)
   _mpEndRow(a, row) {
     const end = this._mpEndAt(a);
     if (!end || !(a.stops || []).length || (a.ends_at && end.getTime() === new Date(a.ends_at).getTime())) return '';
-    return row('Termina todo', this._hhmm(end));
+    return `<div class="wp-mp-row end"><span>Termina todo</span><b class="wp-mp-endpill">🏁 ${this._hhmm(end)}</b></div>`;
   }
 
   // Renglones de una parada (i > 0): llegan, se van, dura, qué hacen
@@ -136,7 +142,6 @@ export class MyPlanHero {
         ${out ? row('Se van', this._hhmm(out)) : ''}
         ${row('Dura', s.mins ? this._pwDurTxt(s.mins) : 'Sin hora de fin')}
         ${s.act ? row('Qué hacen', `${s.emoji} ${this._esc(this._mpActLabel(s.act))}`) : ''}
-        ${s.note ? `<div class="wp-mp-row col"><span>Nota</span><p>${this._esc(s.note)}</p></div>` : ''}
         ${s.address ? `<div class="wp-mp-row more col"><span>Dirección</span><p>${this._esc(s.address)}</p></div>` : ''}`;
   }
 
@@ -157,9 +162,8 @@ export class MyPlanHero {
     return `<div class="wp-mp-rows">
         ${top}
         ${row('Cupos', max ? `${P.length} de ${max}` : `${P.length}`, owner && max && 'cupo', true)}
-        ${row('Quién puede', VIS[a.visibility] || VIS.public, '', true)}
+        ${row('Quién se puede unir', VIS[a.visibility] || VIS.public, '', true)}
         ${rules ? `<div class="wp-mp-row more col"><span>Reglas</span>${rules}</div>` : ''}
-        ${a.note ? `<div class="wp-mp-row more col"><span>Nota</span><p>${this._esc(a.note)}</p></div>` : ''}
         <button type="button" class="wp-mp-moreinfo" data-a="more"><span>Más info</span>${DOWN}</button>
       </div>`;
   }
