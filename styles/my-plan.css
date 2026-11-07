@@ -159,11 +159,15 @@
 .wp-mp-p i { display: block; width: 44px; height: 44px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
 .wp-mp-p b { max-width: 64px; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wp-mp-p em { font-style: normal; font-size: 16px; line-height: 1; height: 18px; display: flex; align-items: center; }
-/* estado: insignia redonda con ícono (sin emojis de palomita o tache) */
-.wp-mp-p em[class^="st-"] { width: 18px; justify-content: center; border-radius: 50%; }
-.wp-mp-p em.st-go { background: #2563eb; }
-.wp-mp-p em.st-wait { background: #f59e0b; }
-.wp-mp-p em.st-no { background: #9ca3af; }
+/* sello con el emoji encima (corona de quien organiza) */
+.wp-mp-p-av { position: relative; display: block; }
+.wp-mp-p-top { position: absolute; left: 50%; top: -11px; transform: translateX(-50%) rotate(-8deg); font-size: 17px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18)); }
+/* insignia del papel: Organizador · Va · Pendiente */
+.wp-mp-p em.wp-mp-role { height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.1px; white-space: nowrap; }
+.wp-mp-role.r-go { background: #eef6ff; color: var(--mp-blue); }
+.wp-mp-role.r-wait { background: #fff6e5; color: #b45309; }
+.wp-mp-p.host .wp-mp-role { background: rgba(255, 255, 255, 0.24); color: #fff; }
+.wp-mp-p.host { padding-top: 14px; }
 /* el único acento fuerte de la hoja: quien organiza */
 .wp-mp-p.host { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5); }
 .wp-mp-p.host i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
@@ -209,7 +213,7 @@
 .wp-mp-rt-t b { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wp-mp-rt-t small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
 .wp-mp-rt-t em { font-size: 12.5px; font-style: italic; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-rt-x { flex: none; width: 30px; height: 30px; padding: 0; border: none; border-radius: 50%; background: #f3f4f6; color: #6b7280; font-size: 18px; line-height: 1; }
+.wp-mp-rt-x { flex: none; height: 26px; padding: 0 10px; border: none; border-radius: 999px; background: #f3f4f6; color: #6b7280; font: inherit; font-size: 11.5px; font-weight: 600; }
 .wp-mp-rt-add { padding: 0; border: none; background: none; text-align: left; font: inherit; color: var(--mp-ink); }
 .wp-mp-rt-add .wp-mp-rt-n { margin-top: 6px; background: #eef6ff; color: var(--mp-blue); box-shadow: inset 0 0 0 1.5px #bfdbfe; font-size: 18px; }
 .wp-mp-rt-add > span:last-child { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 18px; border: 1.5px dashed #cfe0f7; }
