@@ -6,7 +6,7 @@
 // Al tocar la línea entre dos lugares sale una burbujita con el tramo:
 // cuánto se quedan en el lugar anterior, la distancia y el tiempo de
 // camino aproximado al siguiente (en línea recta, a pie o en auto).
-// Arriba a la derecha la insignia "Ver ruta". Quien organiza puede quitar
+// Arriba a la derecha la insignia gris "Abrir en el mapa" (como "Más info"). Quien organiza puede quitar
 // una parada (×) y agregar otra al final.
 // Las fotos de las paradas se buscan después (_planPlaces) y se pintan
 // en la tira, la tarjeta principal y la ruta sin volver a dibujar todo.
@@ -15,8 +15,7 @@
 // ════════════════════════════════════════════════════════════════════
 import { photoSmall } from '/src/utils/photo-url.js';
 
-// dos puntos unidos por un caminito punteado (como la tira de fotos)
-const ROUTE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="5.5" cy="18.5" r="2.6" stroke-width="2.2"/><circle cx="18.5" cy="5.5" r="2.6" stroke-width="2.2" fill="currentColor"/><path d="M8 17c5 0 2-6 6.5-8.5" stroke-width="2.2" stroke-dasharray="0.1 3.6"/></svg>';
+const NEXT = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const LEG_MS = 3800;   // la burbuja del tramo se va sola
 
 export class MyPlanRoute {
@@ -30,7 +29,7 @@ export class MyPlanRoute {
           ${owner && i > 0 ? `<button type="button" class="wp-mp-rt-x" data-rm="${i}" aria-label="Quitar parada">×</button>` : ''}
         </div></div>`;
     return `<section class="wp-mp-rt">
-        <div class="wp-mp-head"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route">${ROUTE}<span>Ver ruta</span></button>` : ''}</div>
+        <div class="wp-mp-head"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route"><span>Abrir en el mapa</span>${NEXT}</button>` : ''}</div>
         ${stops.map(item).join('')}
         ${owner && stops.length < 4 ? `<button type="button" class="wp-mp-rt-add" data-a="addstop"><span class="wp-mp-rt-n">+</span><span><b>Agregar otra parada</b><small>¿Siguen en otro lado? Arma el itinerario</small></span></button>` : ''}
       </section>`;
