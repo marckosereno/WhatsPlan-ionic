@@ -161,9 +161,13 @@ async function planSummary(req, res) {
   }
   const stops = Array.isArray(a.stops) ? a.stops : [];
   // misma firma que plan-summary.js (_mpSumSig): si cambia, el resumen se rehace
-  const sig = [a.place_id, ...stops.map(x => `${x.place_id}@${x.after || 0}+${x.dur || 0}`), a.scheduled_at, a.ends_at, a.title].join('|');
-  const legacy = [a.place_id, ...stops.map(x => x.place_id), a.scheduled_at, a.ends_at, a.title].join('|');   // resúmenes de antes de las duraciones
-  if (a.ai_summary && (a.ai_summary_sig === sig || a.ai_summary_sig === legacy)) return res.status(200).json({ summary: a.ai_summary, cached: true });
+  // misma firma que plan-summary.js (_mpSumSig). v2 = el fin del plan es el
+  // del último lugar; los resúmenes viejos de planes con paradas se rehacen
+  const base = [a.place_id, ...stops.map(x => `${x.place_id}@${x.after || 0}+${x.dur || 0}`), a.scheduled_at, a.ends_at, a.title].join('|');
+  const sig = `${base}|v2`;
+  const legacy = [a.place_id, a.scheduled_at, a.ends_at, a.title].join('|');   // firma vieja de un plan de un solo lugar
+  const ok = [sig, ...(stops.length ? [] : [base, legacy])];
+  if (a.ai_summary && ok.includes(a.ai_summary_sig)) return res.status(200).json({ summary: a.ai_summary, cached: true });
 
   const ids = [a.place_id, ...stops.map(x => x.place_id)].filter(id => id && !String(id).startsWith('custom:'));
   const places = ids.length ? await sbGet(`places?place_id=in.(${ids.map(encodeURIComponent).join(',')})&select=*`) : [];
@@ -174,14 +178,23 @@ async function planSummary(req, res) {
     const [h, m] = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' }).split(':').map(Number);
     return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'am' : 'pm'}`;
   };
-  const route = [`1. ${a.place_name} a las ${hh(t0)}`, ...stops.map((x, i) => `${i + 2}. ${x.name} a las ${hh(new Date(t0.getTime() + (x.after || 0) * 60000))}${x.dur ? `, se quedan ${x.dur} min` : ''}${x.note ? ` (${x.note})` : ''}`)];
+  // Cada lugar con su inicio y fin; el plan termina cuando acaba el último
+  const at = (min) => new Date(t0.getTime() + min * 60000);
+  const firstEnd = a.ends_at ? new Date(a.ends_at) : null;
+  const legs = [{ name: a.place_name, from: t0, to: firstEnd, note: '' },
+    ...stops.map(x => ({ name: x.name, from: at(x.after || 0), to: x.dur ? at((x.after || 0) + x.dur) : null, note: x.note }))];
+  legs.forEach((l, i) => { if (!l.to && legs[i + 1]) l.to = legs[i + 1].from; });   // sin duración: hasta la siguiente
+  const last = legs[legs.length - 1];
+  const end = last.to ? legs.reduce((m, l) => (l.to && (!m || l.to > m) ? l.to : m), null) : null;   // último sin duración: no hay hora de fin
+  const route = legs.map((l, i) => `${i + 1}. ${l.name}: ${l.to ? `de ${hh(l.from)} a ${hh(l.to)}` : `llegan a las ${hh(l.from)}`}${l.note ? ` (${l.note})` : ''}`);
   const prompt = [
-    `Escribe un resumen breve (70 a 100 palabras) en español del plan "${a.title}".`,
-    `Ruta del plan:\n${route.join('\n')}`,
-    a.ends_at ? `Termina a las ${hh(new Date(a.ends_at))}` : '',
+    `Escribe un resumen breve (70 a 110 palabras) en español del plan "${a.title}".`,
+    `Ruta del plan (en este orden):\n${route.join('\n')}`,
+    end ? `El plan completo termina a las ${hh(end)}, al salir de ${last.name}. Las horas de fin de los primeros lugares no son el fin del plan.`
+      : `El plan cierra en ${last.name}, a donde llegan a las ${hh(last.from)} (sin hora de fin). Las horas de fin de los primeros lugares no son el fin del plan.`,
     a.note ? `Nota de quien organiza: ${a.note}` : '',
     `Lugares:\n${[byId(a.place_id) ? placeBrief(byId(a.place_id), a.place_name) : `- ${a.place_name}`, ...stops.map(x => placeBrief(byId(x.place_id), x.name))].join('\n')}`,
-    'Habla de los lugares (qué tienen de especial según su descripción o reseñas), menciona de forma discreta lo que se puede hacer ahí y termina con una frase de qué tal pinta el plan.',
+    'Recorre los lugares en orden con su hora de llegada, habla de qué tienen de especial (según su descripción o reseñas), menciona de forma discreta lo que se puede hacer ahí y cierra con el último lugar, a qué hora termina el plan y una frase de qué tal pinta.',
     'Escribe las horas siempre con números y am/pm, igual que arriba (por ejemplo 7 pm o 12:45 am), nunca con letras.',
     'Tono cálido y natural, como un amigo que conoce la zona. Sin emojis, sin listas, sin comillas, sin inventar datos (precios, horarios). Responde solo con el resumen.',
   ].filter(Boolean).join('\n\n');
