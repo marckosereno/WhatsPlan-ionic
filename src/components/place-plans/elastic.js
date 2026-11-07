@@ -5,7 +5,10 @@
 //    contenido con resistencia (cada vez cuesta más) y al soltar
 //    regresa con un resorte que se pasa un poquito.
 //  · Inercia: si el scroll va rápido y choca con el borde, rebota.
-// Desactiva el rebote nativo en ese contenedor para no tener dos.
+// Desactiva el rebote nativo en ese contenedor para no tener dos, SOLO
+// en su eje: una tira horizontal tiene que seguir pasándole el scroll
+// vertical a la hoja (si se bloquea en los dos ejes, deslizar hacia
+// arriba o abajo con el dedo sobre la tira no hace nada).
 // Un scroll de adentro que sí se puede mover "se queda" el gesto, para
 // que el de afuera no se estire a la vez.
 //
@@ -23,7 +26,7 @@ const band = (raw) => Math.sign(raw) * MAX * (1 - Math.exp(-Math.abs(raw) * FEEL
 export function addElastic(el, axis = 'y') {
   if (!el || el._wpElastic) return;
   el._wpElastic = true;
-  el.style.overscrollBehavior = 'none';
+  el.style[axis === 'y' ? 'overscrollBehaviorY' : 'overscrollBehaviorX'] = 'none';
   const Y = axis === 'y';
   let start = null, last = 0, raw = 0, locked = null, touching = false;
 
