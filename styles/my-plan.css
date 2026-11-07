@@ -150,10 +150,10 @@
 .wp-mp-head { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 4px; }
 .wp-mp-head b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
 .wp-mp-head b small { font-size: 13px; font-weight: 500; color: var(--mp-sub); }
-/* "Ver ruta": insignia blanca chiquita, el ícono es el único azul */
-.wp-mp-mapbtn { display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px 0 8px; border: none; border-radius: 999px; background: #fff; color: var(--mp-ink);
-  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 2px 8px rgba(20, 18, 31, 0.06); font: inherit; font-size: 12.5px; font-weight: 600; }
-.wp-mp-mapbtn svg { flex: none; color: var(--mp-blue); }
+/* "Abrir en el mapa": insignia gris suave, igual que "Más info" */
+.wp-mp-mapbtn { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px 0 13px; border: none; border-radius: 999px; background: #eef1f5; color: #374151;
+  font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.wp-mp-mapbtn svg { flex: none; }
 .wp-mp-rt { display: flex; flex-direction: column; gap: 10px; }
 .wp-mp-rt-it, .wp-mp-rt-add { position: relative; display: flex; align-items: stretch; gap: 12px; }
 /* línea punteada que une los números; se puede tocar (tramo) */
