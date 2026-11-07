@@ -115,6 +115,8 @@ export class PlanCore {
       else if (mins < 60) badge = { html: `En ${mins} min`, cls: '' };
       else if (mins < 6 * 60) badge = { html: `En ${Math.round(mins / 60)} h`, cls: '' };
       else badge = { html: this._esc(this._planWhen(mine.scheduled_at, true)), cls: '' };
+      // te invitaron a OTRO plan aquí: puntito azul con el número junto al texto
+      if (pending.length) chip = `<i class="wp-pm2-plan-dot" aria-label="${pending.length} invitación${pending.length > 1 ? 'es' : ''}">${pending.length}</i>`;
     } else if (pending.length) {
       state = 'invited';
       label = 'Te invitaron · Responder';
