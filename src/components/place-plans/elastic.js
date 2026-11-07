@@ -14,6 +14,11 @@
 //
 // En las tiras horizontales se mueve lo de adentro (no la tira): si se
 // mueve la tira, su borde recorta las tarjetas y se ven cortadas.
+// Y si la tira SÍ se desliza (tiene más de lo que cabe), el rebote lo
+// pone el teléfono (overscroll nativo, contenido en la tira): el nuestro
+// arrancaba justo cuando el scroll nativo llegaba a la orilla y al soltar
+// "se acomodaba" → saltito. El nuestro queda para las tiras que caben
+// completas (no se deslizan, solo rebotan).
 //
 // Uso: addElastic(el, 'y' | 'x')
 // ════════════════════════════════════════════════════════════════════
@@ -29,8 +34,8 @@ const band = (raw) => Math.sign(raw) * MAX * (1 - Math.exp(-Math.abs(raw) * FEEL
 export function addElastic(el, axis = 'y') {
   if (!el || el._wpElastic) return;
   el._wpElastic = true;
-  el.style[axis === 'y' ? 'overscrollBehaviorY' : 'overscrollBehaviorX'] = 'none';
   const Y = axis === 'y';
+  el.style[Y ? 'overscrollBehaviorY' : 'overscrollBehaviorX'] = Y ? 'none' : 'contain';
   let start = null, last = 0, raw = 0, locked = null, touching = false;
 
   const scroll = () => (Y ? el.scrollTop : el.scrollLeft);
@@ -59,7 +64,10 @@ export function addElastic(el, axis = 'y') {
       locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     }
     if (locked !== axis) return;
-    if (room() > 1) e._wpElastic = true;   // este scroll se queda el gesto
+    if (room() > 1) {
+      e._wpElastic = true;   // este scroll se queda el gesto
+      if (!Y) return;        // tira que se desliza: el rebote es el nativo
+    }
     const p = Y ? t.clientY : t.clientX, d = p - last;
     last = p;
     if (!raw && !((d > 0 && atStart()) || (d < 0 && atEnd()))) return;
@@ -88,7 +96,7 @@ export function addElastic(el, axis = 'y') {
     const jump = Math.abs(s - prev) > 300;   // salto por código (cambio de paso), no inercia
     v = (s - prev) / Math.max(1, now - prevT);
     prev = s; prevT = now;
-    if (jump || touching || Math.abs(v) < 0.6 || !(s <= 0 || s >= room() - 1)) return;
+    if (!Y || jump || touching || Math.abs(v) < 0.6 || !(s <= 0 || s >= room() - 1)) return;
     const k = -Math.sign(v) * Math.min(48, Math.abs(v) * KICK * 16);
     parts().forEach(c => c.animate([{ transform: 'none' }, { transform: tr(k), offset: 0.3 }, { transform: 'none' }],
       { duration: 520, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }));

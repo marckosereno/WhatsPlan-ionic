@@ -152,7 +152,7 @@
 /* ── Quién va: tarjetitas con cara, nombre y emoji ── */
 .wp-mp-lbl { margin: 4px 2px -6px; font-size: 15px; font-weight: 700; }
 /* padding arriba/abajo: que no se corten la sombra ni el pulso */
-.wp-mp-who { flex: none; display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior-x: none; touch-action: pan-x pan-y; }
+.wp-mp-who { flex: none; display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
 .wp-mp-who::-webkit-scrollbar { display: none; }
 /* tiras que se deslizan de lado: en su propia capa, si no el teléfono
    vuelve a pintar todas las sombras en cada cuadro y se siente a pausas
