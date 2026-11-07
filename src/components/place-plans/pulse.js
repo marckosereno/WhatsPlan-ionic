@@ -52,17 +52,37 @@ function ripple(b, e) {
   setTimeout(() => w.remove(), 650);
 }
 
+// Encoger al tocar, pero sin pelear con el scroll: el botón se encoge
+// solo si el dedo se queda quieto un instante (o al soltar, en un toque
+// rápido). Si el dedo empieza a deslizar, se suelta sin resorte (si no,
+// el resorte de regreso se ve como un brinco en el scroll).
+const HOLD_MS = 90, MOVE_PX = 8;
+
 export function attachPulse(root) {
-  const unpress = () => root.querySelectorAll('button.press').forEach(x => x.classList.remove('press'));
-  root.addEventListener('pointerup', unpress);
-  root.addEventListener('pointercancel', unpress);
-  root.addEventListener('pointerleave', unpress);
+  let cur = null;   // { b, x, y, e, t, on }
+  const press = () => { if (!cur || cur.on) return; cur.on = true; cur.b.classList.add('press'); ripple(cur.b, cur.e); };
+  const quiet = (b) => { b.classList.add('wp-quiet'); b.classList.remove('press'); requestAnimationFrame(() => requestAnimationFrame(() => b.classList.remove('wp-quiet'))); };
   root.addEventListener('pointerdown', (e) => {
     const b = e.target.closest('button');
     if (!b || b.disabled || b.matches(SKIP)) return;
-    b.classList.add('press');
-    ripple(b, e);
+    cur = { b, x: e.clientX, y: e.clientY, e, on: false };
+    cur.t = setTimeout(press, HOLD_MS);
   });
+  root.addEventListener('pointermove', (e) => {
+    if (!cur || Math.hypot(e.clientX - cur.x, e.clientY - cur.y) < MOVE_PX) return;
+    clearTimeout(cur.t);
+    if (cur.on) quiet(cur.b);
+    cur = null;
+  }, { passive: true });
+  const up = (e) => {
+    if (!cur) return;
+    clearTimeout(cur.t);
+    if (e.type === 'pointerup') press();   // toque rápido: también hay onda
+    const b = cur.b; cur = null;
+    if (e.type === 'pointerup') setTimeout(() => b.classList.remove('press'), 60); else quiet(b);
+  };
+  root.addEventListener('pointerup', up);
+  root.addEventListener('pointercancel', up);
   // Va después de los clics de cada paso (que pueden volver a dibujar)
   root.addEventListener('click', (e) => {
     const b = e.target.closest('button');

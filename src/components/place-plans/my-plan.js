@@ -32,7 +32,7 @@ export class MyPlan {
   _openMyPlanSheet(a) {
     const me = window.wpApp?.currentUser?.id, owner = a.creator_id === me;
     const { root, body, close } = openSheetPage({
-      title: owner ? 'Tu plan <i class="wp-st-pill">Organizas</i>' : 'Vas a ir <i class="wp-st-pill go">Confirmado</i>',
+      title: owner ? 'Tu plan' : 'Vas a ir',
       theme: owner ? 'mine' : 'going',
       right: `<button type="button" class="wp-mp-danger" data-nopulse>${owner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>`,
       html: this._mpHtml(a, owner, me),

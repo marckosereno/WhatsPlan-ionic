@@ -3,7 +3,7 @@
 // Planes en la ficha del lugar: estado (_loadPlanState), el botón que
 // cambia según tus planes y las RPCs. Las hojas viven aparte:
 // "Tu plan" en my-plan.js / my-plan-actions.js y "Planes aquí" en
-// plans-here.js / plans-here-detail.js.
+// plans-here.js (+ -open, -days).
 // Se mezcla en PlaceModal2.prototype (usa this._el, this._openSheet,
 // this._showToast, etc. de la ficha). Estilos: /styles/place-plans.css
 // ════════════════════════════════════════════════════════════════════
@@ -177,5 +177,5 @@ export class PlanCore {
 
   // ── Hoja "Tu plan" / "Vas a ir" → my-plan.js + my-plan-actions.js ──
 
-  // ── Hoja "Planes aquí" → plans-here.js + plans-here-detail.js ──
+  // ── Hoja "Planes aquí" → plans-here.js + plans-here-open.js + plans-here-days.js ──
 }

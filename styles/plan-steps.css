@@ -241,8 +241,6 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 #wp-st.th-explore { --st-bg: #f7f7f9; --st-veil: 247, 247, 249;
   --st-b1: rgba(255, 255, 255, 0.9); --st-b2: rgba(226, 232, 240, 0.5); --st-b3: rgba(241, 245, 249, 0.6); }
 .wp-st-title { display: inline-flex; align-items: center; gap: 7px; }
-.wp-st-pill { padding: 3px 9px; border-radius: 999px; background: #e8f1ff; color: var(--wp-blue, #2563eb); font-style: normal; font-size: 11.5px; font-weight: 600; }
-.wp-st-pill.go { background: #dcfce7; color: #15803d; }
 
 #wp-st.sheet .wp-st-top { padding: 20px 16px 20px; touch-action: none; }
 .wp-st-grab { position: absolute; top: 8px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: rgba(20, 18, 31, 0.16); }
@@ -293,6 +291,8 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 @keyframes wpStTick { from { transform: translateY(6px) scale(0.94); opacity: 0.4; } to { transform: none; opacity: 1; } }
 /* agua: onda al tocar */
 .wp-rippled { position: relative; }
+/* al deslizar en vez de tocar: soltar sin resorte (si no, parece un brinco) */
+.wp-quiet, .wp-quiet * { transition: none !important; }
 /* capa de la onda: misma forma que el botón; la máscara obliga al
    WebView a recortar con las esquinas redondas (si no, sale cuadrada) */
 .wp-rip-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0;
