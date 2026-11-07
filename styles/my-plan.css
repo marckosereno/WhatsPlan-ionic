@@ -128,3 +128,7 @@
   box-shadow: var(--mp-card); text-align: left; font: inherit; color: var(--mp-ink); }
 .wp-mp-more.inv { box-shadow: inset 0 0 0 1.5px #bfdbfe, 0 4px 14px rgba(37, 99, 235, 0.08); }
 .wp-mp-more .wp-mp-go { flex: none; }
+
+/* "Vas a ir": salirte es secundario (gris), no rojo */
+#wp-st.th-going .wp-mp-danger { background: #f1f3f5; color: #4b5563; }
+#wp-st.th-going .wp-mp-danger.armed { background: #e0123c; color: #fff; }
