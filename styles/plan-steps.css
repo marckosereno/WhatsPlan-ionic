@@ -149,6 +149,8 @@
 
 /* Tira de días (como la de un calendario de hábitos) */
 /* padding arriba/abajo para que las sombras de los días no se corten */
+/* en su propia capa: scroll de lado sin pausas (ver .wp-mp-who) */
+.wp-st-days, .wp-st-chips:not(.wrap) { will-change: transform; transform: translateZ(0); }
 .wp-st-days { display: flex; gap: 8px; overflow-x: auto; margin: -10px -20px -14px; padding: 10px 20px 16px; scrollbar-width: none; }
 .wp-st-days::-webkit-scrollbar { display: none; }
 .wp-st-day { flex: 0 0 56px; height: 70px; border: none; border-radius: 20px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 2px 8px rgba(20, 18, 31, 0.06); transition: transform 0.2s; }

@@ -18,7 +18,7 @@
 .wp-ph4-cal-h .side:last-child { transform: translateX(38%); }
 .wp-ph4-mon { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; color: var(--wp-ink, #14121f); white-space: nowrap; }
 .wp-ph4-mon small { font-size: 18px; font-weight: 500; color: #9ca3af; }
-.wp-ph4-strip { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior-x: none; }
+.wp-ph4-strip { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior-x: none; will-change: transform; transform: translateZ(0); }
 .wp-ph4-strip::-webkit-scrollbar { display: none; }
 .wp-ph4-d { flex: none; position: relative; width: 54px; height: 66px; padding: 0; border: none; border-radius: 16px; background: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font: inherit; color: var(--wp-ink, #14121f);
