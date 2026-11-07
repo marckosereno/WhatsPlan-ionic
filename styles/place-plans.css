@@ -17,7 +17,7 @@
    —overflow:hidden deja min-height en 0— y no había scroll) */
 .wp-pv > * { flex-shrink:0; }
 /* El botón de abajo siempre a la vista, aunque se deslice el contenido */
-.wp-pv-foot { position:sticky; bottom:0; z-index:2; background:#fff; padding-bottom:2px; }
+
 .wp-pv-lbl { font-size:13px; font-weight:700; color:#6b7280; margin-top:4px; padding-left:2px; }
 .wp-pv-lbl b { color:#0a0a0a; font-weight:800; }
 .wp-pv-hint { font-weight:500; color:#9ca3af; }
@@ -64,33 +64,12 @@
 .wp-pv-rules-ro.sm span { padding:3px 8px; font-size:11.5px; background:#fff; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.07); }
 /* Selector nativo de fecha/hora escondido dentro del pill "Otro…" */
 
-.wp-pv-cta {
-  width:100%; height:50px; border:none; border-radius:999px; background:#0a0a0a; color:#fff;
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  font-size:15px; font-weight:800; font-family:var(--wp-font); cursor:pointer; -webkit-tap-highlight-color:transparent;
-  transition:background-color 0.15s, opacity 0.15s, transform 0.12s;
-}
-.wp-pv-cta:active { transform:scale(0.98); }
-.wp-pv-cta:disabled { background:#e5e7eb; color:#9ca3af; }
-.wp-pv-cta.busy { opacity:0.55; }
 /* ¿Con quién?: avatares con sello; el invitado lleva palomita azul */
 
-.wp-pv-foot { display:flex; gap:8px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); margin:4px -16px 0; padding-left:16px; padding-right:16px; }
-.wp-pv-foot .wp-pv-cta { flex:1; }
 /* fuera del contenido que se desliza: pegado al fondo de la hoja */
 
-.wp-pm2-ms-body > .wp-pv-foot { position:static; margin:6px 0 0; padding:10px 16px 2px; background:#fff; border-radius:0 0 24px 24px; }
 /* Resumen del paso 3: tarjeta del plan */
-.wp-pv-card { display:flex; align-items:center; gap:12px; margin-top:6px; padding:12px 14px; border-radius:20px; background:#f7f8fa; border:1px solid rgba(0,0,0,0.05); }
-.wp-pv-card-emo { flex:none; width:46px; height:46px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center;
-  font-size:25px; box-shadow:0 2px 6px rgba(0,0,0,0.06); font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
-.wp-pv-card-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-.wp-pv-card-t { font-size:14.5px; font-weight:800; color:#0a0a0a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wp-pv-card-w, .wp-pv-card-v { font-size:12.5px; font-weight:600; color:#6b7280; }
-.wp-pv-card-faces { flex:none; display:flex; align-items:center; }
-.wp-pv-card-faces i { display:block; width:28px; height:28px; margin-left:-8px; border-radius:50%; background:#eef0f3 center/cover no-repeat; }
-.wp-pv-card-faces i:first-child { margin-left:0; }
-.wp-pv-card-faces b { margin-left:4px; font-size:12px; font-weight:800; color:#374151; }
+
 /* Nota como post-it: papel amarillo con renglones y una cinta arriba */
 
 /* "Tu plan": quién va + acciones */
@@ -99,20 +78,6 @@
 
 /* Cupos + Completo */
 
-.wp-pv-full-tag[hidden] { display:none; }
-.wp-pv-full-tag { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; background:#16a34a; color:#fff; font-size:11.5px; font-weight:800; }
-.wp-ph-wl { background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.12); }
-.wp-ph-wl.on { background:#ecfdf3; color:#15803d; box-shadow:inset 0 0 0 1px rgba(22,163,74,0.3); }
-.wp-ph-card { position:relative; display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:20px; background:#f7f8fa; border:1px solid rgba(0,0,0,0.05); }
-.wp-ph-card.inv { background:#eef4ff; border-color:rgba(26,92,245,0.25); }
-.wp-ph-tag { align-self:flex-start; padding:3px 9px; border-radius:999px; background:#1a5cf5; color:#fff; font-size:11.5px; font-weight:800; }
-.wp-ph-top { display:flex; align-items:center; gap:12px; }
-.wp-ph-note { font-size:13px; color:#4b5563; font-style:italic; padding:0 2px; }
-.wp-ph-btns { display:flex; gap:8px; }
-.wp-ph-btns button { flex:1; height:42px; border:none; border-radius:999px; font-size:14px; font-weight:800; font-family:var(--wp-font); cursor:pointer; }
-.wp-ph-yes { background:#0a0a0a; color:#fff; }
-.wp-ph-yes:disabled { background:#e5e7eb; color:#6b7280; }
-.wp-ph-no { background:#fff; color:#111827; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1); }
 #wp-pm2-plan-btn {
   position:relative; overflow:visible; min-width:0;
   flex:1; height:48px; border-radius:999px; border:none;

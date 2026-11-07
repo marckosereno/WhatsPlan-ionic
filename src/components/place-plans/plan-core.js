@@ -1,8 +1,9 @@
 // ════════════════════════════════════════════════════════════════════
 // WHATSPLAN — place-plans/plan-core.js
 // Planes en la ficha del lugar: estado (_loadPlanState), el botón que
-// cambia según tus planes, RPCs y la hoja "Planes aquí". La hoja
-// "Tu plan" vive en my-plan.js / my-plan-actions.js.
+// cambia según tus planes y las RPCs. Las hojas viven aparte:
+// "Tu plan" en my-plan.js / my-plan-actions.js y "Planes aquí" en
+// plans-here.js / plans-here-detail.js.
 // Se mezcla en PlaceModal2.prototype (usa this._el, this._openSheet,
 // this._showToast, etc. de la ficha). Estilos: /styles/place-plans.css
 // ════════════════════════════════════════════════════════════════════
@@ -174,68 +175,5 @@ export class PlanCore {
 
   // ── Hoja "Tu plan" / "Vas a ir" → my-plan.js + my-plan-actions.js ──
 
-  // ── Hoja "Planes aquí": unirme / aceptar invitación / crear el mío ──
-  _openPlansHereSheet() {
-    const { me, mine, pending, others } = this._planGroups();
-    const info = this._placeInfo();
-    const { body, close } = this._openSheet('Planes aquí', info.name);
-    const EMO = { food: '🍔', drinks: '☕', hangout: '🎉', explore: '🚀', shop: '🛍️', music: '🎵', sport: '🏃', photo: '📸', spa: '💆' };
-    const list = [...pending, ...others.filter(a => !pending.includes(a))];
-    const name = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || (p.username ? '@' + p.username : 'Alguien')).split(' ')[0]); };
-    body.innerHTML = `
-      <div class="wp-pv wp-ph">
-        ${list.map((a, i) => {
-          const going = (a.participants || []).length, left = Math.max(0, (a.max_participants || 0) - going);
-          const full = this._planFull(a), waiting = (a.waitlist || []).includes(me);
-          const inv = pending.includes(a), inIt = (a.participants || []).includes(me);
-          const WL = waiting ? `<button type="button" class="wp-ph-wl on" data-wl="off">✓ Te avisaremos si se libera un cupo</button>`
-            : `<button type="button" class="wp-ph-wl" data-wl="on">🔔 Avísame si se libera un cupo</button>`;
-          return `<div class="wp-ph-card${inv ? ' inv' : ''}" data-i="${i}">
-            ${inv ? `<span class="wp-ph-tag">Te invitó ${name(a.creator_id)}</span>` : ''}
-            <div class="wp-ph-top">
-              <div class="wp-pv-card-emo">${this._planEmoji(a.type)}</div>
-              <div class="wp-pv-card-txt"><b class="wp-pv-card-t">${this._esc(a.title)}</b>
-                <span class="wp-pv-card-w">${this._esc(this._planWhen(a.scheduled_at))} · organiza ${name(a.creator_id)}</span>
-                <span class="wp-pv-card-v">${full ? `<span class="wp-pv-full-tag">${going} de ${going} · Completo</span>` : a.max_participants ? `Queda${left === 1 ? '' : 'n'} ${left} cupo${left === 1 ? '' : 's'}` : 'Sin límite'}</span></div>
-              <div class="wp-pv-card-faces">${(a.participants || []).slice(0, 3).map(id => this._planFace(id)).join('')}${going > 3 ? `<b>+${going - 3}</b>` : ''}</div>
-            </div>
-            ${this._planRouteHtml(a, { compact: true })}
-            ${this._planRulesHtml(a, 'sm')}
-            ${a.note ? `<div class="wp-ph-note">“${this._esc(a.note)}”</div>` : ''}
-            <div class="wp-ph-btns">
-              ${inIt ? `<button type="button" class="wp-ph-yes" disabled>Ya vas</button>`
-                : inv && !full ? `<button type="button" class="wp-ph-no" data-a="no">No puedo</button><button type="button" class="wp-ph-yes" data-a="yes">Aceptar</button>`
-                : inv ? `<button type="button" class="wp-ph-no" data-a="no">No puedo</button>${WL}`
-                : !full ? `<button type="button" class="wp-ph-yes" data-a="yes">Unirme</button>`
-                : WL}
-            </div>
-          </div>`;
-        }).join('')}
-        ${mine ? '' : `<div class="wp-pv-foot"><button type="button" class="wp-pv-cta wp-ph-new"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Crear mi plan</span></button></div>`}
-      </div>`;
-    body.querySelectorAll('.wp-ph-card button[data-a]').forEach(b => b.onclick = async () => {
-      const a = list[+b.closest('.wp-ph-card').dataset.i];
-      const yes = b.dataset.a === 'yes';
-      b.disabled = true;
-      const ok = await this._planRpc('respond_plan', { p_activity: a.id, p_accept: yes }, yes ? `¡Vas! ${this._planWhen(a.scheduled_at)}` : 'Le avisamos que no puedes');
-      if (ok) close(); else b.disabled = false;
-    });
-    // Lista de espera
-    body.querySelectorAll('.wp-ph-card button[data-wl]').forEach(b => b.onclick = async () => {
-      const a = list[+b.closest('.wp-ph-card').dataset.i];
-      const on = b.dataset.wl === 'on';
-      b.disabled = true;
-      const ok = await this._planRpc('plan_waitlist', { p_activity: a.id, p_on: on },
-        on ? 'Listo · te avisamos si se libera un cupo' : 'Ya no estás en la lista de espera');
-      b.disabled = false;
-      if (!ok) return;
-      a.waitlist = on ? [...(a.waitlist || []), me] : (a.waitlist || []).filter(id => id !== me);
-      b.dataset.wl = on ? 'off' : 'on';
-      b.classList.toggle('on', on);
-      b.textContent = on ? '✓ Te avisaremos si se libera un cupo' : '🔔 Avísame si se libera un cupo';
-    });
-    { const f = body.querySelector('.wp-pv > .wp-pv-foot'); if (f) body.appendChild(f); }
-    const nb = body.querySelector('.wp-ph-new');
-    if (nb) nb.onclick = () => { close(true); setTimeout(() => this._openPlanSheet(), 60); };
-  }
+  // ── Hoja "Planes aquí" → plans-here.js + plans-here-detail.js ──
 }

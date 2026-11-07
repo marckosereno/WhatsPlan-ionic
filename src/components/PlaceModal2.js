@@ -15,6 +15,8 @@ import { PlanWizard }                  from '/src/components/place-plans/plan-wi
 import { PlanWhen }                    from '/src/components/place-plans/plan-when.js';
 import { MyPlan }                      from '/src/components/place-plans/my-plan.js';
 import { MyPlanActions }               from '/src/components/place-plans/my-plan-actions.js';
+import { PlansHere }                   from '/src/components/place-plans/plans-here.js';
+import { PlansHereDetail }             from '/src/components/place-plans/plans-here-detail.js';
 import { PlanStops }                   from '/src/components/place-plans/plan-stops.js';
 import { StopFlow }                    from '/src/components/place-plans/stop-flow.js';
 
@@ -31,6 +33,7 @@ wpEnsureCss('wp-pm2-css', '/styles/place-modal.css');
 wpEnsureCss('wp-pm2-plans-css', '/styles/place-plans.css');
 wpEnsureCss('wp-pm2-steps-css', '/styles/plan-steps.css');
 wpEnsureCss('wp-pm2-myplan-css', '/styles/my-plan.css');
+wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
 
 export class PlaceModal2 {
   constructor(opts = {}) {
@@ -342,6 +345,7 @@ export class PlaceModal2 {
     wpEnsureCss('wp-pm2-plans-css', '/styles/place-plans.css');
 wpEnsureCss('wp-pm2-steps-css', '/styles/plan-steps.css');
 wpEnsureCss('wp-pm2-myplan-css', '/styles/my-plan.css');
+wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
   }
 
   // ── WIRE EVENTS ────────────────────────────────────────────────────
@@ -6292,7 +6296,7 @@ wpEnsureCss('wp-pm2-myplan-css', '/styles/my-plan.css');
 
 // Planes (botón, hojas, asistente y paradas) viven en place-plans/*.js
 // y se agregan a la ficha como métodos propios.
-for (const Mix of [PlanCore, PlanWizard, PlanWhen, MyPlan, MyPlanActions, PlanStops, StopFlow]) {
+for (const Mix of [PlanCore, PlanWizard, PlanWhen, MyPlan, MyPlanActions, PlansHere, PlansHereDetail, PlanStops, StopFlow]) {
   for (const k of Object.getOwnPropertyNames(Mix.prototype)) {
     if (k !== 'constructor') Object.defineProperty(PlaceModal2.prototype, k, Object.getOwnPropertyDescriptor(Mix.prototype, k));
   }

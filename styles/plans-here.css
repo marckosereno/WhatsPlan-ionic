@@ -1,0 +1,64 @@
+/* ════════════════════════════════════════════════════════════════════
+   WHATSPLAN — styles/plans-here.css
+   Hoja "Planes aquí" (src/components/place-plans/plans-here.js y
+   plans-here-detail.js), en la hoja grande (#wp-st.sheet).
+   El detalle reutiliza las piezas de "Tu plan" (my-plan.css, .wp-mp-*).
+   Misma regla de color: degradado solo en el botón principal; tarjetas
+   blancas; azul como acento chico. Pesos: 700 / 600 / 500.
+   ════════════════════════════════════════════════════════════════════ */
+
+.wp-ph2-list { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 8px; }
+.wp-ph2-detail { padding: 4px 16px 8px; }
+
+/* ── Tarjeta de un plan en la lista ── */
+.wp-ph2-card { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 22px; background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.04), 0 4px 14px rgba(20, 18, 31, 0.05); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1), box-shadow 0.2s; }
+.wp-ph2-card:active { transform: scale(0.98); transition-duration: 0.12s; }
+.wp-ph2-card.inv { box-shadow: inset 0 0 0 1.5px #bfdbfe, 0 4px 14px rgba(37, 99, 235, 0.08); }
+.wp-ph2-tag { align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: #eef6ff; color: var(--wp-blue, #2563eb); font-size: 12px; font-weight: 600; }
+.wp-ph2-tag.big { margin-bottom: -2px; }
+.wp-ph2-row { display: flex; align-items: center; gap: 12px; }
+.wp-ph2-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wp-ph2-t b { font-size: 15.5px; font-weight: 700; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wp-ink, #14121f); }
+.wp-ph2-t small { font-size: 12.5px; font-weight: 500; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-ph2-card .wp-mp-ic { width: 46px; height: 46px; border-radius: 15px; background: #eef6ff; display: flex; align-items: center; justify-content: center; font-size: 25px; flex: none; }
+.wp-ph2-card .wp-mp-count { flex: none; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px;
+  background: #eef6ff; color: var(--wp-blue, #2563eb); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.wp-ph2-card .wp-mp-count.live { background: #ecfdf3; color: #15803d; }
+.wp-ph2-card .wp-mp-count.live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; }
+.wp-ph2-bot { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid #f1f4f9; }
+.wp-ph2-card .wp-mp-faces { flex: none; display: flex; }
+.wp-ph2-card .wp-mp-faces i { display: block; width: 30px; height: 30px; margin-left: -9px; border-radius: 50%; border: 2px solid #fff; background: #e5e7eb center / cover no-repeat; }
+.wp-ph2-card .wp-mp-faces i:first-child { margin-left: 0; }
+.wp-ph2-card .wp-mp-faces i.wp-seal { clip-path: none; box-shadow: 0 1px 3px rgba(20, 18, 31, 0.12); }
+.wp-ph2-card .wp-mp-faces i.wp-seal::after { display: none; }
+.wp-ph2-n { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Botones de acción ── */
+.wp-ph2-act { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 999px;
+  background: var(--wp-grad-sky, #2563eb); color: #fff; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, 0.55); -webkit-tap-highlight-color: transparent; }
+.wp-ph2-act.sm { height: 36px; padding: 0 14px; font-size: 13.5px; }
+.wp-ph2-act.lg { flex: 1; height: 52px; padding: 0 18px; font-size: 15.5px; font-weight: 700; }
+.wp-ph2-act.soft { background: #eef6ff; color: var(--wp-blue, #2563eb); box-shadow: none; }
+.wp-ph2-act.soft.on { background: #ecfdf3; color: #15803d; }
+.wp-ph2-act.done { background: #f3f4f6; color: #6b7280; box-shadow: none; pointer-events: none; }
+.wp-ph2-act.ghost { flex: 0 0 auto; background: #fff; color: #4b5563; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.1); }
+.wp-ph2-act:disabled { opacity: 0.6; }
+.wp-ph2-foot { display: flex; gap: 10px; width: 100%; }
+.wp-ph2-new { width: 100%; height: 52px; border: none; border-radius: 999px; background: #fff; color: var(--wp-blue, #2563eb);
+  display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-size: 15px; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.05), 0 6px 16px rgba(20, 18, 31, 0.08); -webkit-tap-highlight-color: transparent; }
+
+/* ── Entrada del detalle: secciones en cascada (el encabezado lo anima JS) ── */
+.wp-ph2-detail.enter > :not(.wp-mp-card) { animation: wpPh2Up 0.5s cubic-bezier(0.34, 1.3, 0.64, 1) both; }
+.wp-ph2-detail.enter > :nth-child(2) { animation-delay: 0.04s; }
+.wp-ph2-detail.enter > :nth-child(3) { animation-delay: 0.08s; }
+.wp-ph2-detail.enter > :nth-child(4) { animation-delay: 0.12s; }
+.wp-ph2-detail.enter > :nth-child(5) { animation-delay: 0.16s; }
+.wp-ph2-detail.enter > :nth-child(n+6) { animation-delay: 0.2s; }
+@keyframes wpPh2Up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.wp-ph2-detail[hidden], .wp-ph2-list[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .wp-ph2-detail.enter > * { animation: none !important; } }
