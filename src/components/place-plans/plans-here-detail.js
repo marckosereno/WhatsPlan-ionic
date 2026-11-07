@@ -25,7 +25,9 @@ export class PlansHereDetail {
     v.at = i; v.scroll = vp.scrollTop;
     det.innerHTML = this._phDetailHtml(v, a);
     list.hidden = true; det.hidden = false; vp.scrollTop = 0;
-    v.title.textContent = `Plan de ${this._phName(a.creator_id)}`;
+    const inv = v.pending.includes(a);
+    v.sheet.setTitle(`Plan de ${this._phName(a.creator_id)}${inv ? ' <i class="wp-st-pill">Invitación</i>' : ''}`);
+    v.sheet.setTheme(inv ? 'invited' : 'explore');   // te invitaron → toque celeste
     this._phPaintFoot(v, a);
     addElastic(det.querySelector('.wp-mp-who'), 'x');
     this._haptic?.('light');
@@ -46,7 +48,8 @@ export class PlansHereDetail {
       det.hidden = true; det.innerHTML = '';
       this._phPaintList(v);
       list.hidden = false; vp.scrollTop = v.scroll;
-      v.title.textContent = 'Planes aquí';
+      v.sheet.setTitle('Planes aquí');
+      v.sheet.setTheme('explore');
       v.sheet.foot.innerHTML = this._phFootList(v); v.sheet.relayout();
       pulse(list.querySelector(`[data-open="${i}"]`));
     };

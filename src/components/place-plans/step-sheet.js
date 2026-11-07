@@ -8,11 +8,13 @@
 //
 // Uso:
 //   attachSheet(root, close, '.barra-de-arriba') → { remove() }   (step-screen.js)
-//   openSheetPage({ title, right, html, foot, onClose, onBack })    (my-plan.js, plans-here.js)
+//   openSheetPage({ title, right, html, foot, theme, onClose, onBack })  (my-plan.js, plans-here.js)
 //     → la misma hoja de "Planear visita" con cualquier contenido:
 //       barra arriba (botón redondo atrás · título · algo a la derecha),
 //       contenido que se desliza y un pie fijo. Devuelve
-//       { root, body, foot, close, relayout }. onBack() → true = ya lo manejé
+//       { root, body, foot, close, relayout, setTheme, setTitle }.
+//       theme: 'mine' | 'going' | 'explore' | 'invited' (tinte de la hoja).
+//       onBack() → true = ya lo manejé
 //       (p. ej. regresar del detalle a la lista) y la hoja no se cierra.
 // Estilos: /styles/plan-steps.css (#wp-st.sheet, .wp-st-scrim, .wp-st-grab)
 // ════════════════════════════════════════════════════════════════════
@@ -41,7 +43,7 @@ export function attachSheet(root, close, handleSel = '.wp-st-top') {
   };
 }
 
-export function openSheetPage({ title = '', right = '', html = '', foot = '', onClose, onBack }) {
+export function openSheetPage({ title = '', right = '', html = '', foot = '', theme = 'mine', onClose, onBack }) {
   const root = document.createElement('div');
   root.id = 'wp-st';
   root.innerHTML = `
@@ -75,7 +77,10 @@ export function openSheetPage({ title = '', right = '', html = '', foot = '', on
   root.querySelector('[data-a="close"]').addEventListener('click', () => { if (!onBack?.()) close(); });
   void root.offsetHeight;   // fijar el estilo inicial antes de animar (que no brinque)
   root.classList.add('in');
-  return { root, body: root.querySelector('.wp-st-page'), foot: ft, close, relayout };
+  const setTheme = (t) => { root.classList.remove('th-mine', 'th-going', 'th-explore', 'th-invited'); root.classList.add(`th-${t}`); };
+  const setTitle = (html) => { root.querySelector('.wp-st-title').innerHTML = html; };
+  setTheme(theme);
+  return { root, body: root.querySelector('.wp-st-page'), foot: ft, close, relayout, setTheme, setTitle };
 }
 
 // Jalar la barra de arriba hacia abajo: la hoja sigue al dedo y si pasa

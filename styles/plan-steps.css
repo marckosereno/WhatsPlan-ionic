@@ -19,13 +19,17 @@
   --st-grad: var(--wp-grad-sky, #2563eb);
   --st-glow: rgba(37, 99, 235, 0.3);
   --st-bg: #f4f8fe;   /* blanco con un toque celeste */
+  --st-veil: 244, 248, 254;                     /* --st-bg en r, g, b (para los velos) */
+  --st-b1: rgba(125, 211, 252, 0.32);           /* manchitas de luz del fondo */
+  --st-b2: rgba(37, 99, 235, 0.14);
+  --st-b3: rgba(56, 189, 248, 0.14);
   position: fixed; inset: 0; z-index: 1500500;
   font-family: var(--wp-font); color: var(--st-ink);
   /* fondo con manchas suaves celeste y azul sobre blanco */
   background:
-    radial-gradient(60% 40% at 0% 0%, rgba(125, 211, 252, 0.32), transparent 70%),
-    radial-gradient(55% 38% at 100% 8%, rgba(37, 99, 235, 0.14), transparent 70%),
-    radial-gradient(70% 40% at 50% 100%, rgba(56, 189, 248, 0.14), transparent 70%),
+    radial-gradient(60% 40% at 0% 0%, var(--st-b1), transparent 70%),
+    radial-gradient(55% 38% at 100% 8%, var(--st-b2), transparent 70%),
+    radial-gradient(70% 40% at 50% 100%, var(--st-b3), transparent 70%),
     var(--st-bg);
   transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -39,7 +43,7 @@
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
   padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 26px;
   /* sin contenedor: velo del color del fondo que se desvanece hacia abajo */
-  background: linear-gradient(180deg, var(--st-bg) 0%, rgba(244, 248, 254, 0.9) 55%, rgba(244, 248, 254, 0) 100%);
+  background: linear-gradient(180deg, var(--st-bg) 0%, rgba(var(--st-veil), 0.9) 55%, rgba(var(--st-veil), 0) 100%);
 }
 .wp-st-top > * { pointer-events: auto; }
 /* El botón redondo de la ficha (círculo negro con flecha), sin texto */
@@ -79,7 +83,7 @@
   /* sin contenedor: el botón flota sobre un velo blanco que se desvanece */
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
   display: flex; justify-content: center; padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, rgba(244, 248, 254, 0) 0%, rgba(244, 248, 254, 0.92) 45%, var(--st-bg) 100%);
+  background: linear-gradient(180deg, rgba(var(--st-veil), 0) 0%, rgba(var(--st-veil), 0.92) 45%, var(--st-bg) 100%);
 }
 .wp-st-foot > * { pointer-events: auto; }
 .wp-st-next {
@@ -227,6 +231,19 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
   border-radius: 30px 30px 0 0; overflow: hidden; box-shadow: 0 -14px 44px rgba(15, 23, 42, 0.2);
   transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; contain: layout paint;
 }
+/* Identidad de cada hoja grande (openSheetPage({ theme })): un tinte
+   casi imperceptible para saber dónde estás sin leer.
+   mine = lo tuyo (celeste, el de siempre) · going = ya vas (menta) ·
+   explore = planes de otros (blanco neutro) · invited = te invitaron (celeste) */
+#wp-st.sheet { transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.45s ease; }
+#wp-st.th-going { --st-bg: #f2fbf6; --st-veil: 242, 251, 246;
+  --st-b1: rgba(110, 231, 183, 0.26); --st-b2: rgba(16, 185, 129, 0.1); --st-b3: rgba(52, 211, 153, 0.12); }
+#wp-st.th-explore { --st-bg: #f7f7f9; --st-veil: 247, 247, 249;
+  --st-b1: rgba(255, 255, 255, 0.9); --st-b2: rgba(226, 232, 240, 0.5); --st-b3: rgba(241, 245, 249, 0.6); }
+.wp-st-title { display: inline-flex; align-items: center; gap: 7px; }
+.wp-st-pill { padding: 3px 9px; border-radius: 999px; background: #e8f1ff; color: var(--wp-blue, #2563eb); font-style: normal; font-size: 11.5px; font-weight: 600; }
+.wp-st-pill.go { background: #dcfce7; color: #15803d; }
+
 #wp-st.sheet .wp-st-top { padding: 20px 16px 20px; touch-action: none; }
 .wp-st-grab { position: absolute; top: 8px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: rgba(20, 18, 31, 0.16); }
 #wp-st.sheet .wp-st-back { width: 42px; height: 42px; }
