@@ -27,20 +27,21 @@ export class PlanSummary {
   // Firma del plan (igual que en api/groq-description.js)
   _mpSumSig(a) {
     const stops = Array.isArray(a.stops) ? a.stops : [];
-    return [a.place_id, ...stops.map(x => `${x.place_id}@${x.after || 0}+${x.dur || 0}`), a.scheduled_at, a.ends_at, a.title].join('|');
+    return `${[a.place_id, ...stops.map(x => `${x.place_id}@${x.after || 0}+${x.dur || 0}`), a.scheduled_at, a.ends_at, a.title].join('|')}|v2`;
   }
 
   _mpSummaryHtml(a) {
     const st = Array.isArray(a.stops) ? a.stops : [];
-    const legacy = [a.place_id, ...st.map(x => x.place_id), a.scheduled_at, a.ends_at, a.title].join('|');   // firma de antes de las duraciones
-    const old = a.ai_summary && a.ai_summary_sig && ![this._mpSumSig(a), legacy].includes(a.ai_summary_sig);
+    // firmas viejas: valen solo en planes de un lugar (con paradas, el resumen viejo cerraba mal el plan)
+    const sig = this._mpSumSig(a), ok = [sig, ...(st.length ? [] : [sig.slice(0, -3), [a.place_id, a.scheduled_at, a.ends_at, a.title].join('|')])];
+    const old = a.ai_summary && a.ai_summary_sig && !ok.includes(a.ai_summary_sig);
     const go = (t) => `<button type="button" class="wp-mp-ai-go" data-a="summary">${SPARK}<span>${t}</span></button>`;
     const head = old ? `<button type="button" class="wp-mp-ai-go up" data-a="summary">${SPARK}<span>Actualizar resumen</span></button>`
       : `<div class="wp-mp-ai-h">${SPARK}<b>Resumen del plan</b></div>`;
     return `<section class="wp-mp-ai${a.ai_summary ? ' has' : ''}${old ? ' old' : ''}">
         ${head}
         ${!a.ai_summary ? `<p class="wp-mp-ai-hint">Un resumen de los lugares del plan, qué se puede hacer ahí y qué tal pinta.</p>${go('Crear resumen')}`
-          : old ? `<p class="wp-mp-ai-hint">El plan cambió · este resumen es de antes</p><p class="wp-mp-ai-txt">${this._mpSumFmt(a.ai_summary)}</p>`
+          : old ? `<p class="wp-mp-ai-hint">Este resumen es de antes de los últimos cambios</p><p class="wp-mp-ai-txt">${this._mpSumFmt(a.ai_summary)}</p>`
             : `<p class="wp-mp-ai-txt">${this._mpSumFmt(a.ai_summary)}</p>`}
       </section>`;
   }
