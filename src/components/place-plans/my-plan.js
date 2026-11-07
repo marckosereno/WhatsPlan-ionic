@@ -54,7 +54,20 @@ export class MyPlan {
       ${this._planRouteHtml(a, { owner }) ? `<div class="wp-mp-route">${this._planRouteHtml(a, { owner })}</div>` : ''}
       ${this._planRulesHtml(a, 'wp-mp-rules')}
       ${a.note ? `<div class="wp-mp-note"><small>📝 Nota</small><p>${this._esc(a.note)}</p></div>` : ''}
-`;
+      ${this._mpOthers(a)}`;
+  }
+
+  // "Otros planes aquí": tener tu plan no esconde los de los demás
+  // (pueden ser otro día, o alguien te invitó a otro)
+  _mpOthers(a) {
+    const { pending, others } = this._planGroups();
+    const list = others.filter(x => x.id !== a.id);
+    if (!list.length) return '';
+    const inv = pending.find(x => x.id !== a.id);
+    const sub = inv ? `${this._phName(inv.creator_id)} te invitó a otro plan aquí` : 'Puedes unirte a otro, aunque sea otro día';
+    return `<button type="button" class="wp-mp-more${inv ? ' inv' : ''}" data-a="others">
+        <span class="wp-mp-faces">${[...new Set(list.map(x => x.creator_id))].slice(0, 3).map(id => this._planFace(id)).join('')}</span>
+        <span class="wp-mp-social-t"><b>Otros planes aquí · ${list.length}</b><small>${sub}</small></span>${ARROW}</button>`;
   }
 
   // Tarjeta del plan: emoji, nombre, horario y cuenta regresiva

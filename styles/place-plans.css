@@ -113,3 +113,8 @@
 .wp-pm2-plan-faces b.live .dot { width:7px; height:7px; border-radius:50%; background:#22c55e; animation:wpPlanLive 1.6s ease-out infinite; }
 .wp-pm2-plan-live { flex:none; width:9px; height:9px; border-radius:50%; background:#4ade80; animation:wpPlanLive 1.6s ease-out infinite; }
 @keyframes wpPlanLive { 0% { box-shadow:0 0 0 0 rgba(74,222,128,0.7); } 100% { box-shadow:0 0 0 9px rgba(74,222,128,0); } }
+
+/* Botón del plan: te invitaron a otro plan aquí (aunque ya tengas el tuyo) */
+.wp-pm2-plan-dot { flex: none; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px;
+  background: var(--wp-blue, #2563eb); color: #fff; font-style: normal; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+  box-shadow: 0 0 0 2px #fff; animation: wpStPop 0.4s cubic-bezier(0.34, 1.6, 0.64, 1); }
