@@ -8,10 +8,12 @@
 //
 // Uso:
 //   attachSheet(root, close, '.barra-de-arriba') → { remove() }   (step-screen.js)
-//   openSheetPage({ title, right, html, foot, onClose })            (my-plan.js)
+//   openSheetPage({ title, right, html, foot, onClose, onBack })    (my-plan.js, plans-here.js)
 //     → la misma hoja de "Planear visita" con cualquier contenido:
 //       barra arriba (botón redondo atrás · título · algo a la derecha),
-//       contenido que se desliza y un pie fijo. Devuelve { root, body, close }.
+//       contenido que se desliza y un pie fijo. Devuelve
+//       { root, body, foot, close, relayout }. onBack() → true = ya lo manejé
+//       (p. ej. regresar del detalle a la lista) y la hoja no se cierra.
 // Estilos: /styles/plan-steps.css (#wp-st.sheet, .wp-st-scrim, .wp-st-grab)
 // ════════════════════════════════════════════════════════════════════
 
@@ -39,7 +41,7 @@ export function attachSheet(root, close, handleSel = '.wp-st-top') {
   };
 }
 
-export function openSheetPage({ title = '', right = '', html = '', foot = '', onClose }) {
+export function openSheetPage({ title = '', right = '', html = '', foot = '', onClose, onBack }) {
   const root = document.createElement('div');
   root.id = 'wp-st';
   root.innerHTML = `
@@ -49,7 +51,7 @@ export function openSheetPage({ title = '', right = '', html = '', foot = '', on
       ${right || '<span></span>'}
     </header>
     <div class="wp-st-vp"><div class="wp-st-page">${html}</div></div>
-    ${foot ? `<footer class="wp-st-foot">${foot}</footer>` : ''}`;
+    <footer class="wp-st-foot"${foot ? '' : ' hidden'}>${foot}</footer>`;
   document.body.appendChild(root);
   let closed = false;
   const close = () => {
@@ -61,14 +63,19 @@ export function openSheetPage({ title = '', right = '', html = '', foot = '', on
     onClose?.();
   };
   const sh = attachSheet(root, close);
-  root.style.setProperty('--st-top', `${root.querySelector('.wp-st-top').offsetHeight}px`);
-  root.style.setProperty('--st-foot', `${root.querySelector('.wp-st-foot')?.offsetHeight || 24}px`);
+  const ft = root.querySelector('.wp-st-foot');
+  const relayout = () => {
+    ft.hidden = !ft.innerHTML.trim();
+    root.style.setProperty('--st-top', `${root.querySelector('.wp-st-top').offsetHeight}px`);
+    root.style.setProperty('--st-foot', `${ft.hidden ? 24 : ft.offsetHeight}px`);
+  };
+  relayout();
   addElastic(root.querySelector('.wp-st-vp'), 'y');
   attachPulse(root);
-  root.querySelector('[data-a="close"]').addEventListener('click', close);
+  root.querySelector('[data-a="close"]').addEventListener('click', () => { if (!onBack?.()) close(); });
   void root.offsetHeight;   // fijar el estilo inicial antes de animar (que no brinque)
   root.classList.add('in');
-  return { root, body: root.querySelector('.wp-st-page'), close };
+  return { root, body: root.querySelector('.wp-st-page'), foot: ft, close, relayout };
 }
 
 // Jalar la barra de arriba hacia abajo: la hoja sigue al dedo y si pasa

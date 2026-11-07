@@ -12,7 +12,7 @@
 //   attachPulse(root)        → todos los <button> dentro de root
 //   pulse(el)                → hacer latir un elemento a mano
 // Se salta los botones con [data-nopulse] y los del dial de emojis.
-// Estilos: /styles/plan-steps.css (.wp-pulse, .press, .wp-st-ripple)
+// Estilos: /styles/plan-steps.css (.wp-pulse, .press, .wp-rip-clip, .wp-st-ripple)
 // ════════════════════════════════════════════════════════════════════
 
 const KEYS = ['id', 'k', 'day', 't', 'r', 'c', 'g', 'n', 'd', 'vis', 'type', 'i', 'h', 'm', 'ap', 'a', 'x'];
@@ -37,12 +37,18 @@ function successor(b, scope) {
 }
 
 function ripple(b, e) {
-  const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
+  const host = b.querySelector('.wp-st-next-in') || b;
+  const r = host.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
   const w = document.createElement('i');
   w.className = 'wp-st-ripple';
   w.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+  // La onda va en una capa con la misma forma del botón (border-radius
+  // heredado + máscara), así en botones redondos sale redonda y no
+  // cuadrada, y el botón conserva su sombra
+  let clip = host.querySelector(':scope > .wp-rip-clip');
+  if (!clip) { clip = document.createElement('span'); clip.className = 'wp-rip-clip'; host.appendChild(clip); }
   b.classList.add('wp-rippled');
-  (b.querySelector('.wp-st-next-in') || b).appendChild(w);
+  clip.appendChild(w);
   setTimeout(() => w.remove(), 650);
 }
 
