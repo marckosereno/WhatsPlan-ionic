@@ -14,6 +14,7 @@ import { SocialService }    from '/src/services/SocialService.js';
 import { FavoriteService }  from '/src/services/FavoriteService.js';
 import { ReviewService }    from '/src/services/ReviewService.js';
 import { getAvatarUrl }     from '/src/services/AvatarService.js';
+import { fillSavedPlans } from '/src/components/profile/saved-plans.js';
 
 // Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
 // n veces. Devuelve un path SVG/CSS centrado en (c, c).
@@ -42,7 +43,7 @@ const ICON = {
   share: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>',
   cam:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   map:   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>',
-  chev:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+  chev:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   lock:  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   globe: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
 };
@@ -339,6 +340,7 @@ export class ProfileSheet {
       <div class="wp-pf-cols"><div class="wp-pf-col wp-pf-col-skel"></div><div class="wp-pf-col wp-pf-col-skel"></div><div class="wp-pf-col wp-pf-col-skel"></div></div>
       <div class="wp-pf-sec"><span>Actividades</span><span class="wp-pf-sec-n wp-pf-acts-all"></span></div>
       <div class="wp-pf-acts"></div>
+      ${isMe ? '<div class="wp-pf-sec"><span>Planes guardados</span><span class="wp-pf-sec-n wp-pf-saved-all"></span></div><div class="wp-pf-saved"></div>' : ''}
       <div style="height:28px"></div>`;
     this._setHeader({
       title: '',
@@ -570,6 +572,7 @@ export class ProfileSheet {
     // Guardados + colecciones + actividades
     this._fillCollections(view, uid, isMe);
     this._fillActivities(view, uid, isMe);
+    if (isMe) fillSavedPlans(this, view);
   }
 
   // ── Perfil de otra persona: lo que ayuda a decidir si seguirla ─────

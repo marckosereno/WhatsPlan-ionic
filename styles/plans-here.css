@@ -2,77 +2,91 @@
    WHATSPLAN — styles/plans-here.css
    Hoja "Planes aquí" (src/components/place-plans/plans-here.js,
    plans-here-open.js, plans-here-days.js) en la hoja grande (#wp-st.sheet).
-   Calendario de 2 semanas en tarjeta; una tarjeta por día con la fecha
-   a la izquierda y sus planes apilados, que se abren ahí mismo.
-   Sin franjas ni etiquetas: el estado lo dice un ícono chico al final. Degradado solo en el botón principal.
+   Calendario en tira de tarjetitas; tarjetas de plan con racimo (foto +
+   tarjetitas pastel + emoji sticker), categoría en pastel, guardar y
+   hora; se abren ahí mismo. Sin franjas ni etiquetas de estado. Degradado solo en el botón principal.
    Pesos: 700 / 600 / 500.
    ════════════════════════════════════════════════════════════════════ */
 
-.wp-ph2-list { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 8px; }
+.wp-ph2-list { display: flex; flex-direction: column; gap: 8px; padding: 0 16px 8px; }
 
-/* ── Calendario: próximas 2 semanas en cuadrícula ── */
-.wp-ph3-cal { padding: 14px 12px 10px; border-radius: 24px; background: #fff;
-  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.04), 0 6px 18px rgba(20, 18, 31, 0.06); }
-.wp-ph3-cal-h { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 6px 8px; }
-.wp-ph3-cal-h b { font-size: 15px; font-weight: 700; color: var(--wp-ink, #14121f); }
-.wp-ph3-cal-h span { font-size: 13px; font-weight: 500; color: #9ca3af; }
-.wp-ph3-all { margin-left: auto; padding: 4px 10px; border: none; border-radius: 999px; background: #eef6ff; color: var(--wp-blue, #2563eb);
-  font: inherit; font-size: 12.5px; font-weight: 600; -webkit-tap-highlight-color: transparent; }
-.wp-ph3-cal-g { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 4px; justify-items: center; }
-.wp-ph3-cal-g > small { padding-bottom: 4px; font-size: 11.5px; font-weight: 500; color: #9ca3af; }
-.wp-ph3-d { width: 40px; height: 46px; padding: 0; border: none; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font: inherit; color: var(--wp-ink, #14121f); -webkit-tap-highlight-color: transparent; }
-.wp-ph3-d b { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14.5px; font-weight: 500;
-  font-variant-numeric: tabular-nums; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
-.wp-ph3-d.has b { font-weight: 600; }
-.wp-ph3-d.past { opacity: 0.35; }
-.wp-ph3-d.today b { box-shadow: inset 0 0 0 1.5px #cbd5e1; }
-.wp-ph3-d.on b { background: var(--wp-blue, #2563eb); color: #fff; box-shadow: 0 6px 12px -4px rgba(37, 99, 235, 0.55); }
-.wp-ph3-d span { display: flex; gap: 3px; height: 5px; }
-.wp-ph3-d span i { width: 4px; height: 4px; border-radius: 50%; background: var(--wp-blue, #2563eb); }
+/* ── Calendario en tira (como tarjetitas) ── */
+.wp-ph4-cal { margin: 0 -16px; }
+.wp-ph4-cal-h { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; gap: 14px; padding: 2px 0 10px; overflow: hidden; }
+.wp-ph4-cal-h .side { font-size: 18px; font-weight: 500; color: #c3c8d1; white-space: nowrap; }
+.wp-ph4-cal-h .side:first-child { text-align: right; transform: translateX(-38%); }
+.wp-ph4-cal-h .side:last-child { transform: translateX(38%); }
+.wp-ph4-mon { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; color: var(--wp-ink, #14121f); white-space: nowrap; }
+.wp-ph4-mon small { font-size: 18px; font-weight: 500; color: #9ca3af; }
+.wp-ph4-strip { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior-x: none; }
+.wp-ph4-strip::-webkit-scrollbar { display: none; }
+.wp-ph4-d { flex: none; position: relative; width: 54px; height: 66px; padding: 0; border: none; border-radius: 16px; background: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font: inherit; color: var(--wp-ink, #14121f);
+  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.04), 0 4px 12px rgba(20, 18, 31, 0.05); -webkit-tap-highlight-color: transparent;
+  transition: width 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), height 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.25s; }
+.wp-ph4-d .dots { display: flex; gap: 3px; height: 5px; margin-bottom: 2px; }
+.wp-ph4-d .dots i { width: 4px; height: 4px; border-radius: 50%; background: #93c5fd; }
+.wp-ph4-d b { font-size: 20px; font-weight: 500; letter-spacing: -0.4px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.wp-ph4-d small { font-size: 11px; font-weight: 500; color: #9ca3af; }
+.wp-ph4-d em { position: absolute; bottom: 7px; width: 0; height: 3px; border-radius: 3px; background: var(--wp-blue, #2563eb); transition: width 0.3s ease; }
+.wp-ph4-d.on { width: 60px; height: 80px; box-shadow: 0 2px 4px rgba(20, 18, 31, 0.05), 0 12px 26px rgba(20, 18, 31, 0.1); }
+.wp-ph4-d.on b { font-size: 23px; font-weight: 600; }
+.wp-ph4-d.on small { color: var(--wp-ink, #14121f); font-weight: 600; margin-bottom: 8px; }
+.wp-ph4-d.on em { width: 18px; }
+.wp-ph4-all { display: block; margin: -4px auto 2px; padding: 6px 12px; border: none; border-radius: 999px; background: none; color: var(--wp-blue, #2563eb);
+  font: inherit; font-size: 13px; font-weight: 600; -webkit-tap-highlight-color: transparent; }
 
-/* ── Lista: una tarjeta por día (fecha a la izquierda, planes apilados) ── */
-.wp-ph2-groups { display: flex; flex-direction: column; gap: 10px; }
+/* ── Lista por día ── */
+.wp-ph2-groups { display: flex; flex-direction: column; gap: 14px; }
 .wp-ph2-groups.swap { animation: wpPh2Swap 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
 @keyframes wpPh2Swap { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.wp-ph3-day { display: flex; border-radius: 22px; background: #fff; overflow: hidden;
-  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.04), 0 4px 14px rgba(20, 18, 31, 0.05); }
-.wp-ph3-date { flex: none; width: 58px; padding: 14px 0; display: flex; flex-direction: column; align-items: center; gap: 1px; border-right: 1px solid #f0f2f6; }
-.wp-ph3-date small { font-size: 12px; font-weight: 500; color: #9ca3af; text-transform: capitalize; }
-.wp-ph3-date b { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; color: var(--wp-ink, #14121f); line-height: 1.1; font-variant-numeric: tabular-nums; }
-.wp-ph3-date i { font-style: normal; font-size: 11px; font-weight: 600; color: var(--wp-blue, #2563eb); }
-.wp-ph3-rows { flex: 1; min-width: 0; }
-.wp-ph2-it + .wp-ph2-it { border-top: 1px solid #f0f2f6; }
-.wp-ph2-it { transition: background-color 0.25s; }
-.wp-ph2-it.open { background: #fbfcfe; }
-.wp-ph2-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; }
-.wp-ph2-emo { flex: none; width: 42px; height: 42px; border-radius: 13px; background: #f3f6fb; display: flex; align-items: center; justify-content: center; font-size: 22px;
-  transition: transform 0.4s cubic-bezier(0.34, 1.6, 0.64, 1); }
-.wp-ph2-it.open .wp-ph2-emo { transform: scale(1.06) rotate(-6deg); }
-.wp-ph2-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.wp-ph2-t b { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; color: var(--wp-ink, #14121f); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-ph2-t small { display: flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 500; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-ph2-inv { color: var(--wp-blue, #2563eb); font-weight: 600; }
-.wp-ph2-live { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: wpPh2Live 1.6s infinite; }
+.wp-ph4-day { display: flex; flex-direction: column; gap: 8px; }
+.wp-ph4-day h3 { margin: 0 4px; font-size: 13px; font-weight: 600; color: #6b7280; }
+
+/* ── Tarjeta de un plan ── */
+.wp-ph2-it { border-radius: 20px; background: #fff; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.04), 0 4px 14px rgba(20, 18, 31, 0.05); transition: box-shadow 0.3s ease; }
+.wp-ph2-it.open { box-shadow: 0 2px 4px rgba(20, 18, 31, 0.04), 0 14px 32px rgba(20, 18, 31, 0.1); }
+.wp-ph2-head { display: flex; align-items: center; gap: 13px; padding: 12px 12px 12px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; }
+/* racimo: dos tarjetitas pastel giradas detrás + la foto al frente + emoji sticker */
+.wp-ph4-thumb { flex: none; position: relative; width: 62px; height: 66px; }
+.wp-ph4-thumb > i, .wp-ph4-thumb .ph { position: absolute; top: 5px; left: 5px; width: 52px; height: 56px; border-radius: 14px; }
+.wp-ph4-thumb > i { background: var(--bg); transition: transform 0.45s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.wp-ph4-thumb > i:nth-child(1) { transform: rotate(-11deg) translate(-3px, 1px); }
+.wp-ph4-thumb > i:nth-child(2) { transform: rotate(8deg) translate(3px, -1px); }
+.wp-ph4-thumb .ph { background: #e5e7eb center / cover no-repeat; box-shadow: 0 0 0 2px #fff, 0 4px 10px rgba(20, 18, 31, 0.15); }
+.wp-ph4-thumb .ph.none { background: var(--bg); }
+.wp-ph4-thumb em { position: absolute; right: -2px; bottom: -1px; font-style: normal; font-size: 24px; line-height: 1;
+  /* emoji con borde blanco (sticker) */
+  filter: drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff) drop-shadow(0 3px 4px rgba(20, 18, 31, 0.2));
+  transition: transform 0.45s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.wp-ph4-thumb .ph.none + em { right: 50%; bottom: 50%; transform: translate(50%, 45%); font-size: 28px; }
+.wp-ph2-it.open .wp-ph4-thumb > i:nth-child(1) { transform: rotate(-17deg) translate(-6px, 2px); }
+.wp-ph2-it.open .wp-ph4-thumb > i:nth-child(2) { transform: rotate(14deg) translate(6px, -2px); }
+.wp-ph2-it.open .wp-ph4-thumb em { transform: rotate(-10deg) scale(1.12); }
+.wp-ph2-it.open .wp-ph4-thumb .ph.none + em { transform: translate(50%, 45%) rotate(-10deg) scale(1.12); }
+.wp-ph4-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wp-ph4-txt b { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; color: var(--wp-ink, #14121f); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-ph4-txt > small { font-size: 12.5px; line-height: 1.35; font-weight: 500; color: #6b7280;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.wp-ph4-meta { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 2px; }
+.wp-ph4-cat { flex: none; padding: 3px 9px; border-radius: 999px; background: var(--bg); color: var(--fg); font-style: normal; font-size: 11.5px; font-weight: 600; }
+.wp-ph4-st { min-width: 0; font-size: 12px; font-weight: 500; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-ph4-st.own, .wp-ph4-st.inv { color: var(--wp-blue, #2563eb); font-weight: 600; }
+.wp-ph4-st.go { color: #15803d; font-weight: 600; }
+.wp-ph4-side { flex: none; align-self: stretch; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; }
+.wp-ph4-save { width: 34px; height: 34px; margin: -6px -6px 0 0; padding: 0; border: none; border-radius: 50%; background: none; color: #9ca3af;
+  display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; transition: color 0.2s; }
+.wp-ph4-save.on { color: var(--wp-blue, #2563eb); }
+.wp-ph4-save.on svg { fill: currentColor; }
+.wp-ph4-side small { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: #9ca3af; white-space: nowrap; }
+.wp-ph4-side small.live { color: #15803d; font-weight: 600; }
+.wp-ph4-side small i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: wpPh2Live 1.6s infinite; }
 @keyframes wpPh2Live { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 70%, 100% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } }
-/* ícono de estado al final de la fila */
-.wp-ph3-end { flex: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform 0.35s cubic-bezier(0.34, 1.6, 0.64, 1); }
-.wp-ph3-end.own { background: #eef6ff; color: var(--wp-blue, #2563eb); }
-.wp-ph3-end.go { width: 24px; height: 24px; margin: 0 3px; background: #22c55e; box-shadow: 0 0 0 4px #ecfdf3; }
-.wp-ph3-end.inv { background: #eef6ff; color: var(--wp-blue, #2563eb); box-shadow: inset 0 0 0 1.5px #bfdbfe; }
-.wp-ph2-it.open .wp-ph3-end.own { transform: rotate(90deg); }
-/* caras (planes de otros) */
-.wp-ph2-cluster { flex: none; display: flex; align-items: center; }
-.wp-ph2-cluster i { display: block; width: 28px; height: 28px; margin-left: -9px; border-radius: 50%; border: 2px solid #fff; background: #e5e7eb center / cover no-repeat; }
-.wp-ph2-cluster i:first-child { margin-left: 0; }
-.wp-ph2-cluster i.wp-seal { clip-path: none; }
-.wp-ph2-cluster i.wp-seal::after { display: none; }
-.wp-ph2-cluster em { margin-left: -8px; min-width: 28px; height: 28px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; border: 2px solid #fff;
-  background: #eef2f7; color: #4b5563; font-style: normal; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 
 /* ── Abierto (acordeón) ── */
 .wp-ph2-more { overflow: hidden; }
-.wp-ph2-in { display: flex; flex-direction: column; gap: 12px; margin: 0 14px 0 12px; padding: 4px 0 14px; }
+.wp-ph2-in { display: flex; flex-direction: column; gap: 12px; margin: 0 14px; padding: 12px 0 14px; border-top: 1px solid #f1f4f9; }
 .wp-ph2-in > * { animation: wpPh2In 0.45s cubic-bezier(0.32, 0.72, 0, 1) both; }
 .wp-ph2-in > :nth-child(2) { animation-delay: 0.04s; }
 .wp-ph2-in > :nth-child(3) { animation-delay: 0.08s; }

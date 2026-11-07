@@ -279,7 +279,7 @@ export class MomentsUI {
       cap.style.display = cap.textContent ? '' : 'none';
       const chip = root.querySelector('.wp-mo-placechip');
       chip.style.display = m.place_name ? '' : 'none';
-      chip.innerHTML = `${PIN()}<span>${ESC(m.place_name || '')}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="#111827" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+      chip.innerHTML = `${PIN()}<span>${ESC(m.place_name || '')}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#111827" stroke-width="2.6" stroke-linecap="round"/></svg>`;
       chip.onclick = (e) => { e.stopPropagation(); if (!m.place_id) return; close(); setTimeout(() => this.onOpenPlace(m.place_id), 200); };
       // Pie: en los míos, vistas + "Guardar como memory"
       const own = root.querySelector('.wp-mo-own');

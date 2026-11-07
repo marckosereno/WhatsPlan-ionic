@@ -164,7 +164,7 @@ export class PlaceModal2 {
           <!-- CTA ROW — oculto por ahora -->
           <div class="wp-pm2-row" id="wp-pm2-cta-row" style="display:none">
             <button id="wp-pm2-fuiste">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               ¿Fuiste?
             </button>
             <button id="wp-pm2-share" class="wp-pm2-icon-btn">
@@ -731,7 +731,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
               ? `<span style="font-size:14px;">⭐</span><span style="font-size:15px;font-weight:700;color:#f59e0b;">${rating.toFixed(1)}</span>${count ? `<span style="font-size:12.5px;color:#9ca3af;">(${count})</span>` : ''}`
               : `<span style="font-size:12.5px;color:#9ca3af;">Sin reseñas</span>`}
             <span style="flex:1"></span>
-            <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="flex-shrink:0;width:32px;height:32px;padding:0;border-radius:50%;border:none;background:#e5e5e5;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button id="wp-ms-cta-btn" aria-label="Ver detalles" style="flex-shrink:0;width:32px;height:32px;padding:0;border-radius:50%;border:none;background:#e5e5e5;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.18s cubic-bezier(0.34,1.7,0.64,1);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
         </div>`;
       // Presión de toda la tarjeta (como .wps-card:active)
