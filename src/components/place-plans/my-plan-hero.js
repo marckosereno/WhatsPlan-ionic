@@ -22,6 +22,8 @@
 import { photoSmall } from '/src/utils/photo-url.js';
 
 const VIS = { public: 'Cualquier persona', followers: 'Quienes siguen a quien organiza', invited: 'Solo invitados' };
+const PEN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>';
+const TILT = [-5, 4, -3, 5];   // cada foto de la tira, inclinada distinto (racimo)
 const NOTE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
 const PASTEL = ['#bfdbfe', '#fde68a', '#ddd6fe', '#fecdd3', '#bbf7d0', '#fed7aa'];
 const ARROW = '<svg class="wp-mp-go" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
@@ -55,7 +57,7 @@ export class MyPlanHero {
     if (stops.length < 2) return '';
     const path = (k) => `<span class="wp-mp-path" aria-hidden="true"><svg viewBox="0 0 100 40" preserveAspectRatio="none">
         <path d="${k % 2 ? 'M2 14 C 26 40, 44 40, 52 22 S 78 2, 98 26' : 'M2 26 C 26 0, 44 0, 52 18 S 78 38, 98 14'}" vector-effect="non-scaling-stroke"/></svg></span>`;
-    return `<div class="wp-mp-strip">${stops.map((s, i) => `${i ? path(i) : ''}<button type="button" class="wp-mp-sp${i === 0 ? ' on' : ''}" data-a="pick" data-i="${i}" aria-label="${i + 1}. ${this._esc(s.name)}">${this._mpPhoto(s, i)}<span class="wp-mp-sp-n ${i ? 'in' : 'out'}">${this._hhmm(s.at)}</span></button>`).join('')}</div>`;
+    return `<div class="wp-mp-strip">${stops.map((s, i) => `${i ? path(i) : ''}<button type="button" class="wp-mp-sp${i === 0 ? ' on' : ''}" style="--tilt:${TILT[i % TILT.length]}deg" data-a="pick" data-i="${i}" aria-label="${i + 1}. ${this._esc(s.name)}">${this._mpPhoto(s, i)}<span class="wp-mp-sp-n ${i ? 'in' : 'out'}">${this._hhmm(s.at)}</span></button>`).join('')}</div>`;
   }
 
   // Datos del lugar elegido para la tarjeta (el primero = el plan)
@@ -84,7 +86,7 @@ export class MyPlanHero {
     return `<section class="wp-mp-hero">
         <div class="wp-mp-hero-ph">${this._mpPhoto(s, 0, 'big')}${this._mpCountdown(a)}</div>
         <div class="wp-mp-hero-t">
-          <b>${this._esc(a.title)}</b>
+          <b class="wp-mp-hero-name">${this._esc(a.title)}${owner ? `<button type="button" class="wp-mp-edit" data-a="rename" aria-label="Cambiar el nombre">${PEN}</button>` : ''}</b>
           <small class="wp-mp-hero-place">${this._esc(s.name)}</small>
           <small class="wp-mp-hero-when">${this._esc(info.when)}</small>
           <span class="wp-mp-hero-faces">${P.slice(0, 4).map(id => this._planFace(id)).join('')}${owner ? '<button type="button" class="wp-mp-hero-add" data-a="invite" aria-label="Invitar">+</button>' : ''}</span>
@@ -124,7 +126,7 @@ export class MyPlanHero {
   // Nota tipo post-it (la del plan o la de la parada elegida)
   _mpNote(text, label = 'Nota del plan') {
     if (!text) return '';
-    return `<div class="wp-mp-note"><small>${this._esc(label)}</small><div class="wp-mp-note-in"><p>${this._esc(text)}</p>${NOTE}</div></div>`;
+    return `<div class="wp-mp-note"><small>${this._esc(label)}</small><div class="wp-mp-note-in"><p>${this._esc(text)}</p>${NOTE}</div></div>`;   // el título va dentro de la banda amarilla
   }
 
   // Con paradas: renglón "Termina" (la salida completa)
