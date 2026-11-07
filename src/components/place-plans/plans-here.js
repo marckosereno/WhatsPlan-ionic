@@ -117,6 +117,8 @@ export class PlansHere {
   }
 
   _phPaintSaves(v) {
+    const a = v.at >= 0 ? v.list[v.at] : null;
+    if (a) v.sheet.setRight(this._phSaveTop(v, a));
     v.sheet.body.querySelectorAll('.wp-ph2-it').forEach(it => {
       const on = v.saved.has(v.list[+it.dataset.open]?.id), b = it.querySelector('.wp-ph4-save');
       b.classList.toggle('on', on); b.setAttribute('aria-label', on ? 'Quitar de guardados' : 'Guardar');
@@ -124,7 +126,7 @@ export class PlansHere {
   }
 
   async _phSave(v, b) {
-    const a = v.list[+b.closest('[data-open]').dataset.open]; if (!a) return;
+    const a = b.dataset.act === 'save-top' ? v.list[v.at] : v.list[+b.closest('[data-open]').dataset.open]; if (!a) return;
     const on = !v.saved.has(a.id);
     on ? v.saved.add(a.id) : v.saved.delete(a.id);
     this._phPaintSaves(v); this._haptic?.('light');
@@ -136,7 +138,7 @@ export class PlansHere {
     const day = e.target.closest('.wp-ph4-cal [data-day]');
     if (day) { this._phPickDay(v, day.dataset.day); return; }
     const act = e.target.closest('[data-act]');
-    if (act) { act.dataset.act === 'save' ? this._phSave(v, act) : this._phDo(v, act); return; }
+    if (act) { /^save/.test(act.dataset.act) ? this._phSave(v, act) : this._phDo(v, act); return; }
     if (v.at >= 0) { this._phDetailClick(v, e); return; }
     const row = e.target.closest('.wp-ph2-it');
     if (row && v.at < 0) this._phOpen(v, +row.dataset.open, row);

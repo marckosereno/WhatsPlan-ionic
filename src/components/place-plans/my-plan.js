@@ -54,16 +54,16 @@ export class MyPlan {
       ${this._mpHero(a, owner, stops)}
       ${this._mpRows(a, owner)}
       ${this._mpSummaryHtml(a)}
-      ${this._mpSocial(a)}
       <div class="wp-mp-lbl">Quién va</div>
       <div class="wp-mp-who">${this._mpWho(a, owner, me)}</div>
+      ${this._mpSocial(a)}
       ${this._mpRoute(a, owner, stops)}
       ${others ? this._mpOthers(a) : ''}`;
   }
 
   // Tiras con rebote de lado
   _mpWire(body) {
-    body.querySelectorAll('.wp-mp-who, .wp-mp-strip').forEach(el => addElastic(el, 'x'));
+    body.querySelectorAll('.wp-mp-who').forEach(el => addElastic(el, 'x'));
   }
 
   // "Otros planes aquí": tener tu plan no esconde los de los demás
@@ -91,21 +91,23 @@ export class MyPlan {
     const P = a.participants || [], max = a.max_participants || 0, left = Math.max(0, max - P.length);
     const pend = (a.invited || []).filter(id => !P.includes(id) && !(a.declined || []).includes(id)).length;
     const wl = (a.waitlist || []).length, full = this._planFull(a);
-    const title = full ? `¡Completo! Van ${P.length}` : max ? `${P.length} de ${max} ya van` : `Van ${P.length}`;
+    const title = full ? `¡Completo! ${P.length} sí van a ir` : max ? `${P.length} de ${max} sí van a ir` : `${P.length} sí van a ir`;
     const sub = [full ? 'Ya no quedan cupos' : max ? `Queda${left === 1 ? '' : 'n'} ${left} cupo${left === 1 ? '' : 's'}` : '',
       pend ? `${pend} sin responder` : '', wl ? `${wl} en espera` : ''].filter(Boolean).join(' · ');
     return `<section class="wp-mp-social"><span class="wp-mp-faces">${P.slice(0, 3).map(id => this._planFace(id)).join('')}</span>
         <span class="wp-mp-social-t"><b>${title}</b><small>${sub}</small></span></section>`;
   }
 
-  // Quién va: tarjetitas con cara, nombre y emoji de estado debajo
+  // Quién va: tarjetitas con cara, nombre y estado debajo. Los que dijeron
+  // que no ya no salen; en su lugar quedan lugares libres (como al armar)
   _mpWho(a, owner, me) {
     const P = a.participants || [], D = a.declined || [];
-    const rows = [[a.creator_id, 'host'], ...P.filter(id => id !== a.creator_id).map(id => [id, 'go']),
-      ...(a.invited || []).filter(id => !P.includes(id) && !D.includes(id)).map(id => [id, 'wait']),
-      ...D.filter(id => !P.includes(id)).map(id => [id, 'no'])];
+    const wait = (a.invited || []).filter(id => !P.includes(id) && !D.includes(id));
+    const rows = [[a.creator_id, 'host'], ...P.filter(id => id !== a.creator_id).map(id => [id, 'go']), ...wait.map(id => [id, 'wait'])];
+    const free = Math.max(0, Math.min(8, (a.max_participants || 0) - P.length - wait.length));
     const first = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || p.username || 'Alguien').split(' ')[0]); };
     return (owner ? '<button type="button" class="wp-mp-p add" data-a="invite"><i>+</i><b>Invitar</b><em>✨</em></button>' : '')
-      + rows.map(([id, k]) => `<div class="wp-mp-p ${k}" title="${ROLE[k][1]}">${this._planFace(id)}<b>${id === me ? 'Tú' : first(id)}</b><em class="st-${k}" aria-label="${ROLE[k][1]}">${ROLE[k][0]}</em></div>`).join('');
+      + rows.map(([id, k]) => `<div class="wp-mp-p ${k}" title="${ROLE[k][1]}">${this._planFace(id)}<b>${id === me ? 'Tú' : first(id)}</b><em class="st-${k}" aria-label="${ROLE[k][1]}">${ROLE[k][0]}</em></div>`).join('')
+      + '<div class="wp-mp-p free" aria-label="Lugar libre"><i></i><b>Libre</b><em></em></div>'.repeat(free);
   }
 }

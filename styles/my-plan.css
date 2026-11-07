@@ -31,8 +31,11 @@
 .wp-mp-ph > span { font-size: 24px; }
 .wp-mp-ph.loaded, .wp-mp-ph.swap { animation: wpMpFade 0.35s ease; }
 @keyframes wpMpFade { from { opacity: 0.3; } to { opacity: 1; } }
-.wp-mp-strip { flex: none; display: flex; align-items: center; gap: 8px; margin: -2px -16px -4px; padding: 8px 16px 10px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: none; }
-.wp-mp-strip::-webkit-scrollbar { display: none; }
+/* repartida a lo ancho; entre foto y foto un camino punteado que ondula */
+.wp-mp-strip { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 6px 4px 4px; }
+.wp-mp-path { flex: 1; min-width: 24px; height: 40px; margin: 0 4px; }
+.wp-mp-path svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.wp-mp-path path { fill: none; stroke: #93c5fd; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0.5 7; }
 .wp-mp-sp { flex: none; padding: 0; border: none; background: none; border-radius: 16px; -webkit-tap-highlight-color: transparent;
   transition: transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1); }
 .wp-mp-sp .wp-mp-ph { width: 50px; height: 58px; opacity: 0.72; box-shadow: 0 2px 8px rgba(20, 18, 31, 0.1); }
@@ -55,6 +58,8 @@
 .wp-mp-hero-t > b { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .wp-mp-hero-t > small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-hero-t.swap > :not(b) { animation: wpMpRow 0.35s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.wp-mp-hero-note { font-size: 12.5px; font-style: italic; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wp-mp-hero-faces { display: flex; align-items: center; margin: 6px 0 auto; }
 .wp-mp-hero-faces i { display: block; width: 26px; height: 26px; margin-left: -8px; border-radius: 50%; border: 2px solid #fff; background: #e5e7eb center / cover no-repeat;
   box-shadow: 0 1px 3px rgba(20, 18, 31, 0.12); }
@@ -80,14 +85,13 @@
 .wp-mp-row.more { display: none; }
 .wp-mp-rows.open .wp-mp-row.more { display: flex; animation: wpMpRow 0.35s cubic-bezier(0.32, 0.72, 0, 1) both; }
 @keyframes wpMpRow { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-.wp-mp-moreinfo { align-self: center; display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 10px 14px; border: none; background: none;
-  font: inherit; font-size: 14px; font-weight: 600; color: var(--mp-ink); }
+.wp-mp-moreinfo { align-self: center; display: flex; align-items: center; gap: 6px; margin-top: 12px; height: 36px; padding: 0 14px; border: none; border-radius: 999px;
+  background: #eef1f5; font: inherit; font-size: 13.5px; font-weight: 600; color: #374151; }
 .wp-mp-moreinfo svg { transition: transform 0.3s; }
 .wp-mp-rows.open .wp-mp-moreinfo svg { transform: rotate(180deg); }
 
 /* ── Resumen del plan (IA) ── */
-.wp-mp-ai { position: relative; padding: 2px 4px 4px 18px; }
-.wp-mp-ai::before { content: ''; position: absolute; left: 4px; top: 2px; bottom: 4px; width: 3px; border-radius: 3px; background: var(--wp-grad-sky, #2563eb); }
+.wp-mp-ai { padding: 4px 4px; text-align: left; }
 .wp-mp-ai-h { display: flex; align-items: center; gap: 6px; color: var(--mp-blue); }
 .wp-mp-ai-h b { font-size: 13px; font-weight: 600; }
 .wp-mp-ai p { margin: 6px 0 0; font-size: 14.5px; line-height: 1.5; color: #374151; }
@@ -134,18 +138,24 @@
 .wp-mp-p.host { background: var(--wp-grad-sky, #2563eb); color: #fff; box-shadow: 0 8px 18px -6px rgba(37, 99, 235, 0.5); }
 .wp-mp-p.host i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
 .wp-mp-p.no { opacity: 0.5; }
+.wp-mp-p.free { background: none; box-shadow: none; }
+.wp-mp-p.free i { box-sizing: border-box; background: none; border: 2px dashed #cbd5e1; }
+.wp-mp-p.free b { color: #9ca3af; font-weight: 500; }
 .wp-mp-p.add i { display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: #f3f8ff; border: 2px dashed #93c5fd;
   color: var(--mp-blue); font-style: normal; font-size: 22px; font-weight: 500; }
 .wp-mp-p.add b { color: var(--mp-blue); }
 
 /* ── Ruta del plan (numerada, con fotos) ── */
 .wp-mp-sec { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 4px; }
+.wp-mp-sec { background: none; }
 .wp-mp-sec b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
-.wp-mp-sec button { display: flex; align-items: center; gap: 6px; padding: 6px 2px; border: none; background: none; color: var(--mp-sub); font: inherit; font-size: 13px; font-weight: 500; }
+.wp-mp-sec b small { font-size: 13px; font-weight: 500; color: var(--mp-sub); }
+.wp-mp-mapbtn { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: none; border-radius: 999px; background: #eef6ff; color: var(--mp-blue);
+  font: inherit; font-size: 12.5px; font-weight: 600; }
 .wp-mp-rt { display: flex; flex-direction: column; gap: 10px; }
 .wp-mp-rt-it, .wp-mp-rt-add { position: relative; display: flex; align-items: stretch; gap: 12px; }
 /* línea que une los números */
-.wp-mp-rt-it:not(:last-child)::after { content: ''; position: absolute; left: 15px; top: 36px; bottom: -12px; width: 2px; border-radius: 2px; background: #e2e8f0; }
+.wp-mp-rt-it:not(:last-of-type)::after { content: ''; position: absolute; left: 15px; top: 48px; bottom: -14px; width: 0; border-left: 2px dotted #93c5fd; }
 .wp-mp-rt-n { flex: none; width: 32px; height: 32px; margin-top: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.12);
   display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 600; color: var(--mp-ink); }
 .wp-mp-rt-card { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 9px; border-radius: 20px; background: #fff; box-shadow: var(--mp-card); }
@@ -199,3 +209,9 @@
 /* "Vas a ir": salirte es secundario (gris), no rojo */
 #wp-st.th-going .wp-mp-danger { background: #f1f3f5; color: #4b5563; }
 #wp-st.th-going .wp-mp-danger.armed { background: #e0123c; color: #fff; }
+
+/* sin el resaltado gris de Android al tocar dentro de la hoja */
+#wp-st, #wp-st * { -webkit-tap-highlight-color: transparent; }
+/* guardar (plan abierto en "Planes aquí"): redondo como el de atrás */
+.wp-st-save { justify-self: end; color: #111; }
+.wp-st-save.on { color: var(--wp-blue, #2563eb); }
