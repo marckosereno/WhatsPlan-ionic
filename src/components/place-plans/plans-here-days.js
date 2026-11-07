@@ -1,8 +1,9 @@
 // ════════════════════════════════════════════════════════════════════
 // WHATSPLAN — place-plans/plans-here-days.js
 // Mini calendario de "Planes aquí" (plans-here.js): una tira de días
-// ("Todos" + los próximos 14) con puntitos por cada plan de ese día
-// (hasta 3); los días sin planes se ven tenues. Tocar un día filtra la
+// ("Todos" + los próximos 14) con un puntito por cada plan de ese día;
+// con más de 3 sale el número chiquito en lugar de los puntos (un
+// badge en cada día sería ruido). Los días sin planes se ven tenues. Tocar un día filtra la
 // lista; con "Todos" la lista va agrupada por fecha (Hoy · Mañana ·
 // Sáb 8) y dentro de cada día por hora.
 //
@@ -34,7 +35,7 @@ export class PlansHereDays {
     box.innerHTML = `<button type="button" class="wp-st-day wp-ph2-all on" data-day="all"><small>Todos</small><b>${v.list.length}</b></button>`
       + days.map((d, i) => {
         const n = count(key(d));
-        return `<button type="button" class="wp-st-day${n ? '' : ' empty'}" data-day="${key(d)}"><small>${i === 0 ? 'Hoy' : DOW[d.getDay()]}</small><b>${d.getDate()}</b><span class="wp-ph2-dots">${'<i></i>'.repeat(Math.min(3, n))}</span></button>`;
+        return `<button type="button" class="wp-st-day${n ? '' : ' empty'}" data-day="${key(d)}"><small>${i === 0 ? 'Hoy' : DOW[d.getDay()]}</small><b>${d.getDate()}</b><span class="wp-ph2-dots">${n > 3 ? `<em>${n}</em>` : '<i></i>'.repeat(n)}</span></button>`;
       }).join('');
     addElastic(box, 'x');
   }
