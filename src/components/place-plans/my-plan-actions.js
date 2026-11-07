@@ -32,6 +32,16 @@ export class MyPlanActions {
     else if (act === 'dur') this._mpDur(ctx, b);
     else if (act === 'cupo') this._mpCupo(ctx, b);
     else if (act === 'invite') this._mpInvite(ctx, b);
+    else if (act === 'pick') this._mpPick(ctx, +b.dataset.i);
+    else if (act === 'summary') this._mpSummary(ctx, b);
+    else if (act === 'more') this._mpMoreInfo(b);
+  }
+
+  // "Más info": muestra los renglones escondidos (cupos, quién puede, reglas, nota)
+  _mpMoreInfo(b) {
+    const rows = b.closest('.wp-mp-rows'), open = !rows.classList.contains('open');
+    rows.classList.toggle('open', open);
+    b.querySelector('span').textContent = open ? 'Menos info' : 'Más info';
   }
 
   async _mpSave(ctx, fn, args, msg, opts) {

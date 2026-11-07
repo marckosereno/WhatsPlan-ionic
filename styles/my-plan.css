@@ -3,6 +3,8 @@
    Hoja "Tu plan" / "Vas a ir" (src/components/place-plans/my-plan.js y
    my-plan-actions.js), dentro de la hoja de "Planear visita"
    (#wp-st.sheet, openSheetPage de step-sheet.js).
+   Como una ficha de viaje: tira de fotos de los lugares, tarjeta
+   principal, renglones de datos, resumen IA, quién va, ruta numerada.
    Regla de color: el degradado solo en 2 lugares (botón principal y la
    tarjetita de quien organiza). Todo lo demás: tarjetas blancas, texto
    tinta y el azul como acento chico (íconos, flechas, barra).
@@ -23,17 +25,82 @@
 .wp-mp-danger:active { transform: scale(0.95); }
 .wp-mp-danger.armed { background: #e0123c; color: #fff; animation: wpStPop 0.3s ease; }
 
-/* ── Tarjeta del plan (blanca) ── */
-.wp-mp-card { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 22px; background: #fff; box-shadow: var(--mp-card); }
-.wp-mp-ic { flex: none; width: 50px; height: 50px; border-radius: 16px; background: #eef6ff; display: flex; align-items: center; justify-content: center; font-size: 27px; }
-.wp-mp-card-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.wp-mp-card-t b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-card-t small { font-size: 13px; font-weight: 500; color: var(--mp-sub); }
-.wp-mp-count { flex: none; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px;
-  background: #eef6ff; color: var(--mp-blue); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
-.wp-mp-count.live { background: #ecfdf3; color: #15803d; }
-.wp-mp-count.live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: wpMpLive 1.6s infinite; }
-@keyframes wpMpLive { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); } }
+/* ── Tira de lugares del plan (fotos) ── */
+.wp-mp-ph { display: block; flex: none; border-radius: 14px; background: var(--bg, #e5e7eb) center / cover no-repeat; font-style: normal;
+  display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; }
+.wp-mp-ph > span { font-size: 24px; }
+.wp-mp-ph.loaded, .wp-mp-ph.swap { animation: wpMpFade 0.35s ease; }
+@keyframes wpMpFade { from { opacity: 0.3; } to { opacity: 1; } }
+.wp-mp-strip { flex: none; display: flex; align-items: center; gap: 8px; margin: -2px -16px -4px; padding: 8px 16px 10px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: none; }
+.wp-mp-strip::-webkit-scrollbar { display: none; }
+.wp-mp-sp { flex: none; padding: 0; border: none; background: none; border-radius: 16px; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1); }
+.wp-mp-sp .wp-mp-ph { width: 50px; height: 58px; opacity: 0.72; box-shadow: 0 2px 8px rgba(20, 18, 31, 0.1); }
+.wp-mp-sp.on .wp-mp-ph { width: 62px; height: 72px; opacity: 1; box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--wp-blue, #2563eb), 0 8px 18px rgba(20, 18, 31, 0.16); }
+.wp-mp-sp .wp-mp-ph { transition: width 0.35s cubic-bezier(0.34, 1.5, 0.64, 1), height 0.35s cubic-bezier(0.34, 1.5, 0.64, 1), opacity 0.25s, box-shadow 0.25s; }
+
+/* ── Tarjeta principal ── */
+.wp-mp-hero { flex: none; display: flex; gap: 12px; padding: 10px; border-radius: 26px; background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 18, 31, 0.04), 0 8px 24px rgba(20, 18, 31, 0.07); }
+.wp-mp-hero-ph { position: relative; flex: none; width: 126px; height: 132px; }
+.wp-mp-hero-ph .wp-mp-ph { width: 100%; height: 100%; border-radius: 18px; }
+.wp-mp-hero-ph .wp-mp-ph > span { font-size: 44px; }
+/* cuenta regresiva sobre la foto (vidrio oscuro) */
+.wp-mp-count { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px;
+  border-radius: 9px; background: rgba(15, 23, 42, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #fff;
+  font-size: 12px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wp-mp-count.live i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: wpMpLive 1.6s infinite; }
+@keyframes wpMpLive { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); } 70%, 100% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); } }
+.wp-mp-hero-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px 2px 2px 0; }
+.wp-mp-hero-t > b { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.wp-mp-hero-t > small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-hero-faces { display: flex; align-items: center; margin: 6px 0 auto; }
+.wp-mp-hero-faces i { display: block; width: 26px; height: 26px; margin-left: -8px; border-radius: 50%; border: 2px solid #fff; background: #e5e7eb center / cover no-repeat;
+  box-shadow: 0 1px 3px rgba(20, 18, 31, 0.12); }
+.wp-mp-hero-faces i:first-child { margin-left: 0; }
+.wp-mp-hero-faces i.wp-seal { clip-path: none; }
+.wp-mp-hero-faces i.wp-seal::after { display: none; }
+.wp-mp-hero-add { width: 26px; height: 26px; margin-left: -6px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: #eef6ff; color: var(--mp-blue);
+  font: inherit; font-size: 16px; font-weight: 600; line-height: 1; box-shadow: 0 1px 3px rgba(20, 18, 31, 0.12); }
+.wp-mp-caps { display: flex; align-items: center; gap: 10px; align-self: flex-start; margin-top: 8px; padding: 7px 12px; border-radius: 999px; background: #f3f6fb;
+  font-size: 12px; font-weight: 600; color: #4b5563; white-space: nowrap; }
+.wp-mp-caps i { width: 1px; height: 12px; background: #d6dce6; }
+
+/* ── Renglones de datos (etiqueta · valor) ── */
+.wp-mp-rows { display: flex; flex-direction: column; margin: 2px 4px 0; }
+.wp-mp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; padding: 0; border: none; border-bottom: 1px solid #e8ecf2;
+  background: none; font: inherit; text-align: left; color: var(--mp-ink); }
+.wp-mp-row > span { font-size: 14px; font-weight: 500; color: var(--mp-sub); }
+.wp-mp-row > b { display: flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 600; text-align: right; }
+.wp-mp-row .wp-mp-go { color: var(--mp-blue); opacity: 0.7; }
+.wp-mp-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: wpMpLive 1.6s infinite; }
+.wp-mp-row.col { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 0; }
+.wp-mp-row.col p { margin: 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+.wp-mp-row.more { display: none; }
+.wp-mp-rows.open .wp-mp-row.more { display: flex; animation: wpMpRow 0.35s cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes wpMpRow { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.wp-mp-moreinfo { align-self: center; display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 10px 14px; border: none; background: none;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--mp-ink); }
+.wp-mp-moreinfo svg { transition: transform 0.3s; }
+.wp-mp-rows.open .wp-mp-moreinfo svg { transform: rotate(180deg); }
+
+/* ── Resumen del plan (IA) ── */
+.wp-mp-ai { position: relative; padding: 2px 4px 4px 18px; }
+.wp-mp-ai::before { content: ''; position: absolute; left: 4px; top: 2px; bottom: 4px; width: 3px; border-radius: 3px; background: var(--wp-grad-sky, #2563eb); }
+.wp-mp-ai-h { display: flex; align-items: center; gap: 6px; color: var(--mp-blue); }
+.wp-mp-ai-h b { font-size: 13px; font-weight: 600; }
+.wp-mp-ai p { margin: 6px 0 0; font-size: 14.5px; line-height: 1.5; color: #374151; }
+.wp-mp-ai p.wp-mp-ai-hint { color: var(--mp-sub); font-size: 13.5px; }
+.wp-mp-ai-new { animation: wpMpRow 0.5s ease both; }
+.wp-mp-ai-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; height: 38px; padding: 0 14px; border: none; border-radius: 999px;
+  background: #eef6ff; color: var(--mp-blue); font: inherit; font-size: 13.5px; font-weight: 600; }
+.wp-mp-ai-sk { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.wp-mp-ai-sk i { display: block; height: 11px; border-radius: 6px; background: linear-gradient(90deg, #e8eef8 0%, #f5f8fd 50%, #e8eef8 100%); background-size: 200% 100%;
+  animation: wpMpSk 1.2s linear infinite; }
+.wp-mp-ai-sk i:nth-child(2) { width: 92%; }
+.wp-mp-ai-sk i:nth-child(3) { width: 64%; }
+@keyframes wpMpSk { to { background-position: -200% 0; } }
 
 /* ── "3 de 4 ya van" ── */
 .wp-mp-social { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 22px;
@@ -71,29 +138,29 @@
   color: var(--mp-blue); font-style: normal; font-size: 22px; font-weight: 500; }
 .wp-mp-p.add b { color: var(--mp-blue); }
 
-/* ── Detalles: 4 mosaicos blancos ── */
-.wp-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.wp-mp-tile { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 13px 14px; border: none; border-radius: 20px;
-  background: #fff; box-shadow: var(--mp-card); text-align: left; font: inherit; color: var(--mp-ink); box-sizing: border-box; }
-.wp-mp-tile small { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
-.wp-mp-go { margin-left: auto; color: var(--mp-blue); opacity: 0.7; }
-.wp-mp-tile b { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-mp-bar { display: block; height: 6px; border-radius: 999px; background: #e8f1ff; overflow: hidden; }
-.wp-mp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--mp-blue); }
-
-/* ── Ruta, reglas y nota ── */
-.wp-mp-route { padding: 12px; border-radius: 20px; background: #fff; box-shadow: var(--mp-card); }
-.wp-mp-route .wp-pv-lbl { margin-top: 0; }
-.wp-mp-route .wp-pv-stop-n { background: var(--mp-blue); }
-.wp-mp-route .wp-pv-stop-t b { font-weight: 600; }
-.wp-mp-route .wp-pv-stop-t small, .wp-mp-route .wp-pv-lbl { font-weight: 500; }
-.wp-mp-route .wp-pv-route-acts button { background: #f3f6fb; font-weight: 600; }
-.wp-mp-route .wp-pv-route-acts button:first-child { background: #eef6ff; color: var(--mp-blue); }
-.wp-mp-route .wp-pv-addstop-card { background: none; box-shadow: none; padding: 0; }
+/* ── Ruta del plan (numerada, con fotos) ── */
+.wp-mp-sec { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 4px; }
+.wp-mp-sec b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.wp-mp-sec button { display: flex; align-items: center; gap: 6px; padding: 6px 2px; border: none; background: none; color: var(--mp-sub); font: inherit; font-size: 13px; font-weight: 500; }
+.wp-mp-rt { display: flex; flex-direction: column; gap: 10px; }
+.wp-mp-rt-it, .wp-mp-rt-add { position: relative; display: flex; align-items: stretch; gap: 12px; }
+/* línea que une los números */
+.wp-mp-rt-it:not(:last-child)::after { content: ''; position: absolute; left: 15px; top: 36px; bottom: -12px; width: 2px; border-radius: 2px; background: #e2e8f0; }
+.wp-mp-rt-n { flex: none; width: 32px; height: 32px; margin-top: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.12);
+  display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 600; color: var(--mp-ink); }
+.wp-mp-rt-card { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 9px; border-radius: 20px; background: #fff; box-shadow: var(--mp-card); }
+.wp-mp-rt-card .wp-mp-ph { width: 64px; height: 58px; }
+.wp-mp-rt-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wp-mp-rt-t b { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-rt-t small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
+.wp-mp-rt-t em { font-size: 12.5px; font-style: italic; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-rt-x { flex: none; width: 30px; height: 30px; padding: 0; border: none; border-radius: 50%; background: #f3f4f6; color: #6b7280; font-size: 18px; line-height: 1; }
+.wp-mp-rt-add { padding: 0; border: none; background: none; text-align: left; font: inherit; color: var(--mp-ink); }
+.wp-mp-rt-add .wp-mp-rt-n { margin-top: 6px; background: #eef6ff; color: var(--mp-blue); box-shadow: inset 0 0 0 1.5px #bfdbfe; font-size: 18px; }
+.wp-mp-rt-add > span:last-child { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 18px; border: 1.5px dashed #cfe0f7; }
+.wp-mp-rt-add b { font-size: 14px; font-weight: 600; color: var(--mp-blue); }
+.wp-mp-rt-add small { font-size: 12.5px; font-weight: 500; color: var(--mp-sub); }
 .wp-mp-rules span { background: #fff; box-shadow: var(--mp-card); font-weight: 500; }
-.wp-mp-note { padding: 12px 14px; border-radius: 20px; background: #fffbea; }
-.wp-mp-note small { font-size: 12.5px; font-weight: 600; color: #8a6d00; }
-.wp-mp-note p { margin: 4px 0 0; font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; }
 
 /* ── Compartir: fijo abajo (pie de la hoja) ── */
 .wp-mp-cta { width: 100%; height: 52px; border: none; border-radius: 999px; background: var(--wp-grad-sky, #2563eb); color: #fff;

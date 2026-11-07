@@ -137,6 +137,7 @@ export class PlansHere {
     if (day) { this._phPickDay(v, day.dataset.day); return; }
     const act = e.target.closest('[data-act]');
     if (act) { act.dataset.act === 'save' ? this._phSave(v, act) : this._phDo(v, act); return; }
+    if (v.at >= 0) { this._phDetailClick(v, e); return; }
     const row = e.target.closest('.wp-ph2-it');
     if (row && v.at < 0) this._phOpen(v, +row.dataset.open, row);
   }
