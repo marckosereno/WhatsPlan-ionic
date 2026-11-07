@@ -5,8 +5,9 @@
 // resumen" lo pide a /api/groq-description?mode=plan (Groq, con las
 // descripciones y reseñas de los lugares) mientras se ven líneas
 // "cargando". Si el plan cambió después (otra parada, otra hora), el
-// resumen viejo se ve tenue con el aviso "El plan cambió" y el botón
-// "Actualizar resumen" (no se rehace solo: cada resumen cuesta).
+// resumen viejo se ve tenue con el aviso "El plan cambió" y el título de
+// arriba se vuelve el botón "Actualizar resumen" (no se rehace solo: cada
+// resumen cuesta).
 // Versión de pago: si el servidor responde 402 (PLAN_SUMMARY_PAID_ONLY),
 // el bloque invita a la versión Pro en vez de mostrar el error.
 //
@@ -29,10 +30,12 @@ export class PlanSummary {
     const legacy = [a.place_id, ...st.map(x => x.place_id), a.scheduled_at, a.ends_at, a.title].join('|');   // firma de antes de las duraciones
     const old = a.ai_summary && a.ai_summary_sig && ![this._mpSumSig(a), legacy].includes(a.ai_summary_sig);
     const go = (t) => `<button type="button" class="wp-mp-ai-go" data-a="summary">${SPARK}<span>${t}</span></button>`;
+    const head = old ? `<button type="button" class="wp-mp-ai-go up" data-a="summary">${SPARK}<span>Actualizar resumen</span></button>`
+      : `<div class="wp-mp-ai-h">${SPARK}<b>Resumen del plan</b></div>`;
     return `<section class="wp-mp-ai${a.ai_summary ? ' has' : ''}${old ? ' old' : ''}">
-        <div class="wp-mp-ai-h">${SPARK}<b>Resumen del plan</b></div>
+        ${head}
         ${!a.ai_summary ? `<p class="wp-mp-ai-hint">Un resumen de los lugares del plan, qué se puede hacer ahí y qué tal pinta.</p>${go('Crear resumen')}`
-          : old ? `<p class="wp-mp-ai-hint">El plan cambió · este resumen es de antes</p><p class="wp-mp-ai-txt">${this._esc(a.ai_summary)}</p>${go('Actualizar resumen')}`
+          : old ? `<p class="wp-mp-ai-hint">El plan cambió · este resumen es de antes</p><p class="wp-mp-ai-txt">${this._esc(a.ai_summary)}</p>`
             : `<p class="wp-mp-ai-txt">${this._esc(a.ai_summary)}</p>`}
       </section>`;
   }
@@ -42,7 +45,10 @@ export class PlanSummary {
     box.classList.add('loading');
     box.querySelectorAll('.wp-mp-ai-hint, .wp-mp-ai-txt').forEach(el => el.remove());
     box.classList.remove('old');
-    btn.outerHTML = '<span class="wp-mp-ai-sk"><i></i><i></i><i></i></span>';
+    const sk = '<span class="wp-mp-ai-sk"><i></i><i></i><i></i></span>';
+    // "Actualizar resumen" (arriba) vuelve a ser el título; las líneas van abajo
+    if (btn.classList.contains('up')) { btn.outerHTML = `<div class="wp-mp-ai-h">${SPARK}<b>Resumen del plan</b></div>`; box.insertAdjacentHTML('beforeend', sk); }
+    else btn.outerHTML = sk;
     let text = '', err = '';
     try {
       const { data } = await getSupabase().auth.getSession();

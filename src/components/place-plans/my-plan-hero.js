@@ -4,7 +4,8 @@
 // viaje:
 //  · Tira de lugares del plan (fotos) repartida a lo ancho (2 → izquierda
 //    y derecha; 3 → izquierda, centro y derecha) unida por un camino
-//    punteado ondulado. Al tocar un lugar, la tarjeta muestra SUS datos:
+//    punteado ondulado; cada foto lleva su número en una pill (el mismo de
+//    la ruta). Al tocar un lugar, la tarjeta muestra SUS datos:
 //    foto, a qué hora llegan, cuánto tiempo ahí, qué van a hacer y la
 //    nota que se puso al armar el plan (la dirección no: se ve fea ahí).
 //  · Tarjeta principal blanca: foto grande del lugar con la cuenta
@@ -52,7 +53,7 @@ export class MyPlanHero {
     if (stops.length < 2) return '';
     const path = (k) => `<span class="wp-mp-path" aria-hidden="true"><svg viewBox="0 0 100 40" preserveAspectRatio="none">
         <path d="${k % 2 ? 'M2 14 C 26 40, 44 40, 52 22 S 78 2, 98 26' : 'M2 26 C 26 0, 44 0, 52 18 S 78 38, 98 14'}" vector-effect="non-scaling-stroke"/></svg></span>`;
-    return `<div class="wp-mp-strip">${stops.map((s, i) => `${i ? path(i) : ''}<button type="button" class="wp-mp-sp${i === 0 ? ' on' : ''}" data-a="pick" data-i="${i}" aria-label="${this._esc(s.name)}">${this._mpPhoto(s, i)}</button>`).join('')}</div>`;
+    return `<div class="wp-mp-strip">${stops.map((s, i) => `${i ? path(i) : ''}<button type="button" class="wp-mp-sp${i === 0 ? ' on' : ''}" data-a="pick" data-i="${i}" aria-label="${i + 1}. ${this._esc(s.name)}">${this._mpPhoto(s, i)}<span class="wp-mp-sp-n">${i + 1}</span></button>`).join('')}</div>`;
   }
 
   // Datos del lugar elegido para la tarjeta (el primero = el plan)
