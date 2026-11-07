@@ -43,7 +43,7 @@ export class MyPlanRoute {
     ctx.root.querySelectorAll('.wp-mp-rt-tip').forEach(t => t.remove());
     clearTimeout(ctx.legT);
     if (old) return;   // segundo toque: la cierra
-    const stay = Math.max(0, Math.round((B.at - A.at) / 60000));
+    const stay = A.mins || Math.max(0, Math.round((B.at - A.at) / 60000));
     const km = this._mpKm(A, B), go = km == null ? '' : this._mpGo(km);
     it.insertAdjacentHTML('beforeend', `<span class="wp-mp-rt-tip" role="status">
         ${stay ? `<span>⏳ ${this._pwDurTxt(stay)} en ${this._esc(A.name)}</span>` : ''}

@@ -31,11 +31,12 @@ export class MyPlanHero {
     const main = photoSmall((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '') || (p.photosUrls?.[0] || p.photoUrl || '');
     const list = [{ id: a.place_id, name: a.place_name || this._placeInfo().name, at: t0, emoji: this._planEmoji(a.type), photo: main, lat: a.lat, lng: a.lng },
       ...(Array.isArray(a.stops) ? a.stops : []).map(x => ({ id: x.place_id, name: x.name, at: new Date(t0.getTime() + (x.after || 0) * 60000),
-        emoji: x.emoji || this._stopEmoji(x.cat), act: x.act, photo: '', custom: !!x.custom, note: x.note, lat: x.lat, lng: x.lng }))];
-    // cuánto tiempo en cada lugar: hasta la siguiente parada (el primero, hasta que termina el plan)
+        emoji: x.emoji || this._stopEmoji(x.cat), act: x.act, photo: '', custom: !!x.custom, note: x.note, lat: x.lat, lng: x.lng, dur: x.dur || 0 }))];
+    // cuánto tiempo en cada lugar: su duración; si es una parada vieja sin
+    // duración, hasta la siguiente (el primero, hasta que termina el plan)
     list.forEach((s, i) => {
       const next = list[i + 1]?.at || (i === 0 && a.ends_at ? new Date(a.ends_at) : null);
-      s.mins = next ? Math.max(0, Math.round((next - s.at) / 60000)) : 0;
+      s.mins = s.dur || (next ? Math.max(0, Math.round((next - s.at) / 60000)) : 0);
     });
     if (list.length > 1 && a.ends_at) list[0].mins = Math.round((new Date(a.ends_at) - t0) / 60000);
     return list;
@@ -63,7 +64,7 @@ export class MyPlanHero {
       note: '',
     };
     return {
-      when: `Parada ${i + 1} · llegan ${this._hhmm(s.at)}`,
+      when: s.dur ? `Parada ${i + 1} · ${this._hhmm(s.at)} → ${this._hhmm(new Date(s.at.getTime() + s.dur * 60000))}` : `Parada ${i + 1} · llegan ${this._hhmm(s.at)}`,
       caps: `<span>${s.emoji} ${this._esc(s.act ? this._mpActLabel(s.act) : s.custom ? 'Lugar propio' : 'Parada')}</span>${dur ? `<i></i><span>⏳ ${dur}</span>` : ''}`,
       note: s.note || '',
     };
@@ -104,9 +105,25 @@ export class MyPlanHero {
     this._haptic?.('light');
   }
 
+  // A qué hora termina toda la salida: el fin del primer lugar o el de la
+  // última parada con duración, lo que sea más tarde
+  _mpEndAt(a) {
+    const t0 = new Date(a.scheduled_at).getTime();
+    const ends = (Array.isArray(a.stops) ? a.stops : []).map(x => t0 + ((x.after || 0) + (x.dur || 0)) * 60000);
+    if (a.ends_at) ends.push(new Date(a.ends_at).getTime());
+    return ends.length ? new Date(Math.max(...ends)) : null;
+  }
+
+  // Con paradas: renglón "Termina" (la salida completa)
+  _mpEndRow(a, row) {
+    const end = this._mpEndAt(a);
+    if (!end || !(a.stops || []).length || (a.ends_at && end.getTime() === new Date(a.ends_at).getTime())) return '';
+    return row('Termina todo', this._hhmm(end));
+  }
+
   _mpRows(a, owner) {
     const P = a.participants || [], max = a.max_participants || 0;
-    const now = Date.now(), t0 = new Date(a.scheduled_at).getTime(), live = t0 <= now && (!a.ends_at || now < new Date(a.ends_at).getTime());
+    const now = Date.now(), t0 = new Date(a.scheduled_at).getTime(), end = this._mpEndAt(a), live = t0 <= now && (!end || now < end.getTime());
     const dur = a.ends_at ? this._pwDurTxt(Math.round((new Date(a.ends_at) - new Date(a.scheduled_at)) / 60000)) : 'Sin hora de fin';
     const row = (k, v, act, more = false) => act
       ? `<button type="button" class="wp-mp-row${more ? ' more' : ''}" data-a="${act}"><span>${k}</span><b>${v}${ARROW}</b></button>`
@@ -116,6 +133,7 @@ export class MyPlanHero {
         ${row('Estado', live ? '<i class="wp-mp-dot"></i>En curso' : this._planFull(a) ? 'Completo' : 'Activo')}
         ${row('Hora', `${this._hhmm(new Date(a.scheduled_at))}${a.ends_at ? ` → ${this._hhmm(new Date(a.ends_at))}` : ''}`, owner && 'time')}
         ${row('Dura', dur, owner && 'dur')}
+        ${this._mpEndRow(a, row)}
         ${row('Cupos', max ? `${P.length} de ${max}` : `${P.length}`, owner && max && 'cupo', true)}
         ${row('Quién puede', VIS[a.visibility] || VIS.public, '', true)}
         ${rules ? `<div class="wp-mp-row more col"><span>Reglas</span>${rules}</div>` : ''}
