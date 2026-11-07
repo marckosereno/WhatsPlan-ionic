@@ -146,16 +146,31 @@
 .wp-mp-p.add b { color: var(--mp-blue); }
 
 /* ── Ruta del plan (numerada, con fotos) ── */
-.wp-mp-sec { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 4px; }
-.wp-mp-sec { background: none; }
-.wp-mp-sec b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
-.wp-mp-sec b small { font-size: 13px; font-weight: 500; color: var(--mp-sub); }
-.wp-mp-mapbtn { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: none; border-radius: 999px; background: #eef6ff; color: var(--mp-blue);
-  font: inherit; font-size: 12.5px; font-weight: 600; }
+/* (no se llama .wp-mp-sec: MiniProfile.js ya usa ese nombre con fondo gris) */
+.wp-mp-head { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 4px; }
+.wp-mp-head b { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.wp-mp-head b small { font-size: 13px; font-weight: 500; color: var(--mp-sub); }
+/* "Ver ruta": insignia blanca chiquita, el ícono es el único azul */
+.wp-mp-mapbtn { display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px 0 8px; border: none; border-radius: 999px; background: #fff; color: var(--mp-ink);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 2px 8px rgba(20, 18, 31, 0.06); font: inherit; font-size: 12.5px; font-weight: 600; }
+.wp-mp-mapbtn svg { flex: none; color: var(--mp-blue); }
 .wp-mp-rt { display: flex; flex-direction: column; gap: 10px; }
 .wp-mp-rt-it, .wp-mp-rt-add { position: relative; display: flex; align-items: stretch; gap: 12px; }
-/* línea que une los números */
-.wp-mp-rt-it:not(:last-of-type)::after { content: ''; position: absolute; left: 15px; top: 48px; bottom: -14px; width: 0; border-left: 2px dotted #93c5fd; }
+/* línea punteada que une los números; se puede tocar (tramo) */
+.wp-mp-rt-leg { position: absolute; left: 0; top: 44px; bottom: -18px; z-index: 1; width: 32px; padding: 0; border: none; background: none; }
+.wp-mp-rt-leg::before { content: ''; position: absolute; left: 15px; top: 4px; bottom: 4px; border-left: 2px dotted #93c5fd; transition: border-color 0.2s; }
+.wp-mp-rt-it:has(.wp-mp-rt-tip:not(.out)) .wp-mp-rt-leg::before { border-left-color: var(--mp-blue); }
+/* burbuja del tramo: sale de la línea, encima del hueco entre tarjetas */
+.wp-mp-rt-tip { position: absolute; left: 42px; bottom: -5px; z-index: 3; max-width: calc(100% - 52px); display: flex; flex-direction: column; gap: 3px; padding: 9px 12px;
+  border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 12px 28px -8px rgba(20, 18, 31, 0.25);
+  font-size: 12.5px; font-weight: 500; color: var(--mp-ink); pointer-events: none; transform: translateY(50%); transform-origin: 0 50%;
+  animation: wpMpTip 0.4s cubic-bezier(0.34, 1.5, 0.64, 1) both; }
+.wp-mp-rt-tip::before { content: ''; position: absolute; left: -4px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; background: #fff; border-radius: 2px; transform: rotate(45deg); }
+.wp-mp-rt-tip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-mp-rt-tip span:last-child { color: var(--mp-sub); }
+.wp-mp-rt-tip.out { animation: wpMpTipOut 0.2s ease-in forwards; }
+@keyframes wpMpTip { from { opacity: 0; transform: translateY(50%) translateX(-6px) scale(0.85); } to { opacity: 1; transform: translateY(50%); } }
+@keyframes wpMpTipOut { to { opacity: 0; transform: translateY(50%) scale(0.92); } }
 .wp-mp-rt-n { flex: none; width: 32px; height: 32px; margin-top: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(20, 18, 31, 0.12);
   display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 600; color: var(--mp-ink); }
 .wp-mp-rt-card { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 9px; border-radius: 20px; background: #fff; box-shadow: var(--mp-card); }
@@ -212,6 +227,16 @@
 
 /* sin el resaltado gris de Android al tocar dentro de la hoja */
 #wp-st, #wp-st * { -webkit-tap-highlight-color: transparent; }
-/* guardar (plan abierto en "Planes aquí"): redondo como el de atrás */
-.wp-st-save { justify-self: end; color: #111; }
-.wp-st-save.on { color: var(--wp-blue, #2563eb); }
+/* guardar (plan abierto en "Planes aquí"): redondo como el de atrás.
+   Al guardar, el listón se llena de abajo hacia arriba con el degradado,
+   da un saltito y sale un aro; al quitar se vacía. */
+.wp-st-save { justify-self: end; position: relative; color: #111; }
+.wp-st-save svg { overflow: visible; }
+.wp-st-save .o { transition: stroke 0.25s; }
+.wp-st-save .f { clip-path: inset(100% 0 0 0); transition: clip-path 0.4s cubic-bezier(0.3, 1.2, 0.5, 1); }
+.wp-st-save.on .o { stroke: #2563eb; }
+.wp-st-save.on .f { clip-path: inset(0 0 0 0); }
+.wp-st-save.burst svg { animation: wpSavePop 0.55s cubic-bezier(0.34, 1.6, 0.64, 1); }
+.wp-st-save.burst::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; border: 2px solid #38bdf8; pointer-events: none; animation: wpSaveRing 0.6s ease-out forwards; }
+@keyframes wpSavePop { 0% { transform: none; } 30% { transform: translateY(2px) scale(0.72); } 62% { transform: translateY(-2px) scale(1.2); } 100% { transform: none; } }
+@keyframes wpSaveRing { from { transform: scale(0.7); opacity: 0.9; } to { transform: scale(1.45); opacity: 0; } }

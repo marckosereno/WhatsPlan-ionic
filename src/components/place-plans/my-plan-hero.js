@@ -6,7 +6,7 @@
 //    y derecha; 3 → izquierda, centro y derecha) unida por un camino
 //    punteado ondulado. Al tocar un lugar, la tarjeta muestra SUS datos:
 //    foto, a qué hora llegan, cuánto tiempo ahí, qué van a hacer y la
-//    nota que se puso al armar el plan.
+//    nota que se puso al armar el plan (la dirección no: se ve fea ahí).
 //  · Tarjeta principal blanca: foto grande del lugar con la cuenta
 //    regresiva encima, nombre del plan, lugar y horario, las caras de
 //    quién va (+ invitar) y una cápsula con dura · cupos.
@@ -29,9 +29,9 @@ export class MyPlanHero {
   _mpStops(a) {
     const t0 = new Date(a.scheduled_at), p = this._place || {};
     const main = photoSmall((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url || '') || (p.photosUrls?.[0] || p.photoUrl || '');
-    const list = [{ id: a.place_id, name: a.place_name || this._placeInfo().name, at: t0, emoji: this._planEmoji(a.type), photo: main },
+    const list = [{ id: a.place_id, name: a.place_name || this._placeInfo().name, at: t0, emoji: this._planEmoji(a.type), photo: main, lat: a.lat, lng: a.lng },
       ...(Array.isArray(a.stops) ? a.stops : []).map(x => ({ id: x.place_id, name: x.name, at: new Date(t0.getTime() + (x.after || 0) * 60000),
-        emoji: x.emoji || this._stopEmoji(x.cat), act: x.act, photo: '', custom: !!x.custom, note: x.note, address: x.address }))];
+        emoji: x.emoji || this._stopEmoji(x.cat), act: x.act, photo: '', custom: !!x.custom, note: x.note, lat: x.lat, lng: x.lng }))];
     // cuánto tiempo en cada lugar: hasta la siguiente parada (el primero, hasta que termina el plan)
     list.forEach((s, i) => {
       const next = list[i + 1]?.at || (i === 0 && a.ends_at ? new Date(a.ends_at) : null);
@@ -65,7 +65,7 @@ export class MyPlanHero {
     return {
       when: `Parada ${i + 1} · llegan ${this._hhmm(s.at)}`,
       caps: `<span>${s.emoji} ${this._esc(s.act ? this._mpActLabel(s.act) : s.custom ? 'Lugar propio' : 'Parada')}</span>${dur ? `<i></i><span>⏳ ${dur}</span>` : ''}`,
-      note: s.note || s.address || '',
+      note: s.note || '',
     };
   }
 

@@ -33,6 +33,7 @@ export class MyPlanActions {
     else if (act === 'cupo') this._mpCupo(ctx, b);
     else if (act === 'invite') this._mpInvite(ctx, b);
     else if (act === 'pick') this._mpPick(ctx, +b.dataset.i);
+    else if (act === 'leg') this._mpLeg(ctx, b);
     else if (act === 'summary') this._mpSummary(ctx, b);
     else if (act === 'more') this._mpMoreInfo(b);
   }

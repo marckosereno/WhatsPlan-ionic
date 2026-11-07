@@ -291,8 +291,9 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 @keyframes wpStTick { from { transform: translateY(6px) scale(0.94); opacity: 0.4; } to { transform: none; opacity: 1; } }
 /* agua: onda al tocar */
 .wp-rippled { position: relative; }
-/* al deslizar en vez de tocar: soltar sin resorte (si no, parece un brinco) */
-.wp-quiet, .wp-quiet * { transition: none !important; }
+/* al deslizar en vez de tocar: soltar suave, sin resorte ni corte seco
+   (las dos cosas se ven como un brinco en el scroll lento) */
+.wp-quiet, .wp-quiet * { transition: transform 0.22s ease-out !important; }
 /* capa de la onda: misma forma que el botón; la máscara obliga al
    WebView a recortar con las esquinas redondas (si no, sale cuadrada) */
 .wp-rip-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0;
@@ -303,6 +304,9 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
    resorte que lo pasa un poquito de grande */
 #wp-st button:not(.wp-dial-it), .wp-fz button { transition: transform 0.42s cubic-bezier(0.34, 1.9, 0.64, 1); }
 #wp-st button.press, .wp-fz button.press { transform: scale(0.91); transition-duration: 0.1s; transition-timing-function: ease-out; }
+/* botones anchos (renglones, tarjetas): se encogen apenas, si no el
+   ancho entero se mueve mucho */
+#wp-st button.press.wide, .wp-fz button.press.wide { transform: scale(0.98); }
 /* cuando ya se puede seguir, el botón crece y regresa (late) */
 .wp-st-next.ready .wp-st-next-in { animation: wpStGrow 0.7s cubic-bezier(0.34, 1.6, 0.64, 1); }
 @keyframes wpStGrow { 0% { transform: scale(0.92); } 35% { transform: scale(1.14); } 65% { transform: scale(0.97); } 100% { transform: scale(1); } }

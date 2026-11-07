@@ -54,14 +54,21 @@ function ripple(b, e) {
 
 // Encoger al tocar, pero sin pelear con el scroll: el botón se encoge
 // solo si el dedo se queda quieto un instante (o al soltar, en un toque
-// rápido). Si el dedo empieza a deslizar, se suelta sin resorte (si no,
-// el resorte de regreso se ve como un brinco en el scroll).
-const HOLD_MS = 90, MOVE_PX = 8;
+// rápido). Si el dedo empieza a deslizar, se suelta suave, sin resorte
+// (si no, el regreso se ve como un brinco en el scroll).
+// Scroll lento: el dedo apenas se mueve al principio, así que cualquier
+// movimiento (aunque sea poquito) antes del instante cancela el encogido.
+const HOLD_MS = 130, MOVE_PX = 8, STILL_PX = 3;
 
 export function attachPulse(root) {
   let cur = null;   // { b, x, y, e, t, on }
-  const press = () => { if (!cur || cur.on) return; cur.on = true; cur.b.classList.add('press'); ripple(cur.b, cur.e); };
-  const quiet = (b) => { b.classList.add('wp-quiet'); b.classList.remove('press'); requestAnimationFrame(() => requestAnimationFrame(() => b.classList.remove('wp-quiet'))); };
+  const press = () => {
+    if (!cur || cur.on) return;
+    cur.on = true;
+    cur.b.classList.toggle('wide', cur.b.offsetWidth > 220);
+    cur.b.classList.add('press'); ripple(cur.b, cur.e);
+  };
+  const quiet = (b) => { b.classList.add('wp-quiet'); b.classList.remove('press'); setTimeout(() => b.classList.remove('wp-quiet'), 240); };
   root.addEventListener('pointerdown', (e) => {
     const b = e.target.closest('button');
     if (!b || b.disabled || b.matches(SKIP)) return;
@@ -69,7 +76,9 @@ export function attachPulse(root) {
     cur.t = setTimeout(press, HOLD_MS);
   });
   root.addEventListener('pointermove', (e) => {
-    if (!cur || Math.hypot(e.clientX - cur.x, e.clientY - cur.y) < MOVE_PX) return;
+    if (!cur) return;
+    const d = Math.hypot(e.clientX - cur.x, e.clientY - cur.y);
+    if (d < (cur.on ? MOVE_PX : STILL_PX)) return;
     clearTimeout(cur.t);
     if (cur.on) quiet(cur.b);
     cur = null;
