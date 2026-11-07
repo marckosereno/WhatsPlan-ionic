@@ -34,6 +34,7 @@ export class MyPlanActions {
     else if (act === 'cupo') this._mpCupo(ctx, b);
     else if (act === 'invite') this._mpInvite(ctx, b);
     else if (act === 'rename') this._mpRename(ctx, b);
+    else if (act === 'person') this._mpPerson(b.dataset.uid);
     else if (act === 'pick') this._mpPick(ctx, +b.dataset.i);
     else if (act === 'leg') this._mpLeg(ctx, b);
     else if (act === 'summary') this._mpSummary(ctx, b);
@@ -84,6 +85,14 @@ export class MyPlanActions {
         this._mpSave(ctx, 'reschedule_plan', { p_activity: a.id, p_at: a.scheduled_at, p_duration: pick }, `Ahora dura ${this._pwDurTxt(pick)} · ya les avisamos`);
       },
     });
+  }
+
+  // Mini perfil de quien va (encima de la hoja del plan)
+  _mpPerson(uid) {
+    const p = this._profCache?.get(uid) || {};
+    this._openMiniProfile(uid, 'saved', p.name || p.username || '', p.avatar_url || getAvatarUrl(p.name || p.username || 'user'));
+    const up = () => { const el = document.getElementById('wp-mp'); if (el) el.style.zIndex = '1500600'; };
+    up(); requestAnimationFrame(up);
   }
 
   // Nombre del plan: con más lugares puede que ya no se llame igual

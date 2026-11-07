@@ -26,7 +26,7 @@ export class MyPlanRoute {
         <span class="wp-mp-rt-n">${i + 1}</span>
         <div class="wp-mp-rt-card">${this._mpPhoto(s, i)}
           <span class="wp-mp-rt-t"><b>${this._esc(s.name)}</b><small>${s.emoji} ${this._hhmm(s.at)}${s.custom ? ' · lugar propio' : ''}</small>${s.note ? `<em>“${this._esc(s.note)}”</em>` : ''}</span>
-          ${owner && i > 0 ? `<button type="button" class="wp-mp-rt-x" data-rm="${i}" aria-label="Quitar parada">×</button>` : ''}
+          ${owner && i > 0 ? `<button type="button" class="wp-mp-rt-x" data-rm="${i}" aria-label="Quitar parada">Quitar</button>` : ''}
         </div></div>`;
     return `<section class="wp-mp-rt">
         <div class="wp-mp-head"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route"><span>Abrir mapa</span>${NEXT}</button>` : ''}</div>
