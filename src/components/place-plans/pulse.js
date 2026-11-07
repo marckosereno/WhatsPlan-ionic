@@ -59,6 +59,10 @@ function ripple(b, e) {
 // Scroll lento: el dedo apenas se mueve al principio, así que cualquier
 // movimiento (aunque sea poquito) antes del instante cancela el encogido.
 const HOLD_MS = 130, MOVE_PX = 8, STILL_PX = 3;
+// Botones dentro de tiras que se deslizan (tarjetitas de quién va, fotos de
+// la tira): sin encogido al mantener, solo la onda al tocar. Si no, al
+// deslizar despacio sobre ellos se encogen y regresan → pausas y saltitos.
+const NOPRESS = '[data-nopress], .wp-mp-who button, .wp-mp-strip button';
 
 export function attachPulse(root) {
   let cur = null;   // { b, x, y, e, t, on }
@@ -71,7 +75,7 @@ export function attachPulse(root) {
   const quiet = (b) => { b.classList.add('wp-quiet'); b.classList.remove('press'); setTimeout(() => b.classList.remove('wp-quiet'), 240); };
   root.addEventListener('pointerdown', (e) => {
     const b = e.target.closest('button');
-    if (!b || b.disabled || b.matches(SKIP)) return;
+    if (!b || b.disabled || b.matches(SKIP) || b.matches(NOPRESS)) return;
     cur = { b, x: e.clientX, y: e.clientY, e, on: false };
     cur.t = setTimeout(press, HOLD_MS);
   });

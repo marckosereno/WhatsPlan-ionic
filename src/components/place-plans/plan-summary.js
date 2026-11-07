@@ -19,9 +19,10 @@ import { getSupabase } from '/src/services/SupabaseService.js';
 const SPARK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9zM19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9z"/></svg>';
 
 export class PlanSummary {
-  // Texto del resumen con las horas en negrita ("7 pm", "8:15 p. m.", "19:00")
+  // Texto del resumen con las horas en negrita ("las 7 pm", "8:15 p. m.", "19:00")
   _mpSumFmt(text) {
-    return this._esc(text).replace(/\b\d{1,2}(?::\d{2})?\s?(?:[ap]\.?\s?m\.?|hrs?\b)|\b\d{1,2}:\d{2}\b/gi, (m) => `<b>${m}</b>`);
+    // "a las 7 pm" → resalta "las 7 pm" (también "la 1 pm")
+    return this._esc(text).replace(/(?:\b(?:las|la)\s+)?(?:\b\d{1,2}(?:[:.∶]\d{2})?\s?(?:[ap]\.?\s?m\.?|hrs?\b)|\b\d{1,2}:\d{2}\b)/gi, (m) => `<b>${m}</b>`);
   }
 
   // Firma del plan (igual que en api/groq-description.js)
