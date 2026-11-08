@@ -1,6 +1,14 @@
 // ====================================================================
 // WHATSPLAN — src/components/FooterMenu.js
-// Footer: pills independientes por ícono y label
+// Barra de abajo con 3 secciones: Mapa · Planes · Social.
+// El botón azul del centro es la sección en la que estás; las otras dos
+// van a los lados, cada una como un solo botón (ícono + nombre):
+//   Mapa   → [Planes]  (pin)      [Social]
+//   Planes → [Mapa]    (calend.)  [Social]
+//   Social → [Planes]  (chat)     [Mapa]
+// Al cambiar, el centro y los lados se cambian con un saltito.
+// Uso: new FooterMenu({ onSection(id) })  ·  footer.go('plans')
+//      footer.setBadge('social', 3)
 // ====================================================================
 
 const ICON_HOME = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.5742 21.8187C12.2295 22.0604 11.7699 22.0601 11.4253 21.8184L11.4228 21.8166L11.4172 21.8127L11.3986 21.7994C11.3829 21.7882 11.3607 21.7722 11.3325 21.7517C11.2762 21.7106 11.1956 21.6511 11.0943 21.5741C10.8917 21.4203 10.6058 21.1962 10.2641 20.9101C9.58227 20.3389 8.67111 19.5139 7.75692 18.4988C5.96368 16.5076 4 13.6105 4 10.3636C4 8.16134 4.83118 6.0397 6.32548 4.46777C7.82141 2.89413 9.86146 2 12 2C14.1385 2 16.1786 2.89413 17.6745 4.46777C19.1688 6.0397 20 8.16134 20 10.3636C20 13.6105 18.0363 16.5076 16.2431 18.4988C15.3289 19.5139 14.4177 20.3389 13.7359 20.9101C13.3942 21.1962 13.1083 21.4203 12.9057 21.5741C12.8044 21.6511 12.7238 21.7106 12.6675 21.7517C12.6393 21.7722 12.6171 21.7882 12.6014 21.7994L12.5828 21.8127L12.5772 21.8166L12.5754 21.8179L12.5742 21.8187ZM9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10Z" fill="currentColor"/></svg>`;
@@ -8,6 +16,15 @@ const ICON_HOME = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org
 const ICON_ACTIVIDADES = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M8 2C8.55228 2 9 2.44772 9 3H15C15 2.44772 15.4477 2 16 2C16.5523 2 17 2.44772 17 3C19.7614 3 22 5.23858 22 8V17C22 19.7614 19.7614 22 17 22H7C4.23858 22 2 19.7614 2 17V8C2 5.23858 4.23858 3 7 3C7 2.44772 7.44772 2 8 2ZM15.7295 11.6839C16.1073 11.281 16.0869 10.6482 15.6839 10.2705C15.281 9.89274 14.6482 9.91315 14.2705 10.3161L11.1559 13.6383L9.62852 12.404C9.19896 12.0569 8.56933 12.1237 8.22221 12.5533C7.87508 12.9829 7.94192 13.6125 8.37148 13.9596L10.6215 15.7778C11.0289 16.107 11.6213 16.0661 11.9795 15.6839L15.7295 11.6839Z" fill="currentColor"/></svg>`;
 
 const ICON_SOCIAL = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 13.8153 2.48451 15.5196 3.33127 16.9883C3.50372 17.2874 3.5333 17.6516 3.38777 17.9647L2.53406 19.8016C2.00986 20.7933 2.72736 22 3.86159 22H12C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM9 9C8.44772 9 8 9.44772 8 10C8 10.5523 8.44772 11 9 11H11C11.5523 11 12 10.5523 12 10C12 9.44772 11.5523 9 11 9H9ZM9 13C8.44772 13 8 13.4477 8 14C8 14.5523 8.44772 15 9 15H15C15.5523 15 16 14.5523 16 14C16 13.4477 15.5523 13 15 13H9Z" fill="currentColor"/></svg>`;
+
+const ICON_PLANES = ICON_ACTIVIDADES;
+const SECTIONS = {
+  home: { label: 'Mapa', icon: ICON_HOME },
+  plans: { label: 'Planes', icon: ICON_PLANES },
+  social: { label: 'Social', icon: ICON_SOCIAL },
+};
+// [izquierda, derecha] según la sección del centro
+const ORDER = { home: ['plans', 'social'], plans: ['home', 'social'], social: ['plans', 'home'] };
 
 const PILL_STYLE = `
   background: rgba(255,255,255,0.88);
@@ -18,8 +35,8 @@ const PILL_STYLE = `
 `;
 
 export class FooterMenu {
-  constructor({ onActividades, onHome, onSocial } = {}) {
-    this.callbacks = { actividades: onActividades, home: onHome, social: onSocial };
+  constructor({ onSection, onReselect } = {}) {
+    this.callbacks = { section: onSection, reselect: onReselect };
     this.current = 'home';
     this._build();
     this._injectStyles();
@@ -98,6 +115,15 @@ export class FooterMenu {
       }
       .wp-pill.active-pill .wp-pill-label { color: #2563eb; }
 
+      /* Ícono + nombre: un solo botón */
+      .wp-menu-item { display: flex; align-items: center; gap: 0; padding: 0; border: none; background: none; font: inherit;
+        pointer-events: all; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; will-change: transform; }
+      .wp-pill-icon { position: relative; }
+      .wp-menu-badge { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px;
+        background: #e0123c; color: #fff; font-size: 10.5px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+      /* con una sección abierta (Planes, Social) la barra va encima de todo el mapa */
+      body.wp-tab-open #wp-footer-menu { z-index: 99996; }
+
       /* Center button — same height as pills */
       .wp-menu-center {
         flex-shrink: 0;
@@ -133,74 +159,63 @@ export class FooterMenu {
     wrap.id = 'wp-footer-menu';
     wrap.innerHTML = `
       <div class="wp-menu-bar">
-
-        <!-- LEFT: Icono + Label Actividades -->
-        <div class="wp-menu-side">
-          <div class="wp-pill wp-pill-icon" id="wpm-act-icon" data-item="actividades">
-            ${ICON_ACTIVIDADES}
-          </div>
-          <div class="wp-pill wp-pill-label" id="wpm-act-label" data-item="actividades">
-            Planes
-          </div>
-        </div>
-
-        <!-- CENTER: Solo ícono circular -->
-        <div class="wp-menu-center" id="wpm-home">
-          <div class="wp-menu-center-btn">
-            ${ICON_HOME}
-          </div>
-        </div>
-
-        <!-- RIGHT: Label + Icono Social -->
-        <div class="wp-menu-side">
-          <div class="wp-pill wp-pill-label" id="wpm-soc-label" data-item="social">
-            Social
-          </div>
-          <div class="wp-pill wp-pill-icon" id="wpm-soc-icon" data-item="social">
-            ${ICON_SOCIAL}
-          </div>
-        </div>
-
-      </div>
-    `;
-
+        <div class="wp-menu-side" id="wpm-left"></div>
+        <div class="wp-menu-center" id="wpm-home"><div class="wp-menu-center-btn"></div></div>
+        <div class="wp-menu-side" id="wpm-right"></div>
+      </div>`;
     document.body.appendChild(wrap);
-    this._attachEvents();
-  }
-
-  _attachEvents() {
-    // Actividades pills
-    ['wpm-act-icon','wpm-act-label'].forEach(id => {
-      document.getElementById(id)?.addEventListener('click', () => {
-        this._tap(id);
-        this._setActive('actividades');
-        if (this.callbacks.actividades) this.callbacks.actividades();
-      });
-    });
-
-    // Home
-    document.getElementById('wpm-home')?.addEventListener('click', () => {
-      this._tapCenter();
-      this._setActive('home');
-      if (this.callbacks.home) this.callbacks.home();
-    });
-
-    // Social pills
-    ['wpm-soc-icon','wpm-soc-label'].forEach(id => {
-      document.getElementById(id)?.addEventListener('click', () => {
-        this._tap(id);
-        this._setActive('social');
-        if (this.callbacks.social) this.callbacks.social();
-      });
+    this.badges = {};
+    this._paint(false);
+    wrap.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-item]');
+      if (b) { this._tap(b); this.go(b.dataset.item); }
+      else if (e.target.closest('#wpm-home')) { this._tapCenter(); this.callbacks.reselect?.(this.current); }
     });
   }
 
-  _tap(id) {
-    const el = document.getElementById(id);
+  // Botón de un lado: ícono + nombre como uno solo (izquierda: ícono primero)
+  _side(id, iconFirst) {
+    const it = SECTIONS[id], n = this.badges[id];
+    const icon = `<span class="wp-pill wp-pill-icon">${it.icon}${n ? `<b class="wp-menu-badge">${n > 9 ? '9+' : n}</b>` : ''}</span>`;
+    const label = `<span class="wp-pill wp-pill-label">${it.label}</span>`;
+    return `<button type="button" class="wp-menu-item" data-item="${id}" aria-label="${it.label}">${iconFirst ? icon + label : label + icon}</button>`;
+  }
+
+  _paint(animate = true) {
+    const [l, r] = ORDER[this.current];
+    const left = document.getElementById('wpm-left'), right = document.getElementById('wpm-right');
+    const center = document.querySelector('.wp-menu-center-btn');
+    left.innerHTML = this._side(l, true);
+    right.innerHTML = this._side(r, false);
+    center.innerHTML = SECTIONS[this.current].icon;
+    center.setAttribute('aria-label', SECTIONS[this.current].label);
+    if (!animate || !window.gsap) return;
+    window.gsap.fromTo(center.firstElementChild, { scale: 0.4, rotate: -25, opacity: 0 }, { scale: 1, rotate: 0, opacity: 1, duration: 0.45, ease: 'back.out(2.4)' });
+    [left, right].forEach((el, i) => window.gsap.fromTo(el.firstElementChild, { y: 14, opacity: 0, scale: 0.92 },
+      { y: 0, opacity: 1, scale: 1, duration: 0.38, ease: 'back.out(2)', delay: 0.04 + i * 0.05 }));
+  }
+
+  // Cambiar de sección (desde la barra o desde fuera)
+  go(id, { silent = false } = {}) {
+    if (!SECTIONS[id]) return;
+    if (id === this.current) { if (!silent) this.callbacks.reselect?.(id); return; }
+    this.current = id;
+    this._tapCenter();
+    this._paint(true);
+    if (!silent) this.callbacks.section?.(id);
+  }
+
+  // Numerito en el ícono de una sección (mensajes sin leer, planes de hoy)
+  setBadge(id, n) {
+    this.badges[id] = n || 0;
+    if (id !== this.current) this._paint(false);
+  }
+
+  _tap(el) {
     if (!el || !window.gsap) return;
     window.gsap.timeline()
       .to(el, { scale: 0.88, duration: 0.08, ease: 'power2.out' })
-      .to(el, { scale: 1.08, duration: 0.22, ease: 'back.out(3)' })
+      .to(el, { scale: 1.06, duration: 0.22, ease: 'back.out(3)' })
       .to(el, { scale: 1, duration: 0.18, ease: 'power2.out' });
   }
 
@@ -213,35 +228,8 @@ export class FooterMenu {
       .to(btn, { scale: 1, duration: 0.2, ease: 'power2.out' });
   }
 
-  _setActive(id) {
-    this.current = id;
-
-    // Reset all pills
-    document.querySelectorAll('.wp-pill').forEach(p => p.classList.remove('active-pill'));
-
-    // Activate
-    if (id === 'actividades') {
-      document.getElementById('wpm-act-icon')?.classList.add('active-pill');
-      document.getElementById('wpm-act-label')?.classList.add('active-pill');
-    } else if (id === 'social') {
-      document.getElementById('wpm-soc-icon')?.classList.add('active-pill');
-      document.getElementById('wpm-soc-label')?.classList.add('active-pill');
-    }
-
-    // Center button
-    const btn = document.querySelector('.wp-menu-center-btn');
-    if (btn) {
-      btn.style.background = id === 'home'
-        ? 'linear-gradient(145deg, #3b82f6, #1d4ed8)'
-        : 'linear-gradient(145deg, #9ca3af, #6b7280)';
-      btn.style.boxShadow = id === 'home'
-        ? '0 8px 24px rgba(37,99,235,0.45), 0 2px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.25)'
-        : '0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15)';
-    }
-  }
-
   animateIn() {
-    const items = ['wpm-act-icon','wpm-act-label','wpm-home','wpm-soc-label','wpm-soc-icon'];
+    const items = ['wpm-left', 'wpm-home', 'wpm-right'];
     if (!window.gsap) return;
     items.forEach((id, i) => {
       const el = document.getElementById(id);

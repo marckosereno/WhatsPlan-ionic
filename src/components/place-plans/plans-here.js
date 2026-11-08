@@ -47,6 +47,21 @@ export class PlansHere {
     savedIds(list.map(a => a.id)).then(s => { v.saved = s; this._phPaintSaves(v); });
   }
 
+  // Un plan de otros solo, sin la lista detrás (desde la pestaña Planes):
+  // el mismo plan completo de aquí; atrás cierra la hoja.
+  _openPlanDetailSheet(a, opts = {}) {
+    const me = window.wpApp?.currentUser?.id;
+    const inv = a.creator_id !== me && (a.invited || []).includes(me) && !(a.participants || []).includes(me) && !(a.declined || []).includes(me);
+    const v = { me, mine: null, pending: inv ? [a] : [], list: [a], day: 'all', at: -1, scroll: 0, saved: new Set(), photos: [], solo: true };
+    v.sheet = openSheetPage({
+      title: '', theme: 'explore', onClose: opts.onClose,
+      html: '<div class="wp-ph2-list" hidden></div><div class="wp-ph2-detail wp-mp" hidden></div>',
+    });
+    v.sheet.root.addEventListener('click', (e) => this._phClick(v, e));
+    this._phOpen(v, 0, null);
+    savedIds([a.id]).then(s => { v.saved = s; this._phPaintSaves(v); });
+  }
+
   _phPaintList(v, swap = false) {
     const box = v.sheet.body.querySelector('.wp-ph2-groups');
     const groups = this._phGroups(v);

@@ -24,12 +24,13 @@ const SHARE = '<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColo
 
 export class MyPlan {
   // opts.onBack: si vienes de "Planes aquí", atrás te regresa allá
+  // opts.onClose: al cerrar la hoja (la pestaña Planes recarga su lista)
   _openMyPlanSheet(a, opts = {}) {
     const me = window.wpApp?.currentUser?.id, owner = a.creator_id === me, stops = this._mpStops(a);
     let page = null;
     const onBack = opts.onBack ? () => { page.close(); setTimeout(opts.onBack, 360); return true; } : undefined;
     const { root, body, close } = page = openSheetPage({
-      onBack,
+      onBack, onClose: opts.onClose,
       title: owner ? 'Tu plan' : 'Vas a ir',
       theme: owner ? 'mine' : 'going',
       right: `<button type="button" class="wp-mp-danger" data-nopulse>${owner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>`,
