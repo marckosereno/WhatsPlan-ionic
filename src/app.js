@@ -27,6 +27,11 @@ import { MomentsUI }        from '/src/components/MomentsUI.js';
 import { setMapTint }       from '/src/utils/map-tint.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
+
+// Sin el menú del sistema al mantener presionado (salvo en campos de texto)
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest?.('input, textarea, [contenteditable]')) e.preventDefault();
+});
 import { appState }         from '/src/state/AppState.js';
 
 window.wpApp = {
