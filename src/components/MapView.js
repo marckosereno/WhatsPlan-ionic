@@ -1010,17 +1010,19 @@ export class MapView {
     });
   }
 
-  // Tema del mapa: 'greige' (beige+gris, plano — el de ahora), 'tierra'
+  // Tema del mapa: 'fresco' (gris frío y limpio — el de ahora), 'greige' (beige+gris), 'tierra'
   // (arena con sombras de edificios y arbolitos), 'neutral' (gris) o
   // 'beige' (el primero). Se guarda en el teléfono y se cambia desde el SuperUserPanel
   // o con wpApp.mapView.setMapTheme('neutral').
   _mapTheme() {
     let t = null;
     try { t = localStorage.getItem('wpMapTheme'); } catch (_) {}
-    return ['greige', 'tierra', 'neutral', 'beige'].includes(t) ? t : 'greige';
+    // Una sola vez: quien tenía el greige de antes pasa al nuevo "fresco"
+    try { if (localStorage.getItem('wpMapThemeV') !== '2') { localStorage.setItem('wpMapThemeV', '2'); if (t === 'greige') { t = 'fresco'; localStorage.setItem('wpMapTheme', t); } } } catch (_) {}
+    return ['fresco', 'greige', 'tierra', 'neutral', 'beige'].includes(t) ? t : 'fresco';
   }
   setMapTheme(t) {
-    try { localStorage.setItem('wpMapTheme', ['greige', 'tierra', 'neutral', 'beige'].includes(t) ? t : 'greige'); } catch (_) {}
+    try { localStorage.setItem('wpMapTheme', ['fresco', 'greige', 'tierra', 'neutral', 'beige'].includes(t) ? t : 'fresco'); } catch (_) {}
     document.body.dataset.wpMap = this._mapTheme();
     this._applyBlinkLight();
   }
@@ -1072,7 +1074,7 @@ export class MapView {
       // suelo con sombra corta (se ven "levantadas", como maqueta), parques
       // salvia con arbolitos, agua verde-azulada apagada, avenidas color
       // arena tostada.
-      // 'greige' (el de ahora): mezcla de beige y gris, plano y limpio.
+      // 'greige' (el de antes): mezcla de beige y gris, plano y limpio.
       // Suelo gris cálido, manzanas apenas más oscuras, todas las calles
       // blancas, avenidas ámbar suave y más anchas, parques verde muy suave.
       PAL.greige = {
@@ -1081,6 +1083,17 @@ export class MapView {
         moto: '#e9d29b', prim: '#eedfb6', sec: '#fbfbf9', minor: '#fbfbf9', // avenida: arena (antes ámbar fuerte)
         casing: null, dashLight: 'rgba(200,197,190,0.7)', wScale: 1.4, primScale: 1.25,
         roadText: '#99968e', waterText: '#5a8ea6', hood: '#aaa69c',
+      };
+      // 'fresco' (el de ahora): gris frío y limpio, casi blanco; agua
+      // azul cielo, parques menta, calles blancas y avenidas lila
+      // pervinca (primas del azul/índigo de la app). Más fresco y gen-z
+      // que el arena, sin pelear con los pines.
+      PAL.fresco = {
+        bg: '#eef1f6', water: '#b9e0fb', waterLine: '#a6d6f7', park: '#c9efdc', parkOp: 1,
+        land: '#e9edf3', landOp: 0.85, bld: '#e1e6ee', bldOp: 1, bldLine: '#d7dde8', bldLineOp: 0.6,
+        moto: '#c3cbfc', prim: '#dce1ff', sec: '#ffffff', minor: '#ffffff',
+        casing: null, dashLight: 'rgba(184,192,214,0.7)', wScale: 1.4, primScale: 1.25,
+        roadText: '#8b91a6', waterText: '#3f8fd0', hood: '#a1a7bb',
       };
       PAL.tierra = {
         bg: '#eee7da', water: '#a6cbd1', waterLine: '#93bfc6', park: '#cddbb1', parkOp: 1,
@@ -1107,7 +1120,7 @@ export class MapView {
         casing: null, dashLight: 'rgba(170,172,182,0.7)', wScale: 1.4, // sin bordes; calles 40% más gruesas
         roadText: '#8a8d96', waterText: '#4a90b8', hood: '#a3a6ae',
       };
-      const P = PAL[theme] || PAL.greige;
+      const P = PAL[theme] || PAL.fresco;
 
       // Orden original de capas (para meter las nuestras justo encima de
       // una capa: "antes de la siguiente")

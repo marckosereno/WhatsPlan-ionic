@@ -1472,3 +1472,23 @@ body.wp-boot .map-results-panel-float { animation: wpRise 0.7s cubic-bezier(0.34
   height: calc(env(safe-area-inset-top, 0px) + 40px);
   background: linear-gradient(180deg, rgba(247, 247, 245, 0.94) 0%, rgba(247, 247, 245, 0.7) 45%, rgba(247, 247, 245, 0) 100%);
 }
+
+/* ── MAPA — tono "fresco" (gen-z) ───────────────────────────────────────
+   Iconos del lado más vivos (cielo → azul → índigo), la cápsula del "+"
+   con fondo lila pervinca para que se distinga de la de abajo, y el velo
+   de arriba con el color del mapa nuevo. */
+.wp-side-icon-active {
+  background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #6366f1 100%);
+  box-shadow: 0 6px 14px -6px rgba(79, 70, 229, 0.55);
+}
+#wp-side-panel-bg-top {
+  background: linear-gradient(180deg, #f4f6ff 0%, #e3e8ff 100%);
+  box-shadow: inset 0 0 0 1px #d9e0ff, 0 4px 12px -6px rgba(79, 70, 229, 0.28);
+}
+#wp-side-slot-3.wp-gps-sticker.active .wp-gps-fill { fill: #4f46e5; stroke: #4f46e5; }
+#map-container::after {
+  background: linear-gradient(180deg, rgba(238, 241, 246, 0.94) 0%, rgba(238, 241, 246, 0.7) 45%, rgba(238, 241, 246, 0) 100%);
+}
+body:not([data-wp-map="fresco"]) #map-container::after {
+  background: linear-gradient(180deg, rgba(247, 247, 245, 0.94) 0%, rgba(247, 247, 245, 0.7) 45%, rgba(247, 247, 245, 0) 100%);
+}
