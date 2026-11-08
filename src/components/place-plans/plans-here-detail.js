@@ -103,8 +103,18 @@ export class PlansHereDetail {
     const main = !full ? `<button type="button" class="wp-ph2-btn" data-act="yes">${k === 'inv' ? 'Aceptar' : `${PLUS}<span>Unirme</span>`}</button>`
       : waiting ? '<button type="button" class="wp-ph2-btn soft on" data-act="wl-off">Te avisaremos si se libera un cupo</button>'
         : `<button type="button" class="wp-ph2-btn soft" data-act="wl-on">${BELL}<span>Avísame si se libera un cupo</span></button>`;
-    v.sheet.foot.innerHTML = `<div class="wp-ph2-acts">${no}${main}</div>`;
+    v.sheet.foot.innerHTML = `${!full ? this._phWhole(a) : ''}<div class="wp-ph2-acts">${no}${main}</div>`;
     v.sheet.relayout();
+  }
+
+  // Con paradas, antes de unirte: te unes a la salida completa (los cupos
+  // son del plan, no de cada parada)
+  _phWhole(a) {
+    const n = 1 + (Array.isArray(a.stops) ? a.stops.length : 0);
+    if (n < 2) return '';
+    const t0 = new Date(a.scheduled_at), end = this._mpEndAt(a);
+    const when = end && end > t0 ? `de ${this._hhmm(t0)} a ${this._hhmm(end)}` : `desde ${t0.getHours() % 12 === 1 ? 'la' : 'las'} ${this._hhmm(t0)}`;
+    return `<p class="wp-ph2-whole">Te unes al plan completo · ${n} lugares, ${when}</p>`;
   }
 
   async _phDo(v, b) {
