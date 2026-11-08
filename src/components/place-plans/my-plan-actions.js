@@ -192,11 +192,36 @@ export class MyPlanActions {
     box.querySelector('.wp-mp-z-yes').addEventListener('click', () => { z.close(); onYes(); });
   }
 
-  async _mpRemoveStop(ctx, b) {
-    const cur = Array.isArray(ctx.a.stops) ? ctx.a.stops : [];
-    b.disabled = true;
-    const ok = await this._mpSave(ctx, 'set_plan_stops', { p_activity: ctx.a.id, p_stops: cur.filter((_, i) => i !== +b.dataset.rm - 1) }, 'Parada quitada · ya les avisamos');
-    if (!ok) b.disabled = false;
+  // Quitar parada: tarjeta de confirmación. Si hay una después, se elige
+  // si se queda a su hora (por defecto: ya se organizaron con esa hora) o
+  // se adelanta a la de la que se quita.
+  _mpRemoveStop(ctx, b) {
+    const i = +b.dataset.rm, gone = ctx.stops[i], next = ctx.stops[i + 1];
+    if (!gone) return;
+    if (gone.at <= new Date()) { this._showToast('Esa parada ya pasó'); return; }
+    let shift = false, done = false;
+    const at = (d) => `${d.getHours() % 12 === 1 ? 'a la' : 'a las'} ${this._hhmm(d)}`;   // 'a la 1 pm', 'a las 9 pm'
+    const box = document.createElement('div');
+    box.className = 'wp-mp-z-rm';
+    box.innerHTML = `<p class="wp-mp-z-q">Quitar <b>${this._esc(gone.name)}</b> del plan</p>
+      ${next ? `<p class="wp-mp-z-sub">¿Y ${this._esc(next.name)}?</p>
+        <div class="wp-mp-z-opts">
+          <button type="button" class="on" data-shift="0"><i></i><span>Dejarlo ${at(next.at)}</span></button>
+          <button type="button" data-shift="1"><i></i><span>Adelantarlo ${at(gone.at)}</span></button>
+        </div>` : ''}
+      <button type="button" class="wp-mp-z-yes danger">Quitar parada</button>`;
+    box.addEventListener('click', (e) => {
+      const o = e.target.closest('[data-shift]'); if (!o) return;
+      shift = o.dataset.shift === '1';
+      box.querySelectorAll('[data-shift]').forEach(x => x.classList.toggle('on', x === o));
+      this._haptic?.('light');
+    });
+    const z = openZoom({ from: b.getBoundingClientRect(), label: 'Quitar parada', content: box, doneLabel: 'Cancelar' });
+    box.querySelector('.wp-mp-z-yes').addEventListener('click', async () => {
+      if (done) return; done = true; z.close();
+      const msg = next ? `Parada quitada · ${next.name} ${shift ? `ahora ${at(gone.at)}` : `sigue ${at(next.at)}`} · ya les avisamos` : 'Parada quitada · ya les avisamos';
+      if (!await this._mpSave(ctx, 'remove_plan_stop', { p_activity: ctx.a.id, p_index: i - 1, p_shift: shift }, msg)) done = false;
+    });
   }
 
   // Cancelar / salirme: segundo toque para confirmar
