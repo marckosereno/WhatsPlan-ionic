@@ -152,7 +152,7 @@ export class PlaceModal2 {
           <div class="wp-pm2-ai-block" id="wp-pm2-ai-block" style="display:none">
             <div class="wp-pm2-ai-header">
               <svg class="wp-pm2-ai-icon" width="16" height="16" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path class="wp-pm2-spark wp-pm2-spark-1" d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Z"/><path class="wp-pm2-spark wp-pm2-spark-2" d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z"/><path class="wp-pm2-spark wp-pm2-spark-3" d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z"/></svg>
-              <span class="wp-pm2-ai-badge">Descripción generada con IA</span>
+              <span class="wp-pm2-ai-badge">Resumen con IA</span>
             </div>
             <div class="wp-pm2-ai-text" id="wp-pm2-ai-text"></div>
             <div class="wp-pm2-ai-skeleton" id="wp-pm2-ai-skeleton">
@@ -2514,9 +2514,20 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
   // Revelado suave de la descripción (ver CSS .wp-pm2-ai-reveal).
   // Antes era "máquina de escribir" letra por letra: re-dibujaba la ficha
   // completa decenas de veces por segundo. Devuelve cancel().
+  // Foto que no carga → círculo suave con la inicial (sin ícono roto)
+  _avFallback(img, name) {
+    if (!img.isConnected) return;
+    const d = document.createElement('div');
+    d.className = img.className + ' wp-pm2-fp-ini';
+    d.style.zIndex = img.style.zIndex;
+    d.textContent = (String(name || '').trim()[0] || '·').toUpperCase();
+    img.replaceWith(d);
+  }
+
   _revealText(el, text, onStart, onDone) {
     el.classList.remove('wp-pm2-ai-reveal');
-    el.textContent = text;
+    // sin comillas alrededor (la IA a veces las pone)
+    el.textContent = String(text || '').trim().replace(/^["“”'«]+|["“”'»]+$/g, '').trim();
     void el.offsetWidth; // reinicia la animación si se reabre la ficha
     let done = false;
     const finish = () => {
@@ -3209,7 +3220,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
           img.style.zIndex = savers.length - i;
           this._skelOn(img);
           img.onload = () => this._skelOff(img);
-          img.onerror = () => { this._skelOff(img); img.style.background = '#e2e8f0'; };
+          img.onerror = () => { this._skelOff(img); this._avFallback(img, sv.name); };
           img.src = sv.avatar_url || getAvatarUrl(sv.name || 'user');
           avatarsEl.appendChild(img);
         });
@@ -3259,7 +3270,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
       av.style.zIndex = shown.length - i; // el primero queda arriba
       this._skelOn(av);
       av.onload  = () => this._skelOff(av);
-      av.onerror = () => { this._skelOff(av); av.style.background = '#e2e8f0'; };
+      av.onerror = () => { this._skelOff(av); this._avFallback(av, n); };
       av.src = getAvatarUrl(n);
       avatarsEl.appendChild(av);
     });
@@ -3267,7 +3278,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     if (remaining > 0) {
       const more = document.createElement('div');
       more.className = 'wp-pm2-fp-more';
-      more.textContent = '+' + (remaining > 99 ? '99' : remaining);
+      more.textContent = remaining > 99 ? '99+' : '+' + remaining;
       more.style.zIndex = 0;
       avatarsEl.appendChild(more);
     }
