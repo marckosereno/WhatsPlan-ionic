@@ -1086,13 +1086,11 @@ export class MapView {
       };
       // 'fresco' (el de ahora): el greige pero sin lo arenoso — gris
       // neutro apenas cálido, limpio; agua azul cielo suave, parques
-      // salvia-menta, calles blancas y avenidas en gris oscurito con una
-      // orilla difuminada (se ve como degradado suave hacia el suelo).
+      // salvia-menta, calles blancas y avenidas en gris suave (sin orilla).
       PAL.fresco = {
         bg: '#efefed', water: '#c3dcea', waterLine: '#b2d1e2', park: '#d6eadb', parkOp: 1,
         land: '#eaeae7', landOp: 0.85, bld: '#e2e2de', bldOp: 1, bldLine: '#d9d9d4', bldLineOp: 0.6,
-        moto: '#a3a7b0', prim: '#b0b4bc', sec: '#fdfdfc', minor: '#fdfdfc',
-        primCase: 'rgba(160,164,173,0.5)', primBlur: 3,
+        moto: '#bec1c8', prim: '#c8cbd1', sec: '#fdfdfc', minor: '#fdfdfc',
         casing: null, dashLight: 'rgba(196,196,190,0.7)', wScale: 1.4, primScale: 1.25,
         roadText: '#93938d', waterText: '#5a8ea6', hood: '#a7a7a0',
       };
