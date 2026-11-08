@@ -5659,7 +5659,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     const dy    = override?.dy ?? slot.dy;
     const z     = override?.z ?? slot.z;
     const borderColor  = override?.borderColor  ?? '#ffffff';
-    const borderWidth  = override?.borderWidth  ?? 3; // orilla blanca (antes 2)
+    const borderWidth  = override?.borderWidth  ?? 2.5; // orilla blanca (nueva línea: un poco más fina)
     const borderRadius = override?.borderRadius ?? 9;
 
     // Square con la MISMA área que el portrait (√(46×60) ≈ 52.5px de
@@ -5677,7 +5677,7 @@ export function _buildClusterStickerHtml(group, customDef) {
     // pointer-events:auto explícito — el CONTENEDOR grande de todo el
     // cluster va con pointer-events:none (ver el return final), así que
     // sin este auto acá la tarjeta ni siquiera sería tappeable.
-    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:${borderRadius}px;${bg}border:${borderWidth}px solid ${borderColor};box-shadow:0 3px 8px rgba(0,0,0,0.28);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;"></div>`;
+    return `<div data-card-idx="${i}" style="position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;border-radius:${borderRadius}px;${bg}border:${borderWidth}px solid ${borderColor};box-shadow:0 1px 2px rgba(20,18,31,0.12),0 8px 18px -6px rgba(20,18,31,0.38);transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot}deg);z-index:${z};pointer-events:auto;"></div>`;
   }).join('');
 
   const stickersHtml = (customDef?.stickers || []).map((s, i) => {
@@ -5725,7 +5725,8 @@ export function _buildClusterStickerHtml(group, customDef) {
     : [];
   const badgeHtml = badgeList.map((badge, bi) => {
     badge = badge || {};
-    const bColor = badge.color || '#111827';
+    // nueva línea: sin color propio, el "+N" va en negro con un degradado apenas perceptible
+    const bColor = badge.color || 'linear-gradient(160deg,#2b2a3a,#14121f)';
     const bScale = badge.scale ?? 1;
     const bDx = badge.dx ?? (34 + bi * 4), bDy = badge.dy ?? (-28 - bi * 30); // badges extra se apilan hacia arriba por default, para no pisarse
     const bRot = badge.rotation ?? 0;
@@ -5740,7 +5741,7 @@ export function _buildClusterStickerHtml(group, customDef) {
       : (bi === 0 && group.length > 1) ? `+${group.length}`
       : '';
     if (!bText) return '';
-    return `<div data-badge-idx="${bi}" style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;white-space:nowrap;">${bText}</div>`;
+    return `<div data-badge-idx="${bi}" style="position:absolute;left:50%;top:50%;min-width:${bSize}px;height:${bSize}px;padding:0 ${6 * bScale}px;border-radius:999px;background:${bColor};color:#fff;font-size:${11.5 * bScale}px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 4px 10px -3px rgba(20,18,31,0.45);transform:translate(calc(-50% + ${bDx}px),calc(-50% + ${bDy}px)) rotate(${bRot}deg);z-index:${bZ};pointer-events:auto;white-space:nowrap;">${bText}</div>`;
   }).join('');
 
   // ── Etiqueta SEPARADA (no es el badge) ──────────────────────────────
@@ -5753,12 +5754,12 @@ export function _buildClusterStickerHtml(group, customDef) {
     const lDx = label.dx ?? 0, lDy = label.dy ?? 44; // default: debajo del pin
     const lRot = label.rotation ?? 0;
     const lScale = label.scale ?? 1;
-    const lColor = label.color || '#1a1a2e';
-    const lBg = label.bg || 'rgba(255,255,255,0.92)';
+    const lColor = label.color || '#14121f';
+    const lBg = label.bg || 'rgba(255,255,255,0.96)';
     const lZ = label.z ?? 25;
     // Radio: 0 = esquinas rectas … 999 = pill. Escala con el tamaño.
-    const lRad = Number.isFinite(label.radius) ? label.radius : 8;
-    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${1.5 * lScale}px ${8 * lScale}px;line-height:1.2;border-radius:${lRad * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:700;font-family:var(--wp-font);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,0.18);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
+    const lRad = Number.isFinite(label.radius) ? label.radius : 999;   // nueva línea: pill
+    return `<div data-label style="position:absolute;left:50%;top:50%;max-width:140px;padding:${3 * lScale}px ${10 * lScale}px;line-height:1.2;border-radius:${lRad * lScale}px;background:${lBg};color:${lColor};font-size:${12 * lScale}px;font-weight:600;font-family:var(--wp-font);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 0 0 1px rgba(20,18,31,0.05),0 6px 14px -6px rgba(20,18,31,0.35);transform:translate(calc(-50% + ${lDx}px),calc(-50% + ${lDy}px)) rotate(${lRot}deg);z-index:${lZ};pointer-events:auto;">${lText}</div>`;
   })() : '';
 
   // pointer-events:none acá es LA clave: este div mide 150x120 (o más, si
