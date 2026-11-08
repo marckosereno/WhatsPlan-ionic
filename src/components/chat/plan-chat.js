@@ -4,9 +4,12 @@
 //  · Arriba: nombre del plan y "3 van · Hoy 7 pm".
 //  · Mensajes (chat-render.js) que llegan en tiempo real; abre hasta abajo
 //    y si estás leyendo más arriba no te mueve, solo aparece "Nuevos ↓".
+//  · Arriba a la derecha, las caras del grupo.
 //  · Abajo: respuestas rápidas cuando el plan está por empezar o en curso
-//    (de 2 h antes a 1 h después de que termina) y la barra para
-//    escribir con el botón de enviar.
+//    (de 2 h antes a 1 h después de que termina; se esconden mientras
+//    escribes) y la barra para escribir con la pill "Enviar" (gris
+//    apagada; con texto se enciende con el degradado).
+//  · Solo el mensaje que llega entra con animación (no se re-anima todo).
 //  · Lo que envías sale al instante ("Enviando…") y se confirma al
 //    llegar; si falla, se quita y te avisa.
 //  · Marca leído al abrir, al llegar mensajes y al cerrar.
@@ -18,9 +21,8 @@
 // ════════════════════════════════════════════════════════════════════
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { loadMessages, sendMessage, markRead, onMessages } from '/src/components/chat/chat-service.js';
-import { messagesHtml } from '/src/components/chat/chat-render.js';
+import { messagesHtml, groupAvatar } from '/src/components/chat/chat-render.js';
 
-const SEND = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l.01 6.53L15 12l-11.59 1.87z"/></svg>';
 const QUICK = ['🚗 Voy en camino', '👋 Ya llegué', '⏰ Llego tarde', '🙋 ¿Dónde están?'];
 
 export function ensureChatCss() {
@@ -45,14 +47,16 @@ export function openPlanChat(pm, a, opts = {}) {
   const onBack = opts.onBack ? () => { page.close(); setTimeout(opts.onBack, 360); return true; } : undefined;
   page = openSheetPage({
     title: `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Plan')}</b><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small></span>`,
+    right: `<span class="wp-ch-head-av" aria-hidden="true">${groupAvatar(pm, a, me)}</span>`,
     theme: 'explore', onBack,
     onClose: () => { st.closed = true; st.stop?.(); markRead(id); opts.onClose?.(); },
     html: '<div class="wp-ch-list"><p class="wp-ch-load">Cargando…</p></div><button type="button" class="wp-ch-new" hidden>Nuevos mensajes ↓</button>',
     foot: `${quickOn(pm, a) ? `<div class="wp-ch-quick">${QUICK.map(q => `<button type="button" data-q="${q}">${q}</button>`).join('')}</div>` : ''}
-      <form class="wp-ch-bar"><textarea rows="1" maxlength="1000" placeholder="Escribe al grupo…" enterkeyhint="send"></textarea>
-        <button type="submit" class="wp-ch-send" aria-label="Enviar" disabled>${SEND}</button></form>`,
+      <form class="wp-ch-bar"><textarea rows="1" maxlength="1000" placeholder="Mensaje" enterkeyhint="send"></textarea>
+        <button type="submit" class="wp-ch-send" disabled>Enviar</button></form>`,
   });
   page.root.classList.add('wp-ch-sheet');
+  page.relayout();   // el pie cambia de forma con la clase (respuestas rápidas + barra)
   const vp = page.root.querySelector('.wp-st-vp'), box = page.body.querySelector('.wp-ch-list');
   const input = page.foot.querySelector('textarea'), send = page.foot.querySelector('.wp-ch-send'), fresh = page.body.querySelector('.wp-ch-new');
   const atBottom = () => vp.scrollHeight - vp.scrollTop - vp.clientHeight < 80;
@@ -66,8 +70,10 @@ export function openPlanChat(pm, a, opts = {}) {
   const add = (m) => {
     if (st.list.some(x => x.id === m.id)) return;
     const stick = atBottom();
+    m._new = true;   // solo el nuevo entra con animación
     st.list.push(m);
     paintAll();
+    delete m._new;
     if (stick || m.user_id === me) toBottom(true);
     else fresh.hidden = false;
   };
@@ -91,18 +97,28 @@ export function openPlanChat(pm, a, opts = {}) {
       const i = st.list.indexOf(tmp);
       if (i >= 0) { st.list.splice(i, 1); if (!st.list.some(x => x.id === m.id)) st.list.splice(i, 0, m); }
       paintAll();
+      const el = box.querySelector(`[data-id="${m.id}"] .wp-ch-time`);
+      if (el) el.classList.add('sent');
     } catch (e) {
       st.list = st.list.filter(x => x !== tmp); paintAll();
       pm._showToast?.(/row-level|permission/i.test(e.message || '') ? 'Solo los que van pueden escribir aquí' : 'No se pudo enviar');
     }
   };
 
-  const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(110, input.scrollHeight)}px`; send.disabled = !input.value.trim(); page.relayout(); };
+  const quick = page.foot.querySelector('.wp-ch-quick');
+  const grow = () => {
+    input.style.height = 'auto'; input.style.height = `${Math.min(110, input.scrollHeight)}px`;
+    const has = !!input.value.trim();
+    if (send.disabled === has) { send.disabled = !has; page.foot.classList.toggle('typing', has); }
+    if (quick) quick.hidden = has;   // escribiendo: se esconden las respuestas rápidas
+    page.relayout();
+  };
   input.addEventListener('input', grow);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); page.foot.querySelector('form').requestSubmit(); } });
   page.foot.querySelector('form').addEventListener('submit', (e) => {
     e.preventDefault();
     const v = input.value; input.value = ''; grow(); doSend(v);
+    send.classList.remove('pop'); void send.offsetWidth; send.classList.add('pop');
   });
   page.foot.addEventListener('click', (e) => { const q = e.target.closest('[data-q]'); if (q) doSend(q.dataset.q, 'quick'); });
   fitKeyboard(page, input, () => { if (st.list.length) toBottom(false); });

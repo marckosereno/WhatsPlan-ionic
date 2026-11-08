@@ -48,12 +48,12 @@ export function messagesHtml(pm, list, me, prev = null) {
   list.forEach((m, i) => {
     const before = i ? list[i - 1] : prev, next = list[i + 1];
     const at = new Date(m.created_at);
-    if (!before || dayKey(new Date(before.created_at)) !== dayKey(at)) out += `<div class="wp-ch-day"><span>${dayLabel(at)}</span></div>`;
-    if (m.kind === 'system') { out += `<div class="wp-ch-sys" data-id="${m.id}"><span>${pm._esc(m.body)}</span></div>`; return; }
+    if (!before || dayKey(new Date(before.created_at)) !== dayKey(at)) out += `<div class="wp-ch-day"><span><b>${dayLabel(at)}</b> ${pm._hhmm(at)}</span></div>`;
+    if (m.kind === 'system') { out += `<div class="wp-ch-sys${m._new ? ' new' : ''}" data-id="${m.id}"><span>${pm._esc(m.body)}</span></div>`; return; }
     const same = (a, b) => a && b && a.kind !== 'system' && b.kind !== 'system' && a.user_id === b.user_id
       && Math.abs(new Date(a.created_at) - new Date(b.created_at)) < GAP && dayKey(new Date(a.created_at)) === dayKey(new Date(b.created_at));
     const first = !same(before, m), last = !same(m, next), mine = m.user_id === me;
-    out += `<div class="wp-ch-msg${mine ? ' me' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${m._pending ? ' pending' : ''}${m.kind === 'quick' ? ' quick' : ''}" data-id="${m.id}">
+    out += `<div class="wp-ch-msg${mine ? ' me' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${m._pending ? ' pending' : ''}${m.kind === 'quick' ? ' quick' : ''}${m._new ? ' new' : ''}" data-id="${m.id}">
         ${!mine ? `<span class="wp-ch-av">${last ? face(pm, m.user_id) : ''}</span>` : ''}
         <div class="wp-ch-col">
           ${!mine && first ? `<small class="wp-ch-name">${pm._phName(m.user_id)}</small>` : ''}
