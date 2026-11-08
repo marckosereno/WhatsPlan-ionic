@@ -1529,3 +1529,34 @@ body .subcategory-footer-chip:active { transform: scale(0.94); transition-durati
   background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%);
   box-shadow: 0 6px 16px -8px rgba(20, 18, 31, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
+/* ── Slide de clusters (MapView _openClusterExpand) — nueva línea ───────
+   Fondo con el degradado de las pantallas (azul muy claro arriba), título
+   700 en tinta, botones blancos con aro fino, y las chips de los lugares
+   como las de subcategoría (gris suave, la elegida en tinta) que entran
+   en ola. Sombra de las tarjetas más ligera (en el JS). */
+body .wp-ce-collage-bg { background: linear-gradient(180deg, #dbeafe 0%, #eef5ff 26%, #f6f8fb 52%, #f6f8fb 100%); }
+body .wp-ce-ctitle { font-weight: 700; color: #14121f; }
+body .wp-ce-cback, body .wp-ce-cbtn {
+  background: rgba(255, 255, 255, 0.92); color: #14121f;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 4px 12px -6px rgba(20, 18, 31, 0.2);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+body .wp-ce-cback:active, body .wp-ce-cbtn:active { transform: scale(0.9); transition-duration: 0.1s; }
+body .wp-ce-cbtn svg [fill="#000000"], body .wp-ce-cback svg { fill: #14121f; }
+body .wp-ce-ctag {
+  font-weight: 500; color: #374151; padding: 8px 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 3px 8px -4px rgba(20, 18, 31, 0.18), inset 0 1px 0 #fff;
+}
+body .wp-ce-ctag.wp-ce-ctag-active {
+  background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%); color: #fff; font-weight: 600;
+  box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.45);
+}
+body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag { animation: wpWave 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) backwards; }
+body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(2) { animation-delay: 0.04s; }
+body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(3) { animation-delay: 0.08s; }
+body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(4) { animation-delay: 0.12s; }
+body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(5) { animation-delay: 0.16s; }
+body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(n+6) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) { body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag { animation: none; } }

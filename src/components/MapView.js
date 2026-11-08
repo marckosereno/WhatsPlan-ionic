@@ -2763,7 +2763,7 @@ export class MapView {
       const hiRes = rawPhoto ? proxyPhotoSlide(rawPhoto) : null;
       const c = document.createElement('div');
       c.className = 'wp-ce-flip-piece';
-      c.style.cssText = `position:fixed;margin:0;border-radius:${CAROUSEL_RADIUS}px;border:7px solid #ffffff;box-shadow:0 3px 8px rgba(0,0,0,0.28);cursor:pointer;opacity:0;z-index:100000;`;
+      c.style.cssText = `position:fixed;margin:0;border-radius:${CAROUSEL_RADIUS}px;border:7px solid #ffffff;box-shadow:0 0 0 1px rgba(20,18,31,0.04),0 16px 32px -16px rgba(20,18,31,0.38);cursor:pointer;opacity:0;z-index:100000;`;
       setCardPhoto(c, hiRes);
       document.body.appendChild(c);
       const entry = { node: null, kind: 'card', idx: i, rect: null, clone: c };
@@ -3394,7 +3394,7 @@ export class MapView {
 
       const makeFlyer = (rect, radius, bgImage, rot) => {
         const el = document.createElement('div');
-        el.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${radius};background-image:${bgImage};background-size:cover;background-position:center;transform:rotate(${rot}deg);z-index:999999;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,0.28);`;
+        el.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${radius};background-image:${bgImage};background-size:cover;background-position:center;transform:rotate(${rot}deg);z-index:999999;pointer-events:none;box-shadow:0 0 0 1px rgba(20,18,31,0.04),0 16px 32px -16px rgba(20,18,31,0.38);`;
         document.body.appendChild(el);
         return el;
       };
