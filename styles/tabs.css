@@ -12,6 +12,13 @@
   opacity: 0; transform: translateY(14px) scale(0.985); transition: opacity 0.26s ease, transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
 .wp-tab.in { opacity: 1; transform: none; }
 .wp-tab, .wp-tab * { -webkit-tap-highlight-color: transparent; }
+/* velos arriba (barra de estado) y abajo (detrás de la barra de menú):
+   el contenido se desvanece al pasar por ahí en vez de cortarse */
+.wp-tab::before, .wp-tab::after { content: ''; position: absolute; left: 0; right: 0; z-index: 2; pointer-events: none; }
+.wp-tab::before { top: 0; height: calc(env(safe-area-inset-top, 0px) + 34px);
+  background: linear-gradient(180deg, #dbeafe 0%, rgba(219, 234, 254, 0.86) 45%, rgba(219, 234, 254, 0) 100%); }
+.wp-tab::after { bottom: 0; height: calc(env(safe-area-inset-bottom, 0px) + 128px);
+  background: linear-gradient(180deg, rgba(246, 248, 251, 0) 0%, rgba(246, 248, 251, 0.88) 48%, #f6f8fb 100%); }
 .wp-tab-vp { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
 .wp-tab-vp::-webkit-scrollbar { display: none; }
 .wp-tab-page { padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px calc(env(safe-area-inset-bottom, 0px) + 120px); }
