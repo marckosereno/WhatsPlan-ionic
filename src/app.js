@@ -28,6 +28,11 @@ import { setMapTint }       from '/src/utils/map-tint.js';
 import { SearchBar }        from '/src/components/SearchBar.js';
 import { animatePanelIn, animateChipsIn, animateChipTap, animateAvatarSwap } from '/src/utils/animations.js';
 
+// Al abrir la app: entrada en ola de la barra, los botones del lado y el
+// panel de categorías (styles/app.css, body.wp-boot)
+document.body.classList.add('wp-boot');
+setTimeout(() => document.body.classList.remove('wp-boot'), 2600);
+
 // Sin el menú del sistema al mantener presionado (salvo en campos de texto)
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest?.('input, textarea, [contenteditable]')) e.preventDefault();
@@ -1375,7 +1380,9 @@ try {
     const topbar      = document.getElementById('topbar');
     if (!topPanel || !bottomPanel || !catPanel || !topbar) return false;
     const topbarBottom = topbar.getBoundingClientRect().bottom;
-    const catPanelTop  = catPanel.getBoundingClientRect().top;
+    // sin contar la animación de entrada del panel (sube desde 40 px abajo)
+    const lift = new DOMMatrix(getComputedStyle(catPanel).transform).m42 || 0;
+    const catPanelTop  = catPanel.getBoundingClientRect().top - lift;
     if (catPanelTop <= topbarBottom) return false;
     const midY      = topbarBottom + (catPanelTop - topbarBottom) * 0.82;
     const bottomH   = bottomPanel.offsetHeight || 80;
