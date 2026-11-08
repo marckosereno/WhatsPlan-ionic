@@ -1427,7 +1427,14 @@ try {
       getMap:    () => window.wpApp.mapView?.getMap?.(),
       getPlaces: () => window.wpApp.mapView?.allPlaces || [],
     });
-    const socialTab = new SocialTab({ onGoPlans: () => { footerMenu.go('plans', { silent: true }); plansTab.open('mine'); } });
+    const socialTab = new SocialTab({
+      getPM:     () => window.wpApp.placeModal,
+      getPlaces: () => window.wpApp.mapView?.allPlaces || [],
+      onGoPlans: () => { footerMenu.go('plans', { silent: true }); plansTab.open('mine'); },
+      onUnread:  (n) => footerMenu.setBadge('social', n),
+    });
+    window.wpApp.socialTab = socialTab;
+    setTimeout(() => { if (window.wpApp.currentUser) socialTab.startChats(); }, 2000);
     const footerMenu = new FooterMenu({
       onSection: (id) => {
         if (id === 'plans') { plansTab.open(); }
@@ -1499,6 +1506,7 @@ try {
       console.log('🔐 Auth:', event, user?.email || 'sin sesión');
       window.wpApp.currentUser = user;
       appState.setUser(user);
+      if (user) setTimeout(() => window.wpApp.socialTab?.startChats?.(), 1500);   // numerito de mensajes sin leer
       // No tocar el avatar si la búsqueda está activa
       var sb = window.wpApp && window.wpApp.searchBar;
       if (!sb || !sb.isActive()) {
