@@ -18,6 +18,7 @@ import { fillSavedPlans } from '/src/components/profile/saved-plans.js';
 import { wave }           from '/src/components/place-plans/wave.js';
 import { addDragScroll }  from '/src/components/place-plans/drag-scroll.js';
 import { addDragStrip }   from '/src/components/place-plans/drag-strip.js';
+import { ICON_BACK }      from '/src/components/place-plans/step-sheet.js';
 
 // Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
 // n veces. Devuelve un path SVG/CSS centrado en (c, c).
@@ -154,7 +155,7 @@ export class ProfileSheet {
       <div class="wp-pf-sheet">
         <div class="wp-pf-head">
           <div class="wp-pf-handle"></div>
-          <button type="button" class="wp-pf-hbtn wp-pf-left" aria-label="Cerrar">${ICON.x}</button>
+          <button type="button" class="wp-pf-hbtn wp-pf-left wp-pf-back" aria-label="Cerrar">${ICON_BACK}</button>
           <div class="wp-pf-htitle"></div>
           <button type="button" class="wp-pf-hbtn wp-pf-right" aria-label="Opciones"></button>
         </div>
@@ -265,7 +266,7 @@ export class ProfileSheet {
     if (!this._el) return;
     const left = this._el.querySelector('.wp-pf-left');
     const isRoot = this._stack.length <= 1;
-    left.innerHTML = isRoot ? ICON.x : ICON.back;
+    left.innerHTML = ICON_BACK;   // el mismo botón redondo de "Volver" de las hojas grandes
     left.setAttribute('aria-label', isRoot ? 'Cerrar' : 'Atrás');
     this._el.querySelector('.wp-pf-htitle').textContent = title;
     const r = this._el.querySelector('.wp-pf-right');
@@ -1002,10 +1003,10 @@ export class ProfileSheet {
           <div class="wp-pf-avatar" style="clip-path:${SEAL_CLIP}"></div>
           <button type="button" class="wp-pf-cam" aria-label="Cambiar foto">Cambiar</button>
         </div>
-        <label class="wp-pf-field"><span>Nombre</span><input data-f="name" maxlength="40" autocapitalize="words" autocomplete="name"></label>
-        <label class="wp-pf-field"><span>Usuario</span><div class="wp-pf-at"><i>@</i><input data-f="username" maxlength="20" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="tu.usuario"></div><em class="wp-pf-err"></em></label>
-        <label class="wp-pf-field"><span>Ciudad</span><input data-f="city" maxlength="40" autocapitalize="words" placeholder="Matamoros"></label>
-        <label class="wp-pf-field"><span>Sobre ti</span><textarea data-f="bio" maxlength="120" rows="3" autocapitalize="sentences" placeholder="Tacos, cafés y planes con amigos"></textarea></label>
+        <label class="wp-pf-field"><span>Nombre</span><input data-f="name" data-zoom="Nombre" maxlength="40" autocapitalize="words" autocomplete="name"></label>
+        <label class="wp-pf-field"><span>Usuario</span><div class="wp-pf-at"><i>@</i><input data-f="username" data-zoom="Usuario" maxlength="20" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="tu.usuario"></div><em class="wp-pf-err"></em></label>
+        <label class="wp-pf-field"><span>Ciudad</span><input data-f="city" data-zoom="Ciudad" maxlength="40" autocapitalize="words" placeholder="Matamoros"></label>
+        <label class="wp-pf-field"><span>Sobre ti</span><textarea data-f="bio" data-zoom="Sobre ti" maxlength="120" rows="3" autocapitalize="sentences" placeholder="Tacos, cafés y planes con amigos"></textarea></label>
         <button type="button" class="wp-pf-save">Guardar</button>
       </div>`;
     const av = view.querySelector('.wp-pf-avatar');

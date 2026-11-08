@@ -97,7 +97,7 @@ export function attachFocusZoom(root) {
 function zoomField(src) {
   src._wpZoomOpen = true;
   const field = document.createElement(src.tagName.toLowerCase());
-  ['type', 'placeholder', 'maxlength', 'rows', 'autocapitalize', 'autocomplete', 'enterkeyhint'].forEach(a => { if (src.hasAttribute(a)) field.setAttribute(a, src.getAttribute(a)); });
+  ['type', 'placeholder', 'maxlength', 'rows', 'autocapitalize', 'autocomplete', 'enterkeyhint', 'inputmode', 'autocorrect', 'spellcheck'].forEach(a => { if (src.hasAttribute(a)) field.setAttribute(a, src.getAttribute(a)); });
   field.className = 'wp-fz-field' + (src.tagName === 'TEXTAREA' ? ' area' : '');
   field.value = src.value;
   const max = +src.getAttribute('maxlength') || 0;
