@@ -1372,7 +1372,7 @@ input, textarea, [contenteditable], [contenteditable] * { -webkit-user-select: t
    resorte al tocar. Va al final para ganarle a los estilos de antes
    (y con "body" a los que inyecta SubcategoryRow.js).
    ════════════════════════════════════════════════════════════════════ */
-:root { --wp-ink-strong: #14121f; --wp-shadow-float: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 24px -12px rgba(20, 18, 31, 0.32); }
+:root { --wp-ink-strong: #14121f; --wp-shadow-float: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 4px 12px -6px rgba(20, 18, 31, 0.16); }
 
 /* Barra de arriba: Buscar y campanita blancas, campanita en tinta */
 #topbar-right-chip, #topbar-notif-btn {
@@ -1394,7 +1394,7 @@ input, textarea, [contenteditable], [contenteditable] * { -webkit-user-select: t
 }
 .wp-side-icon-active {
   background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 45%, #2563eb 100%); color: #fff;
-  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, 0.5);
+  box-shadow: 0 4px 10px -6px rgba(37, 99, 235, 0.45);
 }
 /* Memories y GPS: el relleno del sticker con el mismo degradado suave */
 .wp-side-icon.wp-sticker svg > path:nth-child(2) { fill: url(#wpStickerG); stroke: url(#wpStickerG); }
@@ -1411,7 +1411,7 @@ body .subcategory-footer-chip {
 }
 body .subcategory-footer-chip.active {
   background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%); color: #fff; font-weight: 600;
-  box-shadow: 0 6px 14px -6px rgba(20, 18, 31, 0.5);
+  box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.45);
 }
 body .subcat-chip-badge { background: #fff; color: var(--wp-ink-strong); border: none; font-weight: 700;
   box-shadow: 0 0 0 1.5px var(--wp-ink-strong), 0 2px 6px rgba(20, 18, 31, 0.2); }
