@@ -10,6 +10,7 @@
 //  · Tocar un plan: tuyo o al que vas → "Tu plan" / "Vas a ir"; de otros
 //    → el plan completo con Unirme (plans-here.js _openPlanDetailSheet).
 //    Al cerrar, la lista se vuelve a cargar (por si te uniste).
+//  · Todo entra en ola (wave.js), como las hojas grandes.
 // Usa los ayudantes de la ficha (PlaceModal2) para caras, horas, días.
 //
 // Uso: const t = new PlansTab({ getPM, getMap, getPlaces }); t.open(); t.close()
@@ -19,6 +20,7 @@ import { getSupabase } from '/src/services/SupabaseService.js';
 import { savedIds, setSaved, mySavedPlans } from '/src/components/place-plans/plan-saves.js';
 import { addElastic } from '/src/components/place-plans/elastic.js';
 import { photoSmall } from '/src/utils/photo-url.js';
+import { wave } from '/src/components/place-plans/wave.js';
 import { openTabScreen, ensureCss } from '/src/components/tabs/tab-screen.js';
 import { cardHtml, skeletonHtml, planKind, TYPES } from '/src/components/tabs/plans-tab-cards.js';
 
@@ -48,6 +50,7 @@ export class PlansTab {
       <div class="wp-pt-types"></div>
       <div class="wp-pt-list">${skeletonHtml()}</div>`);
     this.scr.root.addEventListener('click', (e) => this._click(e));
+    wave(this.scr.body);   // encabezado, pestañas, días… en ola
     this._load();
   }
 
@@ -139,7 +142,7 @@ export class PlansTab {
       box.innerHTML = [...groups.values()].map(g => `<section class="wp-pt-day"><h3>${pm._phDayLabel(new Date(g[0][0].scheduled_at))}</h3>
         ${g.map(([a, i]) => cardHtml(pm, a, i, { me, saved: this.saved, photo: this._photo(a), km: c && a.lat ? pm._mpKm(c, a) : null })).join('')}</section>`).join('');
     }
-    if (swap) { box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap'); }
+    if (swap) wave(box, '.wp-pt-day > h3, .wp-pt-card, .wp-pt-empty');   // entra en ola
   }
 
   _photo(a) {
