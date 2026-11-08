@@ -19,7 +19,7 @@
 // Estilos: /styles/plan-steps.css (#wp-st.sheet, .wp-st-scrim, .wp-st-grab)
 // ════════════════════════════════════════════════════════════════════
 
-import { addElastic } from '/src/components/place-plans/elastic.js';
+import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
 
 const CLOSE_PX = 110;   // jalar más de esto hacia abajo = cerrar
@@ -72,7 +72,7 @@ export function openSheetPage({ title = '', right = '', html = '', foot = '', th
     root.style.setProperty('--st-foot', `${ft.hidden ? 24 : ft.offsetHeight}px`);
   };
   relayout();
-  addElastic(root.querySelector('.wp-st-vp'), 'y');
+  addDragScroll(root.querySelector('.wp-st-vp'));
   attachPulse(root);
   root.querySelector('[data-a="close"]').addEventListener('click', () => { if (!onBack?.()) close(); });
   void root.offsetHeight;   // fijar el estilo inicial antes de animar (que no brinque)

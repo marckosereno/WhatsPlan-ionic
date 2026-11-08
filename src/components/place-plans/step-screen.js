@@ -21,6 +21,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import { addElastic } from '/src/components/place-plans/elastic.js';
+import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
 import { attachFocusZoom } from '/src/components/place-plans/focus-zoom.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
 import { attachSheet, ICON_BACK } from '/src/components/place-plans/step-sheet.js';
@@ -74,7 +75,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   secs.forEach((sec, k) => steps[k].mount?.(sec.querySelector('.wp-st-body'), sec));
   // Rebote elástico en todos los scrolls (vertical y horizontales).
   // Va después de armar los pasos: antes las tiras aún no existen.
-  addElastic($('.wp-st-vp'), 'y');
+  addDragScroll($('.wp-st-vp'));   // scroll + rebote nuestros, sin relevo con el del teléfono
   root.querySelectorAll('.wp-st-days, .wp-st-chips:not(.wrap)').forEach(el => addElastic(el, 'x'));
   root.querySelectorAll('.wp-seats-people, .wp-st-list').forEach(el => addElastic(el, 'y'));
 
