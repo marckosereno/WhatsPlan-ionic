@@ -7,10 +7,15 @@
 //    racha (mensajes seguidos de la misma persona en menos de 5 min).
 //  · La hora chiquita debajo del último de cada racha.
 //  · Los del sistema ("Ana se unió al plan") al centro, en gris.
+//  · Dentro de la burbuja: la cita del mensaje al que responde (toca para
+//    ir a él), la foto, y el texto con las @menciones resaltadas.
+//  · Abajo de la burbuja: las reacciones agrupadas ("❤️ 2  😂"); la tuya
+//    marcada.
 // Usa los ayudantes de la ficha (pm) para caras, nombres y horas.
 // Estilos: /styles/chat.css (.wp-ch-*)
 // ════════════════════════════════════════════════════════════════════
 import { getAvatarUrl } from '/src/services/AvatarService.js';
+import { photoUrl } from '/src/components/chat/chat-service.js';
 
 const GAP = 5 * 60000;
 const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -43,7 +48,31 @@ export function dayLabel(d) {
 
 // Mensajes → html. me: tu id. prev: el mensaje anterior ya pintado (para
 // seguir una racha al agregar uno nuevo).
-export function messagesHtml(pm, list, me, prev = null) {
+// Texto con @menciones resaltadas (solo nombres de los del plan)
+function bodyHtml(pm, text, names) {
+  let h = pm._esc(text);
+  if (!names.length || h.indexOf('@') < 0) return h;
+  const re = new RegExp(`@(${names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\wáéíóúñ])`, 'gi');
+  return h.replace(re, (m) => `<b class="wp-ch-at">${m}</b>`);
+}
+
+function quoteHtml(pm, r, me) {
+  if (!r) return '<span class="wp-ch-q gone">Mensaje no disponible</span>';
+  const who = r.user_id === me ? 'Tú' : pm._phName(r.user_id);
+  const txt = r.body || (r.image_path ? '📷 Foto' : '');
+  return `<span class="wp-ch-q" data-goto="${r.id}"><b>${who}</b><span>${pm._esc(txt)}</span></span>`;
+}
+
+function reactionsHtml(reacts, me) {
+  const by = new Map();
+  Object.entries(reacts || {}).forEach(([u, e]) => { const x = by.get(e) || { n: 0, mine: false }; x.n++; if (u === me) x.mine = true; by.set(e, x); });
+  if (!by.size) return '';
+  return `<span class="wp-ch-reacts">${[...by.entries()].map(([e, x]) => `<button type="button" class="wp-ch-r${x.mine ? ' mine' : ''}" data-react="${e}">${e}${x.n > 1 ? `<small>${x.n}</small>` : ''}</button>`).join('')}</span>`;
+}
+
+// names: nombres (primer nombre) de los del plan, para resaltar @menciones
+export function messagesHtml(pm, list, me, names = []) {
+  const prev = null, byId = new Map(list.map(m => [m.id, m]));
   let out = '';
   list.forEach((m, i) => {
     const before = i ? list[i - 1] : prev, next = list[i + 1];
@@ -57,7 +86,9 @@ export function messagesHtml(pm, list, me, prev = null) {
         ${!mine ? `<span class="wp-ch-av">${last ? face(pm, m.user_id) : ''}</span>` : ''}
         <div class="wp-ch-col">
           ${!mine && first ? `<small class="wp-ch-name">${pm._phName(m.user_id)}</small>` : ''}
-          <p class="wp-ch-b">${pm._esc(m.body)}</p>
+          <div class="wp-ch-b${m.image_path ? ' img' : ''}">${m.reply_to ? quoteHtml(pm, byId.get(m.reply_to), me) : ''}${m.image_path
+            ? `<i class="wp-ch-ph" data-photo="${pm._esc(m.image_path)}" style="${photoUrl(m.image_path) ? `background-image:url('${photoUrl(m.image_path)}')` : ''}"></i>` : ''}${m.body ? `<p>${bodyHtml(pm, m.body, names)}</p>` : ''}</div>
+          ${reactionsHtml(m.reactions, me)}
           ${last ? `<small class="wp-ch-time">${m._pending ? 'Enviando…' : pm._hhmm(at)}</small>` : ''}
         </div>
       </div>`;
@@ -67,6 +98,7 @@ export function messagesHtml(pm, list, me, prev = null) {
 
 // Vista previa en la lista de chats: "Ana: nos vemos" / "Tú: …" / sistema
 export function previewText(pm, c, me) {
+  if (!c.last_body && c.last_image) return `${c.last_user === me ? 'Tú' : pm._phName(c.last_user, false)}: 📷 Foto`;
   if (!c.last_body) return 'Aún no hay mensajes · saluda al grupo';
   if (c.last_kind === 'system' || !c.last_user) return c.last_body;
   return `${c.last_user === me ? 'Tú' : pm._phName(c.last_user, false)}: ${c.last_body}`;

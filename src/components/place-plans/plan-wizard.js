@@ -38,10 +38,17 @@ const CHECK = '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" strok
 const TICK = '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 export class PlanWizard {
-  _openPlanSheet() {
+  // preset (desde "¿Repetimos?" del chat): { invite: [ids], people: [perfiles], title }
+  _openPlanSheet(preset = null) {
     const user = this._requireUser('Inicia sesión para planear una visita');
     if (!user || !this._place) return;
     const w = this._pwContext(user);
+    if (preset?.invite?.length) {
+      (preset.people || []).forEach(p => p?.id && w.people.set(p.id, p));
+      preset.invite.forEach(id => w.invited.add(id));
+      w.vis = 'invited';
+    }
+    if (preset?.title) { w.title = preset.title; w.titleTouched = true; }
     w.screen = openStepScreen({
       sheet: true,
       doneLabel: 'Crear plan',
