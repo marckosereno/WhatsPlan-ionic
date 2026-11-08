@@ -4,9 +4,9 @@
 //  · Arriba "Mensajes" y los chips Todos · Sin leer.
 //  · Secciones: En curso (fijos arriba, punto verde) · Próximos · Ya
 //    pasaron (los de los últimos 30 días).
-//  · Cada chat: foto del lugar (o el emoji en pastel) con las caritas de
-//    quién va encima, nombre del plan, último mensaje ("Ana: ya llegué"),
-//    la hora y cuántos sin leer.
+//  · Cada chat: las caras redondas de los que van (una si es una persona,
+//    racimo de dos + "+3" si es grupo), nombre del plan, último mensaje
+//    ("Ana: ya llegué"), la hora y cuántos sin leer.
 //  · Tocar abre la conversación (chat/plan-chat.js); al cerrar se
 //    actualiza la lista y el numerito de la barra.
 //  · Mientras está abierta, los mensajes nuevos la refrescan solos.
@@ -18,11 +18,8 @@
 import { openTabScreen } from '/src/components/tabs/tab-screen.js';
 import { myChats, onMessages } from '/src/components/chat/chat-service.js';
 import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
-import { previewText, shortWhen } from '/src/components/chat/chat-render.js';
-import { photoSmall } from '/src/utils/photo-url.js';
+import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-render.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
-
-const PASTEL = ['#bfdbfe', '#fde68a', '#ddd6fe', '#fecdd3', '#bbf7d0', '#fed7aa'];
 
 export class SocialTab {
   constructor({ getPM, getPlaces, onGoPlans, onUnread }) {
@@ -73,7 +70,7 @@ export class SocialTab {
   async _loadPeople() {
     const pm = this.getPM(); if (!pm) return;
     pm._profCache = pm._profCache || new Map();
-    const ids = [...new Set(this.chats.flatMap(c => [c.last_user, c.creator_id, ...(c.participants || []).slice(0, 3)]))].filter(x => x && !pm._profCache.has(x));
+    const ids = [...new Set(this.chats.flatMap(c => [c.last_user, c.creator_id, ...(c.participants || []).slice(0, 4)]))].filter(x => x && !pm._profCache.has(x));
     if (!ids.length) return;
     try {
       const { data } = await getSupabase().from('profiles').select('id, name, username, avatar_url').in('id', ids);
@@ -105,21 +102,12 @@ export class SocialTab {
   }
 
   _row(pm, c, me, k) {
-    const i = this.chats.indexOf(c), photo = this._photo(c);
-    const pic = photo ? `<i class="wp-so-img" style="background-image:url('${pm._esc(photo)}')"></i>`
-      : `<i class="wp-so-img none" style="--bg:${PASTEL[i % PASTEL.length]}">${pm._planEmoji(c.type)}</i>`;
-    const faces = (c.participants || []).slice(0, 2).map(id => pm._planFace(id)).join('');
+    const i = this.chats.indexOf(c);
     return `<button type="button" class="wp-so-row${c.unread ? ' unread' : ''}" data-i="${i}">
-        <span class="wp-so-pic">${pic}<span class="wp-so-faces">${faces}</span>${k === 'live' ? '<em class="wp-so-live"></em>' : ''}</span>
+        <span class="wp-so-pic">${groupAvatar(pm, c, me)}${k === 'live' ? '<em class="wp-so-live"></em>' : ''}</span>
         <span class="wp-so-txt"><b>${pm._esc(c.title || 'Plan')}</b><small>${pm._esc(previewText(pm, c, me))}</small></span>
         <span class="wp-so-side"><small>${shortWhen(pm, c.last_at || c.scheduled_at)}</small>${c.unread ? `<b class="wp-so-n">${c.unread > 99 ? '99+' : c.unread}</b>` : ''}</span>
       </button>`;
-  }
-
-  _photo(c) {
-    const p = (this.getPlaces?.() || []).find(x => String(x.place_id || x.id) === String(c.place_id));
-    const u = p && ((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url);
-    return u ? (photoSmall(u) || u) : '';
   }
 
   _click(e) {
