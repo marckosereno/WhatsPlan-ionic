@@ -135,17 +135,17 @@ export class SuperUserPanel {
     document.getElementById('su-btn-view-list').addEventListener('click', () => { this.mapView?.haptic('light'); this._openList(); });
     document.getElementById('su-btn-categories').addEventListener('click', () => { this.mapView?.haptic('light'); this._openCategories(); });
     document.getElementById('su-btn-places').addEventListener('click', () => { this.mapView?.haptic('light'); this._openPlaces(); });
-    // Rotar entre los estilos del mapa: Greige → Tierra → Neutro → Beige
-    const THEMES = ['greige', 'tierra', 'neutral', 'beige'];
-    const NAMES = { greige: 'Greige', tierra: 'Tierra', neutral: 'Neutro', beige: 'Beige' };
+    // Rotar entre los estilos del mapa: Fresco → Greige → Tierra → Neutro → Beige
+    const THEMES = ['fresco', 'greige', 'tierra', 'neutral', 'beige'];
+    const NAMES = { fresco: 'Fresco', greige: 'Greige', tierra: 'Tierra', neutral: 'Neutro', beige: 'Beige' };
     const _paintThemeBtn = () => {
-      const t = this.mapView?._mapTheme?.() || 'greige';
+      const t = this.mapView?._mapTheme?.() || 'fresco';
       const el = document.getElementById('su-map-theme-name');
-      if (el) el.textContent = NAMES[t] || 'Greige';
+      if (el) el.textContent = NAMES[t] || 'Fresco';
     };
     _paintThemeBtn();
     document.getElementById('su-btn-map-theme')?.addEventListener('click', () => {
-      const cur = this.mapView?._mapTheme?.() || 'greige';
+      const cur = this.mapView?._mapTheme?.() || 'fresco';
       const t = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
       this.mapView?.setMapTheme?.(t);
       _paintThemeBtn();
