@@ -1442,3 +1442,33 @@ body.wp-boot .map-results-panel-float { animation: wpRise 0.7s cubic-bezier(0.34
   #topbar-auth-btn, #topbar-right > *, #wp-side-panel-top.wp-positioned, #wp-side-panel-bottom.wp-positioned,
   body.wp-boot .map-results-panel-float { animation: none; }
 }
+
+/* ── MAPA — orden (map/label-declutter.js) ─────────────────────────────
+   Solo los pines más importantes enseñan su nombre y nunca se enciman;
+   la 2ª línea (★ 4.5 · Dentista) solo en los primeros. Abierto = puntito
+   verde en el pin; cerrado = pin más suave. Velo arriba para que nada se
+   mezcle con la barra de estado. */
+.place-pin-social-extra { transition: opacity 0.22s ease, visibility 0.22s; }
+.place-marker-el .place-pin-social-extra.wp-lbl-off { opacity: 0; visibility: hidden; pointer-events: none; }
+.place-pin-social-extra.wp-lbl-nometa .place-pin-meta { display: none; }
+.place-pin-meta {
+  margin-top: 1px; max-width: 120px; font-size: 9.5px; font-weight: 500; line-height: 1.2; color: #6b7280;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
+}
+.place-pin-event {
+  display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px;
+  background: #fff0f6; color: #db2777; box-shadow: 0 0 0 1px #fbcfe8;
+  font-size: 9px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+}
+.wp-pin-open {
+  position: absolute; right: -2px; top: -2px; width: 8px; height: 8px; border-radius: 50%;
+  background: #22c55e; box-shadow: 0 0 0 2px #fff;
+}
+.place-marker-el.wp-pin-closed .place-pin-social-body { opacity: 0.62; filter: saturate(0.55); }
+.place-marker-el.wp-pin-closed .place-pin-social-extra:not(.wp-lbl-off) { opacity: 0.78; }
+#map-container::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; z-index: 4; pointer-events: none;
+  height: calc(env(safe-area-inset-top, 0px) + 40px);
+  background: linear-gradient(180deg, rgba(247, 247, 245, 0.94) 0%, rgba(247, 247, 245, 0.7) 45%, rgba(247, 247, 245, 0) 100%);
+}
