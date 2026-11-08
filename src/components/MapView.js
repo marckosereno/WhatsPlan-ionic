@@ -1,4 +1,5 @@
 import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
+import { declutterLabels, typeLabel } from '/src/components/map/label-declutter.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -888,6 +889,7 @@ export class MapView {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
+        this._declutter();
         this._lastLabelZoom = this.map.getZoom();
       });
       this.map.on('moveend', () => {
@@ -896,6 +898,7 @@ export class MapView {
         this._updatePinsByZoom();
         this._updateLabelsProgressive();
         this._updateClusters();
+        this._declutter();
       });
 
       // ── Ghost-pan fix ────────────────────────────────────────────────
@@ -1600,6 +1603,7 @@ export class MapView {
         n++;
       }
       if (q.length) this._cullRaf = requestAnimationFrame(step);
+      else this._declutter();               // entraron pines nuevos: reacomodar nombres
     };
     this._cullRaf = requestAnimationFrame(step);
   }
@@ -1652,6 +1656,8 @@ export class MapView {
       el.className = 'place-marker-el';
       el.innerHTML = this._buildPinHtml(place, photoUrl, catIcon);
       el._place    = place;
+      // Cerrado ahora → pin más suave (sin escribir "CERRADO" en el mapa)
+      el.classList.toggle('wp-pin-closed', _isPlaceOpenNow(place) === false);
       // Tier para zoom dinámico: 0=featured, 1=top rated, 2=rated, 3=all
       el._zoomTier = place.featured ? 0
         : (parseFloat(place.rating) >= 4.2) ? 1
@@ -1847,6 +1853,19 @@ export class MapView {
       this._updatePinsByZoom();
       this._updateLabelsProgressive();
       this._updateClusters();
+      this._declutter();
+    });
+    this._declutter();
+  }
+
+  // Qué pines enseñan su nombre (sin textos encimados) — ver
+  // map/label-declutter.js. Un cuadro después, cuando ya se acomodaron
+  // pines y clusters.
+  _declutter() {
+    cancelAnimationFrame(this._dclRaf);
+    this._dclRaf = requestAnimationFrame(() => {
+      if (this._clusterExpandEl) return;
+      declutterLabels(this.markerEls, this.map);
     });
   }
 
@@ -4990,6 +5009,7 @@ export class MapView {
     this.markerEls.forEach((el, i) => {
       const place = this.allPlaces[i]; if (!place) return;
       const count = this._activityCount(place);
+      el._wpActs = count;
       let badge = el.querySelector('.place-act-badge');
       if (count > 0) {
         if (!badge) { badge = document.createElement('div'); badge.className = 'place-act-badge'; el.querySelector('.place-pin-rel, div')?.appendChild(badge); }
@@ -5516,11 +5536,16 @@ function _isPlaceOpenNow(place) {
   const oh = place.regularOpeningHours;
   if (!oh || !oh.periods || !oh.periods.length) return null;
   const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  // Minutos desde el domingo 0:00; así un horario que cruza la
+  // medianoche (bar de 8 pm a 2 am) no sale "cerrado" a la 1 am
+  const W = 7 * 1440, t = day * 1440 + mins;
   return oh.periods.some(p => {
-    if (!p.open || !p.close || p.open.day !== day) return false;
-    const o = p.open.hour * 60 + (p.open.minute || 0);
-    const c = p.close.hour * 60 + (p.close.minute || 0);
-    return mins >= o && mins < c;
+    if (!p.open) return false;
+    if (!p.close) return true;                                  // abierto 24 h
+    const o = p.open.day * 1440 + p.open.hour * 60 + (p.open.minute || 0);
+    let c = p.close.day * 1440 + p.close.hour * 60 + (p.close.minute || 0);
+    if (c <= o) c += W;
+    return (t >= o && t < c) || (t + W >= o && t + W < c);
   });
 }
 
@@ -5918,8 +5943,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       const badgeSize = isSquareShape ? sz.square : sz.round;
       const radius = isSquareShape ? '6px' : '50%';
       anchorHtml = `
-        <div style="width:${badgeSize}px;height:${badgeSize}px;border-radius:${radius};background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-          ${badgeIcon}
+        <div style="position:relative;width:${badgeSize}px;height:${badgeSize}px;border-radius:${radius};background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+          ${badgeIcon}${_isPlaceOpenNow(place) ? '<i class="wp-pin-open" aria-label="Abierto"></i>' : ''}
         </div>`;
     }
 
@@ -5951,14 +5976,16 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     if (showMetaText) {
       if (isEvent) {
         const evLabel = place.pinEventLabel || 'Evento activo';
-        metaHtml = `<div style="font-size:9px;font-weight:700;color:#ec4899;line-height:1.15;">${evLabel}</div>`;
+        metaHtml = `<div class="place-pin-event">${evLabel}</div>`;
       } else {
         const parts = [];
         if (place.rating) parts.push(`★ ${Number(place.rating).toFixed(1)}`);
-        if (place.primaryType || place.category) parts.push((place.primaryType || place.category));
-        const openState = _isPlaceOpenNow(place);
+        const tl = typeLabel(place);
+        if (tl) parts.push(tl);
+        // Abierto/cerrado ya no va escrito: puntito verde en el pin si
+        // está abierto, y los cerrados se ven más suaves (.wp-pin-closed)
         const metaText = parts.join(' · ');
-        metaHtml = `<div style="font-size:9px;line-height:1.15;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">${metaText}${openState !== null ? (metaText ? ' · ' : '') + `<span style="color:${openState ? '#16a34a' : '#dc2626'};font-weight:700;">${openState ? 'ABIERTO' : 'CERRADO'}</span>` : ''}</div>`;
+        metaHtml = metaText ? `<div class="place-pin-meta">${metaText}</div>` : '';
       }
     }
 
@@ -5986,7 +6013,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
     // Tamaño de letra del nombre (8–18 px; por defecto 11)
     const labelFont = Number(place.pinLabelFontSize) >= 8 ? Math.min(18, Number(place.pinLabelFontSize)) : 11;
     const textBlockHtml = `<div style="text-align:${textAlign};max-width:${Math.round(120 * Math.max(1, labelFont / 11))}px;">
-      <div style="font-size:${labelFont}px;font-weight:800;line-height:1.15;color:${place.pinLabelColor || '#111827'};font-family:var(--wp-font);${place.pinLabelWrap ? 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}padding:${Math.ceil(labelStrokeW)}px;margin:-${Math.ceil(labelStrokeW)}px;text-shadow:${labelShadow};">${name}</div>
+      <div class="place-pin-name" style="font-size:${labelFont}px;font-weight:700;line-height:1.15;color:${place.pinLabelColor || '#111827'};font-family:var(--wp-font);${place.pinLabelWrap ? 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}padding:${Math.ceil(labelStrokeW)}px;margin:-${Math.ceil(labelStrokeW)}px;text-shadow:${labelShadow};">${name}</div>
       ${metaHtml}
     </div>`;
 
