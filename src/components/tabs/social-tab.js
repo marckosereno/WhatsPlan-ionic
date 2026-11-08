@@ -20,6 +20,7 @@ import { myChats, onMessages } from '/src/components/chat/chat-service.js';
 import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
 import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-render.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
+import { wave } from '/src/components/place-plans/wave.js';
 
 const MUTED = '<i class="wp-so-muted" aria-label="Silenciado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="m2 2 20 20"/></svg></i>';
 
@@ -37,10 +38,11 @@ export class SocialTab {
       <div class="wp-pt-tabs"><button type="button" data-f="all" class="on">Todos</button><button type="button" data-f="unread">Sin leer</button></div>
       <div class="wp-so-list"><div class="wp-so-sk"></div><div class="wp-so-sk"></div><div class="wp-so-sk"></div></div>`);
     this.scr.root.addEventListener('click', (e) => this._click(e));
+    wave(this.scr.body);
     this._load();
   }
 
-  close() { this.scr?.close(); this.scr = null; }
+  close() { this.scr?.close(); this.scr = null; this.waved = false; }
 
   // Con sesión: numerito de sin leer + escuchar mensajes nuevos
   startChats() { this.refreshUnread(); this.listen(); }
@@ -101,6 +103,7 @@ export class SocialTab {
     const title = { live: 'En curso', next: 'Próximos', past: 'Ya pasaron' };
     box.innerHTML = ['live', 'next', 'past'].filter(k => sec[k].length).map(k => `<section class="wp-so-sec ${k}"><h3>${title[k]}</h3>
       ${sec[k].map(c => this._row(pm, c, me, k)).join('')}</section>`).join('');
+    if (!this.waved) { this.waved = true; wave(box, 'h3, .wp-so-row'); }   // la primera vez, en ola
   }
 
   _row(pm, c, me, k) {

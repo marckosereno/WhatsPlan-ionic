@@ -17,6 +17,7 @@ import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
 import { myChats } from '/src/components/chat/chat-service.js';
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
+import { wave } from '/src/components/place-plans/wave.js';
 
 // [arriba del sello, insignia de abajo, texto para lectores]
 const ROLE = { host: ['👑', 'Organizador', 'Organiza'], go: ['', 'Va', 'Va'], wait: ['', 'Pendiente', 'Aún no responde'] };
@@ -56,6 +57,7 @@ export class MyPlan {
     }).catch(() => {});
     body.classList.add('wp-mp');
     this._mpWire(body);
+    wave(body);   // las secciones entran en ola, como los pasos de "Planear visita"
     const ctx = { a, me, owner, root, close, stops };
     this._mpLoadPhotos(ctx);
     root.addEventListener('click', (e) => this._mpClick(ctx, e));
