@@ -10,10 +10,29 @@
 // Usa los ayudantes de la ficha (pm) para caras, nombres y horas.
 // Estilos: /styles/chat.css (.wp-ch-*)
 // ════════════════════════════════════════════════════════════════════
+import { getAvatarUrl } from '/src/services/AvatarService.js';
+
 const GAP = 5 * 60000;
 const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MON = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+// Carita redonda (como en cualquier chat): su foto o el avatar por nombre
+export function face(pm, id, cls = 'wp-ch-face') {
+  const p = pm._profCache?.get(id) || {};
+  return `<i class="${cls}" style="background-image:url('${pm._esc(p.avatar_url || getAvatarUrl(p.name || p.username || 'user'))}')"></i>`;
+}
+
+// Avatar de un chat en la lista: la persona (si son 2) o un racimo de
+// hasta 2 caras + cuántos más (grupo)
+export function groupAvatar(pm, c, me) {
+  const ppl = [...new Set([c.creator_id, ...(c.participants || [])])].filter(Boolean);
+  const others = ppl.filter(id => id !== me);
+  const show = others.length ? others : ppl;
+  if (show.length <= 1) return `<span class="wp-so-av one">${face(pm, show[0], 'wp-so-f')}</span>`;
+  const more = show.length - 2;
+  return `<span class="wp-so-av two">${face(pm, show[0], 'wp-so-f a')}${face(pm, show[1], 'wp-so-f b')}${more > 0 ? `<b>+${more}</b>` : ''}</span>`;
+}
 
 export function dayLabel(d) {
   const t = new Date(); t.setHours(0, 0, 0, 0);
@@ -35,7 +54,7 @@ export function messagesHtml(pm, list, me, prev = null) {
       && Math.abs(new Date(a.created_at) - new Date(b.created_at)) < GAP && dayKey(new Date(a.created_at)) === dayKey(new Date(b.created_at));
     const first = !same(before, m), last = !same(m, next), mine = m.user_id === me;
     out += `<div class="wp-ch-msg${mine ? ' me' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${m._pending ? ' pending' : ''}${m.kind === 'quick' ? ' quick' : ''}" data-id="${m.id}">
-        ${!mine ? `<span class="wp-ch-av">${last ? pm._planFace(m.user_id) : ''}</span>` : ''}
+        ${!mine ? `<span class="wp-ch-av">${last ? face(pm, m.user_id) : ''}</span>` : ''}
         <div class="wp-ch-col">
           ${!mine && first ? `<small class="wp-ch-name">${pm._phName(m.user_id)}</small>` : ''}
           <p class="wp-ch-b">${pm._esc(m.body)}</p>

@@ -10,6 +10,8 @@
 //  · Lo que envías sale al instante ("Enviando…") y se confirma al
 //    llegar; si falla, se quita y te avisa.
 //  · Marca leído al abrir, al llegar mensajes y al cerrar.
+//  · Con el teclado abierto, la hoja cabe entre la barra de estado y el
+//    teclado (fitKeyboard).
 //
 // Uso: openPlanChat(pm, a, { onBack, onClose })   (pm = PlaceModal2)
 // Estilos: /styles/chat.css (.wp-ch-*)
@@ -103,9 +105,38 @@ export function openPlanChat(pm, a, opts = {}) {
     const v = input.value; input.value = ''; grow(); doSend(v);
   });
   page.foot.addEventListener('click', (e) => { const q = e.target.closest('[data-q]'); if (q) doSend(q.dataset.q, 'quick'); });
+  fitKeyboard(page, input, () => { if (st.list.length) toBottom(false); });
   fresh.addEventListener('click', () => { fresh.hidden = true; toBottom(true); });
   vp.addEventListener('scroll', () => { if (!fresh.hidden && atBottom()) fresh.hidden = true; }, { passive: true });
   return page;
+}
+
+// Con el teclado abierto, la hoja va de abajo de la barra de estado hasta
+// el teclado (si no, el teléfono recorre todo hacia arriba y se pierde la
+// barra de arriba). El espacio sale de visualViewport.
+function fitKeyboard(page, input, after) {
+  const root = page.root, vv = window.visualViewport;
+  const gapTop = () => parseFloat(getComputedStyle(root).top) || 0;
+  let base = 0, focused = false;
+  const fit = () => {
+    if (!root.isConnected) { vv?.removeEventListener('resize', fit); vv?.removeEventListener('scroll', fit); return; }
+    const h = vv ? vv.height : window.innerHeight, off = vv ? vv.offsetTop : 0;
+    const kb = Math.max(0, Math.round(window.innerHeight - h - off));
+    if (focused && (kb > 80 || off > 0 || h < window.innerHeight - 80)) {
+      base = base || gapTop();
+      root.style.top = `${Math.round(off + base)}px`;
+      root.style.bottom = 'auto';
+      root.style.height = `${Math.round(h - base)}px`;
+    } else {
+      root.style.top = ''; root.style.bottom = ''; root.style.height = '';
+    }
+    page.relayout();
+    after?.();
+  };
+  input.addEventListener('focus', () => { focused = true; fit(); setTimeout(fit, 150); setTimeout(fit, 400); });
+  input.addEventListener('blur', () => { focused = false; setTimeout(fit, 80); });
+  vv?.addEventListener('resize', fit);
+  vv?.addEventListener('scroll', fit);
 }
 
 // Nombres y caras de los del plan (cache de la ficha)
