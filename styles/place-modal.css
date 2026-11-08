@@ -1632,3 +1632,116 @@ div.wp-pm2-ms-opt { box-sizing:border-box; }
 
 /* Entrada en ola de las secciones al abrir la ficha (wave.js) */
 #wp-pm2-sheet > .wp-wave-in { animation-delay: calc(0.12s + var(--wi, 0) * 45ms); }
+
+/* ── FICHA — nueva línea (2): resto de la ficha ───────────────────── */
+/* Resumen con IA: etiqueta chiquita gris suave con ✦, sin mayúsculas */
+.wp-pm2-ai-header { gap:6px; }
+.wp-pm2-ai-icon { color:#60a5fa; filter:none; width:14px; height:14px; }
+.wp-pm2-ai-badge {
+  font-size:12px; font-weight:500; letter-spacing:0; text-transform:none;
+  color:#6b7280; background:#f1f4f8; border:none; box-shadow:none;
+  padding:3px 10px; border-radius:999px;
+}
+.wp-pm2-ai-text { color:#374151; }
+
+/* Horario: Cerrado en gris suave; verde solo cuando está abierto */
+.wp-pm2-hours-status { font-size:12px; font-weight:600; padding:3px 10px; }
+.wp-pm2-hours-status.wp-pm2-open   { background:#e9f9ef; color:#15803d; }
+.wp-pm2-hours-status.wp-pm2-closed { background:#f1f4f8; color:#6b7280; }
+.wp-pm2-chevron { transition:transform 0.45s cubic-bezier(0.34,1.4,0.64,1); }
+.wp-pm2-hours-list { transition:max-height 0.5s cubic-bezier(0.32,0.72,0,1), padding 0.3s ease; }
+.wp-pm2-hours-row { font-weight:500; border-bottom-color:#eef0f3; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row { animation:wpWave 0.5s cubic-bezier(0.34,1.4,0.64,1) backwards; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row:nth-child(2) { animation-delay:30ms; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row:nth-child(3) { animation-delay:60ms; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row:nth-child(4) { animation-delay:90ms; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row:nth-child(5) { animation-delay:120ms; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row:nth-child(6) { animation-delay:150ms; }
+.wp-pm2-hours-list.expanded .wp-pm2-hours-row:nth-child(7) { animation-delay:180ms; }
+
+/* "Marcos y 1 más lo guardaron": caras redondas con aro blanco fino */
+#wp-pm2-reviews-avatars .wp-pm2-fp-avatar,
+#wp-pm2-reviews-avatars .wp-pm2-fp-more {
+  width:26px; height:26px; border:none; margin-left:-7px;
+  box-shadow:0 0 0 2px #fff;
+}
+#wp-pm2-reviews-avatars .wp-pm2-fp-more {
+  background:linear-gradient(160deg,#2b2a3a,#14121f); font-size:10px; font-weight:600;
+  width:auto; min-width:30px; padding:0 6px 0 10px; box-sizing:border-box; letter-spacing:-0.2px;
+}
+#wp-pm2-reviews-avatars .wp-pm2-fp-ini {
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg,#dbeafe,#bfdbfe); color:#1d4ed8;
+  font-size:11px; font-weight:600;
+}
+#wp-pm2-reviews-count { font-weight:500; color:#6b7280; }
+#wp-pm2-reviews-count b { font-weight:600; color:#14121f; }
+#wp-pm2-saves-ico { background:linear-gradient(160deg,#fff5f7,#ffe8ed); color:#f43f5e; box-shadow:inset 0 0 0 1px #fecdd6; }
+
+/* Contador de fotos y del visor: pill limpia */
+.wp-pm2-photo-count {
+  padding:3px 8px; background:rgba(20,18,31,0.55);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  font-weight:600;
+}
+#wp-pm2-lb-counter {
+  left:50%; right:auto; transform:translateX(-50%);
+  padding:5px 12px; border-radius:999px;
+  background:rgba(20,18,31,0.5); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  font-size:12.5px; font-weight:600; text-shadow:none; font-variant-numeric:tabular-nums;
+}
+
+/* Hojitas (colecciones, menús, confirmar): sombra ligera, tinta, ola */
+#wp-pm2-menu-sheet .wp-pm2-ms-menu,
+#wp-pm2-review-modal #wp-pm2-rm-menu {
+  box-shadow:0 0 0 1px rgba(20,18,31,0.04), 0 18px 40px -16px rgba(20,18,31,0.28) !important;
+}
+.wp-pm2-ms-title { color:#14121f; }
+.wp-pm2-ms-sub { font-weight:500; color:#6b7280; }
+.wp-pm2-ms-opt { font-weight:500; color:#14121f; }
+.wp-pm2-ms-opt.wp-pm2-danger { color:#e11d48; }
+.wp-pm2-ms-btn { font-weight:600; }
+.wp-pm2-ms-cancel { background:#f1f4f8; color:#14121f; }
+.wp-pm2-ms-primary-btn,
+.wp-pm2-col-ok, .wp-pm2-col-unfav.wp-pm2-col-done,
+.wp-pm2-col-hbtn.wp-pm2-pill.wp-pm2-done,
+.wp-pm2-col-check.wp-pm2-on { background:linear-gradient(160deg,#2b2a3a,#14121f); border-color:#14121f; }
+.wp-pm2-col-ok:disabled { background:#eef0f3; color:#9ca3af; }
+.wp-pm2-ms-danger-btn { background:linear-gradient(160deg,#fb7185,#e11d48); }
+.wp-pm2-col-act-del { background:linear-gradient(160deg,#fb7185,#e11d48); }
+.wp-pm2-col-sw.wp-pm2-dragging { box-shadow:0 10px 24px -10px rgba(20,18,31,0.3); }
+.wp-pm2-col-tile.wp-pm2-editing .wp-pm2-ms-opt.wp-pm2-col-row-item { box-shadow:inset 0 0 0 1px #93c5fd; }
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-header,
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-body > *,
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-menu > .wp-pm2-ms-opt,
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-actions {
+  animation:wpWave 0.55s cubic-bezier(0.34,1.4,0.64,1) backwards;
+}
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-body > :nth-child(1) { animation-delay:40ms; }
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-body > :nth-child(2) { animation-delay:80ms; }
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-body > :nth-child(3) { animation-delay:120ms; }
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-body > :nth-child(4) { animation-delay:160ms; }
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-body > :nth-child(n+5) { animation-delay:200ms; }
+#wp-pm2-menu-sheet.wp-pm2-in .wp-pm2-ms-actions { animation-delay:120ms; }
+#wp-pm2-menu-sheet.wp-pm2-ms-chained .wp-pm2-ms-body > * { animation-delay:0ms; }
+
+/* Escribir reseña (estilos en línea → aquí con !important) */
+#wp-pm2-rm-header span:first-child { color:#14121f !important; }
+#wp-pm2-rm-label { font-weight:500; color:#6b7280 !important; }
+#wp-pm2-rm-textarea {
+  border:none !important; background:#f4f6f9 !important; border-radius:16px !important;
+  box-shadow:inset 0 0 0 1px #e8ebf0; transition:box-shadow 0.2s, background-color 0.2s;
+}
+#wp-pm2-rm-textarea:focus { background:#fff !important; box-shadow:inset 0 0 0 1.5px #93c5fd; }
+#wp-pm2-rm-submit {
+  background:linear-gradient(160deg,#2b2a3a,#14121f) !important; font-weight:600 !important;
+  box-shadow:0 6px 14px -8px rgba(20,18,31,0.45);
+}
+#wp-pm2-review-modal #wp-pm2-rm-menu > * { animation:wpWave 0.55s cubic-bezier(0.34,1.4,0.64,1) backwards; }
+#wp-pm2-review-modal #wp-pm2-rm-menu > :nth-child(3) { animation-delay:40ms; }
+#wp-pm2-review-modal #wp-pm2-rm-menu > :nth-child(4) { animation-delay:80ms; }
+#wp-pm2-review-modal #wp-pm2-rm-menu > :nth-child(5) { animation-delay:110ms; }
+#wp-pm2-review-modal #wp-pm2-rm-menu > :nth-child(n+6) { animation-delay:140ms; }
+@media (prefers-reduced-motion: reduce) {
+  #wp-pm2-menu-sheet .wp-pm2-ms-menu *, #wp-pm2-review-modal *, .wp-pm2-hours-row { animation:none !important; }
+}
