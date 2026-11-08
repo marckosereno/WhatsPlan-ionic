@@ -67,7 +67,7 @@ export function addElastic(el, axis = 'y') {
     if (room() > 1) {
       e._wpElastic = true;   // este scroll se queda el gesto
       if (!Y) return;        // tira que se desliza: el rebote es el nativo
-    }
+    } else if (Y && !raw) return;   // lista vertical que cabe: no es scroll, que se mueva la hoja
     const p = Y ? t.clientY : t.clientX, d = p - last;
     last = p;
     if (!raw && !((d > 0 && atStart()) || (d < 0 && atEnd()))) return;

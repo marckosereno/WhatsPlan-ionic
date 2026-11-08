@@ -40,7 +40,7 @@ export function addDragStrip(el) {
     stop();
     let t0 = performance.now();
     const step = (now) => {
-      const dt = Math.min(0.032, (now - t0) / 1000); t0 = now;
+      const dt = Math.max(0, Math.min(0.032, (now - t0) / 1000)); t0 = Math.max(t0, now);
       vel += (-K * str - DAMP * vel) * dt;
       str += vel * dt;
       if (Math.abs(str) < 0.3 && Math.abs(vel) < 8) { str = 0; paint(); raf = 0; return; }
@@ -54,7 +54,7 @@ export function addDragStrip(el) {
     stop();
     let t0 = performance.now();
     const step = (now) => {
-      const dt = Math.min(32, now - t0); t0 = now;
+      const dt = Math.max(0, Math.min(32, now - t0)); t0 = Math.max(t0, now);   // el primer cuadro puede traer una hora de antes
       pos -= v * dt;
       v *= Math.exp(-dt / FRICTION);
       const r = room();
