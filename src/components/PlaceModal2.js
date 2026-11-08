@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════
 // WHATSPLAN — PlaceModal2.js  (diseño alternativo, Google Maps-inspired)
 // ══════════════════════════════════════════════════════════════════════
+import { wave } from '/src/components/place-plans/wave.js';
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
 import { ActivityService, ProfileService, getSupabase } from '/src/services/SupabaseService.js';
@@ -2441,6 +2442,11 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
 
     // Descripción generada con IA (misma función que PlaceModal1)
     this._populateAI(place);
+
+    // Las secciones (dentro de #wp-pm2-sheet, no el hero ni la foto, que
+    // tienen su propio movimiento) entran en ola, como Planes y Tu plan
+    const sheet = this._el.querySelector('#wp-pm2-sheet');
+    if (sheet) wave(sheet, ':scope > :not([hidden])');
   }
 
   // Descripción generada con IA — misma lógica que PlaceModal1._populateAI:
