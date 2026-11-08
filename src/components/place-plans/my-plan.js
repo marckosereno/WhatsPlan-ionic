@@ -14,7 +14,7 @@
 // Mixin de PlaceModal2. Estilos: /styles/my-plan.css (.wp-mp-*)
 // ════════════════════════════════════════════════════════════════════
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
-import { addElastic } from '/src/components/place-plans/elastic.js';
+import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
 
 // [arriba del sello, insignia de abajo, texto para lectores]
 const ROLE = { host: ['👑', 'Organizador', 'Organiza'], go: ['', 'Va', 'Va'], wait: ['', 'Pendiente', 'Aún no responde'] };
@@ -52,15 +52,15 @@ export class MyPlan {
       <div class="wp-mp-note-slot">${this._mpNote(a.note)}</div>
       ${this._mpSummaryHtml(a)}
       <div class="wp-mp-lbl">Quién va</div>
-      <div class="wp-mp-who">${this._mpWho(a, owner, me)}</div>
+      <div class="wp-mp-who"><div class="wp-mp-who-in">${this._mpWho(a, owner, me)}</div></div>
       ${this._mpSocial(a)}
       ${this._mpRoute(a, owner, stops)}
       ${others ? this._mpOthers(a) : ''}`;
   }
 
-  // Tiras con rebote de lado
+  // Tira de quién va: arrastre, inercia y rebote nuestros (drag-strip.js)
   _mpWire(body) {
-    body.querySelectorAll('.wp-mp-who').forEach(el => addElastic(el, 'x'));
+    body.querySelectorAll('.wp-mp-who').forEach(el => addDragStrip(el));
   }
 
   // "Otros planes aquí": tener tu plan no esconde los de los demás
