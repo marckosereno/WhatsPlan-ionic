@@ -1445,8 +1445,8 @@ body.wp-boot .map-results-panel-float { animation: wpRise 0.7s cubic-bezier(0.34
 
 /* ── MAPA — orden (map/label-declutter.js) ─────────────────────────────
    Solo los pines más importantes enseñan su nombre y nunca se enciman;
-   la 2ª línea (★ 4.5 · Dentista) solo en los primeros. Abierto = puntito
-   verde en el pin; cerrado = pin más suave. Velo arriba para que nada se
+   la 2ª línea (★ 4.5 · Dentista) solo en los primeros. Cerrado = pin más
+   suave. Velo arriba para que nada se
    mezcle con la barra de estado. */
 .place-pin-social-extra { transition: opacity 0.22s ease, visibility 0.22s; }
 .place-marker-el .place-pin-social-extra.wp-lbl-off { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -1461,10 +1461,10 @@ body.wp-boot .map-results-panel-float { animation: wpRise 0.7s cubic-bezier(0.34
   background: #fff0f6; color: #db2777; box-shadow: 0 0 0 1px #fbcfe8;
   font-size: 9px; font-weight: 600; line-height: 1.5; white-space: nowrap;
 }
-.wp-pin-open {
-  position: absolute; right: -2px; top: -2px; width: 8px; height: 8px; border-radius: 50%;
-  background: #22c55e; box-shadow: 0 0 0 2px #fff;
-}
+/* Puntitos (el pin un zoom antes de mostrarse completo): más chicos y
+   sin orilla blanca */
+.place-pin-social-zoomdot, .place-pin-bubble-dot { width: 5px !important; height: 5px !important; box-shadow: none !important; }
+.place-marker-el.wp-dot .place-pin-wrapper { width: 5px !important; height: 5px !important; border: 0 !important; box-shadow: none !important; outline: 0 !important; }
 .place-marker-el.wp-pin-closed .place-pin-social-body { opacity: 0.62; filter: saturate(0.55); }
 .place-marker-el.wp-pin-closed .place-pin-social-extra:not(.wp-lbl-off) { opacity: 0.78; }
 #map-container::after {

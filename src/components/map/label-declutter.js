@@ -14,7 +14,7 @@
 //
 // Uso: declutterLabels(markerEls, map)  → después de pines y clusters
 //      typeLabel(place)                → "Dentista", "Farmacia"…
-// Estilos: /styles/app.css (.wp-lbl-off, .wp-lbl-nometa, .wp-pin-open…)
+// Estilos: /styles/app.css (.wp-lbl-off, .wp-lbl-nometa, .wp-pin-closed…)
 // ════════════════════════════════════════════════════════════════════
 
 const PAD = 3;          // aire alrededor de cada etiqueta (px)
