@@ -152,13 +152,9 @@
 /* ── Quién va: tarjetitas con cara, nombre y emoji ── */
 .wp-mp-lbl { margin: 4px 2px -6px; font-size: 15px; font-weight: 700; }
 /* padding arriba/abajo: que no se corten la sombra ni el pulso */
-.wp-mp-who { flex: none; display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 10px 16px 14px; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
-.wp-mp-who::-webkit-scrollbar { display: none; }
-/* tiras que se deslizan de lado: en su propia capa, si no el teléfono
-   vuelve a pintar todas las sombras en cada cuadro y se siente a pausas
-   (en el plan de otros no pasaba porque la animación de entrada ya la
-   ponía en capa) */
-.wp-mp-who { will-change: transform; transform: translateZ(0); }
+.wp-mp-who { flex: none; overflow: hidden; margin: 0 -16px; touch-action: pan-y; }
+/* la pista que se mueve (drag-strip.js): una sola capa */
+.wp-mp-who-in { display: flex; gap: 10px; width: max-content; padding: 10px 16px 14px; will-change: transform; }
 .wp-mp-p { flex: none; width: 72px; padding: 10px 0 9px; border: none; border-radius: 22px; background: #fff; box-shadow: var(--mp-card);
   display: flex; flex-direction: column; align-items: center; gap: 5px; font: inherit; color: var(--mp-ink); }
 .wp-mp-p i { display: block; width: 44px; height: 44px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
