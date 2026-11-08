@@ -1522,3 +1522,10 @@ body .subcategory-footer-chip.active {
   box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.45);
 }
 body .subcategory-footer-chip:active { transform: scale(0.94); transition-duration: 0.1s; }
+
+/* Cápsula del "+": en tinta (negro con degradado sutil) para que el botón
+   azul resalte y se distinga de la cápsula blanca de abajo */
+#wp-side-panel-bg-top {
+  background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%);
+  box-shadow: 0 6px 16px -8px rgba(20, 18, 31, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}

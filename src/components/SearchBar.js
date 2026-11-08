@@ -1,4 +1,7 @@
 import { photoSmall } from '/src/utils/photo-url.js';
+import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
+import { wave } from '/src/components/place-plans/wave.js';
+import { typeLabel } from '/src/components/map/label-declutter.js';
 // ===================================================================
 // WHATSPLAN — src/components/SearchBar.js  (v4)
 // ====================================================================
@@ -468,7 +471,7 @@ export class SearchBar {
       container.innerHTML =
         '<div class="wps-noresult">' +
           '<span class="wps-noresult-emoji">🥺</span>' +
-          '<span class="wps-noresult-text">No se encontraron resultados</span>' +
+          '<span class="wps-noresult-text"><b>Nada por aquí</b><small>Prueba con otra palabra o categoría</small></span>' +
         '</div>';
       document.body.appendChild(container);
       this._positionResults();
@@ -478,6 +481,10 @@ export class SearchBar {
 
     var self      = this;
     var allPlaces = this._getAllPlaces();
+    // Las tarjetas van en una tira con nuestro arrastre y rebote (drag-strip)
+    var track = document.createElement('div');
+    track.className = 'wps-track';
+    container.appendChild(track);
 
     places.slice(0, 20).forEach(function(place) {
       var idx   = allPlaces.indexOf(place);
@@ -506,11 +513,12 @@ export class SearchBar {
             if (left > 0 && left <= 60) closingSoon = true;
           }
         });
-        if (isOpen) { badgeClass = closingSoon ? 'closing-soon' : 'open'; badgeText = closingSoon && closeTime ? 'Cierra ' + closeTime : 'Abierto'; }
+        if (isOpen) { badgeClass = closingSoon ? 'closing-soon' : 'open'; badgeText = closingSoon && closeTime ? 'Cierra ' + closeTime.toLowerCase() : 'Abierto'; }
         else { badgeClass = 'closed'; badgeText = 'Cerrado'; }
       }
 
-      var price = '$'.repeat(Math.min(place.priceLevel || 1, 3));
+      var price = place.priceLevel ? '$'.repeat(Math.min(place.priceLevel, 3)) : '';
+      var kind  = typeLabel(place);
       var card  = document.createElement('div');
       card.className = 'wps-card';
       card.dataset.idx = idx;
@@ -518,14 +526,12 @@ export class SearchBar {
         (photo ? '<img src="' + photo + '" class="wps-card-photo" alt="' + place.name + '">'
                : '<div class="wps-card-icon">' + icon + '</div>') +
         '<div class="wps-card-body">' +
-          '<div class="wps-card-header">' +
-            '<span class="wps-card-badge ' + badgeClass + '">' + badgeText + '</span>' +
-            '<span class="wps-card-price">' + price + '</span>' +
-          '</div>' +
           '<div class="wps-card-name">' + place.name + '</div>' +
-          '<div class="wps-card-addr">' + address + (address.length >= 35 ? '...' : '') + '</div>' +
-          '<div class="wps-card-rating">' +
-            '<span>⭐</span><span class="wps-card-rval">' + rating + '</span><span class="wps-card-rcnt">' + rCount + '</span>' +
+          '<div class="wps-card-addr">' + (kind ? kind + ' · ' : '') + address + (address.length >= 35 ? '…' : '') + '</div>' +
+          '<div class="wps-card-header">' +
+            (badgeClass !== 'no-hours' ? '<span class="wps-card-badge ' + badgeClass + '">' + badgeText + '</span>' : '') +
+            (rating ? '<span class="wps-card-rating"><span class="wps-card-star">★</span><span class="wps-card-rval">' + rating + '</span><span class="wps-card-rcnt">' + rCount + '</span></span>' : '') +
+            (price ? '<span class="wps-card-price">' + price + '</span>' : '') +
           '</div>' +
         '</div>';
 
@@ -533,10 +539,12 @@ export class SearchBar {
         ev.stopPropagation();
         self._onCardClick(parseInt(card.dataset.idx));
       });
-      container.appendChild(card);
+      track.appendChild(card);
     });
 
     document.body.appendChild(container);
+    addDragStrip(container);
+    wave(container, '.wps-card', { max: 6 });
     this._positionResults();
     this._syncCategoryChips();
 
@@ -911,202 +919,8 @@ export class SearchBar {
 
   _injectStyles() {
     if (document.getElementById('wps-styles')) return;
-    var s = document.createElement('style');
-    s.id  = 'wps-styles';
-    s.textContent = `
-      @keyframes wpsExpand {
-        from { opacity:0; transform:scaleX(0.85) translateY(-8px); }
-        to   { opacity:1; transform:scaleX(1) translateY(0); }
-      }
-      @keyframes wpsSlideUp {
-        from { opacity:0; transform:translateY(20px); }
-        to   { opacity:1; transform:translateY(0); }
-      }
-
-      /* Chip derecho expandible en modo búsqueda */
-      #topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
-      #wps-inner { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
-      .wps-close-chip-btn { color:#374151; }
-      .wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
-
-      /* Input con clear nativo del browser — sin -webkit-appearance:none */
-      .wps-input {
-        flex:1;border:none;background:transparent;outline:none;
-        font-size:15px;font-weight:400;color:#111827;min-width:0;
-        font-family:var(--wp-font);
-      }
-      .wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular',var(--wp-font);}
-
-      .wps-clear {
-        display:none;
-        align-items:center;
-        justify-content:center;
-        width:18px; height:18px;
-        min-width:18px;
-        border-radius:50%;
-        border:none;
-        background:#adb5bd;
-        color:white;
-        cursor:pointer;
-        flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;
-        padding:0;
-        line-height:1;
-      }
-      .wps-clear.visible { display:flex; }
-      .wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;max-width:68px;overflow:hidden;text-overflow:ellipsis;}
-      .wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
-        width:36px;min-width:36px;height:36px;border-radius:50%;
-        border:1px solid rgba(255,255,255,0.7) !important;
-        background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(238,244,255,0.88)) !important;
-        color:#6b7280 !important;
-        font-size:14px;font-weight:700;cursor:pointer;display:flex;
-        align-items:center;justify-content:center;flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;
-        transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        box-shadow:0 3px 10px rgba(0,0,0,0.08),inset 0 1.5px 0 rgba(255,255,255,1) !important;
-        backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-      }
-      #wps-close-chip{ margin-left:4px; margin-right:5px; }
-      .wps-filter:active,.wps-close:active,
-      #wps-filter-chip:active,#wps-close-chip:active{
-        transform:scale(0.92) !important;
-        box-shadow:0 1px 4px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.8) !important;
-      }
-
-      .panel-subcats-scroll.wps-subcats-floating {
-        position:fixed;
-        top:calc(68px + env(safe-area-inset-top,0px));
-        left:0; right:0; bottom:auto;
-        z-index:1998;
-        background:transparent;
-        width:100%; box-sizing:border-box;
-        padding:4px 12px; min-height:42px;
-        display:flex; align-items:center;
-        overflow-x:auto; scrollbar-width:none;
-      }
-      .panel-subcats-scroll.wps-subcats-floating::-webkit-scrollbar { display:none; }
-
-      #wp-sresults {
-        position:fixed;
-        left:0;right:0;
-        z-index:1996;
-        display:flex; gap:12px;
-        padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));
-        overflow-x:auto;overflow-y:hidden;
-        -webkit-overflow-scrolling:touch;
-        background:transparent; scrollbar-width:none;
-        transition:bottom 0.2s ease;
-      }
-      #wp-sresults::-webkit-scrollbar{display:none;}
-
-      .wps-card{
-        display:flex;align-items:center;gap:10px;padding:10px 14px;
-        background:white;border:2px solid #e5e7eb;border-radius:16px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:pointer;
-        min-width:280px;max-width:300px;flex-shrink:0;
-        -webkit-tap-highlight-color:transparent;
-        transition:transform 0.15s,box-shadow 0.15s;
-      }
-      .wps-card:active{transform:scale(0.97);box-shadow:0 2px 6px rgba(0,0,0,0.1);}
-      .wps-card-photo{width:70px;height:70px;object-fit:cover;border-radius:12px;flex-shrink:0;}
-      .wps-card-icon{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--wp-blue),var(--wp-blue-dark));border-radius:12px;font-size:32px;flex-shrink:0;}
-      .wps-card-body{flex:1;min-width:0;}
-      .wps-card-header{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
-      .wps-card-badge{
-        padding:3px 10px;border-radius:999px;
-        font-size:11px;font-weight:700;color:white;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12);
-        letter-spacing:0.01em;
-      }
-      .wps-card-badge.open{
-        background:linear-gradient(135deg,#34d399,#10b981);
-        box-shadow:0 2px 8px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
-      }
-      .wps-card-badge.closing-soon{
-        background:linear-gradient(135deg,#fbbf24,#f59e0b);
-        box-shadow:0 2px 8px rgba(245,158,11,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
-      }
-      .wps-card-badge.closed{
-        background:linear-gradient(135deg,#f87171,#ef4444);
-        box-shadow:0 2px 8px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
-      }
-      .wps-card-badge.no-hours{
-        background:linear-gradient(135deg,#9ca3af,#6b7280);
-        box-shadow:0 2px 6px rgba(107,114,128,0.30), inset 0 1px 0 rgba(255,255,255,0.2);
-      }
-      .wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
-      .wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular',var(--wp-font);}
-      .wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
-      .wps-card-rating{display:flex;align-items:center;gap:4px;}
-      .wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
-      .wps-card-rcnt{font-size:11px;color:#9ca3af;}
-
-      .wps-results-noresult-mode { justify-content:center !important; }
-      .wps-noresult {
-        display:flex; align-items:center; gap:10px;
-        padding:14px 18px; background:white;
-        border:2px solid #e5e7eb; border-radius:16px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.08);
-        min-width:280px; max-width:300px; flex-shrink:0;
-      }
-      .wps-noresult-emoji { font-size:24px; }
-      .wps-noresult-text  { font-size:14px; font-weight:600; color:#6b7280; }
-
-      #wp-scats{
-        position:fixed;
-        bottom:calc(20px + env(safe-area-inset-bottom,0px));
-        left:0;right:0;z-index:1999;
-        display:flex;gap:8px;
-        padding:0 16px 6px;
-        overflow-x:auto;
-        overflow-y:visible;
-        scrollbar-width:none;
-        animation:wpsSlideUp 0.3s ease;
-        transition:opacity 0.25s ease,transform 0.25s ease;
-        pointer-events:all;
-      }
-      #wp-scats::-webkit-scrollbar{display:none;}
-      .wps-cat-chip{
-        display:inline-flex;align-items:center;gap:6px;
-        padding:0 16px; height:36px;
-        background:linear-gradient(170deg,
-          rgba(255,255,255,0.97) 0%,
-          rgba(238,244,255,0.92) 100%);
-        color:#374151;
-        border:1px solid rgba(255,255,255,0.75);
-        border-radius:999px;
-        font-size:13px;font-weight:700;white-space:nowrap;
-        cursor:pointer;flex-shrink:0;
-        box-shadow:
-          0 4px 12px rgba(0,0,0,0.10),
-          0 1px 3px rgba(0,0,0,0.06),
-          inset 0 1.5px 0 rgba(255,255,255,1),
-          inset 0 -1px 0 rgba(0,0,0,0.05);
-        touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-        transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
-        font-family:'Yahoo Sans Bold Regular',var(--wp-font);
-        backdrop-filter:blur(12px) saturate(1.6);
-        -webkit-backdrop-filter:blur(12px) saturate(1.6);
-      }
-      .wps-cat-chip.active{
-        background:linear-gradient(150deg, #5a85f7 0%, #1a5cf5 55%, #1540cc 100%);
-        color:white; border-color:rgba(74,116,245,0.25);
-        box-shadow:
-          0 2px 8px rgba(26,92,245,0.28),
-          inset 0 1.5px 0 rgba(255,255,255,0.28),
-          inset 0 -1px 0 rgba(0,0,0,0.12);
-        text-shadow:0 1px 2px rgba(0,0,0,0.12);
-      }
-      .wps-cat-chip:not(.active):active{
-        transform:scale(0.94);
-        box-shadow:0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
-      }
-      .wps-cat-chip.active:active{
-        transform:scale(0.94);
-        filter:brightness(0.92);
-      }
-    `;
+    var s = document.createElement('link');
+    s.id = 'wps-styles'; s.rel = 'stylesheet'; s.href = '/styles/search.css';
     document.head.appendChild(s);
   }
 }
