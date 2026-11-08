@@ -20,6 +20,7 @@ import { FooterMenu }      from '/src/components/FooterMenu.js';
 import { PlansTab }        from '/src/components/tabs/plans-tab.js';
 import { SocialTab }       from '/src/components/tabs/social-tab.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
+import { attachFocusZoom }  from '/src/components/place-plans/focus-zoom.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { ProfileSheet }     from '/src/components/ProfileSheet.js';
@@ -37,6 +38,9 @@ setTimeout(() => document.body.classList.remove('wp-boot'), 2600);
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest?.('input, textarea, [contenteditable]')) e.preventDefault();
 });
+// Campos con [data-zoom] en cualquier parte (ficha, perfil…): al tocarlos
+// la tarjeta sale con zoom al centro y lo de atrás queda borroso
+attachFocusZoom(document);
 import { appState }         from '/src/state/AppState.js';
 
 window.wpApp = {

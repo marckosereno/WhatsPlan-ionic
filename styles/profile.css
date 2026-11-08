@@ -541,3 +541,16 @@ button.wp-pf-set:active { background:#eef0f3; }
 .wp-pf-bd { background:#f6f8fb; }
 .wp-pf-bd-e.more, .wp-pf-bub-e.more { background:var(--pf-ink); font-weight:600; }
 .wp-pf-bub-in { box-shadow:0 6px 16px -6px rgba(17,24,39,0.22), 0 0 0 1px rgba(17,24,39,0.04); }
+
+/* La hoja recorta lo de adentro: al estirar con el rebote el contenido
+   ya no se sale de la hoja hasta la barra de estado */
+#wp-pf .wp-pf-sheet { overflow:hidden; }
+/* Cerrar / atrás: el mismo botón redondo de "Volver" de las hojas grandes
+   (círculo negro con flecha) */
+.wp-pf-hbtn.wp-pf-back {
+  width:42px; height:42px; border-radius:50%; color:#111;
+  background:rgba(255,255,255,0.88);
+  -webkit-backdrop-filter:blur(16px) saturate(1.8); backdrop-filter:blur(16px) saturate(1.8);
+  box-shadow:0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+.wp-pf-hbtn.wp-pf-back svg { width:20px; height:20px; }

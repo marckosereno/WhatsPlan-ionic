@@ -3618,7 +3618,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         </div>
         <div id="wp-pm2-rm-label" style="text-align:center;font-size:12px;color:#8e8e93;margin-bottom:12px">Toca para calificar</div>
         <div style="padding:0 16px">
-          <textarea id="wp-pm2-rm-textarea" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+          <textarea id="wp-pm2-rm-textarea" data-zoom="Tu reseña" maxlength="500" placeholder="Cuéntanos tu experiencia... (mínimo 10 caracteres)" style="width:100%;height:100px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:12px 14px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
           <div id="wp-pm2-rm-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px">0 / 500</div>
         </div>
         <div style="padding:12px 16px 16px">
@@ -4308,7 +4308,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         <div style="display:flex;gap:10px;align-items:flex-start;padding:0 16px">
           <img src="${this._esc(avatarUrl)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:4px">
           <div style="flex:1;min-width:0">
-            <textarea class="wp-pm2-rs-textarea" maxlength="500" placeholder="Escribe tu respuesta..." style="width:100%;height:80px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:10px 12px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
+            <textarea class="wp-pm2-rs-textarea" data-zoom="Tu respuesta" maxlength="500" placeholder="Escribe tu respuesta..." style="width:100%;height:80px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);background:#f9f9f9;padding:10px 12px;font-size:14px;font-family:var(--wp-font);color:#0a0a0a;resize:none;box-sizing:border-box;outline:none"></textarea>
             <div class="wp-pm2-rs-char" style="text-align:right;font-size:11px;color:#8e8e93;margin-top:4px">0 / 500</div>
           </div>
         </div>
@@ -6068,7 +6068,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         <p class="wp-pm2-cl-intro">Verifícalo para responder reseñas como dueño, mantener la información al día y mostrar la insignia <b>✓ Verificado</b>.</p>
         <label class="wp-pm2-cl-field">
           <span>Tu nombre completo</span>
-          <input class="wp-pm2-cl-input" data-f="name" type="text" maxlength="120" autocomplete="name">
+          <input class="wp-pm2-cl-input" data-f="name" data-zoom="Tu nombre completo" type="text" maxlength="120" autocomplete="name">
         </label>
         <div class="wp-pm2-cl-field">
           <span>Tu rol</span>
@@ -6080,15 +6080,15 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         </div>
         <label class="wp-pm2-cl-field">
           <span>Teléfono de contacto</span>
-          <input class="wp-pm2-cl-input" data-f="phone" type="tel" maxlength="30" autocomplete="tel" inputmode="tel">
+          <input class="wp-pm2-cl-input" data-f="phone" data-zoom="Teléfono de contacto" type="tel" maxlength="30" autocomplete="tel" inputmode="tel">
         </label>
         <label class="wp-pm2-cl-field">
           <span>Correo</span>
-          <input class="wp-pm2-cl-input" data-f="email" type="email" maxlength="160" autocomplete="email" inputmode="email">
+          <input class="wp-pm2-cl-input" data-f="email" data-zoom="Correo" type="email" maxlength="160" autocomplete="email" inputmode="email">
         </label>
         <label class="wp-pm2-cl-field">
           <span>Mensaje <em>(opcional)</em></span>
-          <textarea class="wp-pm2-cl-input" data-f="msg" rows="2" maxlength="500" placeholder="Ej. Soy el dueño desde 2019"></textarea>
+          <textarea class="wp-pm2-cl-input" data-f="msg" data-zoom="Cuéntanos más" rows="2" maxlength="500" placeholder="Ej. Soy el dueño desde 2019"></textarea>
         </label>
         <p class="wp-pm2-cl-note">Para confirmar, te contactaremos o llamaremos al teléfono público del negocio. Tus datos solo los ve el equipo de WhatsPlan.</p>
         <button class="wp-pm2-cl-submit" disabled>Enviar solicitud</button>
