@@ -3,6 +3,7 @@
 // Panel flotante de administración — solo visible para superusuario
 // ============================================================
 
+import { PIN_PALETTE } from '/src/components/map/pin-palette.js';
 import { LandmarkService, PlaceModService, CustomPlaceService, isSuperUser } from '/src/services/SuperUserService.js';
 import {
   getCategories, getSubcategories,
@@ -2986,13 +2987,14 @@ export class SuperUserPanel {
 
             '<div id="su-pin-social-row" style="display:none;flex-direction:column;gap:8px;">' +
               '<div style="height:1px;background:rgba(255,255,255,0.08);margin:2px 0;"></div>' +
-              '<div style="font-size:10px;color:#6b7280;">Color del badge (hasta 6 por categoría — elegí el que le corresponda a esta subcategoría)</div>' +
-              '<div id="su-pin-badge-color-row" style="display:flex;gap:6px;">' +
-                ['#f97316','#8b5cf6','#ec4899','#10b981','#3b82f6','#eab308'].map(c =>
-                  '<button type="button" class="su-pin-badge-color-btn" data-color="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ';border:2px solid transparent;cursor:pointer;padding:0;"></button>'
+              '<div style="font-size:10px;color:#6b7280;">Color del badge (paleta del mapa — "Auto" usa el color de su tipo)</div>' +
+              '<div id="su-pin-badge-color-row" style="display:flex;flex-wrap:wrap;gap:6px;">' +
+                '<button type="button" class="su-pin-badge-color-btn" data-color="" title="Auto (por tipo)" style="width:30px;height:30px;border-radius:50%;background:conic-gradient(#3b6fd8,#e0734f,#d99a2b,#5fa67a,#7c6bd1,#3b6fd8);border:2px solid transparent;cursor:pointer;padding:0;"></button>' +
+                PIN_PALETTE.map(c =>
+                  '<button type="button" class="su-pin-badge-color-btn" data-color="' + c.base + '" title="' + c.label + '" style="width:30px;height:30px;border-radius:50%;background:linear-gradient(160deg,' + c.light + ',' + c.base + ');border:2px solid transparent;cursor:pointer;padding:0;"></button>'
                 ).join('') +
               '</div>' +
-              '<input id="su-pin-badge-color-hidden" type="hidden" value="' + (prefill?.pin_badge_color || '#f97316') + '">' +
+              '<input id="su-pin-badge-color-hidden" type="hidden" value="' + (prefill?.pin_badge_color || '') + '">' +
               '<div style="font-size:10px;color:#6b7280;">Forma del pin</div>' +
               '<div id="su-pin-badge-shape-row" style="display:flex;gap:6px;">' +
                 '<button type="button" class="su-pin-badge-shape-btn" data-val="circle" style="flex:1;padding:7px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#9ca3af;font-size:10px;cursor:pointer;">⚪ Círculo</button>' +
@@ -3345,7 +3347,7 @@ export class SuperUserPanel {
     const _paintBadgeColorBtns = () => {
       badgeColorBtns.forEach(b => {
         b.style.border = b.dataset.color === badgeColorHidden.value ? '2px solid #fff' : '2px solid transparent';
-        b.style.boxShadow = b.dataset.color === badgeColorHidden.value ? '0 0 0 2px ' + b.dataset.color : 'none';
+        b.style.boxShadow = b.dataset.color === badgeColorHidden.value ? '0 0 0 2px ' + (b.dataset.color || '#9ca3af') : 'none';
       });
     };
     badgeColorBtns.forEach(btn => {

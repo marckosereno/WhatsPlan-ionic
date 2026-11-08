@@ -1,5 +1,6 @@
 import { animateMinicardIn, animateMinicardOut } from '/src/utils/animations.js';
 import { declutterLabels, typeLabel } from '/src/components/map/label-declutter.js';
+import { pinColor } from '/src/components/map/pin-palette.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -1075,9 +1076,9 @@ export class MapView {
       // Suelo gris cálido, manzanas apenas más oscuras, todas las calles
       // blancas, avenidas ámbar suave y más anchas, parques verde muy suave.
       PAL.greige = {
-        bg: '#eeede9', water: '#b7d4e2', waterLine: '#a5c9da', park: '#d6e4cd', parkOp: 1,
+        bg: '#eeede9', water: '#c4dbe6', waterLine: '#b3d0de', park: '#dcead3', parkOp: 1,
         land: '#e8e6e1', landOp: 0.85, bld: '#e0ded8', bldOp: 1, bldLine: '#d8d5ce', bldLineOp: 0.6,
-        moto: '#f2c77e', prim: '#f7dba4', sec: '#fbfbf9', minor: '#fbfbf9', // avenida: ámbar suave
+        moto: '#e9d29b', prim: '#eedfb6', sec: '#fbfbf9', minor: '#fbfbf9', // avenida: arena (antes ámbar fuerte)
         casing: null, dashLight: 'rgba(200,197,190,0.7)', wScale: 1.4, primScale: 1.25,
         roadText: '#99968e', waterText: '#5a8ea6', hood: '#aaa69c',
       };
@@ -5872,7 +5873,9 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
   }
 
   if (place.pinStyle === 'social') {
-    const badgeColor = place.pinBadgeColor || '#f97316';
+    // Paleta para el greige (map/pin-palette.js): el tono elegido o el de
+    // su tipo, con degradado suave
+    const pc = pinColor(place), badgeColor = pc.base;
     // Modo evento AHORA solo controla si aparece la etiqueta de fecha/hora
     // en la metadata — ya no condiciona nada más (ni fotos, ni el badge)
     const isEvent = !!place.pinEventMode;
@@ -5944,7 +5947,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       const badgeSize = isSquareShape ? sz.square : sz.round;
       const radius = isSquareShape ? '6px' : '50%';
       anchorHtml = `
-        <div style="position:relative;width:${badgeSize}px;height:${badgeSize}px;border-radius:${radius};background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+        <div style="position:relative;width:${badgeSize}px;height:${badgeSize}px;border-radius:${radius};background:${pc.grad};box-shadow:0 1px 1px rgba(20,18,31,0.08),0 4px 10px -4px rgba(20,18,31,0.35);display:flex;align-items:center;justify-content:center;">
           ${badgeIcon}
         </div>`;
     }
