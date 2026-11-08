@@ -1,0 +1,266 @@
+/* ════════════════════════════════════════════════════════════════════
+   WHATSPLAN — styles/search.css
+   Buscador del mapa (SearchBar.js): el chip de arriba que se abre en
+   campo de búsqueda, las tarjetas de resultados abajo y las chips de
+   categoría. Antes vivía dentro del JS. Al final, el bloque "nueva línea".
+   ════════════════════════════════════════════════════════════════════ */
+@keyframes wpsExpand {
+  from { opacity:0; transform:scaleX(0.85) translateY(-8px); }
+  to   { opacity:1; transform:scaleX(1) translateY(0); }
+}
+@keyframes wpsSlideUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Chip derecho expandible en modo búsqueda */
+#topbar-right-chip { transition: width 0.38s cubic-bezier(0.32,0.72,0,1); overflow:hidden; }
+#wps-inner { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
+.wps-close-chip-btn { color:#374151; }
+.wps-icon { width:20px;height:20px;object-fit:contain;flex-shrink:0; }
+
+/* Input con clear nativo del browser — sin -webkit-appearance:none */
+.wps-input {
+  flex:1;border:none;background:transparent;outline:none;
+  font-size:15px;font-weight:400;color:#111827;min-width:0;
+  font-family:var(--wp-font);
+}
+.wps-input::placeholder{color:#9ca3af;font-weight:400;font-family:'Yahoo Sans Bold Regular',var(--wp-font);}
+
+.wps-clear {
+  display:none;
+  align-items:center;
+  justify-content:center;
+  width:18px; height:18px;
+  min-width:18px;
+  border-radius:50%;
+  border:none;
+  background:#adb5bd;
+  color:white;
+  cursor:pointer;
+  flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+  padding:0;
+  line-height:1;
+}
+.wps-clear.visible { display:flex; }
+.wps-count{font-size:11px;font-weight:600;color:#9ca3af;white-space:nowrap;flex-shrink:0;margin-left:auto;padding:0 4px;max-width:68px;overflow:hidden;text-overflow:ellipsis;}
+.wps-filter,.wps-close,#wps-filter-chip,#wps-close-chip{
+  width:36px;min-width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(255,255,255,0.7) !important;
+  background:linear-gradient(170deg,rgba(255,255,255,0.95),rgba(238,244,255,0.88)) !important;
+  color:#6b7280 !important;
+  font-size:14px;font-weight:700;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+  transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
+  box-shadow:0 3px 10px rgba(0,0,0,0.08),inset 0 1.5px 0 rgba(255,255,255,1) !important;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+#wps-close-chip{ margin-left:4px; margin-right:5px; }
+.wps-filter:active,.wps-close:active,
+#wps-filter-chip:active,#wps-close-chip:active{
+  transform:scale(0.92) !important;
+  box-shadow:0 1px 4px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.8) !important;
+}
+
+.panel-subcats-scroll.wps-subcats-floating {
+  position:fixed;
+  top:calc(68px + env(safe-area-inset-top,0px));
+  left:0; right:0; bottom:auto;
+  z-index:1998;
+  background:transparent;
+  width:100%; box-sizing:border-box;
+  padding:4px 12px; min-height:42px;
+  display:flex; align-items:center;
+  overflow-x:auto; scrollbar-width:none;
+}
+.panel-subcats-scroll.wps-subcats-floating::-webkit-scrollbar { display:none; }
+
+#wp-sresults {
+  position:fixed;
+  left:0;right:0;
+  z-index:1996;
+  display:flex; gap:12px;
+  padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  background:transparent; scrollbar-width:none;
+  transition:bottom 0.2s ease;
+}
+#wp-sresults::-webkit-scrollbar{display:none;}
+
+.wps-card{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:white;border:2px solid #e5e7eb;border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:pointer;
+  min-width:280px;max-width:300px;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform 0.15s,box-shadow 0.15s;
+}
+.wps-card:active{transform:scale(0.97);box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.wps-card-photo{width:70px;height:70px;object-fit:cover;border-radius:12px;flex-shrink:0;}
+.wps-card-icon{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--wp-blue),var(--wp-blue-dark));border-radius:12px;font-size:32px;flex-shrink:0;}
+.wps-card-body{flex:1;min-width:0;}
+.wps-card-header{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.wps-card-badge{
+  padding:3px 10px;border-radius:999px;
+  font-size:11px;font-weight:700;color:white;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12);
+  letter-spacing:0.01em;
+}
+.wps-card-badge.open{
+  background:linear-gradient(135deg,#34d399,#10b981);
+  box-shadow:0 2px 8px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.wps-card-badge.closing-soon{
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  box-shadow:0 2px 8px rgba(245,158,11,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.wps-card-badge.closed{
+  background:linear-gradient(135deg,#f87171,#ef4444);
+  box-shadow:0 2px 8px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.wps-card-badge.no-hours{
+  background:linear-gradient(135deg,#9ca3af,#6b7280);
+  box-shadow:0 2px 6px rgba(107,114,128,0.30), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.wps-card-price{font-size:14px;font-weight:700;color:#1f2937;}
+.wps-card-name{font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-family:'Yahoo Sans Bold Regular',var(--wp-font);}
+.wps-card-addr{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;}
+.wps-card-rating{display:flex;align-items:center;gap:4px;}
+.wps-card-rval{font-size:13px;font-weight:700;color:#f59e0b;}
+.wps-card-rcnt{font-size:11px;color:#9ca3af;}
+
+.wps-results-noresult-mode { justify-content:center !important; }
+.wps-noresult {
+  display:flex; align-items:center; gap:10px;
+  padding:14px 18px; background:white;
+  border:2px solid #e5e7eb; border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  min-width:280px; max-width:300px; flex-shrink:0;
+}
+.wps-noresult-emoji { font-size:24px; }
+.wps-noresult-text  { font-size:14px; font-weight:600; color:#6b7280; }
+
+#wp-scats{
+  position:fixed;
+  bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  left:0;right:0;z-index:1999;
+  display:flex;gap:8px;
+  padding:0 16px 6px;
+  overflow-x:auto;
+  overflow-y:visible;
+  scrollbar-width:none;
+  animation:wpsSlideUp 0.3s ease;
+  transition:opacity 0.25s ease,transform 0.25s ease;
+  pointer-events:all;
+}
+#wp-scats::-webkit-scrollbar{display:none;}
+.wps-cat-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:0 16px; height:36px;
+  background:linear-gradient(170deg,
+    rgba(255,255,255,0.97) 0%,
+    rgba(238,244,255,0.92) 100%);
+  color:#374151;
+  border:1px solid rgba(255,255,255,0.75);
+  border-radius:999px;
+  font-size:13px;font-weight:700;white-space:nowrap;
+  cursor:pointer;flex-shrink:0;
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.10),
+    0 1px 3px rgba(0,0,0,0.06),
+    inset 0 1.5px 0 rgba(255,255,255,1),
+    inset 0 -1px 0 rgba(0,0,0,0.05);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transition:all 0.15s cubic-bezier(0.34,1.2,0.64,1);
+  font-family:'Yahoo Sans Bold Regular',var(--wp-font);
+  backdrop-filter:blur(12px) saturate(1.6);
+  -webkit-backdrop-filter:blur(12px) saturate(1.6);
+}
+.wps-cat-chip.active{
+  background:linear-gradient(150deg, #5a85f7 0%, #1a5cf5 55%, #1540cc 100%);
+  color:white; border-color:rgba(74,116,245,0.25);
+  box-shadow:
+    0 2px 8px rgba(26,92,245,0.28),
+    inset 0 1.5px 0 rgba(255,255,255,0.28),
+    inset 0 -1px 0 rgba(0,0,0,0.12);
+  text-shadow:0 1px 2px rgba(0,0,0,0.12);
+}
+.wps-cat-chip:not(.active):active{
+  transform:scale(0.94);
+  box-shadow:0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+.wps-cat-chip.active:active{
+  transform:scale(0.94);
+  filter:brightness(0.92);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   BUSCADOR — nueva línea de diseño (8 nov 2026)
+   Tarjetas blancas con sombra ligera (sin borde gris), nombre 700, datos
+   600, etiquetas 500; abierto/cerrado en pills suaves como la ficha;
+   chips de categoría como las de subcategoría (gris suave, la elegida en
+   tinta); botones redondos blancos. Tira con arrastre y rebote propios.
+   ════════════════════════════════════════════════════════════════════ */
+.wps-input { font-weight: 500; color: #14121f; }
+.wps-input::placeholder { font-weight: 500; color: #9ca3af; font-family: var(--wp-font); }
+.wps-clear { background: #c4c8cf; }
+.wps-count { font-weight: 500; color: #9ca3af; }
+.wps-filter, .wps-close, #wps-filter-chip, #wps-close-chip {
+  border: none !important;
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%) !important;
+  color: #14121f !important; font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 3px 8px -4px rgba(20, 18, 31, 0.18), inset 0 1px 0 #fff !important;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.wps-filter:active, .wps-close:active, #wps-filter-chip:active, #wps-close-chip:active { transform: scale(0.9) !important; }
+
+/* Resultados: tira (el contenedor recorta, la pista se mueve) */
+#wp-sresults { display: block; overflow: hidden; padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px)); touch-action: pan-y; }
+#wp-sresults.wps-results-noresult-mode { display: flex; justify-content: center; padding-left: 16px; padding-right: 16px; }
+.wps-track { display: flex; gap: 12px; width: max-content; padding: 4px 16px 10px; }
+.wps-card {
+  gap: 12px; padding: 8px 14px 8px 8px; border: none; border-radius: 22px; background: #fff;
+  min-width: 284px; max-width: 300px;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 24px -14px rgba(20, 18, 31, 0.3);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wps-card:active { transform: scale(0.97); box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 6px 14px -10px rgba(20, 18, 31, 0.3); transition-duration: 0.1s; }
+.wps-card-photo, .wps-card-icon { width: 76px; height: 76px; border-radius: 16px; }
+.wps-card-icon { background: linear-gradient(160deg, #eef2f8, #e2e8f0); font-size: 30px; }
+.wps-card-name { font-family: var(--wp-font); font-size: 15px; font-weight: 700; color: #14121f; letter-spacing: -0.2px; margin-bottom: 1px; }
+.wps-card-addr { font-size: 12px; font-weight: 500; color: #6b7280; margin-bottom: 7px; }
+.wps-card-header { gap: 8px; margin: 0; flex-wrap: nowrap; }
+.wps-card-badge, .wps-card-badge.open, .wps-card-badge.closing-soon, .wps-card-badge.closed, .wps-card-badge.no-hours {
+  padding: 2px 9px; font-size: 11px; font-weight: 600; box-shadow: none; letter-spacing: 0; white-space: nowrap; }
+.wps-card-badge.open { background: #e9f9ef; color: #15803d; }
+.wps-card-badge.closing-soon { background: #fff4e0; color: #b45309; }
+.wps-card-badge.closed { background: #f1f4f8; color: #6b7280; }
+.wps-card-rating { display: inline-flex; align-items: center; gap: 3px; }
+.wps-card-star { font-size: 11px; color: #14121f; }
+.wps-card-rval { font-size: 12.5px; font-weight: 600; color: #14121f; }
+.wps-card-rcnt { font-size: 11.5px; font-weight: 500; color: #9ca3af; }
+.wps-card-price { font-size: 12.5px; font-weight: 600; color: #6b7280; }
+
+.wps-noresult { border: none; border-radius: 22px; padding: 14px 18px;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 24px -14px rgba(20, 18, 31, 0.3); }
+.wps-noresult-text { display: flex; flex-direction: column; gap: 2px; }
+.wps-noresult-text b { font-size: 14px; font-weight: 700; color: #14121f; }
+.wps-noresult-text small { font-size: 12.5px; font-weight: 500; color: #6b7280; }
+
+/* Chips de categoría: como las de subcategoría del panel */
+.wps-cat-chip {
+  border: none; font-family: var(--wp-font); font-weight: 500; color: #374151;
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 3px 8px -4px rgba(20, 18, 31, 0.18), inset 0 1px 0 #fff;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wps-cat-chip.active {
+  background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%); color: #fff; font-weight: 600;
+  box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.45); text-shadow: none;
+}
+.wps-cat-chip:not(.active):active, .wps-cat-chip.active:active { transform: scale(0.94); filter: none;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05); }
