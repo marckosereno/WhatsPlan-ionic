@@ -1953,6 +1953,7 @@ export class MapView {
       if (state === el._wpState) return;
       el._wpState   = state;
       el._wpVisible = state === 2;
+      el.classList.toggle('wp-dot', state === 1);   // estilo del puntito: /styles/app.css
 
       const wrapper = el.querySelector('.place-pin-wrapper');
       const bubbleInner = el.querySelector('.place-pin-bubble-inner');
@@ -5944,7 +5945,7 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
       const radius = isSquareShape ? '6px' : '50%';
       anchorHtml = `
         <div style="position:relative;width:${badgeSize}px;height:${badgeSize}px;border-radius:${radius};background:${badgeColor};box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-          ${badgeIcon}${_isPlaceOpenNow(place) ? '<i class="wp-pin-open" aria-label="Abierto"></i>' : ''}
+          ${badgeIcon}
         </div>`;
     }
 
@@ -5982,8 +5983,8 @@ MapView.prototype._buildPinHtml = function(place, photoUrl, catIcon) {
         if (place.rating) parts.push(`★ ${Number(place.rating).toFixed(1)}`);
         const tl = typeLabel(place);
         if (tl) parts.push(tl);
-        // Abierto/cerrado ya no va escrito: puntito verde en el pin si
-        // está abierto, y los cerrados se ven más suaves (.wp-pin-closed)
+        // Abierto/cerrado ya no va escrito: los cerrados se ven más
+        // suaves (.wp-pin-closed)
         const metaText = parts.join(' · ');
         metaHtml = metaText ? `<div class="place-pin-meta">${metaText}</div>` : '';
       }
