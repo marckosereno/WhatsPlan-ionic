@@ -1560,3 +1560,13 @@ body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(4) { animation-delay: 
 body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(5) { animation-delay: 0.16s; }
 body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag:nth-child(n+6) { animation-delay: 0.2s; }
 @media (prefers-reduced-motion: reduce) { body .wp-ce-collage.wp-ce-chrome-in .wp-ce-ctag { animation: none; } }
+/* Volver: el mismo botón redondo de las hojas grandes (.wp-st-back) */
+body .wp-ce-cback {
+  width: 42px; height: 42px; color: #111;
+  background: rgba(255, 255, 255, 0.88);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+body .wp-ce-cback svg { width: 20px; height: 20px; }
+/* "4 lugares": discreto, arriba de las chips */
+.wp-ce-ccount { margin: 0 0 8px; text-align: center; font-size: 11.5px; font-weight: 500; color: #9ca3af; letter-spacing: 0.1px; }
