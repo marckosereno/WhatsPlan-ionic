@@ -1010,7 +1010,7 @@ export class MapView {
     });
   }
 
-  // Tema del mapa: 'fresco' (gris frío y limpio — el de ahora), 'greige' (beige+gris), 'tierra'
+  // Tema del mapa: 'fresco' (greige sin arena — el de ahora), 'greige' (beige+gris), 'tierra'
   // (arena con sombras de edificios y arbolitos), 'neutral' (gris) o
   // 'beige' (el primero). Se guarda en el teléfono y se cambia desde el SuperUserPanel
   // o con wpApp.mapView.setMapTheme('neutral').
@@ -1084,16 +1084,16 @@ export class MapView {
         casing: null, dashLight: 'rgba(200,197,190,0.7)', wScale: 1.4, primScale: 1.25,
         roadText: '#99968e', waterText: '#5a8ea6', hood: '#aaa69c',
       };
-      // 'fresco' (el de ahora): gris frío y limpio, casi blanco; agua
-      // azul cielo, parques menta, calles blancas y avenidas lila
-      // pervinca (primas del azul/índigo de la app). Más fresco y gen-z
-      // que el arena, sin pelear con los pines.
+      // 'fresco' (el de ahora): el greige pero sin lo arenoso — gris
+      // neutro apenas cálido, limpio; agua azul cielo suave, parques
+      // salvia-menta, todas las calles blancas y las avenidas se notan
+      // por lo anchas (no por un color amarillo/arena).
       PAL.fresco = {
-        bg: '#eef1f6', water: '#b9e0fb', waterLine: '#a6d6f7', park: '#c9efdc', parkOp: 1,
-        land: '#e9edf3', landOp: 0.85, bld: '#e1e6ee', bldOp: 1, bldLine: '#d7dde8', bldLineOp: 0.6,
-        moto: '#c3cbfc', prim: '#dce1ff', sec: '#ffffff', minor: '#ffffff',
-        casing: null, dashLight: 'rgba(184,192,214,0.7)', wScale: 1.4, primScale: 1.25,
-        roadText: '#8b91a6', waterText: '#3f8fd0', hood: '#a1a7bb',
+        bg: '#efefed', water: '#c3dcea', waterLine: '#b2d1e2', park: '#d6eadb', parkOp: 1,
+        land: '#eaeae7', landOp: 0.85, bld: '#e2e2de', bldOp: 1, bldLine: '#d9d9d4', bldLineOp: 0.6,
+        moto: '#ffffff', prim: '#ffffff', sec: '#fdfdfc', minor: '#fdfdfc',
+        casing: null, dashLight: 'rgba(196,196,190,0.7)', wScale: 1.4, primScale: 1.45,
+        roadText: '#93938d', waterText: '#5a8ea6', hood: '#a7a7a0',
       };
       PAL.tierra = {
         bg: '#eee7da', water: '#a6cbd1', waterLine: '#93bfc6', park: '#cddbb1', parkOp: 1,
