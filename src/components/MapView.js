@@ -1086,13 +1086,14 @@ export class MapView {
       };
       // 'fresco' (el de ahora): el greige pero sin lo arenoso — gris
       // neutro apenas cálido, limpio; agua azul cielo suave, parques
-      // salvia-menta, todas las calles blancas y las avenidas se notan
-      // por lo anchas (no por un color amarillo/arena).
+      // salvia-menta, calles blancas y avenidas en gris oscurito con una
+      // orilla difuminada (se ve como degradado suave hacia el suelo).
       PAL.fresco = {
         bg: '#efefed', water: '#c3dcea', waterLine: '#b2d1e2', park: '#d6eadb', parkOp: 1,
         land: '#eaeae7', landOp: 0.85, bld: '#e2e2de', bldOp: 1, bldLine: '#d9d9d4', bldLineOp: 0.6,
-        moto: '#ffffff', prim: '#ffffff', sec: '#fdfdfc', minor: '#fdfdfc',
-        casing: null, dashLight: 'rgba(196,196,190,0.7)', wScale: 1.4, primScale: 1.45,
+        moto: '#a3a7b0', prim: '#b0b4bc', sec: '#fdfdfc', minor: '#fdfdfc',
+        primCase: 'rgba(160,164,173,0.5)', primBlur: 3,
+        casing: null, dashLight: 'rgba(196,196,190,0.7)', wScale: 1.4, primScale: 1.25,
         roadText: '#93938d', waterText: '#5a8ea6', hood: '#a7a7a0',
       };
       PAL.tierra = {
@@ -1289,8 +1290,13 @@ export class MapView {
             // Capa propia justo DEBAJO de la calle, 2px más ancha: queda
             // un borde de 1px a cada lado. En beige va con opacidad 0.
             const caseId = id + '-wp-case';
-            const caseColor = P.casing || '#000';
-            const caseOp = P.casing ? 1 : 0;
+            // Avenidas con orilla propia difuminada (tema fresco): más ancha
+            // y con blur → se ve como un degradado suave hacia el suelo
+            const softEdge = (isMoto || isPrim) && P.primCase;
+            const caseColor = softEdge ? P.primCase : (P.casing || '#000');
+            const caseOp = softEdge || P.casing ? 1 : 0;
+            const caseBlur = softEdge ? (P.primBlur || 0) : 0;
+            const caseW = widen(fillWidth, softEdge ? 7 : 2);
             if (!map.getLayer(caseId)) {
               try {
                 map.addLayer({
@@ -1299,11 +1305,14 @@ export class MapView {
                   filter: layer.filter,
                   minzoom: layer.minzoom || 0,
                   layout: { 'line-cap': 'round', 'line-join': 'round' },
-                  paint: { 'line-color': caseColor, 'line-opacity': caseOp, 'line-width': widen(fillWidth, 2) },
+                  paint: { 'line-color': caseColor, 'line-opacity': caseOp, 'line-width': caseW, 'line-blur': caseBlur },
                 }, id);
               } catch(_){}
             } else {
-              try { map.setPaintProperty(caseId,'line-color',caseColor); map.setPaintProperty(caseId,'line-opacity',caseOp); } catch(_){}
+              try {
+                map.setPaintProperty(caseId,'line-color',caseColor); map.setPaintProperty(caseId,'line-opacity',caseOp);
+                map.setPaintProperty(caseId,'line-width',caseW); map.setPaintProperty(caseId,'line-blur',caseBlur);
+              } catch(_){}
             }
 
             // ── Línea central punteada (zoom 18+) ──────────────
