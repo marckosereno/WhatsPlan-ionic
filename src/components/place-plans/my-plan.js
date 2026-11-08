@@ -13,6 +13,8 @@
 //
 // Mixin de PlaceModal2. Estilos: /styles/my-plan.css (.wp-mp-*)
 // ════════════════════════════════════════════════════════════════════
+import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
+import { myChats } from '/src/components/chat/chat-service.js';
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
 
@@ -22,9 +24,12 @@ const ARROW = '<svg class="wp-mp-go" width="16" height="16" viewBox="0 0 24 24" 
 // Mismo ícono de compartir que la barra de la ficha
 const SHARE = '<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.1141,4.49112 L9.91063,7.63542 L9.891,8.05196 L9.8012,8.06134 C5.36297,8.583 2,12.3671 2,17 C2,17.457 2.03414,17.91 2.10168,18.3565 C2.38094,20.2022 2.59088,20.3807 3.87391,18.8547 C4.18977,18.479 4.54227,18.1439 4.91368,17.8247 C6.24977,16.7224 7.90632,16.0786 9.66842,16.0067 L9.894,16.002 L9.95549,17.2308 L10.1215,19.576 C10.2008,20.38 11.0467,20.9293 11.8253,20.4902 C12.1766,20.2919 12.52,20.0809 12.8641,19.8706 C14.652,18.7519 16.3249,17.4666 17.9553,16.1321 C18.9147,15.3326 19.7558,14.5744 20.4714,13.8844 C20.8007,13.5606 21.1304,13.2376 21.4496,12.9037 C21.9118,12.42 21.9575,11.6189 21.4737,11.1124 C20.3603,9.94706 18.7862,8.48751 16.8271,6.94049 C15.2394,5.69825 13.597,4.53773 11.8571,3.51856 C11.0203,3.04172 10.1902,3.69599 10.1141,4.49112 Z"/></svg>';
 
+const CHAT = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.3 9.3 0 0 1-3.6-.7L3 21l1.6-4.5A8 8 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01" stroke-width="2.6"/></svg>';
+
 export class MyPlan {
   // opts.onBack: si vienes de "Planes aquí", atrás te regresa allá
   // opts.onClose: al cerrar la hoja (la pestaña Planes recarga su lista)
+  // Abajo: el botón redondo del chat del plan (con los sin leer) + Compartir
   _openMyPlanSheet(a, opts = {}) {
     const me = window.wpApp?.currentUser?.id, owner = a.creator_id === me, stops = this._mpStops(a);
     let page = null;
@@ -35,8 +40,20 @@ export class MyPlan {
       theme: owner ? 'mine' : 'going',
       right: `<button type="button" class="wp-mp-danger" data-nopulse>${owner ? 'Cancelar plan' : 'Ya no puedo ir'}</button>`,
       html: this._mpBody(a, { owner, me, stops }),
-      foot: `<button type="button" class="wp-mp-cta" data-a="share">${SHARE}<span>Compartir el plan</span></button>`,
+      foot: `<div class="wp-mp-foot2"><button type="button" class="wp-mp-chatbtn" data-chat aria-label="Chat del plan">${CHAT}<b hidden></b></button>
+        <button type="button" class="wp-mp-cta" data-a="share">${SHARE}<span>Compartir el plan</span></button></div>`,
     });
+    // Chat del plan: la hoja se cierra y entra la conversación (atrás regresa aquí)
+    ensureChatCss();
+    root.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-chat]')) return;
+      page.close();
+      setTimeout(() => openPlanChat(this, a, { onBack: () => this._openMyPlanSheet(a, opts) }), 360);
+    });
+    myChats().then(cs => {
+      const n = cs.find(c => c.activity_id === a.id)?.unread || 0, b = root.querySelector('.wp-mp-chatbtn b');
+      if (n && b) { b.hidden = false; b.textContent = n > 9 ? '9+' : n; }
+    }).catch(() => {});
     body.classList.add('wp-mp');
     this._mpWire(body);
     const ctx = { a, me, owner, root, close, stops };

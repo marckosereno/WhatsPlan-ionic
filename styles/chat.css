@@ -1,0 +1,93 @@
+/* ════════════════════════════════════════════════════════════════════
+   WHATSPLAN — styles/chat.css
+   Chat de los planes: la conversación (chat/plan-chat.js, en la hoja
+   grande #wp-st.wp-ch-sheet) y la lista de chats en Social
+   (tabs/social-tab.js, .wp-so-*).
+   Tus mensajes en azul (el acento de esta pantalla); los de otros en
+   blanco; los del sistema en gris al centro.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Conversación ──────────────────────────────────────────────────── */
+.wp-ch-t { display: flex; flex-direction: column; align-items: center; line-height: 1.15; min-width: 0; }
+.wp-ch-t b { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15.5px; font-weight: 700; }
+.wp-ch-t small { font-size: 12px; font-weight: 500; color: #6b7280; }
+.wp-ch-list { display: flex; flex-direction: column; gap: 2px; padding: 4px 14px 8px; min-height: 40vh; justify-content: flex-end; }
+.wp-ch-load { margin: 30px 0; text-align: center; font-size: 13px; color: #9ca3af; }
+.wp-ch-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 40px auto; text-align: center; }
+.wp-ch-empty b { font-size: 16px; font-weight: 600; }
+.wp-ch-empty span { max-width: 260px; font-size: 13.5px; color: #6b7280; }
+
+.wp-ch-day { display: flex; justify-content: center; margin: 14px 0 8px; }
+.wp-ch-day span, .wp-ch-sys span { padding: 4px 11px; border-radius: 999px; background: rgba(20, 18, 31, 0.05); font-size: 11.5px; font-weight: 500; color: #6b7280; }
+.wp-ch-sys { display: flex; justify-content: center; margin: 6px 0; text-align: center; }
+.wp-ch-sys span { max-width: 80%; background: #eef6ff; color: #1e40af; }
+
+.wp-ch-msg { display: flex; align-items: flex-end; gap: 8px; max-width: 86%; animation: wpChIn 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.wp-ch-msg.first { margin-top: 8px; }
+.wp-ch-msg.me { align-self: flex-end; flex-direction: row-reverse; }
+@keyframes wpChIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+.wp-ch-av { flex: none; width: 28px; }
+.wp-ch-av .wp-seal { width: 28px; height: 28px; }
+.wp-ch-col { display: flex; flex-direction: column; min-width: 0; }
+.wp-ch-msg.me .wp-ch-col { align-items: flex-end; }
+.wp-ch-name { margin: 0 0 3px 12px; font-size: 11.5px; font-weight: 600; color: #6b7280; }
+.wp-ch-b { margin: 0; padding: 9px 13px; border-radius: 20px; background: #fff; color: #14121f; font-size: 15px; line-height: 1.35;
+  white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 2px 6px rgba(20, 18, 31, 0.05); }
+.wp-ch-msg:not(.me):not(.last) .wp-ch-b { border-bottom-left-radius: 8px; }
+.wp-ch-msg:not(.me):not(.first) .wp-ch-b { border-top-left-radius: 8px; }
+.wp-ch-msg.me .wp-ch-b { background: #2563eb; color: #fff; box-shadow: none; }
+.wp-ch-msg.me:not(.last) .wp-ch-b { border-bottom-right-radius: 8px; }
+.wp-ch-msg.me:not(.first) .wp-ch-b { border-top-right-radius: 8px; }
+.wp-ch-msg.quick .wp-ch-b { font-weight: 600; }
+.wp-ch-msg.pending .wp-ch-b { opacity: 0.6; }
+.wp-ch-time { margin: 3px 10px 0; font-size: 10.5px; font-weight: 500; color: #9ca3af; }
+.wp-ch-new { position: sticky; bottom: 8px; display: block; margin: 0 auto; height: 32px; padding: 0 14px; border: none; border-radius: 999px;
+  background: #14121f; color: #fff; font: inherit; font-size: 12.5px; font-weight: 600; box-shadow: 0 8px 18px -8px rgba(20, 18, 31, 0.5); }
+.wp-ch-new[hidden] { display: none; }
+
+/* pie: respuestas rápidas + barra para escribir */
+#wp-st.wp-ch-sheet .wp-st-foot { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 14px; }
+.wp-ch-quick { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+.wp-ch-quick::-webkit-scrollbar { display: none; }
+.wp-ch-quick button { flex: none; height: 32px; padding: 0 12px; border: none; border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 500;
+  color: #14121f; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.08); white-space: nowrap; }
+.wp-ch-bar { display: flex; align-items: flex-end; gap: 8px; margin: 0; padding: 5px 5px 5px 16px; border-radius: 26px; background: #fff;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.07), 0 8px 22px -12px rgba(20, 18, 31, 0.3); }
+.wp-ch-bar textarea { flex: 1; min-width: 0; height: 22px; max-height: 110px; margin: 9px 0; padding: 0; border: none; outline: none; resize: none;
+  background: none; font: inherit; font-size: 15px; line-height: 22px; color: #14121f; }
+.wp-ch-send { flex: none; width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--wp-grad-sky, #2563eb); color: #fff; transition: opacity 0.2s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.wp-ch-send:disabled { opacity: 0.35; transform: scale(0.9); }
+
+/* ── Lista de chats (Social) ───────────────────────────────────────── */
+.wp-so-sec h3 { margin: 18px 4px 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.2px; color: #6b7280; }
+.wp-so-sec.live h3 { color: #15803d; }
+.wp-so-row { display: flex; align-items: center; gap: 12px; width: 100%; margin-bottom: 8px; padding: 10px 12px 10px 10px; border: none; border-radius: 20px;
+  background: #fff; font: inherit; text-align: left; color: #14121f; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 6px 18px -12px rgba(20, 18, 31, 0.25); }
+.wp-so-pic { position: relative; flex: none; width: 54px; height: 54px; }
+.wp-so-img { position: absolute; inset: 0; border-radius: 16px; background: center / cover no-repeat; }
+.wp-so-img.none { display: flex; align-items: center; justify-content: center; background: var(--bg); font-style: normal; font-size: 24px; }
+.wp-so-faces { position: absolute; right: -6px; bottom: -6px; display: flex; }
+.wp-so-faces .wp-seal { width: 22px; height: 22px; margin-left: -8px; box-shadow: 0 0 0 2px #fff; border-radius: 50%; }
+.wp-so-live { position: absolute; left: -3px; top: -3px; width: 12px; height: 12px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 2.5px #fff; }
+.wp-so-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wp-so-txt b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-so-txt small { font-size: 13px; font-weight: 500; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-so-row.unread .wp-so-txt small { color: #14121f; }
+.wp-so-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.wp-so-side small { font-size: 11.5px; font-weight: 500; color: #9ca3af; }
+.wp-so-row.unread .wp-so-side small { color: #2563eb; }
+.wp-so-n { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #2563eb; color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; }
+.wp-so-sk { height: 74px; margin: 18px 0 8px; border-radius: 20px; background: linear-gradient(90deg, #eef1f5 25%, #f7f9fb 50%, #eef1f5 75%) 0 0 / 200% 100%;
+  animation: wpPtSk 1.2s linear infinite; }
+.wp-so-sk + .wp-so-sk { margin-top: 0; }
+
+/* botón de chat en "Tu plan" (al lado de Compartir) */
+.wp-mp-chatbtn { position: relative; flex: none; width: 56px; height: 56px; padding: 0; border: none; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; background: #fff; color: #14121f; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.06), 0 10px 24px -12px rgba(20, 18, 31, 0.4); }
+.wp-mp-chatbtn b { position: absolute; top: -2px; right: -2px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 999px;
+  background: #e0123c; color: #fff; font-size: 11px; font-weight: 700; line-height: 20px; box-shadow: 0 0 0 2px #fff; }
+.wp-mp-chatbtn b[hidden] { display: none; }
+.wp-mp-foot2 { display: flex; align-items: center; gap: 10px; width: 100%; }
+.wp-mp-foot2 .wp-mp-cta { flex: 1; min-width: 0; }
