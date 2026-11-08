@@ -29,7 +29,7 @@ export class PlansHereDetail {
     }
     const vp = v.sheet.root.querySelector('.wp-st-vp');
     const list = v.sheet.body.querySelector('.wp-ph2-list'), det = v.sheet.body.querySelector('.wp-ph2-detail');
-    const from = row.querySelector('.wp-ph4-thumb').getBoundingClientRect();   // el racimo tocado
+    const from = row?.querySelector('.wp-ph4-thumb')?.getBoundingClientRect();   // el racimo tocado (sin él: entra sin viaje)
     v.at = i; v.scroll = vp.scrollTop;
     const stops = this._mpStops(a);
     det.innerHTML = this._mpBody(a, { owner: false, me: v.me, stops, others: false });
@@ -44,7 +44,7 @@ export class PlansHereDetail {
     this._haptic?.('light');
     // el encabezado sale del racimo tocado
     const head = det.querySelector('.wp-mp-hero-ph'), to = head.getBoundingClientRect();
-    head.animate([
+    if (from) head.animate([
       { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, transformOrigin: '0 0', opacity: 0.6 },
       { transform: 'none', transformOrigin: '0 0', opacity: 1 },
     ], { duration: 440, easing: SPRING });

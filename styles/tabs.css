@@ -1,0 +1,98 @@
+/* ════════════════════════════════════════════════════════════════════
+   WHATSPLAN — styles/tabs.css
+   Secciones de la barra de abajo (tabs/*.js): la pantalla completa
+   (.wp-tab), la pestaña Planes (.wp-pt-*) y Social (.wp-so-*).
+   Un solo acento fuerte: el azul va en el botón del centro de la barra;
+   aquí las pestañas elegidas y los botones de las tarjetas van en tinta
+   oscura, y las tarjetas en blanco con la foto de protagonista.
+   ════════════════════════════════════════════════════════════════════ */
+.wp-tab { position: fixed; inset: 0; z-index: 99994; overflow: hidden; font-family: var(--wp-font);
+  --ink: #14121f; --sub: #6b7280; color: var(--ink);
+  background: linear-gradient(180deg, #dbeafe 0%, #eef5ff 26%, #f6f8fb 52%, #f6f8fb 100%);
+  opacity: 0; transform: translateY(14px) scale(0.985); transition: opacity 0.26s ease, transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
+.wp-tab.in { opacity: 1; transform: none; }
+.wp-tab, .wp-tab * { -webkit-tap-highlight-color: transparent; }
+.wp-tab-vp { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
+.wp-tab-vp::-webkit-scrollbar { display: none; }
+.wp-tab-page { padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px calc(env(safe-area-inset-bottom, 0px) + 120px); }
+
+/* ── Encabezado y pestañas ─────────────────────────────────────────── */
+.wp-pt-head { display: flex; align-items: baseline; gap: 10px; margin: 6px 4px 14px; }
+.wp-pt-head h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.6px; }
+.wp-pt-head span { font-size: 14px; font-weight: 500; color: var(--sub); }
+.wp-pt-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.wp-pt-tabs button { height: 38px; padding: 0 16px; border: none; border-radius: 999px; background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05); font: inherit; font-size: 14px; font-weight: 500; color: #374151;
+  transition: background-color 0.25s, color 0.25s, box-shadow 0.25s; }
+.wp-pt-tabs button.on { background: var(--ink); color: #fff; box-shadow: 0 6px 14px -6px rgba(20, 18, 31, 0.5); }
+.wp-pt-tabs button:disabled { opacity: 0.5; }
+
+/* tira de días (la de "Planes aquí") y chips de tipo */
+.wp-pt-cal { margin-bottom: 6px; }
+.wp-pt-types { margin: 0 -16px 6px; }
+.wp-pt-chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 8px; scrollbar-width: none; overscroll-behavior-x: contain; }
+.wp-pt-chips::-webkit-scrollbar { display: none; }
+.wp-pt-chips button { flex: none; height: 34px; padding: 0 14px; border: none; border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 500;
+  color: #374151; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.06); white-space: nowrap; transition: background-color 0.2s, color 0.2s; }
+.wp-pt-chips button.on { background: #eef6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1.5px #93c5fd; }
+
+/* ── Lista ─────────────────────────────────────────────────────────── */
+.wp-pt-day h3 { margin: 18px 4px 10px; font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.wp-pt-list.swap .wp-pt-card { animation: wpPtIn 0.4s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.wp-pt-list.swap .wp-pt-day:nth-child(2) .wp-pt-card { animation-delay: 0.05s; }
+@keyframes wpPtIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+.wp-pt-card { display: block; margin-bottom: 14px; border-radius: 24px; background: #fff; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 26px -14px rgba(20, 18, 31, 0.22); cursor: pointer; }
+.wp-pt-ph { position: relative; height: 158px; margin: 6px 6px 0; border-radius: 19px; overflow: hidden; background: #e5e7eb; }
+.wp-pt-img { position: absolute; inset: 0; background: center / cover no-repeat; }
+.wp-pt-img.none { display: flex; align-items: center; justify-content: center; background: var(--bg); font-style: normal; }
+.wp-pt-img.none span { font-size: 54px; }
+.wp-pt-when { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.wp-pt-when.live i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25); }
+.wp-pt-save { position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; padding: 0; border: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.92); color: var(--ink);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: color 0.2s; }
+.wp-pt-save.on { color: #2563eb; }
+.wp-pt-save.on svg path { fill: currentColor; }
+.wp-pt-n { position: absolute; left: 10px; bottom: 10px; height: 24px; padding: 0 10px; border-radius: 999px; display: flex; align-items: center;
+  background: rgba(20, 18, 31, 0.72); color: #fff; font-size: 11.5px; font-weight: 600; }
+.wp-pt-body { display: flex; flex-direction: column; gap: 3px; padding: 12px 16px 14px; }
+.wp-pt-kind { align-self: flex-start; height: 22px; padding: 0 9px; border-radius: 999px; display: flex; align-items: center;
+  background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 500; margin-bottom: 4px; }
+.wp-pt-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.25; }
+.wp-pt-where { font-size: 13.5px; font-weight: 500; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-pt-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.wp-pt-faces { display: flex; }
+.wp-pt-faces .wp-seal { width: 26px; height: 26px; margin-right: -7px; }
+.wp-pt-faces em { margin-left: 10px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--sub); }
+.wp-pt-count { flex: 1; min-width: 0; margin-left: 10px; font-size: 12.5px; font-weight: 500; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-pt-cta { flex: none; height: 34px; padding: 0 16px; border: none; border-radius: 999px; display: inline-flex; align-items: center;
+  background: var(--ink); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; }
+.wp-pt-cta.soft { background: #eef6ff; color: #1d4ed8; }
+
+.wp-pt-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 48px 20px; text-align: center; }
+.wp-pt-empty b { font-size: 16px; font-weight: 600; }
+.wp-pt-empty span { font-size: 13.5px; color: var(--sub); }
+
+/* cargando */
+.wp-pt-sk { margin: 18px 0 14px; padding: 6px 6px 16px; border-radius: 24px; background: #fff; }
+.wp-pt-sk i { display: block; height: 158px; border-radius: 19px; }
+.wp-pt-sk b { display: block; height: 14px; width: 60%; margin: 14px 10px 0; border-radius: 8px; }
+.wp-pt-sk b.s { width: 38%; }
+.wp-pt-sk i, .wp-pt-sk b { background: linear-gradient(90deg, #eef1f5 25%, #f7f9fb 50%, #eef1f5 75%) 0 0 / 200% 100%; animation: wpPtSk 1.2s linear infinite; }
+@keyframes wpPtSk { to { background-position: -200% 0; } }
+
+/* ── Social (por ahora: pronto) ────────────────────────────────────── */
+.wp-so-soon { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 30px; padding: 30px 22px 26px; border-radius: 26px; background: #fff;
+  text-align: center; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 26px -14px rgba(20, 18, 31, 0.2); }
+.wp-so-soon b { font-size: 18px; font-weight: 700; letter-spacing: -0.2px; }
+.wp-so-soon span { max-width: 300px; font-size: 14px; line-height: 1.45; color: var(--sub); }
+.wp-so-soon .wp-pt-cta { margin-top: 10px; height: 44px; padding: 0 22px; }
+.wp-so-art { position: relative; width: 120px; height: 74px; margin-bottom: 6px; }
+.wp-so-art i { position: absolute; top: 10px; width: 54px; height: 54px; border-radius: 18px; display: flex; align-items: center; justify-content: center;
+  font-style: normal; font-size: 26px; background: #eef6ff; box-shadow: 0 0 0 3px #fff, 0 6px 14px -6px rgba(20, 18, 31, 0.25); }
+.wp-so-art i:nth-child(1) { left: 0; transform: rotate(-9deg); background: #fde68a; }
+.wp-so-art i:nth-child(2) { left: 33px; top: 0; z-index: 1; background: #bfdbfe; }
+.wp-so-art i:nth-child(3) { right: 0; transform: rotate(8deg); background: #fecdd3; }

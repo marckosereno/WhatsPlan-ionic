@@ -17,6 +17,8 @@ import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
 import { initLiquidGlass } from '/src/utils/liquid-glass.js';
 import { FooterMenu }      from '/src/components/FooterMenu.js';
+import { PlansTab }        from '/src/components/tabs/plans-tab.js';
+import { SocialTab }       from '/src/components/tabs/social-tab.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
@@ -1419,11 +1421,23 @@ try {
       activityModal.show();
     };
 
-    const footerMenu = new FooterMenu({
-      onActividades: openActivityModal,
-      onHome:        () => console.log('Home'),
-      onSocial:      () => console.log('Social'),
+    // Secciones de la barra de abajo: Mapa (centro) · Planes · Social
+    const plansTab = new PlansTab({
+      getPM:     () => window.wpApp.placeModal,
+      getMap:    () => window.wpApp.mapView?.getMap?.(),
+      getPlaces: () => window.wpApp.mapView?.allPlaces || [],
     });
+    const socialTab = new SocialTab({ onGoPlans: () => { footerMenu.go('plans', { silent: true }); plansTab.open('mine'); } });
+    const footerMenu = new FooterMenu({
+      onSection: (id) => {
+        if (id === 'plans') { plansTab.open(); }
+        else if (id === 'social') { socialTab.open(); }
+        else { plansTab.close(); socialTab.close(); }
+      },
+      onReselect: (id) => { if (id === 'plans') plansTab.top(); },
+    });
+    window.wpApp.footer = footerMenu;
+    window.wpApp.plansTab = plansTab;
     footerMenu.animateIn();
 
     // Botones del panel lateral
