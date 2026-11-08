@@ -1586,3 +1586,45 @@ div.wp-pm2-ms-opt { box-sizing:border-box; }
   animation:wpPmPtsUp 1.25s cubic-bezier(0.2,0.8,0.3,1) forwards;
 }
 @keyframes wpPmPtsUp { 0% { transform:translate(-50%, 6px) scale(.6); opacity:0; } 20% { opacity:1; transform:translate(-50%, -14px) scale(1.1); } 100% { transform:translate(-50%, -54px) scale(1); opacity:0; } }
+
+/* ════════════════════════════════════════════════════════════════════
+   FICHA — nueva línea de diseño (8 nov 2026)
+   Igual que el mapa y las secciones: blanco con sombras suaves en 2
+   capas, negro (con un degradado apenas perceptible) para lo elegido y
+   el botón principal, degradado azul suave para lo que invita a actuar,
+   rojo solo para el corazón. Va al final para ganarle a lo de antes.
+   ════════════════════════════════════════════════════════════════════ */
+:root { --wp-ink-grad: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%); --wp-soft-grad: linear-gradient(135deg, #93c5fd 0%, #60a5fa 45%, #2563eb 100%);
+  --wp-shadow-float: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 24px -12px rgba(20, 18, 31, 0.32); }
+
+/* "Añadir a favoritos": pill blanca con el corazón rojo (ya no todo rojo) */
+#wp-pm2-add-review.wp-pm2-fav-add {
+  background: #fff; color: #14121f; padding: 7.5px 14px 7.5px 12px;
+  box-shadow: var(--wp-shadow-float);
+}
+#wp-pm2-add-review.wp-pm2-fav-add svg { color: #f43f5e; }
+#wp-pm2-add-review.wp-pm2-fav-coll { background: var(--wp-ink-grad); box-shadow: 0 6px 14px -6px rgba(20, 18, 31, 0.5); }
+#wp-pm2-add-review.wp-pm2-fav-in { background: #f4f6f9; border: none; box-shadow: inset 0 0 0 1px #e2e8f0; }
+
+/* Ver en el mapa · Llamar · Sitio web: un solo estilo de ícono (gris
+   claro con ícono en tinta), sombra suave y resorte al tocar */
+.wp-pm2-action {
+  font-weight: 600; color: #14121f; box-shadow: var(--wp-shadow-float);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+}
+.wp-pm2-action:active { transform: scale(0.94); transition-duration: 0.1s; }
+#wp-pm2-map-btn .wp-pm2-action-icon, #wp-pm2-call-btn .wp-pm2-action-icon,
+#wp-pm2-web-btn .wp-pm2-action-icon, #wp-pm2-more-btn .wp-pm2-action-icon { background: #f1f4f8; color: #14121f; }
+
+/* Reseñas: pestaña elegida en negro; "Añadir reseña" con el degradado suave */
+.wpr-tab { background: #fff; border-color: transparent; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.08); color: #4b5563; font-weight: 500; }
+.wpr-tab-active { background: var(--wp-ink-grad); color: #fff; box-shadow: 0 6px 14px -6px rgba(20, 18, 31, 0.45); font-weight: 600; }
+.wpr-tab.wpr-tab-add { background: var(--wp-soft-grad); box-shadow: 0 6px 14px -6px rgba(37, 99, 235, 0.5); font-weight: 600; }
+
+/* Botón principal (Planear visita / Ver mi plan…): negro con degradado sutil */
+#wp-pm2-footer #wp-pm2-plan-btn { background: var(--wp-ink-grad); font-weight: 600;
+  box-shadow: 0 10px 22px -10px rgba(20, 18, 31, 0.55); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+#wp-pm2-footer #wp-pm2-plan-btn:active { transform: scale(0.96); transition-duration: 0.1s; }
+
+/* Entrada en ola de las secciones al abrir la ficha (wave.js) */
+#wp-pm2-sheet > .wp-wave-in { animation-delay: calc(0.12s + var(--wi, 0) * 45ms); }
