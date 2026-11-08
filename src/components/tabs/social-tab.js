@@ -21,6 +21,8 @@ import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
 import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-render.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
 
+const MUTED = '<i class="wp-so-muted" aria-label="Silenciado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="m2 2 20 20"/></svg></i>';
+
 export class SocialTab {
   constructor({ getPM, getPlaces, onGoPlans, onUnread }) {
     Object.assign(this, { getPM, getPlaces, onGoPlans, onUnread });
@@ -55,7 +57,7 @@ export class SocialTab {
 
   async refreshUnread() {
     try { this.chats = await myChats(); } catch (_) { return 0; }
-    const n = this.chats.reduce((s, c) => s + (c.unread || 0), 0);
+    const n = this.chats.reduce((s, c) => s + (c.muted ? 0 : c.unread || 0), 0);   // los silenciados no suman
     this.onUnread?.(n);
     return n;
   }
@@ -106,7 +108,7 @@ export class SocialTab {
     return `<button type="button" class="wp-so-row${c.unread ? ' unread' : ''}" data-i="${i}">
         <span class="wp-so-pic">${groupAvatar(pm, c, me)}${k === 'live' ? '<em class="wp-so-live"></em>' : ''}</span>
         <span class="wp-so-txt"><b>${pm._esc(c.title || 'Plan')}</b><small>${pm._esc(previewText(pm, c, me))}</small></span>
-        <span class="wp-so-side"><small>${shortWhen(pm, c.last_at || c.scheduled_at)}</small>${c.unread ? `<b class="wp-so-n">${c.unread > 99 ? '99+' : c.unread}</b>` : ''}</span>
+        <span class="wp-so-side"><small>${shortWhen(pm, c.last_at || c.scheduled_at)}</small>${c.unread ? `<b class="wp-so-n${c.muted ? ' muted' : ''}">${c.unread > 99 ? '99+' : c.unread}</b>` : c.muted ? MUTED : ''}</span>
       </button>`;
   }
 

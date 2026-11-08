@@ -10,6 +10,8 @@
 //    escribes) y la barra para escribir con la pill "Enviar" (gris
 //    apagada; con texto se enciende con el degradado).
 //  · Solo el mensaje que llega entra con animación (no se re-anima todo).
+//  · Reacciones, responder, fotos, @menciones, silenciar y "¿Repetimos?":
+//    chat-actions.js, chat-gestures.js, chat-react.js, chat-compose.js.
 //  · Lo que envías sale al instante ("Enviando…") y se confirma al
 //    llegar; si falla, se quita y te avisa.
 //  · Marca leído al abrir, al llegar mensajes y al cerrar.
@@ -21,8 +23,12 @@
 // ════════════════════════════════════════════════════════════════════
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { loadMessages, sendMessage, markRead, onMessages } from '/src/components/chat/chat-service.js';
+import { wireChatActions, fillPhotos, repeatPlan } from '/src/components/chat/chat-actions.js';
+import { paintReply, paintMentions } from '/src/components/chat/chat-compose.js';
+import { getSupabase } from '/src/services/SupabaseService.js';
 import { messagesHtml, groupAvatar } from '/src/components/chat/chat-render.js';
 
+const PLUS = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const QUICK = ['🚗 Voy en camino', '👋 Ya llegué', '⏰ Llego tarde', '🙋 ¿Dónde están?'];
 
 export function ensureChatCss() {
@@ -42,7 +48,8 @@ export function openPlanChat(pm, a, opts = {}) {
   ensureChatCss();
   const me = window.wpApp?.currentUser?.id, id = a.id || a.activity_id;
   const n = (a.participants || []).length;
-  const st = { list: [], stop: null, closed: false };
+  const st = { list: [], stop: null, closed: false, reply: null, muted: !!a.muted };
+  const ended = Date.now() > (pm._mpEndAt(a)?.getTime() || new Date(a.scheduled_at).getTime() + 3 * 3600e3);
   let page = null;
   const onBack = opts.onBack ? () => { page.close(); setTimeout(opts.onBack, 360); return true; } : undefined;
   page = openSheetPage({
@@ -52,7 +59,7 @@ export function openPlanChat(pm, a, opts = {}) {
     onClose: () => { st.closed = true; st.stop?.(); markRead(id); opts.onClose?.(); },
     html: '<div class="wp-ch-list"><p class="wp-ch-load">Cargando…</p></div><button type="button" class="wp-ch-new" hidden>Nuevos mensajes ↓</button>',
     foot: `${quickOn(pm, a) ? `<div class="wp-ch-quick">${QUICK.map(q => `<button type="button" data-q="${q}">${q}</button>`).join('')}</div>` : ''}
-      <form class="wp-ch-bar"><textarea rows="1" maxlength="1000" placeholder="Mensaje" enterkeyhint="send"></textarea>
+      <form class="wp-ch-bar"><button type="button" class="wp-ch-plus" aria-label="Enviar foto">${PLUS}</button><textarea rows="1" maxlength="1000" placeholder="Mensaje" enterkeyhint="send"></textarea>
         <button type="submit" class="wp-ch-send" disabled>Enviar</button></form>`,
   });
   page.root.classList.add('wp-ch-sheet');
@@ -62,9 +69,20 @@ export function openPlanChat(pm, a, opts = {}) {
   const atBottom = () => vp.scrollHeight - vp.scrollTop - vp.clientHeight < 80;
   const toBottom = (smooth) => vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
 
+  const members = () => [...new Set([a.creator_id, ...(a.participants || [])])].filter(x => x && x !== me)
+    .map(x => ({ id: x, name: pm._phName(x, false) })).filter(x => x.name && x.name !== 'Alguien');
+  const again = ended ? `<div class="wp-ch-again"><b>¿Repetimos?</b><span>Arma otro plan en el mismo lugar con los mismos</span>
+      <button type="button" data-again>Repetir el plan</button></div>` : '';
   const paintAll = () => {
-    box.innerHTML = st.list.length ? messagesHtml(pm, st.list, me)
-      : '<div class="wp-ch-empty"><b>Aquí platican los que van</b><span>Saluda al grupo o pónganse de acuerdo para llegar.</span></div>';
+    box.innerHTML = (st.list.length ? messagesHtml(pm, st.list, me, members().map(x => x.name))
+      : '<div class="wp-ch-empty"><b>Aquí platican los que van</b><span>Saluda al grupo o pónganse de acuerdo para llegar.</span></div>') + again;
+    fillPhotos(box, st.list);
+  };
+  const setReply = (m) => {
+    st.reply = m;
+    paintReply(pm, page.foot, m, me, () => setReply(null));
+    page.relayout();
+    if (m) input.focus();
   };
   // Agrega uno (repinta la racha anterior para mover carita y hora)
   const add = (m) => {
@@ -84,16 +102,18 @@ export function openPlanChat(pm, a, opts = {}) {
     if (st.closed) return;
     paintAll(); toBottom(false);
     markRead(id);
-    st.stop = onMessages(id, (m) => { if (!st.closed) { add(m); if (m.user_id !== me) markRead(id); } });
+    st.stop = onMessages(id, (m) => { if (!st.closed) { add(m); if (m.user_id !== me) markRead(id); } },
+      (m) => { const x = st.list.find(y => y.id === m.id); if (x && !st.closed) { Object.assign(x, m); paintAll(); } });
   })();
 
-  const doSend = async (body, kind = 'text') => {
-    body = body.trim(); if (!body) return;
-    const tmp = { id: `tmp-${Date.now()}`, activity_id: id, user_id: me, kind, body, created_at: new Date().toISOString(), _pending: true };
+  const doSend = async (body, kind = 'text', extra = {}) => {
+    body = body.trim(); if (!body && !extra.image_path) return;
+    if (st.reply) { extra.reply_to = st.reply.id; setReply(null); }
+    const tmp = { id: `tmp-${Date.now()}`, activity_id: id, user_id: me, kind, body, created_at: new Date().toISOString(), _pending: true, ...extra };
     add(tmp);
     pm._haptic?.('light');
     try {
-      const m = await sendMessage(id, body, kind);
+      const m = await sendMessage(id, body, kind, extra);
       const i = st.list.indexOf(tmp);
       if (i >= 0) { st.list.splice(i, 1); if (!st.list.some(x => x.id === m.id)) st.list.splice(i, 0, m); }
       paintAll();
@@ -113,7 +133,7 @@ export function openPlanChat(pm, a, opts = {}) {
     if (quick) quick.hidden = has;   // escribiendo: se esconden las respuestas rápidas
     page.relayout();
   };
-  input.addEventListener('input', grow);
+  input.addEventListener('input', () => { grow(); paintMentions(pm, page.foot, input, members()); page.relayout(); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); page.foot.querySelector('form').requestSubmit(); } });
   page.foot.querySelector('form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -123,6 +143,12 @@ export function openPlanChat(pm, a, opts = {}) {
   page.foot.addEventListener('click', (e) => { const q = e.target.closest('[data-q]'); if (q) doSend(q.dataset.q, 'quick'); });
   fitKeyboard(page, input, () => { if (st.list.length) toBottom(false); });
   fresh.addEventListener('click', () => { fresh.hidden = true; toBottom(true); });
+  wireChatActions({
+    pm, a, id, me, st, page, box, paintAll, setReply,
+    sendPhoto: (path) => doSend('', 'text', { image_path: path }),
+    openPlan: () => { page.close(); setTimeout(() => openFullPlan(pm, id), 360); },
+  });
+  box.addEventListener('click', (e) => { if (e.target.closest('[data-again]')) { page.close(); setTimeout(() => repeatPlan(pm, a, me), 360); } });
   vp.addEventListener('scroll', () => { if (!fresh.hidden && atBottom()) fresh.hidden = true; }, { passive: true });
   return page;
 }
@@ -153,6 +179,16 @@ function fitKeyboard(page, input, after) {
   input.addEventListener('blur', () => { focused = false; setTimeout(fit, 80); });
   vv?.addEventListener('resize', fit);
   vv?.addEventListener('scroll', fit);
+}
+
+// "Ver el plan" desde el chat: el plan completo (con la ficha prestada)
+async function openFullPlan(pm, id) {
+  const { data: a } = await getSupabase().from('activities').select('*').eq('id', id).maybeSingle();
+  if (!a) return;
+  const p = (window.wpApp?.mapView?.allPlaces || []).find(x => String(x.place_id || x.id) === String(a.place_id));
+  pm._place = p || { place_id: a.place_id, id: a.place_id, name: a.place_name, lat: a.lat, lng: a.lng };
+  pm._plans = [a];
+  pm._openMyPlanSheet(a);
 }
 
 // Nombres y caras de los del plan (cache de la ficha)
