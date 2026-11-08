@@ -13,6 +13,7 @@ const REPLY = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" strok
 const COPY = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
 
 export function openReactBar(bubble, o) {
+  window.getSelection?.()?.removeAllRanges();   // que no quede nada seleccionado
   const r = bubble.getBoundingClientRect();
   const root = document.createElement('div');
   root.className = 'wp-ch-rx';
@@ -22,6 +23,7 @@ export function openReactBar(bubble, o) {
       <button type="button" data-do="reply">${REPLY}<span>Responder</span></button>
       ${o.canCopy ? `<button type="button" data-do="copy">${COPY}<span>Copiar</span></button>` : ''}
     </div>`;
+  root.addEventListener('contextmenu', (e) => e.preventDefault());
   document.body.appendChild(root);
   const bar = root.querySelector('.wp-ch-rx-bar'), menu = root.querySelector('.wp-ch-rx-menu');
   const vw = window.innerWidth, bw = bar.offsetWidth, mw = menu.offsetWidth;

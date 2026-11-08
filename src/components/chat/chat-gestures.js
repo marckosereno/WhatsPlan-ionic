@@ -16,6 +16,7 @@ const HOLD_MS = 420, REPLY_PX = 48, MAX_PX = 72, TAP2_MS = 300;
 export function attachChatGestures(box, h) {
   let g = null, lastTap = { id: null, t: 0 };
 
+  box.addEventListener('contextmenu', (e) => e.preventDefault());   // sin el menú del sistema
   box.addEventListener('touchstart', (e) => {
     const msg = e.target.closest('.wp-ch-msg');
     if (!msg || e.touches.length > 1) return;
