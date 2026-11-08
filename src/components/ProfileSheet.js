@@ -15,6 +15,9 @@ import { FavoriteService }  from '/src/services/FavoriteService.js';
 import { ReviewService }    from '/src/services/ReviewService.js';
 import { getAvatarUrl }     from '/src/services/AvatarService.js';
 import { fillSavedPlans } from '/src/components/profile/saved-plans.js';
+import { wave }           from '/src/components/place-plans/wave.js';
+import { addDragScroll }  from '/src/components/place-plans/drag-scroll.js';
+import { addDragStrip }   from '/src/components/place-plans/drag-strip.js';
 
 // Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
 // n veces. Devuelve un path SVG/CSS centrado en (c, c).
@@ -161,6 +164,7 @@ export class ProfileSheet {
     this._el = el;
     this._sheet = el.querySelector('.wp-pf-sheet');
     this._body = el.querySelector('.wp-pf-body');
+    addDragScroll(this._body);   // scroll con rebote nuestro (sin saltito)
     el.querySelector('.wp-pf-overlay').onclick = () => this.close();
     el.querySelector('.wp-pf-left').onclick = () => {
       this._pulse(el.querySelector('.wp-pf-left'));
@@ -219,6 +223,7 @@ export class ProfileSheet {
     this._stack.push({ render, view, scroll: 0 });
     this._mount(view, instant ? 0 : 1);
     render.call(this, view);
+    this._waveIn(view, instant ? 0.14 : 0);
   }
   _pop() {
     if (this._stack.length < 2) return;
@@ -230,6 +235,12 @@ export class ProfileSheet {
     this._mount(view, -1);
     top.render.call(this, view);
     this._body.scrollTop = top.scroll || 0;
+  }
+  // Entrada en ola de las piezas de la vista (como "Planear visita"); al
+  // abrir la hoja espera un poquito a que suba
+  _waveIn(view, delay = 0) {
+    view.style.setProperty('--pf-wd', `${delay}s`);
+    wave(view, ':scope > :not([style*="height:28px"])', { max: 9 });
   }
   _mount(view, dir) {
     this._body.innerHTML = '';
@@ -652,7 +663,7 @@ export class ProfileSheet {
     if (d.show_visits && d.places != null) cards.push(['🔖', String(d.places), d.places === 1 ? 'lugar visitado' : 'lugares visitados']);
     if (cards.length) {
       html += `<div class="wp-pf-sec"><span>Su progreso</span></div>
-        <div class="wp-pf-ins-cards">${cards.map(([e, n, t]) => `<div class="wp-pf-ins-card"><span>${e}</span><b>${this._esc(n)}</b><small>${this._esc(t)}</small></div>`).join('')}</div>`;
+        <div class="wp-pf-ins-cards"><div class="wp-pf-ins-track">${cards.map(([e, n, t]) => `<div class="wp-pf-ins-card"><span>${e}</span><b>${this._esc(n)}</b><small>${this._esc(t)}</small></div>`).join('')}</div></div>`;
     }
     // ── Su estilo de plan
     const style = [];
@@ -664,6 +675,8 @@ export class ProfileSheet {
     if (!d.show_visits) html += `<p class="wp-pf-empty wp-pf-ins-priv">🔒 ${this._esc(first)} prefiere no mostrar sus visitas.</p>`;
 
     box.innerHTML = html;
+    box.querySelectorAll('.wp-pf-ins-cards').forEach(el => addDragStrip(el));   // tira con rebote nuestro
+    wave(box);
     const comBtn = box.querySelector('.wp-pf-ins-common');
     if (comBtn) comBtn.onclick = () => {
       this._pulse(comBtn);
@@ -1408,408 +1421,8 @@ export class ProfileSheet {
       l.href = 'https://cdn.jsdelivr.net/npm/@fontsource/anton@5.2.7/400.css';
       document.head.appendChild(l);
     }
-    const s = document.createElement('style');
-    s.id = 'wp-pf-styles';
-    s.textContent = `
-      #wp-pf { position:fixed; inset:0; z-index:1400000; font-family:var(--wp-font); }
-      #wp-pf .wp-pf-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.28); opacity:0; transition:opacity 0.3s ease; }
-      #wp-pf.wp-pf-in .wp-pf-overlay { opacity:1; }
-      #wp-pf .wp-pf-sheet {
-        position:absolute; left:0; right:0; bottom:0;
-        top:calc(env(safe-area-inset-top,0px) + 6px);
-        background:#fff; border-radius:28px 28px 0 0;
-        box-shadow:0 -8px 40px rgba(0,0,0,0.16);
-        display:flex; flex-direction:column;
-        transform:translateY(105%); transition:transform 0.38s cubic-bezier(0.32,0.9,0.36,1);
-      }
-      #wp-pf.wp-pf-in .wp-pf-sheet { transform:translateY(0); }
-      /* Encabezado transparente encima del contenido, con un degradado
-         blanco que se desvanece hacia abajo (mismo principio que el
-         topbar de la ficha): el contenido pasa por debajo sin cortarse */
-      .wp-pf-head {
-        position:absolute; top:0; left:0; right:0; z-index:3; height:58px;
-        display:flex; align-items:center; justify-content:space-between; padding:0 12px;
-        border-radius:28px 28px 0 0;
-        background:linear-gradient(to bottom, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.88) 100%);
-      }
-      .wp-pf-head::after {
-        content:''; position:absolute; left:0; right:0; top:100%; height:30px; pointer-events:none;
-        background:linear-gradient(to bottom, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0) 100%);
-      }
-      .wp-pf-handle { position:absolute; left:50%; top:8px; width:38px; height:4px; margin-left:-19px; border-radius:999px; background:rgba(0,0,0,0.14); }
-      /* ✕ / ⚙ / ← / ⋯ en pills gris suave */
-      .wp-pf-hbtn {
-        position:relative; z-index:1;
-        width:48px; height:36px; padding:0; border:none; border-radius:999px; background:#f3f4f6; color:#374151;
-        display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background-color 0.12s;
-      }
-      .wp-pf-hbtn:active { background:#e5e7eb; }
-      .wp-pf-htitle { flex:1; min-width:0; text-align:center; font-size:16px; font-weight:800; color:#111827;
-        overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 6px; }
-      .wp-pf-body { flex:1; min-height:0; padding-top:58px; border-radius:28px 28px 0 0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
-      .wp-pf-body.wp-pf-noscroll { overflow:hidden; }
-      .wp-pf-view { padding:0 16px calc(16px + env(safe-area-inset-bottom,0px)); }
-
-      /* 34px arriba: las insignias de arriba del avatar quedan fuera del
-         degradado blanco del encabezado */
-      .wp-pf-top { display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:34px; }
-      .wp-pf-avatar-wrap { position:relative; width:92px; height:92px; }
-      /* Foto con contorno "sello": la foto recortada en onda (clip-path en
-         línea) + anillo amarillo y orilla blanca con la misma onda (SVG) */
-      .wp-pf-avatar {
-        width:92px; height:92px; border-radius:999px; background:#e5e7eb center/cover no-repeat;
-      }
-      .wp-pf-seal {
-        position:absolute; left:-9px; top:-9px; width:110px; height:110px; pointer-events:none;
-        filter:drop-shadow(0 6px 12px rgba(245,158,11,0.28));
-      }
-      /* "Cambiar" (antes la cámara): pill negra abajo al centro, montada en la orilla */
-      .wp-pf-cam {
-        position:absolute; left:50%; bottom:-13px; transform:translateX(-50%);
-        height:24px; padding:0 11px; border-radius:999px; border:2.5px solid #fff; box-sizing:border-box;
-        background:#0a0a0a; color:#fff; font-family:inherit; font-size:11.5px; font-weight:800; letter-spacing:0.2px;
-        display:flex; align-items:center; justify-content:center; cursor:pointer; white-space:nowrap;
-        box-shadow:0 3px 8px rgba(0,0,0,0.22); -webkit-tap-highlight-color:transparent;
-      }
-      .wp-pf-cam:active { transform:translateX(-50%) scale(0.94); }
-      .wp-pf-name { margin-top:22px; font-size:22px; font-weight:800; color:#0a0a0a; letter-spacing:-0.01em; }
-      .wp-pf-handle-line { margin-top:2px; font-size:13.5px; color:#6b7280; font-weight:500; min-height:18px; }
-      .wp-pf-bio { margin-top:8px; font-size:14px; color:#374151; line-height:1.4; max-width:300px; }
-      .wp-pf-link { border:none; background:none; padding:0; color:#2563eb; font:inherit; font-weight:700; cursor:pointer; }
-      .wp-pf-stats { display:flex; gap:22px; margin:14px 0 14px; }
-      .wp-pf-stats > * { border:none; background:none; padding:0; font-family:inherit; display:flex; flex-direction:column; align-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-      .wp-pf-stats b { font-size:17px; font-weight:800; color:#0a0a0a; }
-      .wp-pf-stats span { font-size:12px; color:#6b7280; font-weight:500; }
-      .wp-pf-actions { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-      .wp-pf-pill {
-        height:38px; padding:0 18px; border:none; border-radius:999px; background:#f3f4f6; color:#111827;
-        display:inline-flex; align-items:center; justify-content:center; gap:6px;
-        font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
-        transition:background-color 0.12s;
-      }
-      .wp-pf-pill:active { background:#e5e7eb; }
-      .wp-pf-pill-dark { background:#0a0a0a; color:#fff; }
-      .wp-pf-pill-dark:active { background:#262626; }
-      .wp-pf-pill-sm { height:32px; padding:0 14px; font-size:13px; margin-left:auto; flex:none; }
-
-      /* Banner "Lugares guardados": mapa de fondo en azul → lavanda, número
-         grande y stickers 3D con borde blanco (como recortados) */
-      .wp-pf-banner {
-        width:100%; height:150px; margin-top:18px; position:relative; overflow:hidden; display:block;
-        border:none; border-radius:26px; padding:0; text-align:left; color:#fff; cursor:pointer;
-        /* Azul de la marca + trama de puntitos (sin líneas ni stickers) */
-        background:
-          radial-gradient(rgba(255,255,255,0.16) 1.2px, transparent 1.6px) 0 0 / 14px 14px,
-          radial-gradient(120% 140% at 0% 0%, #5b7bff 0%, #2f55ff 45%, #1a3fe0 100%);
-        box-shadow:0 12px 28px rgba(26,63,224,0.30), inset 0 1px 0 rgba(255,255,255,0.25); font-family:inherit; -webkit-tap-highlight-color:transparent;
-      }
-      /* Polaroids de tus lugares guardados (derecha) */
-      .wp-pf-bn-photos { position:absolute; right:-6px; top:0; bottom:0; width:58%; pointer-events:none; }
-      .wp-pf-bn-photos i {
-        position:absolute; width:74px; height:96px; box-sizing:border-box; border-radius:14px;
-        background:#dfe6ff center/cover no-repeat; border:4px solid #fff;
-        box-shadow:0 10px 20px rgba(10,20,90,0.35); transform:rotate(var(--r));
-      }
-      .wp-pf-bn-photos .b0 { right:118px; top:34px; z-index:1; }
-      .wp-pf-bn-photos .b1 { right:72px; top:14px; z-index:3; }
-      .wp-pf-bn-photos .b2 { right:28px; top:40px; z-index:2; }
-      .wp-pf-bn-photos .b3 { right:-12px; top:10px; z-index:1; }
-      .wp-pf-banner-sub { margin-top:2px; font-size:12.5px; font-weight:600; color:rgba(255,255,255,0.82); }
-      /* Explora tu ciudad */
-      .wp-pf-explore {
-        width:100%; margin-top:12px; display:flex; align-items:center; gap:12px; padding:12px 16px 12px 12px;
-        border:none; border-radius:22px; background:#f4f6ff; cursor:pointer; text-align:left; font-family:inherit;
-        -webkit-tap-highlight-color:transparent; transition:transform .15s;
-      }
-      .wp-pf-explore:active { transform:scale(0.98); }
-      .wp-pf-ex-hex { flex-shrink:0; width:44px; height:44px; display:flex; align-items:center; justify-content:center; }
-      .wp-pf-ex-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-      .wp-pf-ex-txt b { font-size:15px; font-weight:800; color:#111827; }
-      .wp-pf-ex-txt small { font-size:12.5px; color:#6b7280; }
-      /* Puntos y nivel (fase 3) */
-      .wp-pf-points {
-        width:100%; margin-top:10px; display:flex; align-items:center; gap:12px; padding:12px 16px 12px 12px;
-        border:none; border-radius:22px; background:#fff8e1; cursor:pointer; text-align:left; font-family:inherit;
-        -webkit-tap-highlight-color:transparent; transition:transform .15s; box-sizing:border-box;
-      }
-      button.wp-pf-points:active { transform:scale(0.98); }
-      .wp-pf-points-big { margin:6px 0 14px; cursor:default; }
-      .wp-pf-pt-lv { position:relative; flex-shrink:0; width:46px; height:50px; display:flex; align-items:center; justify-content:center; }
-      .wp-pf-pt-lv svg { position:absolute; inset:0; filter:drop-shadow(0 3px 6px rgba(245,158,11,0.35)); }
-      .wp-pf-pt-lv b { position:relative; font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:21px; color:#3b2500; }
-      .wp-pf-pt-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
-      .wp-pf-pt-txt > b { font-size:16px; font-weight:800; color:#111827; }
-      .wp-pf-pt-n { font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:22px; letter-spacing:0.3px; }
-      .wp-pf-pt-bar { display:block; height:8px; border-radius:999px; background:rgba(245,158,11,0.18); overflow:hidden; }
-      .wp-pf-pt-bar i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#ffd23f,#f59e0b); transition:width .7s cubic-bezier(0.32,1.1,0.5,1); }
-      .wp-pf-pt-sub { font-size:12px; color:#8a6d1f; font-weight:600; }
-      .wp-pf-pt-rank { flex-shrink:0; display:flex; flex-direction:column; align-items:center; min-width:56px; }
-      .wp-pf-pt-rank b { font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:24px; color:#f59e0b; line-height:1.1; }
-      .wp-pf-pt-rank small { font-size:11px; color:#8a6d1f; font-weight:600; white-space:nowrap; }
-      .wp-fp-tabs.wp-pf-rk-tabs { margin:0 0 8px; }
-      .wp-pf-rk-row { gap:10px; }
-      .wp-pf-rk-row.me { background:#eef3ff; border-radius:16px; }
-      .wp-pf-rk-pos { flex-shrink:0; width:26px; text-align:center; font-size:15px; font-weight:800; color:#6b7280; }
-      .wp-pf-rk-pts { flex-shrink:0; margin-left:auto; font-family:'Anton','Open Sans',sans-serif; font-size:19px; color:#111827; }
-      .wp-pf-rk-pts small { margin-left:3px; font-family:'Open Sans',sans-serif; font-size:11px; font-weight:700; color:#8a8f99; }
-      .wp-pf-rule-pts { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:18px; color:#f59e0b; }
-      /* Insignias alrededor del avatar ("explosión" al abrir el perfil) */
-      /* isolation: todo (avatar, insignias, cámara) se apila solo dentro del avatar */
-      .wp-pf-avatar-wrap { isolation:isolate; }
-      .wp-pf-avatar-wrap .wp-pf-avatar { position:relative; z-index:1; }
-      .wp-pf-avatar-wrap .wp-pf-cam { z-index:4; }
-      /* Burbuja de insignias (tipo chat / pensamiento) encima del avatar */
-      .wp-pf-orbit { position:absolute; left:50%; top:50%; width:0; height:0; z-index:3; }
-      .wp-pf-bub {
-        position:absolute; left:0; top:0; touch-action:none;
-        transform:translate(-50%,-50%) translate(var(--x),var(--y)) rotate(var(--r)) scale(var(--k));
-        opacity:0;
-      }
-      .wp-pf-orbit.in .wp-pf-bub { animation:wpPfBub .55s cubic-bezier(0.3,1.5,0.5,1) .3s both; }
-      @keyframes wpPfBub {
-        0%   { opacity:0; transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(0.2); }
-        30%  { opacity:1; }
-        100% { opacity:1; transform:translate(-50%,-50%) translate(var(--x),var(--y)) rotate(var(--r)) scale(var(--k)); }
-      }
-      .wp-pf-orbit .wp-pf-bub.placed { animation:none; opacity:1; }
-      .wp-pf-bub.grab .wp-pf-bub-in { box-shadow:0 14px 28px rgba(17,24,39,0.22), 0 0 0 0.5px rgba(17,24,39,0.06); }
-      .wp-pf-bub-in {
-        position:relative; display:flex; align-items:center; gap:1px; padding:6px 10px; border-radius:22px;
-        background:#fff; box-shadow:0 8px 20px rgba(17,24,39,0.16), 0 0 0 0.5px rgba(17,24,39,0.06);
-        transition:box-shadow .15s;
-      }
-      .wp-pf-bub-e {
-        width:30px; height:32px; padding:0; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; font-size:23px; line-height:32px;
-        transform:rotate(var(--er)); opacity:0;
-      }
-      .wp-pf-orbit.in .wp-pf-bub-e { animation:wpPfBubE .45s cubic-bezier(0.3,1.7,0.5,1) var(--d) both; }
-      @keyframes wpPfBubE { from { opacity:0; transform:rotate(var(--er)) scale(0.3); } to { opacity:1; transform:rotate(var(--er)) scale(1); } }
-      .wp-pf-bub-e.more {
-        width:auto; height:22px; margin-left:4px; padding:0 7px; border-radius:999px; background:#0a0a0a; color:#fff;
-        font-family:inherit; font-size:11.5px; font-weight:800; line-height:22px;
-      }
-      /* Colita: dos circulitos hacia el avatar (abajo a la derecha por defecto) */
-      .wp-pf-bub-t1, .wp-pf-bub-t2 { position:absolute; border-radius:50%; background:#fff; box-shadow:0 4px 10px rgba(17,24,39,0.14); }
-      .wp-pf-bub-t1 { width:12px; height:12px; right:16px; bottom:-9px; }
-      .wp-pf-bub-t2 { width:6px; height:6px; right:8px; bottom:-17px; }
-      .wp-pf-bub.tail-l .wp-pf-bub-t1 { right:auto; left:16px; }
-      .wp-pf-bub.tail-l .wp-pf-bub-t2 { right:auto; left:8px; }
-      .wp-pf-bub.tail-up .wp-pf-bub-t1 { bottom:auto; top:-9px; }
-      .wp-pf-bub.tail-up .wp-pf-bub-t2 { bottom:auto; top:-17px; }
-      .wp-pf-bd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
-      .wp-pf-bd { display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px 10px; border-radius:18px; background:#f4f5f7; text-align:center; }
-      .wp-pf-bd span {
-        height:46px; display:flex; align-items:center; justify-content:center; font-size:32px; line-height:1;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; filter:grayscale(1); opacity:.4;
-      }
-      .wp-pf-bd.on { background:#fff8e1; }
-      .wp-pf-bd.on span {
-        filter:none; opacity:1;
-        text-shadow:
-          2.4px 0 0 #fff, -2.4px 0 0 #fff, 0 2.4px 0 #fff, 0 -2.4px 0 #fff,
-          1.7px 1.7px 0 #fff, -1.7px 1.7px 0 #fff, 1.7px -1.7px 0 #fff, -1.7px -1.7px 0 #fff,
-          2.2px 0.9px 0 #fff, -2.2px 0.9px 0 #fff, 2.2px -0.9px 0 #fff, -2.2px -0.9px 0 #fff,
-          0.9px 2.2px 0 #fff, -0.9px 2.2px 0 #fff, 0.9px -2.2px 0 #fff, -0.9px -2.2px 0 #fff,
-          0 3px 6px rgba(17,24,39,0.25);
-      }
-      .wp-pf-bd.on b { color:#111827; }
-      .wp-pf-bd.on small { color:#8a6d1f; }
-      .wp-pf-col-done { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; font-size:13px; font-weight:700; color:#16a34a; }
-      .wp-pf-col-done[hidden] { display:none; }
-      .wp-pf-col-faces { display:flex; }
-      .wp-pf-col-faces i { width:24px; height:24px; margin-left:-7px; border-radius:50%; background:#e5e7eb center/cover no-repeat; }
-      .wp-pf-col-faces i:first-child { margin-left:0; }
-      /* Creador de avatar */
-      .wp-av-mk { padding-top:4px; }
-      .wp-av-prev { position:relative; height:250px; border-radius:28px; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; transition:background-color .25s; }
-      .wp-av-prev img { width:250px; height:250px; display:block; }
-      .wp-av-fab {
-        position:absolute; bottom:12px; width:44px; height:44px; border-radius:50%; border:none; padding:0; cursor:pointer;
-        background:#fff; color:#111827; display:flex; align-items:center; justify-content:center;
-        box-shadow:0 4px 12px rgba(17,24,39,0.16); -webkit-tap-highlight-color:transparent; transition:transform .15s;
-      }
-      .wp-av-fab.l { left:12px; } .wp-av-fab.r { right:12px; }
-      .wp-av-fab:active { transform:scale(0.92); }
-      .wp-av-fab.on { background:#0a0a0a; color:#fff; }
-      .wp-av-fab.spin svg { animation:wpAvSpin .45s cubic-bezier(0.3,1.4,0.5,1); }
-      @keyframes wpAvSpin { from { transform:rotate(-180deg) scale(.7); } to { transform:none; } }
-      .wp-av-colors { margin-top:12px; padding:12px 14px; border-radius:20px; background:#f4f5f7; display:flex; flex-direction:column; gap:10px; }
-      .wp-av-colors[hidden] { display:none; }
-      .wp-av-crow { display:flex; align-items:center; gap:10px; }
-      .wp-av-crow > span { width:58px; flex-shrink:0; font-size:12.5px; font-weight:700; color:#6b7280; }
-      .wp-av-crow > div { display:flex; gap:7px; flex-wrap:wrap; }
-      .wp-av-sw { width:26px; height:26px; border-radius:50%; border:none; padding:0; cursor:pointer; box-shadow:inset 0 0 0 1px rgba(17,24,39,0.15); }
-      .wp-av-sw.on { box-shadow:0 0 0 2px #fff, 0 0 0 4px #0a0a0a; }
-      .wp-av-tabs { display:flex; justify-content:space-between; gap:4px; margin:14px 0 10px; overflow-x:auto; scrollbar-width:none; }
-      .wp-av-tabs::-webkit-scrollbar { display:none; }
-      .wp-av-tabs button { flex-shrink:0; border:none; background:none; padding:6px 4px; font-family:inherit; font-size:14.5px; font-weight:700; color:#9ca3af; cursor:pointer; }
-      .wp-av-tabs button.on { color:#0a0a0a; }
-      .wp-av-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-      .wp-av-opt {
-        aspect-ratio:1; border-radius:20px; border:2px solid #eef0f3; background:#fafafa; padding:6px; cursor:pointer;
-        display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; transition:transform .12s;
-      }
-      .wp-av-opt img { width:100%; height:100%; object-fit:contain; }
-      .wp-av-opt.on { border-color:#0a0a0a; background:#f4f5f7; }
-      .wp-av-opt:active { transform:scale(0.95); }
-      .wp-av-none { font-size:13px; font-weight:700; color:#9ca3af; }
-      .wp-av-foot { position:sticky; bottom:0; margin:14px -16px 0; padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
-        background:linear-gradient(to bottom, rgba(255,255,255,0), #fff 30%); display:flex; flex-direction:column; align-items:center; gap:6px; }
-      .wp-av-save { width:100%; height:50px; border:none; border-radius:999px; background:#0a0a0a; color:#fff; font-family:inherit; font-size:16px; font-weight:800; cursor:pointer; }
-      .wp-av-save:disabled { opacity:.6; }
-      .wp-av-photo { border:none; background:none; padding:6px 10px; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
-      /* Perfil de otra persona: en común, progreso, estilo */
-      .wp-pf-lvline { margin-top:4px; font-size:13px; color:#8a6d1f; font-weight:600; }
-      .wp-pf-lvline b { color:#b45309; font-weight:800; }
-      .wp-pf-follows-me { display:inline-block; margin-left:4px; padding:1px 8px; border-radius:999px; background:#eef0f3; color:#374151; font-size:11.5px; font-weight:700; vertical-align:1px; }
-      .wp-pf-ins { margin-top:16px; }
-      .wp-pf-ins-common {
-        width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px 12px 10px; border:none; border-radius:22px;
-        background:#f0f5ff; cursor:pointer; text-align:left; font-family:inherit; -webkit-tap-highlight-color:transparent;
-      }
-      /* Abanico de 3 fotos chiquitas (propio, no el de las colecciones) */
-      .wp-pf-ins-stack { position:relative; display:block; width:62px; height:54px; flex-shrink:0; }
-      .wp-pf-ins-stack i {
-        position:absolute; left:50%; bottom:2px; width:34px; height:44px; margin-left:-17px; box-sizing:border-box;
-        border-radius:9px; border:2px solid #fff; background:#dfe6f7 center/cover no-repeat;
-        box-shadow:0 2px 6px rgba(17,24,39,.2); transform-origin:50% 100%;
-      }
-      .wp-pf-ins-stack .p0 { z-index:3; }
-      .wp-pf-ins-stack .p1 { transform:rotate(-14deg) translateX(-10px); z-index:2; }
-      .wp-pf-ins-stack .p2 { transform:rotate(14deg) translateX(10px); z-index:1; }
-      .wp-pf-ins-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-      .wp-pf-ins-txt b { font-size:15px; font-weight:800; color:#111827; }
-      .wp-pf-ins-txt small { font-size:12.5px; color:#4b5b8a; font-weight:600; }
-      .wp-pf-ins-chev { color:#9ca3af; display:flex; flex-shrink:0; }
-      .wp-pf-ins-mutual { display:flex; align-items:center; gap:10px; margin:12px 4px 0; font-size:13px; color:#4b5563; }
-      .wp-pf-ins-mutual b { color:#111827; }
-      .wp-pf-ins-faces { display:flex; flex-shrink:0; }
-      .wp-pf-ins-faces i { width:26px; height:26px; margin-left:-8px; border-radius:50%; background:#e5e7eb center/cover no-repeat; }
-      .wp-pf-ins-faces i:first-child { margin-left:0; }
-      .wp-pf-ins-cards { display:flex; gap:10px; overflow-x:auto; margin:0 -16px; padding:2px 16px 6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-      .wp-pf-ins-cards::-webkit-scrollbar { display:none; }
-      .wp-pf-ins-card { flex:0 0 auto; min-width:118px; padding:12px 14px; border-radius:20px; background:#f4f5f7; display:flex; flex-direction:column; gap:2px; }
-      .wp-pf-ins-card span { font-size:20px; line-height:1; margin-bottom:4px; }
-      .wp-pf-ins-card b { font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:24px; color:#111827; line-height:1.1; }
-      .wp-pf-ins-card small { font-size:12px; color:#6b7280; font-weight:600; max-width:150px; }
-      .wp-pf-ins-style { display:flex; flex-direction:column; gap:10px; }
-      .wp-pf-ins-chips { display:flex; flex-wrap:wrap; gap:8px; }
-      .wp-pf-ins-chips span { padding:7px 12px; border-radius:999px; background:#fff8e1; color:#3b2500; font-size:13px; font-weight:700; }
-      .wp-pf-ins-row { display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; }
-      .wp-pf-ins-row > span:first-child { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:#f4f5f7; display:flex; align-items:center; justify-content:center; font-size:16px; }
-      .wp-pf-ins-priv { margin-top:14px; text-align:center; }
-      .wp-pf-rk-priv { display:block; margin:14px auto 0; padding:8px 14px; border:none; background:none; font-family:inherit; font-size:13.5px; font-weight:700; color:#1a5cf5; cursor:pointer; }
-      .wp-pf-ex-pct { flex-shrink:0; font-family:'Anton','Open Sans',sans-serif; font-size:26px; color:#1a5cf5; }
-      .wp-pf-banner-l { position:absolute; left:20px; top:16px; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
-      .wp-pf-banner-l > span:first-child { font-size:17px; font-weight:700; color:rgba(255,255,255,0.78); }
-      .wp-pf-banner-l b {
-        font-family:'Anton','Open Sans',sans-serif; font-weight:400; font-size:60px; line-height:0.95; margin-top:2px;
-        color:#fff; text-shadow:0 2px 10px rgba(20,30,120,0.25);
-      }
-      .wp-pf-banner-pill { margin-top:6px; display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
-        background:#fff; font-size:12px; font-weight:800; color:#1f4bff; box-shadow:0 4px 12px rgba(20,30,120,0.22); }
-      /* Borde blanco tipo sticker: 4 sombras sólidas + una suave */
-      .wp-pf-sticker {
-        position:absolute; object-fit:contain; transform:rotate(var(--r));
-        filter:drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff)
-               drop-shadow(0 5px 6px rgba(20,30,90,0.28));
-      }
-      .wp-pf-sticker-txt { display:flex; align-items:center; justify-content:center; font-size:46px; line-height:1;
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
-
-      .wp-pf-sec { display:flex; justify-content:space-between; align-items:baseline; margin:22px 2px 10px; font-size:17px; font-weight:800; color:#0a0a0a; }
-      .wp-pf-sec-n { font-size:13px; font-weight:600; color:#9ca3af; border:none; background:none; padding:0; font-family:inherit; }
-      .wp-pf-sec-n.wp-pf-link { color:#2563eb; font-weight:700; }
-      .wp-pf-empty { margin:4px 2px; font-size:13.5px; color:#9ca3af; line-height:1.4; }
-
-      .wp-pf-cols { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 10px; }
-      .wp-pf-col { border:none; background:none; padding:0; text-align:left; font-family:inherit; cursor:pointer; min-width:0; -webkit-tap-highlight-color:transparent; }
-      .wp-pf-col-skel { height:130px; border-radius:18px; background:#f3f4f6; }
-      .wp-pf-stack { position:relative; width:100%; aspect-ratio:1/1; }
-      .wp-pf-stack i {
-        position:absolute; inset:8% 12%; border-radius:16px; background:#e5e7eb center/cover no-repeat;
-        border:3px solid #fff; box-shadow:0 4px 12px rgba(0,0,0,0.14);
-        transform:translateX(var(--x)) rotate(var(--r));
-      }
-      .wp-pf-stack-emoji {
-        position:absolute; left:4%; bottom:2%; z-index:5; width:30px; height:30px; border-radius:999px; background:#fff;
-        display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 2px 8px rgba(0,0,0,0.16);
-        font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;
-      }
-      .wp-pf-col-name { margin-top:6px; font-size:13.5px; font-weight:700; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-pf-col-meta { display:flex; align-items:center; gap:4px; font-size:12px; color:#6b7280; }
-
-      .wp-pf-act-cluster { width:100%; display:flex; align-items:center; gap:14px; padding:12px 12px 12px 14px; border:none; border-radius:22px;
-        background:#f7f7f8; font-family:inherit; text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-      .wp-pf-act-stack { position:relative; width:94px; height:74px; flex:none; }
-      .wp-pf-act-card {
-        position:absolute; top:4px; width:56px; height:66px; border-radius:14px; color:#fff; border:2.5px solid #fff;
-        display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.16);
-        transform:rotate(var(--r)); box-sizing:border-box;
-      }
-      .wp-pf-act-card b { font-size:20px; line-height:1; font-weight:800; }
-      .wp-pf-act-card span { font-size:10.5px; font-weight:800; letter-spacing:0.04em; }
-      .wp-pf-act-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-      .wp-pf-act-txt b { font-size:15px; font-weight:800; color:#111827; }
-      .wp-pf-act-txt span { font-size:12.5px; color:#6b7280; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-pf-act-chev { color:#9ca3af; display:flex; }
-
-      .wp-pf-list { display:flex; flex-direction:column; gap:2px; margin-top:4px; }
-      .wp-pf-row {
-        width:100%; display:flex; align-items:center; gap:12px; padding:10px 8px; border:none; border-radius:999px; background:transparent;
-        font-family:inherit; text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; box-sizing:border-box;
-        transition:background-color 0.12s;
-      }
-      .wp-pf-row:active { background:#f3f4f6; }
-      .wp-pf-row-img { width:50px; height:50px; flex:none; border-radius:16px; background:#e5e7eb center/cover no-repeat; }
-      .wp-pf-row-av { width:46px; height:46px; flex:none; border-radius:999px; background:#e5e7eb center/cover no-repeat; }
-      .wp-pf-row-date { width:50px; height:54px; flex:none; border-radius:14px; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; }
-      .wp-pf-row-date b { font-size:19px; line-height:1; }
-      .wp-pf-row-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-      .wp-pf-row-txt b { font-size:15px; font-weight:700; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-pf-row-txt span { font-size:12.5px; color:#6b7280; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .wp-pf-row-chev { color:#c4c7cc; display:flex; flex:none; }
-
-      .wp-pf-col-head { display:flex; flex-direction:column; align-items:center; gap:6px; margin:0 0 14px; }
-      .wp-pf-stack-big { width:150px; }
-      .wp-pf-col-hmeta { font-size:13px; color:#6b7280; font-weight:600; margin-bottom:6px; }
-
-      .wp-pf-edit { display:flex; flex-direction:column; gap:12px; padding-top:4px; }
-      .wp-pf-field { display:flex; flex-direction:column; gap:6px; }
-      .wp-pf-field > span { font-size:12.5px; font-weight:700; color:#6b7280; padding-left:6px; }
-      .wp-pf-field input, .wp-pf-field textarea, .wp-pf-at {
-        width:100%; box-sizing:border-box; border:1px solid rgba(0,0,0,0.06); background:#f3f4f6; border-radius:22px;
-        padding:12px 16px; font-size:15px; font-family:inherit; color:#0a0a0a; outline:none;
-      }
-      .wp-pf-field input { border-radius:999px; height:46px; }
-      .wp-pf-field input:focus, .wp-pf-field textarea:focus, .wp-pf-at:focus-within { background:#fff; border-color:#d1d5db; }
-      .wp-pf-field textarea { resize:none; line-height:1.4; }
-      .wp-pf-at { display:flex; align-items:center; gap:2px; height:46px; border-radius:999px; padding:0 16px; }
-      .wp-pf-at i { font-style:normal; color:#9ca3af; font-weight:700; }
-      .wp-pf-at input { border:none; background:transparent; padding:0; height:100%; }
-      .wp-pf-at input:focus { background:transparent; }
-      .wp-pf-err { font-style:normal; font-size:12px; color:#e11d48; padding-left:8px; min-height:0; }
-      .wp-pf-save { margin-top:6px; height:48px; border:none; border-radius:999px; background:#0a0a0a; color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; }
-      .wp-pf-save:disabled { opacity:0.5; }
-
-      .wp-pf-group { background:#f7f7f8; border-radius:22px; padding:4px; margin-top:12px; }
-      .wp-pf-set { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border:none; background:transparent; border-radius:18px;
-        font-family:inherit; text-align:left; color:#9ca3af; cursor:pointer; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-      button.wp-pf-set:active { background:#eef0f3; }
-      .wp-pf-set-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-      .wp-pf-set-txt b { font-size:15px; font-weight:700; color:#111827; }
-      .wp-pf-set-txt span { font-size:12.5px; color:#6b7280; }
-      .wp-pf-danger .wp-pf-set-txt b { color:#e11d48; }
-      .wp-pf-switch { flex:none; position:relative; width:50px; height:30px; padding:0; border:none; border-radius:999px; background:#d1d5db; cursor:pointer; transition:background-color 0.18s; }
-      .wp-pf-switch::after { content:''; position:absolute; left:3px; top:3px; width:24px; height:24px; border-radius:999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:left 0.18s; }
-      .wp-pf-switch.wp-pf-on { background:#0a0a0a; }
-      .wp-pf-switch.wp-pf-on::after { left:23px; }
-
-      .wp-pf-skel { background-color:#eceef1; }
-      .wp-pf-skel-line { display:inline-block; height:20px; border-radius:999px; }
-    `;
+    const s = document.createElement('link');
+    s.id = 'wp-pf-styles'; s.rel = 'stylesheet'; s.href = '/styles/profile.css';
     document.head.appendChild(s);
   }
 }
