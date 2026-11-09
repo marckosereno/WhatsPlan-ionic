@@ -13,10 +13,11 @@
 // ════════════════════════════════════════════════════════════════════
 import { getSupabase } from '/src/services/SupabaseService.js';
 
-const OPEN_PX = 88, KILL_PX = 180, HOLD_MS = 450;
+const OPEN_PX = 76, KILL_PX = 180, HOLD_MS = 450;
 
+// El mismo ⋯ de la ficha: círculo gris suave con los tres puntos
 export const moreButton = () => `<button type="button" class="wp-nf-more" data-nf-more aria-label="Opciones">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>`;
+  <span class="wp-nf-more-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span></button>`;
 
 // ── En la base ──────────────────────────────────────────────────────
 async function rpcDelete(ids, onlyRead = false) {
@@ -41,6 +42,9 @@ export function wireNotifActions(panel) {
     r.style.transition = anim ? 'transform 0.38s cubic-bezier(0.34, 1.3, 0.64, 1)' : 'none';
     r.style.transform = x ? `translate3d(${x}px,0,0)` : '';
     item.classList.toggle('swiping', !!x);
+    // el botón de borrar crece con el deslizar (0 → 1)
+    item.style.setProperty('--p', Math.min(1, Math.abs(x) / OPEN_PX).toFixed(3));
+    item.querySelector('.wp-nf-del').style.transition = anim ? 'transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s' : 'none';
   };
   const closeOpened = () => { if (opened) { setX(opened, 0, true); opened = null; } };
 

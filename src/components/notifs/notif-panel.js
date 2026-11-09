@@ -13,6 +13,7 @@
 //    (notif-actions.js). El numerito se apaga al abrir; el puntito de
 //    cada aviso se queda hasta tocarlo o cerrar la hoja (así se ve
 //    cuáles eran nuevos).
+//  · Jalar hacia abajo (arriba de la lista) → busca avisos nuevos.
 //  · Sin internet: lo último que se vio (tab-cache.js) con aviso.
 //
 // Uso: const n = new NotifPanel({ getPM }); n.start(user) / n.stop()
@@ -109,6 +110,7 @@ export class NotifPanel {
     document.body.classList.add('wp-nf-open');   // menús y confirmación por encima de la hoja
     this.page.body.addEventListener('click', (e) => this._click(e));
     wireNotifActions(this);
+    this._wirePull();
     this._badge(0);                               // ya los viste: se apaga el numerito
     try {
       this.list = await withTimeout(Notif.getNotifications(this.user.id));
@@ -121,6 +123,55 @@ export class NotifPanel {
     if (!this.page) return;
     this.seen = this.list.filter(n => !n.read).map(n => String(n.id));   // los que eran nuevos al abrir
     this._paint(true);
+  }
+
+  // ── Jalar para actualizar ──────────────────────────────────────────
+  _wirePull() {
+    const root = this.page.root, vp = root.querySelector('.wp-st-vp');
+    const ptr = document.createElement('div');
+    ptr.className = 'wp-nf-ptr';
+    ptr.innerHTML = '<i><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></i>';
+    root.appendChild(ptr);
+    const PULL = 110;
+    let y0 = null, p = 0;
+    const show = (v) => { p = v; ptr.style.setProperty('--p', Math.min(1, v).toFixed(3)); ptr.classList.toggle('armed', v >= 1); };
+    vp.addEventListener('touchstart', (e) => { y0 = vp.scrollTop <= 0 && !this.loading ? e.touches[0].clientY : null; }, { passive: true });
+    vp.addEventListener('touchmove', (e) => {
+      if (y0 == null) return;
+      const dy = e.touches[0].clientY - y0;
+      if (dy <= 0) { show(0); return; }
+      const was = p >= 1;
+      show(dy / PULL);
+      if (!was && p >= 1) this.getPM()?._haptic?.('light');
+    }, { passive: true });
+    const end = () => {
+      if (y0 == null) return;
+      y0 = null;
+      if (p >= 1) this.refresh(ptr); else show(0);
+    };
+    vp.addEventListener('touchend', end, { passive: true });
+    vp.addEventListener('touchcancel', end, { passive: true });
+    this._ptrShow = show;
+  }
+
+  async refresh(ptr) {
+    if (this.loading || !this.page) return;
+    this.loading = true;
+    ptr?.classList.add('spin');
+    const before = new Set(this.list.map(n => String(n.id)));
+    try {
+      const list = await withTimeout(Notif.getNotifications(this.user.id));
+      this.offline = false;
+      cacheSet('notifs', list.slice(0, 30));
+      const fresh = list.filter(n => !before.has(String(n.id)));
+      fresh.forEach(n => { if (!n.read) this.seen.push(String(n.id)); });
+      this.list = list;
+      if (this.page) this._paint(!!fresh.length);
+      this.getPM()?._showToast?.(fresh.length ? (fresh.length > 1 ? `${fresh.length} nuevas` : '1 nueva') : 'Estás al día');
+    } catch (e) {
+      this.getPM()?._showToast?.(netError(e) ? 'Sin conexión' : 'No se pudo actualizar');
+    }
+    setTimeout(() => { ptr?.classList.remove('spin'); this._ptrShow?.(0); this.loading = false; }, 350);
   }
 
   // Al cerrar (o "Marcar todas"): los que estaban nuevos quedan leídos,
@@ -159,7 +210,7 @@ export class NotifPanel {
     box.innerHTML = (this.offline ? offlineNote(true) : '') + groups.filter(g => g[1].length).map(([h, items]) => `<section class="wp-nf-sec"><h3>${h}</h3>
       ${items.map(([n, i]) => {
         const [ic, col] = kindOf(n);
-        return `<div class="wp-nf-item"><button type="button" class="wp-nf-del" aria-label="Borrar">${ICONS.trash}<span>Borrar</span></button>
+        return `<div class="wp-nf-item"><button type="button" class="wp-nf-del" aria-label="Borrar"><i>${ICONS.trash}</i><span>Borrar</span></button>
           <button type="button" class="wp-nf-row${n.read ? '' : ' new'}" data-i="${i}">
           <i class="wp-nf-ic ${col}">${ICONS[ic]}</i>
           <span class="wp-nf-txt"><b>${pm?._esc ? pm._esc(clean(n.title)) : clean(n.title)}</b>${n.body ? `<small>${pm?._esc ? pm._esc(n.body) : n.body}</small>` : ''}</span>

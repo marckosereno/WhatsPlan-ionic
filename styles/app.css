@@ -1579,3 +1579,6 @@ body .wp-ce-cback svg { width: 20px; height: 20px; }
 
 /* Numerito de las chips ("Todos 40"): pill alargada, no círculo */
 body .subcat-chip-badge { min-width: 28px; height: 18px; padding: 0 7px; box-sizing: border-box; font-size: 10.5px; top: -7px; right: -8px; }
+/* La fila de chips deja aire arriba para que el numerito no se corte */
+body .panel-subcats-scroll:not(.wps-subcats-floating) { padding-top: 13px; }
+body .subcat-chip-badge { top: -8px; }
