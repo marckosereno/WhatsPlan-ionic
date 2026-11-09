@@ -48,10 +48,12 @@ export async function respondDm(threadId, accept) {
   return data;
 }
 
-export async function loadMessages(activityId, limit = 80) {
+// after: solo los posteriores (directo que borraste para ti: cleared_at)
+export async function loadMessages(activityId, limit = 80, after = null) {
   const r = route(activityId);
-  const { data, error } = await getSupabase().from(r.table).select('*')
-    .eq(r.col, r.id).order('created_at', { ascending: false }).limit(limit);
+  let q = getSupabase().from(r.table).select('*').eq(r.col, r.id);
+  if (after) q = q.gt('created_at', after);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) { if (missing(error)) return []; throw error; }
   return (data || []).reverse();
 }
@@ -73,6 +75,46 @@ export async function reactMessage(messageId, emoji, chatId) {
   const { data, error } = await getSupabase().rpc(isDm(chatId) ? 'dm_react' : 'react_message', { p_message: messageId, p_emoji: emoji });
   if (error) throw error;
   return data || {};
+}
+
+// ── Acciones de un mensaje (37_chat_actions.sql) ───────────────────
+// Borrar: para todos (tuyo, < 1 h) o solo para ti
+export async function deleteMessage(messageId, everyone, chatId) {
+  const { error } = await getSupabase().rpc('chat_msg_delete', { p_message: messageId, p_everyone: everyone, p_dm: isDm(chatId) });
+  if (error) throw error;
+}
+// Editar (tuyo, < 15 min) → hora de edición
+export async function editMessage(messageId, body, chatId) {
+  const { data, error } = await getSupabase().rpc('chat_msg_edit', { p_message: messageId, p_body: body, p_dm: isDm(chatId) });
+  if (error) throw error;
+  return data;
+}
+// Mensaje fijado de un chat de plan (null = quitar)
+export async function pinMessage(activityId, messageId) {
+  const { error } = await getSupabase().rpc('plan_chat_pin', { p_activity: activityId, p_message: messageId });
+  if (error) throw error;
+}
+export async function loadPin(activityId) {
+  if (isDm(activityId)) return null;
+  const { data } = await getSupabase().from('plan_chat_pins').select('message_id').eq('activity_id', activityId).maybeSingle();
+  return data?.message_id || null;
+}
+export function onPin(activityId, cb) {
+  if (isDm(activityId)) return () => {};
+  const sb = getSupabase();
+  const ch = sb.channel(`plan-pin-${activityId}-${Math.random().toString(36).slice(2, 7)}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'plan_chat_pins', filter: `activity_id=eq.${activityId}` },
+      (p) => cb(p.eventType === 'DELETE' ? null : p.new?.message_id || null))
+    .subscribe();
+  return () => { try { sb.removeChannel(ch); } catch (_) {} };
+}
+
+// ── Preferencias de un chat en tu lista ────────────────────────────
+// o: { pin, hide, unread, clear } (cada uno true/false; lo que no pases no cambia)
+export async function chatPref(chatId, o = {}) {
+  const { error } = await getSupabase().rpc('chat_pref', { p_chat: String(chatId), p_pin: o.pin ?? null, p_hide: o.hide ?? null,
+    p_unread: o.unread ?? null, p_clear: o.clear ?? null });
+  if (error) throw error;
 }
 
 export async function setMuted(activityId, muted) {

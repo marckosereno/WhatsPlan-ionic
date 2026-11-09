@@ -10,6 +10,8 @@
 //    escribes) y la barra para escribir con la pill "Enviar" (gris
 //    apagada; con texto se enciende con el degradado).
 //  · Solo el mensaje que llega entra con animación (no se re-anima todo).
+//  · Mensaje fijado (chats de plan): franja arriba; tocarla lleva al
+//    mensaje. Editar tu mensaje: la barra se vuelve "Editando…".
 //  · Reacciones, responder, fotos, @menciones, silenciar y "¿Repetimos?":
 //    chat-actions.js, chat-gestures.js, chat-react.js, chat-compose.js.
 //  · Lo que envías sale al instante ("Enviando…") y se confirma al
@@ -26,12 +28,13 @@
 // Estilos: /styles/chat.css (.wp-ch-*)
 // ════════════════════════════════════════════════════════════════════
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
-import { loadMessages, sendMessage, markRead, onMessages, isDm, respondDm } from '/src/components/chat/chat-service.js';
-import { wireChatActions, fillPhotos, repeatPlan } from '/src/components/chat/chat-actions.js';
+import { loadMessages, sendMessage, markRead, onMessages, isDm, respondDm, editMessage, loadPin, onPin } from '/src/components/chat/chat-service.js';
+import { wireChatActions, fillPhotos, repeatPlan, goTo } from '/src/components/chat/chat-actions.js';
 import { paintReply, paintMentions } from '/src/components/chat/chat-compose.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
 import { messagesHtml, groupAvatar } from '/src/components/chat/chat-render.js';
 
+const PIN = '<i class="wp-ch-pin-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8V5h6v5.8l2.5 3.2H6.5Z"/><path d="M8 5h8"/></svg></i>';
 const PLUS = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const QUICK = ['🚗 Voy en camino', '👋 Ya llegué', '⏰ Llego tarde', '🙋 ¿Dónde están?'];
 
@@ -67,7 +70,7 @@ export function openPlanChat(pm, a, opts = {}) {
     title: head,
     right: `<span class="wp-ch-head-av" aria-hidden="true">${groupAvatar(pm, a, me)}</span>`,
     theme: 'explore', onBack,
-    onClose: () => { st.closed = true; st.stop?.(); markRead(id); opts.onClose?.(); },
+    onClose: () => { st.closed = true; st.stop?.(); st.stopPin?.(); markRead(id); opts.onClose?.(); },
     html: '<div class="wp-ch-list"><p class="wp-ch-load">Cargando…</p></div><button type="button" class="wp-ch-new" hidden>Nuevos mensajes ↓</button>',
     foot: `${quickOn(pm, a) ? `<div class="wp-ch-quick">${QUICK.map(q => `<button type="button" data-q="${q}">${q}</button>`).join('')}</div>` : ''}
       ${reqIn ? `<div class="wp-ch-req"><span><b>${pm._esc(a.title || 'Alguien')} quiere enviarte un mensaje</b><small>Si aceptas, podrán platicar. Si rechazas, no se entera.</small></span>
@@ -91,8 +94,42 @@ export function openPlanChat(pm, a, opts = {}) {
       : dm ? `<div class="wp-ch-empty"><b>Saluda a ${pm._esc((a.title || '').split(' ')[0] || 'tu amigo')}</b><span>${reqOut ? 'Le llegará como solicitud hasta que la acepte.' : 'Aquí empieza su conversación.'}</span></div>`
         : '<div class="wp-ch-empty"><b>Aquí platican los que van</b><span>Saluda al grupo o pónganse de acuerdo para llegar.</span></div>') + again;
     fillPhotos(box, st.list);
+    paintPin();
+  };
+  // Franja del mensaje fijado
+  // (va en la hoja, justo debajo del encabezado: no se mueve con el scroll)
+  const pinEl = document.createElement('button');
+  pinEl.type = 'button'; pinEl.className = 'wp-ch-pin'; pinEl.hidden = true;
+  page.root.appendChild(pinEl);
+  const paintPin = () => {
+    const m = st.pin && st.list.find(x => x.id === st.pin);
+    pinEl.hidden = !st.pin || !!m?.deleted_at;
+    page.root.classList.toggle('has-pin', !pinEl.hidden);   // la lista deja espacio arriba
+    if (pinEl.hidden) return;
+    const who = !m ? '' : m.user_id === me ? 'Tú: ' : `${pm._phName(m.user_id, false)}: `;
+    pinEl.innerHTML = `${PIN}<span><b>Mensaje fijado</b><small>${pm._esc(m ? who + (m.body || (m.image_path ? '📷 Foto' : '')) : 'Toca para verlo')}</small></span>`;
+  };
+  const setPin = (mid) => { st.pin = mid; paintPin(); page.relayout(); };
+  pinEl.addEventListener('click', () => { if (st.pin) goTo(box, st.pin); });
+  // Editar uno tuyo: la barra de escribir se vuelve "Editando…"
+  const setEdit = (m) => {
+    if (m) setReply(null);
+    st.edit = m;
+    send.textContent = m ? 'Guardar' : 'Enviar';
+    page.foot.querySelector('.wp-ch-edit')?.remove();
+    if (m) {
+      const bar = document.createElement('div');
+      bar.className = 'wp-ch-reply wp-ch-edit';
+      bar.innerHTML = '<span><b>Editando mensaje</b><small></small></span><button type="button" aria-label="Cancelar edición">×</button>';
+      bar.querySelector('small').textContent = m.body;
+      bar.querySelector('button').addEventListener('click', () => { input.value = ''; grow(); setEdit(null); });
+      page.foot.querySelector('.wp-ch-bar').before(bar);
+      input.value = m.body; grow(); input.focus();
+    }
+    page.relayout();
   };
   const setReply = (m) => {
+    if (m && st.edit) setEdit(null);
     st.reply = m;
     paintReply(pm, page.foot, m, me, () => setReply(null));
     page.relayout();
@@ -112,9 +149,11 @@ export function openPlanChat(pm, a, opts = {}) {
 
   (async () => {
     await loadPeople(pm, a);
-    try { st.list = await loadMessages(id); } catch (e) { console.warn('[CHAT]', e.message || e); }
+    try { st.list = await loadMessages(id, 80, a.cleared_at || null); } catch (e) { console.warn('[CHAT]', e.message || e); }
+    try { st.pin = await loadPin(id); } catch (_) {}
     if (st.closed) return;
     paintAll(); toBottom(false);
+    st.stopPin = onPin(id, (mid) => { if (!st.closed) setPin(mid); });
     markRead(id);
     st.stop = onMessages(id, (m) => { if (!st.closed) { add(m); if (m.user_id !== me) markRead(id); } },
       (m) => { const x = st.list.find(y => y.id === m.id); if (x && !st.closed) { Object.assign(x, m); paintAll(); } });
@@ -149,9 +188,18 @@ export function openPlanChat(pm, a, opts = {}) {
   };
   input.addEventListener('input', () => { grow(); paintMentions(pm, page.foot, input, members()); page.relayout(); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); page.foot.querySelector('form').requestSubmit(); } });
+  const doEdit = async (m, body) => {
+    body = body.trim(); setEdit(null);
+    if (!body || body === m.body) return;
+    const keep = { body: m.body, edited_at: m.edited_at };
+    m.body = body; m.edited_at = new Date().toISOString(); paintAll();
+    try { await editMessage(m.id, body, id); pm._haptic?.('light'); }
+    catch (e) { Object.assign(m, keep); paintAll(); pm._showToast?.(/15 minutos/.test(e.message || '') ? 'Ya pasaron 15 minutos' : 'No se pudo editar'); }
+  };
   page.foot.querySelector('form').addEventListener('submit', (e) => {
     e.preventDefault();
-    const v = input.value; input.value = ''; grow(); doSend(v);
+    const v = input.value; input.value = ''; grow();
+    if (st.edit) doEdit(st.edit, v); else doSend(v);
     send.classList.remove('pop'); void send.offsetWidth; send.classList.add('pop');
   });
   page.foot.addEventListener('click', async (e) => {
@@ -172,7 +220,7 @@ export function openPlanChat(pm, a, opts = {}) {
   fitKeyboard(page, input, () => { if (st.list.length) toBottom(false); });
   fresh.addEventListener('click', () => { fresh.hidden = true; toBottom(true); });
   wireChatActions({
-    pm, a, id, me, st, page, box, paintAll, setReply, dm,
+    pm, a, id, me, st, page, box, paintAll, setReply, setEdit, setPin, dm,
     sendPhoto: (path) => doSend('', 'text', { image_path: path }),
     openPlan: dm ? () => pm._mpPerson?.(a.other_id) : () => { page.close(); setTimeout(() => openFullPlan(pm, id), 360); },
   });

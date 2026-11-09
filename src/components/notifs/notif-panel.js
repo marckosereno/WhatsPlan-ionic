@@ -30,7 +30,8 @@ import { liveWatch, showBanner } from '/src/components/live/live.js';
 const I = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICONS = {
   cal:   I('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>'),
-  ppl:   I('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M21 20c0-2.6-1.6-4.8-4-5.6"/>'),
+  // "se unió": destellos (en vez de los dos monitos)
+  ppl:   I('<path d="M10 3.5 11.6 8a2 2 0 0 0 1.2 1.2l4.5 1.6-4.5 1.6a2 2 0 0 0-1.2 1.2L10 18.1l-1.6-4.5a2 2 0 0 0-1.2-1.2L2.7 10.8l4.5-1.6A2 2 0 0 0 8.4 8Z"/><path d="M18.5 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7Z"/><path d="M18 3l.5 1.3 1.3.5-1.3.5L18 6.6l-.5-1.3-1.3-.5 1.3-.5Z"/>'),
   party: I('<path d="M4 20 9 7l8 8-13 5Z"/><path d="M14 4v2M19 9h2M17.5 5.5 19 4"/>'),
   ticket:I('<path d="M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 1 0-4V4H3v4Z"/><path d="M13 4v12" stroke-dasharray="2 2"/>'),
   edit:  I('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
@@ -161,13 +162,26 @@ export class NotifPanel {
   // ── Jalar para actualizar ──────────────────────────────────────────
   _wirePull() {
     const root = this.page.root, vp = root.querySelector('.wp-st-vp');
+    // Burbuja como la del pull-up de la ficha: el anillo se dibuja con el
+    // jalón; al llegar se pinta azul y dice "Suelta para buscar"; al
+    // soltar el anillo gira mientras busca
     const ptr = document.createElement('div');
     ptr.className = 'wp-nf-ptr';
-    ptr.innerHTML = '<i><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></i>';
+    ptr.innerHTML = `<span class="wp-nf-ptr-ic">
+        <svg class="wp-nf-ptr-ring" viewBox="0 0 36 36"><circle class="trk" cx="18" cy="18" r="16"/><circle class="arc" cx="18" cy="18" r="16" stroke-dasharray="100.5" stroke-dashoffset="100.5"/></svg>
+        <svg class="wp-nf-ptr-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </span><span class="wp-nf-ptr-txt">Suelta para buscar</span>`;
     root.appendChild(ptr);
+    const arc = ptr.querySelector('.arc');
     const PULL = 110;
     let y0 = null, p = 0;
-    const show = (v) => { p = v; ptr.style.setProperty('--p', Math.min(1, v).toFixed(3)); ptr.classList.toggle('armed', v >= 1); };
+    const show = (v) => {
+      p = v;
+      const t = Math.min(1, v);
+      ptr.style.setProperty('--p', t.toFixed(3));
+      arc.setAttribute('stroke-dashoffset', (100.5 * (1 - t)).toFixed(1));
+      ptr.classList.toggle('ready', v >= 1);
+    };
     vp.addEventListener('touchstart', (e) => { y0 = vp.scrollTop <= 0 && !this.loading ? e.touches[0].clientY : null; }, { passive: true });
     vp.addEventListener('touchmove', (e) => {
       if (y0 == null) return;
@@ -190,7 +204,7 @@ export class NotifPanel {
   async refresh(ptr) {
     if (this.loading || !this.page) return;
     this.loading = true;
-    ptr?.classList.add('spin');
+    ptr?.classList.add('loading');
     const before = new Set(this.list.map(n => String(n.id)));
     try {
       const list = await withTimeout(Notif.getNotifications(this.user.id));
@@ -204,7 +218,7 @@ export class NotifPanel {
     } catch (e) {
       this.getPM()?._showToast?.(netError(e) ? 'Sin conexión' : 'No se pudo actualizar');
     }
-    setTimeout(() => { ptr?.classList.remove('spin'); this._ptrShow?.(0); this.loading = false; }, 350);
+    setTimeout(() => { ptr?.classList.remove('loading'); this._ptrShow?.(0); this.loading = false; }, 350);
   }
 
   // Al cerrar (o "Marcar todas"): los que estaban nuevos quedan leídos,

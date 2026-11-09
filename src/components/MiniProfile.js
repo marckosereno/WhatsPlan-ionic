@@ -10,6 +10,7 @@
 // Datos: una sola llamada a la función mini_profile (mini_profile.sql).
 // Si es mi propio usuario → abre directo mi perfil completo.
 // ====================================================================
+import { startDm } from '/src/components/chat/dm-chat.js';
 import { getSupabase }    from '/src/services/SupabaseService.js';
 import { SocialService }  from '/src/services/SocialService.js';
 import { MomentsService } from '/src/services/MomentsService.js';
@@ -76,6 +77,7 @@ export class MiniProfile {
           <div class="wp-mp-extra"></div>
           <div class="wp-mp-btns">
             <button type="button" class="wp-mp-btn wp-mp-sec" data-act="profile">Ver perfil</button>
+            <button type="button" class="wp-mp-btn wp-mp-msg" data-act="msg" aria-label="Enviar mensaje" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.4-5.4A8.5 8.5 0 1 1 21 12Z"/></svg></button>
             <button type="button" class="wp-mp-btn wp-mp-pri" data-act="follow" disabled>+ Seguir</button>
           </div>
         </div>
@@ -208,6 +210,19 @@ export class MiniProfile {
       ring.classList.add('live');
       ring.onclick = () => { this._haptic('light'); this.close(); window.wpApp?.momentsUI?.open?.(list, 0); };
     }).catch(() => {});
+
+    // Enviar mensaje (35_direct_messages): no sale si no recibe mensajes
+    // ni en tu propio perfil
+    const msg = root.querySelector('[data-act="msg"]');
+    if (msg && d.allow_dms !== false && uid !== this.getCurrentUser()?.id) {
+      msg.hidden = false;
+      msg.onclick = () => {
+        this._haptic('light');
+        const who = { id: uid, name: d.name, username: d.username, avatar_url: d.avatar_url };
+        this.close();
+        setTimeout(() => startDm(window.wpApp?.placeModal, who), 260);
+      };
+    }
 
     // Seguir
     const btn = root.querySelector('[data-act="follow"]');

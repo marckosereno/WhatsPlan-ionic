@@ -46,6 +46,8 @@ export function dayLabel(d) {
   return n === 0 ? 'Hoy' : n === 1 ? 'Ayer' : `${DOW[x.getDay()]} ${x.getDate()} ${MON[x.getMonth()]}`;
 }
 
+const ICON_GONE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/></svg>';
+
 // Mensajes → html. me: tu id. prev: el mensaje anterior ya pintado (para
 // seguir una racha al agregar uno nuevo).
 // Texto con @menciones resaltadas (solo nombres de los del plan)
@@ -59,7 +61,7 @@ function bodyHtml(pm, text, names) {
 function quoteHtml(pm, r, me) {
   if (!r) return '<span class="wp-ch-q gone">Mensaje no disponible</span>';
   const who = r.user_id === me ? 'Tú' : pm._phName(r.user_id);
-  const txt = r.body || (r.image_path ? '📷 Foto' : '');
+  const txt = r.deleted_at ? 'Se eliminó este mensaje' : r.body || (r.image_path ? '📷 Foto' : '');
   return `<span class="wp-ch-q" data-goto="${r.id}"><b>${who}</b><span>${pm._esc(txt)}</span></span>`;
 }
 
@@ -72,6 +74,8 @@ function reactionsHtml(reacts, me) {
 
 // names: nombres (primer nombre) de los del plan, para resaltar @menciones
 export function messagesHtml(pm, list, me, names = []) {
+  // Los que borraste para ti no se pintan
+  list = list.filter(m => !(m.hidden_for || []).includes(me));
   const prev = null, byId = new Map(list.map(m => [m.id, m]));
   let out = '';
   list.forEach((m, i) => {
@@ -82,14 +86,16 @@ export function messagesHtml(pm, list, me, names = []) {
     const same = (a, b) => a && b && a.kind !== 'system' && b.kind !== 'system' && a.user_id === b.user_id
       && Math.abs(new Date(a.created_at) - new Date(b.created_at)) < GAP && dayKey(new Date(a.created_at)) === dayKey(new Date(b.created_at));
     const first = !same(before, m), last = !same(m, next), mine = m.user_id === me;
-    out += `<div class="wp-ch-msg${mine ? ' me' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${m._pending ? ' pending' : ''}${m.kind === 'quick' ? ' quick' : ''}${m._new ? ' new' : ''}" data-id="${m.id}">
+    const gone = !!m.deleted_at;   // borrado para todos: queda la línea
+    out += `<div class="wp-ch-msg${mine ? ' me' : ''}${first ? ' first' : ''}${last ? ' last' : ''}${m._pending ? ' pending' : ''}${m.kind === 'quick' ? ' quick' : ''}${m._new ? ' new' : ''}${gone ? ' gone' : ''}" data-id="${m.id}">
         ${!mine ? `<span class="wp-ch-av">${last ? face(pm, m.user_id) : ''}</span>` : ''}
         <div class="wp-ch-col">
           ${!mine && first ? `<small class="wp-ch-name">${pm._phName(m.user_id)}</small>` : ''}
-          <div class="wp-ch-b${m.image_path ? ' img' : ''}">${m.reply_to ? quoteHtml(pm, byId.get(m.reply_to), me) : ''}${m.image_path
-            ? `<i class="wp-ch-ph" data-photo="${pm._esc(m.image_path)}" style="${photoUrl(m.image_path) ? `background-image:url('${photoUrl(m.image_path)}')` : ''}"></i>` : ''}${m.body ? `<p>${bodyHtml(pm, m.body, names)}</p>` : ''}</div>
-          ${reactionsHtml(m.reactions, me)}
-          ${last ? `<small class="wp-ch-time">${m._pending ? 'Enviando…' : pm._hhmm(at)}</small>` : ''}
+          ${gone ? `<div class="wp-ch-b wp-ch-del">${ICON_GONE}<p>${mine ? 'Eliminaste este mensaje' : 'Se eliminó este mensaje'}</p></div>`
+          : `<div class="wp-ch-b${m.image_path ? ' img' : ''}">${m.reply_to ? quoteHtml(pm, byId.get(m.reply_to), me) : ''}${m.image_path
+            ? `<i class="wp-ch-ph" data-photo="${pm._esc(m.image_path)}" style="${photoUrl(m.image_path) ? `background-image:url('${photoUrl(m.image_path)}')` : ''}"></i>` : ''}${m.body ? `<p>${bodyHtml(pm, m.body, names)}</p>` : ''}</div>`}
+          ${gone ? '' : reactionsHtml(m.reactions, me)}
+          ${last ? `<small class="wp-ch-time">${m._pending ? 'Enviando…' : `${m.edited_at && !gone ? 'editado · ' : ''}${pm._hhmm(at)}`}</small>` : ''}
         </div>
       </div>`;
   });
@@ -98,6 +104,7 @@ export function messagesHtml(pm, list, me, names = []) {
 
 // Vista previa en la lista de chats: "Ana: nos vemos" / "Tú: …" / sistema
 export function previewText(pm, c, me) {
+  if (c.last_deleted) return c.last_user === me ? 'Eliminaste un mensaje' : 'Se eliminó un mensaje';
   if (c.kind === 'dm') {   // directo: sin nombre (es con esa persona), solo "Tú:" lo tuyo
     const who = c.last_user === me ? 'Tú: ' : '';
     if (!c.last_body && c.last_image) return `${who}📷 Foto`;

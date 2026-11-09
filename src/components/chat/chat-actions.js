@@ -2,7 +2,8 @@
 // WHATSPLAN — chat/chat-actions.js
 // Lo que se puede hacer en la conversación de un plan (plan-chat.js):
 //  · Reaccionar: doble toque = ❤️; mantener presionado = barra de 6
-//    reacciones + Responder / Copiar; tocar una reacción debajo de la
+//    reacciones + menú (Responder, Copiar, Fijar, Editar, Borrar:
+//    chat-msg-actions.js); tocar una reacción debajo de la
 //    burbuja la pone o la quita. Se ve al instante y se confirma después.
 //  · Responder: deslizar a la derecha o "Responder" del menú; tocar la
 //    cita lleva al mensaje original (y lo ilumina).
@@ -15,7 +16,7 @@
 // ════════════════════════════════════════════════════════════════════
 import { reactMessage, setMuted, uploadPhoto, photoUrls, photoUrl } from '/src/components/chat/chat-service.js';
 import { attachChatGestures, heartBurst } from '/src/components/chat/chat-gestures.js';
-import { openReactBar } from '/src/components/chat/chat-react.js';
+import { holdMenu } from '/src/components/chat/chat-msg-actions.js';
 import { pickPhoto, shrinkPhoto, openPhoto } from '/src/components/chat/chat-compose.js';
 
 // ctx: { pm, a, id, me, st, page, box, paintAll, setReply, sendPhoto }
@@ -36,18 +37,9 @@ export function wireChatActions(ctx) {
 
   attachChatGestures(box, {
     haptic: (k) => pm._haptic?.(k),
-    onReply: (id) => { const m = find(id); if (m) ctx.setReply(m); },
-    onDouble: (id, el) => { heartBurst(el); react(id, '❤️'); },
-    onHold: (id, el) => {
-      const m = find(id); if (!m) return;
-      pm._haptic?.('medium');
-      openReactBar(el, {
-        mine: m.reactions?.[me], canCopy: !!m.body,
-        onPick: (e) => react(id, e),
-        onReply: () => ctx.setReply(m),
-        onCopy: () => { navigator.clipboard?.writeText(m.body).then(() => pm._showToast?.('Copiado')).catch(() => {}); },
-      });
-    },
+    onReply: (id) => { const m = find(id); if (m && !m.deleted_at) ctx.setReply(m); },
+    onDouble: (id, el) => { if (find(id)?.deleted_at) return; heartBurst(el); react(id, '❤️'); },
+    onHold: (id, el) => { const m = find(id); if (m) holdMenu(ctx, m, el, react); },
   });
 
   box.addEventListener('click', (e) => {
@@ -71,7 +63,7 @@ export async function fillPhotos(box, list) {
   box.querySelectorAll('[data-photo]').forEach(el => { const u = photoUrl(el.dataset.photo); if (u) el.style.backgroundImage = `url('${u}')`; });
 }
 
-function goTo(box, id) {
+export function goTo(box, id) {
   const el = box.querySelector(`.wp-ch-msg[data-id="${CSS.escape(id)}"]`);
   if (!el) return;
   el.scrollIntoView({ block: 'center', behavior: 'smooth' });
