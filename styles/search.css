@@ -66,12 +66,12 @@
 
 .panel-subcats-scroll.wps-subcats-floating {
   position:fixed;
-  top:calc(68px + env(safe-area-inset-top,0px));
+  top:calc(59px + env(safe-area-inset-top,0px));
   left:0; right:0; bottom:auto;
   z-index:1998;
   background:transparent;
   width:100%; box-sizing:border-box;
-  padding:4px 12px; min-height:42px;
+  padding:13px 12px 4px; min-height:51px;   /* aire arriba: el numerito pill no se corta */
   display:flex; align-items:center;
   overflow-x:auto; scrollbar-width:none;
 }

@@ -25,6 +25,7 @@ import { wave } from '/src/components/place-plans/wave.js';
 import { openPlanChat } from '/src/components/chat/plan-chat.js';
 import { cacheGet, cacheSet, withTimeout, netError, offlineNote } from '/src/components/tabs/tab-cache.js';
 import { wireNotifActions, moreButton } from '/src/components/notifs/notif-actions.js';
+import { liveWatch, showBanner } from '/src/components/live/live.js';
 
 const I = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICONS = {
@@ -73,22 +74,52 @@ export class NotifPanel {
     this.stop();
     this.user = user;
     if (!user) return this._badge(0);
-    try { this._badge(await withTimeout(Notif.getUnreadCount(user.id))); } catch (_) {}
-    try {
-      this.sub = Notif.subscribe(user.id, (p) => {
-        const n = p?.new; if (!n) return;
-        this.list.unshift(n);
-        this._badge(this.unread + 1);
-        this.btn?.classList.remove('ring'); void this.btn?.offsetWidth; this.btn?.classList.add('ring');
-        this.getPM()?._haptic?.('light');
-        if (this.page) this._paint(false);
-      });
-    } catch (_) {}
+    await this.refreshCount();
+    // En vivo (con reconexión y refresco al volver a la app: live.js)
+    this.sub = liveWatch({
+      refresh: () => this.refreshCount(),
+      subscribe: (onStatus) => {
+        const sb = getSupabase();
+        const ch = sb.channel(`notifs-${user.id}-${Math.random().toString(36).slice(2, 7)}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, (p) => this._arrived(p?.new))
+          .subscribe((st) => onStatus(st));
+        return () => { try { sb.removeChannel(ch); } catch (_) {} };
+      },
+    });
   }
 
   stop() {
-    try { if (this.sub) getSupabase().removeChannel(this.sub); } catch (_) {}
+    try { this.sub?.(); } catch (_) {}
     this.sub = null; this.user = null; this._badge(0);
+  }
+
+  // Numerito desde la base (al arrancar, al volver a la app, sin canal)
+  async refreshCount() {
+    if (!this.user) return;
+    try {
+      const n = await withTimeout(Notif.getUnreadCount(this.user.id));
+      if (n > this.unread && this.unread >= 0 && this._counted) this._ring();
+      this._counted = true;
+      if (!this.page) this._badge(n);
+    } catch (_) {}
+  }
+
+  _ring() {
+    this.btn?.classList.remove('ring'); void this.btn?.offsetWidth; this.btn?.classList.add('ring');
+  }
+
+  // Llegó un aviso en vivo: numerito, campana que se mueve y aviso arriba
+  _arrived(n) {
+    if (!n || this.list.some(x => String(x.id) === String(n.id))) return;
+    this.list.unshift(n);
+    if (this.page) { this.seen?.push(String(n.id)); this._paint(false); this.getPM()?._haptic?.('light'); return; }
+    this._badge(this.unread + 1);
+    this._ring();
+    const [ic, col] = kindOf(n);
+    showBanner({
+      icon: `<i class="wp-nf-ic ${col}">${ICONS[ic]}</i>`, title: clean(n.title), body: n.body || '',
+      onTap: () => this.openItem(n),
+    });
   }
 
   _badge(n) {
@@ -237,8 +268,15 @@ export class NotifPanel {
     if (e.target.closest('[data-retry]')) { this.page?.close(); setTimeout(() => this.open(), 360); return; }
     const row = e.target.closest('.wp-nf-row'); if (!row) return;
     const n = this.list[+row.dataset.i]; if (!n) return;
+    row.classList.remove('new');
+    this.openItem(n);
+  }
+
+  // Ir a lo que dice el aviso (desde la hoja o desde el aviso de arriba)
+  async openItem(n) {
     if (!n.read) {                                   // tocarlo = leído
-      n.read = true; row.classList.remove('new');
+      n.read = true;
+      if (!this.page) this._badge(this.unread - 1);
       getSupabase().rpc('notif_set_read', { p_id: String(n.id), p_read: true }).then(() => {}, () => {});
     }
     if (n.type === 'dm_request') {                   // solicitud de mensaje → Social › Solicitudes

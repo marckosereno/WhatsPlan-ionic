@@ -27,6 +27,7 @@ import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
 import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-render.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
 import { wave } from '/src/components/place-plans/wave.js';
+import { liveWatch, showBanner } from '/src/components/live/live.js';
 import { cacheGet, cacheSet, withTimeout, netError, peopleOf, restorePeople, offlineNote, whenOnline } from '/src/components/tabs/tab-cache.js';
 
 const MUTED = '<i class="wp-so-muted" aria-label="Silenciado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="m2 2 20 20"/></svg></i>';
@@ -60,11 +61,41 @@ export class SocialTab {
     const got = (m) => {
       const chatId = m.thread_id ? `dm:${m.thread_id}` : m.activity_id;
       if (m.user_id === window.wpApp?.currentUser?.id || chatId === this.openId) return;
+      if (m.kind !== 'system') this._banner = { m, chatId };
       clearTimeout(this.t);
-      this.t = setTimeout(() => (this.scr ? this._load() : this.refreshUnread()), 400);
+      this.t = setTimeout(async () => {
+        await (this.scr ? this._load() : this.refreshUnread());
+        this._showBanner();
+      }, 400);
     };
-    const s1 = onMessages(null, got), s2 = onMessages('dm:', got);
-    this.stop = () => { s1(); s2(); };
+    // Dos canales (planes + directos) cuidados por liveWatch: si se caen
+    // o el teléfono duerme la app, se reconectan y se refresca al volver
+    this.stop = liveWatch({
+      refresh: () => (this.scr ? this._load() : this.refreshUnread()),
+      subscribe: (onStatus) => {
+        const st = {};
+        const tell = (k) => (s) => { st[k] = s; onStatus(st.plan === 'SUBSCRIBED' && st.dm === 'SUBSCRIBED' ? 'SUBSCRIBED' : (s === 'SUBSCRIBED' ? 'JOINING' : s)); };
+        const s1 = onMessages(null, got, null, tell('plan')), s2 = onMessages('dm:', got, null, tell('dm'));
+        return () => { s1(); s2(); };
+      },
+    });
+  }
+
+  // Aviso arriba con el mensaje que llegó (si no estás en Social ni en
+  // ese chat, y el chat no está silenciado). Tocarlo abre el chat.
+  _showBanner() {
+    const b = this._banner; this._banner = null;
+    if (!b || this.scr || b.chatId === this.openId) return;
+    const c = this.chats.find(x => String(x.activity_id) === String(b.chatId));
+    if (!c || c.muted || this._isReq(c)) return;   // las solicitudes ya avisan en la campanita
+    const pm = this.getPM(); if (!pm) return;
+    const me = window.wpApp?.currentUser?.id, m = b.m;
+    const who = c.kind === 'dm' ? c.title : `${pm._phName(m.user_id, false)} · ${c.title}`;
+    showBanner({
+      icon: groupAvatar(pm, c.kind === 'dm' ? c : { participants: [m.user_id], creator_id: m.user_id }, me),
+      title: who, body: m.body || (m.image_path ? '📷 Foto' : ''),
+      onTap: () => this._openChat(c),
+    });
   }
 
   // Chat abierto por fuera (p. ej. "Enviar mensaje" de un perfil): sus
