@@ -19,6 +19,7 @@ import { wave }           from '/src/components/place-plans/wave.js';
 import { addDragScroll }  from '/src/components/place-plans/drag-scroll.js';
 import { addDragStrip }   from '/src/components/place-plans/drag-strip.js';
 import { ICON_BACK }      from '/src/components/place-plans/step-sheet.js';
+import { startDm }        from '/src/components/chat/dm-chat.js';
 
 // Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
 // n veces. Devuelve un path SVG/CSS centrado en (c, c).
@@ -44,6 +45,7 @@ const ICON = {
   back:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
   gear:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>',
   dots:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  msg: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.4-5.4A8.5 8.5 0 1 1 21 12Z"/></svg>',
   share: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>',
   cam:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   map:   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>',
@@ -557,8 +559,15 @@ export class ProfileSheet {
         <button type="button" class="wp-pf-pill" data-a="share">${ICON.share} Compartir</button>`;
       actionsEl.querySelector('[data-a=edit]').onclick = (e) => { this._pulse(e.currentTarget); this._push(v => this._viewEdit(v)); };
     } else {
+      // "Mensaje" solo si esa persona recibe mensajes (35_direct_messages)
+      const dms = prof?.allow_dms !== false;
       actionsEl.innerHTML = `<button type="button" class="wp-pf-pill wp-pf-pill-dark" data-a="follow">Seguir</button>
-        <button type="button" class="wp-pf-pill" data-a="share">${ICON.share} Compartir</button>`;
+        ${dms ? `<button type="button" class="wp-pf-pill" data-a="msg">${ICON.msg} Mensaje</button>` : ''}
+        <button type="button" class="wp-pf-pill${dms ? ' wp-pf-pill-ic' : ''}" data-a="share" aria-label="Compartir">${ICON.share}${dms ? '' : ' Compartir'}</button>`;
+      actionsEl.querySelector('[data-a=msg]')?.addEventListener('click', (e) => {
+        this._pulse(e.currentTarget);
+        startDm(window.wpApp?.placeModal, { id: uid, name, username: prof?.username, avatar_url: prof?.avatar_url });
+      });
       this._wireFollow(actionsEl.querySelector('[data-a=follow]'), uid, (delta) => {
         const b = statEls[0]; const n = (parseInt(b.textContent, 10) || 0) + delta; b.textContent = String(Math.max(0, n));
       });
@@ -1335,6 +1344,10 @@ export class ProfileSheet {
           <span class="wp-pf-set-txt"><b>Mostrar lugares visitados</b><span>Quienes te siguen ven cuántos lugares has visitado</span></span>
           <button type="button" class="wp-pf-switch" role="switch" data-k="show_visits"></button>
         </div>
+        <div class="wp-pf-set">
+          <span class="wp-pf-set-txt"><b>Recibir mensajes</b><span>Si se siguen los dos, te escriben directo; si solo te siguen, llega como solicitud</span></span>
+          <button type="button" class="wp-pf-switch" role="switch" data-k="allow_dms"></button>
+        </div>
         <button type="button" class="wp-pf-set" data-a="blocked"><span class="wp-pf-set-txt"><b>Usuarios bloqueados</b></span>${ICON.chev}</button>
       </div>
       <div class="wp-pf-group">
@@ -1343,7 +1356,7 @@ export class ProfileSheet {
       </div>`;
     view.querySelector('.wp-pf-group:nth-child(2) .wp-pf-set-txt span').textContent = me.email || '';
     // show_saved: apagado por defecto · show_points / show_visits: encendidos
-    const DEF = { show_saved: false, show_points: true, show_visits: true };
+    const DEF = { show_saved: false, show_points: true, show_visits: true, allow_dms: true };
     view.querySelectorAll('.wp-pf-switch[data-k]').forEach(sw => {
       const k = sw.dataset.k;
       let on = prof && prof[k] != null ? !!prof[k] : DEF[k];

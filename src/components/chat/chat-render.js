@@ -98,6 +98,11 @@ export function messagesHtml(pm, list, me, names = []) {
 
 // Vista previa en la lista de chats: "Ana: nos vemos" / "Tú: …" / sistema
 export function previewText(pm, c, me) {
+  if (c.kind === 'dm') {   // directo: sin nombre (es con esa persona), solo "Tú:" lo tuyo
+    const who = c.last_user === me ? 'Tú: ' : '';
+    if (!c.last_body && c.last_image) return `${who}📷 Foto`;
+    return c.last_body ? `${who}${c.last_body}` : 'Aún no hay mensajes';
+  }
   if (!c.last_body && c.last_image) return `${c.last_user === me ? 'Tú' : pm._phName(c.last_user, false)}: 📷 Foto`;
   if (!c.last_body) return 'Aún no hay mensajes · saluda al grupo';
   if (c.last_kind === 'system' || !c.last_user) return c.last_body;

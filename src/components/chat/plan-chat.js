@@ -18,11 +18,15 @@
 //  · Con el teclado abierto, la hoja cabe entre la barra de estado y el
 //    teclado (fitKeyboard).
 //
+//  · Mensajes directos (a.id = "dm:<uuid>", ver dm-chat.js): arriba la
+//    persona y su @; sin respuestas rápidas ni "¿Repetimos?"; si es una
+//    solicitud que te llegó, abajo Aceptar / Rechazar en vez de la barra.
+//
 // Uso: openPlanChat(pm, a, { onBack, onClose })   (pm = PlaceModal2)
 // Estilos: /styles/chat.css (.wp-ch-*)
 // ════════════════════════════════════════════════════════════════════
 import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
-import { loadMessages, sendMessage, markRead, onMessages } from '/src/components/chat/chat-service.js';
+import { loadMessages, sendMessage, markRead, onMessages, isDm, respondDm } from '/src/components/chat/chat-service.js';
 import { wireChatActions, fillPhotos, repeatPlan } from '/src/components/chat/chat-actions.js';
 import { paintReply, paintMentions } from '/src/components/chat/chat-compose.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
@@ -39,6 +43,7 @@ export function ensureChatCss() {
 }
 
 function quickOn(pm, a) {
+  if (isDm(a.id)) return false;
   const now = Date.now(), t0 = new Date(a.scheduled_at).getTime();
   const end = pm._mpEndAt(a)?.getTime() || t0 + 3 * 3600e3;
   return a.status !== 'cancelled' && now >= t0 - 2 * 3600e3 && now <= end + 3600e3;
@@ -46,20 +51,28 @@ function quickOn(pm, a) {
 
 export function openPlanChat(pm, a, opts = {}) {
   ensureChatCss();
-  const me = window.wpApp?.currentUser?.id, id = a.id || a.activity_id;
+  const me = window.wpApp?.currentUser?.id, id = a.id || a.activity_id, dm = isDm(id);
   const n = (a.participants || []).length;
   const st = { list: [], stop: null, closed: false, reply: null, muted: !!a.muted };
-  const ended = Date.now() > (pm._mpEndAt(a)?.getTime() || new Date(a.scheduled_at).getTime() + 3 * 3600e3);
+  const ended = !dm && Date.now() > (pm._mpEndAt(a)?.getTime() || new Date(a.scheduled_at).getTime() + 3 * 3600e3);
+  const head = dm
+    ? `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Mensaje')}</b>${a.other_username ? `<small>@${pm._esc(a.other_username)}</small>` : ''}</span>`
+    : `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Plan')}</b><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small></span>`;
+  // Solicitud: la que te llegó (decides tú) o la que mandaste (esperando)
+  const reqIn = dm && a.status === 'request' && a.requested_by !== me;
+  const reqOut = dm && a.status === 'request' && a.requested_by === me;
   let page = null;
   const onBack = opts.onBack ? () => { page.close(); setTimeout(opts.onBack, 360); return true; } : undefined;
   page = openSheetPage({
-    title: `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Plan')}</b><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small></span>`,
+    title: head,
     right: `<span class="wp-ch-head-av" aria-hidden="true">${groupAvatar(pm, a, me)}</span>`,
     theme: 'explore', onBack,
     onClose: () => { st.closed = true; st.stop?.(); markRead(id); opts.onClose?.(); },
     html: '<div class="wp-ch-list"><p class="wp-ch-load">Cargando…</p></div><button type="button" class="wp-ch-new" hidden>Nuevos mensajes ↓</button>',
     foot: `${quickOn(pm, a) ? `<div class="wp-ch-quick">${QUICK.map(q => `<button type="button" data-q="${q}">${q}</button>`).join('')}</div>` : ''}
-      <form class="wp-ch-bar"><button type="button" class="wp-ch-plus" aria-label="Enviar foto">${PLUS}</button><textarea rows="1" maxlength="1000" placeholder="Mensaje" enterkeyhint="send"></textarea>
+      ${reqIn ? `<div class="wp-ch-req"><span><b>${pm._esc(a.title || 'Alguien')} quiere enviarte un mensaje</b><small>Si aceptas, podrán platicar. Si rechazas, no se entera.</small></span>
+        <div><button type="button" data-req="no">Rechazar</button><button type="button" data-req="yes">Aceptar</button></div></div>` : ''}
+      <form class="wp-ch-bar"${reqIn ? ' hidden' : ''}><button type="button" class="wp-ch-plus" aria-label="Enviar foto">${PLUS}</button><textarea rows="1" maxlength="1000" placeholder="Mensaje" enterkeyhint="send"></textarea>
         <button type="submit" class="wp-ch-send" disabled>Enviar</button></form>`,
   });
   page.root.classList.add('wp-ch-sheet');
@@ -69,13 +82,14 @@ export function openPlanChat(pm, a, opts = {}) {
   const atBottom = () => vp.scrollHeight - vp.scrollTop - vp.clientHeight < 80;
   const toBottom = (smooth) => vp.scrollTo({ top: vp.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
 
-  const members = () => [...new Set([a.creator_id, ...(a.participants || [])])].filter(x => x && x !== me)
+  const members = () => dm ? [] : [...new Set([a.creator_id, ...(a.participants || [])])].filter(x => x && x !== me)
     .map(x => ({ id: x, name: pm._phName(x, false) })).filter(x => x.name && x.name !== 'Alguien');
   const again = ended ? `<div class="wp-ch-again"><b>¿Repetimos?</b><span>Arma otro plan en el mismo lugar con los mismos</span>
       <button type="button" data-again>Repetir el plan</button></div>` : '';
   const paintAll = () => {
     box.innerHTML = (st.list.length ? messagesHtml(pm, st.list, me, members().map(x => x.name))
-      : '<div class="wp-ch-empty"><b>Aquí platican los que van</b><span>Saluda al grupo o pónganse de acuerdo para llegar.</span></div>') + again;
+      : dm ? `<div class="wp-ch-empty"><b>Saluda a ${pm._esc((a.title || '').split(' ')[0] || 'tu amigo')}</b><span>${reqOut ? 'Le llegará como solicitud hasta que la acepte.' : 'Aquí empieza su conversación.'}</span></div>`
+        : '<div class="wp-ch-empty"><b>Aquí platican los que van</b><span>Saluda al grupo o pónganse de acuerdo para llegar.</span></div>') + again;
     fillPhotos(box, st.list);
   };
   const setReply = (m) => {
@@ -121,7 +135,7 @@ export function openPlanChat(pm, a, opts = {}) {
       if (el) el.classList.add('sent');
     } catch (e) {
       st.list = st.list.filter(x => x !== tmp); paintAll();
-      pm._showToast?.(/row-level|permission/i.test(e.message || '') ? 'Solo los que van pueden escribir aquí' : 'No se pudo enviar');
+      pm._showToast?.(/row-level|permission/i.test(e.message || '') ? (dm ? 'No puedes escribir en este chat' : 'Solo los que van pueden escribir aquí') : 'No se pudo enviar');
     }
   };
 
@@ -140,13 +154,27 @@ export function openPlanChat(pm, a, opts = {}) {
     const v = input.value; input.value = ''; grow(); doSend(v);
     send.classList.remove('pop'); void send.offsetWidth; send.classList.add('pop');
   });
-  page.foot.addEventListener('click', (e) => { const q = e.target.closest('[data-q]'); if (q) doSend(q.dataset.q, 'quick'); });
+  page.foot.addEventListener('click', async (e) => {
+    const q = e.target.closest('[data-q]'); if (q) { doSend(q.dataset.q, 'quick'); return; }
+    const r = e.target.closest('[data-req]'); if (!r) return;
+    const yes = r.dataset.req === 'yes';
+    try {
+      await respondDm(id, yes);
+      pm._haptic?.(yes ? 'medium' : 'light');
+      a.status = yes ? 'active' : 'declined';
+      if (!yes) { pm._showToast?.('Solicitud rechazada'); page.close(); return; }
+      page.foot.querySelector('.wp-ch-req')?.remove();
+      page.foot.querySelector('form').hidden = false;
+      page.relayout();
+      input.focus();
+    } catch (_) { pm._showToast?.('No se pudo'); }
+  });
   fitKeyboard(page, input, () => { if (st.list.length) toBottom(false); });
   fresh.addEventListener('click', () => { fresh.hidden = true; toBottom(true); });
   wireChatActions({
-    pm, a, id, me, st, page, box, paintAll, setReply,
+    pm, a, id, me, st, page, box, paintAll, setReply, dm,
     sendPhoto: (path) => doSend('', 'text', { image_path: path }),
-    openPlan: () => { page.close(); setTimeout(() => openFullPlan(pm, id), 360); },
+    openPlan: dm ? () => pm._mpPerson?.(a.other_id) : () => { page.close(); setTimeout(() => openFullPlan(pm, id), 360); },
   });
   box.addEventListener('click', (e) => { if (e.target.closest('[data-again]')) { page.close(); setTimeout(() => repeatPlan(pm, a, me), 360); } });
   vp.addEventListener('scroll', () => { if (!fresh.hidden && atBottom()) fresh.hidden = true; }, { passive: true });
