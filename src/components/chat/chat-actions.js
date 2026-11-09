@@ -30,7 +30,7 @@ export function wireChatActions(ctx) {
     if (r[me] === emoji) delete r[me]; else r[me] = emoji;
     m.reactions = r; ctx.paintAll();
     pm._haptic?.(r[me] ? 'medium' : 'light');
-    try { m.reactions = await reactMessage(id, emoji); ctx.paintAll(); }
+    try { m.reactions = await reactMessage(id, emoji, ctx.id); ctx.paintAll(); }
     catch (_) { m.reactions = before; ctx.paintAll(); pm._showToast?.('No se pudo reaccionar'); }
   };
 
@@ -95,7 +95,9 @@ function headMenu(ctx, anchor) {
       try { await setMuted(ctx.id, !st.muted); st.muted = !st.muted; pm._showToast?.(st.muted ? 'Chat silenciado' : 'Avisos activados'); }
       catch (_) { pm._showToast?.('No se pudo cambiar'); }
     } },
-    { label: 'Ver el plan', icon: 'calendar', onClick: () => ctx.openPlan?.() },
+    // directo → "Ver perfil"; de plan → "Ver el plan"
+    ctx.dm ? { label: 'Ver perfil', icon: 'edit', onClick: () => ctx.openPlan?.() }
+      : { label: 'Ver el plan', icon: 'calendar', onClick: () => ctx.openPlan?.() },
   ]);
   const pop = document.querySelector('.wp-pm2-pop');   // encima de la hoja del chat
   if (pop) pop.style.zIndex = '1500700';

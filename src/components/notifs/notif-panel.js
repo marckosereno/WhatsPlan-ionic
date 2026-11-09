@@ -37,6 +37,7 @@ const ICONS = {
   route: I('<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/>'),
   x:     I('<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>'),
   at:    I('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
+  msg:   I('<path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.4-5.4A8.5 8.5 0 1 1 21 12Z"/>'),
   trash: I('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>'),
   heart: I('<path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/>'),
   bell:  I('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'),
@@ -50,6 +51,7 @@ function kindOf(n) {
   if (t === 'plan_spot') return ['ticket', 'amber'];
   if (t === 'plan_decline' || t === 'plan_cancelled') return ['x', 'gray'];
   if (t === 'chat_mention') return ['at', 'violet'];
+  if (t === 'dm_request') return ['msg', 'violet'];
   if (t === 'follow') return ['heart', 'pink'];
   if (t === 'plan_update') return [/hora/i.test(ti) ? 'clock' : /ruta|parada|quit/i.test(ti) ? 'route' : 'edit', 'blue'];
   return ['bell', 'gray'];
@@ -238,6 +240,11 @@ export class NotifPanel {
     if (!n.read) {                                   // tocarlo = leído
       n.read = true; row.classList.remove('new');
       getSupabase().rpc('notif_set_read', { p_id: String(n.id), p_read: true }).then(() => {}, () => {});
+    }
+    if (n.type === 'dm_request') {                   // solicitud de mensaje → Social › Solicitudes
+      this.page?.close();
+      setTimeout(() => { window.wpApp?.footer?.go?.('social'); setTimeout(() => window.wpApp?.socialTab?.showFilter?.('req'), 120); }, 320);
+      return;
     }
     if (!n.activity_id) return;
     const pm = this.getPM(); if (!pm) return;

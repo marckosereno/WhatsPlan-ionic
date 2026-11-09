@@ -10,6 +10,9 @@
 //  · Tocar abre la conversación (chat/plan-chat.js); al cerrar se
 //    actualiza la lista y el numerito de la barra.
 //  · Mientras está abierta, los mensajes nuevos la refrescan solos.
+//  · Mensajes directos (chat/dm-chat.js): en "Todos" su propia sección
+//    "Directos"; las solicitudes que te llegan van aparte en la pestaña
+//    "Solicitudes" (con su numerito) y no suman al numerito de la barra.
 //  · Sin internet: la lista de la última vez (tab-cache.js) con un aviso,
 //    o "Sin conexión" si nunca se cargó; al volver la red se recarga.
 //
@@ -18,7 +21,8 @@
 // Estilos: /styles/tabs.css (.wp-pt-*) + /styles/chat.css (.wp-so-*)
 // ════════════════════════════════════════════════════════════════════
 import { openTabScreen } from '/src/components/tabs/tab-screen.js';
-import { myChats, onMessages } from '/src/components/chat/chat-service.js';
+import { myChats, myDmChats, onMessages } from '/src/components/chat/chat-service.js';
+import { dmShape, openDmChat, rememberPerson } from '/src/components/chat/dm-chat.js';
 import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
 import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-render.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
@@ -37,8 +41,8 @@ export class SocialTab {
     ensureChatCss();
     if (this.scr?.root.isConnected) return;
     this.scr = openTabScreen('social', `
-      <header class="wp-pt-head"><h1>Mensajes</h1><span>Con los que van a tus planes</span></header>
-      <div class="wp-pt-tabs"><button type="button" data-f="all" class="on">Todos</button><button type="button" data-f="unread">Sin leer</button></div>
+      <header class="wp-pt-head"><h1>Mensajes</h1><span>Tus planes y tus amigos</span></header>
+      <div class="wp-pt-tabs"><button type="button" data-f="all" class="on">Todos</button><button type="button" data-f="unread">Sin leer</button><button type="button" data-f="req">Solicitudes<b class="wp-so-reqn" hidden></b></button></div>
       <div class="wp-so-list"><div class="wp-so-sk"></div><div class="wp-so-sk"></div><div class="wp-so-sk"></div></div>`);
     this.scr.root.addEventListener('click', (e) => this._click(e));
     wave(this.scr.body);
@@ -50,28 +54,47 @@ export class SocialTab {
   // Con sesión: numerito de sin leer + escuchar mensajes nuevos
   startChats() { this.refreshUnread(); this.listen(); }
 
-  // Escuchar mensajes de todos tus planes (para el numerito y la lista)
+  // Escuchar mensajes de todos tus planes y directos (numerito y lista)
   listen() {
     if (this.stop || !window.wpApp?.currentUser) return;
-    this.stop = onMessages(null, (m) => {
-      if (m.user_id === window.wpApp?.currentUser?.id || m.activity_id === this.openId) return;
+    const got = (m) => {
+      const chatId = m.thread_id ? `dm:${m.thread_id}` : m.activity_id;
+      if (m.user_id === window.wpApp?.currentUser?.id || chatId === this.openId) return;
       clearTimeout(this.t);
       this.t = setTimeout(() => (this.scr ? this._load() : this.refreshUnread()), 400);
-    });
+    };
+    const s1 = onMessages(null, got), s2 = onMessages('dm:', got);
+    this.stop = () => { s1(); s2(); };
+  }
+
+  // Chat abierto por fuera (p. ej. "Enviar mensaje" de un perfil): sus
+  // mensajes no cuentan como sin leer mientras está abierto
+  watchOpen(id) { this.openId = id; if (!id) this.refreshUnread(); }
+
+  // Abrir directo en una pestaña (la campanita → Solicitudes)
+  showFilter(f) {
+    this.filter = f;
+    this.scr?.body.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f));
+    if (this.scr) this._paint();
   }
 
   async refreshUnread() {
     try {
-      this.chats = await withTimeout(myChats());
+      const me = window.wpApp?.currentUser?.id;
+      const [plans, dms] = await withTimeout(Promise.all([myChats(), myDmChats().catch(() => [])]));
+      const pm = this.getPM();
+      dms.forEach(r => rememberPerson(pm, { id: r.other_id, name: r.other_name, username: r.other_username, avatar_url: r.other_avatar }));
+      this.chats = [...plans, ...dms.map(r => dmShape(r, me))];
       this.offline = false;
-      cacheSet('chats', this.chats.slice(0, 80));
+      cacheSet('chats', this.chats.slice(0, 120));
     } catch (e) {
       this.offline = netError(e);
       if (!this.offline) return 0;
       if (!this.chats.length) this.chats = cacheGet('chats')?.data || [];   // lo último que se vio
       this._waitOnline();
     }
-    const n = this.chats.reduce((s, c) => s + (c.muted ? 0 : c.unread || 0), 0);   // los silenciados no suman
+    // los silenciados y las solicitudes que te llegan no suman
+    const n = this.chats.reduce((s, c) => s + (c.muted || this._isReq(c) ? 0 : c.unread || 0), 0);
     this.onUnread?.(n);
     return n;
   }
@@ -101,6 +124,9 @@ export class SocialTab {
     cacheSet('chats:people', peopleOf(pm, this.chats.flatMap(c => [c.last_user, c.creator_id, ...(c.participants || []).slice(0, 4)])));
   }
 
+  // Solicitud que te llegó (decides tú)
+  _isReq(c) { return c.kind === 'dm' && c.status === 'request' && c.requested_by !== window.wpApp?.currentUser?.id; }
+
   _state(c) {
     const now = Date.now(), t0 = new Date(c.scheduled_at).getTime();
     const end = c.ends_at ? new Date(c.ends_at).getTime() : t0 + 3 * 3600e3;
@@ -109,29 +135,46 @@ export class SocialTab {
 
   _paint() {
     const pm = this.getPM(), me = window.wpApp?.currentUser?.id, box = this.scr.body.querySelector('.wp-so-list');
-    const shown = this.chats.filter(c => this.filter === 'all' || c.unread > 0);
+    const reqs = this.chats.filter(c => this._isReq(c));
+    const rn = this.scr.body.querySelector('.wp-so-reqn');
+    if (rn) { rn.hidden = !reqs.length; rn.textContent = reqs.length > 99 ? '99+' : reqs.length; }
     if (this.offline && !this.chats.length) { box.innerHTML = offlineNote(false); wave(box, '.wp-off-box'); return; }
+    if (this.filter === 'req') { this._paintReqs(pm, me, box, reqs); return; }
+    const shown = this.chats.filter(c => !this._isReq(c) && (this.filter === 'all' || c.unread > 0));
     if (!shown.length) {
       box.innerHTML = this.chats.length ? '<div class="wp-pt-empty"><b>Estás al día</b><span>No tienes mensajes sin leer</span></div>'
         : `<div class="wp-pt-empty"><b>Aún no tienes chats</b><span>Cuando organices o te unas a un plan, aquí platicas con los que van.</span>
             <button type="button" class="wp-pt-cta" data-go-plans style="margin-top:12px">Ver planes</button></div>`;
       return;
     }
-    const sec = { live: [], next: [], past: [] };
-    shown.forEach(c => sec[this._state(c)].push(c));
+    const sec = { live: [], dm: [], next: [], past: [] };
+    shown.forEach(c => sec[c.kind === 'dm' ? 'dm' : this._state(c)].push(c));
     sec.next.sort((x, y) => new Date(x.scheduled_at) - new Date(y.scheduled_at));
-    const title = { live: 'En curso', next: 'Próximos', past: 'Ya pasaron' };
-    box.innerHTML = ['live', 'next', 'past'].filter(k => sec[k].length).map(k => `<section class="wp-so-sec ${k}"><h3>${title[k]}</h3>
+    sec.dm.sort((x, y) => new Date(y.last_at) - new Date(x.last_at));
+    const title = { live: 'En curso', dm: 'Directos', next: 'Próximos', past: 'Ya pasaron' };
+    box.innerHTML = ['live', 'dm', 'next', 'past'].filter(k => sec[k].length).map(k => `<section class="wp-so-sec ${k}"><h3>${title[k]}</h3>
       ${sec[k].map(c => this._row(pm, c, me, k)).join('')}</section>`).join('');
     if (this.offline) box.insertAdjacentHTML('afterbegin', offlineNote(true));
     if (!this.waved) { this.waved = true; wave(box, '.wp-off-bar, h3, .wp-so-row'); }   // la primera vez, en ola
   }
 
+  // Pestaña Solicitudes: quién te quiere escribir y su primer mensaje
+  _paintReqs(pm, me, box, reqs) {
+    if (!reqs.length) {
+      box.innerHTML = '<div class="wp-pt-empty"><b>Sin solicitudes</b><span>Cuando alguien que te sigue (y tú no a esa persona) te escriba, su mensaje llega aquí primero.</span></div>';
+      wave(box, '.wp-pt-empty');
+      return;
+    }
+    box.innerHTML = `<p class="wp-so-reqhint">Si aceptas, podrán platicar. Si rechazas, no se entera.</p>${reqs.map(c => this._row(pm, c, me, 'req')).join('')}`;
+    wave(box, '.wp-so-reqhint, .wp-so-row');
+  }
+
   _row(pm, c, me, k) {
     const i = this.chats.indexOf(c);
+    const tag = c.kind === 'dm' && c.status === 'request' && c.requested_by === me ? '<em class="wp-so-tag">Pendiente</em>' : '';
     return `<button type="button" class="wp-so-row${c.unread ? ' unread' : ''}" data-i="${i}">
         <span class="wp-so-pic">${groupAvatar(pm, c, me)}${k === 'live' ? '<em class="wp-so-live"></em>' : ''}</span>
-        <span class="wp-so-txt"><b>${pm._esc(c.title || 'Plan')}</b><small>${pm._esc(previewText(pm, c, me))}</small></span>
+        <span class="wp-so-txt"><b>${pm._esc(c.title || 'Plan')}${tag}</b><small>${pm._esc(previewText(pm, c, me))}</small></span>
         <span class="wp-so-side"><small>${shortWhen(pm, c.last_at || c.scheduled_at)}</small>${c.unread ? `<b class="wp-so-n${c.muted ? ' muted' : ''}">${c.unread > 99 ? '99+' : c.unread}</b>` : c.muted ? MUTED : ''}</span>
       </button>`;
   }
@@ -149,6 +192,7 @@ export class SocialTab {
     const pm = this.getPM(); if (!c || !pm) return;
     const a = { ...c, id: c.activity_id };
     this.openId = a.id;
-    openPlanChat(pm, a, { onClose: () => { this.openId = null; this._load(); } });
+    const opts = { onClose: () => { this.openId = null; this._load(); } };
+    if (c.kind === 'dm') openDmChat(pm, a, opts); else openPlanChat(pm, a, opts);
   }
 }
