@@ -6,7 +6,7 @@
    ════════════════════════════════════════════════════════════════════ */
 #topbar-notif-btn { position: relative; }
 .wp-bell-n {
-  position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; padding: 0 5px; box-sizing: border-box;
+  position: absolute; top: -4px; right: -8px; min-width: 28px; height: 18px; padding: 0 7px; box-sizing: border-box;
   border-radius: 999px; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 55%, #2563eb 100%); color: #fff;
   font: 600 10.5px/1 var(--wp-font); box-shadow: 0 0 0 2px #fff, 0 3px 8px -3px rgba(37, 99, 235, 0.6);

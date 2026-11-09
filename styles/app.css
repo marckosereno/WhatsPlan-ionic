@@ -1576,3 +1576,6 @@ body .wp-ce-cback svg { width: 20px; height: 20px; }
    fondo en vez de dejar el texto suelto encima. tabs.css la completa. */
 .wp-tab { position: fixed; inset: 0; z-index: 99994; overflow: hidden; background: #f6f8fb; }
 .wp-tab-vp { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; }
+
+/* Numerito de las chips ("Todos 40"): pill alargada, no círculo */
+body .subcat-chip-badge { min-width: 28px; height: 18px; padding: 0 7px; box-sizing: border-box; font-size: 10.5px; top: -7px; right: -8px; }
