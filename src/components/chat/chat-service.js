@@ -117,7 +117,8 @@ export async function markRead(activityId) {
 // "dm:" a secas = todos tus mensajes directos; "dm:<uuid>" = ese chat.
 // Devuelve la función para dejar de escuchar.
 // onUpdate(m): cuando cambia un mensaje (reacciones).
-export function onMessages(activityId, cb, onUpdate) {
+// onStatus(s): estado del canal ('SUBSCRIBED', 'CHANNEL_ERROR'…), para live.js
+export function onMessages(activityId, cb, onUpdate, onStatus) {
   const sb = getSupabase();
   const r = route(activityId);
   const opts = { event: 'INSERT', schema: 'public', table: r.table };
@@ -125,6 +126,6 @@ export function onMessages(activityId, cb, onUpdate) {
   let ch = sb.channel(`${r.dm ? 'dm' : 'plan'}-chat-${r.id || 'all'}-${Math.random().toString(36).slice(2, 7)}`)
     .on('postgres_changes', opts, (p) => p.new && cb(p.new));
   if (onUpdate) ch = ch.on('postgres_changes', { ...opts, event: 'UPDATE' }, (p) => p.new && onUpdate(p.new));
-  ch = ch.subscribe();
+  ch = ch.subscribe((status) => onStatus?.(status));
   return () => { try { sb.removeChannel(ch); } catch (_) {} };
 }
