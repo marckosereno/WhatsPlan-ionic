@@ -22,6 +22,7 @@ import { SocialTab }       from '/src/components/tabs/social-tab.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { attachFocusZoom }  from '/src/components/place-plans/focus-zoom.js';
 import { ensureCss }        from '/src/components/tabs/tab-screen.js';
+import { NotifPanel }       from '/src/components/notifs/notif-panel.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { ProfileSheet }     from '/src/components/ProfileSheet.js';
@@ -52,6 +53,7 @@ ensureCss('wp-ph-css', '/styles/plans-here.css');
 ensureCss('wp-chat-css', '/styles/chat.css');
 ensureCss('wps-styles', '/styles/search.css');
 ensureCss('wp-pf-styles', '/styles/profile.css');
+ensureCss('wp-nf-css', '/styles/notifs.css');
 import { appState }         from '/src/state/AppState.js';
 
 window.wpApp = {
@@ -1474,6 +1476,10 @@ try {
     });
     window.wpApp.footer = footerMenu;
     window.wpApp.plansTab = plansTab;
+    // Campanita: avisos de la app (planes, menciones en el chat)
+    const notifPanel = new NotifPanel({ getPM: () => window.wpApp.placeModal });
+    window.wpApp.notifPanel = notifPanel;
+    setTimeout(() => { if (window.wpApp.currentUser) notifPanel.start(window.wpApp.currentUser); }, 1800);
     footerMenu.animateIn();
 
     // Botones del panel lateral
@@ -1537,6 +1543,7 @@ try {
       appState.setUser(user);
       if (user) setTimeout(() => window.wpApp.socialTab?.startChats?.(), 1500);   // numerito de mensajes sin leer
       if (user) setTimeout(() => window.wpApp.plansTab?.prefetch?.(), 3500);     // Planes guardado en el teléfono
+      window.wpApp.notifPanel?.start(user || null);                              // campanita: numerito + en vivo
       // No tocar el avatar si la búsqueda está activa
       var sb = window.wpApp && window.wpApp.searchBar;
       if (!sb || !sb.isActive()) {
