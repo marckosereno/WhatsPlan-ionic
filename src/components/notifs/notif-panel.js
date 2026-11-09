@@ -9,6 +9,10 @@
 //    ícono de color según el tipo, el texto y cuándo fue. Los nuevos
 //    llevan un puntito azul; al abrir se marcan como leídos.
 //  · Tocar un aviso de plan abre ese plan; una mención abre el chat.
+//  · Deslizar para borrar, mantener presionado y el ⋯ de arriba
+//    (notif-actions.js). El numerito se apaga al abrir; el puntito de
+//    cada aviso se queda hasta tocarlo o cerrar la hoja (así se ve
+//    cuáles eran nuevos).
 //  · Sin internet: lo último que se vio (tab-cache.js) con aviso.
 //
 // Uso: const n = new NotifPanel({ getPM }); n.start(user) / n.stop()
@@ -19,6 +23,7 @@ import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
 import { wave } from '/src/components/place-plans/wave.js';
 import { openPlanChat } from '/src/components/chat/plan-chat.js';
 import { cacheGet, cacheSet, withTimeout, netError, offlineNote } from '/src/components/tabs/tab-cache.js';
+import { wireNotifActions, moreButton } from '/src/components/notifs/notif-actions.js';
 
 const I = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICONS = {
@@ -31,6 +36,7 @@ const ICONS = {
   route: I('<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/>'),
   x:     I('<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>'),
   at:    I('<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>'),
+  trash: I('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>'),
   heart: I('<path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.6 4.5 7 4.5c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.4 0 5.3 3.4 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/>'),
   bell:  I('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>'),
 };
@@ -95,10 +101,15 @@ export class NotifPanel {
     if (!this.user) { window.wpApp?.authModal?.show?.(); return; }
     if (this.page) return;
     this.getPM()?._haptic?.('light');
-    this.page = openSheetPage({ title: 'Notificaciones', html: '<div class="wp-nf"><div class="wp-nf-sk"></div><div class="wp-nf-sk"></div><div class="wp-nf-sk"></div></div>',
-      onClose: () => { this.page = null; } });
+    this.onlyNew = false; this.keepUnread = new Set();
+    this.page = openSheetPage({ title: 'Notificaciones', right: moreButton(),
+      html: '<div class="wp-nf"><div class="wp-nf-sk"></div><div class="wp-nf-sk"></div><div class="wp-nf-sk"></div></div>',
+      onClose: () => { this.page = null; document.body.classList.remove('wp-nf-open'); this.markSeen().catch(() => {}); } });
     this.page.root.classList.add('wp-nf-sheet');
+    document.body.classList.add('wp-nf-open');   // menús y confirmación por encima de la hoja
     this.page.body.addEventListener('click', (e) => this._click(e));
+    wireNotifActions(this);
+    this._badge(0);                               // ya los viste: se apaga el numerito
     try {
       this.list = await withTimeout(Notif.getNotifications(this.user.id));
       this.offline = false;
@@ -108,16 +119,30 @@ export class NotifPanel {
       this.list = this.offline ? (cacheGet('notifs')?.data || []) : [];
     }
     if (!this.page) return;
+    this.seen = this.list.filter(n => !n.read).map(n => String(n.id));   // los que eran nuevos al abrir
     this._paint(true);
-    // Vistos: se marcan como leídos un momento después de abrir
-    if (this.unread && !this.offline) {
-      setTimeout(() => { Notif.markAllRead(this.user.id).then(() => this._badge(0)).catch(() => {}); }, 900);
-    }
+  }
+
+  // Al cerrar (o "Marcar todas"): los que estaban nuevos quedan leídos,
+  // menos los que marcaste como no leídos a propósito
+  async markSeen(all = false) {
+    if (!this.user || this.offline) return;
+    if (all) { await Notif.markAllRead(this.user.id); this.seen = []; return; }
+    const ids = (this.seen || []).filter(id => !this.keepUnread?.has(id));
+    this.seen = [];
+    if (!ids.length) return;
+    await getSupabase().from('notifications').update({ read: true }).in('id', ids);
+    this.list.forEach(n => { if (ids.includes(String(n.id))) n.read = true; });
   }
 
   _paint(animate) {
     const box = this.page.body.querySelector('.wp-nf');
     if (this.offline && !this.list.length) { box.innerHTML = offlineNote(false); return; }
+    if (this.onlyNew && this.list.length && !this.list.some(n => !n.read)) {
+      box.innerHTML = `<div class="wp-nf-empty"><i>${ICONS.bell}</i><b>Estás al día</b><span>No tienes avisos sin leer.</span></div>`;
+      if (animate) wave(box, '.wp-nf-empty');
+      return;
+    }
     if (!this.list.length) {
       box.innerHTML = `<div class="wp-nf-empty"><i>${ICONS.bell}</i><b>Todo tranquilo</b><span>Aquí te avisamos cuando te inviten a un plan, alguien se una o te mencionen en un chat.</span></div>`;
       if (animate) wave(box, '.wp-nf-empty');
@@ -127,19 +152,21 @@ export class NotifPanel {
     const day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const groups = [['Hoy', []], ['Esta semana', []], ['Antes', []]];
     this.list.forEach((n, i) => {
+      if (this.onlyNew && n.read) return;
       const t = new Date(n.created_at).getTime();
       groups[t >= day0 ? 0 : t >= day0 - 6 * 864e5 ? 1 : 2][1].push([n, i]);
     });
     box.innerHTML = (this.offline ? offlineNote(true) : '') + groups.filter(g => g[1].length).map(([h, items]) => `<section class="wp-nf-sec"><h3>${h}</h3>
       ${items.map(([n, i]) => {
         const [ic, col] = kindOf(n);
-        return `<button type="button" class="wp-nf-row${n.read ? '' : ' new'}" data-i="${i}">
+        return `<div class="wp-nf-item"><button type="button" class="wp-nf-del" aria-label="Borrar">${ICONS.trash}<span>Borrar</span></button>
+          <button type="button" class="wp-nf-row${n.read ? '' : ' new'}" data-i="${i}">
           <i class="wp-nf-ic ${col}">${ICONS[ic]}</i>
           <span class="wp-nf-txt"><b>${pm?._esc ? pm._esc(clean(n.title)) : clean(n.title)}</b>${n.body ? `<small>${pm?._esc ? pm._esc(n.body) : n.body}</small>` : ''}</span>
           <span class="wp-nf-when">${this._when(n.created_at)}</span>
-        </button>`;
+        </button></div>`;
       }).join('')}</section>`).join('');
-    if (animate) wave(box, '.wp-off-bar, .wp-nf-sec > h3, .wp-nf-row', { max: 10 });
+    if (animate) wave(box, '.wp-off-bar, .wp-nf-sec > h3, .wp-nf-item', { max: 10 });
   }
 
   _when(iso) {
@@ -156,7 +183,12 @@ export class NotifPanel {
   async _click(e) {
     if (e.target.closest('[data-retry]')) { this.page?.close(); setTimeout(() => this.open(), 360); return; }
     const row = e.target.closest('.wp-nf-row'); if (!row) return;
-    const n = this.list[+row.dataset.i]; if (!n?.activity_id) return;
+    const n = this.list[+row.dataset.i]; if (!n) return;
+    if (!n.read) {                                   // tocarlo = leído
+      n.read = true; row.classList.remove('new');
+      getSupabase().rpc('notif_set_read', { p_id: String(n.id), p_read: true }).then(() => {}, () => {});
+    }
+    if (!n.activity_id) return;
     const pm = this.getPM(); if (!pm) return;
     let a = null;
     try {
