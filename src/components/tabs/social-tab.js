@@ -10,6 +10,8 @@
 //  · Tocar abre la conversación (chat/plan-chat.js); al cerrar se
 //    actualiza la lista y el numerito de la barra.
 //  · Mientras está abierta, los mensajes nuevos la refrescan solos.
+//  · Sin internet: la lista de la última vez (tab-cache.js) con un aviso,
+//    o "Sin conexión" si nunca se cargó; al volver la red se recarga.
 //
 // Uso: const t = new SocialTab({ getPM, getPlaces, onGoPlans, onUnread }); t.open(); t.close()
 //      t.refreshUnread() → total sin leer (para el numerito de la barra)
@@ -21,6 +23,7 @@ import { openPlanChat, ensureChatCss } from '/src/components/chat/plan-chat.js';
 import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-render.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
 import { wave } from '/src/components/place-plans/wave.js';
+import { cacheGet, cacheSet, withTimeout, netError, peopleOf, restorePeople, offlineNote, whenOnline } from '/src/components/tabs/tab-cache.js';
 
 const MUTED = '<i class="wp-so-muted" aria-label="Silenciado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="m2 2 20 20"/></svg></i>';
 
@@ -42,7 +45,7 @@ export class SocialTab {
     this._load();
   }
 
-  close() { this.scr?.close(); this.scr = null; this.waved = false; }
+  close() { this.scr?.close(); this.scr = null; this.waved = false; this._unOnline?.(); this._unOnline = null; }
 
   // Con sesión: numerito de sin leer + escuchar mensajes nuevos
   startChats() { this.refreshUnread(); this.listen(); }
@@ -58,7 +61,16 @@ export class SocialTab {
   }
 
   async refreshUnread() {
-    try { this.chats = await myChats(); } catch (_) { return 0; }
+    try {
+      this.chats = await withTimeout(myChats());
+      this.offline = false;
+      cacheSet('chats', this.chats.slice(0, 80));
+    } catch (e) {
+      this.offline = netError(e);
+      if (!this.offline) return 0;
+      if (!this.chats.length) this.chats = cacheGet('chats')?.data || [];   // lo último que se vio
+      this._waitOnline();
+    }
     const n = this.chats.reduce((s, c) => s + (c.muted ? 0 : c.unread || 0), 0);   // los silenciados no suman
     this.onUnread?.(n);
     return n;
@@ -67,8 +79,14 @@ export class SocialTab {
   async _load() {
     await this.refreshUnread();
     if (!this.scr) return;
-    await this._loadPeople();
+    if (this.offline) restorePeople(this.getPM(), cacheGet('chats:people')?.data);
+    else await this._loadPeople();
     this._paint();
+  }
+
+  _waitOnline() {
+    if (this._unOnline) return;
+    this._unOnline = whenOnline(() => { this._unOnline = null; this.scr ? this._load() : this.refreshUnread(); });
   }
 
   async _loadPeople() {
@@ -80,6 +98,7 @@ export class SocialTab {
       const { data } = await getSupabase().from('profiles').select('id, name, username, avatar_url').in('id', ids);
       (data || []).forEach(p => pm._profCache.set(p.id, p));
     } catch (_) {}
+    cacheSet('chats:people', peopleOf(pm, this.chats.flatMap(c => [c.last_user, c.creator_id, ...(c.participants || []).slice(0, 4)])));
   }
 
   _state(c) {
@@ -91,6 +110,7 @@ export class SocialTab {
   _paint() {
     const pm = this.getPM(), me = window.wpApp?.currentUser?.id, box = this.scr.body.querySelector('.wp-so-list');
     const shown = this.chats.filter(c => this.filter === 'all' || c.unread > 0);
+    if (this.offline && !this.chats.length) { box.innerHTML = offlineNote(false); wave(box, '.wp-off-box'); return; }
     if (!shown.length) {
       box.innerHTML = this.chats.length ? '<div class="wp-pt-empty"><b>Estás al día</b><span>No tienes mensajes sin leer</span></div>'
         : `<div class="wp-pt-empty"><b>Aún no tienes chats</b><span>Cuando organices o te unas a un plan, aquí platicas con los que van.</span>
@@ -103,7 +123,8 @@ export class SocialTab {
     const title = { live: 'En curso', next: 'Próximos', past: 'Ya pasaron' };
     box.innerHTML = ['live', 'next', 'past'].filter(k => sec[k].length).map(k => `<section class="wp-so-sec ${k}"><h3>${title[k]}</h3>
       ${sec[k].map(c => this._row(pm, c, me, k)).join('')}</section>`).join('');
-    if (!this.waved) { this.waved = true; wave(box, 'h3, .wp-so-row'); }   // la primera vez, en ola
+    if (this.offline) box.insertAdjacentHTML('afterbegin', offlineNote(true));
+    if (!this.waved) { this.waved = true; wave(box, '.wp-off-bar, h3, .wp-so-row'); }   // la primera vez, en ola
   }
 
   _row(pm, c, me, k) {
@@ -116,6 +137,7 @@ export class SocialTab {
   }
 
   _click(e) {
+    if (e.target.closest('[data-retry]')) { this._load(); return; }
     if (e.target.closest('[data-go-plans]')) { this.onGoPlans?.(); return; }
     const f = e.target.closest('[data-f]');
     if (f) { this.filter = f.dataset.f; this.scr.body.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b === f)); this._paint(); return; }

@@ -11,6 +11,10 @@
 //    → el plan completo con Unirme (plans-here.js _openPlanDetailSheet).
 //    Al cerrar, la lista se vuelve a cargar (por si te uniste).
 //  · Todo entra en ola (wave.js), como las hojas grandes.
+//  · Sin internet: se ve lo último que se cargó (tab-cache.js) con un
+//    aviso, o "Sin conexión" si nunca se cargó; al volver la red se
+//    recarga sola. prefetch() deja Mis planes y Explorar guardados al
+//    abrir la app.
 // Usa los ayudantes de la ficha (PlaceModal2) para caras, horas, días.
 //
 // Uso: const t = new PlansTab({ getPM, getMap, getPlaces }); t.open(); t.close()
@@ -23,6 +27,7 @@ import { photoSmall } from '/src/utils/photo-url.js';
 import { wave } from '/src/components/place-plans/wave.js';
 import { openTabScreen, ensureCss } from '/src/components/tabs/tab-screen.js';
 import { cardHtml, skeletonHtml, planKind, TYPES } from '/src/components/tabs/plans-tab-cards.js';
+import { cacheGet, cacheSet, withTimeout, netError, peopleOf, restorePeople, offlineNote, whenOnline } from '/src/components/tabs/tab-cache.js';
 
 const TABS = [['explore', 'Explorar'], ['mine', 'Mis planes'], ['saved', 'Guardados']];
 const NEAR = 0.14;   // ° alrededor (~15 km)
@@ -54,7 +59,13 @@ export class PlansTab {
     this._load();
   }
 
-  close() { this.scr?.close(); this.scr = null; }
+  close() { this.scr?.close(); this.scr = null; this._unOnline?.(); this._unOnline = null; }
+
+  // Al abrir la app: dejar Mis planes y Explorar guardados en el teléfono
+  async prefetch() {
+    if (!window.wpApp?.currentUser) return;
+    for (const tab of ['mine', 'explore']) { try { await this._fetchAll(tab); } catch (_) {} }
+  }
   top() { this.scr?.vp.scrollTo({ top: 0, behavior: 'smooth' }); }
 
   // ── Datos ───────────────────────────────────────────────────────────
@@ -84,18 +95,50 @@ export class PlansTab {
     return (data || []).filter(a => !['own', 'go'].includes(planKind(a, me)));   // los tuyos van en "Mis planes"
   }
 
-  async _load() {
-    const tab = this.tab, pm = this.getPM();
-    let list = [];
-    try { list = await this._fetch(tab); } catch (e) { console.warn('[PLANES]', e.message || e); }
-    if (!this.scr || tab !== this.tab) return;
+  // Lista + caras + guardados, y se guarda en el teléfono
+  async _fetchAll(tab) {
+    const pm = this.getPM();
+    const list = await withTimeout(this._fetch(tab));
     list.sort((x, y) => new Date(x.scheduled_at) - new Date(y.scheduled_at));
     await this._loadPeople(pm, list);
-    try { this.saved = await savedIds(list.map(a => a.id)); } catch (_) { this.saved = new Set(); }
+    let saved = new Set();
+    try { saved = await savedIds(list.map(a => a.id)); } catch (_) {}
+    cacheSet(`plans:${tab}`, { list: list.slice(0, 60), saved: [...saved],
+      people: peopleOf(pm, list.slice(0, 60).flatMap(a => [a.creator_id, ...(a.participants || [])])) });
+    return { list, saved };
+  }
+
+  async _load() {
+    const tab = this.tab, pm = this.getPM();
+    let list = [], saved = new Set(), offline = false;
+    try { ({ list, saved } = await this._fetchAll(tab)); }
+    catch (e) { console.warn('[PLANES]', e.message || e); offline = netError(e); }
     if (!this.scr || tab !== this.tab) return;
-    this.list = list;
+    if (offline) {
+      const c = cacheGet(`plans:${tab}`);
+      this._waitOnline();
+      if (!c) { this._paintOffline(); return; }
+      restorePeople(pm, c.data.people);
+      list = c.data.list || []; saved = new Set(c.data.saved || []);
+    }
+    this.list = list; this.saved = saved; this.offline = offline;
     if (!list.some(a => a.type === this.type)) this.type = 'all';
     this._paintDays(pm); this._paintTypes(pm); this._paint(true);
+  }
+
+  // Sin red y sin nada guardado: aviso grande
+  _paintOffline() {
+    this.list = [];
+    this.scr.body.querySelector('.wp-pt-cal').innerHTML = '';
+    this.scr.body.querySelector('.wp-pt-types').innerHTML = '';
+    const box = this.scr.body.querySelector('.wp-pt-list');
+    box.innerHTML = offlineNote(false);
+    wave(box, '.wp-off-box');
+  }
+
+  _waitOnline() {
+    if (this._unOnline) return;
+    this._unOnline = whenOnline(() => { this._unOnline = null; if (this.scr) this._load(); });
   }
 
   async _loadPeople(pm, list) {
@@ -142,7 +185,8 @@ export class PlansTab {
       box.innerHTML = [...groups.values()].map(g => `<section class="wp-pt-day"><h3>${pm._phDayLabel(new Date(g[0][0].scheduled_at))}</h3>
         ${g.map(([a, i]) => cardHtml(pm, a, i, { me, saved: this.saved, photo: this._photo(a), km: c && a.lat ? pm._mpKm(c, a) : null })).join('')}</section>`).join('');
     }
-    if (swap) wave(box, '.wp-pt-day > h3, .wp-pt-card, .wp-pt-empty');   // entra en ola
+    if (this.offline) box.insertAdjacentHTML('afterbegin', offlineNote(true));   // aviso: lo último que viste
+    if (swap) wave(box, '.wp-off-bar, .wp-pt-day > h3, .wp-pt-card, .wp-pt-empty');   // entra en ola
   }
 
   _photo(a) {
@@ -153,6 +197,7 @@ export class PlansTab {
 
   // ── Toques ──────────────────────────────────────────────────────────
   _click(e) {
+    if (e.target.closest('[data-retry]')) { this.getPM()?._haptic?.('light'); this._load(); return; }
     const t = e.target.closest('[data-tab]');
     if (t) { this._pickTab(t.dataset.tab); return; }
     const ty = e.target.closest('[data-type]');
