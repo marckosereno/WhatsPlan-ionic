@@ -21,6 +21,7 @@ export function dmShape(r, me) {
     status: r.status, requested_by: r.requested_by, muted: !!r.muted, unread: r.unread || 0,
     last_body: r.last_body, last_kind: r.last_kind, last_user: r.last_user, last_at: r.last_at, last_image: r.last_image,
     scheduled_at: r.last_at,
+    pinned_at: r.pinned_at || null, unread_mark: !!r.unread_mark, last_deleted: !!r.last_deleted, cleared_at: r.cleared_at || null,
   };
 }
 

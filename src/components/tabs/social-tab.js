@@ -28,8 +28,10 @@ import { previewText, shortWhen, groupAvatar } from '/src/components/chat/chat-r
 import { getSupabase } from '/src/services/SupabaseService.js';
 import { wave } from '/src/components/place-plans/wave.js';
 import { liveWatch, showBanner } from '/src/components/live/live.js';
+import { wireSocialHold } from '/src/components/tabs/social-actions.js';
 import { cacheGet, cacheSet, withTimeout, netError, peopleOf, restorePeople, offlineNote, whenOnline } from '/src/components/tabs/tab-cache.js';
 
+const PIN = '<i class="wp-so-pin" aria-label="Fijado"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8V5h6v5.8l2.5 3.2H6.5Z"/><path d="M8 5h8"/></svg></i>';
 const MUTED = '<i class="wp-so-muted" aria-label="Silenciado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="m2 2 20 20"/></svg></i>';
 
 export class SocialTab {
@@ -46,6 +48,7 @@ export class SocialTab {
       <div class="wp-pt-tabs"><button type="button" data-f="all" class="on">Todos</button><button type="button" data-f="unread">Sin leer</button><button type="button" data-f="req">Solicitudes<b class="wp-so-reqn" hidden></b></button></div>
       <div class="wp-so-list"><div class="wp-so-sk"></div><div class="wp-so-sk"></div><div class="wp-so-sk"></div></div>`);
     this.scr.root.addEventListener('click', (e) => this._click(e));
+    wireSocialHold(this);   // mantener presionado un chat: fijar, silenciar, ocultar…
     wave(this.scr.body);
     this._load();
   }
@@ -124,8 +127,13 @@ export class SocialTab {
       if (!this.chats.length) this.chats = cacheGet('chats')?.data || [];   // lo último que se vio
       this._waitOnline();
     }
-    // los silenciados y las solicitudes que te llegan no suman
-    const n = this.chats.reduce((s, c) => s + (c.muted || this._isReq(c) ? 0 : c.unread || 0), 0);
+    return this._count();
+  }
+
+  // Numerito de la barra: los silenciados y las solicitudes no suman;
+  // "marcado como no leído" cuenta 1
+  _count() {
+    const n = this.chats.reduce((s, c) => s + (c.muted || this._isReq(c) ? 0 : (c.unread || (c.unread_mark ? 1 : 0))), 0);
     this.onUnread?.(n);
     return n;
   }
@@ -171,19 +179,20 @@ export class SocialTab {
     if (rn) { rn.hidden = !reqs.length; rn.textContent = reqs.length > 99 ? '99+' : reqs.length; }
     if (this.offline && !this.chats.length) { box.innerHTML = offlineNote(false); wave(box, '.wp-off-box'); return; }
     if (this.filter === 'req') { this._paintReqs(pm, me, box, reqs); return; }
-    const shown = this.chats.filter(c => !this._isReq(c) && (this.filter === 'all' || c.unread > 0));
+    const shown = this.chats.filter(c => !this._isReq(c) && (this.filter === 'all' || c.unread > 0 || c.unread_mark));
     if (!shown.length) {
       box.innerHTML = this.chats.length ? '<div class="wp-pt-empty"><b>Estás al día</b><span>No tienes mensajes sin leer</span></div>'
         : `<div class="wp-pt-empty"><b>Aún no tienes chats</b><span>Cuando organices o te unas a un plan, aquí platicas con los que van.</span>
             <button type="button" class="wp-pt-cta" data-go-plans style="margin-top:12px">Ver planes</button></div>`;
       return;
     }
-    const sec = { live: [], dm: [], next: [], past: [] };
-    shown.forEach(c => sec[c.kind === 'dm' ? 'dm' : this._state(c)].push(c));
+    const sec = { pin: [], live: [], dm: [], next: [], past: [] };
+    shown.forEach(c => sec[c.pinned_at ? 'pin' : c.kind === 'dm' ? 'dm' : this._state(c)].push(c));
+    sec.pin.sort((x, y) => new Date(x.pinned_at) - new Date(y.pinned_at));
     sec.next.sort((x, y) => new Date(x.scheduled_at) - new Date(y.scheduled_at));
     sec.dm.sort((x, y) => new Date(y.last_at) - new Date(x.last_at));
-    const title = { live: 'En curso', dm: 'Directos', next: 'Próximos', past: 'Ya pasaron' };
-    box.innerHTML = ['live', 'dm', 'next', 'past'].filter(k => sec[k].length).map(k => `<section class="wp-so-sec ${k}"><h3>${title[k]}</h3>
+    const title = { pin: 'Fijados', live: 'En curso', dm: 'Directos', next: 'Próximos', past: 'Ya pasaron' };
+    box.innerHTML = ['pin', 'live', 'dm', 'next', 'past'].filter(k => sec[k].length).map(k => `<section class="wp-so-sec ${k}"><h3>${title[k]}</h3>
       ${sec[k].map(c => this._row(pm, c, me, k)).join('')}</section>`).join('');
     if (this.offline) box.insertAdjacentHTML('afterbegin', offlineNote(true));
     if (!this.waved) { this.waved = true; wave(box, '.wp-off-bar, h3, .wp-so-row'); }   // la primera vez, en ola
@@ -203,14 +212,16 @@ export class SocialTab {
   _row(pm, c, me, k) {
     const i = this.chats.indexOf(c);
     const tag = c.kind === 'dm' && c.status === 'request' && c.requested_by === me ? '<em class="wp-so-tag">Pendiente</em>' : '';
-    return `<button type="button" class="wp-so-row${c.unread ? ' unread' : ''}" data-i="${i}">
+    const unread = c.unread || c.unread_mark;
+    return `<button type="button" class="wp-so-row${unread ? ' unread' : ''}" data-i="${i}">
         <span class="wp-so-pic">${groupAvatar(pm, c, me)}${k === 'live' ? '<em class="wp-so-live"></em>' : ''}</span>
         <span class="wp-so-txt"><b>${pm._esc(c.title || 'Plan')}${tag}</b><small>${pm._esc(previewText(pm, c, me))}</small></span>
-        <span class="wp-so-side"><small>${shortWhen(pm, c.last_at || c.scheduled_at)}</small>${c.unread ? `<b class="wp-so-n${c.muted ? ' muted' : ''}">${c.unread > 99 ? '99+' : c.unread}</b>` : c.muted ? MUTED : ''}</span>
+        <span class="wp-so-side"><small>${shortWhen(pm, c.last_at || c.scheduled_at)}</small>${c.unread ? `<b class="wp-so-n${c.muted ? ' muted' : ''}">${c.unread > 99 ? '99+' : c.unread}</b>` : c.unread_mark ? `<b class="wp-so-n dot${c.muted ? ' muted' : ''}"></b>` : c.muted ? MUTED : ''}${c.pinned_at ? PIN : ''}</span>
       </button>`;
   }
 
   _click(e) {
+    if (this._swallow) { this._swallow = false; return; }   // fue mantener presionado
     if (e.target.closest('[data-retry]')) { this._load(); return; }
     if (e.target.closest('[data-go-plans]')) { this.onGoPlans?.(); return; }
     const f = e.target.closest('[data-f]');

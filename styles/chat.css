@@ -242,3 +242,41 @@
 .wp-ch-req button:active { transform: scale(0.95); transition-duration: 0.1s; }
 .wp-ch-req [data-req="no"] { background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%); color: #14121f; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.06); }
 .wp-ch-req [data-req="yes"] { background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%); color: #fff; box-shadow: 0 6px 14px -8px rgba(20, 18, 31, 0.5); }
+
+/* ── Acciones del chat (chat-msg-actions.js) ───────────────────────── */
+/* Menú del mensaje: opción roja para borrar; el submenú entra con resorte */
+.wp-ch-rx-menu button.danger { color: #e11d48; }
+.wp-ch-rx-menu.swap { animation: wpRxSwap 0.32s cubic-bezier(0.34, 1.4, 0.64, 1); }
+@keyframes wpRxSwap { from { opacity: 0.4; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+/* Mensaje borrado para todos: burbuja punteada, gris e itálica */
+.wp-ch-b.wp-ch-del { display: flex; align-items: center; gap: 6px; background: transparent !important; color: #9ca3af;
+  box-shadow: inset 0 0 0 1px #e2e6ec !important; }
+.wp-ch-b.wp-ch-del p { margin: 0; font-style: italic; font-weight: 500; color: #9ca3af; }
+.wp-ch-b.wp-ch-del svg { flex: none; }
+/* Franja del mensaje fijado: debajo del encabezado de la hoja, fija */
+.wp-ch-pin { position: absolute; top: calc(var(--st-top, 76px) + 2px); left: 12px; right: 12px; z-index: 6; display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px 8px 8px; border: none; border-radius: 16px; text-align: left; font: inherit; color: #14121f;
+  background: rgba(255, 255, 255, 0.92); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 6px 16px -10px rgba(20, 18, 31, 0.3);
+  animation: wpWave 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) backwards; }
+.wp-ch-pin[hidden] { display: none; }
+.wp-ch-pin-ic { flex: none; width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-style: normal;
+  background: linear-gradient(135deg, #fde68a, #f59e0b 55%, #d97706); color: #fff; }
+.wp-ch-pin span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.wp-ch-pin b { font-size: 12px; font-weight: 600; color: #b45309; }
+.wp-ch-pin small { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Editando: la barra de arriba con tinte ámbar suave */
+.wp-ch-reply.wp-ch-edit b { color: #b45309; }
+/* Lista de Social: fijado, marcado como no leído, presionado */
+.wp-so-pin { display: inline-flex; margin-top: 4px; color: #9ca3af; font-style: normal; }
+.wp-so-n.dot { min-width: 12px; width: 12px; height: 12px; padding: 0; }
+.wp-so-row.held { transform: scale(0.97); transition: transform 0.2s; }
+/* Lista de Social: fijado, marcado como no leído, presionado */
+.wp-so-pin { display: inline-flex; margin-top: 4px; color: #9ca3af; font-style: normal; }
+.wp-so-n.dot { min-width: 12px; width: 12px; height: 12px; padding: 0; }
+.wp-so-row.held { transform: scale(0.97); transition: transform 0.2s; }
+/* Mini perfil: botón redondo de mensaje (azul suave) entre Ver perfil y Seguir */
+#wp-mp .wp-mp-btn.wp-mp-msg { flex: none; width: 46px; padding: 0; display: flex; align-items: center; justify-content: center;
+  background: #eef6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px #dbeafe; }
+#wp-mp .wp-mp-btn.wp-mp-msg[hidden] { display: none; }
+.wp-ch-sheet.has-pin .wp-ch-list { padding-top: 64px; }
