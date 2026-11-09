@@ -2,6 +2,8 @@
 // WHATSPLAN — PlaceModal2.js  (diseño alternativo, Google Maps-inspired)
 // ══════════════════════════════════════════════════════════════════════
 import { wave } from '/src/components/place-plans/wave.js';
+import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
+import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
 import { PlaceTagService, PLACE_TAGS } from '/src/services/PlaceTagService.js';
 import { ReviewService }               from '/src/services/ReviewService.js';
 import { ActivityService, ProfileService, getSupabase } from '/src/services/SupabaseService.js';
@@ -1231,10 +1233,10 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
             </label>
             <button type="button" class="wp-sim-more" aria-label="Opciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
           </div>
-          ${chips.length ? `<div class="wp-sim-chips">
+          ${chips.length ? `<div class="wp-sim-chips"><div class="wp-sim-chips-in">
             <button class="wp-sim-chip on" data-chip="">Todos</button>
             ${chips.map(ch => `<button class="wp-sim-chip" data-chip="${this._esc(ch.k)}">${this._esc(ch.label)}</button>`).join('')}
-          </div>` : ''}
+          </div></div>` : ''}
         </div>
         <div class="wp-sim-list"><div class="wp-sim-inner"></div></div>
       </div>`;
@@ -1272,15 +1274,15 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         const r = parseFloat(p.rating) || 0;
         const addr = String(p.vicinity || p.formattedAddress || p.address || '').trim();
         const open = this._isOpenNow(p);
-        const st = open === true ? '<span style="color:#16a34a;font-weight:600">Abierto</span>' : open === false ? '<span style="color:#dc2626;font-weight:600">Cerrado</span>' : '';
-        const meta = [r > 0 ? `Rating <b>${r.toFixed(1)}/5</b>` : 'Sin reseñas', fmtD(d), st].filter(Boolean).join(' · ');
+        const st = open === true ? '<em class="wp-sim-st on">Abierto</em>' : open === false ? '<em class="wp-sim-st">Cerrado</em>' : '';
+        const meta = [r > 0 ? `<b>★ ${r.toFixed(1)}</b>` : 'Sin reseñas', fmtD(d)].filter(Boolean).join(' · ');
         const isFav = favIds.has(String(p.place_id || p.id));
         return `<div role="button" tabindex="0" class="wp-sim-card" data-sim="${list.indexOf(it)}" style="${animate ? `animation-delay:${Math.min(i, 8) * 0.045}s` : 'opacity:1;transform:none;animation:none'}">
           <div class="wp-sim-ph${photo ? ' wp-sim-sk' : ''}">${photo ? `<img src="${this._esc(photo)}" alt="" loading="lazy" onload="this.classList.add('ok');this.parentNode.classList.remove('wp-sim-sk')" onerror="this.parentNode.classList.remove('wp-sim-sk')">` : '⭐'}</div>
           <div class="wp-sim-info">
             <div class="wp-sim-name">${this._esc(p.name || '')}</div>
             ${addr ? `<div class="wp-sim-row">${PIN}<span>${this._esc(addr)}</span></div>` : ''}
-            <div class="wp-sim-row"><span>${meta}</span></div>
+            <div class="wp-sim-row">${st}<span>${meta}</span></div>
           </div>
           <button type="button" class="wp-sim-fav${isFav ? ' on' : ''}" data-fav="${list.indexOf(it)}" aria-label="Favorito">${HEART.replace('width="16" height="16"', 'width="14" height="14"').replace('fill="none"><path', `fill="none"><path fill="${isFav ? 'currentColor' : 'none'}"`)}</button>
         </div>`;
@@ -1367,7 +1369,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     const sheet = root.querySelector('.wp-sim-sheet');
     let y0 = 0, dy = 0, drag = false;
     head.addEventListener('touchstart', (e) => {
-      if (e.target.closest('input,button')) return;
+      if (e.target.closest('input,button,.wp-sim-chips')) return;   // la tira de chips tiene su propio arrastre
       drag = true; y0 = e.touches[0].clientY; dy = 0;
       sheet.style.animation = 'none'; sheet.style.transform = 'translateY(0)'; sheet.style.transition = 'none';
     }, { passive: true });
@@ -1412,38 +1414,12 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
       }).catch(() => {});
     }
 
-    // ── Elastic arriba y abajo de la lista (mismo rebote tipo iOS que la
-    // ficha): al llegar al inicio o al final y seguir jalando, las fichas
-    // se estiran con resistencia y al soltar regresan.
-    {
-      const rubber = (d) => { const D = window.innerHeight, a = Math.abs(d); return Math.sign(d) * (1 - 1 / ((a * 0.55 / D) + 1)) * D; };
-      let y0 = 0, x0 = 0, anchor = 0, dir = 0, on = false;
-      const set = (o, anim) => {
-        innerEl.style.transition = anim ? 'transform 0.45s cubic-bezier(0.2,0.9,0.3,1)' : 'none';
-        innerEl.style.transform = o ? `translate3d(0,${o.toFixed(1)}px,0)` : '';
-      };
-      listEl.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
-        y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dir = 0; on = true;
-      }, { passive: true });
-      listEl.addEventListener('touchmove', (e) => {
-        if (!on) return;
-        const y = e.touches[0].clientY;
-        if (!dir) {
-          if (Math.abs(y - y0) < 4 || Math.abs(y - y0) < Math.abs(e.touches[0].clientX - x0)) return;
-          const max = listEl.scrollHeight - listEl.clientHeight;
-          if (listEl.scrollTop <= 0 && y > y0) { dir = 1; anchor = y; }
-          else if (listEl.scrollTop >= max - 1 && y < y0) { dir = -1; anchor = y; }
-          else return;
-        }
-        const d = y - anchor;
-        if ((dir === 1 && d < 0) || (dir === -1 && d > 0)) { set(0, false); dir = 0; return; } // vuelve al scroll normal
-        set(rubber(d), false);
-      }, { passive: true });
-      const end = () => { if (!on) return; on = false; if (dir) set(0, true); dir = 0; };
-      listEl.addEventListener('touchend', end, { passive: true });
-      listEl.addEventListener('touchcancel', end, { passive: true });
-    }
+    // ── Scroll de la lista con nuestro motor (drag-scroll.js): arrastre,
+    // inercia y rebote sin el saltito del relevo con el scroll del
+    // teléfono. La tira de chips, con drag-strip.
+    addDragScroll(listEl);
+    const chipStrip = root.querySelector('.wp-sim-chips');
+    if (chipStrip) addDragStrip(chipStrip);
 
     // ── Con el buscador enfocado, la hoja se acomoda entre el teclado y
     // la barra de estado (6px debajo de ella, como la hoja del perfil). El
