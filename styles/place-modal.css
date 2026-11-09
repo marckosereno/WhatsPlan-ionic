@@ -1745,3 +1745,60 @@ div.wp-pm2-ms-opt { box-sizing:border-box; }
 @media (prefers-reduced-motion: reduce) {
   #wp-pm2-menu-sheet .wp-pm2-ms-menu *, #wp-pm2-review-modal *, .wp-pm2-hours-row { animation:none !important; }
 }
+
+/* ── FICHA — nueva línea (3): pull-up y hoja "Lugares similares" ──────
+   (los estilos base se inyectan desde el JS al abrir; aquí con "body"
+   delante para ganarles) */
+/* Burbuja del pull-up: blanca con sombra ligera, anillo azul suave y,
+   ya armada, el degradado azul suave de los botones del lado */
+body #wp-pm2-more-bubble { color: #14121f; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 4px 12px -6px rgba(20, 18, 31, 0.22); }
+body #wp-pm2-more-bubble .wp-mb-trk { stroke: #eef0f3; }
+body #wp-pm2-more-bubble .wp-mb-arc { stroke: #3b82f6; }
+body #wp-pm2-more-bubble.ready { background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 55%, #2563eb 100%); color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, 0.55); }
+body #wp-pm2-more-bubble.ready .wp-mb-trk { stroke: rgba(255, 255, 255, 0.28); }
+body #wp-pm2-more-bubble.ready .wp-mb-arc { stroke: #fff; }
+
+/* Hoja */
+body #wp-pm2-sim .wp-sim-dim { background: rgba(20, 18, 31, 0.28); }
+body #wp-pm2-sim .wp-sim-sheet { border-radius: 28px; overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 40%, #f6f8fb 100%);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 18px 40px -16px rgba(20, 18, 31, 0.3); }
+body #wp-pm2-sim .wp-sim-handle { background: #e2e5ea; }
+body #wp-pm2-sim .wp-sim-title { color: #14121f; font-weight: 700; }
+body #wp-pm2-sim .wp-sim-search { background: #f4f6f9; box-shadow: inset 0 0 0 1px #e8ebf0; transition: box-shadow 0.2s, background-color 0.2s; }
+body #wp-pm2-sim .wp-sim-search:focus-within { background: #fff; box-shadow: inset 0 0 0 1.5px #93c5fd; }
+body #wp-pm2-sim .wp-sim-search input { font-weight: 500; color: #14121f; }
+body #wp-pm2-sim .wp-sim-more { background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%); color: #14121f;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 3px 8px -4px rgba(20, 18, 31, 0.18), inset 0 1px 0 #fff;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+body #wp-pm2-sim .wp-sim-more[data-n]::after { background: linear-gradient(160deg, #2b2a3a, #14121f); font-weight: 600; }
+
+/* Chips: tira con arrastre propio; gris suave, la elegida en tinta */
+body #wp-pm2-sim .wp-sim-chips { display: block; overflow: hidden; padding: 10px 0 4px; touch-action: pan-y; }
+body #wp-pm2-sim .wp-sim-chips-in { display: flex; gap: 7px; width: max-content; padding: 2px 16px 6px; }
+body #wp-pm2-sim .wp-sim-chip { border-radius: 999px; font-weight: 500; color: #374151;
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05), 0 3px 8px -4px rgba(20, 18, 31, 0.18), inset 0 1px 0 #fff;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+body #wp-pm2-sim .wp-sim-chip.on { background: linear-gradient(160deg, #2b2a3a 0%, #14121f 100%); color: #fff; font-weight: 600;
+  box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.45); }
+
+/* Tarjetas: blancas flotando, nombre 700, datos 600, etiquetas 500 */
+body #wp-pm2-sim .wp-sim-inner { gap: 10px; }
+body #wp-pm2-sim .wp-sim-card { background: #fff; border-radius: 20px;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 6px 16px -10px rgba(20, 18, 31, 0.28);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+body #wp-pm2-sim .wp-sim-card:active { background: #fff; transform: scale(0.97); transition-duration: 0.1s; }
+body #wp-pm2-sim .wp-sim-skcard { background: #fff; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04); }
+body #wp-pm2-sim .wp-sim-ph { border-radius: 15px; background: #eef1f5; }
+body #wp-pm2-sim .wp-sim-name { font-weight: 700; color: #14121f; }
+body #wp-pm2-sim .wp-sim-row { font-weight: 500; }
+body #wp-pm2-sim .wp-sim-row b { font-weight: 600; color: #14121f; }
+body #wp-pm2-sim .wp-sim-st { flex: none; padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 600;
+  background: #f1f4f8; color: #6b7280; }
+body #wp-pm2-sim .wp-sim-st.on { background: #e9f9ef; color: #15803d; }
+body #wp-pm2-sim .wp-sim-fav { width: 34px; height: 34px; border-radius: 50%; color: #f43f5e;
+  background: linear-gradient(160deg, #fff5f7, #ffe8ed); box-shadow: inset 0 0 0 1px #fecdd6; }
+body #wp-pm2-sim .wp-sim-fav.on { background: linear-gradient(160deg, #fb7185, #f43f5e); color: #fff; box-shadow: 0 4px 10px -6px rgba(244, 63, 94, 0.6); }
+body #wp-pm2-sim .wp-sim-empty { font-weight: 500; }
