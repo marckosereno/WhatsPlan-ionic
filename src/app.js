@@ -21,6 +21,7 @@ import { PlansTab }        from '/src/components/tabs/plans-tab.js';
 import { SocialTab }       from '/src/components/tabs/social-tab.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { attachFocusZoom }  from '/src/components/place-plans/focus-zoom.js';
+import { ensureCss }        from '/src/components/tabs/tab-screen.js';
 import { PlaceModal } from '/src/components/PlaceModal2.js';
 import { ActivityModal }    from '/src/components/ActivityModal.js';
 import { ProfileSheet }     from '/src/components/ProfileSheet.js';
@@ -41,6 +42,16 @@ document.addEventListener('contextmenu', (e) => {
 // Campos con [data-zoom] en cualquier parte (ficha, perfil…): al tocarlos
 // la tarjeta sale con zoom al centro y lo de atrás queda borroso
 attachFocusZoom(document);
+
+// Hojas de estilo de las secciones desde el arranque (antes se pedían al
+// abrirlas): si después se va el internet, Planes, Social, el buscador y
+// el perfil ya tienen su estilo y no se ven "rotos" encima del mapa. Se
+// agregan después de las de la ficha, en el mismo orden que antes.
+ensureCss('wp-tabs-css', '/styles/tabs.css');
+ensureCss('wp-ph-css', '/styles/plans-here.css');
+ensureCss('wp-chat-css', '/styles/chat.css');
+ensureCss('wps-styles', '/styles/search.css');
+ensureCss('wp-pf-styles', '/styles/profile.css');
 import { appState }         from '/src/state/AppState.js';
 
 window.wpApp = {
@@ -1451,6 +1462,8 @@ try {
     });
     window.wpApp.socialTab = socialTab;
     setTimeout(() => { if (window.wpApp.currentUser) socialTab.startChats(); }, 2000);
+    // Dejar Planes listo en el teléfono (por si luego no hay internet)
+    setTimeout(() => { if (window.wpApp.currentUser) plansTab.prefetch(); }, 4000);
     const footerMenu = new FooterMenu({
       onSection: (id) => {
         if (id === 'plans') { plansTab.open(); }
@@ -1523,6 +1536,7 @@ try {
       window.wpApp.currentUser = user;
       appState.setUser(user);
       if (user) setTimeout(() => window.wpApp.socialTab?.startChats?.(), 1500);   // numerito de mensajes sin leer
+      if (user) setTimeout(() => window.wpApp.plansTab?.prefetch?.(), 3500);     // Planes guardado en el teléfono
       // No tocar el avatar si la búsqueda está activa
       var sb = window.wpApp && window.wpApp.searchBar;
       if (!sb || !sb.isActive()) {

@@ -1570,3 +1570,9 @@ body .wp-ce-cback {
 body .wp-ce-cback svg { width: 20px; height: 20px; }
 /* "4 lugares": discreto, arriba de las chips */
 .wp-ce-ccount { margin: 0 0 8px; text-align: center; font-size: 11.5px; font-weight: 500; color: #9ca3af; letter-spacing: 0.1px; }
+
+/* Red de seguridad de las secciones (Planes, Social): si tabs.css no
+   llegó a cargar (sin internet), la pantalla igual tapa el mapa con su
+   fondo en vez de dejar el texto suelto encima. tabs.css la completa. */
+.wp-tab { position: fixed; inset: 0; z-index: 99994; overflow: hidden; background: #f6f8fb; }
+.wp-tab-vp { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; }

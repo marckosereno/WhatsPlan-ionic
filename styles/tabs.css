@@ -100,3 +100,19 @@
 .wp-so-art i:nth-child(1) { left: 0; transform: rotate(-9deg); background: #fde68a; }
 .wp-so-art i:nth-child(2) { left: 33px; top: 0; z-index: 1; background: #bfdbfe; }
 .wp-so-art i:nth-child(3) { right: 0; transform: rotate(8deg); background: #fecdd3; }
+
+/* ── Sin conexión (tab-cache.js) ───────────────────────────────────── */
+.wp-off-bar { display: flex; align-items: center; gap: 8px; margin: 2px 0 14px; padding: 8px 8px 8px 12px; border-radius: 16px;
+  background: #fff; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 4px 12px -6px rgba(20, 18, 31, 0.16); color: #6b7280; }
+.wp-off-bar svg { flex: none; width: 18px; height: 18px; }
+.wp-off-bar span { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; }
+.wp-off-bar button { flex: none; height: 30px; padding: 0 12px; border: none; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 600;
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f3 100%); color: #14121f; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.06); }
+.wp-off-box { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 24px; padding: 30px 22px 26px; border-radius: 26px;
+  background: #fff; text-align: center; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 10px 26px -14px rgba(20, 18, 31, 0.2); }
+.wp-off-box i { width: 56px; height: 56px; margin-bottom: 6px; border-radius: 18px; display: flex; align-items: center; justify-content: center;
+  background: #f1f4f8; color: #6b7280; font-style: normal; }
+.wp-off-box i svg { width: 26px; height: 26px; }
+.wp-off-box b { font-size: 17px; font-weight: 700; }
+.wp-off-box span { max-width: 280px; font-size: 13.5px; font-weight: 500; line-height: 1.45; color: var(--sub); }
+.wp-off-box .wp-pt-cta { margin-top: 12px; height: 42px; padding: 0 22px; }
