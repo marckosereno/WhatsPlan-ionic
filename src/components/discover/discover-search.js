@@ -2,14 +2,16 @@
 // WHATSPLAN — discover/discover-search.js
 // Modo búsqueda de Discover. Al tocar la barra de abajo:
 //  · lo de atrás se achica y se apaga un poco (zoom out);
-//  · la barra sube a su lugar de arriba con un pulso, con la X redonda
-//    a la derecha (borra todo y regresa);
+//  · aparece la barra de arriba (del mismo tamaño que la de abajo) con la
+//    entrada en ola de Planes y Social, con la X redonda a la derecha
+//    (borra todo y regresa);
 //  · debajo: los chips de tipo y la lista. Sin texto: "Recientes" (las
 //    últimas 8, solo en este teléfono, con ⋯ para quitar) y "Sugeridos".
 //    Escribiendo: Personas · Planes · Lugares con miniatura y ⋯.
 //   wireSearch(d) → { open, close, isOpen, paint }
 // d = la instancia de Discover (discover.js)
 // ════════════════════════════════════════════════════════════════════
+import { wave } from '/src/components/place-plans/wave.js';
 import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
 import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
 import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
@@ -33,7 +35,7 @@ export function wireSearch(d) {
     sm = document.createElement('div');
     sm.className = 'wp-dc-sm'; sm.hidden = true;
     sm.innerHTML = `<div class="wp-dc-sm-top">
-        <label class="wp-dc-search live">${SEARCH_IC}<input type="text" inputmode="search" placeholder="Gente, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false">${filterPill()}</label>
+        <label class="wp-dc-search live"><input type="text" inputmode="search" placeholder="Busca personas, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false">${filterPill()}</label>
         <button type="button" class="wp-st-back wp-dc-sm-x" data-x aria-label="Cerrar búsqueda">${X_IC}</button></div>
       <div class="wp-dc-chips"><div class="wp-dc-track" data-schips></div></div>
       <div class="wp-dc-sm-body"></div>`;
@@ -66,7 +68,7 @@ export function wireSearch(d) {
     if (show('plans')) sug += rowsOf((feed.plans || []).slice(0, 3), 'plan');
     if (show('places')) sug += rowsOf(d._trending().slice(0, 3), 'place');
     if (sug) h += sec('Sugeridos', sug);
-    return h || '<p class="wp-dc-none">Escribe para buscar gente, planes o lugares.</p>';
+    return h || '<p class="wp-dc-none">Escribe para buscar personas, planes o lugares.</p>';
   }
 
   function typed() {
@@ -90,32 +92,24 @@ export function wireSearch(d) {
   function open() {
     if (isOpen) return; isOpen = true;
     if (!sm) build();
-    const home = d.page.foot.querySelector('.wp-dc-search'), hr = home.getBoundingClientRect(), rr = root.getBoundingClientRect();
+    const inp = sm.querySelector('input');
+    inp.value = d.q = ''; d.res = null;
     sm.hidden = false; paint();
-    const bar = sm.querySelector('.wp-dc-sm-top'), inp = sm.querySelector('input');
-    inp.value = d.q = ''; d.res = null; paint();
-    const from = hr.top - bar.getBoundingClientRect().top;                    // de dónde sube
-    bar.style.transition = 'none'; bar.style.transform = `translateY(${from}px)`;
-    sm.classList.remove('in'); void sm.offsetWidth;
     root.classList.add('searching');
     requestAnimationFrame(() => {
-      bar.style.transition = ''; bar.style.transform = ''; sm.classList.add('in');
-      setTimeout(() => { bar.classList.add('pulse'); setTimeout(() => bar.classList.remove('pulse'), 650); }, 260);
+      sm.classList.add('in');
+      wave(sm, '.wp-dc-sm-top > *, .wp-dc-sm .wp-dc-chips button, .wp-dc-sm .wp-dc-sec', { max: 7 });   // la misma entrada en ola de Planes y Social
     });
     inp.focus({ preventScroll: true });
     d.getPM()?._haptic?.('light');
-    void rr;
   }
 
   function close() {
     if (!isOpen) return; isOpen = false;
-    const inp = sm.querySelector('input'), bar = sm.querySelector('.wp-dc-sm-top');
+    const inp = sm.querySelector('input');
     inp.value = ''; inp.blur(); d.q = ''; d.res = null; clearTimeout(d.t);
-    const home = d.page.foot.querySelector('.wp-dc-search');
-    const to = home.getBoundingClientRect().top - bar.getBoundingClientRect().top;
-    bar.style.transform = `translateY(${to}px)`; sm.classList.remove('in');
-    root.classList.remove('searching');
-    setTimeout(() => { if (!isOpen) { sm.hidden = true; bar.style.transform = ''; } }, 340);
+    sm.classList.remove('in'); root.classList.remove('searching');
+    setTimeout(() => { if (!isOpen) sm.hidden = true; }, 300);
   }
 
   // ── Toques ────────────────────────────────────────────────────────

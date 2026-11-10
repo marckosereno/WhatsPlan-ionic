@@ -44,7 +44,7 @@ export class Discover {
     this.page = openSheetPage({ title: titleHtml('all'),
       right: `<button type="button" class="wp-st-back wp-dc-map" data-map aria-label="Ir al mapa"><i style="display:flex;width:22px;height:22px">${ICON_HOME.replace('<svg ', '<svg width="22" height="22" ')}</i></button>`,
       html: '<div class="wp-dc"><div class="wp-dc-body"><div class="wp-dc-sk"></div><div class="wp-dc-sk"></div></div></div>',
-      foot: `<div class="wp-dc-bar"><div class="wp-dc-search" role="button" tabindex="0" aria-label="Buscar">${SEARCH_IC}<span class="wp-dc-phold">Busca gente, planes o lugares</span>${filterPill()}</div></div>`,
+      foot: `<div class="wp-dc-bar"><div class="wp-dc-search" role="button" tabindex="0" aria-label="Buscar"><span class="wp-dc-phold">Busca personas, planes o lugares</span>${filterPill()}</div></div>`,
       onClose: () => { this.page = null; clearTimeout(this.t); } });
     this.page.root.classList.add('wp-dc-sheet');
     this.page.relayout();
@@ -126,14 +126,14 @@ export class Discover {
           ? `<div class="wp-dc-strip"><div class="wp-dc-track">${l.map(a => planCard(a, esc)).join('')}</div></div>`
           : '<p class="wp-dc-none">Sin planes ese día. Toca otro.</p>'}</section>`;
       }
-      if (show('people') && d.suggested?.length) html += section('Gente que quizá conozcas', d.suggested.map(p => personCard(p, esc, true)).join(''), { strip: true });
+      if (show('people') && d.suggested?.length) html += section('Personas que quizá conozcas', d.suggested.map(p => personCard(p, esc, true)).join(''), { strip: true });
       if (show('people') && d.newest?.length) html += section('Nuevos en WhatsPlan', d.newest.map(p => personCard(p, esc, true)).join(''), { strip: true });
       if (show('people') && this.rank.length) html += section('Ranking de la semana', this.rank.map((r, i) => rankRow(r, i, esc)).join(''), { list: true });
       if (show('places')) {
         const top = this._trending();
         if (top.length) html += section('Lugares destacados', top.map(p => placeCard(p, esc, this._idx(p), true)).join(''), { strip: true });
       }
-      if (!html) html = emptyBox('Todavía no hay nada que mostrar', this.err ? 'No se pudo cargar. Intenta de nuevo.' : 'Cuando haya planes y gente nueva cerca, aparecen aquí.');
+      if (!html) html = emptyBox('Todavía no hay nada que mostrar', this.err ? 'No se pudo cargar. Intenta de nuevo.' : 'Cuando haya planes y personas nuevas cerca, aparecen aquí.');
     }
     box.innerHTML = (this.offline ? offlineNote(true) : '') + html;
     box.querySelectorAll('.wp-dc-strip').forEach(addDragStrip);
