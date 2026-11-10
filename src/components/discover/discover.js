@@ -140,6 +140,11 @@ export class Discover {
     if (animate) wave(box, '.wp-off-bar, .wp-dc-sec > h3, .wp-dc-card, .wp-dc-row, .wp-dc-mo', { max: 12 });
   }
 
+  counts() {
+    const d = this.feed || {}, pl = this._plansOf(d).length, pe = (d.suggested?.length || 0) + (d.newest?.length || 0), lu = this._trending().length;
+    return { all: pl + pe + lu, plans: pl, people: pe, places: lu };
+  }
+
   _idx(p) { return (window.wpApp?.mapView?.allPlaces || []).indexOf(p); }
   // Lugares destacados: nota 4+ y 3+ reseñas, por nota o por reseñas (filtro)
   _trending() {
