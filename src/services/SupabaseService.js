@@ -370,6 +370,16 @@ export const SupabaseNotifService = {
     return data || [];
   },
 
+  // Lo mismo, pero con cómo va cada plan y quién fue (supabase/38);
+  // si esa función no está todavía, cae a la lista simple
+  async getNotificationsRich(userId) {
+    const sb = getSupabase();
+    try { await sb.rpc('notif_prune'); } catch (_) {}
+    const { data, error } = await sb.rpc('my_notifications', { p_limit: 40 });
+    if (error) return this.getNotifications(userId);
+    return data || [];
+  },
+
   // Contar no leídas
   async getUnreadCount(userId) {
     const { count, error } = await getSupabase()

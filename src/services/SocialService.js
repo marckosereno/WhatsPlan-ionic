@@ -59,15 +59,7 @@ export const SocialService = {
       .from('follows')
       .upsert({ follower_id: myId, following_id: userId }, { onConflict: 'follower_id,following_id', ignoreDuplicates: true });
     if (error) throw error;
-    // Aviso al seguido (si la tabla lo permite; no es crítico)
-    try {
-      await sb.from('notifications').insert({
-        user_id: userId,
-        type: 'follow',
-        title: '👋 Nuevo seguidor',
-        body: `${myName || 'Alguien'} empezó a seguirte`,
-      });
-    } catch (_) {}
+    // El aviso "empezó a seguirte" lo pone la base (supabase/38)
   },
 
   async unfollow(myId, userId) {

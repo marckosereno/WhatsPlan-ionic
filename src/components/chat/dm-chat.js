@@ -45,7 +45,8 @@ export async function startDm(pm, p, opts = {}) {
   try { t = await openDm(p.id); }
   catch (e) {
     const msg = String(e?.message || '');
-    pm?._showToast?.(/Sigue/.test(msg) ? 'Síguele para poder escribirle'
+    pm?._showToast?.(/Bloqueaste/.test(msg) ? 'Bloqueaste a esta persona'
+      : /Sigue/.test(msg) ? 'Síguele para poder escribirle'
       : /No recibe tus/.test(msg) ? 'No recibe tus mensajes'
       : /No recibe/.test(msg) ? 'No está recibiendo mensajes'
       : /fetch|network/i.test(msg) ? 'Sin conexión' : 'No se pudo abrir el chat');
@@ -53,7 +54,7 @@ export async function startDm(pm, p, opts = {}) {
   }
   pm?._haptic?.('light');
   const a = dmShape({ thread_id: t.id, other_id: p.id, other_name: p.name, other_username: p.username, other_avatar: p.avatar_url,
-    status: t.status, requested_by: t.requested_by, last_at: new Date().toISOString() }, me);
+    status: t.status, requested_by: t.requested_by, cleared_at: t.cleared_at, last_at: new Date().toISOString() }, me);
   window.wpApp?.socialTab?.watchOpen?.(a.id);
   return openDmChat(pm, a, { onClose: () => { window.wpApp?.socialTab?.watchOpen?.(null); opts.onClose?.(); } });
 }

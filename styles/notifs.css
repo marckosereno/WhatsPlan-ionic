@@ -135,3 +135,13 @@ body.wp-nf-open #wp-pm2-menu-sheet .wp-pm2-ms-menu { z-index: 1500650; }
 .wp-live-txt b { font-size: 14px; font-weight: 600; color: #14121f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wp-live-txt small { font-size: 13px; font-weight: 500; color: #6b7280; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .wp-live, .wp-live.out { transition: opacity 0.2s; } }
+
+/* Estado del plan y "Seguir también" */
+.wp-nf-st { align-self: flex-start; margin-top: 4px; padding: 2px 9px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 600;
+  background: linear-gradient(180deg, #fff, #eef0f3); color: #6b7280; box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05); }
+.wp-nf-st.going { background: linear-gradient(180deg, #ecfdf5, #d1fae5); color: #047857; }
+.wp-nf-st.full { background: linear-gradient(180deg, #fffbeb, #fef3c7); color: #b45309; }
+.wp-nf-act { align-self: flex-start; margin-top: 6px; padding: 5px 13px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff;
+  background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.5); }
+.wp-nf-act.busy { opacity: 0.6; }
+.wp-nf-item.past .wp-nf-ic, .wp-nf-item.past .wp-nf-txt b { filter: grayscale(1); opacity: 0.6; }

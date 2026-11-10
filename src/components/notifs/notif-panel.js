@@ -25,6 +25,7 @@ import { wave } from '/src/components/place-plans/wave.js';
 import { openPlanChat } from '/src/components/chat/plan-chat.js';
 import { cacheGet, cacheSet, withTimeout, netError, offlineNote } from '/src/components/tabs/tab-cache.js';
 import { wireNotifActions, moreButton } from '/src/components/notifs/notif-actions.js';
+import { SocialService } from '/src/services/SocialService.js';
 import { liveWatch, showBanner } from '/src/components/live/live.js';
 
 const I = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -147,7 +148,7 @@ export class NotifPanel {
     this._wirePull();
     this._badge(0);                               // ya los viste: se apaga el numerito
     try {
-      this.list = await withTimeout(Notif.getNotifications(this.user.id));
+      this.list = await withTimeout(Notif.getNotificationsRich(this.user.id));
       this.offline = false;
       cacheSet('notifs', this.list.slice(0, 30));
     } catch (e) {
@@ -207,7 +208,7 @@ export class NotifPanel {
     ptr?.classList.add('loading');
     const before = new Set(this.list.map(n => String(n.id)));
     try {
-      const list = await withTimeout(Notif.getNotifications(this.user.id));
+      const list = await withTimeout(Notif.getNotificationsRich(this.user.id));
       this.offline = false;
       cacheSet('notifs', list.slice(0, 30));
       const fresh = list.filter(n => !before.has(String(n.id)));
@@ -257,14 +258,36 @@ export class NotifPanel {
     box.innerHTML = (this.offline ? offlineNote(true) : '') + groups.filter(g => g[1].length).map(([h, items]) => `<section class="wp-nf-sec"><h3>${h}</h3>
       ${items.map(([n, i]) => {
         const [ic, col] = kindOf(n);
-        return `<div class="wp-nf-item"><button type="button" class="wp-nf-del" aria-label="Borrar"><i>${ICONS.trash}</i><span>Borrar</span></button>
+        return `<div class="wp-nf-item${n.plan_state === 'past' || n.plan_state === 'gone' ? ' past' : ''}"><button type="button" class="wp-nf-del" aria-label="Borrar"><i>${ICONS.trash}</i><span>Borrar</span></button>
           <button type="button" class="wp-nf-row${n.read ? '' : ' new'}" data-i="${i}">
           <i class="wp-nf-ic ${col}">${ICONS[ic]}</i>
-          <span class="wp-nf-txt"><b>${pm?._esc ? pm._esc(clean(n.title)) : clean(n.title)}</b>${n.body ? `<small>${pm?._esc ? pm._esc(n.body) : n.body}</small>` : ''}</span>
+          <span class="wp-nf-txt"><b>${pm?._esc ? pm._esc(clean(n.title)) : clean(n.title)}</b>${n.body ? `<small>${pm?._esc ? pm._esc(n.body) : n.body}</small>` : ''}${this._extra(n)}</span>
           <span class="wp-nf-when">${this._when(n.created_at)}</span>
         </button></div>`;
       }).join('')}</section>`).join('');
     if (animate) wave(box, '.wp-off-bar, .wp-nf-sec > h3, .wp-nf-item', { max: 10 });
+  }
+
+  // Debajo del texto: cómo va el plan, o "Seguir también" si te siguieron
+  _extra(n) {
+    const st = { past: 'Ya pasó', gone: 'Ya no está disponible', declined: 'No vas', full: 'Lleno', going: 'Vas', open: '' }[n.plan_state] || '';
+    if (st && /^plan_/.test(n.type || '')) return `<em class="wp-nf-st ${n.plan_state}">${st}</em>`;
+    if (n.type === 'follow' && n.actor_id) {
+      return n.i_follow ? '<em class="wp-nf-st going">Ya lo sigues</em>'
+        : `<span class="wp-nf-act" data-follow="${n.actor_id}">Seguir también</span>`;
+    }
+    return '';
+  }
+
+  async _follow(btn) {
+    const uid = btn.dataset.follow, me = this.user?.id; if (!me || btn.classList.contains('busy')) return;
+    btn.classList.add('busy'); btn.textContent = 'Siguiendo…';
+    try {
+      await SocialService.follow(me, uid);
+      this.list.forEach(x => { if (x.actor_id === uid) x.i_follow = true; });
+      btn.outerHTML = '<em class="wp-nf-st going">Ya lo sigues</em>';
+      this.getPM()?._haptic?.('medium');
+    } catch (_) { btn.classList.remove('busy'); btn.textContent = 'Seguir también'; this.getPM()?._showToast?.('No se pudo seguir'); }
   }
 
   _when(iso) {
@@ -280,6 +303,8 @@ export class NotifPanel {
 
   async _click(e) {
     if (e.target.closest('[data-retry]')) { this.page?.close(); setTimeout(() => this.open(), 360); return; }
+    const fb = e.target.closest('[data-follow]');
+    if (fb) { e.stopPropagation(); this._follow(fb); return; }
     const row = e.target.closest('.wp-nf-row'); if (!row) return;
     const n = this.list[+row.dataset.i]; if (!n) return;
     row.classList.remove('new');
@@ -298,8 +323,14 @@ export class NotifPanel {
       setTimeout(() => { window.wpApp?.footer?.go?.('social'); setTimeout(() => window.wpApp?.socialTab?.showFilter?.('req'), 120); }, 320);
       return;
     }
+    if (n.type === 'follow' && n.actor_id) {          // te siguieron → su perfil
+      const pm0 = this.getPM(); this.page?.close();
+      setTimeout(() => pm0?._openMiniProfile?.(n.actor_id, 'saved', n.actor_name || '', n.actor_avatar || ''), 320);
+      return;
+    }
     if (!n.activity_id) return;
     const pm = this.getPM(); if (!pm) return;
+    if (n.plan_state === 'gone') { pm._showToast?.('Ese plan ya no está disponible'); return; }
     let a = null;
     try {
       const { data } = await withTimeout(getSupabase().from('activities').select('*').eq('id', n.activity_id).maybeSingle());
