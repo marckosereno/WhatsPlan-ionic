@@ -200,3 +200,8 @@
 .wp-dc-fpill.on { background: linear-gradient(160deg, #2b2a3a, #14121f); }
 /* Centrada en altura con los redondos de la barra de arriba */
 .wp-dc-sm-top { padding: 15px 16px 0; }
+
+/* Cerrar de la búsqueda: el mismo redondo negro con X blanca del sheet de "+" */
+.wp-dc-sm-x { background: #111; color: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+.wp-dc-sm-x svg { width: 18px; height: 18px; stroke-width: 2.5; }
+.wp-dc-chev { width: 28px; height: 22px; padding: 3px 8px; border-radius: 11px; stroke-width: 2.6; }
