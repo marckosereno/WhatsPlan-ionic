@@ -108,8 +108,11 @@ export function wireSearch(d) {
     if (!isOpen) return; isOpen = false;
     const inp = sm.querySelector('input');
     inp.value = ''; inp.blur(); d.q = ''; d.res = null; clearTimeout(d.t);
-    sm.classList.remove('in'); root.classList.remove('searching');
-    setTimeout(() => { if (!isOpen) sm.hidden = true; }, 300);
+    // Cierra al momento, sin transición de salida
+    root.classList.add('wp-dc-nox');
+    sm.classList.remove('in'); root.classList.remove('searching'); sm.hidden = true;
+    void root.offsetWidth;
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('wp-dc-nox')));
   }
 
   // ── Toques ────────────────────────────────────────────────────────
