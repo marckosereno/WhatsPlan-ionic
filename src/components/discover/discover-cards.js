@@ -4,6 +4,8 @@
 // lugar y la caja de cada sección. Todo regresa HTML; esc() limpia texto.
 // ════════════════════════════════════════════════════════════════════
 import { photoSmall } from '/src/utils/photo-url.js';
+import { MomentsService as MS } from '/src/services/MomentsService.js';
+import { pinColor } from '/src/components/map/pin-palette.js';
 
 const I = (d, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 export const SEARCH_IC = I('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', 18);
@@ -44,15 +46,31 @@ export const rankRow = (r, i, esc) => `<div class="wp-dc-row" data-uid="${esc(r.
   <span class="wp-dc-pts">${Number(r.points || 0).toLocaleString('es-MX')} pts</span>
 </div>`;
 
-export function placeCard(p, esc, idx, strip = false) {
+// Lugar: fila ancha (resultados de búsqueda) o "portrait" (tira de destacados)
+export function placeCard(p, esc, idx, portrait = false) {
   const raw = p.photoUrl || p.photo_url || (p.photosUrls && p.photosUrls[0]) || null;
-  const ph = raw ? photoSmall(raw) : null;
-  return `<button type="button" class="wp-dc-card place${strip ? '' : ' wide'}" data-place="${esc(p.place_id || p.id)}">
-    <span class="wp-dc-ph"${ph ? ` style="background-image:url('${String(ph).replace(/'/g, '%27')}')"` : ''}></span>
-    <b class="wp-dc-t">${esc(p.name)}</b>
-    <small class="wp-dc-s">${p.rating ? `<span class="wp-dc-rate">${STAR}${Number(p.rating).toFixed(1)}</span>` : ''}${esc(p.categoryLabel || p.type_label || '')}</small>
-  </button>`;
+  const ph = raw ? photoSmall(raw) : null, c = pinColor(p);
+  const url = ph ? `style="background-image:url('${String(ph).replace(/'/g, '%27')}')"` : '';
+  const rate = p.rating ? `<span class="wp-dc-rate">${STAR}${Number(p.rating).toFixed(1)}</span>` : '';
+  const kind = esc(p.categoryLabel || p.type_label || '');
+  if (!portrait) return `<button type="button" class="wp-dc-card place wide" data-place="${esc(p.place_id || p.id)}">
+    <span class="wp-dc-ph" ${url}></span><span class="wp-dc-rt"><b>${esc(p.name)}</b><small>${rate}${kind}</small></span></button>`;
+  return `<button type="button" class="wp-dc-card portrait" data-place="${esc(p.place_id || p.id)}" style="--pc:${c.base};--pl:${c.light}">
+    <span class="wp-dc-pimg" ${url}>${ph ? '' : `<b>${initial(p.name)}</b>`}</span>
+    ${kind ? `<span class="wp-dc-kind">${kind}</span>` : ''}
+    <span class="wp-dc-pinfo"><b>${esc(p.name)}</b>${rate}</span></button>`;
 }
+
+// Momento: cuadro con la foto y la carita redonda en la esquina de arriba
+export function momentCard(g, esc, i) {
+  const m = g.items[0], thumb = MS.url(m.thumb_path || m.photo_path);
+  const prof = m.profiles || {}, name = g.mine ? 'Tú' : (prof.name || prof.username || '');
+  return `<button type="button" class="wp-dc-mo${g.seen ? ' seen' : ''}" data-mo="${i}">
+    <span class="wp-dc-mo-img"${thumb ? ` style="background-image:url('${thumb}')"` : ''}></span>
+    ${face(prof.name, prof.avatar_url, 'sm mo')}
+    <span class="wp-dc-mo-n">${esc(name)}</span></button>`;
+}
+export const momentAdd = () => `<button type="button" class="wp-dc-mo add" data-mo-add><span class="wp-dc-mo-plus">${I('<path d="M12 5v14M5 12h14"/>', 20)}</span><span class="wp-dc-mo-n">Tu momento</span></button>`;
 
 export function section(title, inner, { strip = false, list = false } = {}) {
   return `<section class="wp-dc-sec"><h3>${title}</h3>${strip ? `<div class="wp-dc-strip"><div class="wp-dc-track">${inner}</div></div>` : `<div class="wp-dc-list">${inner}</div>`}</section>`;
