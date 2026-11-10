@@ -10,7 +10,7 @@
 import { wave } from '/src/components/place-plans/wave.js';
 // ════════════════════════════════════════════════════════════════════
 export const FILTERS = [['all', 'Todo', '#5b6270', '#8d93a0'], ['plans', 'Planes', '#5b63d6', '#8f95ea'], ['people', 'Personas', '#d9668f', '#ec97b4'], ['places', 'Lugares', '#5fa67a', '#8fcaa2']];
-const CHEV = '<svg class="wp-dc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+const CHEV = '<svg class="wp-dc-chev" width="13" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></svg>';
 
 export const titleHtml = (f = 'all') => {
   const hit = FILTERS.find(x => x[0] === f), on = f !== 'all';
