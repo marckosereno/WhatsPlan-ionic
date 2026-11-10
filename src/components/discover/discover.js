@@ -28,10 +28,8 @@ import { calStrip, dayKey } from '/src/components/discover/discover-cal.js';
 import { MomentsService as MS } from '/src/services/MomentsService.js';
 import { ICON_HOME } from '/src/components/FooterMenu.js';
 
-// Cada chip lleva el tono suave de un pin (pin-palette.js)
-const CHIPS = [['all', 'Todo', '#5b6270', '#8d93a0'], ['plans', 'Planes', '#5b63d6', '#8f95ea'], ['people', 'Personas', '#d9668f', '#ec97b4'], ['places', 'Lugares', '#5fa67a', '#8fcaa2']];
-const FILTER_IC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
-const X_IC = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+import { titleHtml, wireHead } from '/src/components/discover/discover-head.js';
+import { wireSearch, filterPill } from '/src/components/discover/discover-search.js';
 
 export class Discover {
   constructor({ getPM, getPlaces, openMapSearch }) {
@@ -43,25 +41,16 @@ export class Discover {
     ensureCss('wp-discover-css', '/styles/discover.css');
     if (this.page) return;
     this.filter = 'all'; this.q = ''; this.res = null; this.day = null; this.when = 'any'; this.sort = 'rating';
-    this.page = openSheetPage({ title: 'Discover',
-      right: `<button type="button" class="wp-dc-map" data-map aria-label="Buscar en el mapa"><i style="display:flex;width:20px;height:20px">${ICON_HOME.replace('<svg ', '<svg width="20" height="20" ')}</i>Mapa</button>`,
+    this.page = openSheetPage({ title: titleHtml('all'),
+      right: `<button type="button" class="wp-st-back wp-dc-map" data-map aria-label="Ir al mapa"><i style="display:flex;width:22px;height:22px">${ICON_HOME.replace('<svg ', '<svg width="22" height="22" ')}</i></button>`,
       html: '<div class="wp-dc"><div class="wp-dc-body"><div class="wp-dc-sk"></div><div class="wp-dc-sk"></div></div></div>',
-      foot: `<div class="wp-dc-bar">
-        <div class="wp-dc-chips"><div class="wp-dc-track">${CHIPS.map(([k, t, b, l]) => `<button type="button" data-f="${k}" style="--cb:${b};--cl:${l}"${k === 'all' ? ' class="on"' : ''}>${t}</button>`).join('')}</div></div>
-        <div class="wp-dc-field"><label class="wp-dc-search">${SEARCH_IC}<input type="text" inputmode="search" placeholder="Busca gente, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false"><button type="button" class="wp-dc-x" data-x aria-label="Borrar y cerrar">${X_IC}</button></label>
-          <button type="button" class="wp-dc-filter" data-filter aria-label="Filtros">${FILTER_IC}</button></div></div>`,
+      foot: `<div class="wp-dc-bar"><div class="wp-dc-search" role="button" tabindex="0" aria-label="Buscar">${SEARCH_IC}<span class="wp-dc-phold">Busca gente, planes o lugares</span>${filterPill()}</div></div>`,
       onClose: () => { this.page = null; clearTimeout(this.t); } });
     this.page.root.classList.add('wp-dc-sheet');
     this.page.relayout();
     setTimeout(() => this.page?.relayout(), 120); setTimeout(() => this.page?.relayout(), 600);   // por si los estilos llegaron tarde
-    const pg = this.page, root = pg.root;
-    addDragStrip(pg.foot.querySelector('.wp-dc-chips'));
-    root.addEventListener('click', (e) => this._click(e));
-    const inp = pg.foot.querySelector('input'), bar = pg.foot.querySelector('.wp-dc-field');
-    const sync = () => bar.classList.toggle('open', document.activeElement === inp || !!inp.value);
-    inp.addEventListener('focus', sync); inp.addEventListener('blur', () => setTimeout(sync, 60));
-    inp.addEventListener('input', () => { sync(); clearTimeout(this.t); this.q = inp.value.trim(); this.t = setTimeout(() => this._search(), 280); });
-    this.inp = inp; this.sync = sync;
+    this.page.root.addEventListener('click', (e) => this._click(e));
+    this.head = wireHead(this); this.sm = wireSearch(this);
     this._load();
     this._loadMoments();
   }
@@ -84,18 +73,18 @@ export class Discover {
 
   async _search() {
     if (!this.page) return;
-    if (this.q.length < 2) { this.res = null; this._paint(false); return; }
+    if (this.q.length < 2) { this.res = null; this.sm?.paint(); return; }
     const q = this.q.toLowerCase();
     const places = (this.getPlaces?.() || []).filter(p => String(p.name || '').toLowerCase().includes(q)).slice(0, 12);
     this.res = { people: [], plans: [], places, loading: true };
-    this._paint(false);
+    this.sm?.paint();
     try {
       const { data, error } = await withTimeout(getSupabase().rpc('discover_search', { p_q: this.q }));
       if (error) throw error;
       if (this.q.toLowerCase() !== q) return;
       this.res = { people: data.people || [], plans: data.plans || [], places };
     } catch (_) { this.res = { people: [], plans: [], places, failed: true }; }
-    this._paint(false);
+    this.sm?.paint();
   }
 
   // Momentos vivos agrupados por persona (los míos primero, luego el más reciente)
@@ -123,13 +112,7 @@ export class Discover {
     const f = this.filter, show = (k) => f === 'all' || f === k, pm = this.getPM();
     const esc = (s) => (pm?._esc ? pm._esc(s) : String(s ?? ''));
     let html = '';
-    if (this.res) {                                           // resultados de búsqueda
-      const r = this.res;
-      if (show('people') && r.people.length) html += section('Personas', r.people.map(p => personCard(p, esc)).join(''), { list: true });
-      if (show('plans') && r.plans.length) html += section('Planes', r.plans.map(a => planCard(a, esc)).join(''), { list: true });
-      if (show('places') && r.places.length) html += section('Lugares', r.places.map(p => placeCard(p, esc, this._idx(p))).join(''), { list: true });
-      if (!html) html = r.loading ? '<div class="wp-dc-sk"></div>' : emptyBox('Nada por aquí', r.failed ? 'No se pudo buscar ahora. Intenta de nuevo.' : 'Prueba con otro nombre, @usuario o lugar.');
-    } else {
+    {
       const d = this.feed || {};
       if (this.offline && !this.feed) { box.innerHTML = offlineNote(false); return; }
       // Momentos: solo en "Todo" y "Personas"
@@ -165,17 +148,24 @@ export class Discover {
       .sort((a, b) => this.sort === 'reviews' ? n(b) - n(a) : (r(b) * Math.log(2 + n(b))) - (r(a) * Math.log(2 + n(a)))).slice(0, 10);
   }
 
+  // El filtro de tipo (Todo · Planes · Personas · Lugares) lo comparten el título y la búsqueda
+  setFilter(k) {
+    if (!this.page || k === this.filter) return;
+    this.filter = k;
+    this.page.setTitle(titleHtml(k));
+    this.page.root.querySelectorAll('.wp-dc-chips [data-f], .wp-dc-pop [data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === k));
+    this.getPM()?._haptic?.('light');
+    if (this.sm?.isOpen()) this.sm.paint(); else this._paint(true);
+  }
+  filterOn() { return this.when !== 'any' || this.sort !== 'rating'; }
+
   async _click(e) {
     const t = e.target;
     if (t.closest('[data-map]')) { this.close(); setTimeout(() => this.openMapSearch?.(), 340); return; }
-    const chip = t.closest('.wp-dc-chips [data-f]');
-    if (chip) {
-      this.filter = chip.dataset.f;
-      this.page.root.querySelectorAll('.wp-dc-chips [data-f]').forEach(b => b.classList.toggle('on', b === chip));
-      this.getPM()?._haptic?.('light'); this._paint(true); return;
-    }
-    if (t.closest('[data-x]')) { this.inp.value = ''; this.q = ''; this.res = null; this.inp.blur(); this.sync(); this._paint(false); return; }
-    if (t.closest('[data-filter]')) { this._filters(t.closest('[data-filter]')); return; }
+    const chip = t.closest('[data-f]');
+    if (chip && !t.closest('.wp-dc-pop')) { this.setFilter(chip.dataset.f); return; }
+    if (t.closest('[data-filter]')) { e.stopPropagation(); this._filters(t.closest('[data-filter]')); return; }
+    if (t.closest('.wp-dc-pop, .wp-dc-search, [data-x], [data-ttl], [data-more], [data-recx], [data-recall], [data-rec]')) return;
     const day = t.closest('[data-day]');
     if (day) { this.day = this.day === day.dataset.day ? null : day.dataset.day; this._paint(false); return; }
     if (t.closest('[data-mo-add]')) { window.wpApp?.momentsUI?.openCamera?.(); return; }
@@ -205,7 +195,7 @@ export class Discover {
     pm._openPopMenu?.(btn, [W('any', 'Planes: cualquier fecha'), W('today', 'Planes: hoy'), W('week', 'Planes: esta semana'), { sep: true }, S('rating', 'Lugares: mejor calificados'), S('reviews', 'Lugares: más reseñas')]);
     const pop = document.querySelector('.wp-pm2-pop'); if (pop) pop.style.zIndex = '1500700';
   }
-  _mark() { this.page?.foot.querySelector('.wp-dc-filter')?.classList.toggle('on', this.when !== 'any' || this.sort !== 'rating'); }
+  _mark() { this.page?.root.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('on', this.filterOn())); }
 
   _person(uid, el) {
     const pm = this.getPM(); if (!pm) return;
@@ -215,15 +205,19 @@ export class Discover {
   }
 
   async _follow(btn) {
-    const me = window.wpApp?.currentUser?.id, uid = btn.dataset.follow;
-    if (!me) { window.wpApp?.authModal?.show?.(); return; }
     if (btn.classList.contains('busy')) return;
     btn.classList.add('busy');
+    try { await this._followId(btn.dataset.follow); btn.outerHTML = '<span class="wp-dc-done">Siguiendo</span>'; }
+    catch (_) { btn.classList.remove('busy'); }
+  }
+
+  async _followId(uid) {
+    const me = window.wpApp?.currentUser?.id;
+    if (!me) { window.wpApp?.authModal?.show?.(); throw new Error('login'); }
     try {
       await SocialService.follow(me, uid, window.wpApp?.currentUser?.user_metadata?.name || '');
-      btn.outerHTML = '<span class="wp-dc-done">Siguiendo</span>';
       this.getPM()?._haptic?.('medium');
-    } catch (_) { btn.classList.remove('busy'); this.getPM()?._showToast?.('No se pudo seguir'); }
+    } catch (e) { this.getPM()?._showToast?.('No se pudo seguir'); throw e; }
   }
 
   async _plan(id) {
