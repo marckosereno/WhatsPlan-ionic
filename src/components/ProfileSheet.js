@@ -1348,6 +1348,10 @@ export class ProfileSheet {
           <span class="wp-pf-set-txt"><b>Recibir mensajes</b><span>Si se siguen los dos, te escriben directo; si solo te siguen, llega como solicitud</span></span>
           <button type="button" class="wp-pf-switch" role="switch" data-k="allow_dms"></button>
         </div>
+        <div class="wp-pf-set">
+          <span class="wp-pf-set-txt"><b>Aparecer en Discover</b><span>Que te sugieran a otras personas y te encuentren al buscar</span></span>
+          <button type="button" class="wp-pf-switch" role="switch" data-k="discoverable"></button>
+        </div>
         <button type="button" class="wp-pf-set" data-a="blocked"><span class="wp-pf-set-txt"><b>Usuarios bloqueados</b></span>${ICON.chev}</button>
       </div>
       <div class="wp-pf-group">
@@ -1356,7 +1360,7 @@ export class ProfileSheet {
       </div>`;
     view.querySelector('.wp-pf-group:nth-child(2) .wp-pf-set-txt span').textContent = me.email || '';
     // show_saved: apagado por defecto · show_points / show_visits: encendidos
-    const DEF = { show_saved: false, show_points: true, show_visits: true, allow_dms: true };
+    const DEF = { show_saved: false, show_points: true, show_visits: true, allow_dms: true, discoverable: true };
     view.querySelectorAll('.wp-pf-switch[data-k]').forEach(sw => {
       const k = sw.dataset.k;
       let on = prof && prof[k] != null ? !!prof[k] : DEF[k];
