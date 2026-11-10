@@ -226,3 +226,6 @@
 /* Cerrar: centrado con el redondo del mapa de atrás, sin animación de entrada con rebote */
 .wp-dc-sm-x { margin: 0; transition: transform 0.12s ease-out, opacity 0.2s ease-out; }
 .wp-dc-sm.in .wp-dc-sm-x { animation: none; }
+
+/* Cerrar la búsqueda: sin transiciones ni animaciones de salida */
+.wp-dc-nox, .wp-dc-nox *, .wp-dc-nox *::before { transition: none !important; animation: none !important; }
