@@ -10,17 +10,19 @@
 import { wave } from '/src/components/place-plans/wave.js';
 // ════════════════════════════════════════════════════════════════════
 export const FILTERS = [['all', 'Todo', '#5b6270', '#8d93a0'], ['plans', 'Planes', '#5b63d6', '#8f95ea'], ['people', 'Personas', '#d9668f', '#ec97b4'], ['places', 'Lugares', '#5fa67a', '#8fcaa2']];
-const CHEV = '<svg class="wp-dc-chev" width="13" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></svg>';
+const CHEV = '<span class="wp-dc-chw"><svg class="wp-dc-chev" width="13" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></svg></span>';
 
 export const titleHtml = (f = 'all') => {
   const hit = FILTERS.find(x => x[0] === f), on = f !== 'all';
-  return `<button type="button" class="wp-dc-ttl" data-ttl aria-haspopup="true" aria-expanded="false">${on ? `<i class="wp-dc-dot" style="--cl:${hit[3]};--cb:${hit[2]}"></i>${hit[1]}` : 'Discover'}${CHEV}</button>`;
+  return `<button type="button" class="wp-dc-ttl" data-ttl data-nopulse aria-haspopup="true" aria-expanded="false">${on ? `<i class="wp-dc-dot" style="--cl:${hit[3]};--cb:${hit[2]}"></i>${hit[1]}` : 'Discover'}${CHEV}</button>`;
 };
 export const chipsHtml = (cur, n = {}) => FILTERS.map(([k, t, b, l]) => `<button type="button" data-f="${k}" style="--cb:${b};--cl:${l}"${k === cur ? ' class="on"' : ''}>${t}${n[k] ? `<i>${n[k]}</i>` : ''}</button>`).join('');
 
 const CHECK = '<svg width="24" height="24" viewBox="0 0 512 512" fill="currentColor"><path d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208 208-93.31 208-208S370.69 48 256 48Zm108.25 138.29-134.4 160a16 16 0 0 1-12 5.71h-.27a16 16 0 0 1-11.89-5.3l-57.6-64a16 16 0 1 1 23.78-21.4l45.29 50.32 122.59-145.91a16 16 0 0 1 24.5 20.58Z"/></svg>';
 // Menú del título: tarjeta con lista; la opción activa en gris con check negro
 export const menuHtml = (cur, n = {}) => FILTERS.map(([k, t, b]) => `<button type="button" role="menuitemradio" data-f="${k}" aria-checked="${k === cur}"${k === cur ? ' class="on"' : ''}><i class="dot" style="background:${b}"></i><span>${t}</span>${n[k] ? `<small>${n[k]}</small>` : ''}${k === cur ? CHECK : ''}</button>`).join('');
+
+import { pulse } from '/src/components/place-plans/pulse.js';
 
 export function wireHead(d) {
   const root = d.page.root;
@@ -50,7 +52,7 @@ export function wireHead(d) {
   }
 
   root.addEventListener('click', (e) => {
-    if (e.target.closest('[data-ttl]')) { open(); return; }
+    if (e.target.closest('[data-ttl]')) { pulse(root.querySelector('.wp-dc-chw')); open(); return; }
     if (pop && e.target.closest('.wp-dc-pop [data-f]')) { d.setFilter(e.target.closest('[data-f]').dataset.f); close(); return; }
     if (pop && e.target.closest('[data-pop-x]')) close();
   });

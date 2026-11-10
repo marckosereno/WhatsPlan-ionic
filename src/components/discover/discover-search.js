@@ -36,7 +36,7 @@ export function wireSearch(d) {
     sm.className = 'wp-dc-sm'; sm.hidden = true;
     sm.innerHTML = `<div class="wp-dc-sm-top">
         <label class="wp-dc-search live">${SEARCH_IC}<input type="text" inputmode="search" placeholder="Personas, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false">${filterPill()}</label>
-        <button type="button" class="wp-st-back wp-dc-sm-x" data-x aria-label="Cerrar búsqueda">${CLOSE_IC}</button></div>
+        <button type="button" class="wp-st-back wp-dc-sm-x" data-x data-nopulse aria-label="Cerrar búsqueda">${CLOSE_IC}</button></div>
       <div class="wp-dc-chips"><div class="wp-dc-track" data-schips></div></div>
       <div class="wp-dc-sm-body"></div>`;
     root.appendChild(sm);
@@ -98,7 +98,7 @@ export function wireSearch(d) {
     root.classList.add('searching');
     requestAnimationFrame(() => {
       sm.classList.add('in');
-      wave(sm, '.wp-dc-sm-top > *, .wp-dc-sm .wp-dc-chips button, .wp-dc-sm .wp-dc-sec', { max: 7 });   // la misma entrada en ola de Planes y Social
+      wave(sm, '.wp-dc-sm-top > .wp-dc-search, .wp-dc-sm .wp-dc-chips button, .wp-dc-sm .wp-dc-sec', { max: 7 });   // la misma entrada en ola de Planes y Social
     });
     inp.focus({ preventScroll: true });
     d.getPM()?._haptic?.('light');

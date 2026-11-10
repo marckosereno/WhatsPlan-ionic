@@ -217,3 +217,12 @@
 .wp-dc-menu span { flex: 1; }
 .wp-dc-menu small { font-size: 12.5px; font-weight: 600; color: #8b93a1; }
 .wp-dc-menu svg { flex: none; color: #14121f; }
+
+/* Pulse solo en la píldora de las flechas, no en todo el título */
+.wp-dc-ttl, .wp-dc-ttl:active { transform: none !important; transition: none; }
+.wp-dc-chw { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; border-radius: 11px; color: #6b7280; background: #eef0f4; }
+.wp-dc-chw .wp-dc-chev { width: 13px; height: 15px; padding: 0; background: none; border-radius: 0; stroke-width: 2.6; transition: transform 0.3s ease; }
+
+/* Cerrar: centrado con el redondo del mapa de atrás, sin animación de entrada con rebote */
+.wp-dc-sm-x { margin: 0; transition: transform 0.12s ease-out, opacity 0.2s ease-out; }
+.wp-dc-sm.in .wp-dc-sm-x { animation: none; }
