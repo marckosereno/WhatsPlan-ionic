@@ -43,8 +43,8 @@ export class Discover {
     this.filter = 'all'; this.q = ''; this.res = null; this.day = null; this.when = 'any'; this.sort = 'rating';
     this.page = openSheetPage({ title: titleHtml('all'),
       right: `<button type="button" class="wp-st-back wp-dc-map" data-map aria-label="Ir al mapa"><i style="display:flex;width:22px;height:22px">${ICON_HOME.replace('<svg ', '<svg width="22" height="22" ')}</i></button>`,
-      html: '<div class="wp-dc"><div class="wp-dc-body"><div class="wp-dc-sk"></div><div class="wp-dc-sk"></div></div></div>',
-      foot: `<div class="wp-dc-bar"><div class="wp-dc-search" role="button" tabindex="0" aria-label="Buscar"><span class="wp-dc-phold">Busca personas, planes o lugares</span>${filterPill()}</div></div>`,
+      html: `<div class="wp-dc"><div class="wp-dc-search home" role="button" tabindex="0" aria-label="Buscar">${SEARCH_IC}<span class="wp-dc-phold">Personas, planes o lugares</span>${filterPill()}</div>
+        <div class="wp-dc-body"><div class="wp-dc-sk"></div><div class="wp-dc-sk"></div></div></div>`,
       onClose: () => { this.page = null; clearTimeout(this.t); } });
     this.page.root.classList.add('wp-dc-sheet');
     this.page.relayout();

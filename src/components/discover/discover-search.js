@@ -20,8 +20,7 @@ import { chipsHtml } from '/src/components/discover/discover-head.js';
 
 const KEY = 'wpDcRecents', MAX = 8;
 const X_IC = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-const FILTER_IC = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
-export const filterPill = () => `<button type="button" class="wp-dc-fpill" data-filter aria-label="Filtros">${FILTER_IC}<span>Filtros</span></button>`;
+export const filterPill = () => `<button type="button" class="wp-dc-fpill" data-filter aria-label="Filtros">Filtros</button>`;
 
 const recents = () => { try { const l = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(l) ? l : []; } catch (_) { return []; } };
 const saveRecents = (l) => { try { localStorage.setItem(KEY, JSON.stringify(l.slice(0, MAX))); } catch (_) {} };
@@ -35,7 +34,7 @@ export function wireSearch(d) {
     sm = document.createElement('div');
     sm.className = 'wp-dc-sm'; sm.hidden = true;
     sm.innerHTML = `<div class="wp-dc-sm-top">
-        <label class="wp-dc-search live"><input type="text" inputmode="search" placeholder="Busca personas, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false">${filterPill()}</label>
+        <label class="wp-dc-search live">${SEARCH_IC}<input type="text" inputmode="search" placeholder="Personas, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false">${filterPill()}</label>
         <button type="button" class="wp-st-back wp-dc-sm-x" data-x aria-label="Cerrar búsqueda">${X_IC}</button></div>
       <div class="wp-dc-chips"><div class="wp-dc-track" data-schips></div></div>
       <div class="wp-dc-sm-body"></div>`;
