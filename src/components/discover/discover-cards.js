@@ -17,7 +17,7 @@ const initial = (n) => (String(n || '?').trim()[0] || '?').toUpperCase();
 // Cara redonda: la foto, o la inicial si no hay / no carga
 export const face = (name, url, cls = '') => `<span class="wp-dc-av ${cls}"${url ? ` style="background-image:url('${String(url).replace(/'/g, '%27')}')"` : ''}><b>${url ? '' : initial(name)}</b></span>`;
 
-function when(iso) {
+export function when(iso) {
   const d = new Date(iso), n = new Date(), day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((day(d) - day(n)) / 864e5);
   const hm = d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/[\s.]/g, '').toLowerCase().replace(/(am|pm)$/, ' $1');
@@ -77,3 +77,18 @@ export function section(title, inner, { strip = false, list = false } = {}) {
 }
 
 export const emptyBox = (t, s) => `<div class="wp-dc-empty"><i>${SEARCH_IC}</i><b>${t}</b><span>${s}</span></div>`;
+
+// Fila de resultado con miniatura (pantalla de búsqueda): persona, plan o lugar
+const DOTS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+export function resRow(kind, x, esc) {
+  const more = `<button type="button" class="wp-dc-more" data-more="${kind}:${esc(x.id || x.place_id)}" aria-label="Más">${DOTS}</button>`;
+  if (kind === 'person') return `<div class="wp-dc-rr" data-uid="${esc(x.id)}" data-name="${esc(x.name || '')}" data-av="${esc(x.avatar_url || '')}" role="button" tabindex="0">
+    ${face(x.name, x.avatar_url, 'md')}<span class="wp-dc-rt"><b>${esc(x.name || 'Alguien')}</b><small>${x.username ? '@' + esc(x.username) : 'Persona'}${x.i_follow ? ' · Siguiendo' : ''}</small></span>${more}</div>`;
+  if (kind === 'plan') { const d = new Date(x.scheduled_at);
+    return `<div class="wp-dc-rr" data-plan="${esc(x.id)}" role="button" tabindex="0"><span class="wp-dc-daytile"><small>${d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}</small><b>${d.getDate()}</b></span>
+    <span class="wp-dc-rt"><b>${esc(x.title || 'Plan')}</b><small>${esc(when(x.scheduled_at))}${x.place_name ? ' · ' + esc(x.place_name) : ''}</small></span>${more}</div>`; }
+  const raw = x.photoUrl || x.photo_url || (x.photosUrls && x.photosUrls[0]) || null, ph = raw ? photoSmall(raw) : null, c = pinColor(x);
+  return `<div class="wp-dc-rr" data-place="${esc(x.place_id || x.id)}" role="button" tabindex="0" style="--pc:${c.base};--pl:${c.light}">
+    <span class="wp-dc-thumb"${ph ? ` style="background-image:url('${String(ph).replace(/'/g, '%27')}')"` : ''}>${ph ? '' : `<b>${initial(x.name)}</b>`}</span>
+    <span class="wp-dc-rt"><b>${esc(x.name)}</b><small>${x.rating ? `<span class="wp-dc-rate">${STAR}${Number(x.rating).toFixed(1)}</span>` : ''}${esc(x.categoryLabel || x.type_label || 'Lugar')}</small></span>${more}</div>`;
+}
