@@ -19,6 +19,7 @@ import { resRow, SEARCH_IC } from '/src/components/discover/discover-cards.js';
 import { chipsHtml } from '/src/components/discover/discover-head.js';
 
 const KEY = 'wpDcRecents', MAX = 8;
+const CLOSE_IC = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor"><path d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208 208-93.31 208-208S370.69 48 256 48Zm75.31 260.69a16 16 0 1 1-22.62 22.62L256 278.63l-52.69 52.68a16 16 0 0 1-22.62-22.62L233.37 256l-52.68-52.69a16 16 0 0 1 22.62-22.62L256 233.37l52.69-52.68a16 16 0 0 1 22.62 22.62L278.63 256Z"/></svg>';
 const X_IC = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 export const filterPill = () => `<button type="button" class="wp-dc-fpill" data-filter aria-label="Filtros">Filtros</button>`;
 
@@ -35,7 +36,7 @@ export function wireSearch(d) {
     sm.className = 'wp-dc-sm'; sm.hidden = true;
     sm.innerHTML = `<div class="wp-dc-sm-top">
         <label class="wp-dc-search live">${SEARCH_IC}<input type="text" inputmode="search" placeholder="Personas, planes o lugares" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false">${filterPill()}</label>
-        <button type="button" class="wp-st-back wp-dc-sm-x" data-x aria-label="Cerrar búsqueda">${X_IC}</button></div>
+        <button type="button" class="wp-st-back wp-dc-sm-x" data-x aria-label="Cerrar búsqueda">${CLOSE_IC}</button></div>
       <div class="wp-dc-chips"><div class="wp-dc-track" data-schips></div></div>
       <div class="wp-dc-sm-body"></div>`;
     root.appendChild(sm);
