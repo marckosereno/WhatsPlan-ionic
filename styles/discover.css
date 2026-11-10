@@ -201,7 +201,19 @@
 /* Centrada en altura con los redondos de la barra de arriba */
 .wp-dc-sm-top { padding: 15px 16px 0; }
 
-/* Cerrar de la búsqueda: el mismo redondo negro con X blanca del sheet de "+" */
-.wp-dc-sm-x { background: #111; color: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
-.wp-dc-sm-x svg { width: 18px; height: 18px; stroke-width: 2.5; }
 .wp-dc-chev { width: 28px; height: 22px; padding: 3px 8px; border-radius: 11px; stroke-width: 2.6; }
+
+/* Cerrar: igual que el volver (botón blanco, círculo negro con X adentro), sin rebote al salir */
+.wp-dc-sm-x { width: 42px; height: 42px; margin: 0 5px; color: #14121f; background: rgba(255, 255, 255, 0.94); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); transition: transform 0.12s ease-out; }
+.wp-dc-sm-x svg { width: 20px; height: 20px; stroke: none; }
+.wp-dc-sm:not(.in) .wp-dc-sm-top > * { animation: none !important; transform: none !important; transition: opacity 0.16s ease-out !important; opacity: 0; pointer-events: none; }
+
+/* Menú del título: tarjeta con lista y check */
+.wp-dc-menu { position: absolute; width: 220px; padding: 6px; border-radius: 22px; background: rgba(255, 255, 255, 0.96); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 18px 40px -12px rgba(20, 18, 31, 0.28); opacity: 0; transform: scale(0.96); transform-origin: top center; transition: opacity 0.18s ease-out, transform 0.22s ease-out; }
+.wp-dc-pop.go .wp-dc-menu { opacity: 1; transform: none; }
+.wp-dc-menu button { width: 100%; height: 46px; padding: 0 12px; border: none; border-radius: 16px; display: flex; align-items: center; gap: 10px; background: none; font: inherit; font-size: 15px; font-weight: 500; color: #14121f; text-align: left; }
+.wp-dc-menu button.on { background: #eef0f4; font-weight: 600; }
+.wp-dc-menu .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.wp-dc-menu span { flex: 1; }
+.wp-dc-menu small { font-size: 12.5px; font-weight: 600; color: #8b93a1; }
+.wp-dc-menu svg { flex: none; color: #14121f; }

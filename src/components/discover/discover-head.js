@@ -18,6 +18,10 @@ export const titleHtml = (f = 'all') => {
 };
 export const chipsHtml = (cur, n = {}) => FILTERS.map(([k, t, b, l]) => `<button type="button" data-f="${k}" style="--cb:${b};--cl:${l}"${k === cur ? ' class="on"' : ''}>${t}${n[k] ? `<i>${n[k]}</i>` : ''}</button>`).join('');
 
+const CHECK = '<svg width="24" height="24" viewBox="0 0 512 512" fill="currentColor"><path d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208 208-93.31 208-208S370.69 48 256 48Zm108.25 138.29-134.4 160a16 16 0 0 1-12 5.71h-.27a16 16 0 0 1-11.89-5.3l-57.6-64a16 16 0 1 1 23.78-21.4l45.29 50.32 122.59-145.91a16 16 0 0 1 24.5 20.58Z"/></svg>';
+// Menú del título: tarjeta con lista; la opción activa en gris con check negro
+export const menuHtml = (cur, n = {}) => FILTERS.map(([k, t, b]) => `<button type="button" role="menuitemradio" data-f="${k}" aria-checked="${k === cur}"${k === cur ? ' class="on"' : ''}><i class="dot" style="background:${b}"></i><span>${t}</span>${n[k] ? `<small>${n[k]}</small>` : ''}${k === cur ? CHECK : ''}</button>`).join('');
+
 export function wireHead(d) {
   const root = d.page.root;
   let pop = null, closing = 0;
@@ -36,12 +40,13 @@ export function wireHead(d) {
     t.classList.add('open'); t.setAttribute('aria-expanded', 'true');
     pop = document.createElement('div');
     pop.className = 'wp-dc-pop';
-    pop.innerHTML = `<div class="wp-dc-scrim" data-pop-x></div><div class="wp-dc-pbadges">${chipsHtml(d.filter, d.counts())}</div>`;
+    pop.innerHTML = `<div class="wp-dc-scrim" data-pop-x></div><div class="wp-dc-menu" role="menu">${menuHtml(d.filter, d.counts())}</div>`;
     root.appendChild(pop);
     const rr = root.getBoundingClientRect(), tr = t.getBoundingClientRect();
-    pop.querySelector('.wp-dc-pbadges').style.top = `${tr.bottom - rr.top + 4}px`;
+    const mn = pop.querySelector('.wp-dc-menu');
+    mn.style.top = `${tr.bottom - rr.top + 8}px`; mn.style.left = `${Math.max(12, Math.min(rr.width - 232, tr.left - rr.left + tr.width / 2 - 110))}px`;
     d.getPM()?._haptic?.('light');
-    requestAnimationFrame(() => { pop?.classList.add('go'); wave(pop.querySelector('.wp-dc-pbadges'), 'button', { max: 4 }); });
+    requestAnimationFrame(() => { pop?.classList.add('go'); wave(pop.querySelector('.wp-dc-menu'), 'button', { max: 4 }); });
   }
 
   root.addEventListener('click', (e) => {
