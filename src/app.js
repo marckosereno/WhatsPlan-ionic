@@ -17,6 +17,7 @@ import { getCategories }    from '/src/services/CategoryService.js';
 import { initIOSFixes }     from '/src/utils/ios-fixes.js';
 import { initLiquidGlass } from '/src/utils/liquid-glass.js';
 import { FooterMenu }      from '/src/components/FooterMenu.js';
+import { Discover }        from '/src/components/discover/discover.js';
 import { PlansTab }        from '/src/components/tabs/plans-tab.js';
 import { SocialTab }       from '/src/components/tabs/social-tab.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
@@ -52,6 +53,7 @@ ensureCss('wp-tabs-css', '/styles/tabs.css');
 ensureCss('wp-ph-css', '/styles/plans-here.css');
 ensureCss('wp-chat-css', '/styles/chat.css');
 ensureCss('wps-styles', '/styles/search.css');
+ensureCss('wp-discover-css', '/styles/discover.css');
 ensureCss('wp-pf-styles', '/styles/profile.css');
 ensureCss('wp-nf-css', '/styles/notifs.css');
 import { appState }         from '/src/state/AppState.js';
@@ -1687,12 +1689,21 @@ try {
         searchBar.deactivate = (...a) => { setMapTint({ search: false }); return deact(...a); };
       }
 
-      // Pill buscar — ahora el topbar-right-chip activa la searchbar
+      // Pill Discover — abre el home para descubrir (gente, planes, lugares).
+      // Desde ahí, "Buscar en el mapa" activa la searchbar de siempre.
+      const discover = new Discover({
+        getPM:     () => window.wpApp.placeModal,
+        getPlaces: () => window.wpApp.mapView?.allPlaces || [],
+        openMapSearch: () => { if (!searchBar.isActive()) searchBar.activate(); },
+      });
+      window.wpApp.discover = discover;
       const searchBtn = document.getElementById('topbar-right-chip');
       if (searchBtn) {
         searchBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          if (!searchBar.isActive()) searchBar.activate();
+          if (searchBar.isActive()) return;
+          if (!window.wpApp.currentUser) { searchBar.activate(); return; }   // sin sesión no hay feed: el buscador de siempre
+          discover.open();
         });
       }
 
