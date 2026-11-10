@@ -303,3 +303,12 @@ update public.dm_threads t set status = 'declined', requested_by = b.blocked_id,
 delete from public.follows f using public.user_blocks b
  where (f.follower_id = b.blocker_id and f.following_id = b.blocked_id)
     or (f.follower_id = b.blocked_id and f.following_id = b.blocker_id);
+
+-- ── Chat borrado: lo anterior no vuelve a verse ──────────────────────
+-- Antes solo la app filtraba por cleared_at; ahora lo hace la base, así
+-- ningún camino (perfil, lista, tiempo real) muestra mensajes viejos.
+drop policy if exists dm_messages_read on public.dm_messages;
+create policy dm_messages_read on public.dm_messages for select to authenticated
+  using (public.wp_dm_member(thread_id)
+    and created_at > coalesce((select r.cleared_at from public.dm_reads r
+                               where r.thread_id = dm_messages.thread_id and r.user_id = auth.uid()), '-infinity'));

@@ -9,6 +9,7 @@
 //    de plan (id "dm:<uuid>", título = la persona, caras = la persona),
 //    para que la lista de Social y la conversación la usen igual.
 // ════════════════════════════════════════════════════════════════════
+import { getSupabase } from '/src/services/SupabaseService.js';
 import { openDm } from '/src/components/chat/chat-service.js';
 import { openPlanChat } from '/src/components/chat/plan-chat.js';
 
@@ -53,6 +54,11 @@ export async function startDm(pm, p, opts = {}) {
     return null;
   }
   pm?._haptic?.('light');
+  // Si el servidor no avisó desde cuándo borraste el chat, se pregunta
+  if (t.cleared_at === undefined) {
+    try { const { data } = await getSupabase().from('dm_reads').select('cleared_at').eq('thread_id', t.id).eq('user_id', me).maybeSingle(); t.cleared_at = data?.cleared_at || null; }
+    catch (_) { t.cleared_at = null; }
+  }
   const a = dmShape({ thread_id: t.id, other_id: p.id, other_name: p.name, other_username: p.username, other_avatar: p.avatar_url,
     status: t.status, requested_by: t.requested_by, cleared_at: t.cleared_at, last_at: new Date().toISOString() }, me);
   window.wpApp?.socialTab?.watchOpen?.(a.id);
