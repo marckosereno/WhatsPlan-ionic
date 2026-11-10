@@ -82,7 +82,7 @@ export function wireSearch(d) {
 
   function paint() {
     if (!sm) return;
-    sm.querySelector('[data-schips]').innerHTML = chipsHtml(d.filter);
+    sm.querySelector('[data-schips]').innerHTML = chipsHtml(d.filter, d.counts());
     sm.querySelector('.wp-dc-sm-body').innerHTML = d.q.length < 2 ? idle() : typed();
     sm.querySelector('[data-filter]').classList.toggle('on', d.filterOn());
   }

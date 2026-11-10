@@ -16,7 +16,7 @@ export const titleHtml = (f = 'all') => {
   const hit = FILTERS.find(x => x[0] === f), on = f !== 'all';
   return `<button type="button" class="wp-dc-ttl" data-ttl aria-haspopup="true" aria-expanded="false">${on ? `<i class="wp-dc-dot" style="--cl:${hit[3]};--cb:${hit[2]}"></i>${hit[1]}` : 'Discover'}${CHEV}</button>`;
 };
-export const chipsHtml = (cur) => FILTERS.map(([k, t, b, l]) => `<button type="button" data-f="${k}" style="--cb:${b};--cl:${l}"${k === cur ? ' class="on"' : ''}>${t}</button>`).join('');
+export const chipsHtml = (cur, n = {}) => FILTERS.map(([k, t, b, l]) => `<button type="button" data-f="${k}" style="--cb:${b};--cl:${l}"${k === cur ? ' class="on"' : ''}>${t}${n[k] ? `<i>${n[k]}</i>` : ''}</button>`).join('');
 
 export function wireHead(d) {
   const root = d.page.root;
@@ -36,7 +36,7 @@ export function wireHead(d) {
     t.classList.add('open'); t.setAttribute('aria-expanded', 'true');
     pop = document.createElement('div');
     pop.className = 'wp-dc-pop';
-    pop.innerHTML = `<div class="wp-dc-scrim" data-pop-x></div><div class="wp-dc-pbadges">${chipsHtml(d.filter)}</div>`;
+    pop.innerHTML = `<div class="wp-dc-scrim" data-pop-x></div><div class="wp-dc-pbadges">${chipsHtml(d.filter, d.counts())}</div>`;
     root.appendChild(pop);
     const rr = root.getBoundingClientRect(), tr = t.getBoundingClientRect();
     pop.querySelector('.wp-dc-pbadges').style.top = `${tr.bottom - rr.top + 4}px`;
