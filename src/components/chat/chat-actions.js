@@ -52,7 +52,7 @@ export function wireChatActions(ctx) {
   });
 
   ctx.page.foot.querySelector('.wp-ch-plus')?.addEventListener('click', () => sendPhoto(ctx));
-  ctx.page.root.querySelector('.wp-ch-head-av')?.addEventListener('click', (e) => ctx.dm ? headMenu(ctx, e.currentTarget) : openPlanMenu(ctx, e.currentTarget, headMenu));
+  ctx.page.root.querySelector('.wp-ch-head-av')?.addEventListener('click', (e) => ctx.dm ? headMenu(ctx, e.currentTarget) : openPlanMenu(ctx, e.currentTarget));
 }
 
 // Pintar las fotos que ya tienen liga (las ligas se piden en grupo)
@@ -82,17 +82,22 @@ async function sendPhoto(ctx) {
 
 import { openPlanMenu } from '/src/components/chat/plan-group.js';
 
-function headMenu(ctx, anchor) {
-  const { pm, a, st } = ctx;
-  pm._openPopMenu?.(anchor, [
-    { label: st.muted ? 'Activar avisos' : 'Silenciar chat', icon: st.muted ? 'bell' : 'mute', onClick: async () => {
+// Opciones del chat (arriba): Silenciar / Ver el plan o perfil
+export function headItems(ctx) {
+  const { pm, st } = ctx;
+  return [
+    { label: st.muted ? 'Activar avisos' : 'Silenciar chat', onClick: async () => {
       try { await setMuted(ctx.id, !st.muted); st.muted = !st.muted; pm._showToast?.(st.muted ? 'Chat silenciado' : 'Avisos activados'); }
       catch (_) { pm._showToast?.('No se pudo cambiar'); }
     } },
     // directo → "Ver perfil"; de plan → "Ver el plan"
-    ctx.dm ? { label: 'Ver perfil', icon: 'edit', onClick: () => ctx.openPlan?.() }
-      : { label: 'Ver el plan', icon: 'calendar', onClick: () => ctx.openPlan?.() },
-  ]);
+    { label: ctx.dm ? 'Ver perfil' : 'Ver el plan', onClick: () => ctx.openPlan?.() },
+  ];
+}
+
+function headMenu(ctx, anchor) {
+  const { pm } = ctx;
+  pm._openPopMenu?.(anchor, headItems(ctx).map(i => ({ ...i, icon: i.label === 'Ver perfil' ? 'edit' : i.label === 'Ver el plan' ? 'calendar' : ctx.st.muted ? 'bell' : 'mute' })));
   const pop = document.querySelector('.wp-pm2-pop');   // encima de la hoja del chat
   if (pop) pop.style.zIndex = '1500700';
 }
