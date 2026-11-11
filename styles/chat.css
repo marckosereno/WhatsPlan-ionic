@@ -283,11 +283,24 @@
 
 /* Caras del grupo como botón (abre "Los que van") */
 button.wp-ch-head-av { padding: 0; border: none; border-radius: 50%; background: none; -webkit-tap-highlight-color: transparent; }
-.wp-gp-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 24px; }
-.wp-gp-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px 10px 10px; border: none; border-radius: 22px; background: #fff; font: inherit; text-align: left; color: #14121f;
-  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 8px 22px -16px rgba(20, 18, 31, 0.3); }
-.wp-gp-f .wp-seal { width: 42px; height: 42px; }
-.wp-gp-n { flex: 1; min-width: 0; }
-.wp-gp-n b { font-size: 15px; font-weight: 600; }
-.wp-gp-row em { font-style: normal; font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 999px; color: #5b6270; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08); }
-.wp-gp-row em.org { color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: none; }
+/* Menú del grupo (tarjeta bajo el encabezado, como el de Discover) */
+.wp-gm-pop { position: absolute; inset: 0; z-index: 8; }
+.wp-gm-scrim { position: absolute; inset: 0; background: rgba(240, 243, 248, 0); transition: background 0.25s; }
+.wp-gm-pop.go .wp-gm-scrim { background: rgba(240, 243, 248, 0.45); }
+.wp-gm { position: absolute; right: 12px; width: 268px; padding: 6px; border-radius: 24px; background: rgba(255, 255, 255, 0.96); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 18px 40px -12px rgba(20, 18, 31, 0.28); opacity: 0; transform: scale(0.96); transform-origin: top right; transition: opacity 0.18s ease-out, transform 0.22s ease-out; }
+.wp-gm-pop.go .wp-gm { opacity: 1; transform: none; }
+.wp-gm-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 6px 8px 12px; }
+.wp-gm-h span { display: flex; flex-direction: column; min-width: 0; }
+.wp-gm-h b { font-size: 15px; font-weight: 700; color: #14121f; }
+.wp-gm-h small { font-size: 12px; font-weight: 500; color: #8b93a1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-gm-more { flex: none; width: 32px; height: 32px; padding: 0; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #14121f; background: #f1f4f8; }
+.wp-gm-list { max-height: 330px; overflow-y: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.wp-gm-list::-webkit-scrollbar { display: none; }
+.wp-gm-row { width: 100%; height: 54px; padding: 0 10px 0 8px; border: none; border-radius: 18px; display: flex; align-items: center; gap: 11px; background: none; font: inherit; text-align: left; color: #14121f; }
+.wp-gm-row:active { background: #eef0f4; }
+.wp-gm-f { flex: none; display: block; width: 40px; height: 40px; }
+.wp-gm-f .wp-seal { width: 40px; height: 40px; }
+.wp-gm-row b { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-gm-row em { font-style: normal; font-size: 11.5px; font-weight: 500; padding: 4px 10px; border-radius: 999px; color: #5b6270; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08); }
+.wp-gm-row em.org { color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: none; }
