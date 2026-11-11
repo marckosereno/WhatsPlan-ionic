@@ -149,8 +149,8 @@ export const PlanService = {
         .select('name').eq('id', user_id).maybeSingle();
       await sb.from('notifications').insert({
         user_id: plan.creator_id, type: 'join',
-        title:   'Alguien se unio a tu plan',
-        body:    (joiner && joiner.name ? joiner.name : 'Alguien') + ' se unio a "' + plan.title + '"'
+        title:   'Nuevo en tu plan',
+        body:    (joiner && joiner.name ? joiner.name : 'Alguien') + ' se unió a "' + plan.title + '" · dale la bienvenida'
       });
     }
     return { success: true };

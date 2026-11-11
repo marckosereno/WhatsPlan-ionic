@@ -318,8 +318,8 @@ export const ActivityService = {
       await sb.from('notifications').insert({
         user_id: activity.creator_id,
         type: 'join',
-        title: '👋 Nuevo participante',
-        body: `${joinerName} se unió a "${activityLabel}"`,
+        title: 'Nuevo en tu plan',
+        body: `${joinerName} se unió a "${activityLabel}" · dale la bienvenida`,
         activity_id: activityId
       });
     }
