@@ -112,6 +112,10 @@ export function previewText(pm, c, me) {
   }
   if (!c.last_body && c.last_image) return `${c.last_user === me ? 'Tú' : pm._phName(c.last_user, false)}: 📷 Foto`;
   if (!c.last_body) return 'Aún no hay mensajes · saluda al grupo';
+  if (c.last_kind === 'system' && / se unió al plan$/.test(c.last_body || '')) {   // invita a escribir, no solo avisa
+    const mine = String(pm._phName(me, false) || '').split(' ')[0], first = c.last_body.split(' ')[0];
+    return mine && first === mine ? 'Te uniste al plan · saluda al grupo' : `${c.last_body} · dale la bienvenida`;
+  }
   if (c.last_kind === 'system' || !c.last_user) return c.last_body;
   return `${c.last_user === me ? 'Tú' : pm._phName(c.last_user, false)}: ${c.last_body}`;
 }

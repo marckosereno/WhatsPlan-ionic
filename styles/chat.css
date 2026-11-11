@@ -280,3 +280,14 @@
   background: #eef6ff; color: #1d4ed8; box-shadow: inset 0 0 0 1px #dbeafe; }
 #wp-mp .wp-mp-btn.wp-mp-msg[hidden] { display: none; }
 .wp-ch-sheet.has-pin .wp-ch-list { padding-top: 64px; }
+
+/* Caras del grupo como botón redondo + hoja "Los que van" */
+button.wp-ch-head-av { padding: 0; border: none; border-radius: 50%; background: none; -webkit-tap-highlight-color: transparent; }
+.wp-gp-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 24px; }
+.wp-gp-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px 10px 10px; border: none; border-radius: 22px; background: #fff; font: inherit; text-align: left; color: #14121f;
+  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 8px 22px -16px rgba(20, 18, 31, 0.3); }
+.wp-gp-f .wp-seal { width: 42px; height: 42px; }
+.wp-gp-n { flex: 1; min-width: 0; }
+.wp-gp-n b { font-size: 15px; font-weight: 600; }
+.wp-gp-row em { font-style: normal; font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 999px; color: #5b6270; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08); }
+.wp-gp-row em.org { color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: none; }
