@@ -281,13 +281,15 @@
 #wp-mp .wp-mp-btn.wp-mp-msg[hidden] { display: none; }
 .wp-ch-sheet.has-pin .wp-ch-list { padding-top: 64px; }
 
-/* Caras del grupo como botón redondo + hoja "Los que van" */
-button.wp-ch-head-av { padding: 0; border: none; border-radius: 50%; background: none; -webkit-tap-highlight-color: transparent; }
-.wp-gp-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 24px; }
-.wp-gp-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px 10px 10px; border: none; border-radius: 22px; background: #fff; font: inherit; text-align: left; color: #14121f;
-  box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 8px 22px -16px rgba(20, 18, 31, 0.3); }
-.wp-gp-f .wp-seal { width: 42px; height: 42px; }
-.wp-gp-n { flex: 1; min-width: 0; }
-.wp-gp-n b { font-size: 15px; font-weight: 600; }
-.wp-gp-row em { font-style: normal; font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 999px; color: #5b6270; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08); }
-.wp-gp-row em.org { color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: none; }
+/* Fila de caras de los que van, fija bajo el encabezado del chat del plan */
+.wp-ch-ppl { position: absolute; top: calc(var(--st-top, 76px) - 2px); left: 0; right: 0; z-index: 6; overflow: hidden; padding: 4px 16px 6px; box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(244, 246, 250, 0.96) 70%, rgba(244, 246, 250, 0)); }
+.wp-ch-ppl-t { display: flex; gap: 14px; width: max-content; }
+.wp-ch-ppl button { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 54px; padding: 0; border: none; background: none; font: inherit; color: #14121f; }
+.wp-ch-ppl-f { display: block; width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 2px #fff, 0 4px 10px -4px rgba(20, 18, 31, 0.35); }
+.wp-ch-ppl button.org .wp-ch-ppl-f { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #14121f; }
+.wp-ch-ppl .wp-seal { width: 48px; height: 48px; }
+.wp-ch-ppl small { max-width: 54px; font-size: 11px; font-weight: 500; color: #4b5260; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-ch-sheet.has-ppl .wp-ch-list { padding-top: 84px; }
+.wp-ch-sheet.has-ppl .wp-ch-pin { top: calc(var(--st-top, 76px) + 82px); }
+.wp-ch-sheet.has-ppl.has-pin .wp-ch-list { padding-top: 148px; }
