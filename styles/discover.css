@@ -231,4 +231,12 @@
 .wp-dc-nox, .wp-dc-nox *, .wp-dc-nox *::before { transition: none !important; animation: none !important; }
 
 /* Título de sección: 12px dentro de una píldora */
-.wp-dc-body .wp-dc-sec > h3 { display: inline-flex; align-items: center; height: 26px; padding: 0 12px; margin: 0 0 12px 2px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0; color: #4b5260; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08), inset 0 0 0 1px rgba(20, 18, 31, 0.04); }
+.wp-dc-body .wp-dc-sec h3 { display: inline-flex; align-items: center; height: 26px; padding: 0 12px; margin: 0 0 12px 2px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0; color: #4b5260; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08), inset 0 0 0 1px rgba(20, 18, 31, 0.04); }
+
+/* Planes para hoy: tarjetas de la pestaña Planes en una tira; se asoma la siguiente */
+.wp-dc { --ink: #14121f; --sub: #6b7280; }
+.wp-dc-sechead { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 12px 0; }
+.wp-dc-body .wp-dc-sechead h3 { margin: 0 0 0 2px; }
+.wp-dc-all { border: none; background: none; padding: 6px 2px; font: inherit; font-size: 13px; font-weight: 600; color: #2563eb; }
+.wp-dc-strip .wp-pt-card { flex: none; width: 292px; margin-bottom: 0; }
+.wp-dc-strip .wp-pt-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

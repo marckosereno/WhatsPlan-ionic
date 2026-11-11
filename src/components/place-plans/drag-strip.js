@@ -31,7 +31,12 @@ export function addDragStrip(el) {
   let pos = 0, str = 0, virt = 0, raf = 0;          // pos: scroll [0, room]; str: estirón visible; virt: posición sin límites del dedo
   let start = null, locked = null, last = 0, samples = [], moved = false;
 
-  const room = () => Math.max(0, track.scrollWidth - el.clientWidth);
+  // El relleno de la tira (padding) también se recorre: así la última tarjeta
+  // queda completa, con su margen, y el rebote regresa a ese punto
+  const room = () => {
+    const cs = getComputedStyle(el), pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    return Math.max(0, track.scrollWidth + pad - el.clientWidth);
+  };
   const paint = () => { track.style.transform = `translate3d(${(-pos + str).toFixed(2)}px, 0, 0)`; };
   const stop = () => { cancelAnimationFrame(raf); raf = 0; };
 
