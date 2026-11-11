@@ -229,3 +229,6 @@
 
 /* Cerrar la búsqueda: sin transiciones ni animaciones de salida */
 .wp-dc-nox, .wp-dc-nox *, .wp-dc-nox *::before { transition: none !important; animation: none !important; }
+
+/* Título de sección: 12px dentro de una píldora */
+.wp-dc-body .wp-dc-sec > h3 { display: inline-flex; align-items: center; height: 26px; padding: 0 12px; margin: 0 0 12px 2px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0; color: #4b5260; background: linear-gradient(180deg, #fff, #eef0f3); box-shadow: 0 1px 3px rgba(20, 18, 31, 0.08), inset 0 0 0 1px rgba(20, 18, 31, 0.04); }
