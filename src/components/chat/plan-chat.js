@@ -32,7 +32,7 @@ import { loadMessages, sendMessage, markRead, onMessages, isDm, respondDm, editM
 import { wireChatActions, fillPhotos, repeatPlan, goTo } from '/src/components/chat/chat-actions.js';
 import { paintReply, paintMentions } from '/src/components/chat/chat-compose.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
-import { addDragStrip } from '/src/components/place-plans/drag-strip.js';
+import { openPlanGroup } from '/src/components/chat/plan-group.js';
 import { messagesHtml, groupAvatar } from '/src/components/chat/chat-render.js';
 
 const PIN = '<i class="wp-ch-pin-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8V5h6v5.8l2.5 3.2H6.5Z"/><path d="M8 5h8"/></svg></i>';
@@ -69,7 +69,8 @@ export function openPlanChat(pm, a, opts = {}) {
   const onBack = opts.onBack ? () => { page.close(); setTimeout(opts.onBack, 360); return true; } : undefined;
   page = openSheetPage({
     title: head,
-    right: `<span class="wp-ch-head-av" aria-hidden="true">${groupAvatar(pm, a, me)}</span>`,
+    right: dm ? `<span class="wp-ch-head-av" aria-hidden="true">${groupAvatar(pm, a, me)}</span>`
+      : `<button type="button" class="wp-ch-head-av" data-group aria-label="Ver quién va">${groupAvatar(pm, a, me)}</button>`,
     theme: 'explore', onBack,
     onClose: () => { st.closed = true; st.stop?.(); st.stopPin?.(); markRead(id); opts.onClose?.(); },
     html: '<div class="wp-ch-list"><p class="wp-ch-load">Cargando…</p></div><button type="button" class="wp-ch-new" hidden>Nuevos mensajes ↓</button>',
@@ -80,22 +81,8 @@ export function openPlanChat(pm, a, opts = {}) {
         <button type="submit" class="wp-ch-send" disabled>Enviar</button></form>`,
   });
   page.root.classList.add('wp-ch-sheet');
-  // Fila de caras de los que van (organiza primero), fija bajo el encabezado
-  if (!dm) {
-    const ids = [...new Set([a.creator_id, ...(a.participants || [])])].filter(Boolean);
-    const strip = document.createElement('div');
-    strip.className = 'wp-ch-ppl';
-    strip.innerHTML = `<div class="wp-ch-ppl-t">${ids.map(u => `<button type="button" data-u="${pm._esc(u)}"${u === a.creator_id ? ' class="org"' : ''}${u === me ? ' data-me' : ''}>
-        <span class="wp-ch-ppl-f">${pm._planFace(u)}</span><small>${pm._esc(u === me ? 'Tú' : (pm._phName(u, false) || '').split(' ')[0])}</small></button>`).join('')}</div>`;
-    page.root.appendChild(strip);
-    page.root.classList.add('has-ppl');
-    addDragStrip(strip);
-    strip.addEventListener('click', (e) => {
-      const bt = e.target.closest('[data-u]'); if (!bt || bt.hasAttribute('data-me')) return;
-      const p = pm._profCache?.get(bt.dataset.u);
-      pm._openMiniProfile?.(bt.dataset.u, 'saved', p?.name || '', p?.avatar_url || '');
-    });
-  }
+  // Tocar las caras de arriba abre "Los que van" (solo en chats de plan)
+  page.root.querySelector('[data-group]')?.addEventListener('click', () => openPlanGroup(pm, a));
   page.relayout();   // el pie cambia de forma con la clase (respuestas rápidas + barra)
   const vp = page.root.querySelector('.wp-st-vp'), box = page.body.querySelector('.wp-ch-list');
   const input = page.foot.querySelector('textarea'), send = page.foot.querySelector('.wp-ch-send'), fresh = page.body.querySelector('.wp-ch-new');
