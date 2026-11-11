@@ -316,3 +316,7 @@ button.wp-ch-head-av { padding: 0; border: none; border-radius: 50%; background:
 .wp-gm-pop.opts { z-index: 9; }
 .wp-ch-tr { position: relative; }
 .wp-ch-tr .wp-gm-more { position: absolute; left: calc(100% + 7px); top: 50%; margin-top: -10px; }
+.wp-ch-tr { margin-top: 3px; }
+.wp-ch-tr small { margin-top: 0; }
+.wp-ch-tr b { max-width: none; }
+.wp-ch-tr .wp-gm-more { width: 26px; height: 18px; margin-top: -9px; border-radius: 9px; }

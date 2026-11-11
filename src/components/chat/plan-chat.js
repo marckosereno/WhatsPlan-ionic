@@ -61,7 +61,7 @@ export function openPlanChat(pm, a, opts = {}) {
   const ended = !dm && Date.now() > (pm._mpEndAt(a)?.getTime() || new Date(a.scheduled_at).getTime() + 3 * 3600e3);
   const head = dm
     ? `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Mensaje')}</b>${a.other_username ? `<small>@${pm._esc(a.other_username)}</small>` : ''}</span>`
-    : `<span class="wp-ch-t"><span class="wp-ch-tr" data-ttl role="button" aria-label="Opciones del chat"><b>${pm._esc(a.title || 'Plan')}</b>${CHEV}</span><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small></span>`;
+    : `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Plan')}</b><span class="wp-ch-tr" data-ttl role="button" aria-label="Opciones del chat"><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small>${CHEV}</span></span>`;
   // Solicitud: la que te llegó (decides tú) o la que mandaste (esperando)
   const reqIn = dm && a.status === 'request' && a.requested_by !== me;
   const reqOut = dm && a.status === 'request' && a.requested_by === me;
