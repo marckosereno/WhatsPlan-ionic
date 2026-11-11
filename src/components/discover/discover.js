@@ -25,6 +25,9 @@ import { PointsService } from '/src/services/PointsService.js';
 import { SocialService } from '/src/services/SocialService.js';
 import { planCard, personCard, rankRow, placeCard, momentCard, momentAdd, section, emptyBox, SEARCH_IC } from '/src/components/discover/discover-cards.js';
 import { calStrip, dayKey } from '/src/components/discover/discover-cal.js';
+import { cardHtml } from '/src/components/tabs/plans-tab-cards.js';
+import { savedIds, setSaved } from '/src/components/place-plans/plan-saves.js';
+import { photoSmall } from '/src/utils/photo-url.js';
 import { MomentsService as MS } from '/src/services/MomentsService.js';
 import { ICON_HOME } from '/src/components/FooterMenu.js';
 
@@ -39,6 +42,7 @@ export class Discover {
 
   open() {
     ensureCss('wp-discover-css', '/styles/discover.css');
+    ensureCss('wp-tabs-css', '/styles/tabs.css');   // tarjetas de plan, las mismas de la pestaña Planes
     if (this.page) return;
     this.filter = 'all'; this.q = ''; this.res = null; this.day = null; this.when = 'any'; this.sort = 'rating';
     this.page = openSheetPage({ title: titleHtml('all'),
@@ -67,6 +71,7 @@ export class Discover {
       this.feed = cacheGet('discover')?.data || null;
       this.err = !this.offline;
     }
+    this._todayExtras();
     PointsService.ranking('week').then(r => { this.rank = (r || []).slice(0, 5); if (this.page && !this.q) this._paint(false); }).catch(() => {});
     if (this.page) this._paint(true);
   }
@@ -124,6 +129,14 @@ export class Discover {
         const top = this._trending();
         if (top.length) html += section('Lugares destacados', top.map(p => placeCard(p, esc, this._idx(p), true)).join(''), { strip: true });
       }
+      if (show('plans') || f === 'all') {
+        const today = this._today(d);
+        if (today.length) {
+          const me = window.wpApp?.currentUser?.id;
+          html += `<section class="wp-dc-sec today"><div class="wp-dc-sechead"><h3>Planes para hoy</h3><button type="button" class="wp-dc-all" data-all-today>Ver todos</button></div>
+            <div class="wp-dc-strip"><div class="wp-dc-track">${today.map((a, i) => cardHtml(pm, a, i, { me, saved: this.savedSet || new Set(), photo: this._photo(a), km: null }).replace('<article ', `<article data-plan="${esc(a.id)}" `)).join('')}</div></div></section>`;
+        }
+      }
       if (show('plans')) {
         const all = d.plans || [], l = this._plansOf(d).filter(a => !this.day || dayKey(a.scheduled_at) === this.day);
         if (all.length) html += `<section class="wp-dc-sec"><h3>Planes más cercanos</h3>${calStrip(all, this.day)}${l.length
@@ -137,7 +150,39 @@ export class Discover {
     }
     box.innerHTML = (this.offline ? offlineNote(true) : '') + html;
     box.querySelectorAll('.wp-dc-strip').forEach(addDragStrip);
-    if (animate) wave(box, '.wp-off-bar, .wp-dc-sec > h3, .wp-dc-card, .wp-dc-row, .wp-dc-mo', { max: 12 });
+    if (animate) wave(box, '.wp-off-bar, .wp-dc-sec h3, .wp-dc-card, .wp-dc-row, .wp-dc-mo', { max: 12 });
+  }
+
+  // Planes de hoy (máx. 5) y su foto, tomados del feed ya cargado
+  _today(d) {
+    const k = dayKey(new Date());
+    return (d.plans || []).filter(a => dayKey(a.scheduled_at) === k).slice(0, 5);
+  }
+  _photo(a) {
+    const p = (this.getPlaces?.() || []).find(x => String(x.place_id || x.id) === String(a.place_id));
+    const u = p && ((p.photosUrls && p.photosUrls[0]) || p.photoUrl || p.photo_url);
+    return u ? (photoSmall(u) || u) : '';
+  }
+  // Caras de quienes organizan/van y cuáles tengo guardados (sin bloquear el pintado)
+  async _todayExtras() {
+    const pm = this.getPM(), list = this._today(this.feed || {}); if (!pm || !list.length) return;
+    try {
+      pm._profCache = pm._profCache || new Map();
+      const ids = [...new Set(list.flatMap(a => [a.creator_id, ...(a.participants || [])]))].filter(id => id && !pm._profCache.has(id)).slice(0, 60);
+      if (ids.length) { const { data } = await getSupabase().from('profiles').select('id, name, username, avatar_url').in('id', ids); (data || []).forEach(p => pm._profCache.set(p.id, p)); }
+      this.savedSet = await savedIds(list.map(a => a.id));
+    } catch (_) {}
+    if (this.page && !this.q) this._paint(false);
+  }
+  async _save(b) {
+    const pm = this.getPM(), id = b.closest('[data-plan]')?.dataset.plan; if (!id) return;
+    if (!window.wpApp?.currentUser) { window.wpApp?.authModal?.show?.(); return; }
+    this.savedSet = this.savedSet || new Set();
+    const on = !this.savedSet.has(id);
+    on ? this.savedSet.add(id) : this.savedSet.delete(id);
+    b.classList.toggle('on', on); pm?._haptic?.(on ? 'medium' : 'light');
+    try { await setSaved(id, on); pm?._showToast?.(on ? 'Guardado' : 'Quitado de guardados'); }
+    catch (err) { on ? this.savedSet.delete(id) : this.savedSet.add(id); b.classList.toggle('on', !on); pm?._showToast?.(err.message || 'No se pudo'); }
   }
 
   counts() {
@@ -180,6 +225,9 @@ export class Discover {
     if (fb) { e.stopPropagation(); this._follow(fb); return; }
     const person = t.closest('[data-uid]');
     if (person) { this._person(person.dataset.uid, person); return; }
+    if (t.closest('[data-all-today]')) { this.close(); setTimeout(() => window.wpApp?.plansTab?.open?.('explore'), 340); return; }
+    const sv = t.closest('[data-save]');
+    if (sv) { e.stopPropagation(); this._save(sv); return; }
     const plan = t.closest('[data-plan]');
     if (plan) { this._plan(plan.dataset.plan); return; }
     const place = t.closest('[data-place]');
