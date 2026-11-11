@@ -32,6 +32,7 @@ import { loadMessages, sendMessage, markRead, onMessages, isDm, respondDm, editM
 import { wireChatActions, fillPhotos, repeatPlan, goTo } from '/src/components/chat/chat-actions.js';
 import { paintReply, paintMentions } from '/src/components/chat/chat-compose.js';
 import { getSupabase } from '/src/services/SupabaseService.js';
+import { CHEV } from '/src/components/chat/plan-group.js';
 import { messagesHtml, groupAvatar } from '/src/components/chat/chat-render.js';
 
 const PIN = '<i class="wp-ch-pin-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8V5h6v5.8l2.5 3.2H6.5Z"/><path d="M8 5h8"/></svg></i>';
@@ -60,7 +61,7 @@ export function openPlanChat(pm, a, opts = {}) {
   const ended = !dm && Date.now() > (pm._mpEndAt(a)?.getTime() || new Date(a.scheduled_at).getTime() + 3 * 3600e3);
   const head = dm
     ? `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Mensaje')}</b>${a.other_username ? `<small>@${pm._esc(a.other_username)}</small>` : ''}</span>`
-    : `<span class="wp-ch-t"><b>${pm._esc(a.title || 'Plan')}</b><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small></span>`;
+    : `<span class="wp-ch-t"><span class="wp-ch-tr" data-ttl role="button" aria-label="Opciones del chat"><b>${pm._esc(a.title || 'Plan')}</b>${CHEV}</span><small>${n} ${n === 1 ? 'va' : 'van'} · ${pm._phDayLabel(new Date(a.scheduled_at))} ${pm._hhmm(new Date(a.scheduled_at))}</small></span>`;
   // Solicitud: la que te llegó (decides tú) o la que mandaste (esperando)
   const reqIn = dm && a.status === 'request' && a.requested_by !== me;
   const reqOut = dm && a.status === 'request' && a.requested_by === me;

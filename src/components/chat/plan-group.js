@@ -10,7 +10,7 @@ import { wave } from '/src/components/place-plans/wave.js';
 import { face } from '/src/components/chat/chat-render.js';
 import { headItems } from '/src/components/chat/chat-actions.js';
 
-const CHEV = '<span class="wp-gm-more" data-more aria-label="Opciones del chat"><svg width="13" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></svg></span>';
+export const CHEV = '<span class="wp-gm-more" data-more aria-label="Opciones del chat"><svg width="13" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></svg></span>';
 
 export function openPlanMenu(ctx, anchor) {
   const { pm, a, page } = ctx, me = window.wpApp?.currentUser?.id, root = page.root;
@@ -26,7 +26,7 @@ export function openPlanMenu(ctx, anchor) {
   pop.className = 'wp-gm-pop';
   pop.innerHTML = `<div class="wp-gm-scrim" data-x></div><div class="wp-gm" role="menu">
     <div class="wp-gm-h"><span><b>Los que van</b><small>${max ? `${n} de ${max}` : n} · ${pm._esc(a.title || 'Plan')}</small></span>
-      ${CHEV}</div>
+      </div>
     <div class="wp-gm-list">${ids.map(row).join('')}</div></div>`;
   root.appendChild(pop);
   const rr = root.getBoundingClientRect(), ar = anchor.getBoundingClientRect(), card = pop.querySelector('.wp-gm');
@@ -34,28 +34,33 @@ export function openPlanMenu(ctx, anchor) {
   pm._haptic?.('light');
   requestAnimationFrame(() => { pop.classList.add('go'); wave(card, '.wp-gm-row', { max: 6 }); });
   const close = () => { pop.classList.remove('go'); setTimeout(() => pop.remove(), 180); };
-  // Opciones: segundo menú, como el desplegable de Discover, bajo las flechitas
-  const items = headItems(ctx); let opts = null;
-  const closeOpts = () => { if (!opts) return; const o = opts; opts = null; o.classList.remove('go'); setTimeout(() => o.remove(), 160); };
-  const toggleOpts = () => {
-    if (opts) { closeOpts(); return; }
-    opts = document.createElement('div');
-    opts.className = 'wp-gm wp-gm-opt'; opts.setAttribute('role', 'menu');
-    opts.innerHTML = items.map((it, i) => `<button type="button" role="menuitem" data-opt="${i}">${pm._esc(it.label)}</button>`).join('');
-    pop.appendChild(opts);
-    const pr = pop.getBoundingClientRect(), mr = pop.querySelector('[data-more]').getBoundingClientRect();
-    opts.style.top = `${mr.bottom - pr.top + 8}px`; opts.style.right = '20px';
-    requestAnimationFrame(() => opts && opts.classList.add('go'));
-    wave(opts, 'button', { max: 3 });
-  };
   pop.addEventListener('click', (e) => {
     if (e.target.closest('[data-x]')) { close(); return; }
-    if (e.target.closest('[data-more]')) { toggleOpts(); return; }
-    const op = e.target.closest('[data-opt]');
-    if (op) { const it = items[+op.dataset.opt]; close(); setTimeout(() => it.onClick(), 120); return; }
-    if (opts) closeOpts();
+
     const b = e.target.closest('[data-uid]'); if (!b || b.hasAttribute('data-me')) return;
     const p = pm._profCache?.get(b.dataset.uid);
     close(); setTimeout(() => pm._openMiniProfile?.(b.dataset.uid, 'saved', p?.name || '', p?.avatar_url || ''), 120);
+  });
+}
+
+// Opciones del chat: desplegable bajo el nombre del plan (las flechitas), sin velo
+export function openChatOpts(ctx, anchor) {
+  const { pm, page } = ctx, root = page.root;
+  if (root.querySelector('.wp-gm-pop.opts')) return;
+  const items = headItems(ctx);
+  const pop = document.createElement('div');
+  pop.className = 'wp-gm-pop opts';
+  pop.innerHTML = `<div class="wp-gm-scrim" data-x></div><div class="wp-gm wp-gm-opt" role="menu">${items.map((it, i) => `<button type="button" role="menuitem" data-opt="${i}">${pm._esc(it.label)}</button>`).join('')}</div>`;
+  root.appendChild(pop);
+  const rr = root.getBoundingClientRect(), ar = anchor.getBoundingClientRect(), card = pop.querySelector('.wp-gm');
+  card.style.top = `${ar.bottom - rr.top + 8}px`;
+  card.style.left = `${Math.max(12, Math.min(rr.width - 202, ar.left - rr.left + ar.width / 2 - 95))}px`; card.style.right = 'auto';
+  pm._haptic?.('light');
+  requestAnimationFrame(() => { pop.classList.add('go'); wave(card, 'button', { max: 3 }); });
+  const close = () => { pop.classList.remove('go'); setTimeout(() => pop.remove(), 180); };
+  pop.addEventListener('click', (e) => {
+    const op = e.target.closest('[data-opt]');
+    close();
+    if (op) setTimeout(() => items[+op.dataset.opt].onClick(), 120);
   });
 }
