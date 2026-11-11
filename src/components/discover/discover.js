@@ -120,6 +120,10 @@ export class Discover {
         const mo = (this.mo || []);
         html += `<section class="wp-dc-sec first"><div class="wp-dc-strip"><div class="wp-dc-track">${momentAdd()}${mo.map((g, i) => momentCard(g, esc, i)).join('')}</div></div></section>`;
       }
+      if (show('places')) {
+        const top = this._trending();
+        if (top.length) html += section('Lugares destacados', top.map(p => placeCard(p, esc, this._idx(p), true)).join(''), { strip: true });
+      }
       if (show('plans')) {
         const all = d.plans || [], l = this._plansOf(d).filter(a => !this.day || dayKey(a.scheduled_at) === this.day);
         if (all.length) html += `<section class="wp-dc-sec"><h3>Planes más cercanos</h3>${calStrip(all, this.day)}${l.length
@@ -129,10 +133,6 @@ export class Discover {
       if (show('people') && d.suggested?.length) html += section('Personas que quizá conozcas', d.suggested.map(p => personCard(p, esc, true)).join(''), { strip: true });
       if (show('people') && d.newest?.length) html += section('Nuevos en WhatsPlan', d.newest.map(p => personCard(p, esc, true)).join(''), { strip: true });
       if (show('people') && this.rank.length) html += section('Ranking de la semana', this.rank.map((r, i) => rankRow(r, i, esc)).join(''), { list: true });
-      if (show('places')) {
-        const top = this._trending();
-        if (top.length) html += section('Lugares destacados', top.map(p => placeCard(p, esc, this._idx(p), true)).join(''), { strip: true });
-      }
       if (!html) html = emptyBox('Todavía no hay nada que mostrar', this.err ? 'No se pudo cargar. Intenta de nuevo.' : 'Cuando haya planes y personas nuevas cerca, aparecen aquí.');
     }
     box.innerHTML = (this.offline ? offlineNote(true) : '') + html;
