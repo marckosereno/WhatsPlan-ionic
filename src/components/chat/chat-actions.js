@@ -53,6 +53,7 @@ export function wireChatActions(ctx) {
 
   ctx.page.foot.querySelector('.wp-ch-plus')?.addEventListener('click', () => sendPhoto(ctx));
   ctx.page.root.querySelector('.wp-ch-head-av')?.addEventListener('click', (e) => ctx.dm ? headMenu(ctx, e.currentTarget) : openPlanMenu(ctx, e.currentTarget));
+  ctx.page.root.querySelector('[data-ttl]')?.addEventListener('click', (e) => { pulse(e.currentTarget.querySelector('.wp-gm-more')); openChatOpts(ctx, e.currentTarget.closest('.wp-ch-t') || e.currentTarget); });
 }
 
 // Pintar las fotos que ya tienen liga (las ligas se piden en grupo)
@@ -80,7 +81,8 @@ async function sendPhoto(ctx) {
   } catch (e) { ctx.pm._showToast?.(e.message || 'No se pudo enviar la foto'); }
 }
 
-import { openPlanMenu } from '/src/components/chat/plan-group.js';
+import { pulse } from '/src/components/place-plans/pulse.js';
+import { openPlanMenu, openChatOpts } from '/src/components/chat/plan-group.js';
 
 // Opciones del chat (arriba): Silenciar / Ver el plan o perfil
 export function headItems(ctx) {

@@ -308,3 +308,11 @@ button.wp-ch-head-av { padding: 0; border: none; border-radius: 50%; background:
 .wp-gm-opt button { width: 100%; height: 44px; padding: 0 14px; border: none; border-radius: 16px; background: none; font: inherit; font-size: 15px; font-weight: 500; color: #14121f; text-align: left; }
 .wp-gm-opt button:active { background: #eef0f4; }
 .wp-gm-f { flex: none; display: block; width: 40px; height: 40px; }
+
+/* Nombre del plan con las flechitas (abre las opciones del chat) */
+.wp-ch-tr { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-width: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wp-ch-tr b { max-width: 180px; }
+.wp-ch-tr .wp-gm-more { width: 28px; height: 20px; border-radius: 10px; }
+.wp-gm-pop.opts { z-index: 9; }
+.wp-ch-tr { position: relative; }
+.wp-ch-tr .wp-gm-more { position: absolute; left: calc(100% + 7px); top: 50%; margin-top: -10px; }
