@@ -4,7 +4,7 @@
 //  · API_ORIGIN: en la app empaquetada las rutas /api/... hay que mandarlas
 //    al servidor de Vercel (cambia la constante si cambia el dominio)
 // ════════════════════════════════════════════════════════════════════
-export const API_ORIGIN = 'https://whatsplan.vercel.app';   // ← dominio de producción en Vercel
+export const API_ORIGIN = 'https://whats-plan-ionic.vercel.app';   // dominio de producción en Vercel
 
 export const isNative = () => !!window.Capacitor?.isNativePlatform?.();
 export const platform = () => window.Capacitor?.getPlatform?.() || 'web';
