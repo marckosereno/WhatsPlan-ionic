@@ -86,10 +86,16 @@ export const PushService = {
     P.addListener('pushNotificationActionPerformed', ({ notification }) => this._open(notification?.data || {}));
   },
 
-  _open(d) {
+  // Al tocar el aviso la app puede estar fría (sesión aún cargando): espera a que haya usuario
+  async _open(d) {
     const app = window.wpApp; if (!app) return;
     try {
-      if (d.kind === 'plan' && d.activity_id) app.plansTab?._openPlan?.({ id: d.activity_id });
+      if (d.kind === 'plan' && d.activity_id) {
+        for (let i = 0; i < 20 && !window.wpApp?.currentUser; i++) await new Promise(r => setTimeout(r, 400));
+        // _openPlan necesita la fila completa de la actividad, no solo el id
+        const { data: a } = await getSupabase().from('activities').select('*').eq('id', d.activity_id).maybeSingle();
+        if (a) app.plansTab?._openPlan?.(a); else app.notifPanel?.open?.();
+      }
       else if (d.kind === 'follow' && d.user_id) app.socialTab?.openProfile?.(d.user_id);
       else app.notifPanel?.open?.();
     } catch (_) {}
