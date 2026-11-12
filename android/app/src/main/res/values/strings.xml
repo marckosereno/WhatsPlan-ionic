@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">WhatsPlan</string>
+    <string name="title_activity_main">WhatsPlan</string>
+    <string name="package_name">com.whatsplan.app</string>
+    <string name="custom_url_scheme">com.whatsplan.app</string>
+</resources>

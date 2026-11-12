@@ -5,5 +5,16 @@
   "type": "module",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/push-notifications": "^8.1.3"
+  },
+  "scripts": {
+    "build:www": "node scripts/build-www.js",
+    "android:sync": "node scripts/build-www.js && npx cap sync android",
+    "android:open": "npx cap open android"
   }
 }

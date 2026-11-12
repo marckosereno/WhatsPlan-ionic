@@ -1,0 +1,9 @@
+{
+  "appId": "com.whatsplan.app",
+  "appName": "WhatsPlan",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}
