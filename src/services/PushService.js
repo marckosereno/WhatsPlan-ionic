@@ -16,7 +16,10 @@ export const PushService = {
   // Llamar con la sesión: pide permiso (una vez) y guarda el token
   async start(user) {
     const P = plugin();
-    if (!isNative() || !P || !user) return;
+    // register() sin Firebase configurado TUMBA la app nativa (no se puede atrapar desde JS).
+    // Solo se activa en el APK compilado con google-services.json, que se marca con
+    // appendUserAgent "WPPush/1" en capacitor.config.json. Los APK viejos no lo traen.
+    if (!isNative() || !P || !user || !/WPPush\/1/.test(navigator.userAgent)) return;
     try {
       if (!wired) { wired = true; this._wire(P); }
       let perm = await P.checkPermissions();
