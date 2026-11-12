@@ -11,6 +11,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 // Lee la cuenta de servicio aunque el panel haya dañado los \n de la private_key al pegarla
 function readServiceAccount() {
+  // Preferido: FCM_SERVICE_ACCOUNT_B64 = el JSON completo en base64 (una sola línea, no se daña al pegar)
+  const b64 = (Deno.env.get('FCM_SERVICE_ACCOUNT_B64') || '').replace(/\s/g, '');
+  if (b64) return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
   const raw = Deno.env.get('FCM_SERVICE_ACCOUNT') || '';
   try { return JSON.parse(raw); } catch (_) { /* se rearma campo por campo */ }
   const pick = (k: string) => (raw.match(new RegExp(`"${k}"\\s*:\\s*"([^"]+)"`)) || [])[1] || '';
