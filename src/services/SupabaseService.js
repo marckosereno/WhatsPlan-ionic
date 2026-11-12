@@ -304,6 +304,7 @@ export const ActivityService = {
       .eq('id', activityId)
       .select();
     if (error) throw error;
+    window.dispatchEvent(new Event('wp:plan-action'));   // ofrece activar los avisos
 
     // Notificar al creador si no es el mismo usuario
     if (activity.creator_id !== userId) {

@@ -142,6 +142,7 @@ export const PlanService = {
     const sb = getSupabase();
     const { error } = await sb.rpc('join_plan', { plan_id, user_id });
     if (error) throw error;
+    window.dispatchEvent(new Event('wp:plan-action'));   // ofrece activar los avisos
     const { data: plan } = await sb.from('plans')
       .select('creator_id, title').eq('id', plan_id).single();
     if (plan && plan.creator_id !== user_id) {
