@@ -68,15 +68,31 @@ Deno.serve(async (req) => { try {
     if (pr?.off?.includes(cat)) return new Response('apagado por la persona');
   }
 
+  // Foto del lugar (solo invitaciones y recordatorios): se muestra grande al expandir el aviso.
+  // Solo se usa si ya está en Supabase Storage (URL pública que Android puede bajar sin llave)
+  let image: string | undefined;
+  if (['plan_invite', 'plan_reminder'].includes(record.type) && record.activity_id) {
+    try {
+      const { data: ac } = await db.from('activities').select('place_id').eq('id', record.activity_id).maybeSingle();
+      if (ac?.place_id) {
+        const { data: pl } = await db.from('places').select('photo_url, photos_urls').eq('place_id', ac.place_id).maybeSingle();
+        let arr: unknown = pl?.photos_urls;
+        if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch (_) { arr = []; } }
+        const u = pl?.photo_url || (Array.isArray(arr) ? arr[0] : '');
+        if (typeof u === 'string' && /^https:\/\/[^\s]*supabase\.co\//.test(u)) image = u;
+      }
+    } catch (_) { /* sin foto: el aviso sale igual */ }
+  }
+
   const bearer = await accessToken();
   const kind = record.type === 'follow' ? 'follow' : record.type === 'chat_msg' ? 'chat' : record.activity_id ? 'plan' : 'other';
   await Promise.all(toks.map(async ({ token }) => {
     const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
       method: 'POST', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' },
       body: JSON.stringify({ message: { token,
-        notification: { title: record.title || 'WhatsPlan', body: record.body || '' },
+        notification: { title: record.title || 'WhatsPlan', body: record.body || '', ...(image ? { image } : {}) },
         data: { kind, notif_id: String(record.id || ''), activity_id: String(record.activity_id || ''), user_id: String(record.data?.user_id || '') },
-        android: { priority: 'HIGH', notification: { channel_id: 'default', ...(kind === 'chat' ? { tag: 'chat-' + record.activity_id } : {}) } } } }),   // el chat de un plan reemplaza su aviso anterior
+        android: { priority: 'HIGH', notification: { channel_id: 'avisos', color: '#2563EB', ...(kind === 'chat' ? { tag: 'chat-' + record.activity_id } : {}) } } } }),   // el chat de un plan reemplaza su aviso anterior
     });
     if (r.status === 404 || r.status === 400) {   // token muerto: se borra
       const t = await r.text(); if (/UNREGISTERED|INVALID_ARGUMENT/.test(t)) await db.from('push_tokens').delete().eq('token', token);
