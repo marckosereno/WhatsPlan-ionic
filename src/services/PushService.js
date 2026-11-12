@@ -23,10 +23,22 @@ export const PushService = {
     if (!isNative() || !P || !user || !/WPPush\/1/.test(navigator.userAgent)) return;
     try {
       if (!wired) { wired = true; this._wire(P); }
+      await this._channel(P);
       // El permiso ya NO se pide aquí: se ofrece con offer() tras unirse o crear un plan
       const perm = await P.checkPermissions();
       if (perm.receive === 'granted') await P.register();   // → evento 'registration'
     } catch (e) { console.warn('push:', e?.message || e); }
+  },
+
+  // Canal de Android 8+: importancia alta = el aviso baja como tarjeta emergente (heads-up) con sonido y vibración.
+  // La importancia de un canal ya creado no se puede subir desde la app: si algún día hay que cambiarla, usar otro id
+  // (y el mismo id en supabase/functions/push-send: channel_id).
+  async _channel(P) {
+    if (platform() !== 'android' || !P.createChannel) return;
+    try {
+      await P.createChannel({ id: 'avisos', name: 'Avisos de planes', description: 'Mensajes, invitaciones y recordatorios de tus planes',
+        importance: 4, visibility: 1, vibration: true, lights: true, lightColor: '#2563EB' });
+    } catch (e) { console.warn('push canal:', e?.message || e); }
   },
 
   ready() { return isNative() && !!plugin() && /WPPush\/1/.test(navigator.userAgent); },
