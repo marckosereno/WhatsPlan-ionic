@@ -20,6 +20,7 @@ import { addDragScroll }  from '/src/components/place-plans/drag-scroll.js';
 import { addDragStrip }   from '/src/components/place-plans/drag-strip.js';
 import { ICON_BACK }      from '/src/components/place-plans/step-sheet.js';
 import { startDm }        from '/src/components/chat/dm-chat.js';
+import { viewNotifPrefs } from '/src/components/profile/notif-prefs.js';
 
 // Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
 // n veces. Devuelve un path SVG/CSS centrado en (c, c).
@@ -1352,6 +1353,7 @@ export class ProfileSheet {
           <span class="wp-pf-set-txt"><b>Aparecer en Discover</b><span>Que te sugieran a otras personas y te encuentren al buscar</span></span>
           <button type="button" class="wp-pf-switch" role="switch" data-k="discoverable"></button>
         </div>
+        <button type="button" class="wp-pf-set" data-a="notifs"><span class="wp-pf-set-txt"><b>Avisos</b><span>Elige qué notificaciones te llegan al celular</span></span>${ICON.chev}</button>
         <button type="button" class="wp-pf-set" data-a="blocked"><span class="wp-pf-set-txt"><b>Usuarios bloqueados</b></span>${ICON.chev}</button>
       </div>
       <div class="wp-pf-group">
@@ -1374,6 +1376,7 @@ export class ProfileSheet {
         } catch (e) { console.error('[PF] ' + k + ':', e); on = was; paint(); this._toast('No se pudo cambiar'); }
       };
     });
+    view.querySelector('[data-a=notifs]').onclick = () => this._push(v => viewNotifPrefs(this, v));
     view.querySelector('[data-a=blocked]').onclick = () => this._push(v => this._viewBlocked(v));
     view.querySelector('[data-a=logout]').onclick = async (e) => {
       this._pulse(e.currentTarget);

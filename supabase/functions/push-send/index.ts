@@ -56,6 +56,18 @@ Deno.serve(async (req) => { try {
   const { data: toks } = await db.from('push_tokens').select('token').eq('user_id', record.user_id);
   if (!toks?.length) return new Response('sin tokens');
 
+  // Preferencias: categorías que la persona apagó (supabase/43_push_prefs.sql)
+  const CAT: Record<string, string> = {
+    chat_msg: 'chat', chat_mention: 'mentions', join: 'joins', plan_join: 'joins', plan_invite: 'invites',
+    plan_update: 'changes', plan_cancelled: 'changes', plan_decline: 'changes', plan_full: 'changes', plan_spot: 'changes',
+    plan_reminder: 'reminders', follow: 'social', dm_request: 'social',
+  };
+  const cat = CAT[record.type];
+  if (cat) {
+    const { data: pr } = await db.from('push_prefs').select('off').eq('user_id', record.user_id).maybeSingle();
+    if (pr?.off?.includes(cat)) return new Response('apagado por la persona');
+  }
+
   const bearer = await accessToken();
   const kind = record.type === 'follow' ? 'follow' : record.type === 'chat_msg' ? 'chat' : record.activity_id ? 'plan' : 'other';
   await Promise.all(toks.map(async ({ token }) => {
