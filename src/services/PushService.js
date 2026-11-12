@@ -90,11 +90,15 @@ export const PushService = {
   async _open(d) {
     const app = window.wpApp; if (!app) return;
     try {
-      if (d.kind === 'plan' && d.activity_id) {
+      if ((d.kind === 'plan' || d.kind === 'chat') && d.activity_id) {
         for (let i = 0; i < 20 && !window.wpApp?.currentUser; i++) await new Promise(r => setTimeout(r, 400));
         // _openPlan necesita la fila completa de la actividad, no solo el id
         const { data: a } = await getSupabase().from('activities').select('*').eq('id', d.activity_id).maybeSingle();
-        if (a) app.plansTab?._openPlan?.(a); else app.notifPanel?.open?.();
+        if (!a) app.notifPanel?.open?.();
+        else if (d.kind === 'chat') {
+          const { openPlanChat } = await import('/src/components/chat/plan-chat.js');
+          openPlanChat(app.plansTab?.getPM?.() || app.placeModal, a, {});
+        } else app.plansTab?._openPlan?.(a);
       }
       else if (d.kind === 'follow' && d.user_id) app.socialTab?.openProfile?.(d.user_id);
       else app.notifPanel?.open?.();

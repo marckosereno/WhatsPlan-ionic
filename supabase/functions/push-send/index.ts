@@ -51,20 +51,20 @@ async function accessToken(): Promise<string> {
 Deno.serve(async (req) => { try {
   if (req.headers.get('x-webhook-secret') !== Deno.env.get('PUSH_WEBHOOK_SECRET')) return new Response('no', { status: 401 });
   const { record } = await req.json();
-  if (!record?.user_id || record.read) return new Response('skip');
+  if (!record?.user_id || (record.read && record.type !== 'chat_msg')) return new Response('skip');   // chat_msg llega con read=true a propósito
 
   const { data: toks } = await db.from('push_tokens').select('token').eq('user_id', record.user_id);
   if (!toks?.length) return new Response('sin tokens');
 
   const bearer = await accessToken();
-  const kind = record.type === 'follow' ? 'follow' : record.activity_id ? 'plan' : 'other';
+  const kind = record.type === 'follow' ? 'follow' : record.type === 'chat_msg' ? 'chat' : record.activity_id ? 'plan' : 'other';
   await Promise.all(toks.map(async ({ token }) => {
     const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
       method: 'POST', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' },
       body: JSON.stringify({ message: { token,
         notification: { title: record.title || 'WhatsPlan', body: record.body || '' },
         data: { kind, notif_id: String(record.id || ''), activity_id: String(record.activity_id || ''), user_id: String(record.data?.user_id || '') },
-        android: { priority: 'HIGH', notification: { channel_id: 'default' } } } }),
+        android: { priority: 'HIGH', notification: { channel_id: 'default', ...(kind === 'chat' ? { tag: 'chat-' + record.activity_id } : {}) } } } }),   // el chat de un plan reemplaza su aviso anterior
     });
     if (r.status === 404 || r.status === 400) {   // token muerto: se borra
       const t = await r.text(); if (/UNREGISTERED|INVALID_ARGUMENT/.test(t)) await db.from('push_tokens').delete().eq('token', token);
