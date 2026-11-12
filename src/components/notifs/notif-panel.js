@@ -51,6 +51,7 @@ function kindOf(n) {
   if (t === 'plan_invite') return ['cal', 'blue'];
   if (t === 'plan_join' || t === 'join') return ['ppl', 'green'];
   if (t === 'plan_full') return ['party', 'green'];
+  if (t === 'plan_reminder') return ['clock', 'blue'];
   if (t === 'plan_spot') return ['ticket', 'amber'];
   if (t === 'plan_decline' || t === 'plan_cancelled') return ['x', 'gray'];
   if (t === 'chat_mention') return ['at', 'violet'];
@@ -112,7 +113,7 @@ export class NotifPanel {
 
   // Llegó un aviso en vivo: numerito, campana que se mueve y aviso arriba
   _arrived(n) {
-    if (!n || this.list.some(x => String(x.id) === String(n.id))) return;
+    if (!n || n.type === 'chat_msg' || this.list.some(x => String(x.id) === String(n.id))) return;   // chat_msg es solo para el push
     this.list.unshift(n);
     if (this.page) { this.seen?.push(String(n.id)); this._paint(false); this.getPM()?._haptic?.('light'); return; }
     this._badge(this.unread + 1);
