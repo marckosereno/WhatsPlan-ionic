@@ -300,6 +300,7 @@ export class PlanWizard {
       return false;
     }
     this._haptic?.('success');
+    window.dispatchEvent(new Event('wp:plan-action'));   // ofrece activar los avisos
     try { this._loadPlaceActivities(place); } catch (_) {}
     try { this._loadPlanState(place); } catch (_) {}
     try { window.wpApp?.mapView?._loadActivities?.(); } catch (_) {}

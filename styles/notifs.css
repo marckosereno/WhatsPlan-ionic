@@ -145,3 +145,23 @@ body.wp-nf-open #wp-pm2-menu-sheet .wp-pm2-ms-menu { z-index: 1500650; }
   background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: 0 4px 10px -6px rgba(20, 18, 31, 0.5); }
 .wp-nf-act.busy { opacity: 0.6; }
 .wp-nf-item.past .wp-nf-ic, .wp-nf-item.past .wp-nf-txt b { filter: grayscale(1); opacity: 0.6; }
+
+/* ── Hoja "activar avisos" (notifs/push-ask.js) ─────────────────────── */
+#wp-pa { position: fixed; inset: 0; z-index: 1500700; pointer-events: none; }
+#wp-pa.in { pointer-events: auto; }
+.wp-pa-scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, 0); transition: background-color 0.32s; }
+#wp-pa.in .wp-pa-scrim { background: rgba(15, 23, 42, 0.38); }
+.wp-pa-card {
+  position: absolute; left: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 22px 24px calc(22px + env(safe-area-inset-bottom, 0px));
+  border-radius: 30px 30px 0 0; background: #fff; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  box-shadow: 0 -18px 50px -16px rgba(20, 18, 31, 0.35); transform: translateY(105%); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#wp-pa.in .wp-pa-card { transform: none; }
+.wp-pa-grab { width: 40px; height: 5px; border-radius: 3px; background: rgba(20, 18, 31, 0.16); margin-bottom: 8px; }
+.wp-pa-ic { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: 0 10px 22px -10px rgba(20, 18, 31, 0.6); }
+.wp-pa-card h3 { margin: 6px 0 0; font: 700 20px/1.25 var(--wp-font); color: #14121f; }
+.wp-pa-card p { margin: 0; max-width: 320px; font: 500 14.5px/1.45 var(--wp-font); color: #8a879a; }
+.wp-pa-go, .wp-pa-no { width: 100%; max-width: 340px; height: 50px; border: none; border-radius: 999px; font: 600 15.5px/1 var(--wp-font); }
+.wp-pa-go { margin-top: 10px; color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); }
+.wp-pa-go:disabled { opacity: 0.6; }
+.wp-pa-no { background: none; color: #8a879a; font-weight: 600; }
