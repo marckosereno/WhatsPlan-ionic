@@ -9,7 +9,15 @@
 // ════════════════════════════════════════════════════════════════════
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
-const sa = JSON.parse(Deno.env.get('FCM_SERVICE_ACCOUNT') || '{}');
+// Lee la cuenta de servicio aunque el panel haya dañado los \n de la private_key al pegarla
+function readServiceAccount() {
+  const raw = Deno.env.get('FCM_SERVICE_ACCOUNT') || '';
+  try { return JSON.parse(raw); } catch (_) { /* se rearma campo por campo */ }
+  const pick = (k: string) => (raw.match(new RegExp(`"${k}"\\s*:\\s*"([^"]+)"`)) || [])[1] || '';
+  const key = (raw.match(/-----BEGIN PRIVATE KEY-----[\s\S]*?-----END PRIVATE KEY-----/) || [''])[0];
+  return { project_id: pick('project_id'), client_email: pick('client_email'), private_key: key };
+}
+const sa = readServiceAccount();
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
 const b64 = (b: ArrayBuffer | string) => btoa(typeof b === 'string' ? b : String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -20,7 +28,7 @@ async function accessToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const head = b64(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const body = b64(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
-  const pem = String(sa.private_key).replace(/-----[^-]+-----|\s/g, '');
+  const pem = String(sa.private_key).replace(/-----[^-]+-----/g, '').replace(/\\n/g, '').replace(/\s/g, '');
   const key = await crypto.subtle.importKey('pkcs8', Uint8Array.from(atob(pem), c => c.charCodeAt(0)), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(`${head}.${body}`));
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -30,7 +38,7 @@ async function accessToken(): Promise<string> {
   return cached.token;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req) => { try {
   if (req.headers.get('x-webhook-secret') !== Deno.env.get('PUSH_WEBHOOK_SECRET')) return new Response('no', { status: 401 });
   const { record } = await req.json();
   if (!record?.user_id || record.read) return new Response('skip');
@@ -53,4 +61,5 @@ Deno.serve(async (req) => {
     }
   }));
   return new Response('ok');
+} catch (e) { console.error('push-send:', e); return new Response(`error: ${(e as Error).message}`, { status: 500 }); }
 });
