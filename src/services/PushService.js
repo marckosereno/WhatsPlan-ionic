@@ -20,7 +20,7 @@ export const PushService = {
     // register() sin Firebase configurado TUMBA la app nativa (no se puede atrapar desde JS).
     // Solo se activa en el APK compilado con google-services.json, que se marca con
     // appendUserAgent "WPPush/1" en capacitor.config.json. Los APK viejos no lo traen.
-    if (!isNative() || !P || !user || !/WPPush\/1/.test(navigator.userAgent)) return;
+    if (!isNative() || !P || !user || !/WPPush\/\d/.test(navigator.userAgent)) return;
     try {
       if (!wired) { wired = true; this._wire(P); }
       await this._channel(P);
@@ -30,18 +30,24 @@ export const PushService = {
     } catch (e) { console.warn('push:', e?.message || e); }
   },
 
-  // Canal de Android 8+: importancia alta = el aviso baja como tarjeta emergente (heads-up) con sonido y vibración.
-  // La importancia de un canal ya creado no se puede subir desde la app: si algún día hay que cambiarla, usar otro id
-  // (y el mismo id en supabase/functions/push-send: channel_id).
+  // Canales de Android 8+ (importancia alta = aviso emergente). Uno por tipo, cada uno con su sonido:
+  //   wp_chat → mensajes · wp_recordatorio → "tu plan es en 1 hora" · wp_planes → todo lo demás
+  // Los sonidos viven en la app (android/.../res/raw) y solo existen desde el APK WPPush/2; con el APK anterior
+  // los canales se crean con el sonido por defecto. La importancia y el sonido de un canal ya creado no se pueden
+  // cambiar desde la app: para cambiarlos, usar otro id (y el mismo en supabase/functions/push-send: channel_id).
   async _channel(P) {
     if (platform() !== 'android' || !P.createChannel) return;
+    const snd = /WPPush\/([2-9]|\d\d)/.test(navigator.userAgent);
+    const base = { importance: 4, visibility: 1, vibration: true, lights: true, lightColor: '#2563EB' };
     try {
-      await P.createChannel({ id: 'avisos', name: 'Avisos de planes', description: 'Mensajes, invitaciones y recordatorios de tus planes',
-        importance: 4, visibility: 1, vibration: true, lights: true, lightColor: '#2563EB' });
-    } catch (e) { console.warn('push canal:', e?.message || e); }
+      await P.createChannel({ ...base, id: 'wp_chat', name: 'Mensajes del chat', description: 'Mensajes de tus planes', ...(snd ? { sound: 'wp_chat.ogg' } : {}) });
+      await P.createChannel({ ...base, id: 'wp_planes', name: 'Planes', description: 'Invitaciones, gente que se une y cambios', ...(snd ? { sound: 'wp_plan.ogg' } : {}) });
+      await P.createChannel({ ...base, id: 'wp_recordatorio', name: 'Recordatorios', description: 'Una hora antes de tus planes', ...(snd ? { sound: 'wp_recordatorio.ogg' } : {}) });
+      P.deleteChannel?.({ id: 'avisos' }).catch(() => {});   // el canal de la versión anterior
+    } catch (e) { console.warn('push canales:', e?.message || e); }
   },
 
-  ready() { return isNative() && !!plugin() && /WPPush\/1/.test(navigator.userAgent); },
+  ready() { return isNative() && !!plugin() && /WPPush\/\d/.test(navigator.userAgent); },
 
   // 'granted' | 'denied' | 'prompt' | 'na'
   async status() {

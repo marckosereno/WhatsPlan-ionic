@@ -33,6 +33,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+        <!-- Avisos push: ícono pequeño, color de acento y canal por defecto -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_whatsplan" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/wp_notif" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="wp_planes" />
     </application>
 
     <!-- Permissions -->

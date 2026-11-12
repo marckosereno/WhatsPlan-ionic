@@ -92,7 +92,7 @@ Deno.serve(async (req) => { try {
       body: JSON.stringify({ message: { token,
         notification: { title: record.title || 'WhatsPlan', body: record.body || '', ...(image ? { image } : {}) },
         data: { kind, notif_id: String(record.id || ''), activity_id: String(record.activity_id || ''), user_id: String(record.data?.user_id || '') },
-        android: { priority: 'HIGH', notification: { channel_id: 'avisos', color: '#2563EB', ...(kind === 'chat' ? { tag: 'chat-' + record.activity_id } : {}) } } } }),   // el chat de un plan reemplaza su aviso anterior
+        android: { priority: 'HIGH', notification: { channel_id: kind === 'chat' ? 'wp_chat' : record.type === 'plan_reminder' ? 'wp_recordatorio' : 'wp_planes', color: '#2563EB', ...(kind === 'chat' ? { tag: 'chat-' + record.activity_id } : {}) } } } }),   // el chat de un plan reemplaza su aviso anterior
     });
     if (r.status === 404 || r.status === 400) {   // token muerto: se borra
       const t = await r.text(); if (/UNREGISTERED|INVALID_ARGUMENT/.test(t)) await db.from('push_tokens').delete().eq('token', token);
