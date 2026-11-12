@@ -28,7 +28,10 @@ async function accessToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const head = b64(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const body = b64(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
-  const pem = String(sa.private_key).replace(/-----[^-]+-----/g, '').replace(/\\n/g, '').replace(/\s/g, '');
+  // Solo caracteres base64: quita cabeceras, \n literales, espacios y cualquier resto dañado
+  let pem = String(sa.private_key).replace(/-----[^-]+-----/g, '').replace(/\\[nrt]/g, '').replace(/[^A-Za-z0-9+\/]/g, '');
+  pem += '='.repeat((4 - (pem.length % 4)) % 4);
+  if (pem.length < 1500) throw new Error(`private_key incompleta (${pem.length} caracteres base64)`);
   const key = await crypto.subtle.importKey('pkcs8', Uint8Array.from(atob(pem), c => c.charCodeAt(0)), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(`${head}.${body}`));
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
