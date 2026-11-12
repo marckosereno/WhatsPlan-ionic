@@ -14,5 +14,8 @@
       ]
     }
   },
-  "appendUserAgent": "WPPush/1"
+  "appendUserAgent": "WPPush/1",
+  "server": {
+    "url": "https://whats-plan-ionic.vercel.app"
+  }
 }
