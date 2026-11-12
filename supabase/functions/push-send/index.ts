@@ -32,7 +32,11 @@ async function accessToken(): Promise<string> {
   let pem = String(sa.private_key).replace(/-----[^-]+-----/g, '').replace(/\\[nrt]/g, '').replace(/[^A-Za-z0-9+\/]/g, '');
   pem += '='.repeat((4 - (pem.length % 4)) % 4);
   if (pem.length < 1500) throw new Error(`private_key incompleta (${pem.length} caracteres base64)`);
-  const key = await crypto.subtle.importKey('pkcs8', Uint8Array.from(atob(pem), c => c.charCodeAt(0)), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  let der = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+  // El DER declara su largo: se descarta cualquier byte sobrante al final
+  const dl = der[1] === 0x82 ? ((der[2] << 8) | der[3]) + 4 : der[1] === 0x81 ? der[2] + 3 : der[1] + 2;
+  if (der[0] === 0x30 && dl < der.length) der = der.slice(0, dl);
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(`${head}.${body}`));
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${head}.${body}.${b64(sig)}` }) });
