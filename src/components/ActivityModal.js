@@ -2905,4 +2905,4 @@ export class ActivityModal {
   }
 
 }
-export { ACTIVITY_TYPES };
+export { ACTIVITY_TYPES, showEmojiPicker };

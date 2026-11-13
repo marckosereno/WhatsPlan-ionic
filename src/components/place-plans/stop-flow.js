@@ -20,7 +20,7 @@ const GROUPS = [
   ['PARKS', '🌳', 'Aire libre'], ['HEALTH', '💆', 'Bienestar'], ['WORKSHOPS', '🔧', 'Talleres'],
 ];
 // Si ActivityModal no exporta su catálogo, se usan estos genéricos
-const FALLBACK_ACTS = [
+export const FALLBACK_ACTS = [
   ['food', '🍔', 'Comer', 'RESTAURANTS', 'Hamburger/3D/hamburger_3d.png'],
   ['drinks', '☕', 'Café', 'RESTAURANTS', 'Hot beverage/3D/hot_beverage_3d.png'],
   ['music', '🎵', 'Música', 'ENTERTAINMENT', 'Musical note/3D/musical_note_3d.png'],

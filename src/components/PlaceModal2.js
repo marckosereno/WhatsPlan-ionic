@@ -26,6 +26,7 @@ import { PlansHereDetail }             from '/src/components/place-plans/plans-h
 import { PlansHereDays }               from '/src/components/place-plans/plans-here-days.js';
 import { PlanStops }                   from '/src/components/place-plans/plan-stops.js';
 import { StopFlow }                    from '/src/components/place-plans/stop-flow.js';
+import { NewPlan }                     from '/src/components/place-plans/new-plan.js';
 
 // Hojas de estilo de la ficha: se piden desde que se importa el módulo
 // para que ya estén listas cuando se abre la primera ficha.
@@ -6299,7 +6300,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
 
 // Planes (botón, hojas, asistente y paradas) viven en place-plans/*.js
 // y se agregan a la ficha como métodos propios.
-for (const Mix of [PlanCore, PlanWizard, PlanWhen, MyPlan, MyPlanActions, MyPlanHero, MyPlanRoute, PlanSummary, PlansHere, PlansHereDetail, PlansHereDays, PlanStops, StopFlow]) {
+for (const Mix of [PlanCore, PlanWizard, PlanWhen, MyPlan, MyPlanActions, MyPlanHero, MyPlanRoute, PlanSummary, PlansHere, PlansHereDetail, PlansHereDays, PlanStops, StopFlow, NewPlan]) {
   for (const k of Object.getOwnPropertyNames(Mix.prototype)) {
     if (k !== 'constructor') Object.defineProperty(PlaceModal2.prototype, k, Object.getOwnPropertyDescriptor(Mix.prototype, k));
   }

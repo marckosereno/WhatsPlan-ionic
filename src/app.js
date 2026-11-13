@@ -1411,6 +1411,9 @@ function setupActivitySubscription(mv) {
     let activityModal = null;
     const openActivityModal = () => {
       if (!window.wpApp.currentUser) { window.wpApp.authModal?.show(); return; }
+      // El "+" arma el plan por pasos (mismas pantallas que Agregar parada y Planear visita)
+      const pm = window.wpApp.placeModal;
+      if (pm?._openNewPlan) { pm._openNewPlan(); return; }
       if (!activityModal) {
         activityModal = new ActivityModal({
           currentUser: window.wpApp.currentUser,
