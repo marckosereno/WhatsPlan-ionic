@@ -22,7 +22,6 @@ import { PlansTab }        from '/src/components/tabs/plans-tab.js';
 import { SocialTab }       from '/src/components/tabs/social-tab.js';
 import { initNative }       from '/src/native/native.js';
 import { PushService }      from '/src/services/PushService.js';
-import { PlanLink } from '/src/services/PlanLink.js';
 import { initWpTap }        from '/src/utils/wp-tap.js';
 import { attachFocusZoom }  from '/src/components/place-plans/focus-zoom.js';
 import { ensureCss }        from '/src/components/tabs/tab-screen.js';
@@ -1550,7 +1549,6 @@ try {
       if (user) setTimeout(() => window.wpApp.socialTab?.startChats?.(), 1500);   // numerito de mensajes sin leer
       if (user) setTimeout(() => window.wpApp.plansTab?.prefetch?.(), 3500);     // Planes guardado en el teléfono
       user ? PushService.start(user) : PushService.stop();                       // push nativo
-      if (user) setTimeout(() => PlanLink.openPending(), 2200);                  // abrió un enlace de plan
       window.wpApp.notifPanel?.start(user || null);                              // campanita: numerito + en vivo
       // No tocar el avatar si la búsqueda está activa
       var sb = window.wpApp && window.wpApp.searchBar;
