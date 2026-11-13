@@ -20,6 +20,7 @@ import { addDragScroll }  from '/src/components/place-plans/drag-scroll.js';
 import { addDragStrip }   from '/src/components/place-plans/drag-strip.js';
 import { ICON_BACK }      from '/src/components/place-plans/step-sheet.js';
 import { startDm }        from '/src/components/chat/dm-chat.js';
+import { inviteFriends, INVITE_ICON } from '/src/services/InviteFriends.js';
 import { viewNotifPrefs } from '/src/components/profile/notif-prefs.js';
 
 // Contorno "sello" del avatar (ondas como estampa): radio que sube y baja
@@ -557,7 +558,7 @@ export class ProfileSheet {
     if (isMe) {
       view.querySelector('.wp-pf-cam').onclick = () => this._push(v => this._viewAvatarMaker(v, avEl));
       actionsEl.innerHTML = `<button type="button" class="wp-pf-pill" data-a="edit">Editar perfil</button>
-        <button type="button" class="wp-pf-pill" data-a="share">${ICON.share} Compartir</button>`;
+        <button type="button" class="wp-pf-pill" data-a="share">${INVITE_ICON} Invitar amigos</button>`;
       actionsEl.querySelector('[data-a=edit]').onclick = (e) => { this._pulse(e.currentTarget); this._push(v => this._viewEdit(v)); };
     } else {
       // "Mensaje" solo si esa persona recibe mensajes (35_direct_messages)
@@ -577,6 +578,7 @@ export class ProfileSheet {
     }
     actionsEl.querySelector('[data-a=share]').onclick = (e) => {
       this._pulse(e.currentTarget);
+      if (isMe) { inviteFriends({ username: prof?.username, toast: (m) => this._toast(m) }); return; }
       this._share(`${name} en WhatsPlan`, `Mira los lugares de ${name}${prof?.username ? ' (@' + prof.username + ')' : ''} en WhatsPlan`);
     };
 
@@ -1353,6 +1355,7 @@ export class ProfileSheet {
           <span class="wp-pf-set-txt"><b>Aparecer en Discover</b><span>Que te sugieran a otras personas y te encuentren al buscar</span></span>
           <button type="button" class="wp-pf-switch" role="switch" data-k="discoverable"></button>
         </div>
+        <button type="button" class="wp-pf-set" data-a="invite"><span class="wp-pf-set-txt"><b>Invitar amigos</b><span>Mándales WhatsPlan por WhatsApp o donde quieras</span></span>${ICON.chev}</button>
         <button type="button" class="wp-pf-set" data-a="notifs"><span class="wp-pf-set-txt"><b>Avisos</b><span>Elige qué notificaciones te llegan al celular</span></span>${ICON.chev}</button>
         <button type="button" class="wp-pf-set" data-a="blocked"><span class="wp-pf-set-txt"><b>Usuarios bloqueados</b></span>${ICON.chev}</button>
       </div>
@@ -1376,6 +1379,7 @@ export class ProfileSheet {
         } catch (e) { console.error('[PF] ' + k + ':', e); on = was; paint(); this._toast('No se pudo cambiar'); }
       };
     });
+    view.querySelector('[data-a=invite]').onclick = () => inviteFriends({ username: prof?.username, toast: (m) => this._toast(m) });
     view.querySelector('[data-a=notifs]').onclick = () => this._push(v => viewNotifPrefs(this, v));
     view.querySelector('[data-a=blocked]').onclick = () => this._push(v => this._viewBlocked(v));
     view.querySelector('[data-a=logout]').onclick = async (e) => {
