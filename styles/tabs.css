@@ -26,12 +26,7 @@
 /* ── Encabezado y pestañas ─────────────────────────────────────────── */
 .wp-pt-head { display: flex; align-items: baseline; gap: 10px; margin: 6px 4px 14px; }
 .wp-pt-head h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.6px; }
-.wp-pt-head span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--sub); }
-.wp-pt-inv { flex: none; align-self: center; margin-left: auto; height: 36px; padding: 0 14px 0 12px; border: none; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
-  background: linear-gradient(160deg, #2b2a3a, #14121f); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; }
-.wp-pt-inv b { font-weight: 600; }
-.wp-pt-inv:active { transform: scale(0.96); }
-.wp-pt-cta.soft svg { margin-right: 2px; }
+.wp-pt-head span { font-size: 14px; font-weight: 500; color: var(--sub); }
 .wp-pt-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
 .wp-pt-tabs button { height: 38px; padding: 0 16px; border: none; border-radius: 999px; background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.05); font: inherit; font-size: 14px; font-weight: 500; color: #374151;
