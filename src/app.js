@@ -1421,6 +1421,22 @@ try {
   };
   const tryPosition = () => { if (!positionSidePanel()) requestAnimationFrame(tryPosition); };
   requestAnimationFrame(tryPosition);
+  // La posición depende de la altura del panel de categorías, que cambia (carga
+  // de filas, fuentes, giro, barra del navegador). Antes se medía una sola vez
+  // y a veces quedaba más arriba de lo normal: ahora se recalcula en cada cambio.
+  let again = 0;
+  const reposition = () => { cancelAnimationFrame(again); again = requestAnimationFrame(positionSidePanel); };
+  const watch = () => {
+    const cat = document.getElementById('map-results-panel'), top = document.getElementById('topbar');
+    if (!cat || !top) return setTimeout(watch, 300);
+    if (window.ResizeObserver) { const ro = new ResizeObserver(reposition); ro.observe(cat); ro.observe(top); }
+    cat.addEventListener('animationend', reposition);
+    setTimeout(reposition, 1500);   // por si la medida inicial cayó en plena animación de entrada
+  };
+  watch();
+  window.addEventListener('resize', reposition);
+  window.addEventListener('orientationchange', () => setTimeout(reposition, 300));
+  window.visualViewport?.addEventListener('resize', reposition);
 } catch(e) { console.error('[wp-side-panel]', e); }
 
 // ════════════════════════════════════════════════════════════════════
