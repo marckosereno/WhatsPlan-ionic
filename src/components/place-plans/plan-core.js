@@ -9,7 +9,6 @@
 // ════════════════════════════════════════════════════════════════════
 import { getSupabase } from '/src/services/SupabaseService.js';
 import { getAvatarUrl } from '/src/services/AvatarService.js';
-import { PlanLink } from '/src/services/PlanLink.js';
 
 export class PlanCore {
   // ── Botón "Planear visita" según los planes del lugar ───────────────
@@ -148,10 +147,13 @@ export class PlanCore {
     else this._openPlanSheet();
   }
 
-  async _planShare(a) {
+  _planShare(a) {
     const info = this._placeInfo();
-    const r = await PlanLink.share({ id: a.id, title: a.title, when: this._planWhen(a.scheduled_at), address: info.address });
-    if (r === 'copied') this._showToast('Enlace del plan copiado');
+    const txt = `¿Vamos? ${a.title} · ${this._planWhen(a.scheduled_at)}${info.address ? ' · ' + info.address : ''}${info.url ? '\n' + info.url : ''}`;
+    try {
+      if (navigator.share) navigator.share({ title: a.title, text: txt }).catch(() => {});
+      else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+    } catch (_) {}
   }
 
   _planFull(a) { return !!a?.max_participants && (a.participants || []).length >= a.max_participants; }
