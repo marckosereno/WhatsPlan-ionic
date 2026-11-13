@@ -28,7 +28,7 @@ export function openPushAsk(state = 'prompt') {
       <h3>${denied ? 'Los avisos están apagados' : 'No te pierdas el plan'}</h3>
       <p>${denied
         ? 'Sin avisos no sabrás cuando alguien se una o te escriba. Puedes encenderlos en Ajustes del teléfono: Aplicaciones, WhatsPlan, Notificaciones.'
-        : 'Te avisamos cuando alguien se une a tu plan o te escribe en el chat. Sin spam, solo lo de tus planes.'}</p>
+        : 'Te avisamos cuando alguien se une a tu plan, cuando te escriben en el chat y una hora antes de que empiece. Solo lo de tus planes.'}</p>
       <button type="button" class="wp-pa-go" data-a="go">${denied ? (hasSettings() ? 'Abrir ajustes' : 'Entendido') : 'Activar avisos'}</button>
       ${denied && !hasSettings() ? '' : '<button type="button" class="wp-pa-no" data-a="no">Ahora no</button>'}
     </div>`;

@@ -14,6 +14,7 @@
 import { getSupabase, ActivityService } from '/src/services/SupabaseService.js';
 import { getAvatarUrl } from '/src/services/AvatarService.js';
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
+import { PlanLink } from '/src/services/PlanLink.js';
 import { createEmojiDial } from '/src/components/place-plans/emoji-dial.js';
 import { openPeoplePicker } from '/src/components/place-plans/people-picker.js';
 import { pulse } from '/src/components/place-plans/pulse.js';
@@ -340,6 +341,11 @@ export class PlanWizard {
       const b = e.target.closest('button[data-x]'); if (!b) return;
       if (b.dataset.x === 'ok') { w.screen.close(); return; }
       if (b.dataset.x === 'stop') { w.screen.close(); setTimeout(() => this._openStopFlow(plan), 140); return; }
+      if (plan?.id) {
+        const r = await PlanLink.share({ id: plan.id, title, when: whenTxt, address: w.info.address });
+        if (r === 'copied') this._showToast('Enlace del plan copiado');
+        return;
+      }
       try {
         if (navigator.share) await navigator.share({ title, text: txt });
         else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
