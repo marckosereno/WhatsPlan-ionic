@@ -1391,53 +1391,8 @@ function setupActivitySubscription(mv) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PANEL LATERAL
+// PANEL LATERAL: posición fija en CSS (styles/app.css), sin medir nada en JS
 // ════════════════════════════════════════════════════════════════════
-try {
-  const positionSidePanel = () => {
-    const topPanel    = document.getElementById('wp-side-panel-top');
-    const bottomPanel = document.getElementById('wp-side-panel-bottom');
-    const catPanel    = document.getElementById('map-results-panel');
-    const topbar      = document.getElementById('topbar');
-    if (!topPanel || !bottomPanel || !catPanel || !topbar) return false;
-    const topbarBottom = topbar.getBoundingClientRect().bottom;
-    // sin contar la animación de entrada del panel (sube desde 40 px abajo)
-    const lift = new DOMMatrix(getComputedStyle(catPanel).transform).m42 || 0;
-    const catPanelTop  = catPanel.getBoundingClientRect().top - lift;
-    if (catPanelTop <= topbarBottom) return false;
-    const midY      = topbarBottom + (catPanelTop - topbarBottom) * 0.82;
-    const bottomH   = bottomPanel.offsetHeight || 80;
-    const topH      = topPanel.offsetHeight    || 42;
-    const GAP       = 8;
-    const bottomTop = midY - (bottomH + GAP + topH) / 2 + topH + GAP;
-    const topTop    = bottomTop - GAP - topH;
-    topPanel.style.transform    = 'none';
-    bottomPanel.style.transform = 'none';
-    topPanel.style.top    = Math.round(topTop)    + 'px';
-    bottomPanel.style.top = Math.round(bottomTop) + 'px';
-    topPanel.classList.add('wp-positioned');
-    bottomPanel.classList.add('wp-positioned');
-    return true;
-  };
-  const tryPosition = () => { if (!positionSidePanel()) requestAnimationFrame(tryPosition); };
-  requestAnimationFrame(tryPosition);
-  // La posición depende de la altura del panel de categorías, que cambia (carga
-  // de filas, fuentes, giro, barra del navegador). Antes se medía una sola vez
-  // y a veces quedaba más arriba de lo normal: ahora se recalcula en cada cambio.
-  let again = 0;
-  const reposition = () => { cancelAnimationFrame(again); again = requestAnimationFrame(positionSidePanel); };
-  const watch = () => {
-    const cat = document.getElementById('map-results-panel'), top = document.getElementById('topbar');
-    if (!cat || !top) return setTimeout(watch, 300);
-    if (window.ResizeObserver) { const ro = new ResizeObserver(reposition); ro.observe(cat); ro.observe(top); }
-    cat.addEventListener('animationend', reposition);
-    setTimeout(reposition, 1500);   // por si la medida inicial cayó en plena animación de entrada
-  };
-  watch();
-  window.addEventListener('resize', reposition);
-  window.addEventListener('orientationchange', () => setTimeout(reposition, 300));
-  window.visualViewport?.addEventListener('resize', reposition);
-} catch(e) { console.error('[wp-side-panel]', e); }
 
 // ════════════════════════════════════════════════════════════════════
 // MAIN
