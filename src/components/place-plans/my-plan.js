@@ -123,7 +123,9 @@ export class MyPlan {
     const rows = [[a.creator_id, 'host'], ...P.filter(id => id !== a.creator_id).map(id => [id, 'go']), ...wait.map(id => [id, 'wait'])];
     const free = Math.max(0, Math.min(8, (a.max_participants || 0) - P.length - wait.length));
     const first = (id) => { const p = this._profCache?.get(id) || {}; return this._esc(String(p.name || p.username || 'Alguien').split(' ')[0]); };
+    const LINK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/></svg>';
     return (owner ? '<button type="button" class="wp-mp-p add" data-a="invite"><i>+</i><b>Invitar</b><em>✨</em></button>' : '')
+      + '<button type="button" class="wp-mp-p add" data-a="share" aria-label="Invitar por enlace"><i>' + LINK + '</i><b>Por enlace</b><em></em></button>'
       // cada tarjetita abre su mini perfil (la tuya no)
       + rows.map(([id, k]) => `<${id === me ? 'div' : 'button type="button" data-a="person"'} class="wp-mp-p ${k}" data-uid="${this._esc(id)}" aria-label="${first(id)} · ${ROLE[k][2]}">
           <span class="wp-mp-p-av">${this._planFace(id)}${ROLE[k][0] ? `<span class="wp-mp-p-top">${ROLE[k][0]}</span>` : ''}</span>
