@@ -3,7 +3,7 @@
 // "Invitar amigos a la app": un mensaje con la dirección de WhatsPlan.
 // Sin enlaces especiales: la hoja de compartir del teléfono (Capacitor
 // Share si está, si no Web Share), si no WhatsApp y si no se copia.
-// Lo usan Social (encabezado y pantalla vacía) y Perfil.
+// Lo usa Perfil (botón del propio perfil y fila de Ajustes).
 // Uso: inviteFriends({ username, toast })
 // ════════════════════════════════════════════════════════════════════
 export const APP_URL = 'https://whats-plan-ionic.vercel.app';
@@ -24,4 +24,4 @@ export async function inviteFriends({ username, toast } = {}) {
   catch (_) { say('No se pudo compartir'); }
 }
 
-export const INVITE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>';
+export const INVITE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>';

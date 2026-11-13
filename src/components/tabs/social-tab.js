@@ -29,7 +29,6 @@ import { getSupabase } from '/src/services/SupabaseService.js';
 import { wave } from '/src/components/place-plans/wave.js';
 import { liveWatch, showBanner } from '/src/components/live/live.js';
 import { wireSocialHold } from '/src/components/tabs/social-actions.js';
-import { inviteFriends, INVITE_ICON } from '/src/services/InviteFriends.js';
 import { cacheGet, cacheSet, withTimeout, netError, peopleOf, restorePeople, offlineNote, whenOnline } from '/src/components/tabs/tab-cache.js';
 
 const PIN = '<i class="wp-so-pin" aria-label="Fijado"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8V5h6v5.8l2.5 3.2H6.5Z"/><path d="M8 5h8"/></svg></i>';
@@ -45,7 +44,7 @@ export class SocialTab {
     ensureChatCss();
     if (this.scr?.root.isConnected) return;
     this.scr = openTabScreen('social', `
-      <header class="wp-pt-head"><h1>Mensajes</h1><span>Tus planes y tus amigos</span><button type="button" class="wp-pt-inv" data-invite aria-label="Invitar amigos">${INVITE_ICON}<b>Invitar</b></button></header>
+      <header class="wp-pt-head"><h1>Mensajes</h1><span>Tus planes y tus amigos</span></header>
       <div class="wp-pt-tabs"><button type="button" data-f="all" class="on">Todos</button><button type="button" data-f="unread">Sin leer</button><button type="button" data-f="req">Solicitudes<b class="wp-so-reqn" hidden></b></button></div>
       <div class="wp-so-list"><div class="wp-so-sk"></div><div class="wp-so-sk"></div><div class="wp-so-sk"></div></div>`);
     this.scr.root.addEventListener('click', (e) => this._click(e));
@@ -184,8 +183,7 @@ export class SocialTab {
     if (!shown.length) {
       box.innerHTML = this.chats.length ? '<div class="wp-pt-empty"><b>Estás al día</b><span>No tienes mensajes sin leer</span></div>'
         : `<div class="wp-pt-empty"><b>Aún no tienes chats</b><span>Cuando organices o te unas a un plan, aquí platicas con los que van.</span>
-            <button type="button" class="wp-pt-cta" data-go-plans style="margin-top:12px">Ver planes</button>
-            <button type="button" class="wp-pt-cta soft" data-invite style="margin-top:8px">${INVITE_ICON}&nbsp;Invitar amigos</button></div>`;
+            <button type="button" class="wp-pt-cta" data-go-plans style="margin-top:12px">Ver planes</button></div>`;
       return;
     }
     const sec = { pin: [], live: [], dm: [], next: [], past: [] };
@@ -225,7 +223,6 @@ export class SocialTab {
   _click(e) {
     if (this._swallow) { this._swallow = false; return; }   // fue mantener presionado
     if (e.target.closest('[data-retry]')) { this._load(); return; }
-    if (e.target.closest('[data-invite]')) { inviteFriends(); return; }
     if (e.target.closest('[data-go-plans]')) { this.onGoPlans?.(); return; }
     const f = e.target.closest('[data-f]');
     if (f) { this.filter = f.dataset.f; this.scr.body.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b === f)); this._paint(); return; }
