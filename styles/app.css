@@ -598,9 +598,9 @@ ion-app {
   position: fixed;
   left: 12px;
   /* Posición fija desde que abre la app: arriba del panel de categorías
-     (84px de la base + 174px de alto + 28px de aire). La cápsula de abajo
+     (84px de la base + 174px de alto + 10px de aire). La cápsula de abajo
      mide 84px y la de arriba (+) 42px, con 8px entre las dos. */
-  bottom: calc(286px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(268px + env(safe-area-inset-bottom, 0px));
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -730,7 +730,7 @@ ion-app {
   box-shadow: 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
 }
 #wp-side-panel-bottom { gap: 4px; padding: 6px 4px; }
-#wp-side-panel-top { bottom: calc(378px + env(safe-area-inset-bottom, 0px)); }
+#wp-side-panel-top { bottom: calc(360px + env(safe-area-inset-bottom, 0px)); }
 
 /* Cápsula del botón "+" (crear plan/actividad): negra como la de GPS
    y Memories. El botón azul de adentro se queda igual. */
