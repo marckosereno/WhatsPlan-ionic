@@ -14,6 +14,7 @@
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
 import { FALLBACK_ACTS } from '/src/components/place-plans/stop-flow.js';
 import { pickPlaceOnMap } from '/src/components/place-plans/pick-place.js';
+import { openPlacePicker } from '/src/components/place-plans/place-picker.js';
 
 const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const kmTxt = (d) => (d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1)} km`);
@@ -59,14 +60,13 @@ export class NewPlan {
   _npMountWhere(w, el, sec) {
     w.whereEl = el; w.whereSub = sec.querySelector('.wp-st-sub');
     el.innerHTML = `
-      <label class="wp-st-search">${SEARCH}<input type="search" data-zoom="Buscar un lugar" placeholder="Buscar un lugar" enterkeyhint="search" autocomplete="off"></label>
+      <button type="button" class="wp-st-search" data-q>${SEARCH}<span>Buscar un lugar</span></button>
       <button type="button" class="wp-st-row wp-st-map" data-a="map"><span class="wp-st-row-ph wp-st-map-ic">${MAP}</span>
         <span class="wp-st-row-t"><b>Elegir en el mapa</b><small>Un pin, cualquier punto o tu ubicación</small></span></button>
       <div class="wp-st-picked"></div>
       <div class="wp-st-list"></div>`;
-    let qt = 0;
-    el.querySelector('.wp-st-search input').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => this._npPaintWhere(w), 120); });
     el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-q]')) { this._npSearch(w, e.target.closest('[data-q]')); return; }
       if (e.target.closest('[data-a="map"]')) { this._npPick(w); return; }
       const r = e.target.closest('.wp-st-row[data-i]'); if (!r) return;
       const p = w.res?.[+r.dataset.i]; if (!p) return;
@@ -77,10 +77,9 @@ export class NewPlan {
     });
   }
 
-  _npPaintWhere(w) {
-    const el = w.whereEl; if (!el) return;
-    const A = this._sfAct(w), k = norm(el.querySelector('.wp-st-search input').value.trim());
-    if (w.whereSub) w.whereSub.textContent = A ? `Para ${A.label.toLowerCase()}` : 'Cerca de ti';
+  // Candidatos del paso (cerca de ti, o lo que coincide con la búsqueda), con distancia
+  _npCandidates(w, q = '') {
+    const A = this._sfAct(w), k = norm(q.trim());
     let base = w.all;
     if (k) base = base.filter(p => norm(p.name).includes(k) || norm(p.formattedAddress).includes(k));
     else if (A) {
@@ -91,12 +90,33 @@ export class NewPlan {
       base = fit.length ? fit : same;
     }
     const o = w.origin;
-    const res = base.map(p => [p, o ? this._distM(o, p) : 0]).sort((x, y) => x[1] - y[1]).slice(0, k ? 15 : 6);
+    return base.map(p => [p, o ? this._distM(o, p) : 0]).sort((x, y) => x[1] - y[1]).slice(0, k ? 15 : 6);
+  }
+
+  // Buscador en zoom (igual que "Buscar a quién sigues"): campo y resultados dentro de la tarjeta
+  _npSearch(w, from) {
+    const o = w.origin;
+    openPlacePicker({
+      from, esc: (t) => this._esc(t), haptic: (k) => this._haptic?.(k),
+      face: (p) => this._esc(p.photoUrl || p.photosUrls?.[0] || ''),
+      search: (q) => this._npCandidates(w, q).map(([p, d]) => ({ place: p, sub: `${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${o ? kmTxt(d) : (p.formattedAddress || '')}` })),
+      isOn: (p) => !!w.pick && String(w.pick.place_id) === String(p.place_id),
+      onPick: (p) => { w.pick = { ...p, category: this._sfAct(w)?.cat || p.category, viaSearch: true }; },
+      onClose: () => { this._npPaintWhere(w); w.screen.refresh(); },
+    });
+  }
+
+  _npPaintWhere(w) {
+    const el = w.whereEl; if (!el) return;
+    const A = this._sfAct(w);
+    if (w.whereSub) w.whereSub.textContent = A ? `Para ${A.label.toLowerCase()}` : 'Cerca de ti';
+    const o = w.origin;
+    const res = this._npCandidates(w);
     w.res = res.map(r => r[0]);
     // lo elegido en el mapa (punto propio o pin) va arriba, marcado
     const pk = w.pick, fromMap = pk && (pk.custom || !w.res.some(p => String(p.place_id) === String(pk.place_id)));
     el.querySelector('.wp-st-picked').innerHTML = fromMap ? `<div class="wp-st-row on"><span class="wp-st-row-ph">${pk.custom ? this._esc(pk.emoji || '📍') : this._stopEmoji(pk.category)}</span>
-        <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>Elegido en el mapa</small></span><i class="wp-st-radio"></i></div>` : '';
+        <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>${pk.viaSearch ? 'Elegido' : 'Elegido en el mapa'}</small></span><i class="wp-st-radio"></i></div>` : '';
     const list = el.querySelector('.wp-st-list');
     if (!w.all.length) { list.innerHTML = '<p class="wp-st-empty">Cargando lugares…</p>'; return; }
     list.innerHTML = res.length ? res.map(([p, d], i) => {
@@ -106,7 +126,7 @@ export class NewPlan {
           <span class="wp-st-row-ph"${ph ? ` style="background-image:url('${this._esc(ph)}')"` : ''}>${ph ? '' : this._stopEmoji(p.category)}</span>
           <span class="wp-st-row-t"><b>${this._esc(p.name)}</b><small>${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${o ? kmTxt(d) : this._esc(p.formattedAddress || '')}</small></span>
           <i class="wp-st-radio"></i></button>`;
-    }).join('') : `<p class="wp-st-empty">${k ? 'No encontramos ese lugar' : 'No hay lugares así cerca · busca o elígelo en el mapa'}</p>`;
+    }).join('') : `<p class="wp-st-empty">No hay lugares así cerca · busca o elígelo en el mapa</p>`;
   }
 
   // "Elegir en el mapa": la hoja se esconde, el mapa queda libre y al
