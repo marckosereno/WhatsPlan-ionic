@@ -111,6 +111,8 @@ export class PlanWizard {
   }
   _pwPast(w) { return !w.now && this._pwAt(w) < new Date(); }
   _pwWhenTxt(w) { return `${w.now ? 'Ahora' : this._planWhen(this._pwAt(w).toISOString())} · hasta ${this._hhmm(this._pwEnd(w))}`; }
+  // Ícono propio del plan (solo si el emoji elegido es uno que puso el usuario); si no, el del tipo
+  _pwIconUrl(w) { const u = (w.shown.find(t => t[0] === w.type) || [])[3]; return /^https:\/\//.test(u || '') ? u : null; }
   _pwEmoji(w) { return (w.shown.find(t => t[0] === w.type) || GENERIC[2])[1]; }
   _pwAutoTitle(w) { return `Plan en ${w.info.name}`.slice(0, 60); }
 
@@ -234,7 +236,7 @@ export class PlanWizard {
     w.nameEl = el;
     el.innerHTML = `<div class="wp-pw-dial"></div>
       <input class="wp-st-in wp-pw-title" data-zoom="Nombre del plan" type="text" maxlength="60" enterkeyhint="done" autocapitalize="sentences" autocomplete="off" placeholder="Nombre del plan">`;
-    const items = w.shown.map(([key, emoji, label]) => ({ key, emoji, label }));   // emojis normales
+    const items = w.shown.map(([key, emoji, label, img]) => ({ key, emoji, label, img }));   // img: emoji propio (lugar propio del +)
     w.dial = createEmojiDial(el.querySelector('.wp-pw-dial'), {
       items, value: w.type, haptic: (k) => this._haptic?.(k),
       onChange: (k) => { w.type = k; this._pwPaintName(w); },
@@ -285,12 +287,12 @@ export class PlanWizard {
         p_title: title, p_type: w.type, p_place_name: info.name, p_place_id: String(place.place_id || place.id || ''),
         p_lat: Number(info.lat), p_lng: Number(info.lng), p_at: at.toISOString(), p_max: w.n,
         p_spontaneous: w.now, p_visibility: w.vis, p_note: w.note.trim() || null, p_invited: [...w.invited],
-        p_icon: null, p_rules: [...w.rules], p_duration: w.dur,
+        p_icon: this._pwIconUrl(w), p_rules: [...w.rules], p_duration: w.dur,
       });
       if (!plan) {
         console.warn('[DIAG-PLAN] falta activities_plans.sql: se crea sin invitados ni visibilidad');
         await ActivityService.createActivity({
-          title, type: w.type, place_name: info.name, place_id: place.place_id || place.id || null, icon_url: null,
+          title, type: w.type, place_name: info.name, place_id: place.place_id || place.id || null, icon_url: this._pwIconUrl(w),
           lat: Number(info.lat), lng: Number(info.lng), scheduled_at: at.toISOString(), max_participants: w.n, is_spontaneous: w.now,
         });
       }

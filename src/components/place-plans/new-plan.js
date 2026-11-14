@@ -115,7 +115,7 @@ export class NewPlan {
     const A = this._sfAct(w);
     this._haptic?.('light');
     pickPlaceOnMap({
-      cat: A?.cat || w.cat,
+      cat: A?.cat || w.cat, emoji: A?.emoji,
       onPick: (p) => {
         w.pick = p.custom ? p : { ...p, category: A?.cat };
         w.res = w.res || [];
@@ -137,7 +137,9 @@ export class NewPlan {
     const { shown, type } = this._pwTypes(place);
     let list = shown, t = type;
     if (A) {
-      list = [[A.key, A.emoji, A.label], ...shown.filter(x => x[0] !== A.key)];
+      // si el lugar propio tiene un emoji elegido por el usuario, es el que se propone como emoji del plan
+      const mine = p.custom && p.emojiChosen;
+      list = [mine ? [A.key, p.emoji, A.label, p.emojiUrl] : [A.key, A.emoji, A.label], ...shown.filter(x => x[0] !== A.key)];
       t = A.key;
     }
     w.shown = list; w.type = t;
