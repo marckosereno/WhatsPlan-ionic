@@ -3,7 +3,7 @@
 // Buscador de lugares en una tarjeta en zoom (focus-zoom.js), igual que el
 // de "a quién sigues" (people-picker.js): el campo y la lista de resultados
 // viven DENTRO de la tarjeta, el teclado no la cierra y la lista se filtra
-// mientras escribes. Tocar un lugar lo elige y cierra.
+// mientras escribes. Tocar un lugar lo selecciona (la tarjeta se cierra con "Listo").
 //
 // Uso:
 //   openPlacePicker({ from, search(q) → [{ place, sub }], face(p), emoji?(p), esc(t), isOn(p), onPick(p), haptic, label?, onClose? })
@@ -37,7 +37,7 @@ export function openPlacePicker({ from, search, face, emoji = () => '', esc, isO
     haptic('light');
     onPick(hits[+b.dataset.i].place);
     list.querySelectorAll('.wp-pp-row').forEach(r => r.classList.toggle('on', r === b));
-    setTimeout(() => z.close(), 220);   // deja ver la palomita entrar
+    // El zoom se cierra solo con "Listo": tocar un resultado solo lo selecciona
   });
   // La lista se llena ANTES de abrir la tarjeta: el zoom mide su alto final para centrarla
   // y animar desde el botón; si se llenaba después, la tarjeta crecía y brincaba.
