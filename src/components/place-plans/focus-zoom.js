@@ -12,12 +12,20 @@
 //     una copia del campo y el cursor pasa a la copia (así el teclado no
 //     se cierra). Lo que escribes se copia al original con un 'input'.
 //
+// Reglas aprendidas con las hojas de la ficha (Android WebView dibuja con glitch una
+// tarjeta que se anima con transform + esquinas redondas + overflow oculto si tiene un
+// área con scroll): mientras se anima, lo que se desliza va recortado (sin scroll) y solo
+// al terminar (.ready) se puede deslizar; el campo toma el foco DESPUÉS de la animación
+// (el teclado no sube a la vez que el zoom); y la pantalla de atrás no se re-acomoda
+// mientras hay un zoom abierto (body.wp-fz-open).
+//
 // Se cierra con "Listo", Enter (campos de una línea), tocando lo borroso
 // o al bajar el teclado. Estilos: /styles/plan-steps.css (.wp-fz-*)
 // ════════════════════════════════════════════════════════════════════
 import { attachPulse } from '/src/components/place-plans/pulse.js';
 
 const GAP = 14;
+const ANIM_MS = 400;   // lo que dura el zoom de entrada (380 ms) + un respiro
 let kbH = 0;   // alto del teclado visto la última vez (para acomodar la tarjeta antes de que salga)
 
 const safeArea = () => {
@@ -52,6 +60,7 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   const card = layer.querySelector('.wp-fz-card'), slot = layer.querySelector('.wp-fz-slot');
   if (typeof content === 'string') slot.innerHTML = content; else if (content) slot.appendChild(content);
   document.body.appendChild(layer);
+  document.body.classList.add('wp-fz-open');
   attachPulse(layer);
   fadeEdges(slot);
   const safeTop = safeArea();
@@ -104,10 +113,14 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   requestAnimationFrame(() => layer.classList.add('in'));
   // Si el teclado no sale (teclado físico, escritorio), se recentra en el espacio completo
   if (field) setTimeout(() => { settled = true; if (!closed && !kbUp()) place(true); }, 1200);
-  if (field) setTimeout(() => {   // el foco pasa después del evento de foco del original
+  // Listo para deslizar: al terminar de entrar (antes, recortado)
+  setTimeout(() => { if (!closed) layer.classList.add('ready'); }, ANIM_MS);
+  // El foco (y con él el teclado) llega después de la animación, no durante
+  if (field) setTimeout(() => {
+    if (closed) return;
     try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
     try { const n = field.value.length; field.setSelectionRange(n, n); } catch (_) {}
-  }, 0);
+  }, ANIM_MS - 20);
 
   layer.addEventListener('pointerdown', (e) => { if (e.target === layer) { e.preventDefault(); close(); } });
   layer.querySelector('.wp-fz-done').addEventListener('click', () => close());
@@ -124,9 +137,12 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     window.removeEventListener('resize', onVv);
     onClose?.();
     field?.blur();
-    layer.classList.remove('in');
+    layer.classList.remove('in', 'ready');   // al salir también recortado (sin scroll)
     card.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(0.92)', opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
-    setTimeout(() => layer.remove(), 220);
+    setTimeout(() => {
+      layer.remove();
+      if (!document.querySelector('.wp-fz')) { document.body.classList.remove('wp-fz-open'); document.dispatchEvent(new Event('wp:zoom-end')); }
+    }, 220);
   }
   return { layer, card, slot, place, close, count: layer.querySelector('.wp-fz-n') };
 }
