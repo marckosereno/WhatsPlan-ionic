@@ -28,6 +28,9 @@ const GAP = 14;
 const ANIM_MS = 400;   // lo que dura el zoom de entrada (380 ms) + un respiro
 let kbH = 0;   // alto del teclado visto la última vez (para acomodar la tarjeta antes de que salga)
 
+// [DIAG-FZ] temporal: línea de tiempo del zoom (ms desde que abre) para ver en Eruda dónde parpadea
+const dlog = (t0, ev, extra = '') => console.log('[DIAG-FZ]', Math.round(performance.now() - t0) + 'ms', ev, extra);
+
 const safeArea = () => {
   const p = document.createElement('div');
   p.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px)';
@@ -56,7 +59,7 @@ export function fadeEdges(el, size = 18) {
 export function openZoom({ from, label = '', content, field = null, kbClose = true, count = false, onClose, doneLabel = 'Listo' }) {
   const layer = document.createElement('div');
   layer.className = 'wp-fz';
-  layer.innerHTML = `<div class="wp-fz-card"><div class="wp-fz-top"><span>${label}</span>${count ? '<small class="wp-fz-n"></small>' : ''}</div><div class="wp-fz-slot"></div><button type="button" class="wp-fz-done">${doneLabel}</button></div>`;
+  layer.innerHTML = `<div class="wp-fz-bg"></div><div class="wp-fz-card"><div class="wp-fz-top"><span>${label}</span>${count ? '<small class="wp-fz-n"></small>' : ''}</div><div class="wp-fz-slot"></div><button type="button" class="wp-fz-done">${doneLabel}</button></div>`;
   const card = layer.querySelector('.wp-fz-card'), slot = layer.querySelector('.wp-fz-slot');
   if (typeof content === 'string') slot.innerHTML = content; else if (content) slot.appendChild(content);
   document.body.appendChild(layer);
@@ -84,8 +87,14 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     const bottom = H - reserved - GAP;
     card.style.maxHeight = `${bottom - top}px`;
     const h = card.offsetHeight;
-    card.style.transition = animate ? 'top 0.32s cubic-bezier(0.32, 0.72, 0, 1)' : 'none';
-    card.style.top = `${Math.max(top, top + (bottom - top - h) / 2)}px`;
+    // Sin transición de `top` (reflujo + repintado de lo borroso en cada cuadro): se pone el
+    // nuevo lugar de una vez y el movimiento se hace con transform (compositor), sumado al zoom
+    const prev = parseFloat(card.style.top), next = Math.max(top, top + (bottom - top - h) / 2);
+    card.style.top = `${next}px`;
+    if (animate && !isNaN(prev) && Math.abs(prev - next) > 1) {
+      card.animate([{ transform: `translateY(${prev - next}px)` }, { transform: 'translateY(0)' }],
+        { duration: 260, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', composite: 'add' });
+    }
     if (!field || !kbClose) return;
     checkKb();
   };
@@ -94,6 +103,7 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   // recién abierta. Ahora solo cierra si el teclado sigue abajo un momento
   // después de haberse visto, y nunca en los primeros 800 ms.
   const openedAt = performance.now();
+  dlog(openedAt, 'abre', `field=${!!field} kbH=${kbH} H0=${H0}`);
   let kbTimer = 0;
   const kbUp = () => { const v = window.visualViewport; return !!(v && window.innerHeight - v.height > 120); };
   const checkKb = () => {
@@ -110,28 +120,31 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     card.animate([{ transform: `translateY(${dy}px) scale(${sx})`, opacity: 0.6 }, { transform: 'none', opacity: 1 }],
       { duration: 380, easing: 'cubic-bezier(0.34, 1.4, 0.64, 1)' });
   }
+  card.style.willChange = 'transform, opacity';   // capa propia mientras se anima
   requestAnimationFrame(() => layer.classList.add('in'));
   // Si el teclado no sale (teclado físico, escritorio), se recentra en el espacio completo
   if (field) setTimeout(() => { settled = true; if (!closed && !kbUp()) place(true); }, 1200);
   // Listo para deslizar: al terminar de entrar (antes, recortado)
-  setTimeout(() => { if (!closed) layer.classList.add('ready'); }, ANIM_MS);
+  setTimeout(() => { if (!closed) { layer.classList.add('ready'); card.style.willChange = ''; dlog(openedAt, 'ready'); } }, ANIM_MS);
   // El foco (y con él el teclado) llega después de la animación, no durante
   if (field) setTimeout(() => {
     if (closed) return;
+    dlog(openedAt, 'foco');
     try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
     try { const n = field.value.length; field.setSelectionRange(n, n); } catch (_) {}
   }, ANIM_MS - 20);
 
-  layer.addEventListener('pointerdown', (e) => { if (e.target === layer) { e.preventDefault(); close(); } });
+  layer.addEventListener('pointerdown', (e) => { if (e.target === layer || e.target.classList.contains('wp-fz-bg')) { e.preventDefault(); close(); } });
   layer.querySelector('.wp-fz-done').addEventListener('click', () => close());
   let vvRaf = 0;
-  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (!closed) place(true); }); };
+  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (closed) return; const v = window.visualViewport; dlog(openedAt, 'teclado', `vv=${Math.round(v?.height || 0)} inner=${window.innerHeight}`); place(true); }); };
   window.visualViewport?.addEventListener('resize', onVv);
   window.addEventListener('resize', onVv);
 
   function close() {
     if (closed) return;
     closed = true;
+    dlog(openedAt, 'cierra');
     clearTimeout(kbTimer);
     window.visualViewport?.removeEventListener('resize', onVv);
     window.removeEventListener('resize', onVv);
