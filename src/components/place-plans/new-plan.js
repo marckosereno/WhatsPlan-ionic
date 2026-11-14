@@ -81,6 +81,8 @@ export class NewPlan {
   _npCandidates(w, q = '') {
     const A = this._sfAct(w), k = norm(q.trim());
     let base = w.all;
+    // Siempre dentro de la categoría del plan elegido en el paso 1
+    if (A) base = base.filter(p => String(p.category || '').toUpperCase() === A.cat);
     if (k) base = base.filter(p => norm(p.name).includes(k) || norm(p.formattedAddress).includes(k));
     else if (A) {
       const subs = new Set(A.subcats || []);
