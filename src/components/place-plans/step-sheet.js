@@ -23,6 +23,13 @@ import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
 import { diagFlick } from '/src/components/place-plans/diag-flick.js';
 
+// Mientras hay una hoja abierta, el contenido de la pestaña de atrás se esconde (queda su fondo): la hoja se
+// ve igual (el fondo oscuro lo tapa) y el WebView no compone cards/fotos que nadie ve, lo que causaba el
+// destello al entrar. Se suelta 0.5 s después de cerrar para que no reaparezca entre dos hojas seguidas.
+let abiertas = 0;
+const hojaAbre = () => { abiertas++; document.body.classList.add('wp-sheet-open'); };
+const hojaCierra = () => setTimeout(() => { abiertas = Math.max(0, abiertas - 1); if (!abiertas) document.body.classList.remove('wp-sheet-open'); }, 500);
+
 const CLOSE_PX = 110;   // jalar más de esto hacia abajo = cerrar
 // Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
 export const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill="currentColor" style="transform:scaleX(-1)"><path d="M464 256c0-114.87-93.13-208-208-208S48 141.13 48 256s93.13 208 208 208 208-93.13 208-208Zm-228.5 91.36a16 16 0 0 1-.09-22.63L303.58 272H170a16 16 0 0 1 0-32h133.58l-52.32-52.73A16 16 0 1 1 274 164.73l79.39 80a16 16 0 0 1 0 22.54l-79.39 80A16 16 0 0 1 235.5 347.36Z"/></svg>';
@@ -37,12 +44,13 @@ export function attachSheet(root, close, handleSel = '.wp-st-top') {
   void scrim.offsetWidth;   // que arranque transparente antes de oscurecer
   scrim.classList.add('in');
   scrim.addEventListener('click', () => close());
+  hojaAbre();
   const top = root.querySelector(handleSel);
   top.insertAdjacentHTML('afterbegin', '<i class="wp-st-grab" aria-hidden="true"></i>');
   dragToClose(root, top, close);
 
   return {
-    remove() { scrim.classList.remove('in'); setTimeout(() => scrim.remove(), 340); },
+    remove() { hojaCierra(); scrim.classList.remove('in'); setTimeout(() => scrim.remove(), 340); },
   };
 }
 

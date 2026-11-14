@@ -121,3 +121,7 @@
    seguía componiéndolo bajo la hoja de "Tu plan" / "Agregar parada" y eso se veía como parpadeo.
    Se esconde cuando la pestaña ya terminó de entrar (0.45 s) y reaparece al instante al cerrarla */
 body.wp-tab-open #map-container { visibility: hidden; transition: visibility 0s linear 0.45s; }
+
+/* Con una hoja encima (pasos, "Tu plan") el contenido de la pestaña no se ve (lo tapa el fondo oscuro):
+   se esconde para que el WebView no lo componga durante la entrada de la hoja (era el destello) */
+body.wp-sheet-open .wp-tab-vp { visibility: hidden; }
