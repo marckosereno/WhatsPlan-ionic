@@ -9,7 +9,7 @@
 //   openPlacePicker({ from, search(q) → [{ place, sub }], face(p), emoji?(p), esc(t), isOn(p), onPick(p), haptic, label?, onClose? })
 // Estilos: los mismos de people-picker (.wp-pp-*)
 // ════════════════════════════════════════════════════════════════════
-import { openZoom } from '/src/components/place-plans/focus-zoom.js';
+import { openZoom, fadeEdges } from '/src/components/place-plans/focus-zoom.js';
 import { addElastic } from '/src/components/place-plans/elastic.js';
 
 const TICK = '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -28,6 +28,7 @@ export function openPlacePicker({ from, search, face, emoji = () => '', esc, isO
         <span><b>${esc(p.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><em>${TICK}</em></button>`).join('')
       : '<p class="wp-st-empty">No encontramos ese lugar</p>';
     z?.place(false);
+    fl();
   };
   field.addEventListener('input', paint);
   field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); field.blur(); } });
@@ -40,6 +41,7 @@ export function openPlacePicker({ from, search, face, emoji = () => '', esc, isO
   });
   // La lista se llena ANTES de abrir la tarjeta: el zoom mide su alto final para centrarla
   // y animar desde el botón; si se llenaba después, la tarjeta crecía y brincaba.
+  const fl = fadeEdges(list);
   paint();
   z = openZoom({ from: from?.getBoundingClientRect(), label, content: box, field, kbClose: false, onClose, doneLabel });
   addElastic(list, 'y');

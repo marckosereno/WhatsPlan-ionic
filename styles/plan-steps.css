@@ -390,6 +390,16 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 
 /* ══ Buscar a quién invitar (people-picker.js) ══ */
 .wp-fz-slot { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+/* Velo: lo que se desliza se desvanece contra la barra de arriba y el botón de abajo (focus-zoom.js · fadeEdges) */
+@property --ft { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fb { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.wp-fz-fade { transition: --ft 0.2s, --fb 0.2s;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%); }
+.wp-fz-slot.wp-fz-fade { overflow-y: auto; scrollbar-width: none; }
+.wp-fz-slot.wp-fz-fade::-webkit-scrollbar { display: none; }
+/* Barra, título y botón conservan su alto con el teclado abierto: lo que se encoge es la lista */
+.wp-fz-field, .wp-fz-top, .wp-fz-done { flex: none; }
 .wp-pp { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
 .wp-pp-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; max-height: 300px; overflow-y: auto; margin: 0 -6px; padding: 2px 6px; scrollbar-width: none; }
 .wp-pp-list::-webkit-scrollbar { display: none; }
