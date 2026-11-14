@@ -31,7 +31,7 @@ export class MyPlanRoute {
     return `<section class="wp-mp-rt">
         <div class="wp-mp-head"><b>Ruta del plan <small>· ${stops.length} ${stops.length === 1 ? 'lugar' : 'lugares'}</small></b>${many ? `<button type="button" class="wp-mp-mapbtn" data-a="route"><span>Abrir mapa</span>${NEXT}</button>` : ''}</div>
         ${stops.map(item).join('')}
-        ${owner && stops.length < 4 ? `<button type="button" class="wp-mp-rt-add" data-a="addstop"><span class="wp-mp-rt-n">+</span><span><b>Agregar otra parada</b><small>¿Siguen en otro lado? Arma el itinerario</small></span></button>` : ''}
+        ${owner && stops.length < 4 && !this._planStopsLocked(a) ? `<button type="button" class="wp-mp-rt-add" data-a="addstop"><span class="wp-mp-rt-n">+</span><span><b>Agregar otra parada</b><small>¿Siguen en otro lado? Arma el itinerario</small></span></button>` : ''}
       </section>`;
   }
 

@@ -37,7 +37,7 @@ export class PlanStops {
   // Línea de tiempo de solo lectura (Tu plan / Planes aquí)
   _planRouteHtml(a, { owner = false, compact = false } = {}) {
     const st = Array.isArray(a?.stops) ? a.stops : [];
-    if (!st.length) return owner ? `<div class="wp-pv-route-ro"><button type="button" class="wp-pv-addstop-card" data-a="addstop">
+    if (!st.length) return owner && !this._planStopsLocked(a) ? `<div class="wp-pv-route-ro"><button type="button" class="wp-pv-addstop-card" data-a="addstop">
         <span>🧭</span><span><b>¿Siguen en otro lado?</b><small>Agrega una parada al plan</small></span><i>+</i></button></div>` : '';
     const t0 = new Date(a.scheduled_at);
     if (compact) return `<div class="wp-ph-route">🧭 ${1 + st.length} paradas · ${[a.place_name, ...st.map(x => x.name)].map(n => this._esc(String(n || '').split(' ').slice(0, 3).join(' '))).join(' → ')}</div>`;
@@ -47,7 +47,7 @@ export class PlanStops {
         <div class="wp-pv-lbl">Ruta <span class="wp-pv-hint">${1 + st.length} paradas</span></div>
         <div class="wp-pv-route">${row(1, a.place_name || this._placeInfo().name, t0, this._place?.category, 0)}
           ${st.map((x, i) => row(i + 2, x.name, new Date(t0.getTime() + (x.after || 0) * 60000), x.cat, owner ? String(i + 1) : '', x)).join('')}</div>
-        <div class="wp-pv-route-acts"><button type="button" data-a="route">🧭 Ver ruta en el mapa</button>${owner && st.length < 3 ? '<button type="button" data-a="addstop">+ Parada</button>' : ''}</div>
+        <div class="wp-pv-route-acts"><button type="button" data-a="route">🧭 Ver ruta en el mapa</button>${owner && st.length < 3 && !this._planStopsLocked(a) ? '<button type="button" data-a="addstop">+ Parada</button>' : ''}</div>
       </div>`;
   }
 
