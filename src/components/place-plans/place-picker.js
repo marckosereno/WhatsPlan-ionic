@@ -20,16 +20,14 @@ export function openPlacePicker({ from, search, face, esc, isOn, onPick, haptic 
   box.innerHTML = `<input class="wp-fz-field" type="search" placeholder="Buscar un lugar" autocomplete="off" enterkeyhint="search">
     <div class="wp-pp-list"></div>`;
   const field = box.querySelector('input'), list = box.querySelector('.wp-pp-list');
-  const z = openZoom({ from: from?.getBoundingClientRect(), label, content: box, field, kbClose: false, onClose, doneLabel });
-  addElastic(list, 'y');
-  let hits = [];
+  let z = null, hits = [];
   const paint = () => {
     hits = search(field.value.trim());
     list.innerHTML = hits.length ? hits.map(({ place: p, sub }, i) => `<button type="button" class="wp-pp-row${isOn(p) ? ' on' : ''}" data-i="${i}">
         <i class="wp-seal" style="background-image:url('${face(p)}')"></i>
         <span><b>${esc(p.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><em>${TICK}</em></button>`).join('')
       : '<p class="wp-st-empty">No encontramos ese lugar</p>';
-    z.place(false);
+    z?.place(false);
   };
   field.addEventListener('input', paint);
   field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); field.blur(); } });
@@ -40,5 +38,9 @@ export function openPlacePicker({ from, search, face, esc, isOn, onPick, haptic 
     list.querySelectorAll('.wp-pp-row').forEach(r => r.classList.toggle('on', r === b));
     setTimeout(() => z.close(), 220);   // deja ver la palomita entrar
   });
+  // La lista se llena ANTES de abrir la tarjeta: el zoom mide su alto final para centrarla
+  // y animar desde el botón; si se llenaba después, la tarjeta crecía y brincaba.
   paint();
+  z = openZoom({ from: from?.getBoundingClientRect(), label, content: box, field, kbClose: false, onClose, doneLabel });
+  addElastic(list, 'y');
 }
