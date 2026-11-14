@@ -36,13 +36,12 @@ export function attachSheet(root, close, handleSel = '.wp-st-top') {
   void scrim.offsetWidth;   // que arranque transparente antes de oscurecer
   scrim.classList.add('in');
   scrim.addEventListener('click', () => close());
-  document.body.classList.add('wp-sheet-open');   // lo de atrás deja de animarse mientras la hoja está abierta (plan-steps.css)
   const top = root.querySelector(handleSel);
   top.insertAdjacentHTML('afterbegin', '<i class="wp-st-grab" aria-hidden="true"></i>');
   dragToClose(root, top, close);
 
   return {
-    remove() { document.body.classList.remove('wp-sheet-open'); scrim.classList.remove('in'); setTimeout(() => scrim.remove(), 340); },
+    remove() { scrim.classList.remove('in'); setTimeout(() => scrim.remove(), 340); },
   };
 }
 
