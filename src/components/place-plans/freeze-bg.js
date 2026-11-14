@@ -13,16 +13,19 @@ export function freezeBg() {
   const vv = window.visualViewport;
   H0 = Math.max(window.innerHeight, vv?.height || 0);
   saved = [];
-  const els = document.body.querySelectorAll('*');
+  // Solo los elementos de los primeros niveles (lo fijo del mapa cuelga de ahí): recorrer
+  // todo el DOM al abrir el zoom tardaba y se notaba como destello
+  const els = [...document.body.children, ...(document.querySelector('ion-app')?.children || [])];
   const reads = [];
-  for (const el of els) {                                   // primero se lee todo (sin escribir: un solo reflujo)
+  for (const el of els) {
     if (el.closest('.wp-fz, #wp-st, .wp-st-scrim') || getComputedStyle(el).position !== 'fixed') continue;
     if (!el.offsetHeight) continue;
     reads.push([el, el.offsetTop, el.offsetHeight]);
   }
   for (const [el, top, h] of reads) {
     const st = el.style;
-    saved.push([el, st.top, st.bottom, st.height]);
+    saved.push([el, st.top, st.bottom, st.height, st.transition]);
+    st.transition = 'none';   // al cambiar el anclaje no debe animarse nada
     st.top = `${top}px`; st.bottom = 'auto'; st.height = `${h}px`;
   }
   const m = map();
@@ -40,7 +43,7 @@ export function thawBg() {
   const release = () => {
     cancelAnimationFrame(raf); wait = null;
     if (!saved) return;
-    for (const [el, top, bottom, height] of saved) { el.style.top = top; el.style.bottom = bottom; el.style.height = height; }
+    for (const [el, top, bottom, height, tr] of saved) { el.style.transition = 'none'; el.style.top = top; el.style.bottom = bottom; el.style.height = height; void el.offsetHeight; el.style.transition = tr; }
     saved = null;
     const m = map();
     if (m && '_trackResize' in m) { m._trackResize = true; try { m.resize(); } catch (_) {} }
