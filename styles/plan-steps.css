@@ -364,8 +364,9 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 /* El desenfoque va FIJO en su propia capa y solo se anima su opacidad: animar el radio del blur
    (backdrop-filter) obligaba al WebView a re-desenfocar la pantalla de atrás en cada cuadro */
 .wp-fz-bg { position: absolute; inset: 0; background: rgba(244, 248, 254, 0.55); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
-  opacity: 0; transition: opacity 0.28s ease; }
+  opacity: 0; transition: opacity 0.22s ease; }
 .wp-fz.in .wp-fz-bg { opacity: 1; }
+.wp-fz:not(.in) .wp-fz-bg { transition-duration: 0.12s; }   /* salida liviana */
 .wp-fz-card { position: absolute; left: 16px; right: 16px; padding: 14px; border-radius: 26px; background: #fff;
   box-shadow: 0 0 0 1px rgba(20, 18, 31, 0.04), 0 18px 40px -16px rgba(20, 18, 31, 0.28); display: flex; flex-direction: column; gap: 10px; transform-origin: 50% 0; overflow: hidden; box-sizing: border-box; }
 .wp-fz-top { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }

@@ -117,11 +117,15 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   if (from) {
     const to = card.getBoundingClientRect();
     const sx = Math.min(1, from.width / to.width), dy = from.top - to.top;
-    card.animate([{ transform: `translateY(${dy}px) scale(${sx})`, opacity: 0.6 }, { transform: 'none', opacity: 1 }],
+    // La tarjeta nace transparente y se opaca en el primer cuarto: así no aparece blanca
+    // sobre la pantalla todavía nítida (ese era el destello al abrir)
+    card.animate([{ transform: `translateY(${dy}px) scale(${sx})`, opacity: 0 }, { opacity: 1, offset: 0.25 }, { transform: 'none', opacity: 1 }],
       { duration: 380, easing: 'cubic-bezier(0.34, 1.4, 0.64, 1)' });
   }
   card.style.willChange = 'transform, opacity';   // capa propia mientras se anima
-  requestAnimationFrame(() => layer.classList.add('in'));
+  // El desenfoque arranca en el mismo cuadro que la tarjeta (antes iba un cuadro después)
+  void layer.offsetWidth;
+  layer.classList.add('in');
   // Si el teclado no sale (teclado físico, escritorio), se recentra en el espacio completo
   if (field) setTimeout(() => { settled = true; if (!closed && !kbUp()) place(true); }, 1200);
   // Listo para deslizar: al terminar de entrar (antes, recortado)
@@ -151,11 +155,12 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     onClose?.();
     field?.blur();
     layer.classList.remove('in', 'ready');   // al salir también recortado (sin scroll)
-    card.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(0.92)', opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+    // Salida liviana: solo se desvanece (sin escala ni movimiento)
+    card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out', fill: 'forwards' });
     setTimeout(() => {
       layer.remove();
       if (!document.querySelector('.wp-fz')) { document.body.classList.remove('wp-fz-open'); document.dispatchEvent(new Event('wp:zoom-end')); }
-    }, 220);
+    }, 150);
   }
   return { layer, card, slot, place, close, count: layer.querySelector('.wp-fz-n') };
 }
