@@ -104,8 +104,9 @@ export class NewPlan {
       emoji: (p) => this._stopEmoji(p.category),
       search: (q) => this._npCandidates(w, q).map(([p, d]) => ({ place: p, sub: `${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${o ? kmTxt(d) : (p.formattedAddress || '')}` })),
       isOn: (p) => !!w.pick && String(w.pick.place_id) === String(p.place_id),
-      onPick: (p) => { w.pick = { ...p, category: this._sfAct(w)?.cat || p.category, viaSearch: true }; },
-      onClose: () => { this._npPaintWhere(w); w.screen.refresh(); },
+      // El lugar pasa a la lista en el momento de tocarlo (detrás del zoom); al cerrar ya está
+      // ahí y seleccionado, sin repintar nada mientras el zoom se va
+      onPick: (p) => { w.pick = { ...p, category: this._sfAct(w)?.cat || p.category, viaSearch: true }; this._npPaintWhere(w); w.screen.refresh(); },
     });
   }
 
