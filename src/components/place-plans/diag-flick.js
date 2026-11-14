@@ -18,3 +18,18 @@ export function diagFlick(nombre) {
   }, 3000);
   void t0;
 }
+
+// Pruebas rápidas desde la consola de Eruda, con la hoja ya abierta (se deshacen recargando la app):
+//   wpX(1) quita TODOS los desenfoques (backdrop-filter) · wpX(2) cancela TODAS las animaciones
+//   wpX(3) esconde el mapa · wpX(4) quita solo el desenfoque de la barra de la hoja
+//   wpX(5) esconde los paneles del mapa (lateral, menú, botones de arriba) · wpX(6) esconde la pestaña de atrás
+window.wpX = (n) => {
+  const q = (sel) => document.querySelectorAll(sel);
+  if (n === 1) { let c = 0; q('body *').forEach(e => { const cs = getComputedStyle(e); if ((cs.backdropFilter && cs.backdropFilter !== 'none') || (cs.webkitBackdropFilter && cs.webkitBackdropFilter !== 'none')) { e.style.backdropFilter = 'none'; e.style.webkitBackdropFilter = 'none'; c++; } }); return `sin desenfoque en ${c} elementos`; }
+  if (n === 2) { const a = document.getAnimations(); a.forEach(x => { try { x.cancel(); } catch (_) {} }); return `${a.length} animaciones canceladas`; }
+  if (n === 3) { const m = document.getElementById('map') || document.querySelector('.maplibregl-map'); if (m) m.style.visibility = 'hidden'; return m ? 'mapa escondido' : 'no encontré el mapa'; }
+  if (n === 4) { q('#wp-st .wp-st-top').forEach(e => { e.style.backdropFilter = 'none'; e.style.webkitBackdropFilter = 'none'; }); return 'barra de la hoja sin desenfoque'; }
+  if (n === 5) { ['wp-side-panel-top', 'wp-side-panel-bottom', 'wp-footer-menu', 'topbar'].forEach(i => { const e = document.getElementById(i); if (e) e.style.visibility = 'hidden'; }); return 'paneles del mapa escondidos'; }
+  if (n === 6) { q('body > *').forEach(e => { if (/tab/i.test(e.id + ' ' + e.className) && e.id !== 'wp-st') e.style.visibility = 'hidden'; }); return 'pestaña escondida'; }
+  return 'usa wpX(1) a wpX(6)';
+};
