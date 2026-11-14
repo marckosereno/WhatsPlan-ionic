@@ -2905,4 +2905,4 @@ export class ActivityModal {
   }
 
 }
-export { ACTIVITY_TYPES, showEmojiPicker, FLUENT_SECTIONS, PIN_CATEGORIES, notoUrl };
+export { ACTIVITY_TYPES };
