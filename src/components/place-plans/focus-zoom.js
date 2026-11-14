@@ -117,8 +117,10 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   const checkKb = () => {
     if (kbUp()) { kbSeen = true; clearTimeout(kbTimer); kbTimer = 0; return; }
     if (!kbSeen || closed || kbTimer) return;
-    const wait = Math.max(500, 800 - (performance.now() - openedAt));
-    kbTimer = setTimeout(() => { kbTimer = 0; if (!closed && !kbUp()) close(); }, wait);
+    // Más margen (1.5 s y nunca antes de 1.2 s): tras varias aperturas el teclado tarda en
+    // volver a subir y cerraba la tarjeta; si el campo sigue enfocado se espera más aún
+    const wait = Math.max(1500, 1200 - (performance.now() - openedAt));
+    kbTimer = setTimeout(() => { kbTimer = 0; dlog(openedAt, 'kb-abajo', `activo=${document.activeElement === field}`); if (!closed && !kbUp()) close(); }, wait);
   };
   // Zoom desde donde estaba lo que tocaste (FLIP)
   place(false);
@@ -154,7 +156,7 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   layer.addEventListener('pointerdown', (e) => { if (e.target === layer || e.target.classList.contains('wp-fz-bg')) { e.preventDefault(); close(); } });
   layer.querySelector('.wp-fz-done').addEventListener('click', () => close());
   let vvRaf = 0;
-  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (closed) return; const v = window.visualViewport; dlog(openedAt, 'teclado', `vv=${Math.round(v?.height || 0)} inner=${window.innerHeight}`); place(true); }); };
+  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (closed) return; const v = window.visualViewport; dlog(openedAt, 'teclado', `vv=${Math.round(v?.height || 0)} inner=${window.innerHeight} footer=${Math.round(document.getElementById('wp-footer-menu')?.getBoundingClientRect().top ?? -1)} pin=${getComputedStyle(document.documentElement).getPropertyValue('--fz-top-c')} lado=${Math.round(document.getElementById('wp-side-panel-top')?.getBoundingClientRect().top ?? -1)} activo=${document.activeElement === field}`); place(true); }); };
   window.visualViewport?.addEventListener('resize', onVv);
   window.addEventListener('resize', onVv);
 
