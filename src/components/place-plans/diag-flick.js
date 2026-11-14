@@ -14,7 +14,7 @@ export function diagFlick(nombre) {
   setTimeout(() => {
     mo.disconnect(); cancelAnimationFrame(raf); try { map?.off('render', onR); } catch (_) {}
     const top = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${v}× ${k}`).join(' | ');
-    console.log(`[DIAG-FLICK] ${nombre} 3s: cuadros=${cuadros} largos(>50ms)=${largos} mapa-render=${renders} anim=${document.getAnimations().length} | ${top || 'sin cambios'}`);
+    console.log(`[DIAG-FLICK] ${nombre} 3s: cuadros=${cuadros} largos(>50ms)=${largos} mapa-render=${renders} anim=${document.getAnimations().length} [${(() => { const c = new Map(); document.getAnimations().forEach(x => { const k = (x.animationName || x.transitionProperty || 'waapi') + '@' + (x.effect?.target?.id || x.effect?.target?.className?.toString?.().split(' ')[0] || x.effect?.target?.tagName || '?'); c.set(k, (c.get(k) || 0) + 1); }); return [...c.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => v + '×' + k).join(', '); })()}] | ${top || 'sin cambios'}`);
   }, 3000);
   void t0;
 }
