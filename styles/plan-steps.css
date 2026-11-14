@@ -459,3 +459,8 @@ body.wp-picking #map-gps-btn, body.wp-picking #map-live-badge { opacity: 0 !impo
   background: rgba(20, 18, 31, 0.6); color: #fff; font: 600 11.5px/1 inherit; white-space: nowrap; transition: opacity 0.5s; }
 .wp-pk-tip.off { opacity: 0; }
 .wp-pk-mk { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 40px; line-height: 1; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)); }
+
+/* Nombre del punto propio obligatorio: si falta, el campo se sacude y se marca en rojo un momento */
+.wp-pk-name.need input { box-shadow: 0 0 0 2px #ef4444, 0 4px 14px rgba(239, 68, 68, 0.28); animation: wpPkNeed 0.4s ease; }
+.wp-pk-name.need input::placeholder { color: rgba(255, 255, 255, 0.85); }
+@keyframes wpPkNeed { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
