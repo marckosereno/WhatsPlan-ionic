@@ -2,11 +2,12 @@
 // encoge y todo lo fijo anclado abajo (panel lateral, menú, barras) sube, y MapLibre
 // redimensiona su lienzo. Se fija cada elemento fixed visible en su lugar y tamaño actuales
 // (arriba + alto en px) y se pausa el redimensionado del mapa. Al cerrar se restaura todo.
-let saved = null, H0 = 0, wait = null;
+let saved = null, H0 = 0, wait = null, depth = 0;   // depth: pantallas/zooms que lo piden (se suelta al llegar a 0)
 
 const map = () => { try { return window.wpApp?.mapView?.getMap?.() || null; } catch (_) { return null; } };
 
 export function freezeBg() {
+  depth++;
   if (wait) wait(true);   // si aún esperaba para soltar la vez anterior, se suelta ya
   if (saved) return;
   const vv = window.visualViewport;
@@ -15,7 +16,7 @@ export function freezeBg() {
   const els = document.body.querySelectorAll('*');
   const reads = [];
   for (const el of els) {                                   // primero se lee todo (sin escribir: un solo reflujo)
-    if (el.closest('.wp-fz') || getComputedStyle(el).position !== 'fixed') continue;
+    if (el.closest('.wp-fz, #wp-st, .wp-st-scrim') || getComputedStyle(el).position !== 'fixed') continue;
     if (!el.offsetHeight) continue;
     reads.push([el, el.offsetTop, el.offsetHeight]);
   }
@@ -32,7 +33,8 @@ export function freezeBg() {
 // Se sueltan hasta que el WebView recupere su alto completo: si se soltaran con el teclado
 // aún bajando (swipe atrás), el panel lateral y el menú subirían un instante y se verían
 export function thawBg() {
-  if (!saved || wait) return;
+  depth = Math.max(0, depth - 1);
+  if (depth > 0 || !saved || wait) return;
   const full = () => { const v = window.visualViewport; return !v || (v.offsetTop + v.height) >= H0 - 4 && window.innerHeight >= H0 - 4; };
   let t0 = performance.now(), raf = 0;
   const release = () => {

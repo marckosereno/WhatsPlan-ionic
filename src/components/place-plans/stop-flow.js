@@ -14,6 +14,7 @@
 // ════════════════════════════════════════════════════════════════════
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
 import { openTimePicker } from '/src/components/place-plans/time-picker.js';
+import { openPlacePicker } from '/src/components/place-plans/place-picker.js';
 
 const GROUPS = [
   ['RESTAURANTS', '🍽️', 'Comer y beber'], ['ENTERTAINMENT', '🎉', 'Salir'], ['SHOPPING', '🛍️', 'Compras'],
@@ -110,7 +111,8 @@ export class StopFlow {
   _sfMountWhere(f, el, sec) {
     f.whereEl = el; f.whereSub = sec.querySelector('.wp-st-sub');
     el.innerHTML = `
-      <label class="wp-st-search">${SEARCH}<input type="search" placeholder="Buscar un lugar" enterkeyhint="search" autocomplete="off"></label>
+      <button type="button" class="wp-st-search wp-seats-q" data-q>${SEARCH}<span>Buscar un lugar</span></button>
+      <div class="wp-st-picked"></div>
       <div class="wp-st-list"></div>
       <button type="button" class="wp-st-row wp-st-own" data-a="own"><span class="wp-st-row-ph">🏡</span>
         <span class="wp-st-row-t"><b>Un lugar que no está en el mapa</b><small>Casa de alguien, un parque sin nombre…</small></span><i class="wp-st-radio"></i></button>
@@ -118,10 +120,9 @@ export class StopFlow {
         <input class="wp-st-in" data-zoom="Nombre del lugar" data-f="name" type="text" maxlength="80" placeholder="Nombre (ej. Casa de Ana)" autocapitalize="sentences" autocomplete="off">
         <input class="wp-st-in" data-zoom="Dirección o referencia" data-f="address" type="text" maxlength="160" placeholder="Dirección o referencia (opcional)" autocapitalize="sentences" autocomplete="off">
       </div>`;
-    let qt = 0;
-    el.querySelector('.wp-st-search input').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => this._sfPaintPlaces(f), 120); });
     el.querySelectorAll('.wp-st-ownf input').forEach(i => i.addEventListener('input', () => this._sfSyncOwn(f)));
     el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-q]')) { this._sfSearch(f, e.target.closest('[data-q]')); return; }
       if (e.target.closest('[data-a="own"]')) { this._sfToggleOwn(f); return; }
       const r = e.target.closest('.wp-st-row[data-i]'); if (!r) return;
       const p = f.res?.[+r.dataset.i]; if (!p) return;
@@ -133,23 +134,47 @@ export class StopFlow {
     });
   }
 
-  _sfPaintPlaces(f) {
-    const el = f.whereEl; if (!el) return;
-    const A = this._sfAct(f), k = norm(el.querySelector('.wp-st-search input').value.trim());
-    if (f.whereSub) f.whereSub.textContent = A ? `Para ${A.label.toLowerCase()} · cerca de ${f.fromName}` : `Cerca de ${f.fromName}`;
+  // Candidatos (cerca de la parada anterior, o lo que coincide con la búsqueda), con distancia.
+  // Siempre dentro de la categoría de la actividad elegida en el paso 1 (igual que "Planear visita")
+  _sfCandidates(f, q = '') {
+    const A = this._sfAct(f), k = norm(q.trim());
     let base = f.all.filter(p => !f.exclude.has(String(p.place_id)));
+    if (A) base = base.filter(p => String(p.category || '').toUpperCase() === A.cat);
     if (k) base = base.filter(p => norm(p.name).includes(k) || norm(p.formattedAddress).includes(k));
     else if (A) {
       const subs = new Set(A.subcats || []);
       const tags = (p) => [...(Array.isArray(p.subcategoryTags) ? p.subcategoryTags : []), p.subcategory].map(x => String(x || '').toLowerCase());
-      const same = base.filter(p => String(p.category || '').toUpperCase() === A.cat);
-      const fit = subs.size ? same.filter(p => tags(p).some(t => subs.has(t))) : [];
-      base = fit.length ? fit : same;
+      const fit = subs.size ? base.filter(p => tags(p).some(t => subs.has(t))) : [];
+      base = fit.length ? fit : base;
     }
-    const res = base.map(p => [p, this._distM(f.origin, p)]).sort((x, y) => x[1] - y[1]).slice(0, k ? 15 : 6);
+    return base.map(p => [p, this._distM(f.origin, p)]).sort((x, y) => x[1] - y[1]).slice(0, k ? 15 : 6);
+  }
+
+  // Buscador en zoom, el mismo de "Planear visita": campo y resultados dentro de la tarjeta
+  _sfSearch(f, from) {
+    openPlacePicker({
+      from, esc: (t) => this._esc(t), haptic: (k) => this._haptic?.(k),
+      face: (p) => this._esc(p.photoUrl || p.photosUrls?.[0] || ''),
+      emoji: (p) => this._stopEmoji(p.category),
+      search: (q) => this._sfCandidates(f, q).map(([p, d]) => ({ place: p, sub: `${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${kmTxt(d)}` })),
+      isOn: (p) => !!f.place && String(f.place.place_id) === String(p.place_id),
+      onPick: (p) => { f.place = { ...p, viaSearch: true }; this._sfClearOwn(f); this._sfPaintPlaces(f); f.screen.refresh(); },
+    });
+  }
+
+  _sfPaintPlaces(f) {
+    const el = f.whereEl; if (!el) return;
+    const A = this._sfAct(f);
+    if (f.whereSub) f.whereSub.textContent = A ? `Para ${A.label.toLowerCase()} · cerca de ${f.fromName}` : `Cerca de ${f.fromName}`;
+    const res = this._sfCandidates(f);
     f.res = res.map(r => r[0]);
+    // lo elegido con el buscador (que no está entre los sugeridos) va arriba, marcado
+    const pk = f.place, extra = pk && !f.res.some(p => String(p.place_id) === String(pk.place_id));
+    const pph = pk ? (pk.photoUrl || pk.photosUrls?.[0] || '') : '';
+    el.querySelector('.wp-st-picked').innerHTML = extra ? `<div class="wp-st-row on"><span class="wp-st-row-ph"${pph ? ` style="background-image:url('${this._esc(pph)}')"` : ''}>${pph ? '' : this._stopEmoji(pk.category)}</span>
+        <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>Elegido</small></span><i class="wp-st-radio"></i></div>` : '';
     const list = el.querySelector('.wp-st-list');
-    if (!f.all.length) { list.innerHTML = '<p class="wp-st-empty">Cargando lugares…</p>'; return; }
+    const k = '';
     list.innerHTML = res.length ? res.map(([p, d], i) => {
       const ph = p.photoUrl || p.photosUrls?.[0] || '';
       const on = f.place && String(f.place.place_id) === String(p.place_id);

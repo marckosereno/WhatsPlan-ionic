@@ -23,6 +23,7 @@
 import { addElastic } from '/src/components/place-plans/elastic.js';
 import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
 import { attachFocusZoom } from '/src/components/place-plans/focus-zoom.js';
+import { freezeBg, thawBg } from '/src/components/place-plans/freeze-bg.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
 import { attachSheet, ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 
@@ -52,6 +53,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
       </button>
     </footer>`;
   document.body.appendChild(root);
+  freezeBg();   // el mapa y sus paneles no se mueven (ni con el teclado) mientras esta pantalla está abierta
   const $ = (q) => root.querySelector(q);
   const secs = [...root.querySelectorAll('.wp-st-step')];
   const sh = sheet ? attachSheet(root, () => close()) : null;
@@ -111,6 +113,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   const close = () => {
     if (closed) return;
     closed = true;
+    thawBg();
     root.classList.remove('in');
     sh?.remove();
     setTimeout(() => root.remove(), 340);
