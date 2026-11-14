@@ -21,6 +21,7 @@
 
 import { addDragScroll } from '/src/components/place-plans/drag-scroll.js';
 import { attachPulse } from '/src/components/place-plans/pulse.js';
+import { diagFlick } from '/src/components/place-plans/diag-flick.js';
 
 const CLOSE_PX = 110;   // jalar más de esto hacia abajo = cerrar
 // Mismo ícono que el "Volver" de la ficha (círculo negro con flecha)
@@ -28,6 +29,7 @@ export const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill
 
 export function attachSheet(root, close, handleSel = '.wp-st-top') {
   root.classList.add('sheet');
+  diagFlick(root.querySelector('.wp-st-title') ? 'Tu plan/hoja' : 'pasos');
   const scrim = document.createElement('div');
   scrim.className = 'wp-st-scrim';
   document.body.insertBefore(scrim, root);

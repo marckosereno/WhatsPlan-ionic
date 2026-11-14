@@ -1,0 +1,20 @@
+// DIAGNÓSTICO TEMPORAL ([DIAG-FLICK]): durante 3 s después de abrir una hoja cuenta qué cambia en el DOM,
+// cuántos cuadros se tardan más de 50 ms y cuántas veces se redibuja el mapa. Se quita al encontrar la causa.
+export function diagFlick(nombre) {
+  const t0 = performance.now(), cuenta = new Map();
+  const nom = (n) => { const e = n.nodeType === 1 ? n : n.parentElement; return e ? `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}` : '?'; };
+  const mo = new MutationObserver((ms) => { for (const m of ms) { const k = `${m.type}${m.attributeName ? ':' + m.attributeName : ''} ${nom(m.target)}`; cuenta.set(k, (cuenta.get(k) || 0) + 1); } });
+  mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+  let largos = 0, cuadros = 0, last = performance.now(), raf = 0, renders = 0;
+  const map = (() => { try { return window.wpApp?.mapView?.getMap?.(); } catch (_) { return null; } })();
+  const onR = () => { renders++; };
+  try { map?.on('render', onR); } catch (_) {}
+  const tick = (t) => { cuadros++; if (t - last > 50) largos++; last = t; raf = requestAnimationFrame(tick); };
+  raf = requestAnimationFrame(tick);
+  setTimeout(() => {
+    mo.disconnect(); cancelAnimationFrame(raf); try { map?.off('render', onR); } catch (_) {}
+    const top = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${v}× ${k}`).join(' | ');
+    console.log(`[DIAG-FLICK] ${nombre} 3s: cuadros=${cuadros} largos(>50ms)=${largos} mapa-render=${renders} anim=${document.getAnimations().length} | ${top || 'sin cambios'}`);
+  }, 3000);
+  void t0;
+}
