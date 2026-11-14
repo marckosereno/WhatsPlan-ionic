@@ -34,18 +34,23 @@ export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel }) {
     if (ended) return; ended = true;
     sheetCleanup?.();
     els.forEach(e => e.remove());
+    document.querySelectorAll('.wp-pk-sheet').forEach(e => e.remove());   // por si quedó alguno
+    mv._removePickPin?.();
     mv.disablePickMode?.();
     document.body.classList.remove('wp-picking');
   };
   const cancel = () => { end(); onCancel?.(); };
-  const done = (place) => { end(); onPick?.(place); };
+  const done = (place) => { if (ended) return; end(); onPick?.(place); };
 
   const top = add(`<div class="wp-pk-hint">Toca un pin o un punto del mapa</div><button type="button" class="wp-pk-x" aria-label="Cancelar">${X}</button>`, 'wp-pk-top');
   const foot = add(`<button type="button" class="wp-pk-gps">${NAV}<span>Usar mi ubicación actual</span></button>`, 'wp-pk-foot');
   top.querySelector('.wp-pk-x').onclick = cancel;
 
   const onTap = (p) => {
-    if (!p) return;
+    if (!p || ended) return;
+    // Con el sheet abierto, tocar el mapa solo recoloca el punto (el mapa ya
+    // se centró ahí): no se abre otro sheet ni vuelve el pin azul
+    if (sheetCleanup) { mv._removePickPin?.(); return; }
     if (p.customPoint) { mv._removePickPin?.(); top.hidden = true; foot.hidden = true; sheetCleanup = customSheet(p, emoji, (place) => done(place), () => { sheetCleanup = null; end(); onCancel?.(); }); }
     else done({ name: p.name, lat: p.lat, lng: p.lng, place_id: p.place_id });
   };
