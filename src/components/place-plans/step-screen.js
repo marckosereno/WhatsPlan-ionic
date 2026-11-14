@@ -58,7 +58,8 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   // El contenido va centrado en el espacio libre entre la barra de arriba
   // y el botón de abajo (los dos flotan encima y el contenido pasa por debajo)
   const layout = () => {
-    if (!root.isConnected) { window.visualViewport?.removeEventListener('resize', layout); window.removeEventListener('resize', layout); return; }
+    if (!root.isConnected) { window.visualViewport?.removeEventListener('resize', layout); window.removeEventListener('resize', layout); document.removeEventListener('wp:zoom-end', layout); return; }
+    if (document.body.classList.contains('wp-fz-open')) return;   // con un zoom abierto lo de atrás no se mueve (se repinta al cerrar)
     const top = $('.wp-st-top')?.offsetHeight || 0, foot = $('.wp-st-foot')?.offsetHeight || 0;
     const h = $('.wp-st-vp').clientHeight;
     root.style.setProperty('--st-top', `${top}px`);
@@ -67,6 +68,7 @@ export function openStepScreen({ steps, doneLabel = 'Listo', onDone, onClose, ha
   };
   window.visualViewport?.addEventListener('resize', layout);
   window.addEventListener('resize', layout);
+  document.addEventListener('wp:zoom-end', layout);
   // El contenedor solo se desliza en vertical: si algo lo corre de lado
   // (un foco, un elemento más ancho), se regresa al instante
   $('.wp-st-vp').addEventListener('scroll', (e) => { if (e.currentTarget.scrollLeft) e.currentTarget.scrollLeft = 0; }, { passive: true });

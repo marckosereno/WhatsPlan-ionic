@@ -393,7 +393,9 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 /* Velo: lo que se desliza se desvanece contra la barra de arriba y el botón de abajo (focus-zoom.js · fadeEdges) */
 @property --ft { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --fb { syntax: '<length>'; inherits: false; initial-value: 0px; }
-.wp-fz-fade { transition: --ft 0.2s, --fb 0.2s;
+/* Mientras el zoom se anima (entrada y salida) lo que se desliza va recortado: sin scroll y sin máscara */
+.wp-fz:not(.ready) .wp-pp-list, .wp-fz:not(.ready) .wp-fz-slot { overflow-y: hidden; }
+.wp-fz.ready .wp-fz-fade { transition: --ft 0.2s, --fb 0.2s;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%); }
 .wp-fz-slot.wp-fz-fade { overflow-y: auto; scrollbar-width: none; }
