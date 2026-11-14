@@ -5,6 +5,7 @@
 // en stop-flow.js. Se mezcla en PlaceModal2.prototype.
 // Estilos: /styles/place-plans.css (.wp-pv-stop*, .wp-pv-route*)
 // ════════════════════════════════════════════════════════════════════
+import { closeTabScreens } from '/src/components/tabs/tab-screen.js';
 
 
 export class PlanStops {
@@ -55,8 +56,14 @@ export class PlanStops {
   async _planShowRoute(a) {
     const all = await this._planPlaces();
     const byId = (id) => all.find(p => String(p.place_id) === String(id));
-    const back = this._place;
-    const list = [byId(a.place_id) || back, ...(a.stops || []).filter(x => x.lat != null && x.lng != null).map(x => byId(x.place_id) || { place_id: x.place_id, name: x.name, displayName: x.name, lat: x.lat, lng: x.lng, location: { lat: x.lat, lng: x.lng }, category: x.cat })].filter(Boolean);
-    window.wpApp?.showPlacesOnMap?.(list, a.title, { onBack: () => { try { this.show(back); } catch (_) {} } });
+    const back = this._place;   // (solo de respaldo para el lugar principal)
+    // el lugar principal puede ser un punto propio (no está en la base): se arma con los datos del plan
+    const main = byId(a.place_id) || (a.lat != null && a.lng != null
+      ? { place_id: a.place_id, name: a.place_name || 'Punto en el mapa', displayName: a.place_name || 'Punto en el mapa', lat: Number(a.lat), lng: Number(a.lng), location: { lat: Number(a.lat), lng: Number(a.lng) }, category: a.category }
+      : back);
+    const list = [main, ...(a.stops || []).filter(x => x.lat != null && x.lng != null).map(x => byId(x.place_id) || { place_id: x.place_id, name: x.name, displayName: x.name, lat: x.lat, lng: x.lng, location: { lat: x.lat, lng: x.lng }, category: x.cat })].filter(Boolean);
+    // Desde "Tu plan" (dentro de una pestaña opaca) el mapa quedaba tapado: se cierra la pestaña para verlo
+    closeTabScreens();
+    window.wpApp?.showPlacesOnMap?.(list, a.title, { onBack: () => { try { this._openMyPlanSheet(a); } catch (_) {} } });   // al volver regresa a "Tu plan" (la pestaña ya se cerró para ver el mapa)
   }
 }

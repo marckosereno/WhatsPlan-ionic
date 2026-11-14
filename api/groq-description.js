@@ -149,6 +149,12 @@ function placeBrief(p, fallbackName) {
     revs.length ? `  Reseñas: ${revs.map(t => `"${t}"`).join(' · ')}` : ''].filter(Boolean).join('\n');
 }
 
+// Lugar que no está en la base (punto elegido en el mapa o lugar propio): no hay descripción ni reseñas,
+// y se le dice al modelo que no invente nada de él
+function ownBrief(name, address = '') {
+  return `- ${name || 'Un punto en el mapa'} (lugar elegido por quien organiza${address ? `, ${address}` : ''}; sin descripción ni reseñas: no inventes nada de él, solo menciónalo por su nombre y la hora)`;
+}
+
 async function planSummary(req, res) {
   const { activity_id } = req.query;
   if (!activity_id) return res.status(400).json({ error: 'activity_id required' });
@@ -193,7 +199,8 @@ async function planSummary(req, res) {
     end ? `El plan completo termina a las ${hh(end)}, al salir de ${last.name}. Las horas de fin de los primeros lugares no son el fin del plan.`
       : `El plan cierra en ${last.name}, a donde llegan a las ${hh(last.from)} (sin hora de fin). Las horas de fin de los primeros lugares no son el fin del plan.`,
     a.note ? `Nota de quien organiza: ${a.note}` : '',
-    `Lugares:\n${[byId(a.place_id) ? placeBrief(byId(a.place_id), a.place_name) : `- ${a.place_name}`, ...stops.map(x => placeBrief(byId(x.place_id), x.name))].join('\n')}`,
+    `Lugares:\n${[byId(a.place_id) ? placeBrief(byId(a.place_id), a.place_name) : ownBrief(a.place_name), ...stops.map(x => (byId(x.place_id) ? placeBrief(byId(x.place_id), x.name) : ownBrief(x.name, x.address)))].join('\n')}`,
+    legs.some(l => /^punto en el mapa$/i.test(String(l.name || '').trim())) ? 'Los puntos que se llaman "Punto en el mapa" no tienen nombre: dilos como "un punto elegido en el mapa", sin inventar qué hay ahí.' : '',
     'Recorre los lugares en orden con su hora de llegada, habla de qué tienen de especial (según su descripción o reseñas), menciona de forma discreta lo que se puede hacer ahí y cierra con el último lugar, a qué hora termina el plan y una frase de qué tal pinta.',
     'Escribe las horas siempre con números y am/pm, igual que arriba (por ejemplo 7 pm o 12:45 am), nunca con letras.',
     'Tono cálido y natural, como un amigo que conoce la zona. Sin emojis, sin listas, sin comillas, sin inventar datos (precios, horarios). Responde solo con el resumen.',
