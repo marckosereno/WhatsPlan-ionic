@@ -15,10 +15,12 @@ export function freezeBg() {
   saved = [];
   // Solo los elementos de los primeros niveles (lo fijo del mapa cuelga de ahí): recorrer
   // todo el DOM al abrir el zoom tardaba y se notaba como destello
-  const els = [...document.body.children, ...(document.querySelector('ion-app')?.children || [])];
+  // (dos niveles: las hojas grandes —pasos, "Tu plan", la ficha— cuelgan de body o de ion-app)
+  const top = [...document.body.children, ...(document.querySelector('ion-app')?.children || [])];
+  const els = [...new Set([...top, ...top.flatMap(t => [...t.children])])];
   const reads = [];
   for (const el of els) {
-    if (el.closest('.wp-fz, #wp-st, .wp-st-scrim') || getComputedStyle(el).position !== 'fixed') continue;
+    if (el.closest('.wp-fz') || getComputedStyle(el).position !== 'fixed') continue;
     if (!el.offsetHeight) continue;
     reads.push([el, el.offsetTop, el.offsetHeight]);
   }
