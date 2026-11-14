@@ -116,3 +116,8 @@
 .wp-off-box b { font-size: 17px; font-weight: 700; }
 .wp-off-box span { max-width: 280px; font-size: 13.5px; font-weight: 500; line-height: 1.45; color: var(--sub); }
 .wp-off-box .wp-pt-cta { margin-top: 12px; height: 42px; padding: 0 22px; }
+
+/* Con una pestaña abierta (opaca, tapa todo el mapa) el mapa se esconde: aunque no se vea, el WebView
+   seguía componiéndolo bajo la hoja de "Tu plan" / "Agregar parada" y eso se veía como parpadeo.
+   Se esconde cuando la pestaña ya terminó de entrar (0.45 s) y reaparece al instante al cerrarla */
+body.wp-tab-open #map-container { visibility: hidden; transition: visibility 0s linear 0.45s; }
