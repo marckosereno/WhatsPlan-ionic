@@ -11,9 +11,11 @@
 //
 // Uso: pickPlaceOnMap({ cat, onPick(place), onCancel() }) → { stop() }
 //   place = lugar del mapa  { name, lat, lng, place_id }
-//         | punto propio    { name, lat, lng, custom: true, emoji }
+//         | punto propio    { name, lat, lng, custom: true, emoji, emojiUrl, emojiChosen }
+//   emoji = el de inicio del punto propio (el del tipo de plan). El nombre va
+//   aparte, sin emoji; no se abre el teclado hasta que el usuario toque el campo.
 // ════════════════════════════════════════════════════════════════════
-import { showEmojiPicker } from '/src/components/ActivityModal.js';
+import { openEmojiSheet } from '/src/components/place-plans/emoji-sheet.js';
 
 const X = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 const GO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
@@ -21,7 +23,7 @@ const NAV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
 const DEFAULT_EMOJI = '✌️';
 const noto = (e) => `https://fonts.gstatic.com/s/e/notoemoji/latest/${[...e].map(c => c.codePointAt(0).toString(16)).filter(h => h !== 'fe0f').join('_')}/512.gif`;
 
-export function pickPlaceOnMap({ cat, onPick, onCancel }) {
+export function pickPlaceOnMap({ cat, emoji, onPick, onCancel }) {
   const mv = window.wpApp?.mapView;
   if (!mv?.map || !mv.enablePickMode) { onCancel?.(); return { stop() {} }; }
   document.body.classList.add('wp-picking');
@@ -46,7 +48,7 @@ export function pickPlaceOnMap({ cat, onPick, onCancel }) {
 
   const onTap = (p) => {
     if (!p) return;
-    if (p.customPoint) { top.hidden = true; foot.hidden = true; sheetCleanup = customSheet(p, (place) => done(place), () => { sheetCleanup = null; end(); onCancel?.(); }); }
+    if (p.customPoint) { mv._removePickPin?.(); top.hidden = true; foot.hidden = true; sheetCleanup = customSheet(p, emoji, (place) => done(place), () => { sheetCleanup = null; end(); onCancel?.(); }); }
     else done({ name: p.name, lat: p.lat, lng: p.lng, place_id: p.place_id });
   };
   foot.querySelector('.wp-pk-gps').onclick = (e) => {
@@ -66,9 +68,10 @@ export function pickPlaceOnMap({ cat, onPick, onCancel }) {
 }
 
 // Nombre + emoji del punto propio; el pin sigue al centro del mapa para recolocarlo
-function customSheet(coords, onConfirm, onCancel) {
+function customSheet(coords, startEmoji, onConfirm, onCancel) {
   const mv = window.wpApp.mapView, map = mv.map;
-  let emoji = DEFAULT_EMOJI, url = noto(DEFAULT_EMOJI), marker = null, off = () => {};
+  const first = startEmoji || DEFAULT_EMOJI;
+  let emoji = first, url = noto(first), chosen = false, marker = null;
   const mk = document.createElement('div'); mk.className = 'wp-pk-mk';
   const paintMk = () => { mk.innerHTML = `<img src="${url}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}'}))">`; };
   paintMk();
@@ -80,7 +83,7 @@ function customSheet(coords, onConfirm, onCancel) {
   map.flyTo({ center: [coords.lng, coords.lat], zoom: Math.max(map.getZoom(), 17), duration: 350 });
 
   const el = document.createElement('div'); el.className = 'wp-pk wp-pk-sheet';
-  el.innerHTML = `<div class="wp-pk-name"><input type="text" maxlength="50" placeholder="Nombre del lugar (ej. Casa de Ana)" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></div>
+  el.innerHTML = `<div class="wp-pk-name"><input type="text" maxlength="50" placeholder="Ponle nombre al lugar (opcional)" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></div>
     <p class="wp-pk-tip">Arrastra el mapa para mover el punto</p>
     <div class="wp-pk-bar"><button type="button" class="wp-pk-x" data-a="no" aria-label="Cancelar">${X}</button>
       <button type="button" class="wp-pk-emoji" data-a="emoji"><i></i><span>Cambiar emoji</span></button>
@@ -89,7 +92,8 @@ function customSheet(coords, onConfirm, onCancel) {
   const paintBtn = () => { el.querySelector('.wp-pk-emoji i').innerHTML = `<img src="${url}" alt="" onerror="this.replaceWith(document.createTextNode('${emoji}'))">`; };
   paintBtn();
   const tip = el.querySelector('.wp-pk-tip'); setTimeout(() => tip.classList.add('off'), 2600);
-  const input = el.querySelector('input'); setTimeout(() => input.focus(), 120);
+  const input = el.querySelector('input');   // sin foco automático: el teclado solo sale si lo tocan
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
 
   const cleanup = () => {
     map.off('move', follow); window.visualViewport?.removeEventListener('resize', pad);
@@ -97,11 +101,11 @@ function customSheet(coords, onConfirm, onCancel) {
   };
   el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-a]'); if (!b) return;
-    if (b.dataset.a === 'emoji') showEmojiPicker((em, u) => { emoji = em; url = u || noto(em); paintMk(); paintBtn(); });
+    if (b.dataset.a === 'emoji') { input.blur(); openEmojiSheet({ title: 'Emoji del lugar', value: emoji, onSelect: (em, u) => { emoji = em; url = u || noto(em); chosen = true; paintMk(); paintBtn(); } }); }
     else if (b.dataset.a === 'no') { cleanup(); onCancel(); }
     else {
       const c = map.getCenter(), name = input.value.trim() || 'Punto en el mapa';
-      cleanup(); onConfirm({ name: `${emoji} ${name}`, lat: c.lat, lng: c.lng, custom: true, emoji });
+      cleanup(); onConfirm({ name, lat: c.lat, lng: c.lng, custom: true, emoji, emojiUrl: url, emojiChosen: chosen });
     }
   });
   return cleanup;
