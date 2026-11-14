@@ -29,7 +29,11 @@ const ANIM_MS = 400;   // lo que dura el zoom de entrada (380 ms) + un respiro
 let kbH = 0;   // alto del teclado visto la última vez (para acomodar la tarjeta antes de que salga)
 
 // [DIAG-FZ] temporal: línea de tiempo del zoom (ms desde que abre) para ver en Eruda dónde parpadea
-const dlog = (t0, ev, extra = '') => console.log('[DIAG-FZ]', Math.round(performance.now() - t0) + 'ms', ev, extra);
+const dlog = (t0, ev, extra = '') => {
+  const m = performance.memory ? ` heap=${Math.round(performance.memory.usedJSHeapSize / 1048576)}MB` : '';
+  console.log('[DIAG-FZ]', Math.round(performance.now() - t0) + 'ms', ev, extra,
+    `nodos=${document.getElementsByTagName('*').length} anim=${document.getAnimations ? document.getAnimations().length : '?'} capas=${document.querySelectorAll('.wp-fz').length}${m}`);
+};
 
 const safeArea = () => {
   const p = document.createElement('div');
@@ -44,14 +48,16 @@ const safeArea = () => {
 // en vez de cortarse de golpe. Solo en el borde que tiene más contenido más allá (arriba al haber
 // deslizado, abajo si falta por ver); sin desborde no hace nada. Devuelve la función que lo repinta.
 export function fadeEdges(el, size = 18) {
+  let ro = null;
   const upd = () => {
+    if (!el.isConnected) { ro?.disconnect(); ro = null; return; }   // no deja observadores colgados
     const over = el.scrollHeight > el.clientHeight + 1;
     el.classList.toggle('wp-fz-fade', over);
     el.style.setProperty('--ft', over && el.scrollTop > 2 ? `${size}px` : '0px');
     el.style.setProperty('--fb', over && el.scrollTop + el.clientHeight < el.scrollHeight - 2 ? `${size}px` : '0px');
   };
   el.addEventListener('scroll', upd, { passive: true });
-  try { new ResizeObserver(upd).observe(el); } catch (_) {}
+  try { ro = new ResizeObserver(upd); ro.observe(el); } catch (_) {}
   upd();
   return upd;
 }
@@ -154,13 +160,11 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     window.removeEventListener('resize', onVv);
     onClose?.();
     field?.blur();
-    layer.classList.remove('in', 'ready');   // al salir también recortado (sin scroll)
-    // Salida liviana: solo se desvanece (sin escala ni movimiento)
-    card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out', fill: 'forwards' });
-    setTimeout(() => {
-      layer.remove();
-      if (!document.querySelector('.wp-fz')) { document.body.classList.remove('wp-fz-open'); document.dispatchEvent(new Event('wp:zoom-end')); }
-    }, 150);
+    // Sin animación de salida: al tocar "Listo" la capa se quita de una vez (la animación de
+    // salida repintaba lo desenfocado y se veía como destello)
+    layer.remove();
+    if (!document.querySelector('.wp-fz')) { document.body.classList.remove('wp-fz-open'); document.dispatchEvent(new Event('wp:zoom-end')); }
+    dlog(openedAt, 'cerrado');
   }
   return { layer, card, slot, place, close, count: layer.querySelector('.wp-fz-n') };
 }
