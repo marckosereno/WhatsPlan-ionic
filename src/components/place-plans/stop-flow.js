@@ -15,6 +15,7 @@
 import { openStepScreen } from '/src/components/place-plans/step-screen.js';
 import { openTimePicker } from '/src/components/place-plans/time-picker.js';
 import { openPlacePicker } from '/src/components/place-plans/place-picker.js';
+import { pickPlaceOnMap } from '/src/components/place-plans/pick-place.js';
 
 const GROUPS = [
   ['RESTAURANTS', '🍽️', 'Comer y beber'], ['ENTERTAINMENT', '🎉', 'Salir'], ['SHOPPING', '🛍️', 'Compras'],
@@ -37,6 +38,7 @@ const DUR_CHIPS = [30, 60, 90, 120, 180];
 const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const kmTxt = (d) => (d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1)} km`);
 const gapTxt = (g) => (g < 60 ? `${g} min` : `${Math.floor(g / 60)} h${g % 60 ? ` ${g % 60} min` : ''}`);
+const MAP = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6.5v13L9 17l6 3 6-2.5v-13L15 7z"/><path d="M9 4v13M15 7v13"/></svg>';
 const SEARCH = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
 
 export class StopFlow {
@@ -119,18 +121,13 @@ export class StopFlow {
     f.whereEl = el; f.whereSub = sec.querySelector('.wp-st-sub');
     el.innerHTML = `
       <button type="button" class="wp-st-search wp-seats-q" data-q>${SEARCH}<span>Buscar un lugar</span></button>
+      <button type="button" class="wp-st-row wp-st-map" data-a="map"><span class="wp-st-row-ph wp-st-map-ic">${MAP}</span>
+        <span class="wp-st-row-t"><b>Elegir en el mapa</b><small>Un pin, cualquier punto o tu ubicación</small></span></button>
       <div class="wp-st-picked"></div>
-      <div class="wp-st-list"></div>
-      <button type="button" class="wp-st-row wp-st-own" data-a="own"><span class="wp-st-row-ph">🏡</span>
-        <span class="wp-st-row-t"><b>Un lugar que no está en el mapa</b><small>Casa de alguien, un parque sin nombre…</small></span><i class="wp-st-radio"></i></button>
-      <div class="wp-st-ownf" hidden>
-        <input class="wp-st-in" data-zoom="Nombre del lugar" data-f="name" type="text" maxlength="80" placeholder="Nombre (ej. Casa de Ana)" autocapitalize="sentences" autocomplete="off">
-        <input class="wp-st-in" data-zoom="Dirección o referencia" data-f="address" type="text" maxlength="160" placeholder="Dirección o referencia (opcional)" autocapitalize="sentences" autocomplete="off">
-      </div>`;
-    el.querySelectorAll('.wp-st-ownf input').forEach(i => i.addEventListener('input', () => this._sfSyncOwn(f)));
+      <div class="wp-st-list"></div>`;
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-q]')) { this._sfSearch(f, e.target.closest('[data-q]')); return; }
-      if (e.target.closest('[data-a="own"]')) { this._sfToggleOwn(f); return; }
+      if (e.target.closest('[data-a="map"]')) { this._sfPick(f); return; }
       const r = e.target.closest('.wp-st-row[data-i]'); if (!r) return;
       const p = f.res?.[+r.dataset.i]; if (!p) return;
       f.place = f.place && String(f.place.place_id) === String(p.place_id) ? null : p;
@@ -176,10 +173,10 @@ export class StopFlow {
     const res = this._sfCandidates(f);
     f.res = res.map(r => r[0]);
     // lo elegido con el buscador (que no está entre los sugeridos) va arriba, marcado
-    const pk = f.place, extra = pk && !f.res.some(p => String(p.place_id) === String(pk.place_id));
-    const pph = pk ? (pk.photoUrl || pk.photosUrls?.[0] || '') : '';
-    el.querySelector('.wp-st-picked').innerHTML = extra ? `<div class="wp-st-row on"><span class="wp-st-row-ph"${pph ? ` style="background-image:url('${this._esc(pph)}')"` : ''}>${pph ? '' : this._stopEmoji(pk.category)}</span>
-        <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>Elegido</small></span><i class="wp-st-radio"></i></div>` : '';
+    const pk = f.custom || f.place, extra = pk && (f.custom || !f.res.some(p => String(p.place_id) === String(pk.place_id)));
+    const pph = pk && !f.custom ? (pk.photoUrl || pk.photosUrls?.[0] || '') : '';
+    el.querySelector('.wp-st-picked').innerHTML = extra ? `<div class="wp-st-row on"><span class="wp-st-row-ph"${pph ? ` style="background-image:url('${this._esc(pph)}')"` : ''}>${pph ? '' : (f.custom ? (this._sfAct(f)?.emoji || '📍') : this._stopEmoji(pk.category))}</span>
+        <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>${f.custom ? 'Elegido en el mapa' : 'Elegido'}</small></span><i class="wp-st-radio"></i></div>` : '';
     const list = el.querySelector('.wp-st-list');
     const k = '';
     list.innerHTML = res.length ? res.map(([p, d], i) => {
@@ -189,32 +186,28 @@ export class StopFlow {
           <span class="wp-st-row-ph"${ph ? ` style="background-image:url('${this._esc(ph)}')"` : ''}>${ph ? '' : this._stopEmoji(p.category)}</span>
           <span class="wp-st-row-t"><b>${this._esc(p.name)}</b><small>${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${kmTxt(d)}</small></span>
           <i class="wp-st-radio"></i></button>`;
-    }).join('') : `<p class="wp-st-empty">${k ? 'No encontramos ese lugar' : 'No hay lugares así cerca · busca o agrega uno propio'}</p>`;
+    }).join('') : `<p class="wp-st-empty">${k ? 'No encontramos ese lugar' : 'No hay lugares así cerca · busca o elígelo en el mapa'}</p>`;
   }
 
-  _sfToggleOwn(f) {
-    const box = f.whereEl.querySelector('.wp-st-ownf'), open = box.hidden;
-    box.hidden = !open;
-    f.whereEl.querySelector('[data-a="own"]').classList.toggle('on', open);
-    if (open) setTimeout(() => { try { box.querySelector('input').focus(); } catch (_) {} }, 40);
-    else this._sfClearOwn(f);
-    f.screen.refresh();
+  // "Elegir en el mapa" (el mismo del "+"): la hoja se esconde, el mapa queda libre y al elegir se regresa
+  // al mismo paso con el lugar marcado. Un pin es un lugar de la base; cualquier otro punto es un lugar
+  // propio (con nombre obligatorio) y se guarda con sus coordenadas para poder dibujarlo en la ruta
+  _sfPick(f) {
+    const A = this._sfAct(f);
+    this._haptic?.('light');
+    pickPlaceOnMap({
+      cat: A?.cat, emoji: A?.emoji,
+      onPick: (p) => {
+        if (p.custom) { f.place = null; f.custom = { place_id: `custom:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: p.name, lat: p.lat, lng: p.lng, category: A?.cat }; }
+        else { f.custom = null; f.place = { ...p, category: A?.cat || p.category }; }
+        this._sfPaintPlaces(f); f.screen.refresh();
+        setTimeout(() => { if (f.screen.index === 1) f.screen.go(2); }, 260);   // elegir = avanzar
+      },
+      onCancel: () => { this._sfPaintPlaces(f); f.screen.refresh(); },
+    });
   }
 
-  _sfSyncOwn(f) {
-    const v = (k) => f.whereEl.querySelector(`[data-f="${k}"]`).value.trim();
-    const name = v('name');
-    f.custom = name ? { place_id: f.custom?.place_id || `custom:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, address: v('address') } : null;
-    if (f.custom && f.place) { f.place = null; this._sfPaintPlaces(f); }
-    f.screen.refresh();
-  }
-
-  _sfClearOwn(f) {
-    f.custom = null;
-    f.whereEl.querySelectorAll('.wp-st-ownf input').forEach(i => { i.value = ''; });
-    f.whereEl.querySelector('.wp-st-ownf').hidden = true;
-    f.whereEl.querySelector('[data-a="own"]').classList.remove('on');
-  }
+  _sfClearOwn(f) { f.custom = null; }
 
   // ── Paso 3 · a qué hora ───────────────────────────────────────────────
   _sfMountTime(f, el) {
