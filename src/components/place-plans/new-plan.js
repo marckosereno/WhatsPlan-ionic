@@ -59,7 +59,7 @@ export class NewPlan {
   _npMountWhere(w, el, sec) {
     w.whereEl = el; w.whereSub = sec.querySelector('.wp-st-sub');
     el.innerHTML = `
-      <label class="wp-st-search">${SEARCH}<input type="search" placeholder="Buscar un lugar" enterkeyhint="search" autocomplete="off"></label>
+      <label class="wp-st-search">${SEARCH}<input type="search" data-zoom="Buscar un lugar" placeholder="Buscar un lugar" enterkeyhint="search" autocomplete="off"></label>
       <button type="button" class="wp-st-row wp-st-map" data-a="map"><span class="wp-st-row-ph wp-st-map-ic">${MAP}</span>
         <span class="wp-st-row-t"><b>Elegir en el mapa</b><small>Un pin, cualquier punto o tu ubicación</small></span></button>
       <div class="wp-st-picked"></div>
@@ -137,9 +137,7 @@ export class NewPlan {
     const { shown, type } = this._pwTypes(place);
     let list = shown, t = type;
     if (A) {
-      // si el lugar propio tiene un emoji elegido por el usuario, es el que se propone como emoji del plan
-      const mine = p.custom && p.emojiChosen;
-      list = [mine ? [A.key, p.emoji, A.label, p.emojiUrl] : [A.key, A.emoji, A.label], ...shown.filter(x => x[0] !== A.key)];
+      list = [[A.key, A.emoji, A.label], ...shown.filter(x => x[0] !== A.key)];
       t = A.key;
     }
     w.shown = list; w.type = t;

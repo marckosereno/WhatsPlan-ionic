@@ -49,8 +49,20 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     card.style.transition = animate ? 'top 0.32s cubic-bezier(0.32, 0.72, 0, 1)' : 'none';
     card.style.top = `${Math.max(top, top + (bottom - top - h) / 2)}px`;
     if (!field || !kbClose) return;
-    if (vv && window.innerHeight - vv.height > 120) kbSeen = true;
-    else if (kbSeen && !closed) close();   // bajó el teclado → listo
+    checkKb();
+  };
+  // "Bajó el teclado → listo". Al abrir, el foco pasa del campo original a la
+  // copia y el teclado parpadea (baja y vuelve a subir): eso cerraba la tarjeta
+  // recién abierta. Ahora solo cierra si el teclado sigue abajo un momento
+  // después de haberse visto, y nunca en los primeros 800 ms.
+  const openedAt = performance.now();
+  let kbTimer = 0;
+  const kbUp = () => { const v = window.visualViewport; return !!(v && window.innerHeight - v.height > 120); };
+  const checkKb = () => {
+    if (kbUp()) { kbSeen = true; clearTimeout(kbTimer); kbTimer = 0; return; }
+    if (!kbSeen || closed || kbTimer) return;
+    const wait = Math.max(500, 800 - (performance.now() - openedAt));
+    kbTimer = setTimeout(() => { kbTimer = 0; if (!closed && !kbUp()) close(); }, wait);
   };
   // Zoom desde donde estaba lo que tocaste (FLIP)
   place(false);
@@ -75,6 +87,7 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   function close() {
     if (closed) return;
     closed = true;
+    clearTimeout(kbTimer);
     window.visualViewport?.removeEventListener('resize', onVv);
     window.removeEventListener('resize', onVv);
     onClose?.();
