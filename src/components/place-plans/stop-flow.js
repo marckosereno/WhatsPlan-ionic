@@ -40,7 +40,14 @@ const gapTxt = (g) => (g < 60 ? `${g} min` : `${Math.floor(g / 60)} h${g % 60 ? 
 const SEARCH = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
 
 export class StopFlow {
+  // Con alguien más aparte del organizador en el plan ya no se agregan paradas: quien se unió
+  // aceptó ese itinerario (el servidor también lo exige: supabase/45_stops_locked.sql)
+  _planStopsLocked(a) {
+    return (a?.participants || []).some(u => String(u) !== String(a.creator_id));
+  }
+
   _openStopFlow(a) {
+    if (this._planStopsLocked(a)) { this._showToast('Ya hay personas en este plan: el itinerario no se puede ampliar'); return; }
     const f = this._sfContext(a);
     f.screen = openStepScreen({
       sheet: true,
