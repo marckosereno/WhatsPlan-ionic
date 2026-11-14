@@ -459,3 +459,8 @@ body.wp-picking #map-gps-btn, body.wp-picking #map-live-badge { opacity: 0 !impo
   background: rgba(20, 18, 31, 0.6); color: #fff; font: 600 11.5px/1 inherit; white-space: nowrap; transition: opacity 0.5s; }
 .wp-pk-tip.off { opacity: 0; }
 .wp-pk-mk { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 40px; line-height: 1; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)); }
+
+/* Con un zoom abierto lo fijo de abajo no sube con el teclado (se fija donde estaba) */
+body.wp-fz-open #wp-side-panel-top { top: var(--fz-top-a); bottom: auto; }
+body.wp-fz-open #wp-side-panel-bottom { top: var(--fz-top-b); bottom: auto; }
+body.wp-fz-open #wp-footer-menu { top: var(--fz-top-c); bottom: auto; }

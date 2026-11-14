@@ -23,6 +23,7 @@
 // o al bajar el teclado. Estilos: /styles/plan-steps.css (.wp-fz-*)
 // ════════════════════════════════════════════════════════════════════
 import { attachPulse } from '/src/components/place-plans/pulse.js';
+import { freezeBg, thawBg } from '/src/components/place-plans/freeze-bg.js';
 
 const GAP = 14;
 const ANIM_MS = 400;   // lo que dura el zoom de entrada (380 ms) + un respiro
@@ -70,6 +71,7 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   if (typeof content === 'string') slot.innerHTML = content; else if (content) slot.appendChild(content);
   document.body.appendChild(layer);
   document.body.classList.add('wp-fz-open');
+  freezeBg();
   attachPulse(layer);
   fadeEdges(slot);
   const safeTop = safeArea();
@@ -136,13 +138,18 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   if (field) setTimeout(() => { settled = true; if (!closed && !kbUp()) place(true); }, 1200);
   // Listo para deslizar: al terminar de entrar (antes, recortado)
   setTimeout(() => { if (!closed) { layer.classList.add('ready'); card.style.willChange = ''; dlog(openedAt, 'ready'); } }, ANIM_MS);
-  // El foco (y con él el teclado) llega después de la animación, no durante
-  if (field) setTimeout(() => {
-    if (closed) return;
-    dlog(openedAt, 'foco');
-    try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
-    try { const n = field.value.length; field.setSelectionRange(n, n); } catch (_) {}
-  }, ANIM_MS - 20);
+  // El foco: si ya hay un campo enfocado (el original, con el teclado subiendo) la copia lo
+  // toma de inmediato para que el teclado no se caiga ni se cierre la tarjeta; si no (listas
+  // con buscador), llega después de la animación
+  if (field) {
+    const a = document.activeElement, editing = a && a !== field && /^(INPUT|TEXTAREA)$/.test(a.tagName);
+    setTimeout(() => {
+      if (closed) return;
+      dlog(openedAt, 'foco', `inmediato=${editing}`);
+      try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
+      try { const n = field.value.length; field.setSelectionRange(n, n); } catch (_) {}
+    }, editing ? 0 : ANIM_MS - 20);
+  }
 
   layer.addEventListener('pointerdown', (e) => { if (e.target === layer || e.target.classList.contains('wp-fz-bg')) { e.preventDefault(); close(); } });
   layer.querySelector('.wp-fz-done').addEventListener('click', () => close());
@@ -163,7 +170,7 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
     // Sin animación de salida: al tocar "Listo" la capa se quita de una vez (la animación de
     // salida repintaba lo desenfocado y se veía como destello)
     layer.remove();
-    if (!document.querySelector('.wp-fz')) { document.body.classList.remove('wp-fz-open'); document.dispatchEvent(new Event('wp:zoom-end')); }
+    if (!document.querySelector('.wp-fz')) { document.body.classList.remove('wp-fz-open'); thawBg(); document.dispatchEvent(new Event('wp:zoom-end')); }
     dlog(openedAt, 'cerrado');
   }
   return { layer, card, slot, place, close, count: layer.querySelector('.wp-fz-n') };
