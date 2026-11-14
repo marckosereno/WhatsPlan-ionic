@@ -111,9 +111,11 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   // recién abierta. Ahora solo cierra si el teclado sigue abajo un momento
   // después de haberse visto, y nunca en los primeros 800 ms.
   const openedAt = performance.now();
-  dlog(openedAt, 'abre', `field=${!!field} kbH=${kbH} H0=${H0}`);
+  dlog(openedAt, 'abre', `field=${!!field} kbH=${kbH} H0=${H0} fijos=${window.__fzFrozen}`);
   let kbTimer = 0;
-  const kbUp = () => { const v = window.visualViewport; return !!(v && window.innerHeight - v.height > 120); };
+  // El teclado se mide contra H0 (alto sin teclado), no contra innerHeight: el WebView se encoge
+  // con el teclado y entonces innerHeight == visualViewport.height (se creía que estaba abajo)
+  const kbUp = () => { const v = window.visualViewport; return !!(v && H0 - (v.offsetTop + v.height) > 120); };
   const checkKb = () => {
     if (kbUp()) { kbSeen = true; clearTimeout(kbTimer); kbTimer = 0; return; }
     if (!kbSeen || closed || kbTimer) return;
@@ -156,7 +158,8 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   layer.addEventListener('pointerdown', (e) => { if (e.target === layer || e.target.classList.contains('wp-fz-bg')) { e.preventDefault(); close(); } });
   layer.querySelector('.wp-fz-done').addEventListener('click', () => close());
   let vvRaf = 0;
-  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (closed) return; const v = window.visualViewport; dlog(openedAt, 'teclado', `vv=${Math.round(v?.height || 0)} inner=${window.innerHeight} footer=${Math.round(document.getElementById('wp-footer-menu')?.getBoundingClientRect().top ?? -1)} pin=${getComputedStyle(document.documentElement).getPropertyValue('--fz-top-c')} lado=${Math.round(document.getElementById('wp-side-panel-top')?.getBoundingClientRect().top ?? -1)} activo=${document.activeElement === field}`); place(true); }); };
+  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (closed) return; const v = window.visualViewport; if (v && v.height < 100) return;   // valor transitorio al cambiar el teclado
+      dlog(openedAt, 'teclado', `vv=${Math.round(v?.height || 0)} inner=${window.innerHeight}`); place(true); }); };
   window.visualViewport?.addEventListener('resize', onVv);
   window.addEventListener('resize', onVv);
 
