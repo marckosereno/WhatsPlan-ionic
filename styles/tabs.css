@@ -120,7 +120,12 @@
 /* Con una pestaña abierta (opaca, tapa todo el mapa) el mapa se esconde: aunque no se vea, el WebView
    seguía componiéndolo bajo la hoja de "Tu plan" / "Agregar parada" y eso se veía como parpadeo.
    Se esconde cuando la pestaña ya terminó de entrar (0.45 s) y reaparece al instante al cerrarla */
-body.wp-tab-open #map-container { visibility: hidden; transition: visibility 0s linear 0.45s; }
+body.wp-tab-open #map-container,
+/* lo mismo con lo del mapa que también queda debajo de la pestaña (z-index menor): con una categoría abierta
+   hay panel de resultados, chips, minificha, etc., y eran lo que volvía a causar el destello */
+body.wp-tab-open #map-results-panel, body.wp-tab-open #wp-side-panel-top, body.wp-tab-open #wp-side-panel-bottom,
+body.wp-tab-open #wp-minisnap-panel, body.wp-tab-open #wp-scats, body.wp-tab-open #wp-sresults,
+body.wp-tab-open #wp-focus-bar, body.wp-tab-open #wp-focus-thermo, body.wp-tab-open #wp-focus-compass { visibility: hidden; transition: visibility 0s linear 0.45s; }
 
 /* Con una hoja encima (pasos, "Tu plan") el contenido de la pestaña no se ve (lo tapa el fondo oscuro):
    se esconde para que el WebView no lo componga durante la entrada de la hoja (era el destello) */
