@@ -22,6 +22,7 @@ export function diagFlick(nombre) {
 // Pruebas rápidas desde la consola de Eruda, con la hoja ya abierta (se deshacen recargando la app):
 //   wpX(1) quita TODOS los desenfoques (backdrop-filter) · wpX(2) cancela TODAS las animaciones
 //   wpX(3) esconde el mapa · wpX(4) quita solo el desenfoque de la barra de la hoja
+//   wpXarm = n  (escribe: wpXarm = 6) aplica esa prueba automáticamente al ABRIR cada hoja, para ver si evita el destello de entrada
 //   wpX(5) esconde los paneles del mapa (lateral, menú, botones de arriba) · wpX(6) esconde la pestaña de atrás
 window.wpX = (n) => {
   const q = (sel) => document.querySelectorAll(sel);
