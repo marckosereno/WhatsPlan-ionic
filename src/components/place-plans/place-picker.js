@@ -6,7 +6,7 @@
 // mientras escribes. Tocar un lugar lo elige y cierra.
 //
 // Uso:
-//   openPlacePicker({ from, search(q) → [{ place, sub }], face(p), esc(t), isOn(p), onPick(p), haptic, label?, onClose? })
+//   openPlacePicker({ from, search(q) → [{ place, sub }], face(p), emoji?(p), esc(t), isOn(p), onPick(p), haptic, label?, onClose? })
 // Estilos: los mismos de people-picker (.wp-pp-*)
 // ════════════════════════════════════════════════════════════════════
 import { openZoom } from '/src/components/place-plans/focus-zoom.js';
@@ -14,7 +14,7 @@ import { addElastic } from '/src/components/place-plans/elastic.js';
 
 const TICK = '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-export function openPlacePicker({ from, search, face, esc, isOn, onPick, haptic = () => {}, label = 'Buscar un lugar', doneLabel = 'Listo', onClose }) {
+export function openPlacePicker({ from, search, face, emoji = () => '', esc, isOn, onPick, haptic = () => {}, label = 'Buscar un lugar', doneLabel = 'Listo', onClose }) {
   const box = document.createElement('div');
   box.className = 'wp-pp';
   box.innerHTML = `<input class="wp-fz-field" type="search" placeholder="Buscar un lugar" autocomplete="off" enterkeyhint="search">
@@ -24,7 +24,7 @@ export function openPlacePicker({ from, search, face, esc, isOn, onPick, haptic 
   const paint = () => {
     hits = search(field.value.trim());
     list.innerHTML = hits.length ? hits.map(({ place: p, sub }, i) => `<button type="button" class="wp-pp-row${isOn(p) ? ' on' : ''}" data-i="${i}">
-        <i class="wp-seal" style="background-image:url('${face(p)}')"></i>
+        ${(() => { const u = face(p); return `<i class="wp-seal"${u ? ` style="background-image:url('${u}')"` : ''}>${u ? '' : emoji(p)}</i>`; })()}
         <span><b>${esc(p.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><em>${TICK}</em></button>`).join('')
       : '<p class="wp-st-empty">No encontramos ese lugar</p>';
     z?.place(false);
