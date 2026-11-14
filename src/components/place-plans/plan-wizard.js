@@ -339,7 +339,7 @@ export class PlanWizard {
     box.addEventListener('click', async (e) => {
       const b = e.target.closest('button[data-x]'); if (!b) return;
       if (b.dataset.x === 'ok') { w.screen.close(); return; }
-      if (b.dataset.x === 'stop') { w.screen.close(); setTimeout(() => this._openStopFlow(plan), 140); return; }
+      if (b.dataset.x === 'stop') { w.screen.close(); setTimeout(() => this._openStopFlow(plan), 380); return; }
       try {
         if (navigator.share) await navigator.share({ title, text: txt });
         else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
