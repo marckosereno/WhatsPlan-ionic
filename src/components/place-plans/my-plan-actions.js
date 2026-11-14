@@ -28,7 +28,7 @@ export class MyPlanActions {
     if (act === 'share') this._planShare(a);
     else if (act === 'route') { close(); setTimeout(() => this._planShowRoute(a), 200); }
     else if (act === 'others') { close(); setTimeout(() => this._openPlansHereSheet(), 360); }
-    else if (act === 'addstop') { close(); setTimeout(() => this._openStopFlow(a), 140); }
+    else if (act === 'addstop') { close(); setTimeout(() => this._openStopFlow(a), 380); }   // espera a que "Tu plan" termine de irse
     else if (act === 'time') this._mpTime(ctx, b);
     else if (act === 'dur') this._mpDur(ctx, b);
     else if (act === 'cupo') this._mpCupo(ctx, b);

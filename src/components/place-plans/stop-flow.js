@@ -54,7 +54,7 @@ export class StopFlow {
       doneLabel: 'Agregar parada',
       haptic: (k) => this._haptic?.(k),
       onDone: () => this._sfSave(f),
-      onClose: () => setTimeout(() => this._openMyPlanSheet(f.a), 120),
+      onClose: () => setTimeout(() => this._openMyPlanSheet(f.a), 380),   // después de que la hoja anterior terminó de irse (340 ms): dos hojas a la vez parpadeaban
       steps: [
         { title: '¿Qué van a hacer?', sub: `Después de ${this._esc(f.fromName)}`, mount: (el) => this._sfMountWhat(f, el), valid: () => !!f.act },
         { title: '¿Dónde?', sub: 'Cerca de la parada anterior', mount: (el, sec) => this._sfMountWhere(f, el, sec), valid: () => !!this._sfWhere(f), onEnter: () => this._sfPaintPlaces(f) },
