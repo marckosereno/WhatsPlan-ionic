@@ -60,7 +60,7 @@ export class NewPlan {
   _npMountWhere(w, el, sec) {
     w.whereEl = el; w.whereSub = sec.querySelector('.wp-st-sub');
     el.innerHTML = `
-      <button type="button" class="wp-st-search" data-q>${SEARCH}<span>Buscar un lugar</span></button>
+      <button type="button" class="wp-st-search wp-seats-q" data-q>${SEARCH}<span>Buscar un lugar</span></button>
       <button type="button" class="wp-st-row wp-st-map" data-a="map"><span class="wp-st-row-ph wp-st-map-ic">${MAP}</span>
         <span class="wp-st-row-t"><b>Elegir en el mapa</b><small>Un pin, cualquier punto o tu ubicación</small></span></button>
       <div class="wp-st-picked"></div>
@@ -101,6 +101,7 @@ export class NewPlan {
     openPlacePicker({
       from, esc: (t) => this._esc(t), haptic: (k) => this._haptic?.(k),
       face: (p) => this._esc(p.photoUrl || p.photosUrls?.[0] || ''),
+      emoji: (p) => this._stopEmoji(p.category),
       search: (q) => this._npCandidates(w, q).map(([p, d]) => ({ place: p, sub: `${p.rating ? `★ ${parseFloat(p.rating).toFixed(1)} · ` : ''}${o ? kmTxt(d) : (p.formattedAddress || '')}` })),
       isOn: (p) => !!w.pick && String(w.pick.place_id) === String(p.place_id),
       onPick: (p) => { w.pick = { ...p, category: this._sfAct(w)?.cat || p.category, viaSearch: true }; },
@@ -117,7 +118,8 @@ export class NewPlan {
     w.res = res.map(r => r[0]);
     // lo elegido en el mapa (punto propio o pin) va arriba, marcado
     const pk = w.pick, fromMap = pk && (pk.custom || !w.res.some(p => String(p.place_id) === String(pk.place_id)));
-    el.querySelector('.wp-st-picked').innerHTML = fromMap ? `<div class="wp-st-row on"><span class="wp-st-row-ph">${pk.custom ? this._esc(pk.emoji || '📍') : this._stopEmoji(pk.category)}</span>
+    const pph = pk && !pk.custom ? (pk.photoUrl || pk.photosUrls?.[0] || '') : '';
+    el.querySelector('.wp-st-picked').innerHTML = fromMap ? `<div class="wp-st-row on"><span class="wp-st-row-ph"${pph ? ` style="background-image:url('${this._esc(pph)}')"` : ''}>${pph ? '' : pk.custom ? this._esc(pk.emoji || '📍') : this._stopEmoji(pk.category)}</span>
         <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>${pk.viaSearch ? 'Elegido' : 'Elegido en el mapa'}</small></span><i class="wp-st-radio"></i></div>` : '';
     const list = el.querySelector('.wp-st-list');
     if (!w.all.length) { list.innerHTML = '<p class="wp-st-empty">Cargando lugares…</p>'; return; }

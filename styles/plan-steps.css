@@ -395,7 +395,7 @@ textarea.wp-st-in { height: auto; min-height: 110px; padding: 14px 18px; line-he
 .wp-pp-list::-webkit-scrollbar { display: none; }
 .wp-pp-row { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px; border: none; border-radius: 18px; background: none; text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .wp-pp-row.on { background: var(--wp-blue-soft, #e8f0ff); }
-.wp-pp-row i { flex: none; width: 46px; height: 46px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; }
+.wp-pp-row i { flex: none; width: 46px; height: 46px; border-radius: 50%; background: #e5e7eb center / cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 22px; font-style: normal; }
 .wp-pp-row span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wp-pp-row b { font-size: 15px; font-weight: 800; color: var(--wp-ink, #14121f); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wp-pp-row small { font-size: 12.5px; color: var(--wp-sub, #8a879a); }

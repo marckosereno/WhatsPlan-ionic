@@ -18,6 +18,7 @@
 import { attachPulse } from '/src/components/place-plans/pulse.js';
 
 const GAP = 14;
+let kbH = 0;   // alto del teclado visto la última vez (para acomodar la tarjeta antes de que salga)
 
 const safeArea = () => {
   const p = document.createElement('div');
@@ -37,13 +38,20 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   document.body.appendChild(layer);
   attachPulse(layer);
   const safeTop = safeArea();
-  let kbSeen = false, closed = false;
+  let kbSeen = false, closed = false, settled = !field;
 
-  // Centrar la tarjeta en el espacio libre (barra de estado ↔ teclado)
+  // Centrar la tarjeta en el espacio libre (barra de estado ↔ teclado).
+  // Con un campo, el teclado va a subir unos ms después de abrir: la tarjeta
+  // se acomoda desde el primer cuadro para el espacio que quedará con él
+  // (alto del teclado de la última vez, o un cálculo) y así el zoom llega a su
+  // lugar de una sola vez, en vez de ir al centro de la pantalla completa y
+  // brincar hacia arriba cuando el teclado sale.
   const place = (animate = true) => {
     const vv = window.visualViewport;
+    if (kbUp()) kbH = window.innerHeight - vv.height;
+    const expect = !settled && !kbUp() ? (kbH || Math.round(window.innerHeight * 0.38)) : 0;
     const top = (vv?.offsetTop || 0) + safeTop + GAP;
-    const bottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - GAP;
+    const bottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - expect - GAP;
     card.style.maxHeight = `${bottom - top}px`;
     const h = card.offsetHeight;
     card.style.transition = animate ? 'top 0.32s cubic-bezier(0.32, 0.72, 0, 1)' : 'none';
@@ -73,6 +81,8 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
       { duration: 380, easing: 'cubic-bezier(0.34, 1.4, 0.64, 1)' });
   }
   requestAnimationFrame(() => layer.classList.add('in'));
+  // Si el teclado no sale (teclado físico, escritorio), se recentra en el espacio completo
+  if (field) setTimeout(() => { settled = true; if (!closed && !kbUp()) place(true); }, 1200);
   if (field) setTimeout(() => {   // el foco pasa después del evento de foco del original
     try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
     try { const n = field.value.length; field.setSelectionRange(n, n); } catch (_) {}
