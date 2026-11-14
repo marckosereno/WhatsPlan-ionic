@@ -30,6 +30,7 @@ export const ICON_BACK = '<svg width="20" height="20" viewBox="0 0 512 512" fill
 export function attachSheet(root, close, handleSel = '.wp-st-top') {
   root.classList.add('sheet');
   diagFlick(root.querySelector('.wp-st-title') ? 'Tu plan/hoja' : 'pasos');
+  if (window.wpXarm) { try { window.wpX(window.wpXarm); } catch (_) {} }   // diagnóstico: aplica wpX(n) al ABRIR cada hoja
   const scrim = document.createElement('div');
   scrim.className = 'wp-st-scrim';
   document.body.insertBefore(scrim, root);
