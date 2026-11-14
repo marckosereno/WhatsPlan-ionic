@@ -84,13 +84,14 @@ function customSheet(coords, emoji, onConfirm, onCancel) {
   map.flyTo({ center: [coords.lng, coords.lat], zoom: Math.max(map.getZoom(), 17), duration: 350 });
 
   const el = document.createElement('div'); el.className = 'wp-pk wp-pk-sheet';
-  el.innerHTML = `<div class="wp-pk-name"><input type="text" data-zoom="Nombre del lugar" maxlength="50" placeholder="Ponle nombre al lugar (opcional)" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></div>
+  el.innerHTML = `<div class="wp-pk-name"><input type="text" data-zoom="Nombre del lugar" maxlength="50" placeholder="Ponle nombre al lugar" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></div>
     <p class="wp-pk-tip">Arrastra el mapa para mover el punto</p>
     <div class="wp-pk-bar"><button type="button" class="wp-pk-x" data-a="no" aria-label="Cancelar">${X}</button>
       <button type="button" class="wp-pk-x" data-a="ok" aria-label="Listo">${GO}</button></div>`;
   document.body.appendChild(el);
   const tip = el.querySelector('.wp-pk-tip'); setTimeout(() => tip.classList.add('off'), 2600);
   const input = el.querySelector('input');   // sin foco automático: el teclado solo sale si lo tocan
+  input.addEventListener('input', () => input.closest('.wp-pk-name').classList.remove('need'));
 
   const cleanup = () => {
     map.off('move', follow); window.visualViewport?.removeEventListener('resize', pad);
@@ -99,7 +100,12 @@ function customSheet(coords, emoji, onConfirm, onCancel) {
   el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     if (b.dataset.a === 'no') { cleanup(); onCancel(); }
-    else { const c = map.getCenter(); const name = input.value.trim() || 'Punto en el mapa'; cleanup(); onConfirm({ name, lat: c.lat, lng: c.lng, custom: true, emoji }); }
+    else {
+      // El nombre es obligatorio: sin él el lugar sale como "Punto en el mapa" en las rutas y resúmenes
+      const name = input.value.trim();
+      if (!name) { const box = input.closest('.wp-pk-name'); box.classList.remove('need'); void box.offsetWidth; box.classList.add('need'); try { mv.haptic?.('warning'); } catch (_) {} input.focus(); return; }
+      const c = map.getCenter(); cleanup(); onConfirm({ name, lat: c.lat, lng: c.lng, custom: true, emoji });
+    }
   });
   return cleanup;
 }

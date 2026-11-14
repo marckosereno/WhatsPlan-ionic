@@ -2337,7 +2337,12 @@ export class ActivityModal {
     });
 
     confirmBtn.addEventListener('click', () => {
-      const name = document.getElementById('custom-place-name')?.value.trim() || 'Punto en el mapa';
+      const nameEl = document.getElementById('custom-place-name');
+      const name = nameEl?.value.trim();
+      if (!name) {   // el nombre es obligatorio
+        if (nameEl) { nameEl.style.borderColor = '#ef4444'; nameEl.focus(); setTimeout(() => { nameEl.style.borderColor = ''; }, 900); }
+        return;
+      }
       // Si allowReposition, usar el centro actual del mapa como coords finales
       if (allowReposition && mapView?.map) {
         const c = mapView.map.getCenter();
