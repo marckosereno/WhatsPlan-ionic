@@ -9,7 +9,7 @@
 //   openPeoplePicker({ from, people, face(p), esc(t), isOn(id), onToggle(id), haptic, label?, onClose? })
 // Estilos: /styles/plan-steps.css (.wp-pp-*)
 // ════════════════════════════════════════════════════════════════════
-import { openZoom } from '/src/components/place-plans/focus-zoom.js';
+import { openZoom, fadeEdges } from '/src/components/place-plans/focus-zoom.js';
 import { addElastic } from '/src/components/place-plans/elastic.js';
 
 const TICK = '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 6 9 17l-5-5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -33,6 +33,7 @@ export function openPeoplePicker({ from, people, face, esc, isOn, onToggle, hapt
     list.innerHTML = hits.length ? hits.map(row).join('')
       : `<p class="wp-st-empty">${people.length ? 'Nadie con ese nombre' : 'Cuando sigas a alguien, aquí podrás invitarlo'}</p>`;
     z?.place(false);
+    fl();
   };
   field.addEventListener('input', paint);
   field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); field.blur(); } });
@@ -43,6 +44,7 @@ export function openPeoplePicker({ from, people, face, esc, isOn, onToggle, hapt
     b.classList.toggle('on', isOn(b.dataset.id));
   });
   // La lista se llena ANTES de abrir la tarjeta (ver place-picker.js)
+  const fl = fadeEdges(list);
   paint();
   z = openZoom({ from: from?.getBoundingClientRect(), label, content: box, field, kbClose: false, onClose, doneLabel });
   addElastic(list, 'y');

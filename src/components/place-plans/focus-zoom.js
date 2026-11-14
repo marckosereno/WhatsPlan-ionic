@@ -29,6 +29,22 @@ const safeArea = () => {
   return top;
 };
 
+// Velo: el contenido que se desliza se desvanece contra la barra de arriba y el botón de abajo
+// en vez de cortarse de golpe. Solo en el borde que tiene más contenido más allá (arriba al haber
+// deslizado, abajo si falta por ver); sin desborde no hace nada. Devuelve la función que lo repinta.
+export function fadeEdges(el, size = 18) {
+  const upd = () => {
+    const over = el.scrollHeight > el.clientHeight + 1;
+    el.classList.toggle('wp-fz-fade', over);
+    el.style.setProperty('--ft', over && el.scrollTop > 2 ? `${size}px` : '0px');
+    el.style.setProperty('--fb', over && el.scrollTop + el.clientHeight < el.scrollHeight - 2 ? `${size}px` : '0px');
+  };
+  el.addEventListener('scroll', upd, { passive: true });
+  try { new ResizeObserver(upd).observe(el); } catch (_) {}
+  upd();
+  return upd;
+}
+
 export function openZoom({ from, label = '', content, field = null, kbClose = true, count = false, onClose, doneLabel = 'Listo' }) {
   const layer = document.createElement('div');
   layer.className = 'wp-fz';
@@ -37,7 +53,9 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   if (typeof content === 'string') slot.innerHTML = content; else if (content) slot.appendChild(content);
   document.body.appendChild(layer);
   attachPulse(layer);
+  fadeEdges(slot);
   const safeTop = safeArea();
+  const H0 = Math.max(window.innerHeight, window.visualViewport?.height || 0);
   let kbSeen = false, closed = false, settled = !field;
 
   // Centrar la tarjeta en el espacio libre (barra de estado ↔ teclado).
@@ -47,11 +65,14 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
   // lugar de una sola vez, en vez de ir al centro de la pantalla completa y
   // brincar hacia arriba cuando el teclado sale.
   const place = (animate = true) => {
-    const vv = window.visualViewport;
-    if (kbUp()) kbH = window.innerHeight - vv.height;
-    const expect = !settled && !kbUp() ? (kbH || Math.round(window.innerHeight * 0.38)) : 0;
+    const vv = window.visualViewport, H = H0;   // alto SIN teclado (sirve igual si el WebView se encoge o no con él)
+    const kbNow = vv ? Math.max(0, H - (vv.offsetTop + vv.height)) : 0;
+    if (kbNow > 120) kbH = kbNow;
+    // Teclado que se reserva: el real, o —mientras sale— el esperado. Nunca los dos
+    // sumados (el teclado a medio subir encogía la tarjeta y luego se estiraba: parpadeo).
+    const reserved = settled ? kbNow : Math.max(kbNow, kbH || Math.round(H * 0.38));
     const top = (vv?.offsetTop || 0) + safeTop + GAP;
-    const bottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - expect - GAP;
+    const bottom = H - reserved - GAP;
     card.style.maxHeight = `${bottom - top}px`;
     const h = card.offsetHeight;
     card.style.transition = animate ? 'top 0.32s cubic-bezier(0.32, 0.72, 0, 1)' : 'none';
@@ -90,7 +111,8 @@ export function openZoom({ from, label = '', content, field = null, kbClose = tr
 
   layer.addEventListener('pointerdown', (e) => { if (e.target === layer) { e.preventDefault(); close(); } });
   layer.querySelector('.wp-fz-done').addEventListener('click', () => close());
-  const onVv = () => place(true);
+  let vvRaf = 0;
+  const onVv = () => { if (vvRaf) return; vvRaf = requestAnimationFrame(() => { vvRaf = 0; if (!closed) place(true); }); };
   window.visualViewport?.addEventListener('resize', onVv);
   window.addEventListener('resize', onVv);
 
