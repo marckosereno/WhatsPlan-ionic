@@ -468,3 +468,13 @@ body.wp-picking #map-gps-btn, body.wp-picking #map-live-badge { opacity: 0 !impo
 /* Aviso al elegir un lugar que ya está en el plan (pastilla de arriba / tip de la hoja del punto) */
 .wp-pk-hint.bad { background: linear-gradient(180deg, #ff4d4d, #e60000); color: #fff; }
 .wp-pk-tip.bad { background: linear-gradient(180deg, #ff4d4d, #e60000); color: #fff; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+
+/* "Cambiar emoji" del punto propio: botón entre cancelar y listo + ruleta encima de la barra */
+.wp-pk-emo { flex: none; height: 52px; padding: 0 20px 0 14px; border: none; border-radius: 999px; display: flex; align-items: center; gap: 8px; font: inherit; font-size: 14px; font-weight: 700;
+  color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); box-shadow: 0 6px 16px rgba(20, 18, 31, 0.28); cursor: pointer; }
+.wp-pk-emo-e { font-size: 24px; line-height: 1; }
+.wp-pk-emo.on { box-shadow: 0 0 0 2px #fff, 0 6px 16px rgba(20, 18, 31, 0.28); }
+.wp-pk-emo:active { transform: scale(0.96); }
+.wp-pk-dialbox { position: fixed; left: 16px; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); padding: 6px 20px 2px; border-radius: 28px; background: #fff;
+  box-shadow: 0 8px 28px rgba(20, 18, 31, 0.22); pointer-events: auto; overflow: hidden; z-index: 1; }
+.wp-pk-dialbox[hidden] { display: none; }

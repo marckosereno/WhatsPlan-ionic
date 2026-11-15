@@ -974,6 +974,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
   const exit = (goBack = true, instant = false) => {
     if (window.wpApp._focusExit !== exit) return;
     window.wpApp._focusExit = null;
+    if (goBack && !instant && typeof opts.onBackNow === 'function') opts.onBackNow();   // pantalla que entra YA, encima del mapa (sin ver el mapa de paso)
     document.removeEventListener('wp:focus-exit', onExt);
     document.removeEventListener('wp:visit', onVisit);
     map?.off?.('moveend', repaint);

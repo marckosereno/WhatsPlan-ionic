@@ -1672,7 +1672,8 @@ export class MapView {
       // categorías: cada uno usa la suya, no la que estaba abierta antes.
       const pCat      = this._mixedCats ? this._catOf(place) : cat;
       const subIcon3d = getSubcatIcon3d(place, this._mixedCats ? place.category : this.currentCatId);
-      const catIcon    = buildIconHtml(subIcon3d || pCat?.icon3d || null, pCat?.icon || '💎', 20);
+      // Punto propio con emoji elegido (paradas de un plan): ese emoji es su pin
+      const catIcon    = place.pinEmoji ? `<span class="wp-pin-emoji">${place.pinEmoji}</span>` : buildIconHtml(subIcon3d || pCat?.icon3d || null, pCat?.icon || '💎', 20);
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';

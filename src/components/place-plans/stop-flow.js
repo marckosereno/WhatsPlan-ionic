@@ -175,7 +175,7 @@ export class StopFlow {
     // lo elegido con el buscador (que no está entre los sugeridos) va arriba, marcado
     const pk = f.custom || f.place, extra = pk && (f.custom || !f.res.some(p => String(p.place_id) === String(pk.place_id)));
     const pph = pk && !f.custom ? (pk.photoUrl || pk.photosUrls?.[0] || '') : '';
-    el.querySelector('.wp-st-picked').innerHTML = extra ? `<div class="wp-st-row on"><span class="wp-st-row-ph"${pph ? ` style="background-image:url('${this._esc(pph)}')"` : ''}>${pph ? '' : (f.custom ? (this._sfAct(f)?.emoji || '📍') : this._stopEmoji(pk.category))}</span>
+    el.querySelector('.wp-st-picked').innerHTML = extra ? `<div class="wp-st-row on"><span class="wp-st-row-ph"${pph ? ` style="background-image:url('${this._esc(pph)}')"` : ''}>${pph ? '' : (f.custom ? (f.custom.emoji || this._sfAct(f)?.emoji || '📍') : this._stopEmoji(pk.category))}</span>
         <span class="wp-st-row-t"><b>${this._esc(pk.name)}</b><small>${f.custom ? 'Elegido en el mapa' : 'Elegido'}</small></span><i class="wp-st-radio"></i></div>` : '';
     const list = el.querySelector('.wp-st-list');
     const k = '';
@@ -197,9 +197,10 @@ export class StopFlow {
     this._haptic?.('light');
     pickPlaceOnMap({
       cat: A?.cat, emoji: A?.emoji,
+      emojis: f.acts.filter(x => x.cat === f.cat).map(x => ({ key: x.key, emoji: x.emoji, label: x.label })),   // la ruleta del nombre del plan: el emoji elegido es el pin del punto
       reject: (p) => this._sfInPlan(f, p),
       onPick: (p) => {
-        if (p.custom) { f.place = null; f.custom = { place_id: `custom:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: p.name, lat: p.lat, lng: p.lng, category: A?.cat }; }
+        if (p.custom) { f.place = null; f.custom = { place_id: `custom:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: p.name, lat: p.lat, lng: p.lng, category: A?.cat, emoji: p.pinEmoji || p.emoji }; }
         else { f.custom = null; f.place = { ...p, category: A?.cat || p.category }; }
         this._sfPaintPlaces(f); f.screen.refresh();   // se queda en el paso 2 (como al elegir de la lista): avanza con "Siguiente"
       },
@@ -309,7 +310,7 @@ export class StopFlow {
       place_id: String(W.place_id), name: W.name || W.displayName || 'Lugar',
       lat: W.lat != null ? Number(W.lat) : undefined, lng: W.lng != null ? Number(W.lng) : undefined,
       cat: W.category || A.cat || '', after: f.base + f.gap, dur: f.dur,
-      act: A.key, emoji: A.emoji,
+      act: A.key, emoji: (String(W.place_id).startsWith('custom:') && W.emoji) || A.emoji,   // punto propio: el emoji elegido es su pin en el mapa
       note: f.note.trim() || undefined, address: W.address || W.formattedAddress || undefined,
     };
     const next = [...f.cur, stop];
