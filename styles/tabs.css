@@ -130,3 +130,8 @@ body.wp-tab-open #wp-focus-bar, body.wp-tab-open #wp-focus-thermo, body.wp-tab-o
 /* Con una hoja encima (pasos, "Tu plan") el contenido de la pestaña no se ve (lo tapa el fondo oscuro):
    se esconde para que el WebView no lo componga durante la entrada de la hoja (era el destello) */
 body.wp-sheet-open .wp-tab-vp { visibility: hidden; }
+
+/* "Elegir en el mapa" desde una hoja abierta sobre una pestaña (Tu plan → Agregar parada): la pestaña (opaca)
+   se esconde y el mapa se muestra, si no solo se veía el fondo celeste con blanco */
+body.wp-picking .wp-tab { visibility: hidden; pointer-events: none; }
+body.wp-tab-open.wp-picking #map-container { visibility: visible; transition: none; }
