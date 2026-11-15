@@ -1460,12 +1460,14 @@ export class MapView {
         : count > 1 ? `${count}` : `${activity.participants?.length || 0}/${activity.max_participants || '∞'}`;
       const fallback = TYPE_FALLBACK[activity.type] || '💎';
       const iconUrl  = activity.icon_url || TYPE_ICONS[activity.type] || (R3D+'Balloon/3D/balloon_3d.png');
+      // Plan en un punto propio: su pin es el emoji que se eligió en el paso del nombre del plan
+      const planEmoji = !activity.icon_url ? window.wpApp?.placeModal?._planEmoji?.(activity.type) : '';
 
       const el = document.createElement('div');
       el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
       el.innerHTML = `
         <div class="wp-act-pin${allFull ? ' full' : ''}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
-          <img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">
+          ${planEmoji ? `<span style="font-size:30px;line-height:1;${allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25))'}">${planEmoji}</span>` : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
           <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
         </div>
         <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
