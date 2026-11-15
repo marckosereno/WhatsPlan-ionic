@@ -3,6 +3,7 @@ import { declutterLabels, typeLabel } from '/src/components/map/label-declutter.
 import { pinColor } from '/src/components/map/pin-palette.js';
 import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
+import { paintSeals } from '/src/components/map/plan-seal.js';
 import { planEmoji, onPlanEmojiReady } from '/src/components/map/plan-emoji.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -1470,7 +1471,7 @@ export class MapView {
       el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
       el.innerHTML = `
         <div class="wp-act-pin${allFull ? ' full' : ''}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
-          ${pinEmo ? `<span style="font-size:30px;line-height:1;${allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25))'}">${pinEmo}</span>` : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
+          ${pinEmo && activity.creator_id ? `<i class="wp-seal wp-pin-seal${allFull ? ' full' : ''}" data-uid="${activity.creator_id}"></i>` : pinEmo ? `<span style="font-size:30px;line-height:1;${allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25))'}">${pinEmo}</span>` : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
           <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
         </div>
         <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
@@ -1486,6 +1487,7 @@ export class MapView {
       });
 
       this.activityMarkers.push(marker);
+      paintSeals(el);
     });
 
     console.log(`${this.activityMarkers.length} pines de actividad en el mapa`);
