@@ -61,16 +61,19 @@ export class PlanStops {
     const main = byId(a.place_id) || (a.lat != null && a.lng != null
       ? { place_id: a.place_id, name: a.place_name || 'Punto en el mapa', displayName: a.place_name || 'Punto en el mapa', lat: Number(a.lat), lng: Number(a.lng), location: { lat: Number(a.lat), lng: Number(a.lng) }, category: a.category }
       : back);
-    const list = [main, ...(a.stops || []).filter(x => x.lat != null && x.lng != null).map(x => byId(x.place_id) || { place_id: x.place_id, name: x.name, displayName: x.name, lat: x.lat, lng: x.lng, location: { lat: x.lat, lng: x.lng }, category: x.cat })].filter(Boolean);
+    const list = [main, ...(a.stops || []).filter(x => x.lat != null && x.lng != null).map(x => byId(x.place_id) || { pinEmoji: String(x.place_id).startsWith('custom:') ? x.emoji : undefined, place_id: x.place_id, name: x.name, displayName: x.name, lat: x.lat, lng: x.lng, location: { lat: x.lat, lng: x.lng }, category: x.cat })].filter(Boolean);
     // Desde "Tu plan" (dentro de una pestaña opaca) el mapa quedaba tapado: se cierra la pestaña para verlo.
     // Al volver se reabre la pestaña Planes y "Tu plan" encima, para que su flecha de regreso lleve a Planes
     const fromPlans = !!document.getElementById('wp-tab-plans');
     closeTabScreens();
     window.wpApp?.showPlacesOnMap?.(list, a.title, {
+      // Planes entra en el mismo instante en que se toca "Volver" (no después de que el mapa se limpia) y
+      // "Tu plan" sube encima en cuanto el mapa termina de salir
+      onBackNow: () => { if (fromPlans) { try { window.wpApp?.plansTab?.open(); } catch (_) {} } },
       onBack: () => {
         try {
           const pt = window.wpApp?.plansTab;
-          if (fromPlans && pt) { pt.open(); setTimeout(() => { try { pt._openPlan(a); } catch (_) { this._openMyPlanSheet(a); } }, 380); }
+          if (fromPlans && pt) { try { pt._openPlan(a); } catch (_) { this._openMyPlanSheet(a); } }
           else this._openMyPlanSheet(a);
         } catch (_) {}
       },
