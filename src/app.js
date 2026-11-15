@@ -52,6 +52,7 @@ attachFocusZoom(document);
 // el perfil ya tienen su estilo y no se ven "rotos" encima del mapa. Se
 // agregan después de las de la ficha, en el mismo orden que antes.
 ensureCss('wp-tabs-css', '/styles/tabs.css');
+ensureCss('wp-ppc-css', '/styles/plan-pin-card.css');
 ensureCss('wp-ph-css', '/styles/plans-here.css');
 ensureCss('wp-chat-css', '/styles/chat.css');
 ensureCss('wps-styles', '/styles/search.css');
@@ -1479,13 +1480,7 @@ function setupActivitySubscription(mv) {
     // Tap en un pin de actividad (custom point) en el mapa
     document.addEventListener('wp:activity-tap', (e) => {
       const { activity, group } = e.detail;
-      if (group.length > 1) {
-        console.log('🧭 Grupo de actividades:', group);
-        // TODO: carrusel si hay varias actividades en el mismo punto
-      } else {
-        console.log('🧭 Actividad:', activity);
-        // TODO: popup de detalles + botón unirse (ActivityService.joinActivity)
-      }
+      import('/src/components/plan-pin-card.js').then(m => m.showPlanPinCard(group?.length ? group : [activity]));
     });
 
     // Pulse spring universal
