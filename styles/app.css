@@ -1588,3 +1588,6 @@ body .subcat-chip-badge { top: -8px; }
 
 /* Pin de un punto propio con el emoji que eligió quien armó el plan */
 .wp-pin-emoji { display: block; font-size: 20px; line-height: 1; }
+
+/* Avatar de quien organiza, en sello (minimodal del pin de un plan) */
+.wp-pin-seal { display: block; flex: none; width: 44px; height: 44px; background: #d1d5db center / cover; }
