@@ -197,6 +197,7 @@ export class StopFlow {
     this._haptic?.('light');
     pickPlaceOnMap({
       cat: A?.cat, emoji: A?.emoji,
+      reject: (p) => this._sfInPlan(f, p),
       onPick: (p) => {
         if (p.custom) { f.place = null; f.custom = { place_id: `custom:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: p.name, lat: p.lat, lng: p.lng, category: A?.cat }; }
         else { f.custom = null; f.place = { ...p, category: A?.cat || p.category }; }
@@ -208,6 +209,20 @@ export class StopFlow {
   }
 
   _sfClearOwn(f) { f.custom = null; }
+
+  // ¿Ese lugar ya está en el plan (el primero o una parada)? Devuelve el aviso, o '' si se puede elegir.
+  // Un pin se compara por id; un punto propio por nombre o por cercanía (≤ 40 m)
+  _sfInPlan(f, p) {
+    const inPlan = [{ place_id: f.a.place_id, name: f.a.place_name, lat: f.a.lat, lng: f.a.lng }, ...f.cur];
+    const same = (x) => {
+      if (!p.custom && String(x.place_id) === String(p.place_id)) return true;
+      if (p.custom && norm(x.name || '') && norm(x.name || '') === norm(p.name || '')) return true;
+      return p.custom && x.lat != null && x.lng != null && this._distM({ lat: Number(x.lat), lng: Number(x.lng) }, p) <= 40;
+    };
+    const hit = inPlan.find(same);
+    if (!hit) return '';
+    return p.custom ? `Ese punto está muy cerca de ${hit.name || 'un lugar'}, que ya está en el plan` : `${hit.name || p.name} ya está en tu plan`;
+  }
 
   // ── Paso 3 · a qué hora ───────────────────────────────────────────────
   _sfMountTime(f, el) {

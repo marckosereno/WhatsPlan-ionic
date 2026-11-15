@@ -12,6 +12,7 @@
 // Uso: pickPlaceOnMap({ cat, onPick(place), onCancel() }) → { stop() }
 //   place = lugar del mapa  { name, lat, lng, place_id }
 //         | punto propio    { name, lat, lng, custom: true, emoji }
+//   reject(place) → texto de por qué NO se puede elegir (ya está en el plan, etc.): se avisa y se sigue eligiendo
 //   emoji = el ícono del tipo de plan elegido en el paso 1, tal cual (el mismo
 //   que luego trae el paso del nombre). El nombre va aparte, sin emoji; no se
 //   abre el teclado hasta que el usuario toque el campo.
@@ -21,7 +22,7 @@ const X = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="c
 const GO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const NAV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11 21 3l-8 18-2-7z"/></svg>';
 
-export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel }) {
+export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel, reject }) {
   const mv = window.wpApp?.mapView;
   if (!mv?.map || !mv.enablePickMode) { onCancel?.(); return { stop() {} }; }
   document.body.classList.add('wp-picking');
@@ -51,8 +52,13 @@ export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel }) {
     // Con el sheet abierto, tocar el mapa solo recoloca el punto (el mapa ya
     // se centró ahí): no se abre otro sheet ni vuelve el pin azul
     if (sheetCleanup) { mv._removePickPin?.(); return; }
-    if (p.customPoint) { mv._removePickPin?.(); top.hidden = true; foot.hidden = true; sheetCleanup = customSheet(p, emoji, (place) => done(place), () => { sheetCleanup = null; end(); onCancel?.(); }); }
-    else done({ name: p.name, lat: p.lat, lng: p.lng, place_id: p.place_id });
+    if (p.customPoint) { mv._removePickPin?.(); top.hidden = true; foot.hidden = true; sheetCleanup = customSheet(p, emoji, reject, (place) => done(place), () => { sheetCleanup = null; end(); onCancel?.(); }); }
+    else {
+      const place = { name: p.name, lat: p.lat, lng: p.lng, place_id: p.place_id };
+      const why = reject?.(place);
+      if (why) { mv._removePickPin?.(); mv.haptic?.('warning'); window.wpApp?.showMapToast?.(why, '#ef4444', 3500); return; }   // se queda en el modo de elegir
+      done(place);
+    }
   };
   foot.querySelector('.wp-pk-gps').onclick = (e) => {
     const b = e.currentTarget, label = b.querySelector('span');
@@ -72,7 +78,7 @@ export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel }) {
 
 // Nombre (opcional) del punto propio; el emoji ya viene del paso 1 y el pin
 // sigue al centro del mapa para recolocarlo
-function customSheet(coords, emoji, onConfirm, onCancel) {
+function customSheet(coords, emoji, reject, onConfirm, onCancel) {
   const mv = window.wpApp.mapView, map = mv.map;
   let marker = null;
   const mk = document.createElement('div'); mk.className = 'wp-pk-mk'; mk.textContent = emoji;
@@ -104,7 +110,10 @@ function customSheet(coords, emoji, onConfirm, onCancel) {
       // El nombre es obligatorio: sin él el lugar sale como "Punto en el mapa" en las rutas y resúmenes
       const name = input.value.trim();
       if (!name) { const box = input.closest('.wp-pk-name'); box.classList.remove('need'); void box.offsetWidth; box.classList.add('need'); try { mv.haptic?.('warning'); } catch (_) {} input.focus(); return; }
-      const c = map.getCenter(); cleanup(); onConfirm({ name, lat: c.lat, lng: c.lng, custom: true, emoji });
+      const c = map.getCenter();
+      const why = reject?.({ name, lat: c.lat, lng: c.lng, custom: true });
+      if (why) { try { mv.haptic?.('warning'); } catch (_) {} window.wpApp?.showMapToast?.(why, '#ef4444', 3500); return; }   // se queda en la hoja para moverlo o renombrarlo
+      cleanup(); onConfirm({ name, lat: c.lat, lng: c.lng, custom: true, emoji });
     }
   });
   return cleanup;
