@@ -53,7 +53,6 @@ attachFocusZoom(document);
 // agregan después de las de la ficha, en el mismo orden que antes.
 ensureCss('wp-tabs-css', '/styles/tabs.css');
 ensureCss('wp-ppc-css', '/styles/plan-pin-card.css');
-ensureCss('wp-pmini-css', '/styles/plan-mini.css');
 ensureCss('wp-ph-css', '/styles/plans-here.css');
 ensureCss('wp-chat-css', '/styles/chat.css');
 ensureCss('wps-styles', '/styles/search.css');
