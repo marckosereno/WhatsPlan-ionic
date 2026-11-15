@@ -4,6 +4,7 @@ import { pinColor } from '/src/components/map/pin-palette.js';
 import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
 import { paintSeals } from '/src/components/map/plan-seal.js';
+import { lgEmojiImg } from '/src/utils/emoji-img.js';
 import { planEmoji, onPlanEmojiReady } from '/src/components/map/plan-emoji.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -1471,7 +1472,7 @@ export class MapView {
       el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
       el.innerHTML = `
         <div class="wp-act-pin${allFull ? ' full' : ''}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
-          ${pinEmo ? `<span style="font-size:30px;line-height:1;${allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25))'}">${pinEmo}</span>` : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
+          ${pinEmo ? lgEmojiImg(pinEmo, 36, allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25));') : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
           <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
         </div>
         <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
@@ -1679,7 +1680,7 @@ export class MapView {
       const pCat      = this._mixedCats ? this._catOf(place) : cat;
       const subIcon3d = getSubcatIcon3d(place, this._mixedCats ? place.category : this.currentCatId);
       // Punto propio con emoji elegido (paradas de un plan): ese emoji es su pin
-      const catIcon    = place.pinEmoji ? `<span class="wp-pin-emoji">${place.pinEmoji}</span>` : buildIconHtml(subIcon3d || pCat?.icon3d || null, pCat?.icon || '💎', 20);
+      const catIcon    = place.pinEmoji ? lgEmojiImg(place.pinEmoji, 22) : buildIconHtml(subIcon3d || pCat?.icon3d || null, pCat?.icon || '💎', 20);
 
       const el = document.createElement('div');
       el.className = 'place-marker-el';
@@ -4824,7 +4825,8 @@ export class MapView {
     const mcSubIcon3d = getSubcatIcon3d(place, this._mixedCats ? place.category : this.currentCatId);
     const mcIcon3d    = place.pinEmoji ? '' : (mcSubIcon3d || cat?.icon3d || '');
     const mcEmoji     = place.pinEmoji || cat?.icon || '💎';
-    const mcIconInner = mcIcon3d
+    const mcIconInner = place.pinEmoji ? lgEmojiImg(place.pinEmoji, 30)
+      : mcIcon3d
       ? `<img src="${mcIcon3d}" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='${mcEmoji}'">`
       : mcEmoji;
     const mcFallbackHtml = `<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:${cardGrad};border-radius:10px;font-size:22px;flex-shrink:0;">${mcIconInner}</div>`;
