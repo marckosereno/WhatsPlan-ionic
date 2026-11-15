@@ -10,10 +10,5 @@
     drop-shadow(0 3px 5px rgba(0, 0, 0, .3)); }
 .wp-pmini-t { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; color: #111; line-height: 1.25; text-align: left;
   display: -webkit-box; -webkit-line-clamp: 3; overflow-wrap: anywhere; -webkit-box-orient: vertical; overflow: hidden; }
-.wp-pmini-faces { position: absolute; top: -20px; right: 10px; display: flex; align-items: center; padding: 3px 4px;
-  background: #fff; border-radius: 999px; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
-.wp-pmini-f { width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb center / cover; border: 2px solid #fff;
-  margin-left: -8px; }
-.wp-pmini-f:first-child { margin-left: 0; }
-.wp-pmini-n { margin-left: -8px; min-width: 28px; height: 28px; padding: 0 7px; box-sizing: border-box; border-radius: 14px;
-  background: #eef1f6; color: #111; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.wp-pmini-n { position: absolute; top: -13px; right: 10px; padding: 4px 10px; border-radius: 999px; background: #fff;
+  color: #111; font-size: 12px; font-weight: 800; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
