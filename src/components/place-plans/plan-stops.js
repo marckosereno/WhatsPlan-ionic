@@ -62,8 +62,18 @@ export class PlanStops {
       ? { place_id: a.place_id, name: a.place_name || 'Punto en el mapa', displayName: a.place_name || 'Punto en el mapa', lat: Number(a.lat), lng: Number(a.lng), location: { lat: Number(a.lat), lng: Number(a.lng) }, category: a.category }
       : back);
     const list = [main, ...(a.stops || []).filter(x => x.lat != null && x.lng != null).map(x => byId(x.place_id) || { place_id: x.place_id, name: x.name, displayName: x.name, lat: x.lat, lng: x.lng, location: { lat: x.lat, lng: x.lng }, category: x.cat })].filter(Boolean);
-    // Desde "Tu plan" (dentro de una pestaña opaca) el mapa quedaba tapado: se cierra la pestaña para verlo
+    // Desde "Tu plan" (dentro de una pestaña opaca) el mapa quedaba tapado: se cierra la pestaña para verlo.
+    // Al volver se reabre la pestaña Planes y "Tu plan" encima, para que su flecha de regreso lleve a Planes
+    const fromPlans = !!document.getElementById('wp-tab-plans');
     closeTabScreens();
-    window.wpApp?.showPlacesOnMap?.(list, a.title, { onBack: () => { try { this._openMyPlanSheet(a); } catch (_) {} } });   // al volver regresa a "Tu plan" (la pestaña ya se cerró para ver el mapa)
+    window.wpApp?.showPlacesOnMap?.(list, a.title, {
+      onBack: () => {
+        try {
+          const pt = window.wpApp?.plansTab;
+          if (fromPlans && pt) { pt.open(); setTimeout(() => { try { pt._openPlan(a); } catch (_) { this._openMyPlanSheet(a); } }, 380); }
+          else this._openMyPlanSheet(a);
+        } catch (_) {}
+      },
+    });
   }
 }

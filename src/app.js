@@ -773,6 +773,7 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
     if (prev && distM(prev, { lat, lng }) < 10) { paintHeading(); return; }
     window.wpApp._focusPos = { pos: { lat, lng }, t: Date.now() };
     if (bar.isConnected) paintProgress();
+    document.dispatchEvent(new Event('wp:focus-pos'));   // la hoja "Cerca de ti" (si está abierta) se pinta con la nueva posición
   };
   const startWatch = async () => {
     if (watchOn) return;
@@ -798,6 +799,13 @@ function showPlacesOnMap(mv, places, label, opts = {}) {
         watchId = { id };
       }
       console.log('[DIAG-NEXT] siguiendo ubicación en vivo');
+      // Con GPS preciso la primera posición puede tardar (o no llegar bajo techo): una lectura rápida
+      // y aproximada (ubicación de red / reciente) para no quedarse en "Buscando tu ubicación…"
+      setTimeout(() => {
+        if (!watchOn || myPos() || !navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(p => { console.log('[DIAG-NEXT] ubicación aproximada lista'); onPos(p.coords.latitude, p.coords.longitude, p.coords); },
+          e => console.log('[DIAG-NEXT] ubicación aproximada falló:', e.code, e.message), { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
+      }, 1500);
     } catch (e) { watchOn = false; console.log('[DIAG-NEXT] no se pudo seguir la ubicación:', e?.message || e); }
   };
   const stopWatch = () => {
@@ -1144,7 +1152,9 @@ function openFocusPlaces(mv, places, visited, label, near, fog) {
       <div class="wp-fp-list"></div></div>`;
   document.body.appendChild(root);
   const listEl = root.querySelector('.wp-fp-list');
-  const close = () => { root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
+  const onFocusPos = () => { if (!root.isConnected) { document.removeEventListener('wp:focus-pos', onFocusPos); return; } if (tab === 'near') render(); };
+  document.addEventListener('wp:focus-pos', onFocusPos);
+  const close = () => { document.removeEventListener('wp:focus-pos', onFocusPos); root.classList.remove('in'); setTimeout(() => root.remove(), 280); };
 
   const render = () => {
     listEl.innerHTML = tab === 'near' ? rowsNear() : rowsAll();
