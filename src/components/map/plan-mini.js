@@ -1,7 +1,7 @@
 // ═════════════════════════════════════════════
 // WHATSPLAN — map/plan-mini.js
 // Cara del minimodal de un pin de plan: el emoji pasa a la esquina como sticker con
-// contorno, a la izquierda el avatar de quien organiza, luego el título y arriba
+// contorno, a la izquierda ese mismo emoji (en lugar del avatar), luego el título y arriba
 // las caritas de quienes van (+N). Se aplica sobre el minicard de MapView.
 // Estilos: /styles/plan-mini.css
 // ═════════════════════════════════════════════
@@ -19,9 +19,6 @@ function face(cls, p) {
 }
 
 function paint(card, a, cache) {
-  const who = cache.get(a.creator_id);
-  const org = card.querySelector('.wp-pmini-org');
-  if (org) org.replaceWith(Object.assign(face('wp-pmini-org', who)));
   const box = card.querySelector('.wp-pmini-faces');
   if (!box) return;
   box.textContent = '';
@@ -44,12 +41,11 @@ export function decoratePlanMini(wrapper, a, emoji) {
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); e.className = cls; if (txt != null) e.textContent = txt; return e; };
   card.appendChild(mk('span', 'wp-pmini-emo', emoji || '🎉'));
   card.appendChild(mk('div', 'wp-pmini-faces'));
-  card.appendChild(mk('i', 'wp-pmini-org'));
   card.appendChild(mk('div', 'wp-pmini-t', a.title || 'Plan'));
 
   const cache = window.wpApp?.placeModal?._profCache || new Map();
   paint(card, a, cache);
-  const need = [...new Set([a.creator_id, ...(a.participants || []).slice(0, MAX_FACES)])].filter(id => id && !cache.has(id));
+  const need = [...new Set((a.participants || []).slice(0, MAX_FACES))].filter(id => id && !cache.has(id));
   if (!need.length) return;
   getSupabase().from('profiles').select('id, name, username, avatar_url').in('id', need).then(({ data }) => {
     (data || []).forEach(p => cache.set(p.id, p));
