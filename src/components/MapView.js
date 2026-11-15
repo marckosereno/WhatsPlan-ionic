@@ -3,6 +3,7 @@ import { declutterLabels, typeLabel } from '/src/components/map/label-declutter.
 import { pinColor } from '/src/components/map/pin-palette.js';
 import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
+import { planEmoji, onPlanEmojiReady } from '/src/components/map/plan-emoji.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
 // Mapa Carto Positron + Blink Light + pins + labels + landmarks
@@ -1390,6 +1391,8 @@ export class MapView {
       const acts = await ActivityService.getActiveActivities();
       this.activities = acts || [];
       this.renderActivities(this.activities, window.wpApp?.currentUser?.id);
+      // los emojis propios de cada tipo llegan aparte: repintar los pines cuando estén
+      onPlanEmojiReady(() => this.renderActivities(this.activities, window.wpApp?.currentUser?.id));
     } catch(e) { console.warn('⚠️ Actividades:', e.message); }
 
     // Realtime: cualquier cambio en activities → recargar y re-renderizar
@@ -1461,13 +1464,13 @@ export class MapView {
       const fallback = TYPE_FALLBACK[activity.type] || '💎';
       const iconUrl  = activity.icon_url || TYPE_ICONS[activity.type] || (R3D+'Balloon/3D/balloon_3d.png');
       // Plan en un punto propio: su pin es el emoji que se eligió en el paso del nombre del plan
-      const planEmoji = !activity.icon_url ? window.wpApp?.placeModal?._planEmoji?.(activity.type) : '';
+      const pinEmo = !activity.icon_url ? planEmoji(activity.type) : '';
 
       const el = document.createElement('div');
       el.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;';
       el.innerHTML = `
         <div class="wp-act-pin${allFull ? ' full' : ''}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;position:relative;">
-          ${planEmoji ? `<span style="font-size:30px;line-height:1;${allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25))'}">${planEmoji}</span>` : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
+          ${pinEmo ? `<span style="font-size:30px;line-height:1;${allFull ? 'filter:grayscale(1);opacity:0.55;' : 'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25))'}">${pinEmo}</span>` : `<img src="${iconUrl}" style="width:32px;height:32px;object-fit:contain;${allFull ? 'filter:grayscale(1);opacity:0.55;' : ''}" onerror="this.outerHTML='<span style=\\'font-size:26px\\'>${fallback}</span>'">`}
           <div style="position:absolute;top:-7px;right:-10px;background:${badgeBg};color:white;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;border:1.5px solid white;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">${badgeTxt}</div>
         </div>
         <div class="wp-act-shadow" style="width:16px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;margin-top:1px;"></div>
@@ -1479,7 +1482,7 @@ export class MapView {
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
-        document.dispatchEvent(new CustomEvent('wp:activity-tap', { detail: { activity, group: groupActs } }));
+        this._showPlanMini(activity, groupActs, marker);
       });
 
       this.activityMarkers.push(marker);
@@ -4818,8 +4821,8 @@ export class MapView {
 
     // Icono de fallback — se calcula SIEMPRE (sirve si no hay foto o si la foto falla)
     const mcSubIcon3d = getSubcatIcon3d(place, this._mixedCats ? place.category : this.currentCatId);
-    const mcIcon3d    = mcSubIcon3d || cat?.icon3d || '';
-    const mcEmoji     = cat?.icon || '💎';
+    const mcIcon3d    = place.pinEmoji ? '' : (mcSubIcon3d || cat?.icon3d || '');
+    const mcEmoji     = place.pinEmoji || cat?.icon || '💎';
     const mcIconInner = mcIcon3d
       ? `<img src="${mcIcon3d}" style="width:26px;height:26px;object-fit:contain;" onerror="this.outerHTML='${mcEmoji}'">`
       : mcEmoji;
@@ -4863,13 +4866,13 @@ export class MapView {
         if (Math.abs(e.changedTouches[0].clientX - tx) > 8 || Math.abs(e.changedTouches[0].clientY - ty) > 8) return;
         e.stopPropagation(); e.preventDefault();
         this.haptic('select');
-        if (this.onPlaceSelect) this.onPlaceSelect(place);
+        this._miniPick(place);
       });
       card.addEventListener('click', e => {
         e.stopPropagation();
         pulse();
         this.haptic('select');
-        if (this.onPlaceSelect) this.onPlaceSelect(place);
+        this._miniPick(place);
       });
     }
 
@@ -4942,6 +4945,21 @@ export class MapView {
 
       if (!skipMove) this.map.easeTo({ center: [lng, lat], duration: 300, offset: [0, offsetY] });
     }
+  }
+
+  // Minimodal de un pin de plan (mismo que el de los lugares); al tocarlo abre el plan
+  _showPlanMini(activity, group, marker) {
+    const place = { name: activity.title || 'Plan', lat: activity.lat, lng: activity.lng,
+      pinEmoji: activity.icon_url ? '' : planEmoji(activity.type), _planGroup: group };
+    this._showMiniCard(place, -1, '', false, marker);
+  }
+
+  _miniPick(place) {
+    if (!place._planGroup) { if (this.onPlaceSelect) this.onPlaceSelect(place); return; }
+    const g = place._planGroup;
+    this._closeMiniCard();
+    if (g.length > 1) import('/src/components/plan-pin-card.js').then(m => m.showPlanPinCard(g));
+    else setTimeout(() => window.wpApp?.plansTab?._openPlan?.(g[0]), 260);
   }
 
   _closeMiniCard() {
