@@ -3,7 +3,6 @@ import { declutterLabels, typeLabel } from '/src/components/map/label-declutter.
 import { pinColor } from '/src/components/map/pin-palette.js';
 import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
-import { decoratePlanMini } from '/src/components/map/plan-mini.js';
 import { planEmoji, onPlanEmojiReady } from '/src/components/map/plan-emoji.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -4953,7 +4952,6 @@ export class MapView {
     const place = { name: activity.title || 'Plan', lat: activity.lat, lng: activity.lng,
       pinEmoji: activity.icon_url ? '' : planEmoji(activity.type), _planGroup: group };
     this._showMiniCard(place, -1, '', false, marker);
-    decoratePlanMini(marker.getElement(), activity, place.pinEmoji || planEmoji(activity.type));
   }
 
   _miniPick(place) {
