@@ -43,9 +43,19 @@ export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel, reject }
   const cancel = () => { end(); onCancel?.(); };
   const done = (place) => { if (ended) return; end(); onPick?.(place); };
 
+  let warnT = 0;
   const top = add(`<div class="wp-pk-hint">Toca un pin o un punto del mapa</div><button type="button" class="wp-pk-x" aria-label="Cancelar">${X}</button>`, 'wp-pk-top');
   const foot = add(`<button type="button" class="wp-pk-gps">${NAV}<span>Usar mi ubicación actual</span></button>`, 'wp-pk-foot');
   top.querySelector('.wp-pk-x').onclick = cancel;
+
+  // Aviso rojo en la misma pastilla de arriba (2.8 s) y vuelve el texto de siempre
+  const warn = (txt) => {
+    const h = top.querySelector('.wp-pk-hint'); if (!h) return;
+    const orig = 'Toca un pin o un punto del mapa';
+    h.textContent = txt; h.classList.add('bad');
+    try { mv.haptic?.('warning'); } catch (_) {}
+    clearTimeout(warnT); warnT = setTimeout(() => { h.textContent = orig; h.classList.remove('bad'); }, 2800);
+  };
 
   const onTap = (p) => {
     if (!p || ended) return;
@@ -56,7 +66,7 @@ export function pickPlaceOnMap({ cat, emoji = '📍', onPick, onCancel, reject }
     else {
       const place = { name: p.name, lat: p.lat, lng: p.lng, place_id: p.place_id };
       const why = reject?.(place);
-      if (why) { mv._removePickPin?.(); mv.haptic?.('warning'); window.wpApp?.showMapToast?.(why, '#ef4444', 3500); return; }   // se queda en el modo de elegir
+      if (why) { mv._removePickPin?.(); warn(why); return; }   // se queda en el modo de elegir
       done(place);
     }
   };
@@ -112,7 +122,13 @@ function customSheet(coords, emoji, reject, onConfirm, onCancel) {
       if (!name) { const box = input.closest('.wp-pk-name'); box.classList.remove('need'); void box.offsetWidth; box.classList.add('need'); try { mv.haptic?.('warning'); } catch (_) {} input.focus(); return; }
       const c = map.getCenter();
       const why = reject?.({ name, lat: c.lat, lng: c.lng, custom: true });
-      if (why) { try { mv.haptic?.('warning'); } catch (_) {} window.wpApp?.showMapToast?.(why, '#ef4444', 3500); return; }   // se queda en la hoja para moverlo o renombrarlo
+      if (why) {   // se queda en la hoja para moverlo o renombrarlo
+        try { mv.haptic?.('warning'); } catch (_) {}
+        const orig = tip.dataset.orig || (tip.dataset.orig = tip.textContent);
+        tip.textContent = why; tip.classList.remove('off'); tip.classList.add('bad');
+        clearTimeout(tip._t); tip._t = setTimeout(() => { tip.classList.add('off'); tip.classList.remove('bad'); setTimeout(() => { tip.textContent = orig; }, 250); }, 3200);
+        return;
+      }
       cleanup(); onConfirm({ name, lat: c.lat, lng: c.lng, custom: true, emoji });
     }
   });

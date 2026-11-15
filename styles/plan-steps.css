@@ -464,3 +464,7 @@ body.wp-picking #map-gps-btn, body.wp-picking #map-live-badge { opacity: 0 !impo
 .wp-pk-name.need input { box-shadow: 0 0 0 2px #ef4444, 0 4px 14px rgba(239, 68, 68, 0.28); animation: wpPkNeed 0.4s ease; }
 .wp-pk-name.need input::placeholder { color: rgba(255, 255, 255, 0.85); }
 @keyframes wpPkNeed { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+
+/* Aviso al elegir un lugar que ya está en el plan (pastilla de arriba / tip de la hoja del punto) */
+.wp-pk-hint.bad { background: linear-gradient(180deg, #ff4d4d, #e60000); color: #fff; }
+.wp-pk-tip.bad { background: linear-gradient(180deg, #ff4d4d, #e60000); color: #fff; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }

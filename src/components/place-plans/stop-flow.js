@@ -201,8 +201,7 @@ export class StopFlow {
       onPick: (p) => {
         if (p.custom) { f.place = null; f.custom = { place_id: `custom:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: p.name, lat: p.lat, lng: p.lng, category: A?.cat }; }
         else { f.custom = null; f.place = { ...p, category: A?.cat || p.category }; }
-        this._sfPaintPlaces(f); f.screen.refresh();
-        setTimeout(() => { if (f.screen.index === 1) f.screen.go(2); }, 260);   // elegir = avanzar
+        this._sfPaintPlaces(f); f.screen.refresh();   // se queda en el paso 2 (como al elegir de la lista): avanza con "Siguiente"
       },
       onCancel: () => { this._sfPaintPlaces(f); f.screen.refresh(); },
     });
