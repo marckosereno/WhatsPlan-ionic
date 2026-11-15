@@ -1477,11 +1477,7 @@ function setupActivitySubscription(mv) {
     document.getElementById('wp-side-slot-2')?.addEventListener('click',  e => { e.stopPropagation(); window.wpApp.momentsUI?.openCamera(); }); // Memories
     document.getElementById('wp-side-slot-3')?.addEventListener('click',  e => { e.stopPropagation(); /* GPS — wired by SubcategoryRow */ });
 
-    // Tap en un pin de actividad (custom point) en el mapa
-    document.addEventListener('wp:activity-tap', (e) => {
-      const { activity, group } = e.detail;
-      import('/src/components/plan-pin-card.js').then(m => m.showPlanPinCard(group?.length ? group : [activity]));
-    });
+    // Tap en un pin de plan: MapView abre su minimodal (_showPlanMini) y de ahí el plan
 
     // Pulse spring universal
     setTimeout(initWpTap, 400);
