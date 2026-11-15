@@ -59,7 +59,7 @@ export class PlanStops {
     const back = this._place;   // (solo de respaldo para el lugar principal)
     // el lugar principal puede ser un punto propio (no está en la base): se arma con los datos del plan
     const main = byId(a.place_id) || (a.lat != null && a.lng != null
-      ? { place_id: a.place_id, name: a.place_name || 'Punto en el mapa', displayName: a.place_name || 'Punto en el mapa', lat: Number(a.lat), lng: Number(a.lng), location: { lat: Number(a.lat), lng: Number(a.lng) }, category: a.category }
+      ? { pinEmoji: String(a.place_id || '').startsWith('custom:') || !a.place_id ? this._planEmoji(a.type) : undefined, place_id: a.place_id, name: a.place_name || 'Punto en el mapa', displayName: a.place_name || 'Punto en el mapa', lat: Number(a.lat), lng: Number(a.lng), location: { lat: Number(a.lat), lng: Number(a.lng) }, category: a.category }
       : back);
     const list = [main, ...(a.stops || []).filter(x => x.lat != null && x.lng != null).map(x => byId(x.place_id) || { pinEmoji: String(x.place_id).startsWith('custom:') ? x.emoji : undefined, place_id: x.place_id, name: x.name, displayName: x.name, lat: x.lat, lng: x.lng, location: { lat: x.lat, lng: x.lng }, category: x.cat })].filter(Boolean);
     // Desde "Tu plan" (dentro de una pestaña opaca) el mapa quedaba tapado: se cierra la pestaña para verlo.
