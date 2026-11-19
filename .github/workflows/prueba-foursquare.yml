@@ -1,0 +1,16 @@
+name: Prueba Foursquare
+# Se corre a mano: pestaña Actions > Prueba Foursquare > Run workflow.
+# Necesita el secreto FSQ_KEY (Settings > Secrets and variables > Actions).
+on:
+  workflow_dispatch:
+jobs:
+  prueba:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/prueba-foursquare.mjs
+        env:
+          FSQ_KEY: ${{ secrets.FSQ_KEY }}
