@@ -3,6 +3,7 @@
 // ============================================================
 
 import { getSupabase } from '/src/services/SupabaseService.js';
+import { denuePinProps } from '/src/utils/denue-pin.js';
 
 export const SUPER_USER_ID = 'b9b614ae-4407-4ee8-a4e7-996784ef5e03';
 
@@ -182,6 +183,7 @@ function _transformCustomPlace(row) {
     subcategory_tags: row.subcategory_tags || row.subcategoryTags || null,
     // Los de DENUE no tienen foto: se dibujan con el pin social (insignia de categoría + nombre)
     pinStyle:         row.source === 'denue' ? 'social' : undefined,
+    ...(row.source === 'denue' ? denuePinProps(row) : {}),
     source:           row.source || null,
     _fromCustom:      true,
     _customId:        row.id,
