@@ -1,0 +1,19 @@
+name: DENUE zona
+# Manual: Actions > DENUE zona > Run workflow. Necesita el secreto DENUE_TOKEN.
+on:
+  workflow_dispatch:
+jobs:
+  zona:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/denue-zona.mjs
+        env:
+          DENUE_TOKEN: ${{ secrets.DENUE_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: denue-zona
+          path: denue-zona.csv
