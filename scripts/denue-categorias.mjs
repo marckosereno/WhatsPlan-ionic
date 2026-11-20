@@ -15,12 +15,12 @@ export function clasificar(giro) {
     return { categoria: 'HEALTH', nota: 'salud' };
   }
   if (/belleza|peluquer|barber|spa\b|masaje|estetic|gimnasio|acondicionamiento fisico/.test(g)) return { categoria: 'HEALTH', nota: 'belleza/spa' };
-  if (/restaurante|cafeteria|neveria|fuentes de sodas|refresqueria|taqueria|antojitos|panaderia|panificacion|comida|servicio de preparacion|jugos|paleteria/.test(g)) {
+  if (/restaurante|cafeteria|neveria|fuentes de sodas|refresqueria|taqueria|antojitos|panaderia|panificacion|comida|servicios? de preparacion|jugos|paleteria/.test(g)) {
     return { categoria: 'RESTAURANTS', nota: '' };
   }
   if (/parque|jardin|plaza publica|areas? verde/.test(g)) return { categoria: 'PARKS', nota: '' };
   if (/museo|cine|espectaculo|billar|boliche|salones? para fiestas|parques? de diversion|casino|juegos/.test(g)) return { categoria: 'ENTERTAINMENT', nota: '' };
-  if (/reparacion|lavado y lubricado|taller|mecanic|hojalater|vulcanizadora|llantas/.test(g)) return { categoria: 'WORKSHOPS', nota: '' };
+  if (/\breparacion|lavado y lubricado|taller|mecanic|hojalater|vulcanizadora|llantas/.test(g)) return { categoria: 'WORKSHOPS', nota: '' };
   if (/hotel|motel|hospedaje/.test(g)) return { categoria: '', nota: 'hospedaje: sin categoría en la app' };
   if (/comercio al por menor|artesan|joyeria|bisuteria|tienda/.test(g)) return { categoria: 'SHOPPING', nota: '' };
   return { categoria: '', nota: 'sin categoría' };
