@@ -33,19 +33,19 @@ const filas = [];
 for (const d of datos) {
   const c = clasificar(d.Clase_actividad);
   if (!c) { farmacias++; continue; }
-  filas.push({ ...d, categoria: c.categoria, nota: c.nota });
+  filas.push({ ...d, categoria: c.categoria, subcategoria: c.subcategoria, nota: c.nota });
 }
 const porCat = new Map();
-for (const f of filas) porCat.set(f.categoria || '(sin categoría)', (porCat.get(f.categoria || '(sin categoría)') || 0) + 1);
+for (const f of filas) { const k = f.categoria ? `${f.categoria} / ${f.subcategoria || '(sin subcategoría)'}` : '(sin categoría)'; porCat.set(k, (porCat.get(k) || 0) + 1); }
 console.log(`Farmacias excluidas: ${farmacias}`);
-console.log('\nPor categoría de WhatsPlan:');
+console.log('\nPor categoría / subcategoría de WhatsPlan:');
 for (const [k, n] of [...porCat].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(3)}  ${k}`);
 const giros = new Map();
 for (const f of filas.filter(f => !f.categoria)) giros.set(f.Clase_actividad, (giros.get(f.Clase_actividad) || 0) + 1);
 console.log('\nGiros SIN categoría (revisa si falta alguna regla):');
 for (const [g, n] of [...giros].sort((a, b) => b[1] - a[1]).slice(0, 20)) console.log(`  ${String(n).padStart(3)}  ${g}`);
 
-const cols = ['categoria', 'nota', 'Id', 'Nombre', 'Razon_social', 'Clase_actividad', 'Estrato', 'Calle', 'Num_Exterior', 'Colonia', 'CP', 'Ubicacion', 'Telefono', 'Sitio_internet', 'Latitud', 'Longitud'];
+const cols = ['categoria', 'subcategoria', 'nota', 'Id', 'Nombre', 'Razon_social', 'Clase_actividad', 'Estrato', 'Calle', 'Num_Exterior', 'Colonia', 'CP', 'Ubicacion', 'Telefono', 'Sitio_internet', 'Latitud', 'Longitud'];
 const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 fs.writeFileSync('denue-zona.csv', [cols.join(','), ...filas.map(d => cols.map(c => esc(d[c])).join(','))].join('\n'));
 console.log('\nGuardado: denue-zona.csv');
