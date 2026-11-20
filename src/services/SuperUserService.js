@@ -180,6 +180,9 @@ function _transformCustomPlace(row) {
     types:            row.types ? row.types.split(',') : [],
     subcategoryTags:  row.subcategory_tags || row.subcategoryTags || null,
     subcategory_tags: row.subcategory_tags || row.subcategoryTags || null,
+    // Los de DENUE no tienen foto: se dibujan con el pin social (insignia de categoría + nombre)
+    pinStyle:         row.source === 'denue' ? 'social' : undefined,
+    source:           row.source || null,
     _fromCustom:      true,
     _customId:        row.id,
   };
