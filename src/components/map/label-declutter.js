@@ -21,8 +21,9 @@ const PAD = 3;          // aire alrededor de cada etiqueta (px)
 const TOP_SAFE = 64;    // franja de arriba (barra de estado + buscador)
 
 // Cuántos nombres caben según el zoom, y cuántos con 2ª línea
-const maxFor = (z) => (z >= 18 ? 22 : z >= 17 ? 14 : z >= 16 ? 9 : 6);
-const metaFor = (z) => (z >= 18 ? 8 : z >= 17 ? 5 : 3);
+// (el zoom máximo del mapa es 19: ahí el tope casi no limita, solo las colisiones)
+const maxFor = (z) => (z >= 19 ? 90 : z >= 18 ? 36 : z >= 17 ? 16 : z >= 16 ? 9 : 6);
+const metaFor = (z) => (z >= 19 ? 14 : z >= 18 ? 9 : z >= 17 ? 5 : 3);
 
 export function pinScore(place, el) {
   const p = place || {};
