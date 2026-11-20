@@ -1,0 +1,25 @@
+name: DENUE cargar
+# Manual: Actions > DENUE cargar > Run workflow. Por defecto es un ensayo (no escribe en la base).
+# Secretos: DENUE_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (del proyecto de WhatsPlan).
+on:
+  workflow_dispatch:
+    inputs:
+      aplicar:
+        description: 'Escribir en custom_places? (no = solo ensayo)'
+        type: choice
+        options: ['no', 'si']
+        default: 'no'
+jobs:
+  cargar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/denue-cargar.mjs
+        env:
+          DENUE_TOKEN: ${{ secrets.DENUE_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APLICAR: ${{ inputs.aplicar }}
