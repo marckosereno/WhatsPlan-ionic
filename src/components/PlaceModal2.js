@@ -10,6 +10,7 @@ import { ActivityService, ProfileService, getSupabase } from '/src/services/Supa
 import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
+import { isSparsePlace, openCollabSheet } from '/src/components/place-collab/collab-sheet.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
 import { photoSmall }                  from '/src/utils/photo-url.js';
 import { VisitService }                from '/src/services/VisitService.js';
@@ -500,6 +501,8 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     // completa. (_showMiniSnap sigue en el archivo, sin uso, por si vuelve.)
     try {
       this._hideMiniSnap();
+      // Lugares con solo lo básico (DENUE, sin fotos): hoja de colaboración en vez de la ficha vacía
+      if (isSparsePlace(place)) { openCollabSheet(this, place); return; }
       this.show(place);
     } catch (e) {
       console.error('[PM2] Error al abrir la ficha:', e);
