@@ -3,7 +3,8 @@
 // Emoji y tipo de color del pin de los lugares de DENUE (custom_places con source 'denue').
 // No traen foto ni estilo propio: el emoji sale de su subcategoría y el color lo da
 // pinColor() (map/pin-palette.js) a partir de primaryType o de la categoría.
-//   denuePinProps(row) → { pinEmoji, primaryType }
+//   denuePinProps(row) → { pinEmoji, primaryType, pinLabelPosition }
+// La etiqueta (nombre) va a un lado del pin y no debajo.
 // Emojis normales (nada de la lista prohibida de la app: 📍 📌 🎯 🗺️ ✅ ❌ …).
 // ═════════════════════════════════════════════════
 const POR_SUB = {
@@ -38,5 +39,6 @@ export function denuePinProps(row) {
   return {
     pinEmoji: hit ? hit[0] : (POR_CAT[row?.category] || '🛍️'),
     primaryType: hit ? hit[1] : '',
+    pinLabelPosition: 'right',
   };
 }
