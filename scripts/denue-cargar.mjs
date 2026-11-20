@@ -1,7 +1,8 @@
 // Carga los negocios de DENUE (INEGI) de la zona en custom_places de Supabase.
 // Por defecto es un ENSAYO (no escribe). Para escribir: APLICAR=si
 //   DENUE_TOKEN=... SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... [APLICAR=si] node scripts/denue-cargar.mjs [lat] [lng] [metros]
-// Idempotente: usa place_id = 'denue_<Id>' y fusiona duplicados, así que se puede repetir.
+// Idempotente: usa place_id = 'denue_<Id>' e IGNORA los que ya existen, así que se puede repetir sin pisar
+// correcciones hechas a mano (coordenadas, nombres). Solo agrega negocios nuevos.
 // Fuente: INEGI, Directorio Estadístico Nacional de Unidades Económicas (DENUE). Hay que citarla en la app.
 import { clasificar } from './denue-categorias.mjs';
 
@@ -80,10 +81,10 @@ async function main() {
     const lote = filas.slice(i, i + 100);
     const r = await fetch(url, { method: 'POST', headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lote) });
+      'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(lote) });
     if (!r.ok) { console.error(`Lote ${i / 100 + 1}: HTTP ${r.status} ${(await r.text()).slice(0, 300)}`); process.exit(1); }
     ok += lote.length;
   }
-  console.log(`\nCargados/actualizados en custom_places: ${ok}`);
+  console.log(`\nEnviados a custom_places (los que ya existían se respetan): ${ok}`);
 }
 if (process.argv[1] && import.meta.url === new URL(process.argv[1], 'file://').href) main();
