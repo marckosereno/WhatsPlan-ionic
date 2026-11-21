@@ -56,37 +56,41 @@ function loadPlacesLib(key) {
   return libP;
 }
 
-export async function openGoogleCard(place) {
+// Monta la tarjeta de Google dentro de un contenedor (la ficha). Devuelve true si la montó.
+// isCurrent() permite cancelar si la persona ya cambió de lugar mientras cargaba Google.
+export async function mountGoogleCard(box, place, isCurrent = () => true) {
   const pid = googlePlaceId(place);
-  const key = await getKey();
-  if (!pid || !key) return null;
+  const key = pid ? await getKey() : '';
+  if (!pid || !key || !isCurrent()) return false;
+  ensureCss('wp-gcard-css', '/styles/google-card.css');
+  box.innerHTML = '<div class="wp-gc-load">Cargando…</div>';
+  try {
+    await loadPlacesLib(key);
+    if (!isCurrent()) return false;
+    const el = document.createElement('gmp-place-details');
+    el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request><gmp-place-all-content></gmp-place-all-content>`;
+    el.addEventListener('gmp-error', () => { if (isCurrent()) box.innerHTML = '<div class="wp-gc-load">Google no tiene más datos de este lugar.</div>'; });
+    box.innerHTML = '';
+    box.appendChild(el);
+    return true;
+  } catch (e) {
+    console.warn('[GoogleCard]', e);
+    if (isCurrent()) box.innerHTML = '<div class="wp-gc-load">No se pudo cargar lo de Google.</div>';
+    return false;
+  }
+}
+
+export async function openGoogleCard(place) {
+  if (!googlePlaceId(place) || !(await getKey())) return null;
   ensureCss('wp-tokens-css', '/styles/tokens.css');
   ensureCss('wp-pm2-steps-css', '/styles/plan-steps.css');
-  ensureCss('wp-gcard-css', '/styles/google-card.css');
-
   const name = place.name || place.displayName || 'Este lugar';
   const sheet = openSheetPage({
     title: 'Fotos y reseñas',
-    html: `<div class="wp-gc">
-      <h2>${esc(name)}</h2>
-      <p class="wp-gc-note">Esta información viene de Google y se muestra tal cual. WhatsPlan no la guarda.</p>
-      <div class="wp-gc-box"><div class="wp-gc-load">Cargando…</div></div>
-    </div>`,
+    html: `<div class="wp-gc"><h2>${esc(name)}</h2><p class="wp-gc-note">Esta información viene de Google y se muestra tal cual. WhatsPlan no la guarda.</p><div class="wp-gc-box"></div></div>`,
     theme: 'explore',
   });
   setTimeout(() => sheet.relayout(), 150);
-
-  const box = sheet.root.querySelector('.wp-gc-box');
-  try {
-    await loadPlacesLib(key);
-    const el = document.createElement('gmp-place-details');
-    el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request><gmp-place-all-content></gmp-place-all-content>`;
-    el.addEventListener('gmp-error', () => { box.innerHTML = '<div class="wp-gc-load">Google no tiene más datos de este lugar.</div>'; });
-    box.innerHTML = '';
-    box.appendChild(el);
-  } catch (e) {
-    console.warn('[GoogleCard]', e);
-    box.innerHTML = '<div class="wp-gc-load">No se pudo cargar. Intenta de nuevo en un momento.</div>';
-  }
+  await mountGoogleCard(sheet.root.querySelector('.wp-gc-box'), place);
   return sheet;
 }

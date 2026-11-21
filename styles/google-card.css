@@ -13,3 +13,7 @@
   --gmp-mat-font-family: inherit;
 }
 .wp-gc-load { padding: 36px 16px; text-align: center; font-size: 14px; color: #555; }
+
+/* Dentro de la ficha (#wp-pm2-body) */
+.wp-gblock { margin: 6px 0 4px; }
+.wp-gblock .wp-gc-box { margin: 0 16px; }
