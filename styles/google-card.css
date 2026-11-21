@@ -1,0 +1,15 @@
+/* Tarjeta de Google (Places UI Kit) dentro de la hoja. Google dibuja el interior; aquí solo el marco y
+   los colores/fuentes que el componente permite cambiar con propiedades CSS. */
+.wp-gc { padding: 6px 16px 18px; }
+.wp-gc h2 { margin: 4px 0 4px; font-size: 20px; line-height: 1.2; }
+.wp-gc-note { margin: 0 0 12px; font-size: 12.5px; opacity: .65; }
+.wp-gc-box { border-radius: 18px; overflow: hidden; background: #fff; min-height: 120px; }
+.wp-gc-box gmp-place-details {
+  display: block; width: 100%; max-width: 400px; margin: 0 auto;
+  color-scheme: light;
+  --gmp-mat-color-surface: #ffffff;
+  --gmp-mat-color-on-surface: #1b1b22;
+  --gmp-mat-color-primary: #5b4bff;
+  --gmp-mat-font-family: inherit;
+}
+.wp-gc-load { padding: 36px 16px; text-align: center; font-size: 14px; color: #555; }

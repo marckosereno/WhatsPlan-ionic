@@ -7,6 +7,10 @@ export default function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.json({
     supabaseUrl:     process.env.SUPABASE_URL      || '',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+    // Llave de Google SOLO para la tarjeta "Fotos y reseñas de Google" (Places UI Kit). Debe ser una llave
+    // aparte, restringida por dominio (HTTP referrer) y limitada a Maps JavaScript API + Places UI Kit.
+    // Vacía = la tarjeta queda apagada.
+    googleBrowserKey: process.env.GOOGLE_UIKIT_BROWSER_KEY || ''
   });
 }

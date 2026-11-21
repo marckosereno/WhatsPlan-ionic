@@ -1,0 +1,83 @@
+// ═════════════════════════════════════════════════
+// WHATSPLAN — google-card/google-card.js
+// "Fotos y reseñas de Google" con el Places UI Kit oficial (<gmp-place-details>).
+// Google dibuja la tarjeta en el celular del usuario: WhatsPlan NO guarda fotos, reseñas ni horarios de
+// Google (solo el place_id, que sí se puede guardar). Se cobra una solicitud cada vez que se abre, por eso
+// solo carga cuando la persona toca el botón. La atribución de Google viene incluida: no se esconde.
+//
+// Apagado por defecto: si /api/config no trae googleBrowserKey, canShowGoogleCard() es false.
+//
+// Uso:
+//   await googleCardReady()            → true si hay llave (se pide una sola vez)
+//   isGooglePlaceId(place)             → true si el lugar tiene place_id de Google (ChIJ…)
+//   openGoogleCard(place)              → abre la hoja con la tarjeta de Google
+// Estilos: /styles/google-card.css
+// ═════════════════════════════════════════════════
+import { openSheetPage } from '/src/components/place-plans/step-sheet.js';
+import { ensureCss } from '/src/components/tabs/tab-screen.js';
+
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let keyP = null;
+function getKey() {
+  if (!keyP) keyP = fetch('/api/config').then((r) => r.json()).then((c) => c.googleBrowserKey || '').catch(() => '');
+  return keyP;
+}
+export async function googleCardReady() { return !!(await getKey()); }
+
+export function googlePlaceId(place) {
+  const id = String(place?.place_id || place?.placeId || place?.gid || '');
+  return /^ChIJ[\w-]{10,}$/.test(id) ? id : '';
+}
+export const isGooglePlaceId = (place) => !!googlePlaceId(place);
+
+// Carga el bootstrap oficial de Google una sola vez
+let libP = null;
+function loadPlacesLib(key) {
+  if (libP) return libP;
+  libP = new Promise((resolve, reject) => {
+    if (window.google?.maps?.importLibrary) return resolve(window.google.maps.importLibrary('places'));
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&language=es&loading=async&libraries=places`;
+    s.onload = () => (window.google?.maps?.importLibrary ? resolve(window.google.maps.importLibrary('places')) : reject(new Error('Google no cargó')));
+    s.onerror = () => reject(new Error('No se pudo cargar Google'));
+    document.head.appendChild(s);
+  }).catch((e) => { libP = null; throw e; });
+  return libP;
+}
+
+export async function openGoogleCard(place) {
+  const pid = googlePlaceId(place);
+  const key = await getKey();
+  if (!pid || !key) return null;
+  ensureCss('wp-tokens-css', '/styles/tokens.css');
+  ensureCss('wp-pm2-steps-css', '/styles/plan-steps.css');
+  ensureCss('wp-gcard-css', '/styles/google-card.css');
+
+  const name = place.name || place.displayName || 'Este lugar';
+  const sheet = openSheetPage({
+    title: 'Fotos y reseñas',
+    html: `<div class="wp-gc">
+      <h2>${esc(name)}</h2>
+      <p class="wp-gc-note">Esta información viene de Google y se muestra tal cual. WhatsPlan no la guarda.</p>
+      <div class="wp-gc-box"><div class="wp-gc-load">Cargando…</div></div>
+    </div>`,
+    theme: 'explore',
+  });
+  setTimeout(() => sheet.relayout(), 150);
+
+  const box = sheet.root.querySelector('.wp-gc-box');
+  try {
+    await loadPlacesLib(key);
+    const el = document.createElement('gmp-place-details');
+    el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request><gmp-place-all-content></gmp-place-all-content>`;
+    el.addEventListener('gmp-error', () => { box.innerHTML = '<div class="wp-gc-load">Google no tiene más datos de este lugar.</div>'; });
+    box.innerHTML = '';
+    box.appendChild(el);
+  } catch (e) {
+    console.warn('[GoogleCard]', e);
+    box.innerHTML = '<div class="wp-gc-load">No se pudo cargar. Intenta de nuevo en un momento.</div>';
+  }
+  return sheet;
+}
