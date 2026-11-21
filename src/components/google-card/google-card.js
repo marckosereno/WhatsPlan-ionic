@@ -25,9 +25,13 @@ function getKey() {
 }
 export async function googleCardReady() { return !!(await getKey()); }
 
+// Lugares de Google traen su ID en place_id; los de DENUE lo traen ligado en googlePlaceId (SQL 49)
 export function googlePlaceId(place) {
-  const id = String(place?.place_id || place?.placeId || place?.gid || '');
-  return /^ChIJ[\w-]{10,}$/.test(id) ? id : '';
+  for (const v of [place?.googlePlaceId, place?.google_place_id, place?.place_id, place?.placeId, place?.gid]) {
+    const id = String(v || '');
+    if (/^ChIJ[\w-]{10,}$/.test(id)) return id;
+  }
+  return '';
 }
 export const isGooglePlaceId = (place) => !!googlePlaceId(place);
 
