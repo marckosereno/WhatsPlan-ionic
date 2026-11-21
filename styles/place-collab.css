@@ -24,3 +24,6 @@
 
 .wp-cs-full { width: 100%; height: 54px; border: none; border-radius: 999px; font-size: 16px; font-weight: 600; color: #fff; background: linear-gradient(160deg, #2b2a3a, #14121f); }
 .wp-cs-full:active { transform: scale(0.98); }
+
+.wp-cs-opts .wp-st-opt.busy { opacity: 0.6; pointer-events: none; }
+.wp-cs-opts .wp-st-opt.done { background: var(--wp-mint-soft, #e5f8ef); }
