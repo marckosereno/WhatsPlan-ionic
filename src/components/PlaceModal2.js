@@ -200,6 +200,13 @@ export class PlaceModal2 {
             </button>
           </div>
 
+          <!-- FICHA DE GOOGLE — tarjeta oficial (Places UI Kit) a todo lo ancho, fundida con la ficha, solo en
+               lugares con place_id de Google (directo o ligado). La atribución de Google la dibuja el propio
+               componente y no se esconde. Contenido de Google: no se guarda ni se mezcla con el de WhatsPlan. -->
+          <div id="wp-pm2-gblock" class="wp-gblock" style="display:none">
+            <div id="wp-pm2-gcard" class="wp-gc-box"></div>
+          </div>
+
           <!-- HOURS — colapsable, igual que PlaceModal1 -->
           <div class="wp-pm2-hours-block" id="wp-pm2-hours" style="display:none">
             <div class="wp-pm2-hours-trigger" id="wp-pm2-hours-trigger">
@@ -209,13 +216,6 @@ export class PlaceModal2 {
               <svg class="wp-pm2-chevron" id="wp-pm2-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             <div class="wp-pm2-hours-list" id="wp-pm2-hours-list"></div>
-          </div>
-
-          <!-- DE GOOGLE — tarjeta oficial (Places UI Kit), solo lugares ligados a un place_id de Google.
-               Va separada de lo de WhatsPlan a propósito: el contenido de Google no se mezcla ni se guarda. -->
-          <div id="wp-pm2-gblock" class="wp-gblock" style="display:none">
-            <div class="wp-pm2-section-heading">De Google</div>
-            <div id="wp-pm2-gcard" class="wp-gc-box"></div>
           </div>
 
           <!-- PHOTO STRIP -->
@@ -1869,13 +1869,13 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     const blk = this._el.querySelector('#wp-pm2-gblock');
     const box = this._el.querySelector('#wp-pm2-gcard');
     if (!blk || !box) return;
-    blk.style.display = 'none'; box.innerHTML = '';
+    blk.style.display = 'none'; box.innerHTML = ''; this._el.classList.remove('wp-pm2-has-gcard');
     if (!isGooglePlaceId(place)) return;
     googleCardReady().then((ok) => {
       if (!ok || this._place !== place) return;
-      blk.style.display = '';
+      blk.style.display = ''; this._el.classList.add('wp-pm2-has-gcard');
       return mountGoogleCard(box, place, () => this._place === place).then((done) => {
-        if (!done && this._place === place && !box.firstChild) blk.style.display = 'none';
+        if (!done && this._place === place && !box.firstChild) { blk.style.display = 'none'; this._el.classList.remove('wp-pm2-has-gcard'); }
       });
     }).catch(() => {});
   }

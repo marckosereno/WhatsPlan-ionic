@@ -63,7 +63,7 @@ export async function mountGoogleCard(box, place, isCurrent = () => true) {
   const key = pid ? await getKey() : '';
   if (!pid || !key || !isCurrent()) return false;
   ensureCss('wp-gcard-css', '/styles/google-card.css');
-  box.innerHTML = '<div class="wp-gc-load">Cargando…</div>';
+  box.innerHTML = '<div class="wp-gc-skel"><i></i><i></i><i></i></div>';
   try {
     await loadPlacesLib(key);
     if (!isCurrent()) return false;
