@@ -185,6 +185,7 @@ function _transformCustomPlace(row) {
     pinStyle:         row.source === 'denue' ? 'social' : undefined,
     ...(row.source === 'denue' ? denuePinProps(row) : {}),
     source:           row.source || null,
+    googlePlaceId:    row.google_place_id || null,
     _fromCustom:      true,
     _customId:        row.id,
   };
