@@ -11,6 +11,7 @@ import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { isSparsePlace, openCollabSheet } from '/src/components/place-collab/collab-sheet.js';
+import { googleCardReady, isGooglePlaceId, openGoogleCard } from '/src/components/google-card/google-card.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
 import { photoSmall }                  from '/src/utils/photo-url.js';
 import { VisitService }                from '/src/services/VisitService.js';
@@ -495,6 +496,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
   // → showMini() acá → tap minisnap → show() completo.
   showMini(place) {
     this._place = place;
+    this._prepGoogleCard();
     // El minicard de MapView se queda abierto (no se cierra) — el minisnap
     // aparece encima de él, no lo reemplaza
     // Minisnap excluido por ahora: tocar el minicard abre directo la ficha
@@ -1850,7 +1852,13 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     setTimeout(() => { if (ms.parentNode) ms.parentNode.removeChild(ms); }, 220);
   }
 
+  // Pregunta una sola vez si hay llave de Google para la tarjeta (se guarda; el menú lo lee al abrir)
+  _prepGoogleCard() {
+    if (this._googleCardOn === undefined) { this._googleCardOn = false; googleCardReady().then((ok) => { this._googleCardOn = ok; }).catch(() => {}); }
+  }
+
   show(place, opts = {}) {
+    this._prepGoogleCard();
     this._fromSearch = false;
     this._place = place;
     // Se usa más abajo para ignorar clics-fantasma que aterrizan sobre
@@ -5062,6 +5070,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
       route:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>',
       copy:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
       link:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+      photo:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="12" cy="12" r="3.2"/></svg>',
       alert:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
       store:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg>',
     };
@@ -5075,6 +5084,11 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     }
     if (info.address) items.push({ label: 'Copiar dirección', icon: I.copy, action: () => this._copyText(info.address) });
     if (info.url) items.push({ label: 'Copiar enlace', icon: I.link, action: () => this._copyText(info.url) });
+    // Fotos y reseñas de Google (tarjeta oficial, no se guarda nada). Solo si hay llave y el lugar trae place_id de Google.
+    if (this._googleCardOn && isGooglePlaceId(this._place)) {
+      const pl = this._place;
+      items.push({ label: 'Fotos y reseñas de Google', icon: I.photo, action: () => openGoogleCard(pl) });
+    }
     items.push({ label: 'Reportar un problema', icon: I.alert, action: () => this._openPlaceReportSheet() });
 
     // "¿Es tu negocio?" — según el estado
