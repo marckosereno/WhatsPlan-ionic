@@ -62,6 +62,7 @@ export class PlaceModal2 {
   // ── BUILD ─────────────────────────────────────────────────────────
   _build() {
     if (document.getElementById('wp-pm2')) return;
+    this._prepGoogleCard();
     // Volvimos a fullscreen — el <div> a mano de antes, sin ion-modal.
     const el = document.createElement('div');
     el.id = 'wp-pm2';
@@ -1869,15 +1870,10 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     const blk = this._el.querySelector('#wp-pm2-gblock');
     const box = this._el.querySelector('#wp-pm2-gcard');
     if (!blk || !box) return;
-    blk.style.display = 'none'; box.innerHTML = ''; this._el.classList.remove('wp-pm2-has-gcard');
-    if (!isGooglePlaceId(place)) return;
-    googleCardReady().then((ok) => {
-      if (!ok || this._place !== place) return;
-      blk.style.display = ''; this._el.classList.add('wp-pm2-has-gcard');
-      return mountGoogleCard(box, place, () => this._place === place).then((done) => {
-        if (!done && this._place === place && !box.firstChild) { blk.style.display = 'none'; this._el.classList.remove('wp-pm2-has-gcard'); }
-      });
-    }).catch(() => {});
+    blk.style.display = 'none'; box.innerHTML = '';
+    if (!this._el.classList.contains('wp-pm2-has-gcard')) return;
+    blk.style.display = '';
+    mountGoogleCard(box, place, () => this._place === place).catch(() => {});
   }
 
   show(place, opts = {}) {
@@ -1896,6 +1892,8 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     // gancho para que quien abrió esta ficha (MapView, desde el slide)
     // arme el vuelo de vuelta. Sin esto, hide() cierra normal, sin flip.
     this._flipContext = opts.flipContext || null;
+    // Ficha de Google: si hay llave y el lugar está ligado, la ficha es la tarjeta de Google (sin hero ni mapa nuestro)
+    this._el.classList.toggle('wp-pm2-has-gcard', !!(this._googleCardOn && isGooglePlaceId(place)));
     this._populate(place);
     this._mountGoogleBlock(place);
     document.body.style.overflow = 'hidden';
