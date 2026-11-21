@@ -11,7 +11,7 @@ import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { isSparsePlace, openCollabSheet } from '/src/components/place-collab/collab-sheet.js';
-import { googleCardReady, isGooglePlaceId, openGoogleCard } from '/src/components/google-card/google-card.js';
+import { googleCardReady, isGooglePlaceId, mountGoogleCard } from '/src/components/google-card/google-card.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
 import { photoSmall }                  from '/src/utils/photo-url.js';
 import { VisitService }                from '/src/services/VisitService.js';
@@ -209,6 +209,13 @@ export class PlaceModal2 {
               <svg class="wp-pm2-chevron" id="wp-pm2-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             <div class="wp-pm2-hours-list" id="wp-pm2-hours-list"></div>
+          </div>
+
+          <!-- DE GOOGLE — tarjeta oficial (Places UI Kit), solo lugares ligados a un place_id de Google.
+               Va separada de lo de WhatsPlan a propósito: el contenido de Google no se mezcla ni se guarda. -->
+          <div id="wp-pm2-gblock" class="wp-gblock" style="display:none">
+            <div class="wp-pm2-section-heading">De Google</div>
+            <div id="wp-pm2-gcard" class="wp-gc-box"></div>
           </div>
 
           <!-- PHOTO STRIP -->
@@ -1857,6 +1864,22 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     if (this._googleCardOn === undefined) { this._googleCardOn = false; googleCardReady().then((ok) => { this._googleCardOn = ok; }).catch(() => {}); }
   }
 
+  // Bloque "De Google" dentro de la ficha: se oculta y se vuelve a armar en cada apertura
+  _mountGoogleBlock(place) {
+    const blk = this._el.querySelector('#wp-pm2-gblock');
+    const box = this._el.querySelector('#wp-pm2-gcard');
+    if (!blk || !box) return;
+    blk.style.display = 'none'; box.innerHTML = '';
+    if (!isGooglePlaceId(place)) return;
+    googleCardReady().then((ok) => {
+      if (!ok || this._place !== place) return;
+      blk.style.display = '';
+      return mountGoogleCard(box, place, () => this._place === place).then((done) => {
+        if (!done && this._place === place && !box.firstChild) blk.style.display = 'none';
+      });
+    }).catch(() => {});
+  }
+
   show(place, opts = {}) {
     this._prepGoogleCard();
     this._fromSearch = false;
@@ -1874,6 +1897,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     // arme el vuelo de vuelta. Sin esto, hide() cierra normal, sin flip.
     this._flipContext = opts.flipContext || null;
     this._populate(place);
+    this._mountGoogleBlock(place);
     document.body.style.overflow = 'hidden';
     // Activa la sombra superior "oficial" con blur real (ion-app::before,
     // variante body.wp-pm-open en app.css) + el blur del mapa de fondo —
@@ -5084,11 +5108,6 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     }
     if (info.address) items.push({ label: 'Copiar dirección', icon: I.copy, action: () => this._copyText(info.address) });
     if (info.url) items.push({ label: 'Copiar enlace', icon: I.link, action: () => this._copyText(info.url) });
-    // Fotos y reseñas de Google (tarjeta oficial, no se guarda nada). Solo si hay llave y el lugar trae place_id de Google.
-    if (this._googleCardOn && isGooglePlaceId(this._place)) {
-      const pl = this._place;
-      items.push({ label: 'Fotos y reseñas de Google', icon: I.photo, action: () => openGoogleCard(pl) });
-    }
     items.push({ label: 'Reportar un problema', icon: I.alert, action: () => this._openPlaceReportSheet() });
 
     // "¿Es tu negocio?" — según el estado
