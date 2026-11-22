@@ -271,7 +271,7 @@
   background:rgba(255,255,255,0.88);
   backdrop-filter:blur(16px) saturate(1.8);
   -webkit-backdrop-filter:blur(16px) saturate(1.8);
-  box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow:0 1px 4px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.9);
   color:#111; display:flex; align-items:center; justify-content:center;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
   transition:transform 0.15s, padding 0.22s cubic-bezier(0.4,0,0.2,1); flex-shrink:0;
@@ -304,7 +304,7 @@
   background:rgba(255,255,255,0.88);
   backdrop-filter:blur(16px) saturate(1.8);
   -webkit-backdrop-filter:blur(16px) saturate(1.8);
-  box-shadow:0 4px 16px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow:0 1px 4px rgba(0,0,0,0.08),inset 0 1px 0 rgba(255,255,255,0.9);
   color:#111; display:flex; align-items:center; justify-content:center;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
   transition:transform 0.15s;
@@ -1802,3 +1802,30 @@ body #wp-pm2-sim .wp-sim-fav { width: 34px; height: 34px; border-radius: 50%; co
   background: linear-gradient(160deg, #fff5f7, #ffe8ed); box-shadow: inset 0 0 0 1px #fecdd6; }
 body #wp-pm2-sim .wp-sim-fav.on { background: linear-gradient(160deg, #fb7185, #f43f5e); color: #fff; box-shadow: 0 4px 10px -6px rgba(244, 63, 94, 0.6); }
 body #wp-pm2-sim .wp-sim-empty { font-weight: 500; }
+
+/* (Vive aquí y no en google-card.css a propósito: tiene que estar cargado ANTES de que la ficha mida el hero;
+   si llegaba tarde, el espaciador medía el hero grande y quedaba un hueco arriba de la tarjeta.)
+   ── Modo "ficha de Google": la tarjeta de Google ES la ficha ────────────────────────────────
+   Se queda: topbar, grupo de "crear actividad" a la derecha, reseñas de WhatsPlan y footer.
+   Se quita: hero (foto/nombre), resumen, botones de acción, horarios, fotos, ubicación y mapa propio. */
+.wp-pm2-has-gcard #wp-pm2-hero {
+  min-height: calc(69px + env(safe-area-inset-top, 0px)) !important;
+  height: calc(69px + env(safe-area-inset-top, 0px)); max-height: none; background: #fff;
+}
+.wp-pm2-has-gcard #wp-pm2-hero-inner,
+.wp-pm2-has-gcard #wp-pm2-hero-gradient,
+.wp-pm2-has-gcard #wp-pm2-hero-bottom { display: none; }
+.wp-pm2-has-gcard #wp-pm2-topbar-actions { opacity: 1 !important; pointer-events: auto !important; }
+.wp-pm2-has-gcard #wp-pm2-reviews-summary,
+.wp-pm2-has-gcard #wp-pm2-ai-block,
+.wp-pm2-has-gcard #wp-pm2-cta-row,
+.wp-pm2-has-gcard #wp-pm2-actions,
+.wp-pm2-has-gcard #wp-pm2-hours,
+.wp-pm2-has-gcard #wp-pm2-photos-heading,
+.wp-pm2-has-gcard #wp-pm2-strip,
+.wp-pm2-has-gcard #wp-pm2-address-row,
+.wp-pm2-has-gcard #wp-pm2-map-preview,
+.wp-pm2-has-gcard .wp-pm2-section-heading { display: none !important; }
+
+/* Tarjeta de Google pegada al topbar: sin el aire extra que el JS le pone a la hoja blanca */
+.wp-pm2-has-gcard #wp-pm2-sheet { padding-top: 0 !important; }
