@@ -18,11 +18,13 @@ import { ensureCss } from '/src/components/tabs/tab-screen.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-let keyP = null;
-function getKey() {
-  if (!keyP) keyP = fetch('/api/config').then((r) => r.json()).then((c) => c.googleBrowserKey || '').catch(() => '');
-  return keyP;
+let cfgP = null;
+function getCfg() {
+  if (!cfgP) cfgP = fetch('/api/config').then((r) => r.json()).then((c) => ({ key: c.googleBrowserKey || '', mini: !!c.googleMini })).catch(() => ({ key: '', mini: false }));
+  return cfgP;
 }
+const getKey = async () => (await getCfg()).key;
+export async function googleMiniReady() { const c = await getCfg(); return !!(c.key && c.mini); }
 export async function googleCardReady() { return !!(await getKey()); }
 
 // Lugares de Google traen su ID en place_id; los de DENUE lo traen ligado en googlePlaceId (SQL 49)
@@ -93,4 +95,43 @@ export async function openGoogleCard(place) {
   setTimeout(() => sheet.relayout(), 150);
   await mountGoogleCard(sheet.root.querySelector('.wp-gc-box'), place);
   return sheet;
+}
+
+// Minimodal: dentro de la burbuja del pin, cambia foto+texto por la tarjeta COMPACTA de Google, pero solo cuando
+// Google ya cargó (si tarda o falla, la burbuja de siempre se queda tal cual). `card` = .minicard-marker-content.
+// Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
+export async function mountGoogleMini(card, place, isCurrent = () => true) {
+  const pid = googlePlaceId(place);
+  if (!pid || !(await googleMiniReady()) || !isCurrent()) return false;
+  const key = await getKey();
+  try {
+    await loadPlacesLib(key);
+    if (!isCurrent()) return false;
+    const host = document.createElement('div');
+    host.className = 'wp-mc-g';
+    host.style.cssText = 'flex:1;min-width:0;position:absolute;visibility:hidden;pointer-events:none;width:300px;left:0;top:0';
+    const el = document.createElement('gmp-place-details-compact');
+    el.setAttribute('orientation', 'horizontal');
+    el.setAttribute('truncation-preferred', '');
+    el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request><gmp-place-standard-content></gmp-place-standard-content>`;
+    host.appendChild(el);
+    card.appendChild(host);
+    let done = false;
+    const swap = () => {
+      if (done || !isCurrent() || !card.isConnected) return;
+      if (el.offsetHeight < 30) return;              // aún vacío: no cambiar
+      done = true;
+      const kids = [...card.children].filter((c) => c !== host);
+      const arrow = kids[kids.length - 1];
+      kids.slice(0, -1).forEach((c) => { c.style.display = 'none'; });
+      host.style.cssText = 'flex:1;min-width:0;max-width:300px';
+      card.style.maxWidth = '320px';
+      if (arrow) card.insertBefore(host, arrow);
+    };
+    el.addEventListener('gmp-load', swap);
+    el.addEventListener('gmp-error', () => host.remove());
+    setTimeout(swap, 2500);                           // por si el evento no llega pero ya se dibujó
+    setTimeout(() => { if (!done) host.remove(); }, 6000);
+    return true;
+  } catch (e) { console.warn('[GoogleMini]', e); return false; }
 }
