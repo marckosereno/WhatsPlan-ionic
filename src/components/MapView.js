@@ -5,6 +5,7 @@ import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
 import { paintSeals } from '/src/components/map/plan-seal.js';
 import { lgEmojiImg } from '/src/utils/emoji-img.js';
+import { mountGoogleMini } from '/src/components/google-card/google-card.js';
 import { planEmoji, onPlanEmojiReady } from '/src/components/map/plan-emoji.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -4859,6 +4860,8 @@ export class MapView {
     const card = wrapper.querySelector('.minicard-marker-content');
     if (card) {
       animateMinicardIn(card);
+      // Tarjeta compacta de Google dentro de la burbuja (apagada salvo GOOGLE_UIKIT_MINI=1; si falla, queda la de siempre)
+      mountGoogleMini(card, place, () => this.miniCardPlace === place).catch(() => {});
       const pulse = () => {
         card.style.transform = 'scale(0.93)';
         setTimeout(() => { card.style.transform = ''; }, 150);

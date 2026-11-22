@@ -11,6 +11,9 @@ export default function handler(req, res) {
     // Llave de Google SOLO para la tarjeta "Fotos y reseñas de Google" (Places UI Kit). Debe ser una llave
     // aparte, restringida por dominio (HTTP referrer) y limitada a Maps JavaScript API + Places UI Kit.
     // Vacía = la tarjeta queda apagada.
-    googleBrowserKey: process.env.GOOGLE_UIKIT_BROWSER_KEY || ''
+    googleBrowserKey: process.env.GOOGLE_UIKIT_BROWSER_KEY || '',
+    // Interruptor aparte del minimodal (burbuja del pin con la tarjeta compacta de Google). Cada toque a un pin
+    // ligado cuesta una solicitud del UI Kit, por eso va apagado salvo GOOGLE_UIKIT_MINI=1
+    googleMini: process.env.GOOGLE_UIKIT_MINI === '1'
   });
 }
