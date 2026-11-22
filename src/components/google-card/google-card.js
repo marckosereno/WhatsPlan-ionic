@@ -121,12 +121,15 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
       if (done || !isCurrent() || !card.isConnected) return;
       if (el.offsetHeight < 30) return;              // aún vacío: no cambiar
       done = true;
-      const kids = [...card.children].filter((c) => c !== host);
-      const arrow = kids[kids.length - 1];
-      kids.slice(0, -1).forEach((c) => { c.style.display = 'none'; });
-      host.style.cssText = 'flex:1;min-width:0;max-width:300px';
-      card.style.maxWidth = '320px';
-      if (arrow) card.insertBefore(host, arrow);
+      // Se ve NATIVA: la burbuja de WhatsPlan se vuelve un contenedor sin fondo, borde, relleno ni flechita,
+      // y la tarjeta de Google ocupa todo el ancho (hasta 340 px) con su propio fondo blanco y esquinas
+      [...card.children].forEach((c) => { if (c !== host) c.style.display = 'none'; });
+      card.style.cssText += ';display:block;padding:0;gap:0;background:transparent;border:0;box-shadow:none;' +
+        '-webkit-backdrop-filter:none;backdrop-filter:none;max-width:none;min-width:0;border-radius:28px;overflow:visible;' +
+        'filter:drop-shadow(0 8px 20px rgba(0,0,0,0.20))';
+      host.style.cssText = 'position:relative;width:min(340px,86vw);max-width:none;min-width:0';
+      el.style.cssText += ';display:block;width:100%;border-radius:28px;' +
+        '--gmp-mat-color-surface:#fff;--gmp-mat-color-outline-decorative:transparent;--gmp-mat-font-family:var(--wp-font,inherit)';
     };
     el.addEventListener('gmp-load', swap);
     el.addEventListener('gmp-error', () => host.remove());
