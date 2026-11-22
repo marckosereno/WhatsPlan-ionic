@@ -29,27 +29,3 @@
 .wp-gc-skel i { display: block; height: 14px; border-radius: 8px; background: linear-gradient(90deg,#eceaf3,#f6f5fa,#eceaf3); background-size: 200% 100%; animation: wp-gc-sh 1.2s linear infinite; }
 .wp-gc-skel i:nth-child(1) { width: 70%; height: 18px; } .wp-gc-skel i:nth-child(3) { width: 45%; }
 @keyframes wp-gc-sh { to { background-position: -200% 0; } }
-/* ── Modo "ficha de Google": la tarjeta de Google ES la ficha ────────────────────────────────
-   Se queda: topbar, grupo de "crear actividad" a la derecha, reseñas de WhatsPlan y footer.
-   Se quita: hero (foto/nombre), resumen, botones de acción, horarios, fotos, ubicación y mapa propio. */
-.wp-pm2-has-gcard #wp-pm2-hero {
-  min-height: calc(69px + env(safe-area-inset-top, 0px)) !important;
-  height: calc(69px + env(safe-area-inset-top, 0px)); max-height: none; background: #fff;
-}
-.wp-pm2-has-gcard #wp-pm2-hero-inner,
-.wp-pm2-has-gcard #wp-pm2-hero-gradient,
-.wp-pm2-has-gcard #wp-pm2-hero-bottom { display: none; }
-.wp-pm2-has-gcard #wp-pm2-topbar-actions { opacity: 1 !important; pointer-events: auto !important; }
-.wp-pm2-has-gcard #wp-pm2-reviews-summary,
-.wp-pm2-has-gcard #wp-pm2-ai-block,
-.wp-pm2-has-gcard #wp-pm2-cta-row,
-.wp-pm2-has-gcard #wp-pm2-actions,
-.wp-pm2-has-gcard #wp-pm2-hours,
-.wp-pm2-has-gcard #wp-pm2-photos-heading,
-.wp-pm2-has-gcard #wp-pm2-strip,
-.wp-pm2-has-gcard #wp-pm2-address-row,
-.wp-pm2-has-gcard #wp-pm2-map-preview,
-.wp-pm2-has-gcard .wp-pm2-section-heading { display: none !important; }
-
-/* Tarjeta de Google pegada al topbar: sin el aire extra que el JS le pone a la hoja blanca */
-.wp-pm2-has-gcard #wp-pm2-sheet { padding-top: 0 !important; }
