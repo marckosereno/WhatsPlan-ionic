@@ -113,7 +113,17 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     const el = document.createElement('gmp-place-details-compact');
     el.setAttribute('orientation', 'horizontal');
     el.setAttribute('truncation-preferred', '');
-    el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request><gmp-place-standard-content></gmp-place-standard-content>`;
+    // Mismo contenido que el ejemplo oficial de Google para la compacta horizontal: foto a la izquierda, nombre,
+    // calificación, tipo · precio · acceso y atribución (sin abrir la foto en lightbox: el toque abre la ficha)
+    el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request>
+      <gmp-place-content-config>
+        <gmp-place-media></gmp-place-media>
+        <gmp-place-rating></gmp-place-rating>
+        <gmp-place-type></gmp-place-type>
+        <gmp-place-price></gmp-place-price>
+        <gmp-place-accessible-entrance-icon></gmp-place-accessible-entrance-icon>
+        <gmp-place-attribution light-scheme-color="gray" dark-scheme-color="white"></gmp-place-attribution>
+      </gmp-place-content-config>`;
     host.appendChild(el);
     card.appendChild(host);
     let done = false;
@@ -130,6 +140,25 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
       host.style.cssText = 'position:relative;width:min(340px,86vw);max-width:none;min-width:0';
       el.style.cssText += ';display:block;width:100%;border-radius:28px;' +
         '--gmp-mat-color-surface:#fff;--gmp-mat-color-outline-decorative:transparent;--gmp-mat-font-family:var(--wp-font,inherit)';
+      // La tarjeta es más alta que la burbuja de antes: se sube para que su borde inferior quede justo arriba del
+      // punto del pin (antes lo tapaba), el puntito negro baja a ese punto y se dibuja una colita blanca
+      const wrapper = card.parentElement;
+      requestAnimationFrame(() => {
+        if (!wrapper || !card.isConnected) return;
+        const H = card.offsetHeight;
+        if (H < 30) return;
+        wrapper.style.marginTop = `-${Math.round(H / 2 + 14)}px`;
+        const dot = wrapper.querySelector('.wp-mc-shadow-dot');
+        if (dot) dot.style.top = `calc(50% + ${Math.round(H / 2 + 14)}px)`;
+        card.style.position = 'relative';
+        if (!card.querySelector('.wp-mc-tail')) {
+          const tail = document.createElement('i');
+          tail.className = 'wp-mc-tail';
+          tail.style.cssText = 'position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);width:0;height:0;' +
+            'border-left:10px solid transparent;border-right:10px solid transparent;border-top:10px solid #fff;pointer-events:none';
+          card.appendChild(tail);
+        }
+      });
     };
     el.addEventListener('gmp-load', swap);
     el.addEventListener('gmp-error', () => host.remove());
