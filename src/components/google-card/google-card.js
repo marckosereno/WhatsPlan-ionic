@@ -138,7 +138,7 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
         '-webkit-backdrop-filter:none;backdrop-filter:none;max-width:none;min-width:0;border-radius:28px;overflow:visible;' +
         'filter:drop-shadow(0 8px 20px rgba(0,0,0,0.20))';
       host.style.cssText = 'position:relative;width:min(340px,86vw);max-width:none;min-width:0';
-      el.style.cssText += ';display:block;width:100%;border-radius:28px;' +
+      el.style.cssText += ';width:100%;border-radius:28px;' +
         '--gmp-mat-color-surface:#fff;--gmp-mat-color-outline-decorative:transparent;--gmp-mat-font-family:var(--wp-font,inherit)';
       // La tarjeta es más alta que la burbuja de antes: se sube para que su borde inferior quede justo arriba del
       // punto del pin (antes lo tapaba), el puntito negro baja a ese punto y se dibuja una colita blanca
