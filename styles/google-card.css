@@ -50,3 +50,6 @@
 .wp-pm2-has-gcard #wp-pm2-address-row,
 .wp-pm2-has-gcard #wp-pm2-map-preview,
 .wp-pm2-has-gcard .wp-pm2-section-heading { display: none !important; }
+
+/* Tarjeta de Google pegada al topbar: sin el aire extra que el JS le pone a la hoja blanca */
+.wp-pm2-has-gcard #wp-pm2-sheet { padding-top: 0 !important; }
