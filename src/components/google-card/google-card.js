@@ -109,7 +109,9 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     if (!isCurrent()) return false;
     const host = document.createElement('div');
     host.className = 'wp-mc-g';
-    host.style.cssText = 'flex:1;min-width:0;position:absolute;visibility:hidden;pointer-events:none;width:300px;left:0;top:0';
+    // Se monta VISIBLE pero transparente (opacity:0), no con visibility:hidden ni fuera de pantalla: las imágenes que
+    // Google carga "perezosas" no se piden si el elemento está oculto o fuera de vista, y la foto quedaba sin salir.
+    host.style.cssText = 'flex:1;min-width:0;position:absolute;opacity:0;pointer-events:none;width:min(340px,86vw);left:0;top:0;z-index:-1';
     const el = document.createElement('gmp-place-details-compact');
     el.setAttribute('orientation', 'horizontal');
     el.setAttribute('truncation-preferred', '');
@@ -160,7 +162,7 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
         }
       });
     };
-    el.addEventListener('gmp-load', swap);
+    el.addEventListener('gmp-load', () => setTimeout(swap, 700));   // da tiempo a que llegue la foto antes de mostrarla
     el.addEventListener('gmp-error', () => host.remove());
     setTimeout(swap, 2500);                           // por si el evento no llega pero ya se dibujó
     setTimeout(() => { if (!done) host.remove(); }, 6000);
