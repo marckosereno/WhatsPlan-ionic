@@ -512,7 +512,8 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     try {
       this._hideMiniSnap();
       // Lugares con solo lo básico (DENUE, sin fotos): hoja de colaboración en vez de la ficha vacía
-      if (isSparsePlace(place)) { openCollabSheet(this, place); return; }
+      // Con tarjeta de Google disponible, la ficha ya no está vacía: se abre directo, sin la hoja previa
+      if (isSparsePlace(place) && !(this._googleCardOn && isGooglePlaceId(place))) { openCollabSheet(this, place); return; }
       this.show(place);
     } catch (e) {
       console.error('[PM2] Error al abrir la ficha:', e);

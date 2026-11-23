@@ -10,7 +10,7 @@
   --gmp-mat-color-surface: #ffffff;
   --gmp-mat-color-on-surface: #1b1b22;
   --gmp-mat-color-primary: #5b4bff;
-  --gmp-mat-font-family: inherit;
+  --gmp-mat-font-family: var(--wp-font, inherit);
 }
 .wp-gc-load { padding: 36px 16px; text-align: center; font-size: 14px; color: #555; }
 
@@ -23,6 +23,8 @@
   --gmp-mat-color-on-surface: #15151c;
   --gmp-mat-color-primary: #5b4bff;
   --gmp-mat-color-outline-decorative: transparent; /* sin borde */
+  --gmp-mat-font-family: var(--wp-font, inherit); /* tipografía de WhatsPlan */
+  font-family: var(--wp-font, inherit);
   border: 0; border-radius: 0;
 }
 .wp-gc-skel { padding: 14px 16px; display: grid; gap: 10px; }
