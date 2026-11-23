@@ -153,10 +153,17 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
         const dot = wrapper.querySelector('.wp-mc-shadow-dot');
         if (dot) dot.style.top = `calc(50% + ${Math.round(H / 2 + 14)}px)`;
         card.style.position = 'relative';
+        // Si la tarjeta (más ancha que la burbuja de antes) se sale de la pantalla, se corre para que quepa entera
+        // (la foto de la compacta horizontal queda en un extremo y se perdía fuera de la pantalla); la colita sigue al pin
+        const vw = window.innerWidth, r = card.getBoundingClientRect();
+        let shift = 0;
+        if (r.right > vw - 8) shift = vw - 8 - r.right;
+        if (r.left + shift < 8) shift = 8 - r.left;
+        if (shift) card.style.left = `${Math.round(shift)}px`;
         if (!card.querySelector('.wp-mc-tail')) {
           const tail = document.createElement('i');
           tail.className = 'wp-mc-tail';
-          tail.style.cssText = 'position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);width:0;height:0;' +
+          tail.style.cssText = 'position:absolute;left:calc(50% - ' + Math.round(shift) + 'px);bottom:-9px;transform:translateX(-50%);width:0;height:0;' +
             'border-left:10px solid transparent;border-right:10px solid transparent;border-top:10px solid #fff;pointer-events:none';
           card.appendChild(tail);
         }
@@ -181,7 +188,7 @@ function gcDebug(el, pid) {
     if (q === '0') localStorage.removeItem('wpGcDebug');
     if (localStorage.getItem('wpGcDebug') !== '1') return;
     const tag = document.createElement('div');
-    tag.style.cssText = 'position:fixed;left:6px;right:6px;top:calc(env(safe-area-inset-top) + 70px);z-index:99999;' +
+    tag.style.cssText = 'position:fixed;left:6px;right:6px;bottom:90px;z-index:99999;' +
       'background:rgba(0,0,0,.82);color:#9f9;font:11px/1.35 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap';
     document.body.appendChild(tag);
     const ev = [];
@@ -193,9 +200,9 @@ function gcDebug(el, pid) {
       const imgs = (sr ? sr.querySelectorAll('img').length : -1) + '/' + (msr ? msr.querySelectorAll('img').length : -1);
       const res = performance.getEntriesByType('resource')
         .filter((r) => /places\.googleapis|googleusercontent|gstatic.*photo|maps\.googleapis/.test(r.name))
-        .slice(-8).map((r) => (r.responseStatus || '?') + ' ' + r.name.replace(/^https?:\/\//, '').slice(0, 58));
+        .slice(-4).map((r) => (r.responseStatus || '?') + ' ' + r.name.replace(/^https?:\/\//, '').slice(0, 58));
       tag.textContent = 'gc ' + pid.slice(0, 12) + ' | ev: ' + (ev.join(',') || 'ninguno') + ' | h=' + el.offsetHeight +
-        ' w=' + el.offsetWidth + ' | img(el/media)=' + imgs + ' | media=' + (media ? media.offsetWidth + 'x' + media.offsetHeight : 'no') +
+        ' w=' + el.offsetWidth + ' | img(el/media)=' + imgs + ' | rect=' + Math.round(el.getBoundingClientRect().left) + '..' + Math.round(el.getBoundingClientRect().right) + ' de ' + innerWidth +
         '\n' + (res.join('\n') || 'sin peticiones a Google');
       setTimeout(() => tag.remove(), 15000);
     }, 3500);
