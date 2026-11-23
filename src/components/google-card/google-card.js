@@ -102,7 +102,7 @@ export async function openGoogleCard(place) {
 // Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
 // Pruebas desde el celular (se guardan): ?gcori=vertical|horizontal  ?gcw=344 (ancho en px)  ?gctrunc=0|1  ?gcreset=1 las borra
 function miniOpts() {
-  const o = { ori: 'vertical', w: 260, trunc: true };   // la horizontal no dibuja la foto; la vertical sí
+  const o = { ori: 'vertical', w: 250, trunc: true };   // la horizontal no dibuja la foto; la vertical sí
   try {
     const q = new URLSearchParams(location.search);
     if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc'].forEach((k) => localStorage.removeItem(k));
@@ -113,7 +113,7 @@ function miniOpts() {
     if (ori === 'vertical' || ori === 'horizontal') o.ori = ori;
     if (w >= 200 && w <= 600) o.w = w;
     if (t === '0') o.trunc = false;
-    if (o.ori === 'vertical' && !localStorage.getItem('wpGcW')) o.w = 260;
+    if (o.ori === 'vertical' && !localStorage.getItem('wpGcW')) o.w = 250;
   } catch (e) { /* sin almacenamiento: valores por defecto */ }
   return o;
 }
@@ -135,15 +135,11 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     const el = document.createElement('gmp-place-details-compact');
     el.setAttribute('orientation', mo.ori);
     if (mo.trunc && mo.ori === 'horizontal') el.setAttribute('truncation-preferred', '');
-    // Mismo contenido que el ejemplo oficial de Google para la compacta horizontal: foto a la izquierda, nombre,
-    // calificación, tipo · precio · acceso y atribución (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
+    // Contenido mínimo para que la tarjeta quede lo más chica posible: foto, nombre, calificación y atribución (que no se quita) (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
     el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request>
       <gmp-place-content-config>
         <gmp-place-media></gmp-place-media>
         <gmp-place-rating></gmp-place-rating>
-        <gmp-place-type></gmp-place-type>
-        <gmp-place-price></gmp-place-price>
-        <gmp-place-accessible-entrance-icon></gmp-place-accessible-entrance-icon>
         <gmp-place-attribution light-scheme-color="gray" dark-scheme-color="white"></gmp-place-attribution>
       </gmp-place-content-config>`;
     host.appendChild(el);
