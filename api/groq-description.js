@@ -263,6 +263,7 @@ async function googleLive(req, res) {
     } else out.mediaError = (await mr.text()).slice(0, 300);
   }
   out.photosN = Array.isArray(d.photos) ? d.photos.length : 0;
+  if (!out.photosN) out.googleDijo = JSON.stringify(d).slice(0, 250);   // diagnóstico: qué contestó Google cuando no trajo fotos
   if (parts === 'full') {
     const reviews = (Array.isArray(d.reviews) ? d.reviews : []).slice(0, 5)
       .map((r) => ({ text: (r.text?.text || r.originalText?.text || '').slice(0, 400), rating: r.rating }))
