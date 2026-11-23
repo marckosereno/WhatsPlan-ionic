@@ -100,6 +100,23 @@ export async function openGoogleCard(place) {
 // Minimodal: dentro de la burbuja del pin, cambia foto+texto por la tarjeta COMPACTA de Google, pero solo cuando
 // Google ya cargó (si tarda o falla, la burbuja de siempre se queda tal cual). `card` = .minicard-marker-content.
 // Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
+// Pruebas desde el celular (se guardan): ?gcori=vertical|horizontal  ?gcw=344 (ancho en px)  ?gctrunc=0|1  ?gcreset=1 las borra
+function miniOpts() {
+  const o = { ori: 'horizontal', w: null, trunc: true };
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc'].forEach((k) => localStorage.removeItem(k));
+    if (q.get('gcori')) localStorage.setItem('wpGcOri', q.get('gcori'));
+    if (q.get('gcw')) localStorage.setItem('wpGcW', q.get('gcw'));
+    if (q.get('gctrunc')) localStorage.setItem('wpGcTrunc', q.get('gctrunc'));
+    const ori = localStorage.getItem('wpGcOri'), w = parseInt(localStorage.getItem('wpGcW') || '', 10), t = localStorage.getItem('wpGcTrunc');
+    if (ori === 'vertical' || ori === 'horizontal') o.ori = ori;
+    if (w >= 200 && w <= 600) o.w = w;
+    if (t === '0') o.trunc = false;
+  } catch (e) { /* sin almacenamiento: valores por defecto */ }
+  return o;
+}
+
 export async function mountGoogleMini(card, place, isCurrent = () => true) {
   const pid = googlePlaceId(place);
   if (!pid || !(await googleMiniReady()) || !isCurrent()) return false;
@@ -111,10 +128,12 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     host.className = 'wp-mc-g';
     // Se monta VISIBLE pero transparente (opacity:0), no con visibility:hidden ni fuera de pantalla: las imágenes que
     // Google carga "perezosas" no se piden si el elemento está oculto o fuera de vista, y la foto quedaba sin salir.
-    host.style.cssText = 'flex:1;min-width:0;position:absolute;opacity:0;pointer-events:none;width:min(340px,86vw);left:0;top:0;z-index:-1';
+    const mo = miniOpts();
+    const WID = mo.w ? `min(${mo.w}px,calc(100vw - 16px))` : 'min(340px,86vw)';
+    host.style.cssText = `flex:1;min-width:0;position:absolute;opacity:0;pointer-events:none;width:${WID};left:0;top:0;z-index:-1`;
     const el = document.createElement('gmp-place-details-compact');
-    el.setAttribute('orientation', 'horizontal');
-    el.setAttribute('truncation-preferred', '');
+    el.setAttribute('orientation', mo.ori);
+    if (mo.trunc) el.setAttribute('truncation-preferred', '');
     // Mismo contenido que el ejemplo oficial de Google para la compacta horizontal: foto a la izquierda, nombre,
     // calificación, tipo · precio · acceso y atribución (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
     el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request>
@@ -139,7 +158,7 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
       card.style.cssText += ';display:block;padding:0;gap:0;background:transparent;border:0;box-shadow:none;' +
         '-webkit-backdrop-filter:none;backdrop-filter:none;max-width:none;min-width:0;border-radius:28px;overflow:visible;' +
         'filter:drop-shadow(0 8px 20px rgba(0,0,0,0.20))';
-      host.style.cssText = 'position:relative;width:min(340px,86vw);max-width:none;min-width:0';
+      host.style.cssText = `position:relative;width:${WID};max-width:none;min-width:0`;
       el.style.cssText += ';width:100%;border-radius:28px;' +
         '--gmp-mat-color-surface:#fff;--gmp-mat-color-outline-decorative:transparent;--gmp-mat-font-family:var(--wp-font,inherit)';
       // La tarjeta es más alta que la burbuja de antes: se sube para que su borde inferior quede justo arriba del
@@ -173,7 +192,7 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     el.addEventListener('gmp-error', () => host.remove());
     setTimeout(swap, 2500);                           // por si el evento no llega pero ya se dibujó
     setTimeout(() => { if (!done) host.remove(); }, 6000);
-    gcDebug(el, pid);
+    gcDebug(el, pid, mo);
     return true;
   } catch (e) { console.warn('[GoogleMini]', e); return false; }
 }
@@ -181,7 +200,7 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
 
 // Diagnóstico opcional del minimodal: abrir la app con ?gcdebug=1 (queda guardado) y se ve una etiqueta con lo que
 // dibujó Google y el estado de sus peticiones de foto (403 = llave sin permiso; 200 = sí llegó). ?gcdebug=0 lo apaga.
-function gcDebug(el, pid) {
+function gcDebug(el, pid, mo) {
   try {
     const q = new URLSearchParams(location.search).get('gcdebug');
     if (q === '1') localStorage.setItem('wpGcDebug', '1');
@@ -201,7 +220,7 @@ function gcDebug(el, pid) {
       const res = performance.getEntriesByType('resource')
         .filter((r) => /places\.googleapis|googleusercontent|gstatic.*photo|maps\.googleapis/.test(r.name))
         .slice(-4).map((r) => (r.responseStatus || '?') + ' ' + r.name.replace(/^https?:\/\//, '').slice(0, 58));
-      tag.textContent = 'gc ' + pid.slice(0, 12) + ' | ev: ' + (ev.join(',') || 'ninguno') + ' | h=' + el.offsetHeight +
+      tag.textContent = 'gc ' + pid.slice(0, 12) + ' ' + mo.ori + (mo.w ? ' w' + mo.w : '') + (mo.trunc ? '' : ' sintrunc') + ' | ev: ' + (ev.join(',') || 'ninguno') + ' | h=' + el.offsetHeight +
         ' w=' + el.offsetWidth + ' | img(el/media)=' + imgs + ' | rect=' + Math.round(el.getBoundingClientRect().left) + '..' + Math.round(el.getBoundingClientRect().right) + ' de ' + innerWidth +
         '\n' + (res.join('\n') || 'sin peticiones a Google');
       setTimeout(() => tag.remove(), 15000);
