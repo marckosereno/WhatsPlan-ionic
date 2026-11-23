@@ -41,7 +41,10 @@ export function loadGoogleLive(place, parts = 'full') {
   const q = new URLSearchParams({ mode: 'google', gid, parts });
   const name = place.place_name || place.name; if (name) q.set('name', name);
   if (place.category) q.set('cat', place.category);
-  const p = fetch(`/api/groq-description?${q}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+  const t0 = Date.now();
+  const p = fetch(`/api/groq-description?${q}`)
+    .then(async (r) => { const j = await r.json().catch(() => null); liveTag(`${parts} ${gid.slice(0, 10)}… HTTP ${r.status} ${Date.now() - t0}ms\n` + (j ? (j.error ? 'ERROR: ' + j.error : 'foto:' + (j.photo ? 'sí' : 'no') + ' desc:' + (j.description ? 'sí' : 'no') + (j.basedOn ? ' (' + j.basedOn + ' reseñas)' : '')) : 'sin JSON')); return r.ok ? j : null; })
+    .catch((e) => { liveTag(`${parts} falló la petición: ${e?.message || e}`); return null; })
     .then((d) => { if (!d) _live.delete(key); return d; });
   _live.set(key, p);
   return p;
@@ -245,4 +248,17 @@ function gcDebug(el, pid, mo) {
       setTimeout(() => tag.remove(), 15000);
     }, 3500);
   } catch (e) { /* diagnóstico: nunca debe romper */ }
+}
+
+
+// Con ?gcdebug=1: etiqueta con el resultado de cada petición de Google en vivo (si hay foto/descripción o el error)
+function liveTag(msg) {
+  try {
+    if (localStorage.getItem('wpGcDebug') !== '1') return;
+    const tag = document.createElement('div');
+    tag.style.cssText = 'position:fixed;left:6px;right:6px;top:calc(env(safe-area-inset-top) + 70px);z-index:99999;background:rgba(0,0,0,.82);color:#ff9;font:11px/1.35 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap';
+    tag.textContent = 'live ' + msg;
+    document.body.appendChild(tag);
+    setTimeout(() => tag.remove(), 12000);
+  } catch (e) { /* diagnóstico */ }
 }
