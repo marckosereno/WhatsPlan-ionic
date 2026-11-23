@@ -102,18 +102,19 @@ export async function openGoogleCard(place) {
 // Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
 // Pruebas desde el celular (se guardan): ?gcori=vertical|horizontal  ?gcw=344 (ancho en px)  ?gctrunc=0|1  ?gcreset=1 las borra
 function miniOpts() {
-  const o = { ori: 'vertical', w: 120, trunc: true };   // la horizontal no dibuja la foto; la vertical sí
+  const o = { ori: 'horizontal', w: 300, trunc: true, rating: false };
   try {
     const q = new URLSearchParams(location.search);
-    if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc'].forEach((k) => localStorage.removeItem(k));
+    if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc', 'wpGcRating'].forEach((k) => localStorage.removeItem(k));
     if (q.get('gcori')) localStorage.setItem('wpGcOri', q.get('gcori'));
     if (q.get('gcw')) localStorage.setItem('wpGcW', q.get('gcw'));
     if (q.get('gctrunc')) localStorage.setItem('wpGcTrunc', q.get('gctrunc'));
+    if (q.get('gcrating')) localStorage.setItem('wpGcRating', q.get('gcrating'));
     const ori = localStorage.getItem('wpGcOri'), w = parseInt(localStorage.getItem('wpGcW') || '', 10), t = localStorage.getItem('wpGcTrunc');
     if (ori === 'vertical' || ori === 'horizontal') o.ori = ori;
     if (w >= 100 && w <= 600) o.w = w;
     if (t === '0') o.trunc = false;
-    if (o.ori === 'vertical' && !localStorage.getItem('wpGcW')) o.w = 120;
+    if (localStorage.getItem('wpGcRating') === '1') o.rating = true;
   } catch (e) { /* sin almacenamiento: valores por defecto */ }
   return o;
 }
@@ -135,11 +136,11 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     const el = document.createElement('gmp-place-details-compact');
     el.setAttribute('orientation', mo.ori);
     if (mo.trunc && mo.ori === 'horizontal') el.setAttribute('truncation-preferred', '');
-    // Contenido mínimo para que la tarjeta quede lo más chica posible: foto, nombre, calificación y atribución (que no se quita) (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
+    // Contenido mínimo, como la burbuja de WhatsPlan: foto y nombre (+ la atribución de Google, que no se quita). Calificación solo con ?gcrating=1 (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
     el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request>
       <gmp-place-content-config>
         <gmp-place-media></gmp-place-media>
-        <gmp-place-rating></gmp-place-rating>
+        ${mo.rating ? '<gmp-place-rating></gmp-place-rating>' : ''}
         <gmp-place-attribution light-scheme-color="gray" dark-scheme-color="white"></gmp-place-attribution>
       </gmp-place-content-config>`;
     host.appendChild(el);
@@ -218,7 +219,7 @@ function gcDebug(el, pid, mo) {
       const res = performance.getEntriesByType('resource')
         .filter((r) => /places\.googleapis|googleusercontent|gstatic.*photo|maps\.googleapis/.test(r.name))
         .slice(-4).map((r) => (r.responseStatus || '?') + ' ' + r.name.replace(/^https?:\/\//, '').slice(0, 58));
-      tag.textContent = 'gc ' + pid.slice(0, 12) + ' ' + mo.ori + (mo.w ? ' w' + mo.w : '') + (mo.trunc ? '' : ' sintrunc') + ' | ev: ' + (ev.join(',') || 'ninguno') + ' | h=' + el.offsetHeight +
+      tag.textContent = 'gc ' + pid.slice(0, 12) + ' ' + mo.ori + (mo.w ? ' w' + mo.w : '') + (mo.trunc ? '' : ' sintrunc') + (mo.rating ? ' rating' : '') + ' | ev: ' + (ev.join(',') || 'ninguno') + ' | h=' + el.offsetHeight +
         ' w=' + el.offsetWidth + ' | img(el/media)=' + imgs + ' | rect=' + Math.round(el.getBoundingClientRect().left) + '..' + Math.round(el.getBoundingClientRect().right) + ' de ' + innerWidth +
         '\n' + (res.join('\n') || 'sin peticiones a Google');
       setTimeout(() => tag.remove(), 15000);
