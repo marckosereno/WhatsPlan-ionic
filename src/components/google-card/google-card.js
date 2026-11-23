@@ -102,7 +102,7 @@ export async function openGoogleCard(place) {
 // Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
 // Pruebas desde el celular (se guardan): ?gcori=vertical|horizontal  ?gcw=344 (ancho en px)  ?gctrunc=0|1  ?gcreset=1 las borra
 function miniOpts() {
-  const o = { ori: 'vertical', w: 180, trunc: true };   // la horizontal no dibuja la foto; la vertical sí
+  const o = { ori: 'vertical', w: 120, trunc: true };   // la horizontal no dibuja la foto; la vertical sí
   try {
     const q = new URLSearchParams(location.search);
     if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc'].forEach((k) => localStorage.removeItem(k));
@@ -111,9 +111,9 @@ function miniOpts() {
     if (q.get('gctrunc')) localStorage.setItem('wpGcTrunc', q.get('gctrunc'));
     const ori = localStorage.getItem('wpGcOri'), w = parseInt(localStorage.getItem('wpGcW') || '', 10), t = localStorage.getItem('wpGcTrunc');
     if (ori === 'vertical' || ori === 'horizontal') o.ori = ori;
-    if (w >= 160 && w <= 600) o.w = w;
+    if (w >= 100 && w <= 600) o.w = w;
     if (t === '0') o.trunc = false;
-    if (o.ori === 'vertical' && !localStorage.getItem('wpGcW')) o.w = 180;
+    if (o.ori === 'vertical' && !localStorage.getItem('wpGcW')) o.w = 120;
   } catch (e) { /* sin almacenamiento: valores por defecto */ }
   return o;
 }
