@@ -116,10 +116,10 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     el.setAttribute('orientation', 'horizontal');
     el.setAttribute('truncation-preferred', '');
     // Mismo contenido que el ejemplo oficial de Google para la compacta horizontal: foto a la izquierda, nombre,
-    // calificación, tipo · precio · acceso y atribución (sin abrir la foto en lightbox: el toque abre la ficha)
+    // calificación, tipo · precio · acceso y atribución (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
     el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request>
       <gmp-place-content-config>
-        <gmp-place-media></gmp-place-media>
+        <gmp-place-media lightbox-preferred></gmp-place-media>
         <gmp-place-rating></gmp-place-rating>
         <gmp-place-type></gmp-place-type>
         <gmp-place-price></gmp-place-price>
@@ -166,6 +166,38 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     el.addEventListener('gmp-error', () => host.remove());
     setTimeout(swap, 2500);                           // por si el evento no llega pero ya se dibujó
     setTimeout(() => { if (!done) host.remove(); }, 6000);
+    gcDebug(el, pid);
     return true;
   } catch (e) { console.warn('[GoogleMini]', e); return false; }
+}
+
+
+// Diagnóstico opcional del minimodal: abrir la app con ?gcdebug=1 (queda guardado) y se ve una etiqueta con lo que
+// dibujó Google y el estado de sus peticiones de foto (403 = llave sin permiso; 200 = sí llegó). ?gcdebug=0 lo apaga.
+function gcDebug(el, pid) {
+  try {
+    const q = new URLSearchParams(location.search).get('gcdebug');
+    if (q === '1') localStorage.setItem('wpGcDebug', '1');
+    if (q === '0') localStorage.removeItem('wpGcDebug');
+    if (localStorage.getItem('wpGcDebug') !== '1') return;
+    const tag = document.createElement('div');
+    tag.style.cssText = 'position:fixed;left:6px;right:6px;top:calc(env(safe-area-inset-top) + 70px);z-index:99999;' +
+      'background:rgba(0,0,0,.82);color:#9f9;font:11px/1.35 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre-wrap';
+    document.body.appendChild(tag);
+    const ev = [];
+    el.addEventListener('gmp-load', () => ev.push('load'));
+    el.addEventListener('gmp-error', (e) => ev.push('ERROR ' + (e?.error?.message || e?.message || '')));
+    setTimeout(() => {
+      const media = el.querySelector('gmp-place-media');
+      const sr = el.shadowRoot, msr = media?.shadowRoot;
+      const imgs = (sr ? sr.querySelectorAll('img').length : -1) + '/' + (msr ? msr.querySelectorAll('img').length : -1);
+      const res = performance.getEntriesByType('resource')
+        .filter((r) => /places\.googleapis|googleusercontent|gstatic.*photo|maps\.googleapis/.test(r.name))
+        .slice(-8).map((r) => (r.responseStatus || '?') + ' ' + r.name.replace(/^https?:\/\//, '').slice(0, 58));
+      tag.textContent = 'gc ' + pid.slice(0, 12) + ' | ev: ' + (ev.join(',') || 'ninguno') + ' | h=' + el.offsetHeight +
+        ' w=' + el.offsetWidth + ' | img(el/media)=' + imgs + ' | media=' + (media ? media.offsetWidth + 'x' + media.offsetHeight : 'no') +
+        '\n' + (res.join('\n') || 'sin peticiones a Google');
+      setTimeout(() => tag.remove(), 15000);
+    }, 3500);
+  } catch (e) { /* diagnóstico: nunca debe romper */ }
 }
