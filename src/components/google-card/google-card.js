@@ -102,7 +102,7 @@ export async function openGoogleCard(place) {
 // Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
 // Pruebas desde el celular (se guardan): ?gcori=vertical|horizontal  ?gcw=344 (ancho en px)  ?gctrunc=0|1  ?gcreset=1 las borra
 function miniOpts() {
-  const o = { ori: 'horizontal', w: null, trunc: true };
+  const o = { ori: 'vertical', w: 260, trunc: true };   // la horizontal no dibuja la foto; la vertical sí
   try {
     const q = new URLSearchParams(location.search);
     if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc'].forEach((k) => localStorage.removeItem(k));
@@ -113,6 +113,7 @@ function miniOpts() {
     if (ori === 'vertical' || ori === 'horizontal') o.ori = ori;
     if (w >= 200 && w <= 600) o.w = w;
     if (t === '0') o.trunc = false;
+    if (o.ori === 'vertical' && !localStorage.getItem('wpGcW')) o.w = 260;
   } catch (e) { /* sin almacenamiento: valores por defecto */ }
   return o;
 }
@@ -133,12 +134,12 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
     host.style.cssText = `flex:1;min-width:0;position:absolute;opacity:0;pointer-events:none;width:${WID};left:0;top:0;z-index:-1`;
     const el = document.createElement('gmp-place-details-compact');
     el.setAttribute('orientation', mo.ori);
-    if (mo.trunc) el.setAttribute('truncation-preferred', '');
+    if (mo.trunc && mo.ori === 'horizontal') el.setAttribute('truncation-preferred', '');
     // Mismo contenido que el ejemplo oficial de Google para la compacta horizontal: foto a la izquierda, nombre,
     // calificación, tipo · precio · acceso y atribución (lightbox-preferred como en el ejemplo oficial; el toque en la tarjeta abre la ficha)
     el.innerHTML = `<gmp-place-details-place-request place="${esc(pid)}"></gmp-place-details-place-request>
       <gmp-place-content-config>
-        <gmp-place-media lightbox-preferred></gmp-place-media>
+        <gmp-place-media></gmp-place-media>
         <gmp-place-rating></gmp-place-rating>
         <gmp-place-type></gmp-place-type>
         <gmp-place-price></gmp-place-price>
@@ -169,6 +170,7 @@ export async function mountGoogleMini(card, place, isCurrent = () => true) {
         const H = card.offsetHeight;
         if (H < 30) return;
         wrapper.style.marginTop = `-${Math.round(H / 2 + 14)}px`;
+        card.dispatchEvent(new CustomEvent('wp-mc-resized', { detail: { H } }));   // el mapa baja el pin para que la tarjeta alta no tape la barra de arriba
         const dot = wrapper.querySelector('.wp-mc-shadow-dot');
         if (dot) dot.style.top = `calc(50% + ${Math.round(H / 2 + 14)}px)`;
         card.style.position = 'relative';
