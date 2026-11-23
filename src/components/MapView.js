@@ -4862,6 +4862,11 @@ export class MapView {
       animateMinicardIn(card);
       // Tarjeta compacta de Google dentro de la burbuja (apagada salvo GOOGLE_UIKIT_MINI=1; si falla, queda la de siempre)
       mountGoogleMini(card, place, () => this.miniCardPlace === place).catch(() => {});
+      // La tarjeta de Google (vertical, con foto) es mucho más alta que la burbuja: se baja el pin para que quepa bajo la barra de arriba
+      card.addEventListener('wp-mc-resized', (e) => {
+        const d = Math.round((e.detail?.H || 0) / 2 - 21);
+        if (!skipMove && d > 8 && this.map && this.miniCardPlace === place) this.map.panBy([0, -d], { duration: 250 });
+      });
       const pulse = () => {
         card.style.transform = 'scale(0.93)';
         setTimeout(() => { card.style.transform = ''; }, 150);
