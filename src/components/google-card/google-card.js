@@ -102,7 +102,7 @@ export async function openGoogleCard(place) {
 // Los dos primeros hijos de la burbuja son la foto y los textos; el último es la flechita (se conserva).
 // Pruebas desde el celular (se guardan): ?gcori=vertical|horizontal  ?gcw=344 (ancho en px)  ?gctrunc=0|1  ?gcreset=1 las borra
 function miniOpts() {
-  const o = { ori: 'horizontal', w: 300, trunc: true, rating: false };
+  const o = { ori: 'vertical', w: 200, trunc: true, rating: true };   // la vertical es la que dibuja la foto
   try {
     const q = new URLSearchParams(location.search);
     if (q.get('gcreset') === '1') ['wpGcOri', 'wpGcW', 'wpGcTrunc', 'wpGcRating'].forEach((k) => localStorage.removeItem(k));
