@@ -228,6 +228,16 @@ const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_
 async function googleLive(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const gid = String(req.query.gid || '');
+  if (gid === 'diag') {   // /api/groq-description?mode=google&gid=diag → dice qué falta, sin gastar casi nada
+    const out = { llaveGoogle: !!GOOGLE_KEY, llaveGroq: !!GROQ_API_KEY, googleLive: process.env.GOOGLE_LIVE === '1' };
+    if (GOOGLE_KEY) {
+      const r = await fetch('https://places.googleapis.com/v1/places/ChIJj61dQgK6j4AR4GeTYWZsKWw?languageCode=es', {
+        headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'displayName' } });
+      const t = await r.text();
+      out.google = { status: r.status, respuesta: t.slice(0, 400) };
+    }
+    return res.status(200).json(out);
+  }
   if (!/^ChIJ[\w-]{10,}$/.test(gid)) return res.status(400).json({ error: 'gid inválido' });
   if (!GOOGLE_KEY) return res.status(500).json({ error: 'Falta la llave de Google en Vercel (GOOGLE_PLACES_API_KEY)' });
   const parts = req.query.parts === 'photo' ? 'photo' : 'full';
