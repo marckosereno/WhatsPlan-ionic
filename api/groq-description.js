@@ -235,6 +235,11 @@ async function googleLive(req, res) {
         headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'displayName' } });
       const t = await r.text();
       out.google = { status: r.status, respuesta: t.slice(0, 400) };
+      const r2 = await fetch('https://places.googleapis.com/v1/places/ChIJj61dQgK6j4AR4GeTYWZsKWw', {
+        headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'photos,reviews' } });
+      const j2 = await r2.json().catch(() => ({}));
+      out.googleplexFotos = Array.isArray(j2.photos) ? j2.photos.length : 0;
+      out.googleplexResenas = Array.isArray(j2.reviews) ? j2.reviews.length : 0;
     }
     return res.status(200).json(out);
   }
@@ -263,7 +268,14 @@ async function googleLive(req, res) {
     } else out.mediaError = (await mr.text()).slice(0, 300);
   }
   out.photosN = Array.isArray(d.photos) ? d.photos.length : 0;
-  if (!out.photosN) out.googleDijo = JSON.stringify(d).slice(0, 250);   // diagnóstico: qué contestó Google cuando no trajo fotos
+  if (!out.photosN) {   // diagnóstico: qué contestó Google cuando no trajo fotos y qué sabe del lugar
+    out.googleDijo = JSON.stringify(d).slice(0, 250);
+    try {
+      const rb = await fetch(`https://places.googleapis.com/v1/places/${gid}?languageCode=es`, {
+        headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'id,displayName,userRatingCount,photos' } });
+      out.googleBasico = `${rb.status} ${(await rb.text()).replace(/\s+/g, ' ').slice(0, 200)}`;
+    } catch (e) { out.googleBasico = 'falló ' + e.message; }
+  }
   if (parts === 'full') {
     const reviews = (Array.isArray(d.reviews) ? d.reviews : []).slice(0, 5)
       .map((r) => ({ text: (r.text?.text || r.originalText?.text || '').slice(0, 400), rating: r.rating }))
