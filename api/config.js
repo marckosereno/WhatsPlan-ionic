@@ -14,6 +14,7 @@ export default function handler(req, res) {
     googleBrowserKey: process.env.GOOGLE_UIKIT_BROWSER_KEY || '',
     // Interruptor aparte del minimodal (burbuja del pin con la tarjeta compacta de Google). Cada toque a un pin
     // ligado cuesta una solicitud del UI Kit, por eso va apagado salvo GOOGLE_UIKIT_MINI=1
-    googleMini: process.env.GOOGLE_UIKIT_MINI === '1'
+    googleMini: process.env.GOOGLE_UIKIT_MINI === '1',
+    googleLive: process.env.GOOGLE_LIVE === '1'
   });
 }

@@ -30,6 +30,12 @@ export default async function handler(req, res) {
     return res.redirect(301, decodedUrl);
   }
 
+  // Foto en vivo de Google (la pide /api/groq-description?mode=google): directo al CDN de Google, sin descargarla ni guardarla
+  if (/^https:\/\/lh3\.googleusercontent\.com\//.test(decodedUrl)) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.redirect(302, decodedUrl);
+  }
+
   // Solo dominios de Google para el proxy
   const allowed = ['places.googleapis.com', 'maps.googleapis.com', 'lh3.googleusercontent.com'];
   if (!allowed.some(d => decodedUrl.includes(d))) {

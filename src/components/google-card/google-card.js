@@ -20,12 +20,32 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 let cfgP = null;
 function getCfg() {
-  if (!cfgP) cfgP = fetch('/api/config').then((r) => r.json()).then((c) => ({ key: c.googleBrowserKey || '', mini: !!c.googleMini })).catch(() => ({ key: '', mini: false }));
+  if (!cfgP) cfgP = fetch('/api/config').then((r) => r.json()).then((c) => ({ key: c.googleBrowserKey || '', mini: !!c.googleMini, live: !!c.googleLive })).catch(() => ({ key: '', mini: false, live: false }));
   return cfgP;
 }
 const getKey = async () => (await getCfg()).key;
-export async function googleMiniReady() { const c = await getCfg(); return !!(c.key && c.mini); }
-export async function googleCardReady() { return !!(await getKey()); }
+// Con GOOGLE_LIVE=1 se usa foto + descripción propias (API en vivo) y las tarjetas del UI Kit se apagan
+export async function googleMiniReady() { const c = await getCfg(); return !!(c.key && c.mini && !c.live); }
+export async function googleCardReady() { const c = await getCfg(); return !!(c.key && !c.live); }
+export async function googleLiveReady() { return !!(await getCfg()).live; }
+
+// Foto y/o descripción de Google pedidas en vivo (se paga por llamada; no se guarda nada). Solo se recuerda en memoria
+// mientras la app está abierta para no repetir la llamada al volver a abrir el mismo lugar.
+const _live = new Map();
+export function loadGoogleLive(place, parts = 'full') {
+  const gid = googlePlaceId(place);
+  if (!gid) return Promise.resolve(null);
+  const key = `${gid}|${parts}`;
+  if (_live.has(key)) return _live.get(key);
+  const have = _live.get(`${gid}|photo`);
+  const q = new URLSearchParams({ mode: 'google', gid, parts });
+  const name = place.place_name || place.name; if (name) q.set('name', name);
+  if (place.category) q.set('cat', place.category);
+  const p = fetch(`/api/groq-description?${q}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    .then((d) => { if (!d) _live.delete(key); return d; });
+  _live.set(key, p);
+  return p;
+}
 
 // Lugares de Google traen su ID en place_id; los de DENUE lo traen ligado en googlePlaceId (SQL 49)
 export function googlePlaceId(place) {

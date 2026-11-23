@@ -5,7 +5,7 @@ import { ICON_BACK } from '/src/components/place-plans/step-sheet.js';
 import { photoThumb, photoFull } from '/src/utils/photo-url.js';
 import { paintSeals } from '/src/components/map/plan-seal.js';
 import { lgEmojiImg } from '/src/utils/emoji-img.js';
-import { mountGoogleMini } from '/src/components/google-card/google-card.js';
+import { mountGoogleMini, googleLiveReady, loadGoogleLive, googlePlaceId } from '/src/components/google-card/google-card.js';
 import { planEmoji, onPlanEmojiReady } from '/src/components/map/plan-emoji.js';
 // ====================================================================
 // WHATSPLAN — MapView.js
@@ -4862,6 +4862,14 @@ export class MapView {
       animateMinicardIn(card);
       // Tarjeta compacta de Google dentro de la burbuja (apagada salvo GOOGLE_UIKIT_MINI=1; si falla, queda la de siempre)
       mountGoogleMini(card, place, () => this.miniCardPlace === place).catch(() => {});
+      // Foto de Google en vivo (1 sola) para el pin ligado que no trae foto; con la foto se vuelve a dibujar la burbuja
+      if (!rawPhoto && googlePlaceId(place)) {
+        googleLiveReady().then((on) => on && loadGoogleLive(place, 'photo')).then((d) => {
+          if (!d?.photo || this.miniCardPlace !== place) return;
+          place.photoUrl = d.photo; place.photosUrls = [d.photo]; place._gPhotoBy = d.photoBy || null;
+          this._showMiniCard(place, index, d.photo, true, marker);
+        }).catch(() => {});
+      }
       // La tarjeta de Google (vertical, con foto) es mucho más alta que la burbuja: se baja el pin para que quepa bajo la barra de arriba
       card.addEventListener('wp-mc-resized', (e) => {
         const d = Math.round((e.detail?.H || 0) / 2 - 21);
