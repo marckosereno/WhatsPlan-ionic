@@ -43,7 +43,7 @@ export function loadGoogleLive(place, parts = 'full') {
   if (place.category) q.set('cat', place.category);
   const t0 = Date.now();
   const p = fetch(`/api/groq-description?${q}`)
-    .then(async (r) => { const j = await r.json().catch(() => null); liveTag(`${parts} ${gid.slice(0, 10)}… HTTP ${r.status} ${Date.now() - t0}ms\n` + (j ? (j.error ? 'ERROR: ' + j.error : 'foto:' + (j.photo ? 'sí' : 'no') + ' desc:' + (j.description ? 'sí' : 'no') + (j.basedOn ? ' (' + j.basedOn + ' reseñas)' : '')) : 'sin JSON')); return r.ok ? j : null; })
+    .then(async (r) => { const j = await r.json().catch(() => null); liveTag(`${parts} ${gid.slice(0, 10)}… HTTP ${r.status} ${Date.now() - t0}ms\n` + (j ? (j.error ? 'ERROR: ' + j.error : 'foto:' + (j.photo ? 'sí' : 'no') + ' desc:' + (j.description ? 'sí' : 'no') + (j.basedOn ? ' (' + j.basedOn + ' reseñas)' : '') + ' | fotos en Google:' + j.photosN + (j.mediaStatus ? ' media:' + j.mediaStatus : '') + (j.mediaError ? '\\n' + j.mediaError : '')) : 'sin JSON')); return r.ok ? j : null; })
     .catch((e) => { liveTag(`${parts} falló la petición: ${e?.message || e}`); return null; })
     .then((d) => { if (!d) _live.delete(key); return d; });
   _live.set(key, p);
