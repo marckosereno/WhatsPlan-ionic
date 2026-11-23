@@ -11,7 +11,7 @@ import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
 import { isSparsePlace, openCollabSheet } from '/src/components/place-collab/collab-sheet.js';
-import { googleCardReady, isGooglePlaceId, mountGoogleCard } from '/src/components/google-card/google-card.js';
+import { googleCardReady, googleLiveReady, loadGoogleLive, googlePlaceId, isGooglePlaceId, mountGoogleCard } from '/src/components/google-card/google-card.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
 import { photoSmall }                  from '/src/utils/photo-url.js';
 import { VisitService }                from '/src/services/VisitService.js';
@@ -1864,6 +1864,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
   // Pregunta una sola vez si hay llave de Google para la tarjeta (se guarda; el menú lo lee al abrir)
   _prepGoogleCard() {
     if (this._googleCardOn === undefined) { this._googleCardOn = false; googleCardReady().then((ok) => { this._googleCardOn = ok; }).catch(() => {}); }
+    if (this._googleLiveOn === undefined) { this._googleLiveOn = false; googleLiveReady().then((ok) => { this._googleLiveOn = ok; }).catch(() => {}); }
   }
 
   // Bloque "De Google" dentro de la ficha: se oculta y se vuelve a armar en cada apertura
@@ -1897,6 +1898,16 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     this._el.classList.toggle('wp-pm2-has-gcard', !!(this._googleCardOn && isGooglePlaceId(place)));
     this._populate(place);
     this._mountGoogleBlock(place);
+    // Foto de Google en vivo (1 sola) para los lugares ligados que no traen foto
+    if (this._googleLiveOn && googlePlaceId(place) && !(place.photoUrl || place.photo_url || place.photosUrls?.length)) {
+      loadGoogleLive(place, 'photo').then((d) => {
+        if (!d?.photo || this._place !== place || place.photoUrl) return;
+        place.photoUrl = d.photo; place.photosUrls = [d.photo]; place._gPhotoBy = d.photoBy || null;
+        this._populate(place);
+        const cr = this._el.querySelector('.wp-pm2-gcredit');
+        if (cr) cr.textContent = this._gCreditText(place, cr.dataset.n);
+      }).catch(() => {});
+    }
     document.body.style.overflow = 'hidden';
     // Activa la sombra superior "oficial" con blur real (ion-app::before,
     // variante body.wp-pm-open en app.css) + el blur del mapa de fondo —
@@ -2460,6 +2471,12 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     if (sheet) wave(sheet, ':scope > :not([hidden])');
   }
 
+  // Créditos de lo que viene de Google: resumen de reseñas y, si hay, el autor de la foto
+  _gCreditText(place, n) {
+    const by = place._gPhotoBy?.displayName;
+    return `Resumen de ${n ? n + ' ' : ''}reseñas · Google Maps${by ? ` · Foto: ${by}` : ''}`;
+  }
+
   // Descripción generada con IA — misma lógica que PlaceModal1._populateAI:
   // 1) si el place ya trae `ai_descriptions` (guardadas en Supabase), muestra
   //    una al azar de inmediato; 2) si no, pide una nueva a
@@ -2493,6 +2510,25 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         if (icon) icon.classList.remove('wp-pm2-ai-pulse');
       });
     };
+
+    // Lugar ligado a Google (DENUE): la descripción sale de un resumen de sus reseñas de Google, pedido en vivo
+    if (this._googleLiveOn && googlePlaceId(place) && !(Array.isArray(place.ai_descriptions) && place.ai_descriptions.length)) {
+      let abortedL = false, cancelL = null;
+      this._aiAbort = () => { abortedL = true; if (cancelL) cancelL(); block.style.display = 'none'; textEl.textContent = ''; block.querySelector('.wp-pm2-gcredit')?.remove(); if (icon) icon.classList.remove('wp-pm2-ai-pulse'); };
+      block.querySelector('.wp-pm2-gcredit')?.remove();
+      loadGoogleLive(place, 'full').then((d) => {
+        if (abortedL) return;
+        if (!d?.description) { block.style.display = 'none'; return; }
+        cancelL = showText(d.description);
+        const cr = document.createElement('div');
+        cr.className = 'wp-pm2-gcredit';
+        cr.dataset.n = d.basedOn || '';
+        cr.textContent = this._gCreditText(place, d.basedOn);
+        cr.style.cssText = 'margin-top:8px;font-size:11px;color:#8a8f98;font-weight:500';
+        block.appendChild(cr);
+      }).catch(() => { if (!abortedL) block.style.display = 'none'; });
+      return;
+    }
 
     const existing = Array.isArray(place.ai_descriptions) ? place.ai_descriptions : [];
     if (existing.length > 0) {

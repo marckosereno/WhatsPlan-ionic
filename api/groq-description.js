@@ -216,12 +216,76 @@ async function planSummary(req, res) {
   return res.status(200).json({ summary, cached: false });
 }
 
+
+// ── Google en vivo (?mode=google&gid=ChIJ…[&parts=photo|full][&nophoto=1][&name=&cat=]) ────────────────
+// Se pide a Google en cada llamada (se paga por llamada) y NO se guarda nada: ni foto ni reseñas ni el texto.
+//  · parts=photo → solo 1 foto (URL directa de Google)
+//  · parts=full  → las 5 reseñas se las damos a Groq, que escribe UNA descripción (un resumen); se devuelve
+//                  junto con los créditos para mostrarlos ("Resumen de reseñas · Google Maps")
+const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY
+  || process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_PLACES_API_KEY || '';
+
+async function googleLive(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  const gid = String(req.query.gid || '');
+  if (!/^ChIJ[\w-]{10,}$/.test(gid)) return res.status(400).json({ error: 'gid inválido' });
+  if (!GOOGLE_KEY) return res.status(500).json({ error: 'Falta la llave de Google en Vercel (GOOGLE_PLACES_API_KEY)' });
+  const parts = req.query.parts === 'photo' ? 'photo' : 'full';
+  const wantPhoto = req.query.nophoto !== '1';
+
+  const mask = parts === 'photo' ? 'photos' : ['displayName', 'reviews', wantPhoto ? 'photos' : ''].filter(Boolean).join(',');
+  const dr = await fetch(`https://places.googleapis.com/v1/places/${gid}?languageCode=es`, {
+    headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': mask },
+  });
+  if (!dr.ok) return res.status(502).json({ error: `Google ${dr.status}: ${(await dr.text()).slice(0, 200)}` });
+  const d = await dr.json();
+
+  const out = {};
+  const ph = (wantPhoto && Array.isArray(d.photos)) ? d.photos[0] : null;
+  if (ph?.name) {
+    const mr = await fetch(`https://places.googleapis.com/v1/${ph.name}/media?maxWidthPx=800&skipHttpRedirect=true`, {
+      headers: { 'X-Goog-Api-Key': GOOGLE_KEY },
+    });
+    if (mr.ok) {
+      const m = await mr.json();
+      if (m.photoUri) { out.photo = m.photoUri; out.photoBy = (ph.authorAttributions || [])[0] || null; }
+    }
+  }
+  if (parts === 'full') {
+    const reviews = (Array.isArray(d.reviews) ? d.reviews : []).slice(0, 5)
+      .map((r) => ({ text: (r.text?.text || r.originalText?.text || '').slice(0, 400), rating: r.rating }))
+      .filter((r) => r.text.length > 15);
+    if (reviews.length && GROQ_API_KEY) {
+      const name = String(req.query.name || d.displayName?.text || 'este lugar').slice(0, 80);
+      const prompt = [
+        `Resume en UNA descripción breve (máximo 60 palabras) en español de "${name}" lo que dicen estas reseñas de clientes.`,
+        req.query.cat ? `Categoría: ${String(req.query.cat).slice(0, 60)}.` : '',
+        `Reseñas:\n${reviews.map((r) => `"${r.text}" (${r.rating}★)`).join('\n')}`,
+        'Tono natural y cálido. Resume con tus palabras: sin copiar frases de las reseñas, sin comillas, sin inventar datos (precios, horarios). Responde ÚNICAMENTE con la descripción.',
+      ].filter(Boolean).join('\n');
+      try {
+        out.description = await callGroq([
+          { role: 'system', content: 'Eres un experto en turismo local de México. Respondes solo en español.' },
+          { role: 'user', content: prompt },
+        ], 0.7, 700);
+        out.basedOn = reviews.length;
+      } catch (e) { console.warn('[groq-google]', e.message); }
+    }
+  }
+  out.credit = 'Google Maps';
+  return res.status(200).json(out);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (req.query.mode === 'google') {
+    try { return await googleLive(req, res); }
+    catch (err) { console.error('[google-live]', err.message); return res.status(500).json({ error: err.message }); }
+  }
   if (!GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY not set' });
   if (req.query.mode === 'plan') {
     try { return await planSummary(req, res); }
