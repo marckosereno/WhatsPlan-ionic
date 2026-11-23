@@ -238,6 +238,14 @@ async function googleLive(req, res) {
       const r2 = await fetch('https://places.googleapis.com/v1/places/ChIJj61dQgK6j4AR4GeTYWZsKWw', {
         headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'photos,reviews' } });
       const j2 = await r2.json().catch(() => ({}));
+      out.pruebas = {};   // misma consulta con distintos campos, para ver cuáles contesta Google con esta llave
+      for (const m of ['photos', 'reviews', 'rating,userRatingCount', 'displayName,photos', 'displayName,rating,reviews,photos']) {
+        try {
+          const rr = await fetch('https://places.googleapis.com/v1/places/ChIJj61dQgK6j4AR4GeTYWZsKWw', {
+            headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': m } });
+          out.pruebas[m] = `${rr.status} ` + (await rr.text()).replace(/\s+/g, ' ').slice(0, 140);
+        } catch (e) { out.pruebas[m] = 'falló ' + e.message; }
+      }
       out.googleplexFotos = Array.isArray(j2.photos) ? j2.photos.length : 0;
       out.googleplexResenas = Array.isArray(j2.reviews) ? j2.reviews.length : 0;
     }
