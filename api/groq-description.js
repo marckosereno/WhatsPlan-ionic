@@ -301,12 +301,53 @@ async function googleLive(req, res) {
   return res.status(200).json(out);
 }
 
+
+// ── Descripción de un lugar de DENUE (?mode=denue&id=<place_id>) ──────────────────────────────────────────
+// Solo con datos públicos del propio lugar (nombre, giro, subcategoría, dirección). Nada de Google.
+// Se guarda en custom_places.descripcion_ia (SQL 50) para no gastar Groq cada vez.
+async function denueDescription(req, res) {
+  const id = String(req.query.id || '').slice(0, 120);
+  if (!id) return res.status(400).json({ error: 'falta id' });
+  const q = (cols) => fetch(`${SUPABASE_URL}/rest/v1/custom_places?place_id=eq.${encodeURIComponent(id)}&select=${cols}&limit=1`, { headers: SB });
+  let guardar = true;
+  let r = await q('place_id,name,category,subcategory_tags,formatted_address,types,descripcion_ia');
+  if (!r.ok) { guardar = false; r = await q('place_id,name,category,subcategory_tags,formatted_address,types'); }   // aún sin el SQL 50
+  const row = r.ok ? (await r.json())[0] : null;
+  if (!row) return res.status(404).json({ error: 'lugar no encontrado' });
+  if (row.descripcion_ia) { res.setHeader('Cache-Control', 'public, s-maxage=86400'); return res.status(200).json({ description: row.descripcion_ia, cached: true }); }
+  if (!GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY not set' });
+
+  const giro = [row.category, row.subcategory_tags, row.types].filter(Boolean).join(', ');
+  const prompt = [
+    `Escribe una descripción breve (2 frases, máximo 45 palabras) en español de un lugar de Nuevo Progreso, Tamaulipas.`,
+    `Nombre: ${row.name}`,
+    giro ? `Giro: ${giro}` : '',
+    row.formatted_address ? `Dirección: ${row.formatted_address}` : '',
+    'Di qué tipo de lugar es y qué puede esperar quien lo visita, con tono cálido y natural.',
+    'NO inventes datos: ni platillos concretos, ni precios, ni horarios, ni calificaciones, ni opiniones de clientes. No uses comillas. Responde ÚNICAMENTE con la descripción.',
+  ].filter(Boolean).join('\n');
+  const description = await callGroq([
+    { role: 'system', content: 'Eres un guía local de México. Respondes solo en español y nunca inventas datos.' },
+    { role: 'user', content: prompt },
+  ], 0.6, 300);
+  if (guardar && description) {
+    await fetch(`${SUPABASE_URL}/rest/v1/custom_places?place_id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH', headers: { ...SB, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ descripcion_ia: description }) }).catch(() => {});
+  }
+  res.setHeader('Cache-Control', 'public, s-maxage=86400');
+  return res.status(200).json({ description });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (req.query.mode === 'denue') {
+    try { return await denueDescription(req, res); }
+    catch (err) { console.error('[denue-desc]', err.message); return res.status(500).json({ error: err.message }); }
+  }
   if (req.query.mode === 'google') {
     try { return await googleLive(req, res); }
     catch (err) { console.error('[google-live]', err.message); return res.status(500).json({ error: err.message }); }

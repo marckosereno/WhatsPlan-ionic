@@ -10,8 +10,8 @@ import { ActivityService, ProfileService, getSupabase } from '/src/services/Supa
 import { SocialService }               from '/src/services/SocialService.js';
 import { getAvatarUrl }                from '/src/services/AvatarService.js';
 import { PlaceClaimService }           from '/src/services/PlaceClaimService.js';
-import { isSparsePlace, openCollabSheet } from '/src/components/place-collab/collab-sheet.js';
 import { googleCardReady, googleLiveReady, loadGoogleLive, googlePlaceId, isGooglePlaceId, mountGoogleCard } from '/src/components/google-card/google-card.js';
+import { mountPlaceSocial } from '/src/components/place-collab/place-social.js';
 import { FavoriteService }             from '/src/services/FavoriteService.js';
 import { photoSmall }                  from '/src/utils/photo-url.js';
 import { VisitService }                from '/src/services/VisitService.js';
@@ -200,6 +200,9 @@ export class PlaceModal2 {
               <span class="wp-pm2-action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>
             </button>
           </div>
+
+          <!-- QUIÉN HA ESTADO AQUÍ — lo social del lugar (visitas, amigos, los que más han ido) y las acciones para sumar -->
+          <div id="wp-pm2-social" class="wp-ps" style="display:none"></div>
 
           <!-- FICHA DE GOOGLE — tarjeta oficial (Places UI Kit) a todo lo ancho, fundida con la ficha, solo en
                lugares con place_id de Google (directo o ligado). La atribución de Google la dibuja el propio
@@ -512,8 +515,6 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     try {
       this._hideMiniSnap();
       // Lugares con solo lo básico (DENUE, sin fotos): hoja de colaboración en vez de la ficha vacía
-      // Con tarjeta de Google disponible, la ficha ya no está vacía: se abre directo, sin la hoja previa
-      if (isSparsePlace(place) && !(this._googleCardOn && isGooglePlaceId(place))) { openCollabSheet(this, place); return; }
       this.show(place);
     } catch (e) {
       console.error('[PM2] Error al abrir la ficha:', e);
@@ -1898,6 +1899,7 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
     this._el.classList.toggle('wp-pm2-has-gcard', !!(this._googleCardOn && isGooglePlaceId(place)));
     this._populate(place);
     this._mountGoogleBlock(place);
+    mountPlaceSocial(this, place, this._el.querySelector('#wp-pm2-social')).catch((e) => console.warn('[social]', e));
     // Foto de Google en vivo (1 sola) para los lugares ligados que no traen foto
     if (this._googleLiveOn && googlePlaceId(place) && !(place.photoUrl || place.photo_url || place.photosUrls?.length)) {
       loadGoogleLive(place, 'photo').then((d) => {
@@ -2527,6 +2529,24 @@ wpEnsureCss('wp-pm2-planshere-css', '/styles/plans-here.css');
         cr.style.cssText = 'margin-top:8px;font-size:11px;color:#8a8f98;font-weight:500';
         block.appendChild(cr);
       }).catch(() => { if (!abortedL) block.style.display = 'none'; });
+      return;
+    }
+
+    // Lugar de DENUE: descripción corta escrita por la IA solo con datos públicos (giro, subcategoría, dirección)
+    if (place._fromCustom && place.source === 'denue' && !(Array.isArray(place.ai_descriptions) && place.ai_descriptions.length)) {
+      let abortedD = false, cancelD = null;
+      this._aiAbort = () => { abortedD = true; if (cancelD) cancelD(); block.style.display = 'none'; textEl.textContent = ''; block.querySelector('.wp-pm2-gcredit')?.remove(); if (icon) icon.classList.remove('wp-pm2-ai-pulse'); };
+      block.querySelector('.wp-pm2-gcredit')?.remove();
+      fetch(`/api/groq-description?mode=denue&id=${encodeURIComponent(placeId)}`).then((r) => (r.ok ? r.json() : null)).then((d) => {
+        if (abortedD) return;
+        if (!d?.description) { block.style.display = 'none'; return; }
+        cancelD = showText(d.description);
+        const cr = document.createElement('div');
+        cr.className = 'wp-pm2-gcredit';
+        cr.textContent = 'Descripción escrita con IA · Datos: INEGI, DENUE';
+        cr.style.cssText = 'margin-top:8px;font-size:11px;color:#8a8f98;font-weight:500';
+        block.appendChild(cr);
+      }).catch(() => { if (!abortedD) block.style.display = 'none'; });
       return;
     }
 

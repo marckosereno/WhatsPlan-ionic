@@ -97,7 +97,7 @@ export function openCollabSheet(pm, place) {
 }
 
 // Registra la visita con el mismo servicio de la ficha (check_in del servidor valida los 100 m)
-async function estuveAqui(pm, place, btn) {
+export async function estuveAqui(pm, place, btn) {
   if (btn.classList.contains('busy') || btn.classList.contains('done')) return;
   btn.classList.add('busy');
   try {
